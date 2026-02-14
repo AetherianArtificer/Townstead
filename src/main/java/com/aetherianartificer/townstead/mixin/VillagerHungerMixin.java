@@ -46,6 +46,21 @@ public abstract class VillagerHungerMixin extends Villager {
         super(null, null);
     }
 
+    /**
+     * Pick up hunger data injected by the editor into MCA's sync NBT.
+     * Only fires when the editor's custom keys are present.
+     */
+    @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
+    private void townstead$readEditorHunger(CompoundTag nbt, CallbackInfo ci) {
+        if (!nbt.contains(HungerData.EDITOR_KEY_HUNGER)) return;
+        VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
+        CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
+        HungerData.setHunger(hunger, nbt.getInt(HungerData.EDITOR_KEY_HUNGER));
+        HungerData.setSaturation(hunger, nbt.getFloat(HungerData.EDITOR_KEY_SATURATION));
+        HungerData.setExhaustion(hunger, nbt.getFloat(HungerData.EDITOR_KEY_EXHAUSTION));
+        self.setData(Townstead.HUNGER_DATA, hunger);
+    }
+
     @Inject(method = "aiStep", at = @At("TAIL"))
     private void townstead$hungerTick(CallbackInfo ci) {
         if (level().isClientSide) return;
@@ -144,11 +159,13 @@ public abstract class VillagerHungerMixin extends Villager {
         // --- 7. Speed modifier ---
         townstead$updateSpeedModifier(HungerData.getHunger(hunger));
 
-        // --- 8. Sync to client if changed ---
+        // --- 8. Persist and sync ---
+        // Always persist — getData() may return a copy, so in-place edits need setData()
+        self.setData(Townstead.HUNGER_DATA, hunger);
+
         int currentHunger = HungerData.getHunger(hunger);
         if (currentHunger != townstead$lastSyncedHunger) {
             townstead$lastSyncedHunger = currentHunger;
-            self.setData(Townstead.HUNGER_DATA, hunger);
             if (level() instanceof ServerLevel) {
                 PacketDistributor.sendToPlayersTrackingEntity(
                         self,

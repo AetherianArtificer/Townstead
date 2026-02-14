@@ -6,7 +6,8 @@
     "VillagerHungerMixin"
   ],
   "client": [
-    "InteractScreenMixin"
+    "InteractScreenMixin",
+    "VillagerEditorMixin"
   ],
   "minVersion": "0.8"
 }

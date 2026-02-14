@@ -45,11 +45,16 @@ public final class HungerData {
     // --- Food restoration multiplier (scales vanilla nutrition to 0-100 range) ---
     public static final float FOOD_SCALE = 3.0f;
 
-    // --- NBT keys ---
+    // --- NBT keys (attachment internal) ---
     private static final String KEY_HUNGER = "hunger";
     private static final String KEY_SATURATION = "saturation";
     private static final String KEY_EXHAUSTION = "exhaustion";
     private static final String KEY_LAST_ATE_TIME = "lastAteTime";
+
+    // --- NBT keys for editor sync (piggybacked on MCA's VillagerEditorSyncRequest) ---
+    public static final String EDITOR_KEY_HUNGER = "townstead_hunger";
+    public static final String EDITOR_KEY_SATURATION = "townstead_saturation";
+    public static final String EDITOR_KEY_EXHAUSTION = "townstead_exhaustion";
 
     private HungerData() {}
 

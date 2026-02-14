@@ -4,5 +4,6 @@
   "townstead.hunger.adequate": "Adequate",
   "townstead.hunger.hungry": "Hungry",
   "townstead.hunger.starving": "Starving",
-  "townstead.hunger.empty": "Empty"
+  "townstead.hunger.empty": "Empty",
+  "townstead.hunger.editor": "Hunger: %d (%s)"
 }
