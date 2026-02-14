@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "com.aetherianartificer.townstead.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "VillagerHungerMixin"
+  ],
+  "client": [
+    "InteractScreenMixin"
+  ],
+  "minVersion": "0.8"
+}

@@ -1,0 +1,8 @@
+{
+  "townstead.hunger.label": "Hunger: %s",
+  "townstead.hunger.well_fed": "Well-Fed",
+  "townstead.hunger.adequate": "Adequate",
+  "townstead.hunger.hungry": "Hungry",
+  "townstead.hunger.starving": "Starving",
+  "townstead.hunger.empty": "Empty"
+}

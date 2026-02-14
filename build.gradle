@@ -1,0 +1,48 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.28-beta'
+}
+
+version = project.mod_version
+group = project.mod_group
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neoforge_version
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+        }
+    }
+
+    mods {
+        "${project.mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    compileOnly files('libs/mca-neoforge-7.7.5+1.21.1.jar')
+}
+
+// Build on Linux filesystem to avoid WSL/NTFS permission errors
+layout.buildDirectory = file("${System.getProperty('user.home')}/.cache/townstead-build")
+
+// Replace ${version} in neoforge.mods.toml
+tasks.withType(ProcessResources).configureEach {
+    var replaceProperties = [version: project.version]
+    inputs.properties replaceProperties
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand replaceProperties
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
