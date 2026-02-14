@@ -3,7 +3,32 @@
   "townstead.hunger.well_fed": "Well-Fed",
   "townstead.hunger.adequate": "Adequate",
   "townstead.hunger.hungry": "Hungry",
+  "townstead.hunger.famished": "Famished",
   "townstead.hunger.starving": "Starving",
-  "townstead.hunger.empty": "Empty",
-  "townstead.hunger.editor": "Hunger: %d (%s)"
+  "townstead.hunger.editor": "Hunger: %d (%s)",
+
+  "dialogue.chat.hunger.starving/1": "I... I can barely stand. Please, do you have anything to eat?",
+  "dialogue.chat.hunger.starving/2": "Everything's going dark around the edges... I need food, %1$s.",
+  "dialogue.chat.hunger.starving/3": "I don't know how much longer I can go on like this without a meal...",
+  "dialogue.chat.hunger.starving/4": "*clutches stomach* ...I'm sorry, I can't focus on anything right now.",
+  "dialogue.chat.hunger.starving/5": "If I don't eat something soon, I'm going to collapse right here.",
+  "dialogue.chat.hunger.starving/6": "Please... food... anything at all...",
+  "dialogue.chat.hunger.starving/7": "I can't remember the last time I ate. My hands won't stop shaking.",
+  "dialogue.chat.hunger.starving/8": "I'd give anything for even a piece of bread right now, %1$s.",
+
+  "dialogue.chat.hunger.famished/1": "I haven't eaten in ages... do you have anything?",
+  "dialogue.chat.hunger.famished/2": "*stomach growls* ...sorry about that.",
+  "dialogue.chat.hunger.famished/3": "I can't stop thinking about food right now...",
+  "dialogue.chat.hunger.famished/4": "My stomach has been growling all day. I really need to find something to eat.",
+  "dialogue.chat.hunger.famished/5": "I'd trade my best boots for a warm meal right about now.",
+  "dialogue.chat.hunger.famished/6": "Have you seen any food around? I'm getting desperate, %1$s.",
+  "dialogue.chat.hunger.famished/7": "Sorry if I seem distracted. It's hard to think about anything but food.",
+  "dialogue.chat.hunger.famished/8": "I keep eyeing the crops in the fields... they can't grow fast enough.",
+
+  "dialogue.chat.hunger.hungry/1": "I could really go for a bite to eat, honestly.",
+  "dialogue.chat.hunger.hungry/2": "Is it lunchtime yet? My stomach seems to think so.",
+  "dialogue.chat.hunger.hungry/3": "I've been meaning to grab something to eat. Just haven't gotten around to it.",
+  "dialogue.chat.hunger.hungry/4": "Something smells good around here... or maybe I'm just hungry.",
+  "dialogue.chat.hunger.hungry/5": "A nice stew would really hit the spot right about now.",
+  "dialogue.chat.hunger.hungry/6": "I wonder what's for supper tonight? I'm getting a bit peckish."
 }

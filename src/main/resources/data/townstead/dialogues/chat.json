@@ -1,0 +1,51 @@
+{
+  "auto": true,
+  "answers": [
+    {
+      "results": [
+        {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 10, "hunger": "starving" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.hunger.starving"
+          }
+        },
+        {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 8, "hunger": "famished" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.hunger.famished"
+          }
+        },
+        {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 4, "hunger": "hungry" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.hunger.hungry",
+            "positive": 2
+          }
+        },
+        {
+          "baseChance": 5,
+          "conditions": [
+            { "chance": 4, "personality": "gloomy" },
+            { "chance": 2, "personality": "sensitive" }
+          ],
+          "actions": {
+            "next": "chat.topic",
+            "positive": 5
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -158,8 +158,8 @@ public final class HungerData {
      * Get the HungerState for UI display and effect calculation.
      */
     public static HungerState getState(int hunger) {
-        if (hunger <= 0) return HungerState.EMPTY;
-        if (hunger < 25) return HungerState.STARVING;
+        if (hunger <= 0) return HungerState.STARVING;
+        if (hunger < 25) return HungerState.FAMISHED;
         if (hunger < 50) return HungerState.HUNGRY;
         if (hunger < 80) return HungerState.ADEQUATE;
         return HungerState.WELL_FED;
@@ -173,8 +173,8 @@ public final class HungerData {
             case WELL_FED -> 1;
             case ADEQUATE -> 0;
             case HUNGRY -> -2;
-            case STARVING -> -4;
-            case EMPTY -> -6;
+            case FAMISHED -> -4;
+            case STARVING -> -6;
         };
     }
 
@@ -186,8 +186,8 @@ public final class HungerData {
         WELL_FED("townstead.hunger.well_fed", 0x55FF55),      // green
         ADEQUATE("townstead.hunger.adequate", 0xFFFFFF),        // white
         HUNGRY("townstead.hunger.hungry", 0xFFAA00),            // gold
-        STARVING("townstead.hunger.starving", 0xFF5555),        // red
-        EMPTY("townstead.hunger.empty", 0xAA0000);              // dark red
+        FAMISHED("townstead.hunger.famished", 0xFF5555),        // red
+        STARVING("townstead.hunger.starving", 0xAA0000);        // dark red
 
         private final String translationKey;
         private final int color;

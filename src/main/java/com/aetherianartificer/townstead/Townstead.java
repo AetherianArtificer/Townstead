@@ -5,9 +5,12 @@ import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.entity.interaction.gifts.GiftPredicate;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.Entity;
+import java.util.Locale;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.attachment.AttachmentType;
@@ -44,7 +47,18 @@ public class Townstead {
         modBus.addListener(this::registerPayloads);
         NeoForge.EVENT_BUS.addListener(this::onClientDisconnect);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
+        registerDialogueConditions();
         LOGGER.info("Townstead loaded");
+    }
+
+    private void registerDialogueConditions() {
+        GiftPredicate.register("hunger", (json, name) ->
+                GsonHelper.convertToString(json, name).toLowerCase(Locale.ROOT),
+                state -> (villager, stack, player) -> {
+                    CompoundTag data = villager.getData(HUNGER_DATA);
+                    int h = HungerData.getHunger(data);
+                    return HungerData.getState(h).name().toLowerCase(Locale.ROOT).equals(state) ? 1.0f : 0.0f;
+                });
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {

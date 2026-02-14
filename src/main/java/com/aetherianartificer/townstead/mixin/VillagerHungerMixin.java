@@ -3,32 +3,35 @@ package com.aetherianartificer.townstead.mixin;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
+import com.aetherianartificer.townstead.hunger.SeekFoodTask;
+import com.google.common.collect.ImmutableList;
+import com.mojang.datafixers.util.Pair;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.registry.ProfessionsMCA;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.network.PacketDistributor;
+import com.mojang.serialization.Dynamic;
+import net.minecraft.world.entity.ai.Brain;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(VillagerEntityMCA.class)
 public abstract class VillagerHungerMixin extends Villager {
@@ -44,6 +47,34 @@ public abstract class VillagerHungerMixin extends Villager {
     // Mixin requires a constructor but it's never called
     private VillagerHungerMixin() {
         super(null, null);
+    }
+
+    /**
+     * Register SeekFoodTask into the brain's CORE activity after MCA initializes it.
+     * Covers initial entity creation via makeBrain.
+     */
+    @SuppressWarnings("unchecked")
+    @Inject(method = "makeBrain", at = @At("RETURN"))
+    private void townstead$registerSeekFoodOnCreate(Dynamic<?> dynamic, CallbackInfoReturnable<Brain<?>> cir) {
+        townstead$addSeekFoodTask((Brain<VillagerEntityMCA>) cir.getReturnValue());
+    }
+
+    /**
+     * Register SeekFoodTask into the brain's CORE activity after MCA re-initializes it.
+     * Covers profession changes, age transitions, etc.
+     */
+    @SuppressWarnings("unchecked")
+    @Inject(method = "refreshBrain", at = @At("TAIL"))
+    private void townstead$registerSeekFood(ServerLevel world, CallbackInfo ci) {
+        townstead$addSeekFoodTask((Brain<VillagerEntityMCA>) (Brain<?>) getBrain());
+    }
+
+    @Unique
+    private static void townstead$addSeekFoodTask(Brain<VillagerEntityMCA> brain) {
+        brain.addActivity(Activity.CORE,
+                ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
+                        Pair.of(2, new SeekFoodTask())
+                ));
     }
 
     /**
@@ -107,7 +138,7 @@ public abstract class VillagerHungerMixin extends Villager {
             hungerChanged |= HungerData.passiveDrain(hunger);
         }
 
-        // --- 4. Meal scheduling ---
+        // --- 4. Meal scheduling (inventory-only, SeekFoodTask handles external sources) ---
         Activity currentActivity = townstead$getCurrentScheduleActivity(self);
         if (townstead$lastActivity != null && currentActivity != townstead$lastActivity) {
             int h = HungerData.getHunger(hunger);
@@ -131,22 +162,22 @@ public abstract class VillagerHungerMixin extends Villager {
                 }
 
                 if (shouldEat) {
-                    hungerChanged |= townstead$tryEat(self, hunger);
+                    hungerChanged |= townstead$tryEatFromInventory(self, hunger);
                 }
             }
         }
         townstead$lastActivity = currentActivity;
 
-        // --- 5. Emergency eating ---
+        // --- 5. Emergency eating (inventory only — failsafe if SeekFoodTask is blocked) ---
         if (HungerData.getHunger(hunger) < HungerData.EMERGENCY_THRESHOLD) {
             long gameTime = level().getGameTime();
             long lastAte = HungerData.getLastAteTime(hunger);
             if ((gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL) {
-                hungerChanged |= townstead$tryEat(self, hunger);
+                hungerChanged |= townstead$tryEatFromInventory(self, hunger);
             }
         }
 
-        // --- 6. Mood pressure (every 1200 ticks) ---
+        // --- 7. Mood pressure (every 1200 ticks) ---
         if (tickCount % HungerData.MOOD_CHECK_INTERVAL == 0) {
             int h = HungerData.getHunger(hunger);
             HungerData.HungerState state = HungerData.getState(h);
@@ -156,10 +187,10 @@ public abstract class VillagerHungerMixin extends Villager {
             }
         }
 
-        // --- 7. Speed modifier ---
+        // --- 8. Speed modifier ---
         townstead$updateSpeedModifier(HungerData.getHunger(hunger));
 
-        // --- 8. Persist and sync ---
+        // --- 9. Persist and sync ---
         // Always persist — getData() may return a copy, so in-place edits need setData()
         self.setData(Townstead.HUNGER_DATA, hunger);
 
@@ -194,19 +225,11 @@ public abstract class VillagerHungerMixin extends Villager {
     }
 
     @Unique
-    private boolean townstead$tryEat(VillagerEntityMCA self, CompoundTag hunger) {
-        // Try villager's own inventory first
+    private boolean townstead$tryEatFromInventory(VillagerEntityMCA self, CompoundTag hunger) {
         ItemStack food = townstead$findBestFood(self.getInventory());
         if (!food.isEmpty()) {
             return townstead$consumeFood(food, hunger);
         }
-
-        // Try nearby containers
-        food = townstead$findFoodInNearbyContainers(self);
-        if (!food.isEmpty()) {
-            return townstead$consumeFood(food, hunger);
-        }
-
         return false;
     }
 
@@ -225,7 +248,6 @@ public abstract class VillagerHungerMixin extends Villager {
     private ItemStack townstead$findBestFood(SimpleContainer inventory) {
         ItemStack best = ItemStack.EMPTY;
         int bestNutrition = 0;
-        int bestSlot = -1;
 
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
@@ -233,41 +255,9 @@ public abstract class VillagerHungerMixin extends Villager {
             if (food != null && food.nutrition() > bestNutrition) {
                 bestNutrition = food.nutrition();
                 best = stack;
-                bestSlot = i;
             }
         }
         return best;
-    }
-
-    @Unique
-    private ItemStack townstead$findFoodInNearbyContainers(VillagerEntityMCA self) {
-        BlockPos center = self.blockPosition();
-        ItemStack best = ItemStack.EMPTY;
-        int bestNutrition = 0;
-        Container bestContainer = null;
-        int bestSlot = -1;
-
-        // Scan 16-block horizontal radius, 4-block vertical
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-16, -4, -16),
-                center.offset(16, 4, 16))) {
-
-            BlockEntity be = level().getBlockEntity(pos);
-            if (!(be instanceof Container container)) continue;
-
-            for (int i = 0; i < container.getContainerSize(); i++) {
-                ItemStack stack = container.getItem(i);
-                FoodProperties food = stack.get(DataComponents.FOOD);
-                if (food != null && food.nutrition() > bestNutrition) {
-                    bestNutrition = food.nutrition();
-                    best = stack;
-                    bestContainer = container;
-                    bestSlot = i;
-                }
-            }
-        }
-
-        return best; // Shrink will be called on the actual stack reference from the container
     }
 
     @Unique
