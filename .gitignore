@@ -23,6 +23,9 @@ out/
 hs_err_pid*
 replay_pid*
 
+# Claude
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
