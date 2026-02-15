@@ -83,22 +83,30 @@ public class Townstead {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
             Entity entity = sp.serverLevel().getEntity(payload.entityId());
-            LOGGER.debug("HungerSet packet: entityId={}, target={}, found={}", payload.entityId(), payload.hunger(), entity);
-            if (entity instanceof VillagerEntityMCA villager) {
-                CompoundTag hunger = villager.getData(HUNGER_DATA);
-                int oldHunger = HungerData.getHunger(hunger);
-                int newHunger = payload.hunger();
-                HungerData.setHunger(hunger, newHunger);
-                // Reset saturation when increasing (for clean testing); leave it when decreasing
-                if (newHunger > oldHunger) {
-                    HungerData.setSaturation(hunger, Math.min(newHunger, HungerData.MAX_SATURATION));
-                }
-                HungerData.setExhaustion(hunger, 0f);
-                villager.setData(HUNGER_DATA, hunger);
-                PacketDistributor.sendToPlayer(sp, new HungerSyncPayload(villager.getId(), newHunger));
-                PacketDistributor.sendToPlayersTrackingEntity(villager, new HungerSyncPayload(villager.getId(), newHunger));
-                LOGGER.debug("Hunger set: {} -> {}", oldHunger, newHunger);
+            if (!(entity instanceof VillagerEntityMCA villager)) return;
+
+            CompoundTag hunger = villager.getData(HUNGER_DATA);
+            int currentHunger = HungerData.getHunger(hunger);
+
+            // hunger == -1 is a query: respond with current value, don't modify
+            if (payload.hunger() == -1) {
+                PacketDistributor.sendToPlayer(sp, new HungerSyncPayload(villager.getId(), currentHunger));
+                return;
             }
+
+            int newHunger = payload.hunger();
+            LOGGER.debug("HungerSet packet: entityId={}, target={}", payload.entityId(), newHunger);
+            HungerData.setHunger(hunger, newHunger);
+            // Reset saturation when increasing (for clean testing); leave it when decreasing
+            if (newHunger > currentHunger) {
+                HungerData.setSaturation(hunger, Math.min(newHunger, HungerData.MAX_SATURATION));
+            }
+            HungerData.setExhaustion(hunger, 0f);
+            villager.setData(HUNGER_DATA, hunger);
+            int syncedHunger = HungerData.getHunger(hunger);
+            PacketDistributor.sendToPlayer(sp, new HungerSyncPayload(villager.getId(), syncedHunger));
+            PacketDistributor.sendToPlayersTrackingEntity(villager, new HungerSyncPayload(villager.getId(), syncedHunger));
+            LOGGER.debug("Hunger set: {} -> {}", currentHunger, syncedHunger);
         });
     }
 

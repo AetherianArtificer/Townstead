@@ -3,12 +3,13 @@ package com.aetherianartificer.townstead.hunger;
 import com.aetherianartificer.townstead.Townstead;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.entity.ai.Chore;
+import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
@@ -50,6 +51,13 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
+        if (VillagerEatingManager.isEating(villager)) return false;
+
+        VillagerBrain<?> brain = villager.getVillagerBrain();
+        if (brain.isPanicking() || villager.getLastHurtByMob() != null || brain.getCurrentJob() != Chore.NONE) {
+            return false;
+        }
+
         if (cooldown > 0) {
             cooldown--;
             return false;
@@ -57,15 +65,14 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
         int h = HungerData.getHunger(hunger);
-        if (h >= HungerData.EMERGENCY_THRESHOLD) return false;
+        if (h >= HungerData.ADEQUATE_THRESHOLD) return false;
 
         long gameTime = level.getGameTime();
         long lastAte = HungerData.getLastAteTime(hunger);
         if ((gameTime - lastAte) < HungerData.MIN_EAT_INTERVAL) return false;
 
-        // Check inventory first — if food found, eat immediately (no pathfinding needed)
-        if (tryEatFromInventory(villager, hunger)) {
-            villager.setData(Townstead.HUNGER_DATA, hunger);
+        // Check inventory first.
+        if (tryEatFromInventory(villager)) {
             cooldown = 200;
             return false;
         }
@@ -149,6 +156,10 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (targetType == TargetType.NONE) return false;
         if (targetType == TargetType.GROUND_ITEM && (targetItem == null || targetItem.isRemoved())) return false;
+        VillagerBrain<?> brain = villager.getVillagerBrain();
+        if (brain.isPanicking() || villager.getLastHurtByMob() != null || brain.getCurrentJob() != Chore.NONE) {
+            return false;
+        }
         return true;
     }
 
@@ -164,9 +175,9 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         cooldown = 200;
     }
 
-    // --- Inventory eating (instant, no pathfinding) ---
+    // --- Inventory eating (starts vanilla item-use eating flow) ---
 
-    private boolean tryEatFromInventory(VillagerEntityMCA villager, CompoundTag hunger) {
+    private boolean tryEatFromInventory(VillagerEntityMCA villager) {
         SimpleContainer inv = villager.getInventory();
         ItemStack best = ItemStack.EMPTY;
         int bestNutrition = 0;
@@ -182,13 +193,8 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
         if (best.isEmpty()) return false;
 
-        FoodProperties props = best.get(DataComponents.FOOD);
-        if (props == null) return false;
-
+        if (!VillagerEatingManager.startEating(villager, best)) return false;
         best.shrink(1);
-        HungerData.applyFood(hunger, props);
-        HungerData.setLastAteTime(hunger, villager.level().getGameTime());
-        villager.swing(InteractionHand.MAIN_HAND);
         return true;
     }
 
@@ -290,34 +296,21 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
     private void pickUpAndEat(VillagerEntityMCA villager, ItemEntity itemEntity) {
         ItemStack stack = itemEntity.getItem();
-        FoodProperties props = stack.get(DataComponents.FOOD);
-        if (props == null) return;
-
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        if (!VillagerEatingManager.startEating(villager, stack)) return;
         stack.shrink(1);
         if (stack.isEmpty()) {
             itemEntity.discard();
         }
-        HungerData.applyFood(hunger, props);
-        HungerData.setLastAteTime(hunger, villager.level().getGameTime());
-        villager.setData(Townstead.HUNGER_DATA, hunger);
-        villager.swing(InteractionHand.MAIN_HAND);
     }
 
     private void takeFromContainerAndEat(VillagerEntityMCA villager) {
         if (targetContainer == null || targetSlot < 0) return;
 
         ItemStack stack = targetContainer.getItem(targetSlot);
-        FoodProperties props = stack.get(DataComponents.FOOD);
-        if (props == null) return;
+        if (!VillagerEatingManager.startEating(villager, stack)) return;
 
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
         stack.shrink(1);
         targetContainer.setChanged();
-        HungerData.applyFood(hunger, props);
-        HungerData.setLastAteTime(hunger, villager.level().getGameTime());
-        villager.setData(Townstead.HUNGER_DATA, hunger);
-        villager.swing(InteractionHand.MAIN_HAND);
     }
 
     private void harvestCropAndEat(ServerLevel level, VillagerEntityMCA villager) {
@@ -330,16 +323,15 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         List<ItemStack> drops = CropBlock.getDrops(state, level, targetPos, null);
         level.destroyBlock(targetPos, false, villager);
 
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
         boolean ate = false;
 
         for (ItemStack drop : drops) {
             FoodProperties food = drop.get(DataComponents.FOOD);
             if (food != null && !ate) {
-                drop.shrink(1);
-                HungerData.applyFood(hunger, food);
-                HungerData.setLastAteTime(hunger, level.getGameTime());
-                ate = true;
+                if (VillagerEatingManager.startEating(villager, drop)) {
+                    drop.shrink(1);
+                    ate = true;
+                }
             }
             // Give remaining drops (seeds, extra food) to villager inventory
             if (!drop.isEmpty()) {
@@ -347,9 +339,6 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
             }
         }
 
-        if (ate) {
-            villager.setData(Townstead.HUNGER_DATA, hunger);
-            villager.swing(InteractionHand.MAIN_HAND);
-        }
+        if (ate) cooldown = 200;
     }
 }

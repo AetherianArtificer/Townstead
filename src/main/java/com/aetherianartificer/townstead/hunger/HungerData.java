@@ -28,6 +28,7 @@ public final class HungerData {
     public static final int LUNCH_THRESHOLD = 70;
     public static final int DINNER_THRESHOLD = 60;
     public static final int EMERGENCY_THRESHOLD = 25;
+    public static final int ADEQUATE_THRESHOLD = 50;
 
     // --- Mood effect interval (ticks) ---
     public static final int MOOD_CHECK_INTERVAL = 1200;

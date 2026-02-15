@@ -4,6 +4,8 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
 import com.aetherianartificer.townstead.hunger.SeekFoodTask;
+import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
+import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.google.common.collect.ImmutableList;
 import com.mojang.datafixers.util.Pair;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -73,7 +75,8 @@ public abstract class VillagerHungerMixin extends Villager {
     private static void townstead$addSeekFoodTask(Brain<VillagerEntityMCA> brain) {
         brain.addActivity(Activity.CORE,
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
-                        Pair.of(2, new SeekFoodTask())
+                        Pair.of(99, new SeekFoodTask()),
+                        Pair.of(110, new CareForYoungTask())
                 ));
     }
 
@@ -98,6 +101,7 @@ public abstract class VillagerHungerMixin extends Villager {
 
         VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
         CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
+        boolean hungerChanged = VillagerEatingManager.tickAndFinalize(self, hunger);
 
         // --- 1. Movement exhaustion ---
         double dx = getX() - townstead$prevX;
@@ -130,7 +134,7 @@ public abstract class VillagerHungerMixin extends Villager {
         }
 
         // --- 3. Process exhaustion pipeline ---
-        boolean hungerChanged = HungerData.processExhaustion(hunger);
+        hungerChanged |= HungerData.processExhaustion(hunger);
 
         // --- 3b. Passive metabolic drain (time-based) ---
         if (!townstead$isResting(self)
@@ -144,7 +148,7 @@ public abstract class VillagerHungerMixin extends Villager {
             int h = HungerData.getHunger(hunger);
             long gameTime = level().getGameTime();
             long lastAte = HungerData.getLastAteTime(hunger);
-            boolean canEat = (gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL;
+            boolean canEat = (gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL && !VillagerEatingManager.isEating(self);
 
             if (canEat) {
                 boolean shouldEat = false;
@@ -162,18 +166,18 @@ public abstract class VillagerHungerMixin extends Villager {
                 }
 
                 if (shouldEat) {
-                    hungerChanged |= townstead$tryEatFromInventory(self, hunger);
+                    hungerChanged |= townstead$tryEatFromInventory(self);
                 }
             }
         }
         townstead$lastActivity = currentActivity;
 
-        // --- 5. Emergency eating (inventory only — failsafe if SeekFoodTask is blocked) ---
-        if (HungerData.getHunger(hunger) < HungerData.EMERGENCY_THRESHOLD) {
+        // --- 5. Targeted self-feeding fallback (inventory only) ---
+        if (HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD) {
             long gameTime = level().getGameTime();
             long lastAte = HungerData.getLastAteTime(hunger);
-            if ((gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL) {
-                hungerChanged |= townstead$tryEatFromInventory(self, hunger);
+            if ((gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL && !VillagerEatingManager.isEating(self)) {
+                hungerChanged |= townstead$tryEatFromInventory(self);
             }
         }
 
@@ -225,23 +229,21 @@ public abstract class VillagerHungerMixin extends Villager {
     }
 
     @Unique
-    private boolean townstead$tryEatFromInventory(VillagerEntityMCA self, CompoundTag hunger) {
+    private boolean townstead$tryEatFromInventory(VillagerEntityMCA self) {
         ItemStack food = townstead$findBestFood(self.getInventory());
         if (!food.isEmpty()) {
-            return townstead$consumeFood(food, hunger);
+            return townstead$consumeFood(self, food);
         }
         return false;
     }
 
     @Unique
-    private boolean townstead$consumeFood(ItemStack food, CompoundTag hunger) {
+    private boolean townstead$consumeFood(VillagerEntityMCA self, ItemStack food) {
         FoodProperties props = food.get(DataComponents.FOOD);
         if (props == null) return false;
-
+        if (!VillagerEatingManager.startEating(self, food)) return false;
         food.shrink(1);
-        HungerData.applyFood(hunger, props);
-        HungerData.setLastAteTime(hunger, level().getGameTime());
-        return true;
+        return false;
     }
 
     @Unique

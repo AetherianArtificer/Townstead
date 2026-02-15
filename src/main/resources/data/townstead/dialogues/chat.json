@@ -10,7 +10,8 @@
           ],
           "actions": {
             "next": "main",
-            "say": "chat.hunger.starving"
+            "say": "chat.hunger.starving",
+            "positive": 1
           }
         },
         {
@@ -20,7 +21,8 @@
           ],
           "actions": {
             "next": "main",
-            "say": "chat.hunger.famished"
+            "say": "chat.hunger.famished",
+            "positive": 1
           }
         },
         {
