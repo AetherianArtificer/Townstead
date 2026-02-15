@@ -203,10 +203,19 @@ public abstract class VillagerHungerMixin extends Villager {
         if (tickCount % HungerData.MOOD_CHECK_INTERVAL == 0) {
             int h = HungerData.getHunger(hunger);
             HungerData.HungerState state = HungerData.getState(h);
-            int moodDelta = HungerData.getMoodPressure(state);
+            float pressure = HungerData.getMoodPressure(state);
+            float drift = HungerData.getMoodDrift(hunger) + pressure;
+            int moodDelta = 0;
+            if (drift >= 1f) {
+                moodDelta = (int) Math.floor(drift);
+            } else if (drift <= -1f) {
+                moodDelta = (int) Math.ceil(drift);
+            }
             if (moodDelta != 0) {
                 brain.modifyMoodValue(moodDelta);
+                drift -= moodDelta;
             }
+            HungerData.setMoodDrift(hunger, drift);
         }
 
         // --- 8. Speed modifier ---

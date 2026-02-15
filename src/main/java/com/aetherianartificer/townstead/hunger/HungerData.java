@@ -31,7 +31,8 @@ public final class HungerData {
     public static final int ADEQUATE_THRESHOLD = 50;
 
     // --- Mood effect interval (ticks) ---
-    public static final int MOOD_CHECK_INTERVAL = 1200;
+    // Longer cadence plus fractional pressure accumulation keeps mood drift subtle.
+    public static final int MOOD_CHECK_INTERVAL = 2400;
 
     // --- Speed penalty ---
     public static final int SPEED_PENALTY_THRESHOLD = 25;
@@ -52,6 +53,7 @@ public final class HungerData {
     private static final String KEY_EXHAUSTION = "exhaustion";
     private static final String KEY_LAST_ATE_TIME = "lastAteTime";
     private static final String KEY_EATING_MODE = "eatingMode";
+    private static final String KEY_MOOD_DRIFT = "moodDrift";
 
     // --- NBT keys for editor sync (piggybacked on MCA's VillagerEditorSyncRequest) ---
     public static final String EDITOR_KEY_HUNGER = "townstead_hunger";
@@ -100,6 +102,15 @@ public final class HungerData {
 
     public static void setEatingMode(CompoundTag tag, boolean eatingMode) {
         tag.putBoolean(KEY_EATING_MODE, eatingMode);
+    }
+
+    public static float getMoodDrift(CompoundTag tag) {
+        return tag.getFloat(KEY_MOOD_DRIFT);
+    }
+
+    public static void setMoodDrift(CompoundTag tag, float value) {
+        // Keep residual bounded so stale values cannot explode due to future tuning.
+        tag.putFloat(KEY_MOOD_DRIFT, Math.max(-4f, Math.min(value, 4f)));
     }
 
     /**
@@ -178,13 +189,13 @@ public final class HungerData {
     /**
      * Get mood pressure for the given hunger state.
      */
-    public static int getMoodPressure(HungerState state) {
+    public static float getMoodPressure(HungerState state) {
         return switch (state) {
-            case WELL_FED -> 1;
+            case WELL_FED -> 0.15f;
             case ADEQUATE -> 0;
-            case HUNGRY -> -2;
-            case FAMISHED -> -4;
-            case STARVING -> -6;
+            case HUNGRY -> -0.33f;
+            case FAMISHED -> -0.5f;
+            case STARVING -> -0.75f;
         };
     }
 
