@@ -33,3 +33,4 @@ Thumbs.db
 # Keep dependency jars in libs/
 *.jar
 !libs/*.jar
+.claude/settings.local.json
