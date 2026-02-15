@@ -3,6 +3,7 @@
   "package": "com.aetherianartificer.townstead.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "FarmBlockMixin",
     "VillagerHungerMixin"
   ],
   "client": [

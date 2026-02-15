@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
+import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
 import com.aetherianartificer.townstead.hunger.SeekFoodTask;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
@@ -76,6 +77,7 @@ public abstract class VillagerHungerMixin extends Villager {
     private static void townstead$addSeekFoodTask(Brain<VillagerEntityMCA> brain) {
         brain.addActivity(Activity.CORE,
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
+                        Pair.of(70, new HarvestWorkTask()),
                         Pair.of(99, new SeekFoodTask()),
                         Pair.of(110, new CareForYoungTask())
                 ));
@@ -130,6 +132,8 @@ public abstract class VillagerHungerMixin extends Villager {
         // --- 2. Activity-based exhaustion ---
         VillagerBrain<?> brain = self.getVillagerBrain();
         Chore currentJob = brain.getCurrentJob();
+
+        // Farming is handled by HarvestWorkTask when farm assist is enabled.
 
         if (brain.isPanicking() || self.getLastHurtByMob() != null) {
             // Combat / panic

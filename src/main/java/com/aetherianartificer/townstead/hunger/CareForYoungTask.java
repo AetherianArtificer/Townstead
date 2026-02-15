@@ -4,7 +4,6 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.AgeState;
 import net.conczin.mca.entity.ai.relationship.Personality;
@@ -12,7 +11,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.behavior.Behavior;
@@ -23,11 +21,8 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
 
 import java.util.Comparator;
 import java.util.List;
@@ -55,9 +50,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     private VillagerEntityMCA childTarget;
     private BlockPos sourcePos;
     private ItemEntity sourceItem;
-    private Container sourceContainer;
-    private boolean sourceIsItemHandler;
-    private int sourceSlot;
+    private NearbyItemSources.ContainerSlot sourceContainerSlot;
     private int cooldown;
     private long nextFeedTick;
 
@@ -91,9 +84,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         sourceType = SourceType.NONE;
         sourcePos = null;
         sourceItem = null;
-        sourceContainer = null;
-        sourceIsItemHandler = false;
-        sourceSlot = -1;
+        sourceContainerSlot = null;
         nextFeedTick = 0L;
 
         if (TownsteadConfig.ENABLE_SELF_INVENTORY_EATING.get() && townstead$hasFood(caregiver)) {
@@ -149,9 +140,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         childTarget = null;
         sourcePos = null;
         sourceItem = null;
-        sourceContainer = null;
-        sourceIsItemHandler = false;
-        sourceSlot = -1;
+        sourceContainerSlot = null;
         nextFeedTick = 0L;
         cooldown = 80;
     }
@@ -179,42 +168,19 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         }
 
         if (sourceType == SourceType.CONTAINER) {
-            if (sourcePos == null || sourceSlot < 0) {
+            if (sourcePos == null || sourceContainerSlot == null) {
                 doStop(level, caregiver, gameTime);
                 return;
             }
             if (caregiver.distanceToSqr(sourcePos.getX() + 0.5, sourcePos.getY() + 0.5, sourcePos.getZ() + 0.5)
                     <= (CLOSE_ENOUGH + 1) * (CLOSE_ENOUGH + 1)) {
-                if (sourceIsItemHandler) {
-                    IItemHandler itemHandler = level.getCapability(Capabilities.ItemHandler.BLOCK, sourcePos, null);
-                    if (itemHandler == null) {
-                        doStop(level, caregiver, gameTime);
-                        return;
-                    }
-                    ItemStack extracted = itemHandler.extractItem(sourceSlot, 1, false);
-                    if (!extracted.isEmpty() && townstead$isFood(extracted)) {
-                        caregiver.getInventory().addItem(extracted);
-                        phase = Phase.FEED;
-                        BehaviorUtils.setWalkAndLookTargetMemories(caregiver, childTarget, WALK_SPEED, CLOSE_ENOUGH);
-                    } else {
-                        doStop(level, caregiver, gameTime);
-                    }
+                ItemStack extracted = NearbyItemSources.extractOne(level, sourceContainerSlot);
+                if (!extracted.isEmpty() && townstead$isFood(extracted)) {
+                    caregiver.getInventory().addItem(extracted);
+                    phase = Phase.FEED;
+                    BehaviorUtils.setWalkAndLookTargetMemories(caregiver, childTarget, WALK_SPEED, CLOSE_ENOUGH);
                 } else {
-                    if (sourceContainer == null) {
-                        doStop(level, caregiver, gameTime);
-                        return;
-                    }
-                    ItemStack stack = sourceContainer.getItem(sourceSlot);
-                    ItemStack one = stack.copyWithCount(1);
-                    if (townstead$isFood(one)) {
-                        stack.shrink(1);
-                        sourceContainer.setChanged();
-                        caregiver.getInventory().addItem(one);
-                        phase = Phase.FEED;
-                        BehaviorUtils.setWalkAndLookTargetMemories(caregiver, childTarget, WALK_SPEED, CLOSE_ENOUGH);
-                    } else {
-                        doStop(level, caregiver, gameTime);
-                    }
+                    doStop(level, caregiver, gameTime);
                 }
             }
             return;
@@ -387,63 +353,18 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean townstead$findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos center = villager.blockPosition();
-        BlockPos bestPos = null;
-        Container bestContainer = null;
-        boolean bestIsItemHandler = false;
-        int bestSlot = -1;
-        int bestNutrition = 0;
-        double bestDist = Double.MAX_VALUE;
-
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-SEARCH_RADIUS, -VERTICAL_RADIUS, -SEARCH_RADIUS),
-                center.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
-            BlockEntity be = level.getBlockEntity(pos);
-            if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
-            if (be instanceof Container container) {
-                for (int i = 0; i < container.getContainerSize(); i++) {
-                    ItemStack stack = container.getItem(i);
+        sourceContainerSlot = NearbyItemSources.findBestNearbySlot(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                stack -> {
                     FoodProperties food = stack.get(DataComponents.FOOD);
-                    if (food == null || food.nutrition() <= 0) continue;
-
-                    double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                    if (bestPos == null || dist < bestDist - 4.0 || (dist < bestDist + 4.0 && food.nutrition() > bestNutrition)) {
-                        bestPos = pos.immutable();
-                        bestContainer = container;
-                        bestIsItemHandler = false;
-                        bestSlot = i;
-                        bestNutrition = food.nutrition();
-                        bestDist = dist;
-                    }
-                }
-            }
-
-            IItemHandler itemHandler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-            if (itemHandler != null) {
-                for (int i = 0; i < itemHandler.getSlots(); i++) {
-                    ItemStack stack = itemHandler.getStackInSlot(i);
+                    return food != null && food.nutrition() > 0;
+                },
+                stack -> {
                     FoodProperties food = stack.get(DataComponents.FOOD);
-                    if (food == null || food.nutrition() <= 0) continue;
-
-                    double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                    if (bestPos == null || dist < bestDist - 4.0 || (dist < bestDist + 4.0 && food.nutrition() > bestNutrition)) {
-                        bestPos = pos.immutable();
-                        bestContainer = null;
-                        bestIsItemHandler = true;
-                        bestSlot = i;
-                        bestNutrition = food.nutrition();
-                        bestDist = dist;
-                    }
-                }
-            }
-        }
-
-        if (bestPos == null) return false;
+                    return food != null ? food.nutrition() : 0;
+                });
+        if (sourceContainerSlot == null) return false;
         sourceType = SourceType.CONTAINER;
-        sourcePos = bestPos;
-        sourceContainer = bestContainer;
-        sourceIsItemHandler = bestIsItemHandler;
-        sourceSlot = bestSlot;
+        sourcePos = sourceContainerSlot.pos();
         return true;
     }
 

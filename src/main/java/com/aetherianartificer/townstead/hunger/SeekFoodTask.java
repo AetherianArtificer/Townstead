@@ -4,13 +4,11 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
@@ -20,11 +18,8 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
 
 import java.util.List;
 
@@ -41,9 +36,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     private TargetType targetType = TargetType.NONE;
     private BlockPos targetPos;
     private ItemEntity targetItem;
-    private Container targetContainer;
-    private boolean targetIsItemHandler;
-    private int targetSlot;
+    private NearbyItemSources.ContainerSlot targetContainerSlot;
     private int cooldown;
 
     public SeekFoodTask() {
@@ -91,9 +84,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         targetType = TargetType.NONE;
         targetPos = null;
         targetItem = null;
-        targetContainer = null;
-        targetIsItemHandler = false;
-        targetSlot = -1;
+        targetContainerSlot = null;
 
         // Priority 1: Ground items
         if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get() && findGroundItem(level, villager)) {
@@ -180,9 +171,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         targetType = TargetType.NONE;
         targetPos = null;
         targetItem = null;
-        targetContainer = null;
-        targetIsItemHandler = false;
-        targetSlot = -1;
+        targetContainerSlot = null;
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
         cooldown = (HungerData.isEatingMode(hunger) || HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD) ? 5 : 200;
     }
@@ -240,65 +229,18 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos center = villager.blockPosition();
-        BlockPos bestPos = null;
-        Container bestContainer = null;
-        boolean bestIsItemHandler = false;
-        int bestSlot = -1;
-        int bestNutrition = 0;
-        double bestDist = Double.MAX_VALUE;
-
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-SEARCH_RADIUS, -VERTICAL_RADIUS, -SEARCH_RADIUS),
-                center.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
-
-            BlockEntity be = level.getBlockEntity(pos);
-            if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
-            if (be instanceof Container container) {
-                for (int i = 0; i < container.getContainerSize(); i++) {
-                    ItemStack stack = container.getItem(i);
+        targetContainerSlot = NearbyItemSources.findBestNearbySlot(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                stack -> {
                     FoodProperties food = stack.get(DataComponents.FOOD);
-                    if (food != null && food.nutrition() > 0) {
-                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                        // Prefer closer containers, then higher nutrition
-                        if (bestPos == null || dist < bestDist - 4.0 || (dist < bestDist + 4.0 && food.nutrition() > bestNutrition)) {
-                            bestPos = pos.immutable();
-                            bestContainer = container;
-                            bestIsItemHandler = false;
-                            bestSlot = i;
-                            bestNutrition = food.nutrition();
-                            bestDist = dist;
-                        }
-                    }
-                }
-            }
-
-            IItemHandler itemHandler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-            if (itemHandler != null) {
-                for (int i = 0; i < itemHandler.getSlots(); i++) {
-                    ItemStack stack = itemHandler.getStackInSlot(i);
+                    return food != null && food.nutrition() > 0;
+                },
+                stack -> {
                     FoodProperties food = stack.get(DataComponents.FOOD);
-                    if (food == null || food.nutrition() <= 0) continue;
-                    double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                    // Prefer closer containers, then higher nutrition
-                    if (bestPos == null || dist < bestDist - 4.0 || (dist < bestDist + 4.0 && food.nutrition() > bestNutrition)) {
-                        bestPos = pos.immutable();
-                        bestContainer = null;
-                        bestIsItemHandler = true;
-                        bestSlot = i;
-                        bestNutrition = food.nutrition();
-                        bestDist = dist;
-                    }
-                }
-            }
-        }
-
-        if (bestPos == null) return false;
+                    return food != null ? food.nutrition() : 0;
+                });
+        if (targetContainerSlot == null) return false;
         targetType = TargetType.CONTAINER;
-        targetPos = bestPos;
-        this.targetContainer = bestContainer;
-        this.targetIsItemHandler = bestIsItemHandler;
-        this.targetSlot = bestSlot;
+        targetPos = targetContainerSlot.pos();
         return true;
     }
 
@@ -339,27 +281,13 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     }
 
     private void takeFromContainerAndEat(VillagerEntityMCA villager) {
-        if (targetSlot < 0 || targetPos == null) return;
-
-        if (targetIsItemHandler) {
-            if (!(villager.level() instanceof ServerLevel level)) return;
-            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, targetPos, null);
-            if (handler == null) return;
-
-            ItemStack extracted = handler.extractItem(targetSlot, 1, false);
-            if (extracted.isEmpty()) return;
-            if (!VillagerEatingManager.startEating(villager, extracted)) {
-                ItemStack remaining = handler.insertItem(targetSlot, extracted, false);
-                if (!remaining.isEmpty()) villager.getInventory().addItem(remaining);
-            }
-            return;
+        if (!(villager.level() instanceof ServerLevel level)) return;
+        if (targetContainerSlot == null) return;
+        ItemStack extracted = NearbyItemSources.extractOne(level, targetContainerSlot);
+        if (extracted.isEmpty()) return;
+        if (!VillagerEatingManager.startEating(villager, extracted)) {
+            villager.getInventory().addItem(extracted);
         }
-
-        if (targetContainer == null) return;
-        ItemStack stack = targetContainer.getItem(targetSlot);
-        if (!VillagerEatingManager.startEating(villager, stack)) return;
-        stack.shrink(1);
-        targetContainer.setChanged();
     }
 
     private void harvestCropAndEat(ServerLevel level, VillagerEntityMCA villager) {
