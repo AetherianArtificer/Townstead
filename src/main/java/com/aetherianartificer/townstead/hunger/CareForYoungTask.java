@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
@@ -69,6 +70,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA caregiver) {
+        if (!TownsteadConfig.ENABLE_FEEDING_YOUNG.get()) return false;
         if (cooldown > 0) {
             cooldown--;
             return false;
@@ -94,22 +96,22 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         sourceSlot = -1;
         nextFeedTick = 0L;
 
-        if (townstead$hasFood(caregiver)) {
+        if (TownsteadConfig.ENABLE_SELF_INVENTORY_EATING.get() && townstead$hasFood(caregiver)) {
             phase = Phase.FEED;
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, childTarget, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
 
         phase = Phase.ACQUIRE;
-        if (townstead$findGroundItem(level, caregiver)) {
+        if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get() && townstead$findGroundItem(level, caregiver)) {
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourceItem, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
-        if (townstead$findContainerFood(level, caregiver)) {
+        if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && townstead$findContainerFood(level, caregiver)) {
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
-        if (townstead$findMatureCrop(level, caregiver)) {
+        if (TownsteadConfig.ENABLE_CROP_SOURCING.get() && townstead$findMatureCrop(level, caregiver)) {
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
@@ -257,15 +259,15 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         ItemStack food = townstead$findBestFood(caregiver.getInventory());
         if (food.isEmpty()) {
             phase = Phase.ACQUIRE;
-            if (townstead$findGroundItem(level, caregiver)) {
+            if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get() && townstead$findGroundItem(level, caregiver)) {
                 BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourceItem, WALK_SPEED, CLOSE_ENOUGH);
                 return;
             }
-            if (townstead$findContainerFood(level, caregiver)) {
+            if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && townstead$findContainerFood(level, caregiver)) {
                 BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
                 return;
             }
-            if (townstead$findMatureCrop(level, caregiver)) {
+            if (TownsteadConfig.ENABLE_CROP_SOURCING.get() && townstead$findMatureCrop(level, caregiver)) {
                 BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
                 return;
             }
@@ -314,6 +316,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
     private boolean townstead$mayCareFor(VillagerEntityMCA caregiver, VillagerEntityMCA child) {
         if (townstead$isParentOf(caregiver, child)) return true;
+        if (!TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS.get()) return false;
         if (caregiver.getVillagerBrain().getPersonality() == Personality.CRABBY) return false;
         return !townstead$parentsNearby(child);
     }
@@ -396,6 +399,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
                 center.offset(-SEARCH_RADIUS, -VERTICAL_RADIUS, -SEARCH_RADIUS),
                 center.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
             BlockEntity be = level.getBlockEntity(pos);
+            if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
             if (be instanceof Container container) {
                 for (int i = 0; i < container.getContainerSize(); i++) {
                     ItemStack stack = container.getItem(i);

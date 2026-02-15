@@ -12,7 +12,9 @@ import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.Entity;
 import java.util.Locale;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.common.NeoForge;
@@ -42,8 +44,10 @@ public class Townstead {
                     .build()
     );
 
-    public Townstead(IEventBus modBus) {
+    public Townstead(IEventBus modBus, ModContainer modContainer) {
         ATTACHMENTS.register(modBus);
+        modContainer.registerConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC);
+        townstead$registerClientConfigScreen(modContainer);
         modBus.addListener(this::registerPayloads);
         NeoForge.EVENT_BUS.addListener(this::onClientDisconnect);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -81,6 +85,15 @@ public class Townstead {
         };
 
         return currentSeverity >= requiredSeverity;
+    }
+
+    private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            TownsteadClient.registerConfigScreen(modContainer);
+        } catch (ClassNotFoundException ignored) {
+            // Dedicated server: no client config screen.
+        }
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {

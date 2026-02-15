@@ -11,6 +11,7 @@ version = "${version}"
 displayName = "Townstead"
 authors = "AetherianArtificer"
 description = '''A full expansion for MCA Reborn — starting with villager hunger.'''
+logoFile = "townstead_logo.png"
 
 [[dependencies.townstead]]
 modId = "neoforge"

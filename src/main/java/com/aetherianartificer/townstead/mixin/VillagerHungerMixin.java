@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
 import com.aetherianartificer.townstead.hunger.SeekFoodTask;
@@ -243,6 +244,7 @@ public abstract class VillagerHungerMixin extends Villager {
 
     @Unique
     private boolean townstead$tryEatFromInventory(VillagerEntityMCA self) {
+        if (!TownsteadConfig.ENABLE_SELF_INVENTORY_EATING.get()) return false;
         ItemStack food = townstead$findBestFood(self.getInventory());
         if (!food.isEmpty()) {
             return townstead$consumeFood(self, food);

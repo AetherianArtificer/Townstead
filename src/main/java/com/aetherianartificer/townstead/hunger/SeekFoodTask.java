@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
@@ -77,7 +78,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         if ((gameTime - lastAte) < minEatInterval) return false;
 
         // Check inventory first.
-        if (tryEatFromInventory(villager)) {
+        if (TownsteadConfig.ENABLE_SELF_INVENTORY_EATING.get() && tryEatFromInventory(villager)) {
             cooldown = (eatingMode || h < HungerData.ADEQUATE_THRESHOLD) ? 5 : 200;
             return false;
         }
@@ -95,19 +96,19 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         targetSlot = -1;
 
         // Priority 1: Ground items
-        if (findGroundItem(level, villager)) {
+        if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get() && findGroundItem(level, villager)) {
             BehaviorUtils.setWalkAndLookTargetMemories(villager, targetItem, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
 
         // Priority 2: Containers
-        if (findContainerFood(level, villager)) {
+        if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && findContainerFood(level, villager)) {
             BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
 
         // Priority 3: Mature crops
-        if (findMatureCrop(level, villager)) {
+        if (TownsteadConfig.ENABLE_CROP_SOURCING.get() && findMatureCrop(level, villager)) {
             BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
@@ -252,6 +253,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
                 center.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
 
             BlockEntity be = level.getBlockEntity(pos);
+            if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
             if (be instanceof Container container) {
                 for (int i = 0; i < container.getContainerSize(); i++) {
                     ItemStack stack = container.getItem(i);
