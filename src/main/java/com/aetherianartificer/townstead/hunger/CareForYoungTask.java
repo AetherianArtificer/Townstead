@@ -296,7 +296,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         if (!townstead$isAdult(caregiver)) return false;
 
         VillagerBrain<?> brain = caregiver.getVillagerBrain();
-        if (brain.isPanicking() || caregiver.getLastHurtByMob() != null || brain.getCurrentJob() != Chore.NONE) {
+        if (brain.isPanicking() || caregiver.getLastHurtByMob() != null) {
             return false;
         }
         return true;

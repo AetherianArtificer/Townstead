@@ -103,6 +103,17 @@ public abstract class VillagerHungerMixin extends Villager {
         CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
         boolean hungerChanged = VillagerEatingManager.tickAndFinalize(self, hunger);
 
+        // Persistent "eating mode": once famished/starving, keep eating focus
+        // until at least ADEQUATE is reached.
+        int currentHungerLevel = HungerData.getHunger(hunger);
+        if (HungerData.isEatingMode(hunger)) {
+            if (currentHungerLevel >= HungerData.ADEQUATE_THRESHOLD) {
+                HungerData.setEatingMode(hunger, false);
+            }
+        } else if (currentHungerLevel < HungerData.EMERGENCY_THRESHOLD) {
+            HungerData.setEatingMode(hunger, true);
+        }
+
         // --- 1. Movement exhaustion ---
         double dx = getX() - townstead$prevX;
         double dz = getZ() - townstead$prevZ;
@@ -176,7 +187,9 @@ public abstract class VillagerHungerMixin extends Villager {
         if (HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD) {
             long gameTime = level().getGameTime();
             long lastAte = HungerData.getLastAteTime(hunger);
-            if ((gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL && !VillagerEatingManager.isEating(self)) {
+            long minEatInterval = HungerData.isEatingMode(hunger) ? 20L
+                    : (HungerData.getHunger(hunger) < HungerData.EMERGENCY_THRESHOLD ? 20L : HungerData.MIN_EAT_INTERVAL);
+            if ((gameTime - lastAte) >= minEatInterval && !VillagerEatingManager.isEating(self)) {
                 hungerChanged |= townstead$tryEatFromInventory(self);
             }
         }

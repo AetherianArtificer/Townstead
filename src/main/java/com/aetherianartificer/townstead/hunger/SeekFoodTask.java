@@ -47,7 +47,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
     public SeekFoodTask() {
         super(ImmutableMap.of(
-                MemoryModuleType.WALK_TARGET, MemoryStatus.VALUE_ABSENT,
+                MemoryModuleType.WALK_TARGET, MemoryStatus.REGISTERED,
                 MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED
         ), MAX_DURATION);
     }
@@ -57,7 +57,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         if (VillagerEatingManager.isEating(villager)) return false;
 
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null || brain.getCurrentJob() != Chore.NONE) {
+        if (brain.isPanicking() || villager.getLastHurtByMob() != null) {
             return false;
         }
 
@@ -68,15 +68,17 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
         int h = HungerData.getHunger(hunger);
-        if (h >= HungerData.ADEQUATE_THRESHOLD) return false;
+        boolean eatingMode = HungerData.isEatingMode(hunger);
+        if (h >= HungerData.LUNCH_THRESHOLD) return false;
 
         long gameTime = level.getGameTime();
         long lastAte = HungerData.getLastAteTime(hunger);
-        if ((gameTime - lastAte) < HungerData.MIN_EAT_INTERVAL) return false;
+        long minEatInterval = (eatingMode || h < HungerData.EMERGENCY_THRESHOLD) ? 20L : HungerData.MIN_EAT_INTERVAL;
+        if ((gameTime - lastAte) < minEatInterval) return false;
 
         // Check inventory first.
         if (tryEatFromInventory(villager)) {
-            cooldown = 200;
+            cooldown = (eatingMode || h < HungerData.ADEQUATE_THRESHOLD) ? 5 : 200;
             return false;
         }
 
@@ -125,6 +127,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
                     doStop(level, villager, gameTime);
                     return;
                 }
+                BehaviorUtils.setWalkAndLookTargetMemories(villager, targetItem, WALK_SPEED, CLOSE_ENOUGH);
                 distSq = villager.distanceToSqr(targetItem);
                 if (distSq <= (CLOSE_ENOUGH + 1) * (CLOSE_ENOUGH + 1)) {
                     pickUpAndEat(villager, targetItem);
@@ -136,6 +139,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
                     doStop(level, villager, gameTime);
                     return;
                 }
+                BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
                 distSq = villager.distanceToSqr(targetPos.getX() + 0.5, targetPos.getY() + 0.5, targetPos.getZ() + 0.5);
                 if (distSq <= (CLOSE_ENOUGH + 1) * (CLOSE_ENOUGH + 1)) {
                     takeFromContainerAndEat(villager);
@@ -147,6 +151,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
                     doStop(level, villager, gameTime);
                     return;
                 }
+                BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
                 distSq = villager.distanceToSqr(targetPos.getX() + 0.5, targetPos.getY() + 0.5, targetPos.getZ() + 0.5);
                 if (distSq <= (CLOSE_ENOUGH + 1) * (CLOSE_ENOUGH + 1)) {
                     harvestCropAndEat(level, villager);
@@ -161,7 +166,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         if (targetType == TargetType.NONE) return false;
         if (targetType == TargetType.GROUND_ITEM && (targetItem == null || targetItem.isRemoved())) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null || brain.getCurrentJob() != Chore.NONE) {
+        if (brain.isPanicking() || villager.getLastHurtByMob() != null) {
             return false;
         }
         return true;
@@ -177,7 +182,8 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         targetContainer = null;
         targetIsItemHandler = false;
         targetSlot = -1;
-        cooldown = 200;
+        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        cooldown = (HungerData.isEatingMode(hunger) || HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD) ? 5 : 200;
     }
 
     // --- Inventory eating (starts vanilla item-use eating flow) ---

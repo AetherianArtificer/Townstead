@@ -44,13 +44,14 @@ public final class HungerData {
     public static final long MIN_EAT_INTERVAL = 200;
 
     // --- Food restoration multiplier (scales vanilla nutrition to 0-100 range) ---
-    public static final float FOOD_SCALE = 3.0f;
+    public static final float FOOD_SCALE = 3.5f;
 
     // --- NBT keys (attachment internal) ---
     private static final String KEY_HUNGER = "hunger";
     private static final String KEY_SATURATION = "saturation";
     private static final String KEY_EXHAUSTION = "exhaustion";
     private static final String KEY_LAST_ATE_TIME = "lastAteTime";
+    private static final String KEY_EATING_MODE = "eatingMode";
 
     // --- NBT keys for editor sync (piggybacked on MCA's VillagerEditorSyncRequest) ---
     public static final String EDITOR_KEY_HUNGER = "townstead_hunger";
@@ -91,6 +92,14 @@ public final class HungerData {
 
     public static void setLastAteTime(CompoundTag tag, long tick) {
         tag.putLong(KEY_LAST_ATE_TIME, tick);
+    }
+
+    public static boolean isEatingMode(CompoundTag tag) {
+        return tag.getBoolean(KEY_EATING_MODE);
+    }
+
+    public static void setEatingMode(CompoundTag tag, boolean eatingMode) {
+        tag.putBoolean(KEY_EATING_MODE, eatingMode);
     }
 
     /**
