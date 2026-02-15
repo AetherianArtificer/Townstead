@@ -57,8 +57,30 @@ public class Townstead {
                 state -> (villager, stack, player) -> {
                     CompoundTag data = villager.getData(HUNGER_DATA);
                     int h = HungerData.getHunger(data);
-                    return HungerData.getState(h).name().toLowerCase(Locale.ROOT).equals(state) ? 1.0f : 0.0f;
+                    HungerData.HungerState current = HungerData.getState(h);
+                    return townstead$hungerAtLeast(current, state) ? 1.0f : 0.0f;
                 });
+    }
+
+    private static boolean townstead$hungerAtLeast(HungerData.HungerState current, String minimumState) {
+        int currentSeverity = switch (current) {
+            case WELL_FED -> 0;
+            case ADEQUATE -> 1;
+            case HUNGRY -> 2;
+            case FAMISHED -> 3;
+            case STARVING -> 4;
+        };
+
+        int requiredSeverity = switch (minimumState) {
+            case "well_fed" -> 0;
+            case "adequate" -> 1;
+            case "hungry" -> 2;
+            case "famished" -> 3;
+            case "starving" -> 4;
+            default -> Integer.MAX_VALUE;
+        };
+
+        return currentSeverity >= requiredSeverity;
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
