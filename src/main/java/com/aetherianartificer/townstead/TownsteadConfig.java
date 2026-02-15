@@ -23,6 +23,13 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_FARM_ASSIST;
     public static final ModConfigSpec.BooleanValue ENABLE_WORK_SUPPLY_AUTOMATION;
     public static final ModConfigSpec.BooleanValue ENABLE_HARVEST_OUTPUT_STORAGE;
+    public static final ModConfigSpec.BooleanValue ENABLE_FARMER_STABILITY_V2;
+    public static final ModConfigSpec.IntValue FARMER_FARM_RADIUS;
+    public static final ModConfigSpec.IntValue FARMER_CELL_COOLDOWN_TICKS;
+    public static final ModConfigSpec.IntValue FARMER_PATHFAIL_MAX_RETRIES;
+    public static final ModConfigSpec.IntValue FARMER_IDLE_BACKOFF_TICKS;
+    public static final ModConfigSpec.IntValue FARMER_SEED_RESERVE;
+    public static final ModConfigSpec.BooleanValue DEBUG_FARMER_AI;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
     public static final ModConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
@@ -54,6 +61,27 @@ public final class TownsteadConfig {
         ENABLE_HARVEST_OUTPUT_STORAGE = b
                 .comment("Allow harvesting villagers to store gathered output in nearby containers.")
                 .define("enableHarvestOutputStorage", true);
+        ENABLE_FARMER_STABILITY_V2 = b
+                .comment("Enable Townstead farmer stabilization (anti-thrash, retries, blocked states).")
+                .define("enableFarmerStabilityV2", true);
+        FARMER_FARM_RADIUS = b
+                .comment("Maximum horizontal farm radius around anchor used by farmer AI.")
+                .defineInRange("farmerFarmRadius", 12, 4, 32);
+        FARMER_CELL_COOLDOWN_TICKS = b
+                .comment("Minimum ticks before reworking the same soil cell.")
+                .defineInRange("farmerCellCooldownTicks", 120, 0, 2400);
+        FARMER_PATHFAIL_MAX_RETRIES = b
+                .comment("How many times a target can fail pathing before temporary blacklist.")
+                .defineInRange("farmerPathfailMaxRetries", 3, 1, 20);
+        FARMER_IDLE_BACKOFF_TICKS = b
+                .comment("Ticks to wait before reacquiring work after no valid target.")
+                .defineInRange("farmerIdleBackoffTicks", 60, 0, 1200);
+        FARMER_SEED_RESERVE = b
+                .comment("Minimum seed count to keep before allowing expansion tilling.")
+                .defineInRange("farmerSeedReserve", 8, 0, 64);
+        DEBUG_FARMER_AI = b
+                .comment("Enable debug logs for farmer state transitions.")
+                .define("debugFarmerAI", false);
         b.pop();
 
         b.push("caregiving");

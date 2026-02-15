@@ -1,0 +1,83 @@
+[
+  {
+    "identifier": "gui.button.talk",
+    "x": -90,
+    "y": 10,
+    "row": 0,
+    "width": 80,
+    "height": 20,
+    "notifyServer": false,
+    "targetServer": false,
+    "constraints": ""
+  },
+  {
+    "identifier": "gui.button.interact",
+    "x": -90,
+    "y": 10,
+    "row": 1,
+    "width": 80,
+    "height": 20,
+    "notifyServer": false,
+    "targetServer": false,
+    "constraints": ""
+  },
+  {
+    "identifier": "gui.button.trade",
+    "x": -90,
+    "y": 10,
+    "row": 2,
+    "width": 80,
+    "height": 20,
+    "notifyServer": true,
+    "targetServer": false,
+    "constraints": "trader,adult",
+    "hideOnFail": true
+  },
+  {
+    "identifier": "gui.button.inventory",
+    "x": -90,
+    "y": 10,
+    "row": 3,
+    "width": 80,
+    "height": 20,
+    "notifyServer": true,
+    "targetServer": false,
+    "constraints": "",
+    "hideOnFail": false
+  },
+  {
+    "identifier": "gui.button.work",
+    "x": -90,
+    "y": 10,
+    "row": 4,
+    "width": 80,
+    "height": 20,
+    "notifyServer": false,
+    "targetServer": false,
+    "constraints": "family,!baby",
+    "hideOnFail": true
+  },
+  {
+    "identifier": "gui.button.work",
+    "x": -90,
+    "y": 10,
+    "row": 4,
+    "width": 80,
+    "height": 20,
+    "notifyServer": false,
+    "targetServer": false,
+    "constraints": "!family,mercenary",
+    "hideOnFail": true
+  },
+  {
+    "identifier": "gui.button.familyTree",
+    "x": -90,
+    "y": 10,
+    "row": 5,
+    "width": 80,
+    "height": 20,
+    "notifyServer": false,
+    "targetServer": false,
+    "constraints": ""
+  }
+]

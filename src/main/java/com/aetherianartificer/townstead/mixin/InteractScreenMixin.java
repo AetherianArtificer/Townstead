@@ -39,5 +39,13 @@ public abstract class InteractScreenMixin extends Screen {
                 .withStyle(Style.EMPTY.withColor(state.getColor()));
 
         context.renderTooltip(font, label, 10, y);
+
+        HungerData.FarmBlockedReason blocked = HungerClientStore.getFarmBlockedReason(entityId);
+        if (blocked != HungerData.FarmBlockedReason.NONE) {
+            Component blockedLabel = Component.translatable("townstead.farm.blocked.label",
+                            Component.translatable(blocked.translationKey()))
+                    .withStyle(Style.EMPTY.withColor(0xFFAA00));
+            context.renderTooltip(font, blockedLabel, 10, y + h);
+        }
     }
 }

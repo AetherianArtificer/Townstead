@@ -54,6 +54,7 @@ public final class HungerData {
     private static final String KEY_LAST_ATE_TIME = "lastAteTime";
     private static final String KEY_EATING_MODE = "eatingMode";
     private static final String KEY_MOOD_DRIFT = "moodDrift";
+    private static final String KEY_FARM_BLOCKED_REASON = "farmBlockedReason";
 
     // --- NBT keys for editor sync (piggybacked on MCA's VillagerEditorSyncRequest) ---
     public static final String EDITOR_KEY_HUNGER = "townstead_hunger";
@@ -111,6 +112,15 @@ public final class HungerData {
     public static void setMoodDrift(CompoundTag tag, float value) {
         // Keep residual bounded so stale values cannot explode due to future tuning.
         tag.putFloat(KEY_MOOD_DRIFT, Math.max(-4f, Math.min(value, 4f)));
+    }
+
+    public static FarmBlockedReason getFarmBlockedReason(CompoundTag tag) {
+        String id = tag.getString(KEY_FARM_BLOCKED_REASON);
+        return FarmBlockedReason.fromId(id);
+    }
+
+    public static void setFarmBlockedReason(CompoundTag tag, FarmBlockedReason reason) {
+        tag.putString(KEY_FARM_BLOCKED_REASON, reason.id);
     }
 
     /**
@@ -220,5 +230,38 @@ public final class HungerData {
 
         public String getTranslationKey() { return translationKey; }
         public int getColor() { return color; }
+    }
+
+    public enum FarmBlockedReason {
+        NONE("none", "townstead.farm.blocked.none"),
+        NO_SEEDS("no_seeds", "townstead.farm.blocked.no_seeds"),
+        NO_TOOL("no_tool", "townstead.farm.blocked.no_tool"),
+        UNREACHABLE("unreachable", "townstead.farm.blocked.unreachable"),
+        NO_VALID_TARGET("no_valid_target", "townstead.farm.blocked.no_valid_target"),
+        OUT_OF_SCOPE("out_of_scope", "townstead.farm.blocked.out_of_scope"),
+        UNSUPPORTED_CROP("unsupported_crop", "townstead.farm.blocked.unsupported_crop");
+
+        private final String id;
+        private final String translationKey;
+
+        FarmBlockedReason(String id, String translationKey) {
+            this.id = id;
+            this.translationKey = translationKey;
+        }
+
+        public String id() {
+            return id;
+        }
+
+        public String translationKey() {
+            return translationKey;
+        }
+
+        public static FarmBlockedReason fromId(String id) {
+            for (FarmBlockedReason reason : values()) {
+                if (reason.id.equals(id)) return reason;
+            }
+            return NONE;
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead;
 
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
+import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -103,6 +104,11 @@ public class Townstead {
                 HungerSyncPayload.STREAM_CODEC,
                 this::handleHungerSync
         );
+        registrar.playToClient(
+                FarmStatusSyncPayload.TYPE,
+                FarmStatusSyncPayload.STREAM_CODEC,
+                this::handleFarmStatusSync
+        );
         registrar.playToServer(
                 HungerSetPayload.TYPE,
                 HungerSetPayload.STREAM_CODEC,
@@ -112,6 +118,10 @@ public class Townstead {
 
     private void handleHungerSync(HungerSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> HungerClientStore.set(payload.entityId(), payload.hunger()));
+    }
+
+    private void handleFarmStatusSync(FarmStatusSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> HungerClientStore.setFarmBlockedReason(payload.entityId(), payload.blockedReasonId()));
     }
 
     private void handleHungerSet(HungerSetPayload payload, IPayloadContext context) {
@@ -152,6 +162,10 @@ public class Townstead {
         CompoundTag hunger = villager.getData(HUNGER_DATA);
         int currentHunger = HungerData.getHunger(hunger);
         PacketDistributor.sendToPlayer(sp, new HungerSyncPayload(villager.getId(), currentHunger));
+        PacketDistributor.sendToPlayer(sp, new FarmStatusSyncPayload(
+                villager.getId(),
+                HungerData.getFarmBlockedReason(hunger).id()
+        ));
     }
 
     private void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
