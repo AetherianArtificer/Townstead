@@ -29,7 +29,11 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_PATHFAIL_MAX_RETRIES;
     public static final ModConfigSpec.IntValue FARMER_IDLE_BACKOFF_TICKS;
     public static final ModConfigSpec.IntValue FARMER_SEED_RESERVE;
+    public static final ModConfigSpec.IntValue FARMER_MAX_CLUSTERS;
+    public static final ModConfigSpec.IntValue FARMER_MAX_PLOTS;
     public static final ModConfigSpec.BooleanValue DEBUG_FARMER_AI;
+    public static final ModConfigSpec.BooleanValue ENABLE_FARMER_REQUEST_CHAT;
+    public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
     public static final ModConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
@@ -79,9 +83,21 @@ public final class TownsteadConfig {
         FARMER_SEED_RESERVE = b
                 .comment("Minimum seed count to keep before allowing expansion tilling.")
                 .defineInRange("farmerSeedReserve", 8, 0, 64);
+        FARMER_MAX_CLUSTERS = b
+                .comment("Maximum planned connected plot clusters per farm area.")
+                .defineInRange("farmerMaxClusters", 6, 1, 64);
+        FARMER_MAX_PLOTS = b
+                .comment("Maximum planned soil plot cells per farm area.")
+                .defineInRange("farmerMaxPlots", 192, 16, 1024);
         DEBUG_FARMER_AI = b
                 .comment("Enable debug logs for farmer state transitions.")
                 .define("debugFarmerAI", false);
+        ENABLE_FARMER_REQUEST_CHAT = b
+                .comment("Allow farmers to periodically announce missing supplies (seeds/tools/etc.) in local chat.")
+                .define("enableFarmerRequestChat", true);
+        FARMER_REQUEST_INTERVAL_TICKS = b
+                .comment("Minimum ticks between farmer shortage request messages.")
+                .defineInRange("farmerRequestIntervalTicks", 3600, 200, 24000);
         b.pop();
 
         b.push("caregiving");
