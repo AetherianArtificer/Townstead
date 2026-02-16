@@ -51,8 +51,14 @@ public abstract class InteractScreenMixin extends Screen {
     private MutableComponent townstead$professionWithTier(VillagerLike<?> villagerLike) {
         MutableComponent base = villagerLike.getProfessionText().copy();
         if (!(villagerLike.asEntity() instanceof VillagerEntityMCA mca)) return base;
-        if (mca.getVillagerData().getProfession() != VillagerProfession.FARMER) return base;
-        int tier = Math.max(1, HungerClientStore.getFarmerTier(mca.getId()));
+        int tier;
+        if (mca.getVillagerData().getProfession() == VillagerProfession.FARMER) {
+            tier = Math.max(1, HungerClientStore.getFarmerTier(mca.getId()));
+        } else if (mca.getVillagerData().getProfession() == VillagerProfession.BUTCHER) {
+            tier = Math.max(1, HungerClientStore.getButcherTier(mca.getId()));
+        } else {
+            return base;
+        }
         return base.append(Component.literal(" "))
                 .append(Component.translatable("townstead.farmer.tier.inline", tier)
                         .withStyle(ChatFormatting.DARK_GRAY));

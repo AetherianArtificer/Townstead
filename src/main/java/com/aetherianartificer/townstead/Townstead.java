@@ -9,7 +9,9 @@ import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.FarmerProgressData;
+import com.aetherianartificer.townstead.hunger.ButcherProgressData;
 import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
+import com.aetherianartificer.townstead.hunger.ButcherStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -124,6 +126,11 @@ public class Townstead {
                 this::handleFarmStatusSync
         );
         registrar.playToClient(
+                ButcherStatusSyncPayload.TYPE,
+                ButcherStatusSyncPayload.STREAM_CODEC,
+                this::handleButcherStatusSync
+        );
+        registrar.playToClient(
                 FarmingPolicySyncPayload.TYPE,
                 FarmingPolicySyncPayload.STREAM_CODEC,
                 this::handleFarmingPolicySync
@@ -146,12 +153,19 @@ public class Townstead {
                 payload.hunger(),
                 payload.farmerTier(),
                 payload.farmerXp(),
-                payload.farmerXpToNext()
+                payload.farmerXpToNext(),
+                payload.butcherTier(),
+                payload.butcherXp(),
+                payload.butcherXpToNext()
         ));
     }
 
     private void handleFarmStatusSync(FarmStatusSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> HungerClientStore.setFarmBlockedReason(payload.entityId(), payload.blockedReasonId()));
+    }
+
+    private void handleButcherStatusSync(ButcherStatusSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId()));
     }
 
     private void handleFarmingPolicySync(FarmingPolicySyncPayload payload, IPayloadContext context) {
@@ -225,6 +239,10 @@ public class Townstead {
                 villager.getId(),
                 HungerData.getFarmBlockedReason(hunger).id()
         ));
+        PacketDistributor.sendToPlayer(sp, new ButcherStatusSyncPayload(
+                villager.getId(),
+                HungerData.getButcherBlockedReason(hunger).id()
+        ));
     }
 
     public static HungerSyncPayload townstead$hungerSync(VillagerEntityMCA villager, CompoundTag hunger) {
@@ -233,7 +251,10 @@ public class Townstead {
                 HungerData.getHunger(hunger),
                 FarmerProgressData.getTier(hunger),
                 FarmerProgressData.getXp(hunger),
-                FarmerProgressData.getXpToNextTier(hunger)
+                FarmerProgressData.getXpToNextTier(hunger),
+                ButcherProgressData.getTier(hunger),
+                ButcherProgressData.getXp(hunger),
+                ButcherProgressData.getXpToNextTier(hunger)
         );
     }
 

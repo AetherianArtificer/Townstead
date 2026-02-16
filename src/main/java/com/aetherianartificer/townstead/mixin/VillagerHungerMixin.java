@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
 import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
+import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
 import com.aetherianartificer.townstead.hunger.SeekFoodTask;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
@@ -78,6 +79,7 @@ public abstract class VillagerHungerMixin extends Villager {
         brain.addActivity(Activity.CORE,
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
                         Pair.of(70, new HarvestWorkTask()),
+                        Pair.of(74, new ButcherWorkTask()),
                         Pair.of(99, new SeekFoodTask()),
                         Pair.of(110, new CareForYoungTask())
                 ));

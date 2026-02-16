@@ -54,5 +54,53 @@
   "dialogue.chat.farm_request.unsupported_crop/1": "I found a crop I don't know how to replant yet.",
   "dialogue.chat.farm_request.unsupported_crop/2": "This crop type isn't in my farming routine yet.",
   "dialogue.chat.farm_request.unsupported_crop/3": "I can harvest this, but replanting is unclear.",
-  "dialogue.chat.farm_request.unsupported_crop/4": "I need better farming instructions for this crop."
+  "dialogue.chat.farm_request.unsupported_crop/4": "I need better farming instructions for this crop.",
+
+  "dialogue.chat.butcher_request.no_smoker/1": "I need a smoker before I can finish these cuts.",
+  "dialogue.chat.butcher_request.no_smoker/2": "No smoker nearby. I cannot cook the meat here.",
+  "dialogue.chat.butcher_request.no_smoker/3": "Set a smoker down and I'll get right to work.",
+  "dialogue.chat.butcher_request.no_smoker/4": "Without a smoker, my work stalls.",
+
+  "dialogue.chat.butcher_request.no_input/1": "I've no fresh meat or fish to cook.",
+  "dialogue.chat.butcher_request.no_input/2": "The hooks are empty. I need more to smoke.",
+  "dialogue.chat.butcher_request.no_input/3": "Bring raw cuts and I'll have supper ready soon.",
+  "dialogue.chat.butcher_request.no_input/4": "Nothing left to put on the fire.",
+  "dialogue.chat.butcher_request.no_input/5": "My supplies are spent. I need fresh stock.",
+  "dialogue.chat.butcher_request.no_input/6": "No raw food on hand right now, %1$s.",
+
+  "dialogue.chat.butcher_request.no_fuel/1": "The smoker has gone cold. I need fuel.",
+  "dialogue.chat.butcher_request.no_fuel/2": "No coal or charcoal left for the fire.",
+  "dialogue.chat.butcher_request.no_fuel/3": "I can keep cooking once the hearth is fed.",
+  "dialogue.chat.butcher_request.no_fuel/4": "The fire won't hold without fuel.",
+  "dialogue.chat.butcher_request.no_fuel/5": "Could someone restock fuel for the smoker?",
+  "dialogue.chat.butcher_request.no_fuel/6": "I need something to burn before I can continue.",
+
+  "dialogue.chat.butcher_request.output_blocked/1": "My packs are full. I need chest space.",
+  "dialogue.chat.butcher_request.output_blocked/2": "Cooked meat has nowhere to be stored.",
+  "dialogue.chat.butcher_request.output_blocked/3": "Clear some storage and I can keep working.",
+  "dialogue.chat.butcher_request.output_blocked/4": "I cannot carry another cut until this is stowed.",
+
+  "dialogue.chat.butcher_request.unreachable/1": "I can't reach my smoker from here.",
+  "dialogue.chat.butcher_request.unreachable/2": "Something blocks the way to my work.",
+  "dialogue.chat.butcher_request.unreachable/3": "I need a clear path to the smoker.",
+  "dialogue.chat.butcher_request.unreachable/4": "My route is obstructed.",
+  "dialogue.chat.butcher_request.unreachable/5": "I keep getting stuck before I reach the fire.",
+  "dialogue.chat.butcher_request.unreachable/6": "Could someone clear this path?",
+
+  "dialogue.chat.butcher_request.out_of_scope/1": "I'm too far from my butcher post.",
+  "dialogue.chat.butcher_request.out_of_scope/2": "I need to stay near my smoker to work.",
+  "dialogue.chat.butcher_request.out_of_scope/3": "This is beyond my work area.",
+  "dialogue.chat.butcher_request.out_of_scope/4": "Keep the butcher setup closer and I'll manage it.",
+
+  "dialogue.chat.butcher_request.no_valid_target/1": "No butcher work needs doing right now.",
+  "dialogue.chat.butcher_request.no_valid_target/2": "I'll wait by the smoker for the next task.",
+  "dialogue.chat.butcher_request.no_valid_target/3": "Everything's in order for now.",
+  "dialogue.chat.butcher_request.no_valid_target/4": "Nothing to tend at the moment.",
+
+  "dialogue.chat.butcher_progress.tier_up/1": "My hand is steadier, and my cuts are cleaner now.",
+  "dialogue.chat.butcher_progress.tier_up/2": "I've learned to work the smoker with better timing.",
+  "dialogue.chat.butcher_progress.tier_up/3": "Another day, another step in my craft.",
+  "dialogue.chat.butcher_progress.tier_up/4": "The butcher's trade is coming easier to me.",
+  "dialogue.chat.butcher_progress.tier_up/5": "I can handle finer cuts than before.",
+  "dialogue.chat.butcher_progress.tier_up/6": "I've grown into a better butcher."
 }
