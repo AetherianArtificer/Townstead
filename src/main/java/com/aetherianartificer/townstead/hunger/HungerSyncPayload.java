@@ -7,7 +7,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
-public record HungerSyncPayload(int entityId, int hunger) implements CustomPacketPayload {
+public record HungerSyncPayload(int entityId, int hunger, int farmerTier, int farmerXp, int farmerXpToNext) implements CustomPacketPayload {
 
     public static final Type<HungerSyncPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "hunger_sync"));
@@ -16,6 +16,9 @@ public record HungerSyncPayload(int entityId, int hunger) implements CustomPacke
             StreamCodec.composite(
                     ByteBufCodecs.VAR_INT, HungerSyncPayload::entityId,
                     ByteBufCodecs.VAR_INT, HungerSyncPayload::hunger,
+                    ByteBufCodecs.VAR_INT, HungerSyncPayload::farmerTier,
+                    ByteBufCodecs.VAR_INT, HungerSyncPayload::farmerXp,
+                    ByteBufCodecs.VAR_INT, HungerSyncPayload::farmerXpToNext,
                     HungerSyncPayload::new
             );
 

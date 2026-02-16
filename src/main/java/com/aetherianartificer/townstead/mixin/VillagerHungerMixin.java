@@ -231,7 +231,7 @@ public abstract class VillagerHungerMixin extends Villager {
             if (level() instanceof ServerLevel) {
                 PacketDistributor.sendToPlayersTrackingEntity(
                         self,
-                        new HungerSyncPayload(self.getId(), currentHunger)
+                        Townstead.townstead$hungerSync(self, hunger)
                 );
             }
         }

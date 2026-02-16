@@ -1188,10 +1188,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         FarmerProgressData.GainResult result = FarmerProgressData.addXp(hunger, amount, gameTime);
         if (result.appliedXp() <= 0) return;
         villager.setData(Townstead.HUNGER_DATA, hunger);
+        PacketDistributor.sendToPlayersTrackingEntity(villager, Townstead.townstead$hungerSync(villager, hunger));
 
         if (result.tierUp()) {
+            String chatKey = "dialogue.chat.farmer_progress.tier_up/" + (1 + level.random.nextInt(6));
+            villager.sendChatToAllAround(chatKey);
             villager.getLongTermMemory().remember("townstead.farmer.tier_up");
             villager.getLongTermMemory().remember("townstead.farmer.tier." + result.tierAfter());
+            villager.getLongTermMemory().remember("townstead.farmer.discovery.unlock");
+            villager.getLongTermMemory().remember("townstead.farmer.discovery.tier." + result.tierAfter());
             if (TownsteadConfig.DEBUG_FARMER_AI.get()) {
                 LOGGER.info(
                         "Farmer {} tier up: {} -> {} (source={}, xp={}, next={})",

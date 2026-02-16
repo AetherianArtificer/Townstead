@@ -2,28 +2,60 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
+import com.aetherianartificer.townstead.mixin.accessor.AbstractDynamicScreenAccessor;
+import com.aetherianartificer.townstead.mixin.accessor.InteractScreenAccessor;
 import net.conczin.mca.client.gui.InteractScreen;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerLike;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.ChatFormatting;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.List;
 
 @Mixin(InteractScreen.class)
 public abstract class InteractScreenMixin extends Screen {
+    private static final ResourceLocation FOOD_FULL = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_full.png");
+    private static final ResourceLocation FOOD_HALF = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_half.png");
+    private static final ResourceLocation FOOD_EMPTY = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_empty.png");
+    private static final int HUNGER_ICON_X = 45;
+    private static final int HUNGER_ICON_Y = 120;
+    private static final int HUNGER_ICON_SIZE = 24;
 
     @Shadow @Final private VillagerLike<?> villager;
 
     private InteractScreenMixin() {
         super(null);
+    }
+
+    @Redirect(
+            method = "drawTextPopups",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/conczin/mca/entity/VillagerLike;getProfessionText()Lnet/minecraft/network/chat/MutableComponent;"
+            )
+    )
+    private MutableComponent townstead$professionWithTier(VillagerLike<?> villagerLike) {
+        MutableComponent base = villagerLike.getProfessionText().copy();
+        if (!(villagerLike.asEntity() instanceof VillagerEntityMCA mca)) return base;
+        if (mca.getVillagerData().getProfession() != VillagerProfession.FARMER) return base;
+        int tier = Math.max(1, HungerClientStore.getFarmerTier(mca.getId()));
+        return base.append(Component.literal(" "))
+                .append(Component.translatable("townstead.farmer.tier.inline", tier)
+                        .withStyle(ChatFormatting.DARK_GRAY));
     }
 
     @Inject(method = "drawTextPopups", at = @At("TAIL"))
@@ -34,22 +66,104 @@ public abstract class InteractScreenMixin extends Screen {
 
         // Position after traits row (row index 5, using h=17 spacing matching MCA's layout)
         int h = 17;
-        int y = 30 + h * 5;
-
-        Component label = Component.translatable("townstead.hunger.label",
-                Component.translatable(state.getTranslationKey()))
-                .withStyle(Style.EMPTY.withColor(state.getColor()));
-
-        context.renderTooltip(font, label, 10, y);
-        int row = 1;
+        int y = 30 + h * 4;
 
         Activity activity = townstead$getCurrentScheduleActivity();
         if (activity != null) {
             Component scheduleLabel = Component.translatable("townstead.schedule.label",
                             Component.translatable(townstead$activityTranslationKey(activity)))
                     .withStyle(Style.EMPTY.withColor(0x7FB3FF));
-            context.renderTooltip(font, scheduleLabel, 10, y + (h * row));
+            context.renderTooltip(font, scheduleLabel, 10, y);
         }
+
+        if (townstead$isHoveringHungerIcon()) {
+            Component hungerLabel = Component.translatable(
+                            "townstead.hunger.icon.tooltip",
+                            Component.translatable(state.getTranslationKey()),
+                            hunger
+                    )
+                    .withStyle(Style.EMPTY.withColor(state.getColor()));
+            ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, hungerLabel, "happyEmerald");
+        }
+    }
+
+    @Redirect(
+            method = "drawTextPopups",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderTooltip(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V"
+            )
+    )
+    private void townstead$shiftTraitsTooltip(
+            GuiGraphics context,
+            net.minecraft.client.gui.Font font,
+            Component text,
+            int x,
+            int y
+    ) {
+        int shiftedY = y;
+        if (x == 10 && y == 98 && text.getString().startsWith("Traits")) {
+            shiftedY = y + 17;
+        }
+        context.renderTooltip(font, text, x, shiftedY);
+    }
+
+    @Redirect(
+            method = "drawTextPopups",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderComponentTooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;II)V"
+            )
+    )
+    private void townstead$shiftTraitsComponentTooltip(
+            GuiGraphics context,
+            net.minecraft.client.gui.Font font,
+            List<Component> text,
+            int x,
+            int y
+    ) {
+        int shiftedY = y;
+        if (x == 10 && y == 98 && !text.isEmpty() && text.get(0).getString().startsWith("Traits")) {
+            shiftedY = y + 17;
+        }
+        context.renderComponentTooltip(font, text, x, shiftedY);
+    }
+
+    @Redirect(
+            method = "drawTextPopups",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/conczin/mca/client/gui/InteractScreen;hoveringOverText(III)Z"
+            )
+    )
+    private boolean townstead$shiftTraitsHoverHitbox(InteractScreen instance, int x, int y, int w) {
+        int shiftedY = y;
+        // Traits line moved down by one row, so move its hover hitbox too.
+        if (x == 10 && y == 98 && w == 128) {
+            shiftedY = y + 17;
+        }
+        return ((InteractScreenAccessor) instance).townstead$invokeHoveringOverText(x, shiftedY, w);
+    }
+
+    @Inject(method = "drawIcons", at = @At("TAIL"))
+    private void townstead$drawHungerIcon(GuiGraphics context, CallbackInfo ci) {
+        int hunger = HungerClientStore.get(villager.asEntity().getId());
+        ResourceLocation sprite = townstead$hungerIconSprite(HungerData.getState(hunger));
+        int iconX = HUNGER_ICON_X + 7;
+        int iconY = HUNGER_ICON_Y + 7;
+        context.blit(sprite, iconX, iconY, 0, 0, 9, 9, 9, 9);
+    }
+
+    private boolean townstead$isHoveringHungerIcon() {
+        return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("happyEmerald");
+    }
+
+    private ResourceLocation townstead$hungerIconSprite(HungerData.HungerState state) {
+        return switch (state) {
+            case WELL_FED, ADEQUATE -> FOOD_FULL;
+            case HUNGRY -> FOOD_HALF;
+            case FAMISHED, STARVING -> FOOD_EMPTY;
+        };
     }
 
     private Activity townstead$getCurrentScheduleActivity() {

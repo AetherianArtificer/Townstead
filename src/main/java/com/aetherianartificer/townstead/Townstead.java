@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
+import com.aetherianartificer.townstead.hunger.FarmerProgressData;
 import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
@@ -140,7 +141,13 @@ public class Townstead {
     }
 
     private void handleHungerSync(HungerSyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> HungerClientStore.set(payload.entityId(), payload.hunger()));
+        context.enqueueWork(() -> HungerClientStore.set(
+                payload.entityId(),
+                payload.hunger(),
+                payload.farmerTier(),
+                payload.farmerXp(),
+                payload.farmerXpToNext()
+        ));
     }
 
     private void handleFarmStatusSync(FarmStatusSyncPayload payload, IPayloadContext context) {
@@ -162,7 +169,7 @@ public class Townstead {
 
             // hunger == -1 is a query: respond with current value, don't modify
             if (payload.hunger() == -1) {
-                PacketDistributor.sendToPlayer(sp, new HungerSyncPayload(villager.getId(), currentHunger));
+                PacketDistributor.sendToPlayer(sp, townstead$hungerSync(villager, hunger));
                 return;
             }
 
@@ -175,9 +182,10 @@ public class Townstead {
             }
             HungerData.setExhaustion(hunger, 0f);
             villager.setData(HUNGER_DATA, hunger);
-            int syncedHunger = HungerData.getHunger(hunger);
-            PacketDistributor.sendToPlayer(sp, new HungerSyncPayload(villager.getId(), syncedHunger));
-            PacketDistributor.sendToPlayersTrackingEntity(villager, new HungerSyncPayload(villager.getId(), syncedHunger));
+            HungerSyncPayload sync = townstead$hungerSync(villager, hunger);
+            PacketDistributor.sendToPlayer(sp, sync);
+            PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+            int syncedHunger = sync.hunger();
             LOGGER.debug("Hunger set: {} -> {}", currentHunger, syncedHunger);
         });
     }
@@ -212,12 +220,21 @@ public class Townstead {
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
 
         CompoundTag hunger = villager.getData(HUNGER_DATA);
-        int currentHunger = HungerData.getHunger(hunger);
-        PacketDistributor.sendToPlayer(sp, new HungerSyncPayload(villager.getId(), currentHunger));
+        PacketDistributor.sendToPlayer(sp, townstead$hungerSync(villager, hunger));
         PacketDistributor.sendToPlayer(sp, new FarmStatusSyncPayload(
                 villager.getId(),
                 HungerData.getFarmBlockedReason(hunger).id()
         ));
+    }
+
+    public static HungerSyncPayload townstead$hungerSync(VillagerEntityMCA villager, CompoundTag hunger) {
+        return new HungerSyncPayload(
+                villager.getId(),
+                HungerData.getHunger(hunger),
+                FarmerProgressData.getTier(hunger),
+                FarmerProgressData.getXp(hunger),
+                FarmerProgressData.getXpToNextTier(hunger)
+        );
     }
 
     private void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {

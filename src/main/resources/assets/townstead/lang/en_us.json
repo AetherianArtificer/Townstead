@@ -131,6 +131,7 @@
   "townstead.hunger.famished": "Famished",
   "townstead.hunger.starving": "Starving",
   "townstead.hunger.editor": "Hunger: %d (%s)",
+  "townstead.hunger.icon.tooltip": "Hunger: %s (%s/100)",
   "townstead.farm.blocked.label": "Farm: %s",
   "townstead.farm.blocked.none": "Working",
   "townstead.farm.blocked.no_seeds": "Needs Seeds",
@@ -151,6 +152,11 @@
   "townstead.schedule.activity.raid": "Raid",
   "townstead.schedule.activity.hide": "Hide",
   "townstead.schedule.activity.unknown": "Unknown",
+  "townstead.farmer.tier.inline": "Level %s",
+  "townstead.farmer.tier.label": "Farmer Tier: L%s",
+  "townstead.farmer.next_unlock.label": "Next Unlock: %s XP",
+  "townstead.farmer.next_unlock.subtle": "next unlock in %s xp",
+  "townstead.farmer.next_unlock.max": "Next Unlock: Max Tier Reached",
 
   "dialogue.chat.hunger.starving/1": "I... I can barely stand. Please, do you have anything to eat?",
   "dialogue.chat.hunger.starving/2": "Everything's going dark around the edges... I need food, %1$s.",
@@ -175,5 +181,12 @@
   "dialogue.chat.hunger.hungry/3": "I've been meaning to grab something to eat. Just haven't gotten around to it.",
   "dialogue.chat.hunger.hungry/4": "Something smells good around here... or maybe I'm just hungry.",
   "dialogue.chat.hunger.hungry/5": "A nice stew would really hit the spot right about now.",
-  "dialogue.chat.hunger.hungry/6": "I wonder what's for supper tonight? I'm getting a bit peckish."
+  "dialogue.chat.hunger.hungry/6": "I wonder what's for supper tonight? I'm getting a bit peckish.",
+
+  "dialogue.chat.farmer_progress.tier_up/1": "I feel like I finally understand this land a little better.",
+  "dialogue.chat.farmer_progress.tier_up/2": "These fields are starting to make sense to me now.",
+  "dialogue.chat.farmer_progress.tier_up/3": "I've learned a better way to shape these plots.",
+  "dialogue.chat.farmer_progress.tier_up/4": "My farming craft just took a step forward.",
+  "dialogue.chat.farmer_progress.tier_up/5": "I can handle a more advanced farm plan now.",
+  "dialogue.chat.farmer_progress.tier_up/6": "I've unlocked new farming ideas for our town."
 }
