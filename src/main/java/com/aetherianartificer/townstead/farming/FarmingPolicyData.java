@@ -19,7 +19,7 @@ public final class FarmingPolicyData extends SavedData {
     private static final String DEFAULT_PATTERN_ID = FarmPatternRegistry.DEFAULT_PATTERN_ID;
 
     private String defaultPatternId = DEFAULT_PATTERN_ID;
-    private int defaultTier = 3;
+    private int defaultTier = 5;
     private final List<FarmingAreaPolicy> areas = new ArrayList<>();
 
     public static FarmingPolicyData get(ServerLevel level) {
@@ -51,8 +51,8 @@ public final class FarmingPolicyData extends SavedData {
         String pattern = normalizePatternId(defaultPatternId);
         int tier = normalizeTier(defaultTier);
         if (areas.isEmpty() && DEFAULT_PATTERN_ID.equals(pattern) && tier <= 1) {
-            // Bootstrap to a practical tier until in-game policy UI is wired.
-            tier = 3;
+            // Keep policy cap open; per-villager progression drives effective unlock.
+            tier = 5;
         }
         return new ResolvedFarmingPolicy(pattern, tier, "default");
     }
@@ -87,7 +87,7 @@ public final class FarmingPolicyData extends SavedData {
     public static FarmingPolicyData load(CompoundTag tag, HolderLookup.Provider registries) {
         FarmingPolicyData data = new FarmingPolicyData();
         data.defaultPatternId = normalizePatternId(tag.getString("defaultPatternId"));
-        data.defaultTier = tag.contains("defaultTier") ? normalizeTier(tag.getInt("defaultTier")) : 3;
+        data.defaultTier = tag.contains("defaultTier") ? normalizeTier(tag.getInt("defaultTier")) : 5;
 
         ListTag list = tag.getList("areas", Tag.TAG_COMPOUND);
         for (Tag t : list) {

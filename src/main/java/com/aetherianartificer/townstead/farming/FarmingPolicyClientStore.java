@@ -2,7 +2,7 @@ package com.aetherianartificer.townstead.farming;
 
 public final class FarmingPolicyClientStore {
     private static volatile String patternId = "starter_rows";
-    private static volatile int tier = 3;
+    private static volatile int tier = 5;
     private static volatile int areaCount = 0;
 
     private FarmingPolicyClientStore() {}
@@ -27,7 +27,7 @@ public final class FarmingPolicyClientStore {
 
     public static void clear() {
         patternId = "starter_rows";
-        tier = 3;
+        tier = 5;
         areaCount = 0;
     }
 }
