@@ -236,6 +236,7 @@ public final class HungerData {
         NONE("none", "townstead.farm.blocked.none"),
         NO_SEEDS("no_seeds", "townstead.farm.blocked.no_seeds"),
         NO_TOOL("no_tool", "townstead.farm.blocked.no_tool"),
+        NO_WATER_PLAN("no_water_plan", "townstead.farm.blocked.no_water_plan"),
         UNREACHABLE("unreachable", "townstead.farm.blocked.unreachable"),
         NO_VALID_TARGET("no_valid_target", "townstead.farm.blocked.no_valid_target"),
         OUT_OF_SCOPE("out_of_scope", "townstead.farm.blocked.out_of_scope"),

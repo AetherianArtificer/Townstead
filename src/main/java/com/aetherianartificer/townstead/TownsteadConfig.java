@@ -31,6 +31,11 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_SEED_RESERVE;
     public static final ModConfigSpec.IntValue FARMER_MAX_CLUSTERS;
     public static final ModConfigSpec.IntValue FARMER_MAX_PLOTS;
+    public static final ModConfigSpec.BooleanValue ENABLE_FARMER_WATER_PLACEMENT;
+    public static final ModConfigSpec.IntValue FARMER_WATER_PLACEMENTS_PER_DAY;
+    public static final ModConfigSpec.IntValue FARMER_HYDRATION_MIN_PERCENT;
+    public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_SEARCH_RADIUS;
+    public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
     public static final ModConfigSpec.BooleanValue DEBUG_FARMER_AI;
     public static final ModConfigSpec.BooleanValue ENABLE_FARMER_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
@@ -89,6 +94,21 @@ public final class TownsteadConfig {
         FARMER_MAX_PLOTS = b
                 .comment("Maximum planned soil plot cells per farm area.")
                 .defineInRange("farmerMaxPlots", 192, 16, 1024);
+        ENABLE_FARMER_WATER_PLACEMENT = b
+                .comment("Allow farmers to place water sources in planned farm tiles when hydration is insufficient.")
+                .define("enableFarmerWaterPlacement", true);
+        FARMER_WATER_PLACEMENTS_PER_DAY = b
+                .comment("Maximum water source placements a farmer can perform per Minecraft day.")
+                .defineInRange("farmerWaterPlacementsPerDay", 2, 0, 16);
+        FARMER_HYDRATION_MIN_PERCENT = b
+                .comment("Minimum planned farm hydration coverage percent required before expansion tilling.")
+                .defineInRange("farmerHydrationMinPercent", 35, 0, 100);
+        FARMER_WATER_SOURCE_SEARCH_RADIUS = b
+                .comment("Maximum horizontal distance farmers may travel to find water for bucket refills.")
+                .defineInRange("farmerWaterSourceSearchRadius", 72, 8, 192);
+        FARMER_WATER_SOURCE_VERTICAL_RADIUS = b
+                .comment("Vertical search radius for nearby water sources when refilling buckets.")
+                .defineInRange("farmerWaterSourceVerticalRadius", 8, 2, 32);
         DEBUG_FARMER_AI = b
                 .comment("Enable debug logs for farmer state transitions.")
                 .define("debugFarmerAI", false);

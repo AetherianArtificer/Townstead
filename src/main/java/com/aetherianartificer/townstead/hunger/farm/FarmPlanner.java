@@ -2,20 +2,18 @@ package com.aetherianartificer.townstead.hunger.farm;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 
 public final class FarmPlanner {
@@ -54,7 +52,14 @@ public final class FarmPlanner {
         if (origins.isEmpty()) return soils.isEmpty() ? FarmBlueprint.empty(anchor) : new FarmBlueprint("starter_rows", anchor, soils, keys);
 
         BlockPos priorityCenter = baseSoils.isEmpty() ? anchor : findNearestToAnchor(baseSoils.values(), anchor);
-        origins.sort(Comparator.comparingInt(o -> distSq(o, priorityCenter)));
+        int planY = priorityCenter == null ? anchor.getY() : priorityCenter.getY();
+        origins = new ArrayList<>(origins.stream().filter(p -> p.getY() == planY).toList());
+        if (origins.isEmpty()) {
+            origins = List.of(new BlockPos(anchor.getX(), planY, anchor.getZ()));
+        }
+        origins.sort(Comparator
+                .comparingInt((BlockPos o) -> clusterQuality(level, anchor, o, horizontalRadius, verticalRadius)).reversed()
+                .thenComparingInt(o -> distSq(o, priorityCenter)));
 
         int placed = 0;
         for (BlockPos origin : origins) {
@@ -150,6 +155,30 @@ public final class FarmPlanner {
         return keys.size() - before;
     }
 
+    private static int clusterQuality(
+            ServerLevel level,
+            BlockPos anchor,
+            BlockPos origin,
+            int horizontalRadius,
+            int verticalRadius
+    ) {
+        int totalCandidate = 0;
+        int hydratedCandidate = 0;
+        int maxX = origin.getX() + CLUSTER_WIDTH - 1;
+        int maxZ = origin.getZ() + CLUSTER_LENGTH - 1;
+        for (int x = origin.getX(); x <= maxX; x++) {
+            for (int z = origin.getZ(); z <= maxZ; z++) {
+                BlockPos pos = new BlockPos(x, origin.getY(), z);
+                if (!isInsideBounds(anchor, pos, horizontalRadius, verticalRadius)) continue;
+                if (!isPotentialExpansionSoil(level, pos)) continue;
+                totalCandidate++;
+                if (hasNearbyWater(level, pos)) hydratedCandidate++;
+            }
+        }
+        // Water coverage is quality, not a hard requirement.
+        return (hydratedCandidate * 3) + totalCandidate;
+    }
+
     private static BlockPos findNearestToAnchor(Iterable<BlockPos> positions, BlockPos anchor) {
         BlockPos best = null;
         int bestDistSq = Integer.MAX_VALUE;
@@ -166,30 +195,23 @@ public final class FarmPlanner {
         return best;
     }
 
-    private static Set<Long> collectConnectedComponent(Map<Long, BlockPos> baseSoils, BlockPos seed) {
-        Set<Long> visited = new HashSet<>();
-        Queue<BlockPos> queue = new ArrayDeque<>();
-        long seedKey = seed.asLong();
-        if (!baseSoils.containsKey(seedKey)) return visited;
-
-        visited.add(seedKey);
-        queue.add(seed);
-        while (!queue.isEmpty()) {
-            BlockPos current = queue.remove();
-            for (BlockPos neighbor : cardinalNeighbors(current)) {
-                long key = neighbor.asLong();
-                if (!baseSoils.containsKey(key)) continue;
-                if (visited.add(key)) queue.add(baseSoils.get(key));
-            }
-        }
-        return visited;
-    }
-
     private static int distSq(BlockPos a, BlockPos b) {
         int dx = a.getX() - b.getX();
         int dy = a.getY() - b.getY();
         int dz = a.getZ() - b.getZ();
         return dx * dx + dy * dy + dz * dz;
+    }
+
+    private static boolean hasNearbyWater(ServerLevel level, BlockPos soilPos) {
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dz = -4; dz <= 4; dz++) {
+                if ((dx * dx + dz * dz) > 16) continue;
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (level.getFluidState(soilPos.offset(dx, dy, dz)).is(FluidTags.WATER)) return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static boolean isInsideBounds(BlockPos anchor, BlockPos pos, int horizontalRadius, int verticalRadius) {
