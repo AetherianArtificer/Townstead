@@ -552,6 +552,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         }
         villager.swing(villager.getDominantHand());
         townstead$markWorked(targetPos, gameTime);
+        townstead$awardFarmerXp(level, villager, gameTime, 3, "harvest");
 
         if (townstead$findSeedSlot(villager.getInventory(), villager, level, targetPos) >= 0) {
             townstead$doPlant(level, villager, targetPos, gameTime);
@@ -573,6 +574,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             seed.shrink(1);
             villager.swing(villager.getDominantHand());
             townstead$markWorked(pos, gameTime);
+            townstead$awardFarmerXp(level, villager, gameTime, 2, "plant");
         }
     }
 
@@ -589,6 +591,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (level.setBlock(soilPos, Blocks.FARMLAND.defaultBlockState(), 3)) {
             villager.swing(villager.getDominantHand());
             townstead$markWorked(soilPos, gameTime);
+            townstead$awardFarmerXp(level, villager, gameTime, 1, "till");
         }
     }
 
@@ -599,6 +602,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         level.destroyBlock(topPos, false, villager);
         villager.swing(villager.getDominantHand());
         townstead$markWorked(topPos, gameTime);
+        townstead$awardFarmerXp(level, villager, gameTime, 1, "groom");
     }
 
     private void townstead$doPlaceWater(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
@@ -623,6 +627,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         villager.swing(villager.getDominantHand());
         townstead$recordWaterPlacement(gameTime);
         townstead$markWorked(pos, gameTime);
+        townstead$awardFarmerXp(level, villager, gameTime, 4, "irrigate");
         cachedInventoryTick = -1;
     }
 
@@ -1076,11 +1081,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (!force && !anchorChanged && gameTime < nextBlueprintPlanTick) return;
 
         FarmingPolicyData.ResolvedFarmingPolicy policy = FarmingPolicyData.get(level).resolveForAnchor(farmAnchor);
-        FarmPatternDefinition pattern = FarmPatternRegistry.resolveOrDefault(policy.patternId());
+        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        int villagerTier = FarmerProgressData.getTier(hunger);
+        int policyTier = policy.tier();
+        int effectiveTier = Math.max(1, Math.min(policyTier, villagerTier));
+        FarmPatternDefinition pattern = FarmPatternRegistry.resolveForTier(policy.patternId(), effectiveTier);
         String patternId = pattern.id();
-        int tier = policy.tier();
-        int baseClusters = townstead$maxClustersForTier(tier, villager);
-        int basePlots = townstead$maxPlotsForTier(tier, villager);
+        int baseClusters = townstead$maxClustersForTier(effectiveTier, villager);
+        int basePlots = townstead$maxPlotsForTier(effectiveTier, villager);
         int maxClusters = townstead$patternClusterCap(pattern.id(), baseClusters);
         int maxPlots = townstead$patternPlotCap(pattern.id(), basePlots);
 
@@ -1137,17 +1145,21 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
 
         if (TownsteadConfig.DEBUG_FARMER_AI.get()) {
             LOGGER.info(
-                    "Farmer {} blueprint plan: pattern={}, plannerType={}, tier={}, source={}, personality={}, cells={}",
+                    "Farmer {} blueprint plan: pattern={}, plannerType={}, requiredTier={}, policyTier={}, farmerTier={}, effectiveTier={}, source={}, personality={}, cells={}",
                     farmAnchor,
                     patternId,
                     pattern.plannerType(),
-                    tier,
+                    pattern.requiredTier(),
+                    policyTier,
+                    villagerTier,
+                    effectiveTier,
                     policy.source(),
                     villager.getVillagerBrain().getPersonality().name(),
                     farmBlueprint == null ? 0 : farmBlueprint.soilCells().size()
             );
         }
-        nextBlueprintPlanTick = gameTime + BLUEPRINT_REPLAN_INTERVAL;
+        // Keep cadence fixed for stability; add light jitter to avoid synchronized planner spikes.
+        nextBlueprintPlanTick = gameTime + BLUEPRINT_REPLAN_INTERVAL + level.random.nextInt(201);
     }
 
     private int townstead$patternClusterCap(String patternId, int base) {
@@ -1168,6 +1180,30 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             case "dryland_rows" -> Math.max(20, (base * 2) / 3);
             default -> base;
         };
+    }
+
+    private void townstead$awardFarmerXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
+        if (amount <= 0) return;
+        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        FarmerProgressData.GainResult result = FarmerProgressData.addXp(hunger, amount, gameTime);
+        if (result.appliedXp() <= 0) return;
+        villager.setData(Townstead.HUNGER_DATA, hunger);
+
+        if (result.tierUp()) {
+            villager.getLongTermMemory().remember("townstead.farmer.tier_up");
+            villager.getLongTermMemory().remember("townstead.farmer.tier." + result.tierAfter());
+            if (TownsteadConfig.DEBUG_FARMER_AI.get()) {
+                LOGGER.info(
+                        "Farmer {} tier up: {} -> {} (source={}, xp={}, next={})",
+                        villager.getUUID(),
+                        result.tierBefore(),
+                        result.tierAfter(),
+                        source,
+                        FarmerProgressData.getXp(hunger),
+                        FarmerProgressData.getXpToNextTier(hunger)
+                );
+            }
+        }
     }
 
     private void townstead$setBlockedReason(ServerLevel level, VillagerEntityMCA villager, HungerData.FarmBlockedReason reason) {

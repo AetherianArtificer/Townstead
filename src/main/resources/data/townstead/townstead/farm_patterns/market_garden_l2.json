@@ -1,0 +1,75 @@
+{
+  "id": "market_garden_l2",
+  "family": "market_garden",
+  "level": 2,
+  "tier": 2,
+  "requiredTier": 2,
+  "plannerType": "market_garden",
+  "size": {
+    "x": 13,
+    "z": 13
+  },
+  "grid": [
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP"
+  ],
+  "water_cells": [
+    [
+      6,
+      6
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      9,
+      7
+    ]
+  ],
+  "path_cells": [
+    [
+      6,
+      5
+    ],
+    [
+      6,
+      7
+    ],
+    [
+      5,
+      6
+    ],
+    [
+      7,
+      6
+    ]
+  ],
+  "crop_rules": {
+    "mode": "balanced",
+    "allow_rotation": true
+  },
+  "constraints": {
+    "irrigation_required": true,
+    "max_water_cells": 10,
+    "notes": "mixed production focused family"
+  },
+  "weights": {
+    "yield_weight": 0.87,
+    "hydration_reliability_weight": 0.82,
+    "walking_efficiency_weight": 0.88,
+    "maintenance_weight": 0.54,
+    "diversity_weight": 0.65
+  }
+}

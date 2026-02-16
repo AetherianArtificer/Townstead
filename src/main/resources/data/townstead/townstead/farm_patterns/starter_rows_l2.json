@@ -1,0 +1,56 @@
+{
+  "id": "starter_rows_l2",
+  "family": "starter_rows",
+  "level": 2,
+  "tier": 2,
+  "requiredTier": 2,
+  "plannerType": "starter_rows",
+  "size": {
+    "x": 11,
+    "z": 11
+  },
+  "grid": [
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP"
+  ],
+  "water_cells": [
+    [
+      5,
+      5
+    ],
+    [
+      2,
+      5
+    ],
+    [
+      8,
+      5
+    ]
+  ],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "balanced",
+    "allow_rotation": true
+  },
+  "constraints": {
+    "irrigation_required": true,
+    "max_water_cells": 8,
+    "notes": "classic row-based progression family"
+  },
+  "weights": {
+    "yield_weight": 0.79,
+    "hydration_reliability_weight": 0.74,
+    "walking_efficiency_weight": 0.73,
+    "maintenance_weight": 0.56,
+    "diversity_weight": 0.46
+  }
+}

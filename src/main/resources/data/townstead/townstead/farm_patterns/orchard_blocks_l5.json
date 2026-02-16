@@ -1,0 +1,95 @@
+{
+  "id": "orchard_blocks_l5",
+  "family": "orchard_blocks",
+  "level": 5,
+  "tier": 5,
+  "requiredTier": 5,
+  "plannerType": "orchard_blocks",
+  "size": {
+    "x": 17,
+    "z": 17
+  },
+  "grid": [
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPP"
+  ],
+  "water_cells": [
+    [
+      8,
+      8
+    ],
+    [
+      6,
+      6
+    ],
+    [
+      10,
+      10
+    ],
+    [
+      6,
+      10
+    ],
+    [
+      10,
+      6
+    ]
+  ],
+  "path_cells": [
+    [
+      7,
+      8
+    ],
+    [
+      9,
+      8
+    ],
+    [
+      8,
+      7
+    ],
+    [
+      8,
+      9
+    ],
+    [
+      5,
+      8
+    ],
+    [
+      11,
+      8
+    ]
+  ],
+  "crop_rules": {
+    "mode": "balanced",
+    "allow_rotation": true
+  },
+  "constraints": {
+    "irrigation_required": true,
+    "max_water_cells": 8,
+    "notes": "orchard-style block modules"
+  },
+  "weights": {
+    "yield_weight": 0.85,
+    "hydration_reliability_weight": 0.95,
+    "walking_efficiency_weight": 0.95,
+    "maintenance_weight": 0.45,
+    "diversity_weight": 0.9
+  }
+}

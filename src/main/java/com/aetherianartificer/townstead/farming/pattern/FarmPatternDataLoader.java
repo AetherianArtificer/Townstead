@@ -39,13 +39,17 @@ public final class FarmPatternDataLoader extends SimpleJsonResourceReloadListene
                 String id = GsonHelper.getAsString(json, "id", location.getPath()).trim();
                 String plannerType = GsonHelper.getAsString(json, "plannerType", id).trim();
                 if (plannerType.isEmpty()) plannerType = id;
+                int level = Math.max(1, Math.min(5, GsonHelper.getAsInt(json, "level", GsonHelper.getAsInt(json, "tier", 1))));
+                int requiredTier = Math.max(1, Math.min(5, GsonHelper.getAsInt(json, "requiredTier", level)));
+                String family = GsonHelper.getAsString(json, "family", deriveFamilyFromId(id)).trim();
+                if (family.isEmpty()) family = deriveFamilyFromId(id);
                 List<String> schemaErrors = FarmPatternSchemaValidator.validate(json);
                 if (!schemaErrors.isEmpty()) {
                     rejected++;
                     LOGGER.warn("Rejected farm pattern '{}': {}", location, String.join("; ", schemaErrors));
                     continue;
                 }
-                if (FarmPatternRegistry.register(new FarmPatternDefinition(id, plannerType), false)) {
+                if (FarmPatternRegistry.register(new FarmPatternDefinition(id, plannerType, requiredTier, family, level), false)) {
                     loaded++;
                 } else {
                     rejected++;
@@ -62,5 +66,23 @@ public final class FarmPatternDataLoader extends SimpleJsonResourceReloadListene
                 rejected,
                 entries.size()
         );
+    }
+
+    private static String deriveFamilyFromId(String id) {
+        if (id == null || id.isBlank()) return FarmPatternRegistry.DEFAULT_PATTERN_ID;
+        String normalized = id.trim();
+        int idx = normalized.lastIndexOf("_l");
+        if (idx > 0 && idx + 2 < normalized.length()) {
+            String suffix = normalized.substring(idx + 2);
+            boolean numeric = true;
+            for (int i = 0; i < suffix.length(); i++) {
+                if (!Character.isDigit(suffix.charAt(i))) {
+                    numeric = false;
+                    break;
+                }
+            }
+            if (numeric) return normalized.substring(0, idx);
+        }
+        return normalized;
     }
 }

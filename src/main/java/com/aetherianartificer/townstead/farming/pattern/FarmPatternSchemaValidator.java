@@ -22,6 +22,12 @@ public final class FarmPatternSchemaValidator {
 
         int tier = GsonHelper.getAsInt(json, "tier", -1);
         if (tier < 1 || tier > 5) errors.add("tier must be in range 1..5");
+        int level = GsonHelper.getAsInt(json, "level", tier);
+        if (level < 1 || level > 5) errors.add("level must be in range 1..5");
+        int requiredTier = GsonHelper.getAsInt(json, "requiredTier", level);
+        if (requiredTier < 1 || requiredTier > 5) errors.add("requiredTier must be in range 1..5");
+        String family = GsonHelper.getAsString(json, "family", "").trim();
+        if (family.isEmpty()) errors.add("family is required");
 
         JsonObject sizeObj = GsonHelper.getAsJsonObject(json, "size", null);
         int sizeX = -1;

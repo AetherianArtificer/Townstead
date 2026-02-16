@@ -1,0 +1,47 @@
+{
+  "id": "dryland_rows_l5",
+  "family": "dryland_rows",
+  "level": 5,
+  "tier": 5,
+  "requiredTier": 5,
+  "plannerType": "dryland_rows",
+  "size": {
+    "x": 15,
+    "z": 15
+  },
+  "grid": [
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP"
+  ],
+  "water_cells": [],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "balanced",
+    "allow_rotation": true
+  },
+  "constraints": {
+    "irrigation_required": false,
+    "max_water_cells": 0,
+    "notes": "low-tech fallback family"
+  },
+  "weights": {
+    "yield_weight": 0.5,
+    "hydration_reliability_weight": 0.3,
+    "walking_efficiency_weight": 0.7,
+    "maintenance_weight": 0.6,
+    "diversity_weight": 0.3
+  }
+}

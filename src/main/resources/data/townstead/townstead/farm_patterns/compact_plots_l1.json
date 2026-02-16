@@ -1,0 +1,53 @@
+{
+  "id": "compact_plots_l1",
+  "family": "compact_plots",
+  "level": 1,
+  "tier": 1,
+  "requiredTier": 1,
+  "plannerType": "compact_plots",
+  "size": {
+    "x": 7,
+    "z": 7
+  },
+  "grid": [
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP"
+  ],
+  "water_cells": [
+    [
+      3,
+      3
+    ]
+  ],
+  "path_cells": [
+    [
+      3,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "crop_rules": {
+    "mode": "balanced",
+    "allow_rotation": true
+  },
+  "constraints": {
+    "irrigation_required": true,
+    "max_water_cells": 6,
+    "notes": "compact irrigated plots"
+  },
+  "weights": {
+    "yield_weight": 0.57,
+    "hydration_reliability_weight": 0.58,
+    "walking_efficiency_weight": 0.74,
+    "maintenance_weight": 0.62,
+    "diversity_weight": 0.38
+  }
+}
