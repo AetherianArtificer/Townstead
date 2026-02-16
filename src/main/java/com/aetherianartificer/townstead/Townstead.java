@@ -2,6 +2,10 @@ package com.aetherianartificer.townstead;
 
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
+import com.aetherianartificer.townstead.farming.FarmingPolicyData;
+import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
+import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
+import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
@@ -118,10 +122,20 @@ public class Townstead {
                 FarmStatusSyncPayload.STREAM_CODEC,
                 this::handleFarmStatusSync
         );
+        registrar.playToClient(
+                FarmingPolicySyncPayload.TYPE,
+                FarmingPolicySyncPayload.STREAM_CODEC,
+                this::handleFarmingPolicySync
+        );
         registrar.playToServer(
                 HungerSetPayload.TYPE,
                 HungerSetPayload.STREAM_CODEC,
                 this::handleHungerSet
+        );
+        registrar.playToServer(
+                FarmingPolicySetPayload.TYPE,
+                FarmingPolicySetPayload.STREAM_CODEC,
+                this::handleFarmingPolicySet
         );
     }
 
@@ -131,6 +145,10 @@ public class Townstead {
 
     private void handleFarmStatusSync(FarmStatusSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> HungerClientStore.setFarmBlockedReason(payload.entityId(), payload.blockedReasonId()));
+    }
+
+    private void handleFarmingPolicySync(FarmingPolicySyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> FarmingPolicyClientStore.set(payload.patternId(), payload.tier(), payload.areaCount()));
     }
 
     private void handleHungerSet(HungerSetPayload payload, IPayloadContext context) {
@@ -164,6 +182,31 @@ public class Townstead {
         });
     }
 
+    private void handleFarmingPolicySet(FarmingPolicySetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            FarmingPolicyData data = FarmingPolicyData.get(sp.serverLevel());
+            if (payload.tier() == -1) {
+                PacketDistributor.sendToPlayer(sp, new FarmingPolicySyncPayload(
+                        data.getDefaultPatternId(),
+                        data.getDefaultTier(),
+                        data.getAreas().size()
+                ));
+                return;
+            }
+
+            // Keep policy writes gated to privileged users for now.
+            if (!sp.hasPermissions(2)) return;
+
+            data.setDefaultPolicy(payload.patternId(), payload.tier());
+            PacketDistributor.sendToPlayer(sp, new FarmingPolicySyncPayload(
+                    data.getDefaultPatternId(),
+                    data.getDefaultTier(),
+                    data.getAreas().size()
+            ));
+        });
+    }
+
     private void onStartTracking(PlayerEvent.StartTracking event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
@@ -179,5 +222,6 @@ public class Townstead {
 
     private void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
         HungerClientStore.clear();
+        FarmingPolicyClientStore.clear();
     }
 }
