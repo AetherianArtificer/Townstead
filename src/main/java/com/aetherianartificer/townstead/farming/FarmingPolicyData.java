@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.farming;
 
+import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -15,7 +16,7 @@ import java.util.List;
 
 public final class FarmingPolicyData extends SavedData {
     private static final String DATA_NAME = "townstead_farming_policy";
-    private static final String DEFAULT_PATTERN_ID = "starter_rows";
+    private static final String DEFAULT_PATTERN_ID = FarmPatternRegistry.DEFAULT_PATTERN_ID;
 
     private String defaultPatternId = DEFAULT_PATTERN_ID;
     private int defaultTier = 3;

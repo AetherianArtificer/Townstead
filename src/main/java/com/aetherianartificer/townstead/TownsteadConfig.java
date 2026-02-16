@@ -36,6 +36,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_HYDRATION_MIN_PERCENT;
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_SEARCH_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
+    public static final ModConfigSpec.IntValue FARMER_GROOM_RADIUS;
+    public static final ModConfigSpec.IntValue FARMER_GROOM_SCAN_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue DEBUG_FARMER_AI;
     public static final ModConfigSpec.BooleanValue ENABLE_FARMER_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
@@ -109,6 +111,12 @@ public final class TownsteadConfig {
         FARMER_WATER_SOURCE_VERTICAL_RADIUS = b
                 .comment("Vertical search radius for nearby water sources when refilling buckets.")
                 .defineInRange("farmerWaterSourceVerticalRadius", 8, 2, 32);
+        FARMER_GROOM_RADIUS = b
+                .comment("Radius around planned farm cells where farmers may clear removable weeds.")
+                .defineInRange("farmerGroomRadius", 1, 0, 4);
+        FARMER_GROOM_SCAN_INTERVAL_TICKS = b
+                .comment("Ticks between farmer grooming target scans.")
+                .defineInRange("farmerGroomScanIntervalTicks", 60, 20, 1200);
         DEBUG_FARMER_AI = b
                 .comment("Enable debug logs for farmer state transitions.")
                 .define("debugFarmerAI", false);

@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead;
 
+import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
+import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
@@ -19,6 +21,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -52,8 +55,14 @@ public class Townstead {
         modBus.addListener(this::registerPayloads);
         NeoForge.EVENT_BUS.addListener(this::onClientDisconnect);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
+        NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         registerDialogueConditions();
+        FarmPatternRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
+    }
+
+    private void addReloadListeners(AddReloadListenerEvent event) {
+        event.addListener(new FarmPatternDataLoader());
     }
 
     private void registerDialogueConditions() {

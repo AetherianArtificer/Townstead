@@ -1,0 +1,22 @@
+{
+  "id": "dryland_rows",
+  "plannerType": "dryland_rows",
+  "tier": 1,
+  "size": { "x": 9, "z": 9 },
+  "grid": [
+    "PPPPPPPPP",
+    "PPPPPPPPP",
+    "PPPPPPPPP",
+    "PPPPPPPPP",
+    "PPPPPPPPP",
+    "PPPPPPPPP",
+    "PPPPPPPPP",
+    "PPPPPPPPP",
+    "PPPPPPPPP"
+  ],
+  "water_cells": [],
+  "path_cells": [],
+  "crop_rules": {},
+  "constraints": {},
+  "weights": {}
+}

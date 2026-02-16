@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.hunger;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
+import com.aetherianartificer.townstead.farming.pattern.FarmPatternDefinition;
+import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.hunger.farm.FarmBlueprint;
 import com.aetherianartificer.townstead.hunger.farm.FarmPlanner;
 import com.google.common.collect.ImmutableMap;
@@ -56,10 +58,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
     private static final int TARGET_BLACKLIST_TICKS = 200;
     private static final int REQUEST_RANGE = 24;
     private static final int BLUEPRINT_REPLAN_INTERVAL = 1200;
-    private static final String DEFAULT_PATTERN_ID = "starter_rows";
     private static final int STOCK_MIN_INTERVAL_TICKS = 400;
 
-    private enum ActionType { NONE, RETURN, HARVEST, PLANT, TILL, FETCH_WATER, PLACE_WATER, STOCK }
+    private enum ActionType { NONE, RETURN, HARVEST, PLANT, TILL, GROOM, FETCH_WATER, PLACE_WATER, STOCK }
 
     private ActionType actionType = ActionType.NONE;
     private BlockPos targetPos;
@@ -68,12 +69,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
     private int actionCooldown;
     private long nextAcquireTick;
     private long nextTargetScanTick;
+    private long nextGroomScanTick;
     private long nextBlueprintPlanTick;
     private long lastStockTick = Long.MIN_VALUE;
 
     private BlockPos cachedHarvestTarget;
     private BlockPos cachedPlantTarget;
     private BlockPos cachedTillTarget;
+    private BlockPos cachedGroomTarget;
     private boolean cachedHasHoe;
     private boolean cachedHasSeed;
     private boolean cachedHasWaterBucket;
@@ -119,6 +122,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         actionCooldown = 0;
         if (nextAcquireTick < gameTime) nextAcquireTick = 0;
         nextTargetScanTick = 0;
+        nextGroomScanTick = 0;
         nextBlueprintPlanTick = 0;
         currentTargetKey = Long.MIN_VALUE;
         lastTargetDistSq = Double.MAX_VALUE;
@@ -126,7 +130,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         cachedInventoryTick = -1;
         nextRequestTick = 0;
         farmBlueprint = null;
-        townstead$refreshBlueprintIfNeeded(level, gameTime, true);
+        townstead$refreshBlueprintIfNeeded(level, villager, gameTime, true);
         townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
         townstead$acquireTarget(level, villager, gameTime, true);
     }
@@ -141,7 +145,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             }
             nextBlueprintPlanTick = 0;
         }
-        townstead$refreshBlueprintIfNeeded(level, gameTime, false);
+        townstead$refreshBlueprintIfNeeded(level, villager, gameTime, false);
 
         if (actionCooldown > 0) {
             actionCooldown--;
@@ -177,6 +181,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             case HARVEST -> townstead$doHarvest(level, villager, gameTime);
             case PLANT -> townstead$doPlant(level, villager, targetPos, gameTime);
             case TILL -> townstead$doTill(level, villager, targetPos, gameTime);
+            case GROOM -> townstead$doGroom(level, villager, targetPos, gameTime);
             case FETCH_WATER -> townstead$doFetchWater(level, villager, targetPos);
             case PLACE_WATER -> townstead$doPlaceWater(level, villager, targetPos, gameTime);
             case STOCK -> {
@@ -211,6 +216,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         actionCooldown = 0;
         nextAcquireTick = 0;
         nextTargetScanTick = 0;
+        nextGroomScanTick = 0;
         nextBlueprintPlanTick = 0;
         cachedInventoryTick = -1;
         nextRequestTick = 0;
@@ -234,12 +240,13 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         }
 
         townstead$restockBasics(level, villager);
-        townstead$refreshBlueprintIfNeeded(level, gameTime, false);
+        townstead$refreshBlueprintIfNeeded(level, villager, gameTime, false);
         townstead$refreshInventoryCache(villager, gameTime);
         if (forceScan || gameTime >= nextTargetScanTick) {
             townstead$refreshTargetCache(level, villager, gameTime);
             nextTargetScanTick = gameTime + TARGET_SCAN_INTERVAL;
         }
+        FarmerPersonalityProfile profile = townstead$profile(villager);
 
         int farmRadius = townstead$farmRadius();
         double returnDistSq = villager.distanceToSqr(farmAnchor.getX() + 0.5, farmAnchor.getY() + 0.5, farmAnchor.getZ() + 0.5);
@@ -257,6 +264,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
+        if (profile.prioritizeIrrigation() && cachedHasSeed && cachedHasHoe
+                && townstead$tryAcquireIrrigationTask(level, villager, gameTime)) {
+            return;
+        }
+
         if (cachedHasSeed && cachedPlantTarget != null) {
             actionType = ActionType.PLANT;
             targetPos = cachedPlantTarget;
@@ -269,7 +281,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             targetPos = null;
             townstead$clearMovementIntent(villager);
             townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_SEEDS);
-            nextAcquireTick = gameTime + townstead$idleBackoffTicks();
+            nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
             return;
         }
 
@@ -278,33 +290,28 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             targetPos = null;
             townstead$clearMovementIntent(villager);
             townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_TOOL);
-            nextAcquireTick = gameTime + townstead$idleBackoffTicks();
+            nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
             return;
         }
 
-        if (townstead$needsIrrigation(level, gameTime) && townstead$canAttemptWaterPlacement(level, gameTime)) {
-            if (!cachedHasWaterBucket) {
-                BlockPos waterSource = townstead$findNearestWaterSource(level, villager, gameTime);
-                if (waterSource != null && townstead$findEmptyBucketSlot(villager.getInventory()) >= 0) {
-                    actionType = ActionType.FETCH_WATER;
-                    targetPos = waterSource;
-                    townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
-                    return;
-                }
-            } else {
-                BlockPos waterPos = townstead$findNearestWaterPlacementSpot(level, villager, gameTime);
-                if (waterPos != null) {
-                    actionType = ActionType.PLACE_WATER;
-                    targetPos = waterPos;
-                    townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
-                    return;
-                }
+        boolean irrigationPlanMissing = false;
+        if (townstead$needsIrrigation(level, villager, gameTime)) {
+            if (townstead$tryAcquireIrrigationTask(level, villager, gameTime)) {
+                return;
             }
+            irrigationPlanMissing = true;
         }
 
-        if (cachedSeedCount >= townstead$seedReserve() && cachedTillTarget != null) {
+        if (cachedSeedCount >= townstead$seedReserve(villager) && cachedTillTarget != null) {
             actionType = ActionType.TILL;
             targetPos = cachedTillTarget;
+            townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
+            return;
+        }
+
+        if (cachedGroomTarget != null) {
+            actionType = ActionType.GROOM;
+            targetPos = cachedGroomTarget;
             townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
             return;
         }
@@ -321,8 +328,37 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         actionType = ActionType.NONE;
         targetPos = null;
         townstead$clearMovementIntent(villager);
-        townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_VALID_TARGET);
-        nextAcquireTick = gameTime + townstead$idleBackoffTicks();
+        townstead$setBlockedReason(
+                level,
+                villager,
+                irrigationPlanMissing ? HungerData.FarmBlockedReason.NO_WATER_PLAN : HungerData.FarmBlockedReason.NO_VALID_TARGET
+        );
+        nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+    }
+
+    private boolean townstead$tryAcquireIrrigationTask(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (!townstead$needsIrrigation(level, villager, gameTime) || !townstead$canAttemptWaterPlacement(level, gameTime)) {
+            return false;
+        }
+        if (!cachedHasWaterBucket) {
+            BlockPos waterSource = townstead$findNearestWaterSource(level, villager, gameTime);
+            if (waterSource != null && townstead$findEmptyBucketSlot(villager.getInventory()) >= 0) {
+                actionType = ActionType.FETCH_WATER;
+                targetPos = waterSource;
+                townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
+                return true;
+            }
+            return false;
+        }
+
+        BlockPos waterPos = townstead$findNearestWaterPlacementSpot(level, villager, gameTime);
+        if (waterPos != null) {
+            actionType = ActionType.PLACE_WATER;
+            targetPos = waterPos;
+            townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
+            return true;
+        }
+        return false;
     }
 
     private void townstead$refreshInventoryCache(VillagerEntityMCA villager, long gameTime) {
@@ -339,6 +375,12 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         cachedHarvestTarget = townstead$findNearestMatureCrop(level, villager, gameTime);
         cachedPlantTarget = townstead$findNearestPlantSpot(level, villager, gameTime);
         cachedTillTarget = townstead$findNearestTillSpot(level, villager, gameTime);
+        if (gameTime >= nextGroomScanTick) {
+            cachedGroomTarget = townstead$findNearestGroomSpot(level, villager, gameTime);
+            nextGroomScanTick = gameTime + townstead$groomScanIntervalTicks();
+        } else {
+            cachedGroomTarget = null;
+        }
     }
 
     private void townstead$trackPathProgress(ServerLevel level, VillagerEntityMCA villager, long gameTime, double distSq) {
@@ -369,7 +411,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         actionType = ActionType.NONE;
         targetPos = null;
         townstead$clearMovementIntent(villager);
-        nextAcquireTick = gameTime + townstead$idleBackoffTicks();
+        nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
         townstead$resetPathTracking();
     }
 
@@ -405,6 +447,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
                     && state.isAir()
                     && level.getBlockState(targetPos.below()).getBlock() instanceof FarmBlock;
             case TILL -> townstead$isPlannedSoil(targetPos) && townstead$isTillable(level, targetPos, gameTime);
+            case GROOM -> townstead$isPlannedOrAdjacentSoil(targetPos.below()) && townstead$isRemovableWeed(state);
             case FETCH_WATER -> level.getFluidState(targetPos).is(FluidTags.WATER)
                     && townstead$findEmptyBucketSlot(villager.getInventory()) >= 0;
             case PLACE_WATER -> townstead$canPlaceWaterAt(level, targetPos) && townstead$hasWaterPlacementBudget(level.getGameTime());
@@ -470,6 +513,33 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         return bestAny;
     }
 
+    private BlockPos townstead$findNearestGroomSpot(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        BlockPos best = null;
+        double bestDist = Double.MAX_VALUE;
+        int groomRadius = townstead$groomRadius();
+        for (BlockPos soilPos : townstead$iterateSoilCells(level)) {
+            if (!townstead$isPlannedSoil(soilPos)) continue;
+            for (int dx = -groomRadius; dx <= groomRadius; dx++) {
+                for (int dz = -groomRadius; dz <= groomRadius; dz++) {
+                    BlockPos base = soilPos.offset(dx, 0, dz);
+                    if (!townstead$isInsideFarmRadius(base)) continue;
+                    if (!townstead$isPlannedOrAdjacentSoil(base)) continue;
+                    BlockPos top = base.above();
+                    if (townstead$isBlacklisted(top, gameTime)) continue;
+                    if (townstead$isRecentlyWorked(top, gameTime)) continue;
+                    BlockState topState = level.getBlockState(top);
+                    if (!townstead$isRemovableWeed(topState)) continue;
+                    double dist = villager.distanceToSqr(top.getX() + 0.5, top.getY() + 0.5, top.getZ() + 0.5);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = top.immutable();
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
     private void townstead$doHarvest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (targetPos == null) return;
         BlockState state = level.getBlockState(targetPos);
@@ -483,13 +553,13 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         villager.swing(villager.getDominantHand());
         townstead$markWorked(targetPos, gameTime);
 
-        if (townstead$findSeedSlot(villager.getInventory()) >= 0) {
+        if (townstead$findSeedSlot(villager.getInventory(), villager, level, targetPos) >= 0) {
             townstead$doPlant(level, villager, targetPos, gameTime);
         }
     }
 
     private void townstead$doPlant(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
-        int slot = townstead$findSeedSlot(villager.getInventory());
+        int slot = townstead$findSeedSlot(villager.getInventory(), villager, level, pos);
         if (slot < 0) return;
         ItemStack seed = villager.getInventory().getItem(slot);
         if (!(seed.getItem() instanceof BlockItem blockItem)) {
@@ -520,6 +590,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             villager.swing(villager.getDominantHand());
             townstead$markWorked(soilPos, gameTime);
         }
+    }
+
+    private void townstead$doGroom(ServerLevel level, VillagerEntityMCA villager, BlockPos topPos, long gameTime) {
+        if (!townstead$isPlannedOrAdjacentSoil(topPos.below())) return;
+        BlockState state = level.getBlockState(topPos);
+        if (!townstead$isRemovableWeed(state)) return;
+        level.destroyBlock(topPos, false, villager);
+        villager.swing(villager.getDominantHand());
+        townstead$markWorked(topPos, gameTime);
     }
 
     private void townstead$doPlaceWater(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
@@ -604,11 +683,38 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         return movedAny;
     }
 
-    private int townstead$findSeedSlot(SimpleContainer inv) {
+    private int townstead$findSeedSlot(SimpleContainer inv, VillagerEntityMCA villager, ServerLevel level, BlockPos plantPos) {
+        boolean hasWater = townstead$hasNearbyWater(level, plantPos.below());
+        int bestSlot = -1;
+        double bestScore = Double.NEGATIVE_INFINITY;
         for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (townstead$isSeed(inv.getItem(i))) return i;
+            ItemStack stack = inv.getItem(i);
+            if (!townstead$isSeed(stack)) continue;
+            if (!(stack.getItem() instanceof BlockItem blockItem)) continue;
+            BlockState place = blockItem.getBlock().defaultBlockState();
+            if (!place.canSurvive(level, plantPos)) continue;
+            double score = FarmerCropPreferences.scoreSeed(villager, stack, hasWater);
+            if (score > bestScore) {
+                bestScore = score;
+                bestSlot = i;
+            }
         }
-        return -1;
+        return bestSlot;
+    }
+
+    private int townstead$findSeedSlot(SimpleContainer inv, VillagerEntityMCA villager) {
+        int bestSlot = -1;
+        double bestScore = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!townstead$isSeed(stack)) continue;
+            double score = FarmerCropPreferences.scoreSeed(villager, stack, true);
+            if (score > bestScore) {
+                bestScore = score;
+                bestSlot = i;
+            }
+        }
+        return bestSlot;
     }
 
     private int townstead$findWaterBucketSlot(SimpleContainer inv) {
@@ -636,10 +742,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
 
     private boolean townstead$isSeed(ItemStack stack) {
         if (stack.isEmpty()) return false;
-        if (stack.is(ItemTags.VILLAGER_PLANTABLE_SEEDS)) return true;
-        if (stack.is(Tags.Items.SEEDS)) return true;
-        if (!(stack.getItem() instanceof BlockItem blockItem)) return false;
-        return blockItem.getBlock() instanceof CropBlock || blockItem.getBlock() instanceof StemBlock;
+        return FarmerCropPreferences.isSeedLike(stack);
     }
 
     private boolean townstead$hasHoe(SimpleContainer inv) {
@@ -659,7 +762,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         return state.is(Blocks.DIRT) || state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.DIRT_PATH) || state.is(Blocks.COARSE_DIRT);
     }
 
-    private boolean townstead$hasHydrationCoverage(ServerLevel level) {
+    private boolean townstead$hasHydrationCoverage(ServerLevel level, VillagerEntityMCA villager) {
         int hydrated = 0;
         int total = 0;
         for (BlockPos soilPos : townstead$iterateSoilCells(level)) {
@@ -669,11 +772,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         }
         if (total == 0) return true;
         int percent = (hydrated * 100) / Math.max(1, total);
-        return percent >= townstead$hydrationMinPercent();
+        return percent >= townstead$hydrationMinPercent(villager);
     }
 
-    private boolean townstead$needsIrrigation(ServerLevel level, long gameTime) {
-        if (!townstead$hasHydrationCoverage(level)) return true;
+    private boolean townstead$needsIrrigation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (!townstead$hasHydrationCoverage(level, villager)) return true;
         return townstead$hasDryTillableCell(level, gameTime);
     }
 
@@ -770,19 +873,17 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
     private boolean townstead$canClearTillObstruction(BlockState state) {
         if (state.isAir()) return true;
         if (state.getBlock() instanceof CropBlock || state.getBlock() instanceof StemBlock) return false;
-        if (state.getBlock() instanceof BushBlock) return true;
-        return state.is(Blocks.SHORT_GRASS)
-                || state.is(Blocks.TALL_GRASS)
-                || state.is(Blocks.FERN)
-                || state.is(Blocks.LARGE_FERN)
-                || state.is(Blocks.DEAD_BUSH)
-                || state.is(Blocks.SNOW);
+        return townstead$isRemovableWeed(state);
     }
 
     private boolean townstead$canClearWaterPlacementObstruction(BlockState state) {
         if (state.isAir()) return true;
         if (state.getBlock() instanceof CropBlock || state.getBlock() instanceof StemBlock) return true;
-        if (state.getBlock() instanceof BushBlock) return true;
+        return townstead$isRemovableWeed(state);
+    }
+
+    private boolean townstead$isRemovableWeed(BlockState state) {
+        if (state.isAir()) return false;
         return state.is(Blocks.SHORT_GRASS)
                 || state.is(Blocks.TALL_GRASS)
                 || state.is(Blocks.FERN)
@@ -832,7 +933,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
                     s -> s.getItem() instanceof HoeItem, s -> 1, farmAnchor);
         }
-        int desiredSeedCount = Math.max(1, townstead$seedReserve());
+        int desiredSeedCount = Math.max(1, townstead$seedReserve(villager));
         if (townstead$countSeeds(inv) < desiredSeedCount) {
             NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
                     this::townstead$isSeed, ItemStack::getCount, farmAnchor);
@@ -909,6 +1010,17 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         return farmBlueprint.containsSoil(pos);
     }
 
+    private boolean townstead$isPlannedOrAdjacentSoil(BlockPos pos) {
+        if (townstead$isPlannedSoil(pos)) return true;
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                if (townstead$isPlannedSoil(pos.offset(dx, 0, dz))) return true;
+            }
+        }
+        return false;
+    }
+
     private boolean townstead$isPlannedCropPos(BlockPos cropPos) {
         return townstead$isPlannedSoil(cropPos.below());
     }
@@ -934,9 +1046,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         farmAnchor = anchor;
         try {
             SimpleContainer inv = villager.getInventory();
-            boolean hasSeeds = townstead$findSeedSlot(inv) >= 0;
+            boolean hasSeeds = townstead$findSeedSlot(inv, villager) >= 0;
             boolean hasHoe = townstead$hasHoe(inv);
-            townstead$refreshBlueprintIfNeeded(level, level.getGameTime(), true);
+            townstead$refreshBlueprintIfNeeded(level, villager, level.getGameTime(), true);
             if (townstead$findNearestMatureCrop(level, villager, level.getGameTime()) != null) return true;
             BlockPos plantSpot = townstead$findNearestPlantSpot(level, villager, level.getGameTime());
             if (hasSeeds && plantSpot != null) return true;
@@ -954,7 +1066,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         }
     }
 
-    private void townstead$refreshBlueprintIfNeeded(ServerLevel level, long gameTime, boolean force) {
+    private void townstead$refreshBlueprintIfNeeded(ServerLevel level, VillagerEntityMCA villager, long gameTime, boolean force) {
         if (farmAnchor == null) {
             farmBlueprint = null;
             nextBlueprintPlanTick = 0;
@@ -964,19 +1076,54 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (!force && !anchorChanged && gameTime < nextBlueprintPlanTick) return;
 
         FarmingPolicyData.ResolvedFarmingPolicy policy = FarmingPolicyData.get(level).resolveForAnchor(farmAnchor);
-        String patternId = policy.patternId();
+        FarmPatternDefinition pattern = FarmPatternRegistry.resolveOrDefault(policy.patternId());
+        String patternId = pattern.id();
         int tier = policy.tier();
-        int maxClusters = townstead$maxClustersForTier(tier);
-        int maxPlots = townstead$maxPlotsForTier(tier);
+        int baseClusters = townstead$maxClustersForTier(tier, villager);
+        int basePlots = townstead$maxPlotsForTier(tier, villager);
+        int maxClusters = townstead$patternClusterCap(pattern.id(), baseClusters);
+        int maxPlots = townstead$patternPlotCap(pattern.id(), basePlots);
 
-        farmBlueprint = switch (patternId) {
-            case DEFAULT_PATTERN_ID -> FarmPlanner.planStarterRows(
+        farmBlueprint = switch (pattern.plannerType()) {
+            case "starter_rows" -> FarmPlanner.planStarterRows(
                     level,
                     farmAnchor,
                     townstead$farmRadius(),
                     VERTICAL_RADIUS,
                     maxClusters,
                     maxPlots
+            );
+            case "compact_plots" -> FarmPlanner.planStarterRows(
+                    level,
+                    farmAnchor,
+                    townstead$farmRadius(),
+                    VERTICAL_RADIUS,
+                    Math.max(1, Math.min(maxClusters, 2)),
+                    Math.max(16, maxPlots / 2)
+            );
+            case "market_garden" -> FarmPlanner.planStarterRows(
+                    level,
+                    farmAnchor,
+                    townstead$farmRadius(),
+                    VERTICAL_RADIUS,
+                    Math.max(2, maxClusters),
+                    Math.max(32, maxPlots)
+            );
+            case "orchard_blocks" -> FarmPlanner.planStarterRows(
+                    level,
+                    farmAnchor,
+                    townstead$farmRadius(),
+                    VERTICAL_RADIUS,
+                    Math.max(1, Math.min(maxClusters, 3)),
+                    Math.max(24, (maxPlots * 3) / 4)
+            );
+            case "dryland_rows" -> FarmPlanner.planStarterRows(
+                    level,
+                    farmAnchor,
+                    townstead$farmRadius(),
+                    VERTICAL_RADIUS,
+                    Math.max(1, maxClusters - 1),
+                    Math.max(20, (maxPlots * 2) / 3)
             );
             default -> FarmPlanner.planStarterRows(
                     level,
@@ -990,15 +1137,37 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
 
         if (TownsteadConfig.DEBUG_FARMER_AI.get()) {
             LOGGER.info(
-                    "Farmer {} blueprint plan: pattern={}, tier={}, source={}, cells={}",
+                    "Farmer {} blueprint plan: pattern={}, plannerType={}, tier={}, source={}, personality={}, cells={}",
                     farmAnchor,
                     patternId,
+                    pattern.plannerType(),
                     tier,
                     policy.source(),
+                    villager.getVillagerBrain().getPersonality().name(),
                     farmBlueprint == null ? 0 : farmBlueprint.soilCells().size()
             );
         }
         nextBlueprintPlanTick = gameTime + BLUEPRINT_REPLAN_INTERVAL;
+    }
+
+    private int townstead$patternClusterCap(String patternId, int base) {
+        return switch (patternId) {
+            case "compact_plots" -> Math.max(1, Math.min(base, 2));
+            case "market_garden" -> Math.max(2, base);
+            case "orchard_blocks" -> Math.max(1, Math.min(base, 3));
+            case "dryland_rows" -> Math.max(1, base - 1);
+            default -> base;
+        };
+    }
+
+    private int townstead$patternPlotCap(String patternId, int base) {
+        return switch (patternId) {
+            case "compact_plots" -> Math.max(16, base / 2);
+            case "market_garden" -> Math.max(32, base);
+            case "orchard_blocks" -> Math.max(24, (base * 3) / 4);
+            case "dryland_rows" -> Math.max(20, (base * 2) / 3);
+            default -> base;
+        };
     }
 
     private void townstead$setBlockedReason(ServerLevel level, VillagerEntityMCA villager, HungerData.FarmBlockedReason reason) {
@@ -1037,12 +1206,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         return TownsteadConfig.ENABLE_FARMER_STABILITY_V2.get() ? TownsteadConfig.FARMER_PATHFAIL_MAX_RETRIES.get() : 10;
     }
 
-    private int townstead$idleBackoffTicks() {
-        return TownsteadConfig.ENABLE_FARMER_STABILITY_V2.get() ? TownsteadConfig.FARMER_IDLE_BACKOFF_TICKS.get() : 20;
+    private int townstead$idleBackoffTicks(VillagerEntityMCA villager) {
+        int base = TownsteadConfig.ENABLE_FARMER_STABILITY_V2.get() ? TownsteadConfig.FARMER_IDLE_BACKOFF_TICKS.get() : 20;
+        return townstead$scaleInt(base, townstead$profile(villager).idleBackoffScale(), 10, 200);
     }
 
-    private int townstead$seedReserve() {
-        return TownsteadConfig.ENABLE_FARMER_STABILITY_V2.get() ? TownsteadConfig.FARMER_SEED_RESERVE.get() : 0;
+    private int townstead$seedReserve(VillagerEntityMCA villager) {
+        int base = TownsteadConfig.ENABLE_FARMER_STABILITY_V2.get() ? TownsteadConfig.FARMER_SEED_RESERVE.get() : 0;
+        int value = base + townstead$profile(villager).seedReserveBonus();
+        return Math.max(0, value);
     }
 
     private int townstead$maxPlots() {
@@ -1057,8 +1229,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         return Math.max(0, TownsteadConfig.FARMER_WATER_PLACEMENTS_PER_DAY.get());
     }
 
-    private int townstead$hydrationMinPercent() {
-        return Math.max(0, Math.min(100, TownsteadConfig.FARMER_HYDRATION_MIN_PERCENT.get()));
+    private int townstead$hydrationMinPercent(VillagerEntityMCA villager) {
+        int base = Math.max(0, Math.min(100, TownsteadConfig.FARMER_HYDRATION_MIN_PERCENT.get()));
+        return townstead$scaleInt(base, townstead$profile(villager).hydrationScale(), 0, 100);
     }
 
     private int townstead$waterSourceSearchRadius() {
@@ -1069,7 +1242,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         return Math.max(2, TownsteadConfig.FARMER_WATER_SOURCE_VERTICAL_RADIUS.get());
     }
 
-    private int townstead$maxClustersForTier(int tier) {
+    private int townstead$groomRadius() {
+        return Math.max(0, TownsteadConfig.FARMER_GROOM_RADIUS.get());
+    }
+
+    private int townstead$groomScanIntervalTicks() {
+        return Math.max(20, TownsteadConfig.FARMER_GROOM_SCAN_INTERVAL_TICKS.get());
+    }
+
+    private int townstead$maxClustersForTier(int tier, VillagerEntityMCA villager) {
         int cap = Math.max(1, townstead$maxClusters());
         int normalized = Math.max(1, Math.min(tier, 5));
         int target = switch (normalized) {
@@ -1079,10 +1260,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             case 4 -> 4;
             default -> cap;
         };
-        return Math.min(cap, target);
+        int scaled = townstead$scaleInt(target, townstead$profile(villager).expansionScale(), 1, cap);
+        return Math.min(cap, scaled);
     }
 
-    private int townstead$maxPlotsForTier(int tier) {
+    private int townstead$maxPlotsForTier(int tier, VillagerEntityMCA villager) {
         int cap = Math.max(16, townstead$maxPlots());
         int normalized = Math.max(1, Math.min(tier, 5));
         int target = switch (normalized) {
@@ -1092,7 +1274,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             case 4 -> Math.max(64, (cap * 5) / 6);
             default -> cap;
         };
-        return Math.min(cap, target);
+        int scaled = townstead$scaleInt(target, townstead$profile(villager).expansionScale(), 16, cap);
+        return Math.min(cap, scaled);
     }
 
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -1119,6 +1302,21 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         // Hook for MCA ChatAI/LLM context and future prompt conditioning.
         villager.getLongTermMemory().remember("townstead.farm_request.any");
         villager.getLongTermMemory().remember("townstead.farm_request." + blockedReason.id());
-        nextRequestTick = gameTime + TownsteadConfig.FARMER_REQUEST_INTERVAL_TICKS.get();
+        int interval = townstead$scaleInt(
+                TownsteadConfig.FARMER_REQUEST_INTERVAL_TICKS.get(),
+                townstead$profile(villager).requestIntervalScale(),
+                100,
+                72000
+        );
+        nextRequestTick = gameTime + interval;
+    }
+
+    private FarmerPersonalityProfile townstead$profile(VillagerEntityMCA villager) {
+        return FarmerPersonalityProfile.forVillager(villager);
+    }
+
+    private int townstead$scaleInt(int base, double scale, int min, int max) {
+        int scaled = (int) Math.round(base * scale);
+        return Math.max(min, Math.min(max, scaled));
     }
 }
