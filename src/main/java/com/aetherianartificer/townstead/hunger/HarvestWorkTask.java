@@ -2,6 +2,9 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.farming.FarmerHarvestToolCompatRegistry;
+import com.aetherianartificer.townstead.compat.farming.FarmerRemovableWeedCompatRegistry;
+import com.aetherianartificer.townstead.compat.farming.FarmerStockDroppableCompatRegistry;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDefinition;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
@@ -554,7 +557,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         BlockState state = level.getBlockState(targetPos);
         if (!townstead$isHarvestTargetValid(level, targetPos, state)) return;
         boolean isMatureCrop = state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state);
-        List<ItemStack> drops = Block.getDrops(state, level, targetPos, null);
+        ItemStack tool = townstead$getPreferredHarvestTool(villager.getInventory(), state);
+        List<ItemStack> drops = Block.getDrops(state, level, targetPos, null, villager, tool);
         level.destroyBlock(targetPos, false, villager);
         for (ItemStack drop : drops) {
             if (!drop.isEmpty()) villager.getInventory().addItem(drop);
@@ -678,7 +682,12 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (!townstead$isPlannedOrAdjacentSoil(topPos.below())) return;
         BlockState state = level.getBlockState(topPos);
         if (!townstead$isRemovableWeed(state)) return;
+        ItemStack tool = townstead$getPreferredHarvestTool(villager.getInventory(), state);
+        List<ItemStack> drops = Block.getDrops(state, level, topPos, null, villager, tool);
         level.destroyBlock(topPos, false, villager);
+        for (ItemStack drop : drops) {
+            if (!drop.isEmpty()) villager.getInventory().addItem(drop);
+        }
         villager.swing(villager.getDominantHand());
         townstead$markWorked(topPos, gameTime);
         townstead$awardFarmerXp(level, villager, gameTime, 1, "groom");
@@ -749,13 +758,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         boolean movedAny = false;
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (!endOfWork && i == keepFood) continue;
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
+            boolean forceStock = townstead$isAlwaysStockOutput(stack);
+            if (!endOfWork && i == keepFood && !forceStock) continue;
 
             if (!endOfWork) {
                 if (stack.getItem() instanceof HoeItem) continue;
-                if (townstead$isSeed(stack)) continue;
+                if (townstead$isSeed(stack) && !forceStock) continue;
             }
 
             ItemStack moving = stack.copy();
@@ -834,6 +844,22 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             if (inv.getItem(i).getItem() instanceof HoeItem) return true;
         }
         return false;
+    }
+
+    private boolean townstead$hasHarvestTool(SimpleContainer inv) {
+        return FarmerHarvestToolCompatRegistry.findPreferredToolSlot(inv) >= 0;
+    }
+
+    private int townstead$findHarvestToolSlot(SimpleContainer inv) {
+        return FarmerHarvestToolCompatRegistry.findPreferredToolSlot(inv);
+    }
+
+    private boolean townstead$isHarvestTool(ItemStack stack) {
+        return FarmerHarvestToolCompatRegistry.isCompatibleTool(stack);
+    }
+
+    private ItemStack townstead$getPreferredHarvestTool(SimpleContainer inv, BlockState state) {
+        return FarmerHarvestToolCompatRegistry.getPreferredToolForBlock(inv, state);
     }
 
     private boolean townstead$isTillable(ServerLevel level, BlockPos pos, long gameTime) {
@@ -973,13 +999,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
                 || state.is(Blocks.FERN)
                 || state.is(Blocks.LARGE_FERN)
                 || state.is(Blocks.DEAD_BUSH)
-                || state.is(Blocks.SNOW);
+                || state.is(Blocks.SNOW)
+                || FarmerRemovableWeedCompatRegistry.isRemovableWeed(state);
     }
 
     private boolean townstead$hasStockableOutput(SimpleContainer inv) {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack s = inv.getItem(i);
             if (s.isEmpty()) continue;
+            if (townstead$isAlwaysStockOutput(s)) return true;
             if (s.getItem() instanceof HoeItem) continue;
             if (townstead$isSeed(s)) continue;
             return true;
@@ -993,6 +1021,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             if (!inv.getItem(i).isEmpty()) used++;
         }
         return used >= Math.max(1, (int) Math.floor(inv.getContainerSize() * 0.7));
+    }
+
+    private boolean townstead$isAlwaysStockOutput(ItemStack stack) {
+        return FarmerStockDroppableCompatRegistry.isForcedStockDroppable(stack);
     }
 
     private int townstead$findBestFoodSlot(SimpleContainer inv) {
@@ -1021,6 +1053,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (townstead$countSeeds(inv) < desiredSeedCount) {
             NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
                     this::townstead$isSeed, ItemStack::getCount, farmAnchor);
+        }
+        if (!townstead$hasHarvestTool(inv)) {
+            NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
+                    this::townstead$isHarvestTool, ItemStack::getCount, farmAnchor);
         }
         if (TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get() && townstead$findWaterBucketSlot(inv) < 0) {
             NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
