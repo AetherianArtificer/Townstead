@@ -28,6 +28,8 @@ replay_pid*
 
 # Claude
 .claude/
+CLAUDE.md
+docs/
 
 # OS
 .DS_Store
