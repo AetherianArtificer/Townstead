@@ -156,6 +156,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (targetPos == null || !townstead$isTargetStillValid(level, villager, gameTime)) {
             townstead$acquireTarget(level, villager, gameTime, true);
             if (targetPos == null) {
+                townstead$clearMovementIntent(villager);
                 townstead$maybeAnnounceRequest(level, villager, gameTime);
                 return;
             }
@@ -219,6 +220,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         recentlyWorkedCells.clear();
         targetRetries.clear();
         targetBlacklistUntil.clear();
+        townstead$clearMovementIntent(villager);
         townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
     }
 
@@ -226,6 +228,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (farmAnchor == null) {
             actionType = ActionType.NONE;
             targetPos = null;
+            townstead$clearMovementIntent(villager);
             townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_VALID_TARGET);
             return;
         }
@@ -264,6 +267,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (!cachedHasSeed) {
             actionType = ActionType.NONE;
             targetPos = null;
+            townstead$clearMovementIntent(villager);
             townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_SEEDS);
             nextAcquireTick = gameTime + townstead$idleBackoffTicks();
             return;
@@ -272,6 +276,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (!cachedHasHoe) {
             actionType = ActionType.NONE;
             targetPos = null;
+            townstead$clearMovementIntent(villager);
             townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_TOOL);
             nextAcquireTick = gameTime + townstead$idleBackoffTicks();
             return;
@@ -307,13 +312,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (townstead$isInventoryMostlyFull(villager.getInventory())
                 || (townstead$hasStockableOutput(villager.getInventory()) && (gameTime - lastStockTick) >= STOCK_MIN_INTERVAL_TICKS)) {
             actionType = ActionType.STOCK;
-            targetPos = farmAnchor;
+            // Stocking uses nearby insertion and should not pull villager onto the composter.
+            targetPos = villager.blockPosition().immutable();
             townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
             return;
         }
 
         actionType = ActionType.NONE;
         targetPos = null;
+        townstead$clearMovementIntent(villager);
         townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_VALID_TARGET);
         nextAcquireTick = gameTime + townstead$idleBackoffTicks();
     }
@@ -361,6 +368,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         }
         actionType = ActionType.NONE;
         targetPos = null;
+        townstead$clearMovementIntent(villager);
         nextAcquireTick = gameTime + townstead$idleBackoffTicks();
         townstead$resetPathTracking();
     }
@@ -376,6 +384,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         long key = pos.asLong();
         targetRetries.remove(key);
         targetBlacklistUntil.remove(key);
+    }
+
+    private void townstead$clearMovementIntent(VillagerEntityMCA villager) {
+        villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+        villager.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
     }
 
     private boolean townstead$isTargetStillValid(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
