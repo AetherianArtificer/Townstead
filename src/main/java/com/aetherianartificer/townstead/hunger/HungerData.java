@@ -280,6 +280,7 @@ public final class HungerData {
         NONE("none", "townstead.butcher.blocked.none"),
         NO_SMOKER("no_smoker", "townstead.butcher.blocked.no_smoker"),
         NO_INPUT("no_input", "townstead.butcher.blocked.no_input"),
+        UNSUPPORTED_RECIPE("unsupported_recipe", "townstead.butcher.blocked.unsupported_recipe"),
         NO_FUEL("no_fuel", "townstead.butcher.blocked.no_fuel"),
         OUTPUT_BLOCKED("output_blocked", "townstead.butcher.blocked.output_blocked"),
         UNREACHABLE("unreachable", "townstead.butcher.blocked.unreachable"),

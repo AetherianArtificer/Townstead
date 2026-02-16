@@ -68,6 +68,8 @@
   "dialogue.chat.butcher_request.no_input/5": "My supplies are spent. I need fresh stock.",
   "dialogue.chat.butcher_request.no_input/6": "No raw food on hand right now, %1$s.",
 
+  "dialogue.chat.butcher_request.unsupported_recipe_item": "I don't know how to cook %2$s yet!",
+
   "dialogue.chat.butcher_request.no_fuel/1": "The smoker has gone cold. I need fuel.",
   "dialogue.chat.butcher_request.no_fuel/2": "No coal or charcoal left for the fire.",
   "dialogue.chat.butcher_request.no_fuel/3": "I can keep cooking once the hearth is fed.",

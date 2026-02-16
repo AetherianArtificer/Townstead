@@ -6,10 +6,16 @@ import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
+import com.aetherianartificer.townstead.hunger.profile.ButcherProfileDataLoader;
+import com.aetherianartificer.townstead.hunger.profile.ButcherProfileRegistry;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.FarmerProgressData;
 import com.aetherianartificer.townstead.hunger.ButcherProgressData;
+import com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore;
+import com.aetherianartificer.townstead.hunger.ButcherPolicyData;
+import com.aetherianartificer.townstead.hunger.ButcherPolicySetPayload;
+import com.aetherianartificer.townstead.hunger.ButcherPolicySyncPayload;
 import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.ButcherStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
@@ -65,11 +71,13 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         registerDialogueConditions();
         FarmPatternRegistry.bootstrap();
+        ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new FarmPatternDataLoader());
+        event.addListener(new ButcherProfileDataLoader());
     }
 
     private void registerDialogueConditions() {
@@ -107,6 +115,7 @@ public class Townstead {
     private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
         try {
             Class.forName("net.minecraft.client.Minecraft");
+            modContainer.registerConfig(ModConfig.Type.CLIENT, TownsteadConfig.CLIENT_SPEC);
             TownsteadClient.registerConfigScreen(modContainer);
         } catch (ClassNotFoundException ignored) {
             // Dedicated server: no client config screen.
@@ -135,6 +144,11 @@ public class Townstead {
                 FarmingPolicySyncPayload.STREAM_CODEC,
                 this::handleFarmingPolicySync
         );
+        registrar.playToClient(
+                ButcherPolicySyncPayload.TYPE,
+                ButcherPolicySyncPayload.STREAM_CODEC,
+                this::handleButcherPolicySync
+        );
         registrar.playToServer(
                 HungerSetPayload.TYPE,
                 HungerSetPayload.STREAM_CODEC,
@@ -144,6 +158,11 @@ public class Townstead {
                 FarmingPolicySetPayload.TYPE,
                 FarmingPolicySetPayload.STREAM_CODEC,
                 this::handleFarmingPolicySet
+        );
+        registrar.playToServer(
+                ButcherPolicySetPayload.TYPE,
+                ButcherPolicySetPayload.STREAM_CODEC,
+                this::handleButcherPolicySet
         );
     }
 
@@ -170,6 +189,10 @@ public class Townstead {
 
     private void handleFarmingPolicySync(FarmingPolicySyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> FarmingPolicyClientStore.set(payload.patternId(), payload.tier(), payload.areaCount()));
+    }
+
+    private void handleButcherPolicySync(ButcherPolicySyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ButcherPolicyClientStore.set(payload.profileId(), payload.tier(), payload.areaCount()));
     }
 
     private void handleHungerSet(HungerSetPayload payload, IPayloadContext context) {
@@ -229,6 +252,30 @@ public class Townstead {
         });
     }
 
+    private void handleButcherPolicySet(ButcherPolicySetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            ButcherPolicyData data = ButcherPolicyData.get(sp.serverLevel());
+            if (payload.tier() == -1) {
+                PacketDistributor.sendToPlayer(sp, new ButcherPolicySyncPayload(
+                        data.getDefaultProfileId(),
+                        data.getDefaultTier(),
+                        data.getAreas().size()
+                ));
+                return;
+            }
+
+            if (!sp.hasPermissions(2)) return;
+
+            data.setDefaultPolicy(payload.profileId(), payload.tier());
+            PacketDistributor.sendToPlayer(sp, new ButcherPolicySyncPayload(
+                    data.getDefaultProfileId(),
+                    data.getDefaultTier(),
+                    data.getAreas().size()
+            ));
+        });
+    }
+
     private void onStartTracking(PlayerEvent.StartTracking event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
@@ -261,5 +308,6 @@ public class Townstead {
     private void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
         HungerClientStore.clear();
         FarmingPolicyClientStore.clear();
+        ButcherPolicyClientStore.clear();
     }
 }

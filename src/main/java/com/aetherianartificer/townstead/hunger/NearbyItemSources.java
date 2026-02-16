@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 
@@ -112,6 +113,9 @@ public final class NearbyItemSources {
             if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
 
             BlockEntity be = level.getBlockEntity(pos);
+            // Exclude processing containers from generic storage insertion.
+            // Production tasks (e.g. butcher smoker workflow) target these explicitly.
+            if (townstead$isProcessingContainer(be)) continue;
             if (be instanceof Container container) {
                 insertIntoContainer(container, stack);
                 if (stack.isEmpty()) return true;
@@ -128,6 +132,10 @@ public final class NearbyItemSources {
             }
         }
         return stack.isEmpty();
+    }
+
+    private static boolean townstead$isProcessingContainer(BlockEntity be) {
+        return be instanceof AbstractFurnaceBlockEntity;
     }
 
     private static void insertIntoContainer(Container container, ItemStack stack) {

@@ -1,9 +1,11 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.hunger.profile.ButcherProfileDefinition;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.food.FoodProperties;
@@ -20,21 +22,21 @@ public final class ButcherSupplyManager {
 
     private ButcherSupplyManager() {}
 
-    public static boolean hasRawInput(SimpleContainer inv, ServerLevel level, int tier) {
-        return findRawInputSlot(inv, level, tier) >= 0;
+    public static boolean hasRawInput(SimpleContainer inv, ServerLevel level, int tier, ButcherProfileDefinition profile) {
+        return findRawInputSlot(inv, level, tier, profile) >= 0;
     }
 
-    public static boolean hasFuel(SimpleContainer inv) {
-        return findFuelSlot(inv) >= 0;
+    public static boolean hasFuel(SimpleContainer inv, ButcherProfileDefinition profile) {
+        return findFuelSlot(inv, profile) >= 0;
     }
 
-    public static int findRawInputSlot(SimpleContainer inv, ServerLevel level, int tier) {
+    public static int findRawInputSlot(SimpleContainer inv, ServerLevel level, int tier, ButcherProfileDefinition profile) {
         int bestSlot = -1;
         int bestScore = Integer.MIN_VALUE;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (!isRawInput(stack, level, tier)) continue;
-            int score = rawInputScore(stack);
+            if (!isRawInput(stack, level, tier, profile)) continue;
+            int score = rawInputScore(stack, profile);
             if (score > bestScore) {
                 bestScore = score;
                 bestSlot = i;
@@ -43,12 +45,12 @@ public final class ButcherSupplyManager {
         return bestSlot;
     }
 
-    public static int findFuelSlot(SimpleContainer inv) {
+    public static int findFuelSlot(SimpleContainer inv, ButcherProfileDefinition profile) {
         int bestSlot = -1;
         int bestScore = Integer.MIN_VALUE;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (!isFuel(stack)) continue;
+            if (!isFuel(stack, profile)) continue;
             int score = fuelScore(stack);
             if (score > bestScore) {
                 bestScore = score;
@@ -58,51 +60,63 @@ public final class ButcherSupplyManager {
         return bestSlot;
     }
 
-    public static boolean pullRawInput(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor, int tier) {
+    public static boolean pullRawInput(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor,
+            int tier,
+            ButcherProfileDefinition profile
+    ) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
         return NearbyItemSources.pullSingleToInventory(
                 level,
                 villager,
                 SEARCH_RADIUS,
                 VERTICAL_RADIUS,
-                stack -> isRawInput(stack, level, tier),
-                ButcherSupplyManager::rawInputScore,
+                stack -> isRawInput(stack, level, tier, profile),
+                stack -> rawInputScore(stack, profile),
                 anchor
         );
     }
 
-    public static boolean pullFuel(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+    public static boolean pullFuel(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor, ButcherProfileDefinition profile) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
         return NearbyItemSources.pullSingleToInventory(
                 level,
                 villager,
                 SEARCH_RADIUS,
                 VERTICAL_RADIUS,
-                ButcherSupplyManager::isFuel,
+                stack -> isFuel(stack, profile),
                 ButcherSupplyManager::fuelScore,
                 anchor
         );
     }
 
-    public static boolean hasStockableOutput(SimpleContainer inv) {
+    public static boolean hasStockableOutput(SimpleContainer inv, ButcherProfileDefinition profile) {
         for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (isButcherOutput(inv.getItem(i))) return true;
+            if (isButcherOutput(inv.getItem(i), profile)) return true;
         }
         return false;
     }
 
-    public static boolean offloadOutput(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+    public static boolean offloadOutput(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor,
+            int tier,
+            ButcherProfileDefinition profile
+    ) {
         if (anchor == null) return false;
         boolean movedAny = false;
         SimpleContainer inv = villager.getInventory();
         int reserveFoodSlot = findBestFoodSlot(inv, true);
-        int reserveFuelSlot = findFuelSlot(inv);
-        int reserveInputSlot = findRawInputSlot(inv, level, 5);
+        int reserveFuelSlot = findFuelSlot(inv, profile);
+        int reserveInputSlot = findRawInputSlot(inv, level, tier, profile);
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
-            if (!isButcherOutput(stack)) continue;
+            if (!isButcherOutput(stack, profile)) continue;
             if (i == reserveFuelSlot || i == reserveInputSlot) continue;
             if (i == reserveFoodSlot && stack.getCount() <= FOOD_RESERVE_COUNT) continue;
 
@@ -133,23 +147,44 @@ public final class ButcherSupplyManager {
         return movedAny;
     }
 
-    public static boolean isRawInput(ItemStack stack, ServerLevel level, int tier) {
+    public static boolean isRawInput(ItemStack stack, ServerLevel level, int tier, ButcherProfileDefinition profile) {
         if (stack.isEmpty()) return false;
-        if (isButcherOutput(stack)) return false;
-        if (!isUnlockedForTier(stack, tier)) return false;
-        return level.getRecipeManager().getRecipeFor(
+        if (isButcherOutput(stack, profile)) return false;
+        if (profile != null && profile.hasInputFilters()) {
+            if (!profile.matchesInput(stack)) return false;
+        } else if (!isUnlockedForTier(stack, tier)) {
+            return false;
+        }
+        var recipe = level.getRecipeManager().getRecipeFor(
                 RecipeType.SMOKING,
                 new SingleRecipeInput(stack),
                 level
-        ).isPresent();
+        );
+        if (recipe.isEmpty()) return false;
+
+        ItemStack output = recipe.get().value().assemble(new SingleRecipeInput(stack), level.registryAccess());
+        if (output.isEmpty()) return false;
+        // Guard against no-op or loop recipes (input -> same input) to avoid deadlocks.
+        if (ItemStack.isSameItemSameComponents(output, stack)) return false;
+        // If profile declares output rules, require the smoked result to match those rules.
+        if (profile != null && profile.hasOutputFilters() && !profile.matchesOutput(output)) return false;
+        return true;
     }
 
-    public static boolean isFuel(ItemStack stack) {
-        return !stack.isEmpty() && AbstractFurnaceBlockEntity.isFuel(stack);
-    }
-
-    public static boolean isButcherOutput(ItemStack stack) {
+    public static boolean isFuel(ItemStack stack, ButcherProfileDefinition profile) {
         if (stack.isEmpty()) return false;
+        if (!AbstractFurnaceBlockEntity.isFuel(stack)) return false;
+        if (profile != null && profile.hasFuelFilters()) {
+            return profile.matchesFuel(stack);
+        }
+        return true;
+    }
+
+    public static boolean isButcherOutput(ItemStack stack, ButcherProfileDefinition profile) {
+        if (stack.isEmpty()) return false;
+        if (profile != null && profile.hasOutputFilters() && profile.matchesOutput(stack)) {
+            return true;
+        }
         return stack.is(Items.COOKED_BEEF)
                 || stack.is(Items.COOKED_PORKCHOP)
                 || stack.is(Items.COOKED_MUTTON)
@@ -157,6 +192,33 @@ public final class ButcherSupplyManager {
                 || stack.is(Items.COOKED_RABBIT)
                 || stack.is(Items.COOKED_COD)
                 || stack.is(Items.COOKED_SALMON);
+    }
+
+    public static boolean isValidSmokerInput(ItemStack stack, ServerLevel level, int tier, ButcherProfileDefinition profile) {
+        if (stack.isEmpty()) return true;
+        return isRawInput(stack, level, tier, profile);
+    }
+
+    public static boolean isSmokerBlockerInput(ItemStack stack, ServerLevel level) {
+        if (stack.isEmpty()) return false;
+        return level.getRecipeManager().getRecipeFor(
+                RecipeType.SMOKING,
+                new SingleRecipeInput(stack),
+                level
+        ).isEmpty();
+    }
+
+    public static boolean hasUsableSmokingRecipe(ItemStack stack, ServerLevel level) {
+        if (stack.isEmpty()) return false;
+        var recipe = level.getRecipeManager().getRecipeFor(
+                RecipeType.SMOKING,
+                new SingleRecipeInput(stack),
+                level
+        );
+        if (recipe.isEmpty()) return false;
+        ItemStack output = recipe.get().value().assemble(new SingleRecipeInput(stack), level.registryAccess());
+        if (output.isEmpty()) return false;
+        return !ItemStack.isSameItemSameComponents(output, stack);
     }
 
     private static boolean isPreferredRawFood(ItemStack stack) {
@@ -185,11 +247,15 @@ public final class ButcherSupplyManager {
         return normalizedTier >= 4 && stack.is(Items.BEEF);
     }
 
-    private static int rawInputScore(ItemStack stack) {
+    private static int rawInputScore(ItemStack stack, ButcherProfileDefinition profile) {
         int score = stack.getCount();
         if (stack.is(Items.BEEF) || stack.is(Items.PORKCHOP) || stack.is(Items.MUTTON)) score += 100;
         if (stack.is(Items.CHICKEN) || stack.is(Items.RABBIT)) score += 80;
         if (stack.is(Items.COD) || stack.is(Items.SALMON) || stack.is(Items.TROPICAL_FISH)) score += 60;
+        if (profile != null && profile.hasInputFilters()) {
+            ResourceLocation key = stack.getItem().builtInRegistryHolder().key().location();
+            if (profile.inputItems().contains(key)) score += 20;
+        }
         return score;
     }
 
@@ -208,7 +274,7 @@ public final class ButcherSupplyManager {
         int bestNutrition = -1;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (excludeButcherOutput && isButcherOutput(stack)) continue;
+            if (excludeButcherOutput && isButcherOutput(stack, null)) continue;
             FoodProperties food = stack.get(DataComponents.FOOD);
             if (food == null || food.nutrition() <= 0) continue;
             if (food.nutrition() > bestNutrition) {

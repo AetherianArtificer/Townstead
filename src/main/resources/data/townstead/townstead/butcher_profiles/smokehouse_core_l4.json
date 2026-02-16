@@ -1,0 +1,49 @@
+{
+  "id": "smokehouse_core_l4",
+  "family": "smokehouse_core",
+  "level": 4,
+  "required_tier": 4,
+  "input_filters": {
+    "items": [
+      "minecraft:chicken",
+      "minecraft:rabbit",
+      "minecraft:cod",
+      "minecraft:salmon",
+      "minecraft:porkchop",
+      "minecraft:mutton",
+      "minecraft:beef"
+    ],
+    "tags": []
+  },
+  "fuel_filters": {
+    "items": [
+      "minecraft:charcoal",
+      "minecraft:coal",
+      "minecraft:blaze_rod",
+      "minecraft:dried_kelp_block",
+      "minecraft:coal_block"
+    ],
+    "tags": []
+  },
+  "output_rules": {
+    "items": [
+      "minecraft:cooked_chicken",
+      "minecraft:cooked_rabbit",
+      "minecraft:cooked_cod",
+      "minecraft:cooked_salmon",
+      "minecraft:cooked_porkchop",
+      "minecraft:cooked_mutton",
+      "minecraft:cooked_beef"
+    ]
+  },
+  "throughput_modifiers": {
+    "smoke_wait_scale": 0.85,
+    "stock_interval_scale": 0.85,
+    "request_interval_scale": 0.95
+  },
+  "priority_weights": {
+    "raw_input": 1.15,
+    "fuel": 1.0,
+    "stock": 1.0
+  }
+}

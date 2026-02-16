@@ -15,6 +15,7 @@ public final class TownsteadConfig {
     private TownsteadConfig() {}
 
     public static final ModConfigSpec SERVER_SPEC;
+    public static final ModConfigSpec CLIENT_SPEC;
 
     public static final ModConfigSpec.BooleanValue ENABLE_SELF_INVENTORY_EATING;
     public static final ModConfigSpec.BooleanValue ENABLE_GROUND_ITEM_SOURCING;
@@ -46,6 +47,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_BLOCKS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
+    public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -151,6 +153,19 @@ public final class TownsteadConfig {
         b.pop();
 
         SERVER_SPEC = b.build();
+
+        ModConfigSpec.Builder clientBuilder = new ModConfigSpec.Builder();
+        clientBuilder.push("mood_audio");
+        MUTE_MOOD_VOCALIZATIONS = clientBuilder
+                .comment("Mute villager mood vocalizations tied to laughter/celebration and crying.")
+                .define("muteMoodVocalizations", true);
+        clientBuilder.pop();
+
+        CLIENT_SPEC = clientBuilder.build();
+    }
+
+    public static boolean isMoodVocalizationMuteEnabled() {
+        return MUTE_MOOD_VOCALIZATIONS.get();
     }
 
     private static boolean isValidResourceLocationString(final @NotNull Object o) {

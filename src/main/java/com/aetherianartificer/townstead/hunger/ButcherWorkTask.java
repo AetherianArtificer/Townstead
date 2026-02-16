@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.hunger.profile.ButcherProfileDefinition;
+import com.aetherianartificer.townstead.hunger.profile.ButcherProfileRegistry;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -47,8 +49,10 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         RETURN,
         FETCH_INPUT,
         FETCH_FUEL,
+        UNBLOCK_SMOKER,
         SMOKE,
         COLLECT_OUTPUT,
+        STOCK_SMOKER_OUTPUT,
         STOCK
     }
 
@@ -60,6 +64,7 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     private long lastStockTick = Long.MIN_VALUE;
     private long nextRequestTick;
     private HungerData.ButcherBlockedReason blockedReason = HungerData.ButcherBlockedReason.NONE;
+    private String unsupportedItemName = "";
 
     private long currentTargetKey = Long.MIN_VALUE;
     private double lastTargetDistSq = Double.MAX_VALUE;
@@ -155,17 +160,23 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
 
         townstead$resetPathTracking();
         ActionType executed = actionType;
-        int tier = townstead$butcherTier(villager);
+        ButcherRuntimeContext runtime = townstead$runtime(level, villager);
+        int tier = runtime.effectiveTier();
         switch (executed) {
             case RETURN -> {}
             case FETCH_INPUT -> {
-                if (townstead$doFetchInput(level, villager, tier)) {
+                if (townstead$doFetchInput(level, villager, tier, runtime.profile())) {
                     townstead$awardButcherXp(level, villager, gameTime, 1, "fetch_input");
                 }
             }
             case FETCH_FUEL -> {
-                if (townstead$doFetchFuel(level, villager)) {
+                if (townstead$doFetchFuel(level, villager, runtime.profile())) {
                     townstead$awardButcherXp(level, villager, gameTime, 1, "fetch_fuel");
+                }
+            }
+            case UNBLOCK_SMOKER -> {
+                if (townstead$doUnblockSmoker(level, villager, tier, runtime.profile())) {
+                    townstead$awardButcherXp(level, villager, gameTime, 1, "clear_blocker");
                 }
             }
             case SMOKE -> townstead$awardButcherXp(level, villager, gameTime, 1, "smoke_watch");
@@ -174,8 +185,17 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
                     townstead$awardButcherXp(level, villager, gameTime, 3, "collect_output");
                 }
             }
+            case STOCK_SMOKER_OUTPUT -> {
+                boolean moved = townstead$doStockSmokerOutput(level, villager);
+                if (!moved) {
+                    moved = townstead$doCollectOutput(level, villager);
+                }
+                if (moved) {
+                    townstead$awardButcherXp(level, villager, gameTime, 2, "stock_smoker_output");
+                }
+            }
             case STOCK -> {
-                if (townstead$doStock(level, villager)) {
+                if (townstead$doStock(level, villager, tier, runtime.profile())) {
                     lastStockTick = gameTime;
                     townstead$awardButcherXp(level, villager, gameTime, 2, "stock_output");
                 }
@@ -186,7 +206,7 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         actionType = ActionType.NONE;
         targetPos = null;
         actionCooldown = 10;
-        nextAcquireTick = gameTime + (executed == ActionType.SMOKE ? townstead$smokeWaitTicks(villager, tier) : 0);
+        nextAcquireTick = gameTime + (executed == ActionType.SMOKE ? townstead$smokeWaitTicks(villager, tier, runtime.profile()) : 0);
         townstead$acquireTarget(level, villager, gameTime);
         townstead$maybeAnnounceRequest(level, villager, gameTime);
     }
@@ -205,6 +225,7 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         nextAcquireTick = 0;
         lastStockTick = Long.MIN_VALUE;
         nextRequestTick = 0;
+        unsupportedItemName = "";
         targetRetries.clear();
         targetBlacklistUntil.clear();
         townstead$clearMovementIntent(villager);
@@ -259,24 +280,10 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        if (!smoker.getItem(2).isEmpty() && townstead$hasInventorySpace(villager.getInventory(), smoker.getItem(2))) {
-            actionType = ActionType.COLLECT_OUTPUT;
+        if (!smoker.getItem(2).isEmpty()) {
+            actionType = ActionType.STOCK_SMOKER_OUTPUT;
             targetPos = workPos;
             townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
-            return;
-        }
-
-        if (!smoker.getItem(2).isEmpty() && !townstead$hasInventorySpace(villager.getInventory(), smoker.getItem(2))) {
-            if (townstead$shouldStock(villager, gameTime)) {
-                actionType = ActionType.STOCK;
-                targetPos = workPos;
-                townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
-                return;
-            }
-            actionType = ActionType.NONE;
-            targetPos = null;
-            townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.OUTPUT_BLOCKED);
-            nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
             return;
         }
 
@@ -287,10 +294,28 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
+        ButcherRuntimeContext runtime = townstead$runtime(level, villager);
+        int tier = runtime.effectiveTier();
+        ButcherProfileDefinition profile = runtime.profile();
+
+        if (ButcherSupplyManager.isSmokerBlockerInput(smoker.getItem(0), level)
+                || !ButcherSupplyManager.isFuel(smoker.getItem(1), null) && !smoker.getItem(1).isEmpty()) {
+            ItemStack invalidInput = smoker.getItem(0);
+            ItemStack invalidFuel = smoker.getItem(1);
+            if (!invalidInput.isEmpty() && ButcherSupplyManager.isSmokerBlockerInput(invalidInput, level)) {
+                unsupportedItemName = invalidInput.getHoverName().getString();
+            } else if (!invalidFuel.isEmpty() && !ButcherSupplyManager.isFuel(invalidFuel, null)) {
+                unsupportedItemName = invalidFuel.getHoverName().getString();
+            }
+            actionType = ActionType.UNBLOCK_SMOKER;
+            targetPos = workPos;
+            townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
+            return;
+        }
+
         if (smoker.getItem(0).isEmpty()) {
-            int tier = townstead$butcherTier(villager);
-            if (ButcherSupplyManager.hasRawInput(villager.getInventory(), level, tier)
-                    || ButcherSupplyManager.pullRawInput(level, villager, smokerAnchor, tier)) {
+            if (ButcherSupplyManager.hasRawInput(villager.getInventory(), level, tier, profile)
+                    || ButcherSupplyManager.pullRawInput(level, villager, smokerAnchor, tier, profile)) {
                 actionType = ActionType.FETCH_INPUT;
                 targetPos = workPos;
                 townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
@@ -304,8 +329,8 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         }
 
         if (smoker.getItem(1).isEmpty()) {
-            if (ButcherSupplyManager.hasFuel(villager.getInventory())
-                    || ButcherSupplyManager.pullFuel(level, villager, smokerAnchor)) {
+            if (ButcherSupplyManager.hasFuel(villager.getInventory(), profile)
+                    || ButcherSupplyManager.pullFuel(level, villager, smokerAnchor, profile)) {
                 actionType = ActionType.FETCH_FUEL;
                 targetPos = workPos;
                 townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
@@ -321,14 +346,19 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         actionType = ActionType.SMOKE;
         targetPos = workPos;
         townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
-        nextAcquireTick = gameTime + townstead$smokeWaitTicks(villager, townstead$butcherTier(villager));
+        nextAcquireTick = gameTime + townstead$smokeWaitTicks(villager, tier, profile);
     }
 
-    private boolean townstead$doFetchInput(ServerLevel level, VillagerEntityMCA villager, int tier) {
+    private boolean townstead$doFetchInput(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            int tier,
+            ButcherProfileDefinition profile
+    ) {
         SmokerBlockEntity smoker = townstead$getSmoker(level);
         if (smoker == null) return false;
         if (!smoker.getItem(0).isEmpty()) return false;
-        int slot = ButcherSupplyManager.findRawInputSlot(villager.getInventory(), level, tier);
+        int slot = ButcherSupplyManager.findRawInputSlot(villager.getInventory(), level, tier, profile);
         if (slot < 0) return false;
 
         ItemStack stack = villager.getInventory().getItem(slot);
@@ -339,11 +369,15 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         return true;
     }
 
-    private boolean townstead$doFetchFuel(ServerLevel level, VillagerEntityMCA villager) {
+    private boolean townstead$doFetchFuel(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            ButcherProfileDefinition profile
+    ) {
         SmokerBlockEntity smoker = townstead$getSmoker(level);
         if (smoker == null) return false;
         if (!smoker.getItem(1).isEmpty()) return false;
-        int slot = ButcherSupplyManager.findFuelSlot(villager.getInventory());
+        int slot = ButcherSupplyManager.findFuelSlot(villager.getInventory(), profile);
         if (slot < 0) return false;
 
         ItemStack stack = villager.getInventory().getItem(slot);
@@ -367,17 +401,89 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         return true;
     }
 
-    private boolean townstead$doStock(ServerLevel level, VillagerEntityMCA villager) {
-        return ButcherSupplyManager.offloadOutput(level, villager, smokerAnchor);
+    private boolean townstead$doStockSmokerOutput(ServerLevel level, VillagerEntityMCA villager) {
+        SmokerBlockEntity smoker = townstead$getSmoker(level);
+        if (smoker == null) return false;
+        ItemStack output = smoker.getItem(2);
+        if (output.isEmpty()) return false;
+
+        ItemStack moving = output.copy();
+        NearbyItemSources.insertIntoNearbyStorage(level, villager, moving, 16, 3, smokerAnchor);
+        if (moving.getCount() == output.getCount()) return false;
+        smoker.setItem(2, moving);
+        smoker.setChanged();
+        return true;
+    }
+
+    private boolean townstead$doStock(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            int tier,
+            ButcherProfileDefinition profile
+    ) {
+        return ButcherSupplyManager.offloadOutput(level, villager, smokerAnchor, tier, profile);
+    }
+
+    private boolean townstead$doUnblockSmoker(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            int tier,
+            ButcherProfileDefinition profile
+    ) {
+        SmokerBlockEntity smoker = townstead$getSmoker(level);
+        if (smoker == null) return false;
+        SlotClearResult inputResult = townstead$relocateSmokerSlotIfInvalid(level, villager, smoker, 0, stack ->
+                !ButcherSupplyManager.isSmokerBlockerInput(stack, level));
+        SlotClearResult fuelResult = townstead$relocateSmokerSlotIfInvalid(level, villager, smoker, 1, stack ->
+                ButcherSupplyManager.isFuel(stack, null));
+        if (inputResult == SlotClearResult.CLEARED || fuelResult == SlotClearResult.CLEARED) smoker.setChanged();
+
+        boolean hadBlocker = inputResult != SlotClearResult.NO_BLOCKER || fuelResult != SlotClearResult.NO_BLOCKER;
+        boolean anyFailed = inputResult == SlotClearResult.FAILED || fuelResult == SlotClearResult.FAILED;
+        if (anyFailed) {
+            townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.UNSUPPORTED_RECIPE);
+            return false;
+        }
+        if (hadBlocker) {
+            unsupportedItemName = "";
+            townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
+            return true;
+        }
+        return false;
+    }
+
+    private SlotClearResult townstead$relocateSmokerSlotIfInvalid(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            SmokerBlockEntity smoker,
+            int slotIndex,
+            java.util.function.Predicate<ItemStack> isValid
+    ) {
+        ItemStack stack = smoker.getItem(slotIndex);
+        if (stack.isEmpty() || isValid.test(stack)) return SlotClearResult.NO_BLOCKER;
+
+        ItemStack moving = stack.copy();
+        smoker.setItem(slotIndex, ItemStack.EMPTY);
+
+        NearbyItemSources.insertIntoNearbyStorage(level, villager, moving, 16, 3, smokerAnchor);
+        if (!moving.isEmpty()) {
+            ItemStack remainder = villager.getInventory().addItem(moving);
+            if (!remainder.isEmpty()) {
+                smoker.setItem(slotIndex, remainder);
+                return SlotClearResult.FAILED;
+            }
+        }
+        return SlotClearResult.CLEARED;
     }
 
     private boolean townstead$shouldStock(VillagerEntityMCA villager, long gameTime) {
-        boolean hasOutput = ButcherSupplyManager.hasStockableOutput(villager.getInventory());
+        ButcherRuntimeContext runtime = townstead$runtime((ServerLevel) villager.level(), villager);
+        boolean hasOutput = ButcherSupplyManager.hasStockableOutput(villager.getInventory(), runtime.profile());
         if (!hasOutput) return false;
         if (lastStockTick == Long.MIN_VALUE) return true;
         long elapsed = gameTime - lastStockTick;
         if (elapsed < 0) return true;
-        return elapsed >= townstead$stockIntervalTicks(villager);
+        return elapsed >= townstead$stockIntervalTicks(villager, runtime.profile());
     }
 
     private SmokerBlockEntity townstead$getSmoker(ServerLevel level) {
@@ -438,7 +544,7 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         BlockState state = level.getBlockState(smokerAnchor);
         if (!state.is(Blocks.SMOKER)) return false;
         return switch (actionType) {
-            case RETURN, FETCH_INPUT, FETCH_FUEL, SMOKE, COLLECT_OUTPUT -> true;
+            case RETURN, FETCH_INPUT, FETCH_FUEL, UNBLOCK_SMOKER, SMOKE, COLLECT_OUTPUT, STOCK_SMOKER_OUTPUT -> true;
             case STOCK -> true;
             case NONE -> false;
         };
@@ -551,6 +657,7 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         String key = switch (blockedReason) {
             case NO_SMOKER -> "dialogue.chat.butcher_request.no_smoker/" + (1 + level.random.nextInt(4));
             case NO_INPUT -> "dialogue.chat.butcher_request.no_input/" + (1 + level.random.nextInt(6));
+            case UNSUPPORTED_RECIPE -> null;
             case NO_FUEL -> "dialogue.chat.butcher_request.no_fuel/" + (1 + level.random.nextInt(6));
             case OUTPUT_BLOCKED -> "dialogue.chat.butcher_request.output_blocked/" + (1 + level.random.nextInt(4));
             case UNREACHABLE -> "dialogue.chat.butcher_request.unreachable/" + (1 + level.random.nextInt(6));
@@ -558,6 +665,15 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
             case NO_VALID_TARGET -> "dialogue.chat.butcher_request.no_valid_target/" + (1 + level.random.nextInt(4));
             case NONE -> null;
         };
+        if (blockedReason == HungerData.ButcherBlockedReason.UNSUPPORTED_RECIPE) {
+            String item = unsupportedItemName == null || unsupportedItemName.isBlank() ? "that" : unsupportedItemName;
+            villager.sendChatToAllAround("dialogue.chat.butcher_request.unsupported_recipe_item", item);
+            villager.getLongTermMemory().remember("townstead.butcher_request.any");
+            villager.getLongTermMemory().remember("townstead.butcher_request." + blockedReason.id());
+            int interval = townstead$requestIntervalTicks(villager);
+            nextRequestTick = gameTime + Math.max(200, interval);
+            return;
+        }
         if (key == null) return;
 
         villager.sendChatToAllAround(key);
@@ -574,7 +690,7 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         return tier;
     }
 
-    private int townstead$smokeWaitTicks(VillagerEntityMCA villager, int tier) {
+    private int townstead$smokeWaitTicks(VillagerEntityMCA villager, int tier, ButcherProfileDefinition profile) {
         int base = switch (Math.max(1, Math.min(tier, 5))) {
             case 1 -> SMOKE_WAIT_TICKS;
             case 2 -> 18;
@@ -582,7 +698,8 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
             case 4 -> 14;
             default -> 12;
         };
-        return townstead$scaleInt(base, townstead$profile(villager).throughputScale(), 8, 40);
+        double profileScale = profile == null ? 1.0d : profile.throughputModifier();
+        return townstead$scaleInt(base, townstead$profile(villager).throughputScale() * profileScale, 8, 40);
     }
 
     private int townstead$idleBackoffTicks(VillagerEntityMCA villager) {
@@ -591,11 +708,14 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
 
     private int townstead$requestIntervalTicks(VillagerEntityMCA villager) {
         int base = TownsteadConfig.FARMER_REQUEST_INTERVAL_TICKS.get();
-        return townstead$scaleInt(base, townstead$profile(villager).requestIntervalScale(), 200, 72000);
+        ButcherProfileDefinition profile = townstead$runtime((ServerLevel) villager.level(), villager).profile();
+        double profileScale = profile == null ? 1.0d : profile.requestIntervalModifier();
+        return townstead$scaleInt(base, townstead$profile(villager).requestIntervalScale() * profileScale, 200, 72000);
     }
 
-    private int townstead$stockIntervalTicks(VillagerEntityMCA villager) {
-        return townstead$scaleInt(STOCK_INTERVAL_TICKS, townstead$profile(villager).stockCadenceScale(), 80, 1200);
+    private int townstead$stockIntervalTicks(VillagerEntityMCA villager, ButcherProfileDefinition profile) {
+        double profileScale = profile == null ? 1.0d : profile.stockCadenceModifier();
+        return townstead$scaleInt(STOCK_INTERVAL_TICKS, townstead$profile(villager).stockCadenceScale() * profileScale, 80, 1200);
     }
 
     private ButcherPersonalityProfile townstead$profile(VillagerEntityMCA villager) {
@@ -627,5 +747,26 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     private Activity townstead$getCurrentScheduleActivity(VillagerEntityMCA self) {
         long dayTime = self.level().getDayTime() % 24000L;
         return self.getBrain().getSchedule().getActivityAt((int) dayTime);
+    }
+
+    private ButcherRuntimeContext townstead$runtime(ServerLevel level, VillagerEntityMCA villager) {
+        int villagerTier = townstead$butcherTier(villager);
+        if (smokerAnchor == null) {
+            ButcherProfileDefinition fallback = ButcherProfileRegistry.resolveForTier(ButcherProfileRegistry.DEFAULT_PROFILE_ID, villagerTier);
+            return new ButcherRuntimeContext(villagerTier, fallback);
+        }
+
+        ButcherPolicyData.ResolvedButcherPolicy policy = ButcherPolicyData.get(level).resolveForAnchor(smokerAnchor);
+        int effectiveTier = Math.max(1, Math.min(5, Math.min(villagerTier, policy.tier())));
+        ButcherProfileDefinition profile = ButcherProfileRegistry.resolveForTier(policy.profileId(), effectiveTier);
+        return new ButcherRuntimeContext(effectiveTier, profile);
+    }
+
+    private record ButcherRuntimeContext(int effectiveTier, ButcherProfileDefinition profile) {}
+
+    private enum SlotClearResult {
+        NO_BLOCKER,
+        CLEARED,
+        FAILED
     }
 }

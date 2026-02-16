@@ -1,6 +1,7 @@
 # Gradle
 .gradle/
 .gradle-user/
+.gradle-local/
 .cache/
 build/
 runs/
