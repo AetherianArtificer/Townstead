@@ -7,7 +7,10 @@
     "VillagerHungerMixin"
   ],
   "client": [
+    "BlueprintScreenMixin",
+    "LegacyImageButtonMixin",
     "accessor.AbstractDynamicScreenAccessor",
+    "accessor.BlueprintScreenAccessor",
     "accessor.InteractScreenAccessor",
     "InteractScreenMixin",
     "VillagerEditorMixin"

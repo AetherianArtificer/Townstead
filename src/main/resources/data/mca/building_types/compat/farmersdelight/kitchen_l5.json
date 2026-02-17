@@ -1,0 +1,16 @@
+{
+  "color": "ffe6c468",
+  "visible": true,
+  "priority": 4,
+  "icon": true,
+  "iconU": 12,
+  "iconV": 3,
+  "noBeds": true,
+  "blocks": {
+    "farmersdelight:stove": 1,
+    "#townstead:compat/farmersdelight/kitchen_heat_sources": 2,
+    "#townstead:compat/farmersdelight/kitchen_workstations": 2,
+    "#townstead:compat/farmersdelight/kitchen_storage": 2,
+    "#townstead:compat/farmersdelight/kitchen_prep_blocks": 1
+  }
+}

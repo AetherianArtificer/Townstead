@@ -4,13 +4,20 @@ import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDefinition;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
+import com.aetherianartificer.townstead.mixin.accessor.BlueprintScreenAccessor;
 import net.conczin.mca.client.gui.BlueprintScreen;
+import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.util.compat.ButtonWidget;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,10 +29,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Mixin(BlueprintScreen.class)
 public abstract class BlueprintScreenMixin extends Screen {
@@ -38,6 +47,10 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique private static final int NAV_BUTTON_STEP = 22;
     @Unique private static final int NAV_VISIBLE_ROWS = 6;
     @Unique private static final long POLICY_DEBOUNCE_NANOS = 150_000_000L; // 150ms
+    @Unique private static final String KITCHEN_TYPE_PREFIX = "compat/farmersdelight/kitchen_l";
+    @Unique private static final int KITCHEN_ICON_U = 240;
+    @Unique private static final int KITCHEN_ICON_V = 180;
+    @Unique private static final ResourceLocation KITCHEN_MAP_ICON_ITEM = ResourceLocation.fromNamespaceAndPath("farmersdelight", "cooking_pot");
 
     @Unique private final List<Button> townstead$navButtons = new ArrayList<>();
     @Unique private final Map<Button, Integer> townstead$navBaseY = new IdentityHashMap<>();
@@ -71,6 +84,9 @@ public abstract class BlueprintScreenMixin extends Screen {
         } else {
             townstead$farmPatternValue = null;
         }
+        if ("catalog".equals(this.page)) {
+            townstead$applyKitchenTierCatalogVisibility();
+        }
         if (townstead$farmingNavButton != null) {
             townstead$farmingNavButton.active = !TOWNSTEAD_FARMING_PAGE.equals(this.page);
         }
@@ -89,6 +105,30 @@ public abstract class BlueprintScreenMixin extends Screen {
         context.drawCenteredString(this.font, Component.translatable("gui.blueprint.farming"), cx, cy, 0xFFFFFF);
         context.drawCenteredString(this.font, Component.translatable("townstead.blueprint.farming.pattern"), cx, cy + 14, 0xA0A0A0);
         context.drawCenteredString(this.font, Component.translatable("townstead.blueprint.farming.tier.auto"), cx, cy + 38, 0xA0A0A0);
+    }
+
+    @Inject(method = "drawBuildingIcon", at = @At("HEAD"), cancellable = true)
+    private void townstead$drawKitchenBuildingIcon(
+            GuiGraphics context,
+            ResourceLocation texture,
+            int x,
+            int y,
+            int u,
+            int v,
+            CallbackInfo ci
+    ) {
+        if (u != KITCHEN_ICON_U || v != KITCHEN_ICON_V) return;
+        Item item = BuiltInRegistries.ITEM.get(KITCHEN_MAP_ICON_ITEM);
+        if (item == null) return;
+        ItemStack stack = new ItemStack(item);
+        if (stack.isEmpty()) return;
+        // Match MCA map icon visual weight (smaller than full 16x16 item render).
+        context.pose().pushPose();
+        context.pose().translate(x - 6.0, y - 6.0, 0.0);
+        context.pose().scale(0.75f, 0.75f, 1.0f);
+        context.renderItem(stack, 0, 0);
+        context.pose().popPose();
+        ci.cancel();
     }
 
     @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
@@ -269,5 +309,44 @@ public abstract class BlueprintScreenMixin extends Screen {
                     .append(part.substring(1));
         }
         return out.toString();
+    }
+
+    @Unique
+    private void townstead$applyKitchenTierCatalogVisibility() {
+        BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
+        Set<String> builtTypes = new HashSet<>();
+        if (accessor.townstead$getVillage() != null) {
+            for (Building building : accessor.townstead$getVillage().getBuildings().values()) {
+                builtTypes.add(building.getType());
+            }
+        }
+        for (Button button : accessor.townstead$getCatalogButtons()) {
+            int tier = townstead$kitchenTierFromButton(button);
+            if (tier <= 0) continue;
+            button.visible = townstead$isKitchenTierUnlocked(tier, builtTypes);
+        }
+    }
+
+    @Unique
+    private int townstead$kitchenTierFromButton(Button button) {
+        if (button == null) return -1;
+        Component message = button.getMessage();
+        if (message == null) return -1;
+        if (!(message.getContents() instanceof TranslatableContents translatable)) return -1;
+        String key = translatable.getKey();
+        String expectedPrefix = "buildingType." + KITCHEN_TYPE_PREFIX;
+        if (!key.startsWith(expectedPrefix)) return -1;
+        String suffix = key.substring(expectedPrefix.length());
+        try {
+            return Integer.parseInt(suffix);
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
+    }
+
+    @Unique
+    private boolean townstead$isKitchenTierUnlocked(int tier, Set<String> builtTypes) {
+        if (tier <= 1) return true;
+        return builtTypes.contains(KITCHEN_TYPE_PREFIX + (tier - 1));
     }
 }
