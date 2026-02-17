@@ -248,6 +248,9 @@ public abstract class BlueprintScreenMixin extends Screen {
 
         BuildingType selected = townstead$getSelectedCatalogEntry();
         if (selected == null) return;
+        int detailsMidY = detailsY + ((detailsBottom - detailsY) / 2);
+        context.fill(detailsX + 1, detailsMidY, detailsRight - 1, detailsMidY + 1, 0x446E86A5);
+
         int detailsTextX = detailsX + 4;
         int detailsTextY = detailsY + 4;
         Component nameComponent = Component.literal(townstead$displayBuildingName(selected.name()));
@@ -280,9 +283,10 @@ public abstract class BlueprintScreenMixin extends Screen {
         int scaledDescW = (int) Math.floor((CATALOG_DETAILS_W - 8) / 0.85f);
         context.drawWordWrap(this.font, descComponent, scaledDescX, scaledDescY, scaledDescW, 0xA8A8A8);
         context.pose().popPose();
-        detailsTextY += Math.max(this.font.lineHeight + 2, (int) Math.ceil(this.font.split(descComponent, CATALOG_DETAILS_W - 8).size() * this.font.lineHeight * 0.85f) + 4);
-        context.drawString(this.font, Component.literal("Needs"), detailsTextX, detailsTextY, 0xD0D0D0);
-        detailsTextY += this.font.lineHeight + 1;
+
+        int needsHeaderY = detailsMidY + 6;
+        context.drawString(this.font, Component.literal("Needs"), detailsTextX, needsHeaderY, 0xD0D0D0);
+        detailsTextY = needsHeaderY + this.font.lineHeight + 4;
         long ticker = this.minecraft != null && this.minecraft.level != null ? this.minecraft.level.getGameTime() : System.currentTimeMillis() / 50L;
         int reqIndex = 0;
         String hoveredRequirement = null;
@@ -307,7 +311,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             context.drawString(this.font, Component.literal(qtyText), qtyX, reqTextY, 0xE3D18A);
             context.drawString(this.font, Component.literal(line), qtyX + 18, reqTextY, 0x9AD0FF);
             context.pose().popPose();
-            int rowH = (int) Math.ceil(this.font.lineHeight * 0.72f) + 1;
+            int rowH = (int) Math.ceil(this.font.lineHeight * 0.72f) + 4;
             int rowLeft = detailsTextX + 14;
             int rowRight = detailsRight - 4;
             int rowTop = detailsTextY - 1;
