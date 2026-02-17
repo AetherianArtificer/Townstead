@@ -51,6 +51,8 @@ import java.util.stream.Collectors;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.net.URL;
+import java.util.Enumeration;
 
 @Mixin(BlueprintScreen.class)
 public abstract class BlueprintScreenMixin extends Screen {
@@ -134,7 +136,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Inject(method = "setPage", at = @At("TAIL"))
     private void townstead$injectFarmingPage(String pageName, CallbackInfo ci) {
         townstead$collectNavButtons();
-        townstead$ensureFarmingNavButton();
         townstead$applyNavScroll();
 
         if (TOWNSTEAD_FARMING_PAGE.equals(this.page)) {
@@ -144,6 +145,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$addFarmingPageControls();
             townstead$setNavVisible(true);
         } else if (TOWNSTEAD_CATALOG_PAGE.equals(this.page)) {
+            townstead$nodeItemIconCache.clear();
             townstead$buildCatalogEntries();
             townstead$buildCatalogNodes();
             townstead$addCatalogControls();
@@ -157,9 +159,6 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$catalogZoomInButton = null;
             townstead$catalogZoomOutButton = null;
             townstead$setNavVisible(true);
-        }
-        if (townstead$farmingNavButton != null) {
-            townstead$farmingNavButton.active = !TOWNSTEAD_FARMING_PAGE.equals(this.page);
         }
         for (Button b : townstead$navButtons) {
             if (!(b.getMessage().getContents() instanceof TranslatableContents t)) continue;
@@ -627,11 +626,6 @@ public abstract class BlueprintScreenMixin extends Screen {
             Item item = BuiltInRegistries.ITEM.get(configured.get());
             if (item != null) return new ItemStack(item);
         }
-        ResourceLocation fallbackId = townstead$fallbackNodeItemForType(type.name());
-        if (fallbackId != null && BuiltInRegistries.ITEM.containsKey(fallbackId)) {
-            Item item = BuiltInRegistries.ITEM.get(fallbackId);
-            if (item != null) return new ItemStack(item);
-        }
         for (ResourceLocation requirement : type.getGroups().keySet()) {
             if (BuiltInRegistries.BLOCK.containsKey(requirement)) {
                 Item item = BuiltInRegistries.BLOCK.get(requirement).asItem();
@@ -647,59 +641,35 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private Optional<ResourceLocation> townstead$nodeItemForType(String buildingTypeName) {
-        if (townstead$nodeItemIconCache.containsKey(buildingTypeName)) {
-            return townstead$nodeItemIconCache.get(buildingTypeName);
+        Optional<ResourceLocation> cached = townstead$nodeItemIconCache.get(buildingTypeName);
+        if (cached != null && cached.isPresent()) {
+            return cached;
         }
         Optional<ResourceLocation> result = Optional.empty();
-        if (this.minecraft != null) {
-            try {
-                String path = "/data/mca/building_types/" + buildingTypeName + ".json";
-                try (InputStream in = BlueprintScreenMixin.class.getResourceAsStream(path)) {
-                    if (in != null) {
-                        try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+        try {
+            String relPath = "data/mca/building_types/" + buildingTypeName + ".json";
+            ClassLoader cl = BlueprintScreenMixin.class.getClassLoader();
+            if (cl != null) {
+                Enumeration<URL> urls = cl.getResources(relPath);
+                while (urls.hasMoreElements()) {
+                    URL url = urls.nextElement();
+                    try (InputStream in = url.openStream();
+                         InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
                         JsonObject obj = JsonParser.parseReader(reader).getAsJsonObject();
                         if (obj.has("townsteadNodeItem")) {
                             result = Optional.of(ResourceLocation.parse(obj.get("townsteadNodeItem").getAsString()));
+                            break;
                         }
                     }
                 }
-                }
-            } catch (Exception ignored) {
-                result = Optional.empty();
             }
+        } catch (Exception ignored) {
+            result = Optional.empty();
         }
-        townstead$nodeItemIconCache.put(buildingTypeName, result);
+        if (result.isPresent()) {
+            townstead$nodeItemIconCache.put(buildingTypeName, result);
+        }
         return result;
-    }
-
-    @Unique
-    private ResourceLocation townstead$fallbackNodeItemForType(String buildingTypeName) {
-        if (!buildingTypeName.startsWith(KITCHEN_TYPE_PREFIX)) return null;
-        int tier = -1;
-        try {
-            tier = Integer.parseInt(buildingTypeName.substring(KITCHEN_TYPE_PREFIX.length()));
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-        return switch (tier) {
-            case 1 -> ResourceLocation.fromNamespaceAndPath("minecraft", "campfire");
-            case 2 -> ResourceLocation.fromNamespaceAndPath("farmersdelight", "cutting_board");
-            case 3 -> ResourceLocation.fromNamespaceAndPath("farmersdelight", "cooking_pot");
-            case 4, 5 -> townstead$firstExistingItem(
-                    ResourceLocation.fromNamespaceAndPath("farmersdelight", "iron_knife"),
-                    ResourceLocation.fromNamespaceAndPath("farmersdelight", "diamond_knife"),
-                    ResourceLocation.fromNamespaceAndPath("farmersdelight", "flint_knife")
-            );
-            default -> null;
-        };
-    }
-
-    @Unique
-    private ResourceLocation townstead$firstExistingItem(ResourceLocation... ids) {
-        for (ResourceLocation id : ids) {
-            if (BuiltInRegistries.ITEM.containsKey(id)) return id;
-        }
-        return null;
     }
 
     @Unique
