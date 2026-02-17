@@ -5,6 +5,7 @@
   "icon": true,
   "iconU": 12,
   "iconV": 3,
+  "townsteadNodeItem": "farmersdelight:iron_knife",
   "noBeds": true,
   "blocks": {
     "farmersdelight:stove": 1,

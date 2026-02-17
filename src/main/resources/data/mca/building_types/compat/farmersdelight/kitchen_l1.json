@@ -5,6 +5,7 @@
   "icon": true,
   "iconU": 12,
   "iconV": 3,
+  "townsteadNodeItem": "minecraft:campfire",
   "noBeds": true,
   "blocks": {
     "#townstead:compat/farmersdelight/kitchen_heat_sources": 1,

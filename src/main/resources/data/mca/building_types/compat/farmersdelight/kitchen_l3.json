@@ -5,6 +5,7 @@
   "icon": true,
   "iconU": 12,
   "iconV": 3,
+  "townsteadNodeItem": "farmersdelight:cooking_pot",
   "noBeds": true,
   "blocks": {
     "#townstead:compat/farmersdelight/kitchen_heat_sources": 2,
