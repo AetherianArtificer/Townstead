@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
+import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.mixin.accessor.AbstractDynamicScreenAccessor;
 import com.aetherianartificer.townstead.mixin.accessor.InteractScreenAccessor;
 import net.conczin.mca.client.gui.InteractScreen;
@@ -31,9 +32,10 @@ public abstract class InteractScreenMixin extends Screen {
     private static final ResourceLocation FOOD_FULL = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_full.png");
     private static final ResourceLocation FOOD_HALF = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_half.png");
     private static final ResourceLocation FOOD_EMPTY = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_empty.png");
-    private static final int HUNGER_ICON_X = 45;
+    private static final int HUNGER_ICON_X = 70;
     private static final int HUNGER_ICON_Y = 120;
     private static final int HUNGER_ICON_SIZE = 24;
+    private static final float HUNGER_ICON_SCALE = 16.0f / 9.0f;
 
     @Shadow @Final private VillagerLike<?> villager;
 
@@ -54,7 +56,8 @@ public abstract class InteractScreenMixin extends Screen {
         int tier;
         if (mca.getVillagerData().getProfession() == VillagerProfession.FARMER) {
             tier = Math.max(1, HungerClientStore.getFarmerTier(mca.getId()));
-        } else if (mca.getVillagerData().getProfession() == VillagerProfession.BUTCHER) {
+        } else if (mca.getVillagerData().getProfession() == VillagerProfession.BUTCHER
+                || FarmersDelightCookAssignment.isExternalCookProfession(mca.getVillagerData().getProfession())) {
             tier = Math.max(1, HungerClientStore.getButcherTier(mca.getId()));
         } else {
             return base;
@@ -89,7 +92,7 @@ public abstract class InteractScreenMixin extends Screen {
                             hunger
                     )
                     .withStyle(Style.EMPTY.withColor(state.getColor()));
-            ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, hungerLabel, "happyEmerald");
+            ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, hungerLabel, "hunger");
         }
     }
 
@@ -155,13 +158,19 @@ public abstract class InteractScreenMixin extends Screen {
     private void townstead$drawHungerIcon(GuiGraphics context, CallbackInfo ci) {
         int hunger = HungerClientStore.get(villager.asEntity().getId());
         ResourceLocation sprite = townstead$hungerIconSprite(HungerData.getState(hunger));
-        int iconX = HUNGER_ICON_X + 7;
-        int iconY = HUNGER_ICON_Y + 7;
-        context.blit(sprite, iconX, iconY, 0, 0, 9, 9, 9, 9);
+        int iconX = HUNGER_ICON_X + ((HUNGER_ICON_SIZE - 16) / 2);
+        int iconY = HUNGER_ICON_Y + ((HUNGER_ICON_SIZE - 16) / 2);
+
+        var pose = context.pose();
+        pose.pushPose();
+        pose.translate(iconX, iconY, 0);
+        pose.scale(HUNGER_ICON_SCALE, HUNGER_ICON_SCALE, 1.0f);
+        context.blit(sprite, 0, 0, 0, 0, 9, 9, 9, 9);
+        pose.popPose();
     }
 
     private boolean townstead$isHoveringHungerIcon() {
-        return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("happyEmerald");
+        return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("hunger");
     }
 
     private ResourceLocation townstead$hungerIconSprite(HungerData.HungerState state) {

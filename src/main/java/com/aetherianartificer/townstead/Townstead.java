@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead;
 
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
+import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
@@ -69,6 +70,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(this::onClientDisconnect);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
+        NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         registerDialogueConditions();
         FarmPatternRegistry.bootstrap();
         ButcherProfileRegistry.bootstrap();

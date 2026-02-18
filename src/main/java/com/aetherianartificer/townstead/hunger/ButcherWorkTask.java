@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileDefinition;
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileRegistry;
 import com.google.common.collect.ImmutableMap;
@@ -83,7 +84,11 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        VillagerProfession profession = villager.getVillagerData().getProfession();
+        boolean isButcher = profession == VillagerProfession.BUTCHER;
+        boolean isCook = FarmersDelightCookAssignment.isExternalCookProfession(profession);
+        if (!isButcher && !isCook) return false;
+        if (isCook && !FarmersDelightCookAssignment.canVillagerWorkAsCook(level, villager)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         return townstead$findNearestSmoker(level, villager, level.getGameTime()) != null;
