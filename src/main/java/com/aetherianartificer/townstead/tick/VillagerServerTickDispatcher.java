@@ -9,5 +9,6 @@ public final class VillagerServerTickDispatcher {
         if (villager.level().isClientSide) return;
         CookAutoAssignTicker.tick(villager);
         HungerVillagerTicker.tick(villager);
+        ProfessionProgressMemoryTicker.tick(villager);
     }
 }

@@ -186,6 +186,8 @@
   "townstead.blueprint.farming.tier.label": "Tier",
   "townstead.blueprint.farming.tier.auto": "Tier: Auto (Farmer Progression)",
   "townstead.blueprint.farming.tier": "Tier %s",
+  "townstead.blueprint.upgradeBuilding": "Upgrade Building",
+  "townstead.blueprint.upgradeBuilding.tooltip": "Upgrade the building you are standing in to the highest available tier you currently satisfy.",
   "townstead.farming.family.starter_rows": "Starter Rows",
   "townstead.farming.family.compact_plots": "Compact Plots",
   "townstead.farming.family.market_garden": "Market Garden",

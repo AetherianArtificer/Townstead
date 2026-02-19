@@ -1,8 +1,10 @@
 package com.aetherianartificer.townstead.mixin.accessor;
 
 import net.conczin.mca.client.gui.BlueprintScreen;
+import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.client.gui.components.Button;
+import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
@@ -15,4 +17,10 @@ public interface BlueprintScreenAccessor {
 
     @Accessor("catalogButtons")
     List<Button> townstead$getCatalogButtons();
+
+    @Invoker("setPage")
+    void townstead$invokeSetPage(String page);
+
+    @Invoker("getBlockName")
+    net.minecraft.network.chat.Component townstead$invokeGetBlockName(net.minecraft.resources.ResourceLocation id);
 }

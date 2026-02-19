@@ -9,6 +9,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.conczin.mca.MCA;
 import net.conczin.mca.client.gui.BlueprintScreen;
+import net.conczin.mca.client.gui.widget.TooltipButtonWidget;
+import net.conczin.mca.network.Network;
+import net.conczin.mca.network.c2s.GetVillageRequest;
+import net.conczin.mca.network.c2s.ReportBuildingMessage;
 import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.server.world.data.Building;
@@ -17,6 +21,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -26,6 +31,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.tags.TagKey;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -90,6 +97,7 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique private Button townstead$catalogZoomOutButton;
     @Unique private Button townstead$catalogNeedsPrevButton;
     @Unique private Button townstead$catalogNeedsNextButton;
+    @Unique private Button townstead$upgradeBuildingButton;
     @Unique private String townstead$catalogReturnPage = "map";
 
     @Unique private List<String> townstead$farmingFamilies = List.of();
@@ -157,6 +165,9 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$addCatalogControls();
             townstead$catalogNeedsPage = 0;
             townstead$setNavVisible(false);
+        } else if ("map".equals(this.page)) {
+            townstead$addUpgradeBuildingControl();
+            townstead$setNavVisible(true);
         } else {
             townstead$farmPatternValue = null;
             townstead$catalogNodes.clear();
@@ -168,6 +179,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$catalogNeedsPrevButton = null;
             townstead$catalogNeedsNextButton = null;
             townstead$catalogNeedsPage = 0;
+            townstead$upgradeBuildingButton = null;
             townstead$setNavVisible(true);
         }
         for (Button b : townstead$navButtons) {
@@ -191,6 +203,12 @@ public abstract class BlueprintScreenMixin extends Screen {
         context.drawCenteredString(this.font, Component.translatable("gui.blueprint.farming"), cx, cy, 0xFFFFFF);
         context.drawCenteredString(this.font, Component.translatable("townstead.blueprint.farming.pattern"), cx, cy + 14, 0xA0A0A0);
         context.drawCenteredString(this.font, Component.translatable("townstead.blueprint.farming.tier.auto"), cx, cy + 38, 0xA0A0A0);
+    }
+
+    @Inject(method = "render", at = @At("TAIL"))
+    private void townstead$refreshMapUpgradeButton(GuiGraphics context, int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
+        if (!"map".equals(this.page) || townstead$upgradeBuildingButton == null) return;
+        townstead$upgradeBuildingButton.active = townstead$upgradeTargetTypeAtPlayer() != null;
     }
 
     @Inject(method = "render", at = @At("TAIL"))
@@ -594,6 +612,126 @@ public abstract class BlueprintScreenMixin extends Screen {
                     if (townstead$catalogNeedsPage < (pages - 1)) townstead$catalogNeedsPage++;
                 }
         ));
+    }
+
+    @Unique
+    private void townstead$addUpgradeBuildingControl() {
+        int bx = this.width / 2 + 180 - 64 - 16;
+        int by = this.height / 2 - 56 + 22 * 6;
+        townstead$upgradeBuildingButton = addRenderableWidget(new TooltipButtonWidget(
+                bx,
+                by,
+                96,
+                20,
+                Component.translatable("townstead.blueprint.upgradeBuilding"),
+                Component.translatable("townstead.blueprint.upgradeBuilding.tooltip"),
+                b -> townstead$tryUpgradeCurrentBuilding()
+        ));
+        String next = townstead$upgradeTargetTypeAtPlayer();
+        townstead$upgradeBuildingButton.active = next != null;
+    }
+
+    @Unique
+    private void townstead$tryUpgradeCurrentBuilding() {
+        String nextType = townstead$upgradeTargetTypeAtPlayer();
+        if (nextType == null) return;
+        Network.sendToServer(new ReportBuildingMessage(ReportBuildingMessage.Action.FORCE_TYPE, nextType));
+        Network.sendToServer(new GetVillageRequest());
+        BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
+        accessor.townstead$invokeSetPage("map");
+    }
+
+    @Unique
+    private String townstead$upgradeTargetTypeAtPlayer() {
+        if (this.minecraft == null || this.minecraft.player == null) return null;
+        BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
+        if (accessor.townstead$getVillage() == null) return null;
+        BlockPos pos = this.minecraft.player.blockPosition();
+        for (Building building : accessor.townstead$getVillage().getBuildings().values()) {
+            if (!building.containsPos(pos)) continue;
+            return townstead$highestSatisfiableUpgradeType(building);
+        }
+        return null;
+    }
+
+    @Unique
+    private String townstead$highestSatisfiableUpgradeType(Building building) {
+        String current = building.getType();
+        if (current == null) return null;
+        int idx = current.lastIndexOf("_l");
+        if (idx < 0 || idx >= current.length() - 2) return null;
+        String tierText = current.substring(idx + 2);
+        if (!tierText.chars().allMatch(Character::isDigit)) return null;
+
+        int startTier;
+        try {
+            startTier = Integer.parseInt(tierText);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+        if (startTier <= 0) return null;
+
+        String prefix = current.substring(0, idx + 2);
+        String best = null;
+        for (int tier = startTier + 1; tier < startTier + 20; tier++) {
+            String candidateType = prefix + tier;
+            if (!BuildingTypes.getInstance().getBuildingTypes().containsKey(candidateType)) break;
+            BuildingType candidate = BuildingTypes.getInstance().getBuildingType(candidateType);
+            if (candidate == null) break;
+            if (townstead$buildingMeetsRequirements(building, candidate)) {
+                best = candidateType;
+            } else {
+                break;
+            }
+        }
+        return best;
+    }
+
+    @Unique
+    private boolean townstead$buildingMeetsRequirements(Building building, BuildingType targetType) {
+        if (building == null || targetType == null) return false;
+        Map<ResourceLocation, Integer> liveCounts = townstead$collectLiveBlockCounts(building);
+        for (Map.Entry<ResourceLocation, Integer> req : targetType.getGroups().entrySet()) {
+            int have = townstead$countMatchingRequirementBlocks(liveCounts, req.getKey());
+            if (have < req.getValue()) return false;
+        }
+        return true;
+    }
+
+    @Unique
+    private Map<ResourceLocation, Integer> townstead$collectLiveBlockCounts(Building building) {
+        Map<ResourceLocation, Integer> counts = new HashMap<>();
+        if (this.minecraft == null) return counts;
+        ClientLevel level = this.minecraft.level;
+        if (level == null) return counts;
+
+        BlockPos p0 = building.getPos0();
+        BlockPos p1 = building.getPos1();
+        for (BlockPos pos : BlockPos.betweenClosed(p0, p1)) {
+            BlockState state = level.getBlockState(pos);
+            if (state.isAir()) continue;
+            ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+            if (id == null) continue;
+            counts.merge(id, 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    @Unique
+    private int townstead$countMatchingRequirementBlocks(Map<ResourceLocation, Integer> presentCounts, ResourceLocation requirement) {
+        if (BuiltInRegistries.BLOCK.containsKey(requirement)) {
+            return presentCounts.getOrDefault(requirement, 0);
+        }
+        TagKey<Block> blockTag = TagKey.create(Registries.BLOCK, requirement);
+        int total = 0;
+        for (Map.Entry<ResourceLocation, Integer> entry : presentCounts.entrySet()) {
+            ResourceLocation blockId = entry.getKey();
+            if (!BuiltInRegistries.BLOCK.containsKey(blockId)) continue;
+            Block block = BuiltInRegistries.BLOCK.get(blockId);
+            if (!block.defaultBlockState().is(blockTag)) continue;
+            total += entry.getValue();
+        }
+        return total;
     }
 
     @Unique
