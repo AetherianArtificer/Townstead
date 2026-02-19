@@ -15,7 +15,7 @@ public abstract class ReportBuildingMessageMixin {
     private void townstead$reconcileTieredBuildingsAfterBuildingAction(ServerPlayer player, CallbackInfo ci) {
         ReportBuildingMessage self = (ReportBuildingMessage) (Object) this;
         switch (self.action()) {
-            case ADD, ADD_ROOM, REMOVE, FORCE_TYPE, FULL_SCAN ->
+            case ADD, ADD_ROOM, REMOVE, FULL_SCAN ->
                     VillageManager.get(player.serverLevel())
                             .findNearestVillage(player)
                             .ifPresent(BuildingTierReconciler::reconcileVillage);
@@ -24,4 +24,3 @@ public abstract class ReportBuildingMessageMixin {
         }
     }
 }
-

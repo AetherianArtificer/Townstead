@@ -75,9 +75,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique private static final int NAV_VISIBLE_ROWS = 6;
     @Unique private static final long POLICY_DEBOUNCE_NANOS = 150_000_000L; // 150ms
     @Unique private static final String KITCHEN_TYPE_PREFIX = "compat/farmersdelight/kitchen_l";
-    @Unique private static final int KITCHEN_ICON_U = 240;
-    @Unique private static final int KITCHEN_ICON_V = 180;
-    @Unique private static final ResourceLocation KITCHEN_MAP_ICON_ITEM = ResourceLocation.fromNamespaceAndPath("farmersdelight", "cooking_pot");
     @Unique private static final int ADV_WINDOW_W = 320;
     @Unique private static final int ADV_WINDOW_H = 188;
     @Unique private static final int ADV_INSIDE_X = 9;
@@ -121,6 +118,7 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique private double townstead$lastDragX = 0.0;
     @Unique private double townstead$lastDragY = 0.0;
     @Unique private final Map<String, Optional<ResourceLocation>> townstead$nodeItemIconCache = new HashMap<>();
+    @Unique private final Map<Long, Optional<ResourceLocation>> townstead$iconUvItemCache = new HashMap<>();
     @Unique private int townstead$catalogNeedsPage = 0;
     @Unique private int townstead$catalogNeedsRowsPerPage = 1;
 
@@ -402,7 +400,7 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     @Inject(method = "drawBuildingIcon", at = @At("HEAD"), cancellable = true)
-    private void townstead$drawKitchenBuildingIcon(
+    private void townstead$drawCompatBuildingIcon(
             GuiGraphics context,
             ResourceLocation texture,
             int x,
@@ -411,8 +409,9 @@ public abstract class BlueprintScreenMixin extends Screen {
             int v,
             CallbackInfo ci
     ) {
-        if (u != KITCHEN_ICON_U || v != KITCHEN_ICON_V) return;
-        Item item = BuiltInRegistries.ITEM.get(KITCHEN_MAP_ICON_ITEM);
+        Optional<ResourceLocation> itemId = townstead$nodeItemForIconUv(u, v);
+        if (itemId.isEmpty() || !BuiltInRegistries.ITEM.containsKey(itemId.get())) return;
+        Item item = BuiltInRegistries.ITEM.get(itemId.get());
         if (item == null) return;
         ItemStack stack = new ItemStack(item);
         if (stack.isEmpty()) return;
@@ -423,6 +422,28 @@ public abstract class BlueprintScreenMixin extends Screen {
         context.renderItem(stack, 0, 0);
         context.pose().popPose();
         ci.cancel();
+    }
+
+    @Unique
+    private Optional<ResourceLocation> townstead$nodeItemForIconUv(int u, int v) {
+        long key = (((long) u) << 32) ^ (v & 0xFFFFFFFFL);
+        return townstead$iconUvItemCache.computeIfAbsent(key, ignored -> {
+            ResourceLocation resolved = null;
+            for (BuildingType bt : BuildingTypes.getInstance()) {
+                if (bt.iconU() != u || bt.iconV() != v) continue;
+                Optional<ResourceLocation> candidate = townstead$nodeItemForType(bt.name());
+                if (candidate.isEmpty() || !BuiltInRegistries.ITEM.containsKey(candidate.get())) continue;
+                if (resolved == null) {
+                    resolved = candidate.get();
+                    continue;
+                }
+                if (!resolved.equals(candidate.get())) {
+                    // Ambiguous icon slot: do not override vanilla icon rendering.
+                    return Optional.empty();
+                }
+            }
+            return Optional.ofNullable(resolved);
+        });
     }
 
     @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)

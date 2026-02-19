@@ -3,8 +3,8 @@
   "visible": true,
   "priority": 4,
   "icon": true,
-  "iconU": 12,
-  "iconV": 3,
+  "iconU": 244,
+  "iconV": 180,
   "townsteadNodeItem": "farmersdelight:netherite_knife",
   "noBeds": true,
   "blocks": {
