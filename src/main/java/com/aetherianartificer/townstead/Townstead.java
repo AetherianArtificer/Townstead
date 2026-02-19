@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
 import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
+import com.google.common.collect.ImmutableSet;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
@@ -23,15 +24,20 @@ import com.aetherianartificer.townstead.hunger.HungerSetPayload;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.interaction.gifts.GiftPredicate;
+import net.conczin.mca.registry.ProfessionsMCA;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ai.village.poi.PoiType;
+import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.sounds.SoundEvents;
 import java.util.Locale;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.common.NeoForge;
@@ -54,6 +60,8 @@ public class Townstead {
 
     private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
             DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, MOD_ID);
+    private static final DeferredRegister<VillagerProfession> PROFESSIONS =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.VILLAGER_PROFESSION, MOD_ID);
 
     public static final Supplier<AttachmentType<CompoundTag>> HUNGER_DATA = ATTACHMENTS.register(
             "hunger_data",
@@ -62,10 +70,24 @@ public class Townstead {
                     .build()
     );
 
+    public static final Supplier<VillagerProfession> COOK_PROFESSION = PROFESSIONS.register(
+            "cook",
+            () -> new VillagerProfession(
+                    "cook",
+                    PoiType.NONE,
+                    PoiType.NONE,
+                    ImmutableSet.of(),
+                    ImmutableSet.of(),
+                    SoundEvents.VILLAGER_WORK_BUTCHER
+            )
+    );
+
     public Townstead(IEventBus modBus, ModContainer modContainer) {
         ATTACHMENTS.register(modBus);
+        PROFESSIONS.register(modBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC);
         townstead$registerClientConfigScreen(modContainer);
+        modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::registerPayloads);
         NeoForge.EVENT_BUS.addListener(this::onClientDisconnect);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -75,6 +97,16 @@ public class Townstead {
         FarmPatternRegistry.bootstrap();
         ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
+    }
+
+    private void onCommonSetup(FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> {
+            VillagerProfession cook = COOK_PROFESSION.get();
+            // MCA drops non-important professions with no JOB_SITE memory.
+            // Mark cook important so kitchen-assigned cooks are retained.
+            ProfessionsMCA.IS_IMPORTANT.add(cook);
+            ProfessionsMCA.CAN_NOT_TRADE.remove(cook);
+        });
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {

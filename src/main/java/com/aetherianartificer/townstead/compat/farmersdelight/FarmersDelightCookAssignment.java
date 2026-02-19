@@ -10,8 +10,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 public final class FarmersDelightCookAssignment {
     private static final String KITCHEN_TYPE_PREFIX = "compat/farmersdelight/kitchen_l";
@@ -45,17 +48,24 @@ public final class FarmersDelightCookAssignment {
     }
 
     public static boolean canVillagerWorkAsCook(ServerLevel level, VillagerEntityMCA villager) {
-        Optional<Village> villageOpt = villager.getResidency().getHomeVillage();
+        Optional<Village> villageOpt = resolveVillage(villager);
         if (villageOpt.isEmpty()) return false;
         Village village = villageOpt.get();
+        if (!isEligibleVillageMember(village, villager)) return false;
 
         int cookSlots = totalCookSlots(village);
         if (cookSlots <= 0) return false;
 
         List<VillagerEntityMCA> cooks = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
         for (VillagerEntityMCA resident : village.getResidents(level)) {
             if (!isExternalCookProfession(resident.getVillagerData().getProfession())) continue;
+            if (!seen.add(resident.getUUID().toString())) continue;
             cooks.add(resident);
+        }
+        if (isExternalCookProfession(villager.getVillagerData().getProfession())
+                && seen.add(villager.getUUID().toString())) {
+            cooks.add(villager);
         }
         cooks.sort(Comparator.comparing(v -> v.getUUID().toString()));
 
@@ -66,9 +76,10 @@ public final class FarmersDelightCookAssignment {
     }
 
     public static boolean hasAvailableCookSlot(ServerLevel level, VillagerEntityMCA villager) {
-        Optional<Village> villageOpt = villager.getResidency().getHomeVillage();
+        Optional<Village> villageOpt = resolveVillage(villager);
         if (villageOpt.isEmpty()) return false;
         Village village = villageOpt.get();
+        if (!isEligibleVillageMember(village, villager)) return false;
 
         int cookSlots = totalCookSlots(village);
         if (cookSlots <= 0) return false;
@@ -80,6 +91,31 @@ public final class FarmersDelightCookAssignment {
             }
         }
         return activeCooks < cookSlots;
+    }
+
+    public static boolean shouldLoseCookProfession(ServerLevel level, VillagerEntityMCA villager) {
+        Optional<Village> home = villager.getResidency().getHomeVillage();
+        if (home.isEmpty()) return true;
+        Village village = home.get();
+        return totalCookSlots(village) <= 0;
+    }
+
+    private static Optional<Village> resolveVillage(VillagerEntityMCA villager) {
+        Optional<Village> home = villager.getResidency().getHomeVillage();
+        if (home.isPresent() && home.get().isWithinBorder(villager)) return home;
+        Optional<Village> nearest = Village.findNearest(villager);
+        if (nearest.isPresent() && nearest.get().isWithinBorder(villager)) return nearest;
+        return Optional.empty();
+    }
+
+    private static boolean isEligibleVillageMember(Village village, VillagerEntityMCA villager) {
+        if (!village.isWithinBorder(villager)) return false;
+
+        Optional<Village> home = villager.getResidency().getHomeVillage();
+        if (home.isPresent() && home.get().getId() == village.getId()) return true;
+
+        UUID id = villager.getUUID();
+        return village.getResidentsUUIDs().anyMatch(id::equals);
     }
 
     public static int totalCookSlots(Village village) {

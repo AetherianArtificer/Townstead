@@ -5,12 +5,14 @@
   "icon": true,
   "iconU": 12,
   "iconV": 3,
-  "townsteadNodeItem": "farmersdelight:basket",
+  "townsteadNodeItem": "farmersdelight:stove",
   "noBeds": true,
   "blocks": {
-    "#townstead:compat/farmersdelight/kitchen_heat_sources": 2,
-    "#townstead:compat/farmersdelight/kitchen_workstations": 1,
-    "#townstead:compat/farmersdelight/kitchen_storage": 2,
-    "#townstead:compat/farmersdelight/kitchen_prep_blocks": 1
+    "farmersdelight:stove": 2,
+    "farmersdelight:cooking_pot": 1,
+    "farmersdelight:skillet": 1,
+    "minecraft:gold_block": 1,
+    "#townstead:compat/farmersdelight/kitchen_storage_upgraded": 2,
+    "#townstead:compat/farmersdelight/kitchen_prep_blocks": 2
   }
 }
