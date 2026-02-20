@@ -33,11 +33,18 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.CampfireBlockEntity;
+import net.minecraft.world.item.crafting.CampfireCookingRecipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -55,6 +62,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private static final int CLOSE_ENOUGH = 0;
     private static final int MAX_DURATION = 1200;
     private static final double ARRIVAL_DISTANCE_SQ = 0.36d;
+    private static final double NEAR_STATION_DISTANCE_SQ = 4.0d;
+    private static final long STAND_REACQUIRE_INTERVAL_TICKS = 60L;
     private static final int REQUEST_RANGE = 24;
     private static final int IDLE_BACKOFF = 80;
     private static final float WALK_SPEED = 0.52f;
@@ -62,6 +71,15 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private static final long STATION_CLAIM_BUFFER_TICKS = 20L;
     private static final Map<Long, UUID> STATION_CLAIM_OWNER = new ConcurrentHashMap<>();
     private static final Map<Long, Long> STATION_CLAIM_UNTIL = new ConcurrentHashMap<>();
+    private static Class<?> FD_STOVE_BE_CLASS;
+    private static Method FD_STOVE_GET_NEXT_EMPTY_SLOT;
+    private static Method FD_STOVE_GET_MATCHING_RECIPE;
+    private static Method FD_STOVE_ADD_ITEM;
+    private static Method FD_STOVE_IS_BLOCKED_ABOVE;
+    private static Class<?> FD_SKILLET_BE_CLASS;
+    private static Method FD_SKILLET_HAS_STORED_STACK;
+    private static Method FD_SKILLET_GET_MATCHING_RECIPE;
+    private static Method FD_SKILLET_ADD_ITEM_TO_COOK;
 
     private static final ResourceLocation FD_CUTTING_BOARD = ResourceLocation.parse("farmersdelight:cutting_board");
     private static final ResourceLocation FD_COOKING_POT = ResourceLocation.parse("farmersdelight:cooking_pot");
@@ -70,7 +88,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private static final ResourceLocation MINECRAFT_BOWL = ResourceLocation.parse("minecraft:bowl");
     private static final int FD_COOKING_POT_CONTAINER_SLOT = 7;
     private static final Set<ResourceLocation> HOT_VESSEL_POT = Set.of(FD_COOKING_POT);
-    private static final Set<ResourceLocation> HOT_VESSEL_SKILLET_OR_STOVE = Set.of(FD_SKILLET, FD_STOVE);
+    private static final Set<ResourceLocation> HOT_VESSEL_SKILLET = Set.of(FD_SKILLET);
     private static final TagKey<Item> KNIFE_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:tools/knife"));
     private static final TagKey<Block> FD_KITCHEN_STORAGE_TAG = TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage"));
     private static final TagKey<Block> FD_KITCHEN_STORAGE_UPGRADED_TAG = TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_upgraded"));
@@ -114,7 +132,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             recipe(2, StationType.FIRE_STATION, "farmersdelight:cooked_mutton_chops", 1, 100, false, false, in("farmersdelight:mutton_chops", 1)),
             recipe(2, StationType.FIRE_STATION, "farmersdelight:cooked_bacon", 1, 100, false, false, in("farmersdelight:bacon", 1)),
             recipe(2, StationType.FIRE_STATION, "farmersdelight:beef_patty", 1, 100, false, false, in("farmersdelight:minced_beef", 1)),
-            hotRecipe(3, "farmersdelight:fried_egg", 1, 80, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("minecraft:egg", 1)),
+            recipe(3, StationType.FIRE_STATION, "farmersdelight:fried_egg", 1, 100, false, false, in("minecraft:egg", 1)),
+            hotRecipe(3, "farmersdelight:fried_egg", 1, 80, false, false, HOT_VESSEL_SKILLET, in("minecraft:egg", 1)),
             hotRecipe(3, "farmersdelight:cooked_rice", 1, 100, false, false, 1, HOT_VESSEL_POT, in("farmersdelight:rice", 1)),
             hotRecipe(3, "minecraft:mushroom_stew", 1, 120, false, false, 1, HOT_VESSEL_POT,
                     in("minecraft:brown_mushroom", 1), in("minecraft:red_mushroom", 1)),
@@ -128,17 +147,17 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                     in("farmersdelight:rice", 1), in("minecraft:egg", 1), in("minecraft:carrot", 1), in("farmersdelight:onion", 1)),
             hotRecipe(3, "farmersdelight:vegetable_soup", 1, 130, false, false, 1, HOT_VESSEL_POT,
                     in("minecraft:carrot", 1), in("minecraft:potato", 1), in("minecraft:beetroot", 1), in("farmersdelight:cabbage", 1)),
-            hotRecipe(3, "minecraft:cooked_chicken", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("minecraft:chicken", 1)),
-            hotRecipe(3, "minecraft:cooked_cod", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("minecraft:cod", 1)),
-            hotRecipe(3, "minecraft:cooked_salmon", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("minecraft:salmon", 1)),
-            hotRecipe(3, "minecraft:cooked_mutton", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("minecraft:mutton", 1)),
-            hotRecipe(3, "minecraft:cooked_beef", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("minecraft:beef", 1)),
-            hotRecipe(3, "farmersdelight:cooked_chicken_cuts", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("farmersdelight:chicken_cuts", 1)),
-            hotRecipe(3, "farmersdelight:cooked_cod_slice", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("farmersdelight:cod_slice", 1)),
-            hotRecipe(3, "farmersdelight:cooked_salmon_slice", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("farmersdelight:salmon_slice", 1)),
-            hotRecipe(3, "farmersdelight:cooked_mutton_chops", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("farmersdelight:mutton_chops", 1)),
-            hotRecipe(3, "farmersdelight:cooked_bacon", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("farmersdelight:bacon", 1)),
-            hotRecipe(3, "farmersdelight:beef_patty", 1, 90, false, false, HOT_VESSEL_SKILLET_OR_STOVE, in("farmersdelight:minced_beef", 1)),
+            hotRecipe(3, "minecraft:cooked_chicken", 1, 90, false, false, HOT_VESSEL_SKILLET, in("minecraft:chicken", 1)),
+            hotRecipe(3, "minecraft:cooked_cod", 1, 90, false, false, HOT_VESSEL_SKILLET, in("minecraft:cod", 1)),
+            hotRecipe(3, "minecraft:cooked_salmon", 1, 90, false, false, HOT_VESSEL_SKILLET, in("minecraft:salmon", 1)),
+            hotRecipe(3, "minecraft:cooked_mutton", 1, 90, false, false, HOT_VESSEL_SKILLET, in("minecraft:mutton", 1)),
+            hotRecipe(3, "minecraft:cooked_beef", 1, 90, false, false, HOT_VESSEL_SKILLET, in("minecraft:beef", 1)),
+            hotRecipe(3, "farmersdelight:cooked_chicken_cuts", 1, 90, false, false, HOT_VESSEL_SKILLET, in("farmersdelight:chicken_cuts", 1)),
+            hotRecipe(3, "farmersdelight:cooked_cod_slice", 1, 90, false, false, HOT_VESSEL_SKILLET, in("farmersdelight:cod_slice", 1)),
+            hotRecipe(3, "farmersdelight:cooked_salmon_slice", 1, 90, false, false, HOT_VESSEL_SKILLET, in("farmersdelight:salmon_slice", 1)),
+            hotRecipe(3, "farmersdelight:cooked_mutton_chops", 1, 90, false, false, HOT_VESSEL_SKILLET, in("farmersdelight:mutton_chops", 1)),
+            hotRecipe(3, "farmersdelight:cooked_bacon", 1, 90, false, false, HOT_VESSEL_SKILLET, in("farmersdelight:bacon", 1)),
+            hotRecipe(3, "farmersdelight:beef_patty", 1, 90, false, false, HOT_VESSEL_SKILLET, in("farmersdelight:minced_beef", 1)),
             hotRecipe(4, "farmersdelight:tomato_sauce", 1, 120, false, false, HOT_VESSEL_POT, in("farmersdelight:tomato", 2))
     );
     private static final Set<ResourceLocation> RECIPE_OUTPUT_IDS;
@@ -174,6 +193,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private long nextKnifeAcquireTick;
     private long nextDebugTick;
     private long nextRequestTick;
+    private long nextStandReacquireTick;
     private BlockedReason blocked = BlockedReason.NONE;
     private String unsupportedItem = "";
     private String lastFailure = "none";
@@ -185,6 +205,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private WorkPhase workPhase = WorkPhase.IDLE;
     private ResourceLocation lastCompletedOutput = null;
     private int consecutiveCompletedOutput = 0;
+    private BlockPos lastWorkedStationAnchor = null;
 
     public CookWorkTask() {
         super(ImmutableMap.of(
@@ -211,6 +232,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         unsupportedItem = "";
         lastFailure = "none";
         nextAcquireTick = 0L;
+        nextStandReacquireTick = 0L;
         if (shiftPlan.isEmpty() || shiftPlanIndex >= shiftPlan.size()) {
             townstead$buildShiftPlan(level, villager);
         }
@@ -232,6 +254,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             lastFailure = "none";
             lastCompletedOutput = null;
             consecutiveCompletedOutput = 0;
+            nextStandReacquireTick = 0L;
+            lastWorkedStationAnchor = null;
             return;
         }
 
@@ -292,8 +316,26 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
         BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
         double distSq = villager.distanceToSqr(standPos.getX() + 0.5, standPos.getY() + 0.5, standPos.getZ() + 0.5);
-        if (distSq > ARRIVAL_DISTANCE_SQ) return;
+        double anchorDistSq = stationAnchor == null
+                ? Double.MAX_VALUE
+                : villager.distanceToSqr(stationAnchor.getX() + 0.5, stationAnchor.getY() + 0.5, stationAnchor.getZ() + 0.5);
+        if (distSq > ARRIVAL_DISTANCE_SQ && anchorDistSq > NEAR_STATION_DISTANCE_SQ) {
+            if (gameTime >= nextStandReacquireTick) {
+                nextStandReacquireTick = gameTime + STAND_REACQUIRE_INTERVAL_TICKS;
+                if (stationAnchor != null) {
+                    BlockPos refreshed = townstead$findStand(level, villager, stationAnchor);
+                    if (refreshed != null) {
+                        standPos = refreshed;
+                    }
+                }
+                StationType desired = activeRecipe != null ? activeRecipe.stationType() : stationType;
+                townstead$acquireStation(level, villager, desired, activeRecipe);
+            }
+            return;
+        }
+        nextStandReacquireTick = 0L;
 
+        townstead$collectSurfaceCookDrops(level, villager, stationAnchor);
         townstead$unloadReadyOutputsFromStation(level, villager, stationAnchor);
 
         if (!pendingOutput.isEmpty()) {
@@ -380,6 +422,22 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
         if (cookDoneTick == 0L) {
             if (townstead$isStationBusyForCook(level, villager, stationAnchor, activeRecipe)) {
+                if (activeRecipe != null && activeRecipe.stationType() == StationType.FIRE_STATION) {
+                    BlockPos previousAnchor = stationAnchor;
+                    BlockPos previousStand = standPos;
+                    StationType previousType = stationType;
+                    if (townstead$acquireStation(level, villager, StationType.FIRE_STATION, activeRecipe)
+                            && stationAnchor != null
+                            && !stationAnchor.equals(previousAnchor)
+                            && !townstead$isStationBusyForCook(level, villager, stationAnchor, activeRecipe)) {
+                        workPhase = WorkPhase.GATHER;
+                        nextAcquireTick = gameTime + 5L;
+                        return;
+                    }
+                    stationAnchor = previousAnchor;
+                    standPos = previousStand;
+                    stationType = previousType;
+                }
                 if (townstead$clearStationResidualInputs(level, villager, stationAnchor)) {
                     workPhase = WorkPhase.STORE;
                     nextAcquireTick = gameTime + 10L;
@@ -391,12 +449,28 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             }
             workPhase = WorkPhase.GATHER;
             if (!townstead$pullAndConsume(level, villager, activeRecipe)) {
+                if (lastFailure.startsWith("surface_full")) {
+                    // Fire surface currently occupied: do not hard-block, retry plan selection soon.
+                    townstead$setBlocked(level, villager, gameTime, BlockedReason.NONE, "");
+                    activeRecipe = null;
+                    nextAcquireTick = gameTime + 20L;
+                    return;
+                }
                 townstead$setBlocked(level, villager, gameTime, townstead$blockedReasonFromFailure(), "");
                 activeRecipe = null;
                 nextAcquireTick = gameTime + IDLE_BACKOFF;
                 return;
             }
+            if (activeRecipe.stationType() == StationType.FIRE_STATION && townstead$isSurfaceFireStation(level, stationAnchor)) {
+                lastWorkedStationAnchor = stationAnchor == null ? null : stationAnchor.immutable();
+                workPhase = WorkPhase.COOK;
+                townstead$setBlocked(level, villager, gameTime, BlockedReason.NONE, "");
+                activeRecipe = null;
+                nextAcquireTick = gameTime + 20L;
+                return;
+            }
             cookDoneTick = gameTime + activeRecipe.timeTicks();
+            lastWorkedStationAnchor = stationAnchor == null ? null : stationAnchor.immutable();
             townstead$claimStation(villager, stationAnchor, cookDoneTick + STATION_CLAIM_BUFFER_TICKS);
             workPhase = WorkPhase.COOK;
             townstead$playSound(level);
@@ -488,6 +562,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         unsupportedItem = "";
         workPhase = WorkPhase.IDLE;
         lastFailure = "none";
+        lastWorkedStationAnchor = null;
         townstead$releaseStationClaim(villager, claimed);
     }
 
@@ -502,6 +577,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         workPhase = WorkPhase.IDLE;
         lastFailure = "none";
         townstead$releaseStationClaim(villager, stationAnchor);
+        nextStandReacquireTick = 0L;
     }
 
     private void townstead$unloadReadyOutputsFromStation(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
@@ -564,6 +640,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             StationType preferredType,
             RecipeDef preferredRecipe
     ) {
+        Set<Long> kitchenBounds = townstead$activeKitchenBounds(villager, townstead$activeKitchenReference(villager));
         BlockPos bestWorkPos = null;
         double bestWorkDist = Double.MAX_VALUE;
         StationType bestWorkType = null;
@@ -577,14 +654,22 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         List<Building> kitchenBuildings = townstead$kitchenBuildings(villager);
         for (Building building : kitchenBuildings) {
             for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
+                if (!kitchenBounds.isEmpty() && !kitchenBounds.contains(pos.asLong())) continue;
                 StationType type = townstead$stationType(level, pos);
                 if (type == null) continue;
                 if (preferredType != null && preferredType != type) continue;
                 if (preferredRecipe != null && !townstead$stationSupportsRecipe(level, pos, preferredRecipe)) continue;
+                if (preferredRecipe != null
+                        && preferredRecipe.stationType() == StationType.FIRE_STATION
+                        && type == StationType.FIRE_STATION
+                        && townstead$isSurfaceFireStation(level, pos.immutable())
+                        && !townstead$surfaceHasFreeSlot(level, pos.immutable())) {
+                    continue;
+                }
                 if (townstead$isClaimedByOther(level, villager, pos)) continue;
                 BlockPos stand = townstead$findStand(level, villager, pos.immutable());
                 if (stand == null) continue;
-                double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+                double dist = townstead$stationSelectionDistance(villager, pos.immutable());
                 if (dist < bestAnyDist) {
                     bestAnyPos = pos.immutable();
                     bestAnyDist = dist;
@@ -612,14 +697,22 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             for (BlockPos pos : BlockPos.betweenClosed(
                     anchor.offset(-SEARCH_RADIUS, -VERTICAL_RADIUS, -SEARCH_RADIUS),
                     anchor.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
+                if (!kitchenBounds.isEmpty() && !kitchenBounds.contains(pos.asLong())) continue;
                 StationType type = townstead$stationType(level, pos);
                 if (type == null) continue;
                 if (preferredType != null && preferredType != type) continue;
                 if (preferredRecipe != null && !townstead$stationSupportsRecipe(level, pos, preferredRecipe)) continue;
+                if (preferredRecipe != null
+                        && preferredRecipe.stationType() == StationType.FIRE_STATION
+                        && type == StationType.FIRE_STATION
+                        && townstead$isSurfaceFireStation(level, pos.immutable())
+                        && !townstead$surfaceHasFreeSlot(level, pos.immutable())) {
+                    continue;
+                }
                 if (townstead$isClaimedByOther(level, villager, pos)) continue;
                 BlockPos stand = townstead$findStand(level, villager, pos.immutable());
                 if (stand == null) continue;
-                double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+                double dist = townstead$stationSelectionDistance(villager, pos.immutable());
                 if (dist < bestAnyDist) {
                     bestAnyPos = pos.immutable();
                     bestAnyDist = dist;
@@ -642,6 +735,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             stationAnchor = bestAnyPos;
             stationType = bestAnyType;
             standPos = bestAnyStand;
+            nextStandReacquireTick = 0L;
             return true;
         }
 
@@ -649,13 +743,25 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             stationAnchor = bestWorkPos;
             stationType = bestWorkType;
             standPos = bestWorkStand;
+            nextStandReacquireTick = 0L;
             return true;
         }
 
         stationAnchor = bestAnyPos;
         stationType = bestAnyType;
         standPos = bestAnyStand;
+        if (stationAnchor != null && standPos != null) {
+            nextStandReacquireTick = 0L;
+        }
         return stationAnchor != null && standPos != null;
+    }
+
+    private double townstead$stationSelectionDistance(VillagerEntityMCA villager, BlockPos pos) {
+        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        if (lastWorkedStationAnchor != null && lastWorkedStationAnchor.equals(pos)) {
+            dist += 9.0d; // Prefer a different valid station in the same kitchen to simulate movement.
+        }
+        return dist;
     }
 
     private BlockPos townstead$nearestKitchenAnchor(VillagerEntityMCA villager) {
@@ -732,6 +838,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
         int tier = Math.max(1, FarmersDelightCookAssignment.effectiveKitchenTier(level, villager));
         boolean hasHotStation = townstead$hasStationType(level, villager, StationType.HOT_STATION);
+        boolean hasFireStation = townstead$hasStationType(level, villager, StationType.FIRE_STATION);
         boolean hasCuttingStation = townstead$hasStationType(level, villager, StationType.CUTTING_BOARD);
         List<RecipeDef> tierRecipes = RECIPES.stream()
                 .filter(r -> r.minTier() <= tier)
@@ -802,7 +909,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                         outputStock.getOrDefault(recipe.output(), 0),
                         chainDemand.getOrDefault(recipe.output(), 0),
                         tier,
-                        hasHotStation
+                        hasHotStation,
+                        hasFireStation
                 );
                 if (score > bestScore) {
                     bestScore = score;
@@ -828,6 +936,11 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             if (shiftPlanIndex >= shiftPlan.size()) shiftPlanIndex = 0;
             RecipeDef candidate = shiftPlan.get(shiftPlanIndex++);
             if (candidate == null) continue;
+            if (candidate.stationType() == StationType.FIRE_STATION
+                    && !townstead$hasReadyFireStationForRecipe(level, villager, candidate)) {
+                lastFailure = "surface_full";
+                continue;
+            }
             if (stationType != candidate.stationType() && !townstead$acquireStation(level, villager, candidate.stationType(), candidate)) {
                 lastFailure = "no_station:" + candidate.stationType().name().toLowerCase();
                 continue;
@@ -859,7 +972,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             int currentStock,
             int chainDemand,
             int tier,
-            boolean hasHotStation
+            boolean hasHotStation,
+            boolean hasFireStation
     ) {
         ItemStack output = townstead$outputStack(recipe);
         FoodProperties food = output.get(DataComponents.FOOD);
@@ -879,14 +993,19 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         if (tier >= 3 && hasHotStation) {
             if (recipe.stationType() == StationType.HOT_STATION) score += 2.0d;
             if (recipe.stationType() == StationType.CUTTING_BOARD) score += 0.75d;
-            if (recipe.stationType() == StationType.FIRE_STATION) score -= 4.0d;
+            if (recipe.stationType() == StationType.FIRE_STATION) score -= 1.0d;
+        }
+        if (hasFireStation && recipe.stationType() == StationType.FIRE_STATION) {
+            score += 1.5d;
         }
         return score;
     }
 
     private boolean townstead$hasStationType(ServerLevel level, VillagerEntityMCA villager, StationType wanted) {
+        Set<Long> kitchenBounds = townstead$activeKitchenBounds(villager, townstead$activeKitchenReference(villager));
         for (Building building : townstead$kitchenBuildings(villager)) {
             for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
+                if (!kitchenBounds.isEmpty() && !kitchenBounds.contains(pos.asLong())) continue;
                 if (townstead$stationType(level, pos) == wanted) return true;
             }
         }
@@ -895,8 +1014,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     private boolean townstead$hasCompatibleStationForRecipe(ServerLevel level, VillagerEntityMCA villager, RecipeDef recipe) {
         if (recipe == null) return false;
+        if (recipe.stationType() == StationType.FIRE_STATION) {
+            return townstead$hasReadyFireStationForRecipe(level, villager, recipe);
+        }
+        Set<Long> kitchenBounds = townstead$activeKitchenBounds(villager, townstead$activeKitchenReference(villager));
         for (Building building : townstead$kitchenBuildings(villager)) {
             for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
+                if (!kitchenBounds.isEmpty() && !kitchenBounds.contains(pos.asLong())) continue;
                 if (townstead$stationType(level, pos) != recipe.stationType()) continue;
                 if (!townstead$stationSupportsRecipe(level, pos, recipe)) continue;
                 if (townstead$findStand(level, villager, pos.immutable()) == null) continue;
@@ -908,11 +1032,28 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             for (BlockPos pos : BlockPos.betweenClosed(
                     anchor.offset(-SEARCH_RADIUS, -VERTICAL_RADIUS, -SEARCH_RADIUS),
                     anchor.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
+                if (!kitchenBounds.isEmpty() && !kitchenBounds.contains(pos.asLong())) continue;
                 if (townstead$stationType(level, pos) != recipe.stationType()) continue;
                 if (!townstead$stationSupportsRecipe(level, pos, recipe)) continue;
                 if (townstead$findStand(level, villager, pos.immutable()) == null) continue;
                 return true;
             }
+        }
+        return false;
+    }
+
+    private boolean townstead$hasReadyFireStationForRecipe(ServerLevel level, VillagerEntityMCA villager, RecipeDef recipe) {
+        if (recipe == null || recipe.stationType() != StationType.FIRE_STATION) return false;
+        Set<Long> kitchenBounds = townstead$activeKitchenBounds(villager, townstead$activeKitchenReference(villager));
+        if (kitchenBounds.isEmpty()) return false;
+        for (long key : kitchenBounds) {
+            BlockPos pos = BlockPos.of(key);
+            if (townstead$stationType(level, pos) != StationType.FIRE_STATION) continue;
+            if (!townstead$stationSupportsRecipe(level, pos, recipe)) continue;
+            if (townstead$isSurfaceFireStation(level, pos) && !townstead$surfaceHasFreeSlot(level, pos)) continue;
+            if (townstead$isClaimedByOther(level, villager, pos)) continue;
+            if (townstead$findStand(level, villager, pos.immutable()) == null) continue;
+            return true;
         }
         return false;
     }
@@ -926,6 +1067,9 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private boolean townstead$stationHasContents(ServerLevel level, BlockPos pos, RecipeDef recipe) {
         if (pos == null) return false;
         ResourceLocation stationId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        if (recipe != null && recipe.stationType() == StationType.FIRE_STATION && townstead$isSurfaceFireStation(level, pos)) {
+            return !townstead$surfaceHasFreeSlot(level, pos);
+        }
         boolean allowPotBowlPrestage =
                 FD_COOKING_POT.equals(stationId)
                         && recipe != null
@@ -984,6 +1128,320 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             for (int i = 0; i < container.getContainerSize(); i++) {
                 if (!container.getItem(i).isEmpty()) return true;
             }
+        }
+        return false;
+    }
+
+    private void townstead$collectSurfaceCookDrops(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
+        if (pos == null) return;
+        AABB area = new AABB(pos).inflate(1.5, 1.0, 1.5);
+        List<ItemEntity> drops = level.getEntitiesOfClass(ItemEntity.class, area, entity -> {
+            ItemStack stack = entity.getItem();
+            if (stack.isEmpty()) return false;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            return id != null && RECIPE_OUTPUT_IDS.contains(id);
+        });
+        if (drops.isEmpty()) return;
+
+        for (ItemEntity drop : drops) {
+            ItemStack stack = drop.getItem().copy();
+            if (stack.isEmpty()) continue;
+            drop.discard();
+
+            ItemStack moving = stack.copy();
+            int inserted = townstead$storeOutputInCookStorage(level, villager, moving, pos);
+            if (inserted > 0) {
+                townstead$traceOutput("surface:drop_store item=" + townstead$itemId(stack.getItem())
+                        + " moved=" + inserted
+                        + " dst=" + lastOutputDest);
+            }
+
+            if (!moving.isEmpty()) {
+                ItemStack remainder = villager.getInventory().addItem(moving);
+                if (!remainder.isEmpty()) {
+                    ItemEntity putBack = new ItemEntity(level, drop.getX(), drop.getY(), drop.getZ(), remainder.copy());
+                    putBack.setPickUpDelay(0);
+                    level.addFreshEntity(putBack);
+                }
+            }
+        }
+    }
+
+    private boolean townstead$isSurfaceFireStation(ServerLevel level, BlockPos pos) {
+        if (pos == null) return false;
+        BlockState state = level.getBlockState(pos);
+        if (state.is(BlockTags.CAMPFIRES)) return true;
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        return FD_STOVE.equals(id) || FD_SKILLET.equals(id);
+    }
+
+    private boolean townstead$surfaceHasFreeSlot(ServerLevel level, BlockPos pos) {
+        if (pos == null) return false;
+        if (townstead$fireSurfaceBlocked(level, pos)) return false;
+        BlockState state = level.getBlockState(pos);
+        BlockEntity be = level.getBlockEntity(pos);
+        if (state.is(BlockTags.CAMPFIRES) && be instanceof CampfireBlockEntity campfire) {
+            for (ItemStack slot : campfire.getItems()) {
+                if (slot.isEmpty()) return true;
+            }
+            return false;
+        }
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (FD_STOVE.equals(id)) {
+            if (townstead$stoveBlockedAbove(be)) return false;
+            Integer slot = townstead$stoveNextEmptySlot(be);
+            return slot != null && slot >= 0;
+        }
+        if (FD_SKILLET.equals(id)) {
+            return !townstead$skilletHasStoredStack(be);
+        }
+        return false;
+    }
+
+    private boolean townstead$surfaceCanCookRecipeInput(ServerLevel level, BlockPos pos, RecipeDef recipe) {
+        if (recipe == null || recipe.inputs().isEmpty()) return false;
+        if (townstead$fireSurfaceBlocked(level, pos)) return false;
+        Ingredient input = recipe.inputs().get(0);
+        Item inputItem = BuiltInRegistries.ITEM.get(input.itemId());
+        if (inputItem == Items.AIR) return false;
+        ItemStack probe = new ItemStack(inputItem, 1);
+
+        BlockState state = level.getBlockState(pos);
+        BlockEntity be = level.getBlockEntity(pos);
+        if (state.is(BlockTags.CAMPFIRES) && be instanceof CampfireBlockEntity campfire) {
+            Optional<RecipeHolder<CampfireCookingRecipe>> match = campfire.getCookableRecipe(probe);
+            return match.isPresent();
+        }
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (FD_STOVE.equals(id)) {
+            if (townstead$stoveBlockedAbove(be)) return false;
+            return townstead$stoveMatchingRecipe(be, probe).isPresent();
+        }
+        if (FD_SKILLET.equals(id)) {
+            if (state.hasProperty(BlockStateProperties.WATERLOGGED)
+                    && Boolean.TRUE.equals(state.getValue(BlockStateProperties.WATERLOGGED))) {
+                return false;
+            }
+            return townstead$skilletMatchingRecipe(be, probe).isPresent();
+        }
+        return false;
+    }
+
+    private boolean townstead$loadSurfaceFireStation(ServerLevel level, VillagerEntityMCA villager, RecipeDef recipe) {
+        if (recipe == null || stationAnchor == null || recipe.inputs().isEmpty()) {
+            lastFailure = "surface_recipe_missing";
+            return false;
+        }
+        Ingredient input = recipe.inputs().get(0);
+        Item inputItem = BuiltInRegistries.ITEM.get(input.itemId());
+        if (inputItem == Items.AIR) {
+            lastFailure = "surface_bad_ingredient";
+            return false;
+        }
+        SimpleContainer inv = villager.getInventory();
+        if (townstead$count(inv, inputItem) <= 0) {
+            lastFailure = "missing:" + input.itemId();
+            return false;
+        }
+
+        ItemStack one = new ItemStack(inputItem, 1);
+        BlockState state = level.getBlockState(stationAnchor);
+        BlockEntity be = level.getBlockEntity(stationAnchor);
+        if (townstead$fireSurfaceBlocked(level, stationAnchor)) {
+            lastFailure = "surface_blocked";
+            return false;
+        }
+        boolean loaded = false;
+        if (state.is(BlockTags.CAMPFIRES) && be instanceof CampfireBlockEntity campfire) {
+            Optional<RecipeHolder<CampfireCookingRecipe>> match = campfire.getCookableRecipe(one);
+            if (match.isEmpty()) {
+                lastFailure = "surface_recipe_missing";
+                return false;
+            }
+            int cookTime = match.get().value().getCookingTime();
+            loaded = campfire.placeFood(villager, one.copy(), cookTime);
+            if (!loaded) {
+                lastFailure = "surface_full";
+                return false;
+            }
+        } else {
+            ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+            if (FD_STOVE.equals(id)) {
+                if (townstead$stoveBlockedAbove(be)) {
+                    lastFailure = "surface_blocked";
+                    return false;
+                }
+                Optional<?> match = townstead$stoveMatchingRecipe(be, one);
+                if (match.isEmpty()) {
+                    lastFailure = "surface_recipe_missing";
+                    return false;
+                }
+                Integer slot = townstead$stoveNextEmptySlot(be);
+                if (slot == null || slot < 0) {
+                    lastFailure = "surface_full";
+                    return false;
+                }
+                Object holder = match.get();
+                loaded = townstead$stoveAddItem(be, one.copy(), holder, slot);
+                if (!loaded) {
+                    lastFailure = "surface_full";
+                    return false;
+                }
+            } else if (FD_SKILLET.equals(id)) {
+                if (state.hasProperty(BlockStateProperties.WATERLOGGED)
+                        && Boolean.TRUE.equals(state.getValue(BlockStateProperties.WATERLOGGED))) {
+                    lastFailure = "surface_waterlogged";
+                    return false;
+                }
+                if (townstead$skilletHasStoredStack(be)) {
+                    lastFailure = "surface_full";
+                    return false;
+                }
+                if (townstead$skilletMatchingRecipe(be, one).isEmpty()) {
+                    lastFailure = "surface_recipe_missing";
+                    return false;
+                }
+                loaded = townstead$skilletAddItem(be, one.copy());
+            }
+        }
+
+        if (!loaded) {
+            lastFailure = "surface_full";
+            return false;
+        }
+        if (!townstead$consume(inv, inputItem, 1)) {
+            lastFailure = "consume_failed:" + input.itemId();
+            return false;
+        }
+        townstead$traceOutput("surface:loaded recipe=" + recipe.output()
+                + " at=" + stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ());
+        return true;
+    }
+
+    private boolean townstead$ensureStoveReflection() {
+        if (FD_STOVE_BE_CLASS != null
+                && FD_STOVE_GET_NEXT_EMPTY_SLOT != null
+                && FD_STOVE_GET_MATCHING_RECIPE != null
+                && FD_STOVE_ADD_ITEM != null
+                && FD_STOVE_IS_BLOCKED_ABOVE != null) {
+            return true;
+        }
+        try {
+            Class<?> recipeHolderClass = Class.forName("net.minecraft.world.item.crafting.RecipeHolder");
+            FD_STOVE_BE_CLASS = Class.forName("vectorwing.farmersdelight.common.block.entity.StoveBlockEntity");
+            FD_STOVE_GET_NEXT_EMPTY_SLOT = FD_STOVE_BE_CLASS.getMethod("getNextEmptySlot");
+            FD_STOVE_GET_MATCHING_RECIPE = FD_STOVE_BE_CLASS.getMethod("getMatchingRecipe", ItemStack.class);
+            FD_STOVE_ADD_ITEM = FD_STOVE_BE_CLASS.getMethod("addItem", ItemStack.class, recipeHolderClass, int.class);
+            FD_STOVE_IS_BLOCKED_ABOVE = FD_STOVE_BE_CLASS.getMethod("isStoveBlockedAbove");
+            return true;
+        } catch (Throwable ignored) {
+            FD_STOVE_BE_CLASS = null;
+            FD_STOVE_GET_NEXT_EMPTY_SLOT = null;
+            FD_STOVE_GET_MATCHING_RECIPE = null;
+            FD_STOVE_ADD_ITEM = null;
+            FD_STOVE_IS_BLOCKED_ABOVE = null;
+            return false;
+        }
+    }
+
+    private Integer townstead$stoveNextEmptySlot(BlockEntity be) {
+        if (be == null || !townstead$ensureStoveReflection() || !FD_STOVE_BE_CLASS.isInstance(be)) return null;
+        try {
+            Object value = FD_STOVE_GET_NEXT_EMPTY_SLOT.invoke(be);
+            return value instanceof Integer i ? i : null;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private Optional<?> townstead$stoveMatchingRecipe(BlockEntity be, ItemStack stack) {
+        if (be == null || stack.isEmpty() || !townstead$ensureStoveReflection() || !FD_STOVE_BE_CLASS.isInstance(be)) {
+            return Optional.empty();
+        }
+        try {
+            Object value = FD_STOVE_GET_MATCHING_RECIPE.invoke(be, stack.copy());
+            if (value instanceof Optional<?> opt) return opt;
+        } catch (Throwable ignored) {
+        }
+        return Optional.empty();
+    }
+
+    private boolean townstead$stoveAddItem(BlockEntity be, ItemStack stack, Object recipeHolder, int cookTime) {
+        if (be == null || stack.isEmpty() || recipeHolder == null) return false;
+        if (!townstead$ensureStoveReflection() || !FD_STOVE_BE_CLASS.isInstance(be)) return false;
+        try {
+            Object value = FD_STOVE_ADD_ITEM.invoke(be, stack, recipeHolder, cookTime);
+            return value instanceof Boolean b && b;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private boolean townstead$stoveBlockedAbove(BlockEntity be) {
+        if (be == null || !townstead$ensureStoveReflection() || !FD_STOVE_BE_CLASS.isInstance(be)) return false;
+        try {
+            Object value = FD_STOVE_IS_BLOCKED_ABOVE.invoke(be);
+            return value instanceof Boolean b && b;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private boolean townstead$ensureSkilletReflection() {
+        if (FD_SKILLET_BE_CLASS != null
+                && FD_SKILLET_HAS_STORED_STACK != null
+                && FD_SKILLET_GET_MATCHING_RECIPE != null
+                && FD_SKILLET_ADD_ITEM_TO_COOK != null) {
+            return true;
+        }
+        try {
+            Class<?> playerClass = Class.forName("net.minecraft.world.entity.player.Player");
+            FD_SKILLET_BE_CLASS = Class.forName("vectorwing.farmersdelight.common.block.entity.SkilletBlockEntity");
+            FD_SKILLET_HAS_STORED_STACK = FD_SKILLET_BE_CLASS.getMethod("hasStoredStack");
+            FD_SKILLET_GET_MATCHING_RECIPE = FD_SKILLET_BE_CLASS.getDeclaredMethod("getMatchingRecipe", ItemStack.class);
+            FD_SKILLET_GET_MATCHING_RECIPE.setAccessible(true);
+            FD_SKILLET_ADD_ITEM_TO_COOK = FD_SKILLET_BE_CLASS.getMethod("addItemToCook", ItemStack.class, playerClass);
+            return true;
+        } catch (Throwable ignored) {
+            FD_SKILLET_BE_CLASS = null;
+            FD_SKILLET_HAS_STORED_STACK = null;
+            FD_SKILLET_GET_MATCHING_RECIPE = null;
+            FD_SKILLET_ADD_ITEM_TO_COOK = null;
+            return false;
+        }
+    }
+
+    private boolean townstead$skilletHasStoredStack(BlockEntity be) {
+        if (be == null || !townstead$ensureSkilletReflection() || !FD_SKILLET_BE_CLASS.isInstance(be)) return false;
+        try {
+            Object value = FD_SKILLET_HAS_STORED_STACK.invoke(be);
+            return value instanceof Boolean b && b;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private Optional<?> townstead$skilletMatchingRecipe(BlockEntity be, ItemStack stack) {
+        if (be == null || stack.isEmpty() || !townstead$ensureSkilletReflection() || !FD_SKILLET_BE_CLASS.isInstance(be)) {
+            return Optional.empty();
+        }
+        try {
+            Object value = FD_SKILLET_GET_MATCHING_RECIPE.invoke(be, stack.copy());
+            if (value instanceof Optional<?> opt) return opt;
+        } catch (Throwable ignored) {
+        }
+        return Optional.empty();
+    }
+
+    private boolean townstead$skilletAddItem(BlockEntity be, ItemStack stack) {
+        if (be == null || stack.isEmpty()) return false;
+        if (!townstead$ensureSkilletReflection() || !FD_SKILLET_BE_CLASS.isInstance(be)) return false;
+        try {
+            Object value = FD_SKILLET_ADD_ITEM_TO_COOK.invoke(be, stack.copy(), null);
+            if (value instanceof ItemStack remainder) {
+                return remainder.isEmpty();
+            }
+        } catch (Throwable ignored) {
         }
         return false;
     }
@@ -1089,6 +1547,12 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private boolean townstead$canFulfill(ServerLevel level, VillagerEntityMCA villager, RecipeDef recipe, BlockPos searchCenter) {
         lastFailure = "none";
         BlockPos center = searchCenter != null ? searchCenter : villager.blockPosition();
+        if (recipe.stationType() == StationType.FIRE_STATION && searchCenter != null) {
+            if (townstead$isSurfaceFireStation(level, center) && !townstead$surfaceHasFreeSlot(level, center)) {
+                lastFailure = "surface_full";
+                return false;
+            }
+        }
         if (searchCenter != null && !townstead$stationSupportsRecipe(level, center, recipe)) {
             lastFailure = "station_rejects:" + recipe.output();
             return false;
@@ -1165,11 +1629,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         if (villageOpt.isEmpty()) return supply;
 
         Village village = villageOpt.get();
+        Set<Long> kitchenBounds = townstead$activeKitchenBounds(villager, townstead$activeKitchenReference(villager));
         Set<Long> visited = new HashSet<>();
         for (Building building : village.getBuildings().values()) {
             for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
                 long key = pos.asLong();
                 if (!visited.add(key)) continue;
+                if (!kitchenBounds.isEmpty() && !kitchenBounds.contains(key)) continue;
                 if (!village.isWithinBorder(pos, 0)) continue;
                 if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
 
@@ -1271,6 +1737,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                     return false;
                 }
             }
+        }
+
+        if (stationType == StationType.FIRE_STATION && townstead$isSurfaceFireStation(level, stationAnchor)) {
+            if (!townstead$loadSurfaceFireStation(level, villager, recipe)) {
+                return false;
+            }
+            return true;
         }
 
         stagedInputs.clear();
@@ -1391,6 +1864,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         Optional<Village> villageOpt = FarmersDelightCookAssignment.resolveVillage(villager);
         if (villageOpt.isEmpty()) return null;
         Village village = villageOpt.get();
+        Set<Long> kitchenBounds = townstead$activeKitchenBounds(villager, townstead$activeKitchenReference(villager));
 
         NearbyItemSources.ContainerSlot best = null;
         Set<Long> visited = new HashSet<>();
@@ -1398,6 +1872,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
                 long key = pos.asLong();
                 if (!visited.add(key)) continue;
+                if (!kitchenBounds.isEmpty() && !kitchenBounds.contains(key)) continue;
                 if (!village.isWithinBorder(pos, 0)) continue;
                 if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
 
@@ -1705,8 +2180,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     private boolean townstead$stationSupportsRecipe(ServerLevel level, BlockPos pos, RecipeDef recipe) {
         if (recipe == null) return true;
-        if (recipe.stationType() == StationType.FIRE_STATION) return true;
         if (pos == null) return false;
+        if (recipe.stationType() == StationType.FIRE_STATION) {
+            if (townstead$isSurfaceFireStation(level, pos)) {
+                return townstead$surfaceCanCookRecipeInput(level, pos, recipe);
+            }
+            return true;
+        }
         if (recipe.stationType() == StationType.HOT_STATION && !townstead$hotStationMatchesRecipe(level, pos, recipe)) {
             return false;
         }
@@ -1897,6 +2377,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         return bounds;
     }
 
+    private BlockPos townstead$activeKitchenReference(VillagerEntityMCA villager) {
+        if (stationAnchor != null) return stationAnchor;
+        BlockPos nearestAnchor = townstead$nearestKitchenAnchor(villager);
+        if (nearestAnchor != null) return nearestAnchor;
+        return villager.blockPosition();
+    }
+
     private void townstead$insertIntoContainer(Container container, ItemStack stack) {
         if (stack.isEmpty()) return;
         for (int i = 0; i < container.getContainerSize(); i++) {
@@ -2048,7 +2535,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private IItemHandler townstead$preferredIngredientHandler(ServerLevel level, BlockPos pos) {
         if (pos == null) return null;
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
-        if (FD_COOKING_POT.equals(id) || FD_SKILLET.equals(id) || FD_STOVE.equals(id) || FD_CUTTING_BOARD.equals(id)) {
+        if (FD_COOKING_POT.equals(id) || FD_SKILLET.equals(id) || FD_CUTTING_BOARD.equals(id)) {
             IItemHandler up = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, Direction.UP);
             if (up != null) return up;
         }
@@ -2108,7 +2595,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     private StationType townstead$stationType(ServerLevel level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
-        if (state.is(BlockTags.CAMPFIRES) && townstead$fireBlockedByCookware(level, pos)) return null;
+        if (state.is(BlockTags.CAMPFIRES) && townstead$fireSurfaceBlocked(level, pos)) return null;
         return townstead$stationType(state);
     }
 
@@ -2116,13 +2603,17 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         if (state.is(BlockTags.CAMPFIRES)) return StationType.FIRE_STATION;
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (FD_CUTTING_BOARD.equals(id)) return StationType.CUTTING_BOARD;
-        if (FD_COOKING_POT.equals(id) || FD_SKILLET.equals(id) || FD_STOVE.equals(id)) return StationType.HOT_STATION;
+        if (FD_STOVE.equals(id)) return StationType.FIRE_STATION;
+        if (FD_SKILLET.equals(id)) return StationType.FIRE_STATION;
+        if (FD_COOKING_POT.equals(id)) return StationType.HOT_STATION;
         return null;
     }
 
-    private boolean townstead$fireBlockedByCookware(ServerLevel level, BlockPos firePos) {
-        ResourceLocation aboveId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(firePos.above()).getBlock());
-        return FD_COOKING_POT.equals(aboveId) || FD_SKILLET.equals(aboveId);
+    private boolean townstead$fireSurfaceBlocked(ServerLevel level, BlockPos firePos) {
+        BlockState above = level.getBlockState(firePos.above());
+        ResourceLocation aboveId = BuiltInRegistries.BLOCK.getKey(above.getBlock());
+        if (FD_COOKING_POT.equals(aboveId) || FD_SKILLET.equals(aboveId)) return true;
+        return !above.canBeReplaced();
     }
 
     private BlockPos townstead$findStand(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
@@ -2248,6 +2739,12 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         }
         if (lastFailure.startsWith("no_station")) {
             return BlockedReason.NO_KITCHEN;
+        }
+        if (lastFailure.startsWith("surface_full")) {
+            return BlockedReason.UNREACHABLE;
+        }
+        if (lastFailure.startsWith("surface_recipe")) {
+            return BlockedReason.NO_RECIPE;
         }
         if (lastFailure.startsWith("station_rejects") || lastFailure.startsWith("station_partial")) {
             return BlockedReason.NO_RECIPE;
