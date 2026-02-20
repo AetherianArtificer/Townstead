@@ -127,6 +127,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return;
         actionType = ActionType.NONE;
         targetPos = null;
         farmAnchor = townstead$findNearestComposter(level, villager);
@@ -150,6 +151,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) {
+            townstead$clearMovementIntent(villager);
+            return;
+        }
         if (farmAnchor == null) {
             farmAnchor = townstead$findNearestComposter(level, villager);
             if (farmAnchor == null) {

@@ -104,5 +104,31 @@
   "dialogue.chat.butcher_progress.tier_up/3": "Another day, another step in my craft.",
   "dialogue.chat.butcher_progress.tier_up/4": "The butcher's trade is coming easier to me.",
   "dialogue.chat.butcher_progress.tier_up/5": "I can handle finer cuts than before.",
-  "dialogue.chat.butcher_progress.tier_up/6": "I've grown into a better butcher."
+  "dialogue.chat.butcher_progress.tier_up/6": "I've grown into a better butcher.",
+
+  "dialogue.chat.cook_request.no_kitchen/1": "I need a proper kitchen before I can cook.",
+  "dialogue.chat.cook_request.no_kitchen/2": "There's no kitchen station ready for me.",
+  "dialogue.chat.cook_request.no_kitchen/3": "Give me a kitchen and I'll feed everyone.",
+  "dialogue.chat.cook_request.no_kitchen/4": "I can't start without a working kitchen.",
+
+  "dialogue.chat.cook_request.no_ingredients/1": "The pantry's thin. I need fresh ingredients.",
+  "dialogue.chat.cook_request.no_ingredients/2": "I'm short on ingredients for today's meal.",
+  "dialogue.chat.cook_request.no_ingredients/3": "Bring me supplies and I'll keep the pots going.",
+  "dialogue.chat.cook_request.no_ingredients/4": "I've got stations, but nothing to cook.",
+  "dialogue.chat.cook_request.no_ingredients/5": "I need more produce and meat for the kitchen.",
+  "dialogue.chat.cook_request.no_ingredients/6": "The kitchen's running low again, %1$s.",
+
+  "dialogue.chat.cook_request.no_storage/1": "Kitchen stores are full; nowhere to put this.",
+  "dialogue.chat.cook_request.no_storage/2": "I need empty storage for prepared food.",
+  "dialogue.chat.cook_request.no_storage/3": "Clear a chest and I can keep cooking.",
+  "dialogue.chat.cook_request.no_storage/4": "I can't carry more meals without storage.",
+
+  "dialogue.chat.cook_request.unreachable/1": "I can't reach my station from here.",
+  "dialogue.chat.cook_request.unreachable/2": "Something is blocking the kitchen path.",
+  "dialogue.chat.cook_request.unreachable/3": "The kitchen route is obstructed.",
+  "dialogue.chat.cook_request.unreachable/4": "I need a clear path to cook.",
+  "dialogue.chat.cook_request.unreachable/5": "I keep getting stuck before I can work.",
+  "dialogue.chat.cook_request.unreachable/6": "Could someone clear the way to the kitchen?",
+
+  "dialogue.chat.cook_request.unsupported_item": "I don't know how to cook %2$s yet!"
 }

@@ -3,8 +3,13 @@ package com.aetherianartificer.townstead.hunger;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
@@ -17,7 +22,7 @@ import java.util.function.ToIntFunction;
 public final class NearbyItemSources {
     private NearbyItemSources() {}
 
-    public record ContainerSlot(BlockPos pos, Container container, boolean isItemHandler, int slot, int score, double distanceSqr) {}
+    public record ContainerSlot(BlockPos pos, Container container, boolean isItemHandler, int slot, int score, double distanceSqr, Direction side) {}
 
     public static ContainerSlot findBestNearbySlot(ServerLevel level, VillagerEntityMCA villager, int horizontalRadius, int verticalRadius,
                                                    Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer) {
@@ -35,6 +40,7 @@ public final class NearbyItemSources {
             if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
 
             BlockEntity be = level.getBlockEntity(pos);
+            if (isProcessingContainer(level, pos, be)) continue;
             if (be instanceof Container container) {
                 for (int i = 0; i < container.getContainerSize(); i++) {
                     ItemStack stack = container.getItem(i);
@@ -42,7 +48,7 @@ public final class NearbyItemSources {
                     int score = scorer.applyAsInt(stack);
                     double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
                     if (isBetter(best, dist, score)) {
-                        best = new ContainerSlot(pos.immutable(), container, false, i, score, dist);
+                        best = new ContainerSlot(pos.immutable(), container, false, i, score, dist, null);
                     }
                 }
             }
@@ -56,7 +62,20 @@ public final class NearbyItemSources {
                         int score = scorer.applyAsInt(stack);
                         double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
                         if (isBetter(best, dist, score)) {
-                            best = new ContainerSlot(pos.immutable(), null, true, i, score, dist);
+                            best = new ContainerSlot(pos.immutable(), null, true, i, score, dist, null);
+                        }
+                    }
+                }
+                for (Direction side : Direction.values()) {
+                    handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
+                    if (handler == null) continue;
+                    for (int i = 0; i < handler.getSlots(); i++) {
+                        ItemStack stack = handler.getStackInSlot(i);
+                        if (!matcher.test(stack)) continue;
+                        int score = scorer.applyAsInt(stack);
+                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+                        if (isBetter(best, dist, score)) {
+                            best = new ContainerSlot(pos.immutable(), null, true, i, score, dist, side);
                         }
                     }
                 }
@@ -70,9 +89,22 @@ public final class NearbyItemSources {
         if (slotRef == null || slotRef.slot() < 0 || slotRef.pos() == null) return ItemStack.EMPTY;
 
         if (slotRef.isItemHandler()) {
-            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, slotRef.pos(), null);
-            if (handler == null) return ItemStack.EMPTY;
-            return handler.extractItem(slotRef.slot(), 1, false);
+            Direction side = slotRef.side();
+            IItemHandler handler = side != null ? level.getCapability(Capabilities.ItemHandler.BLOCK, slotRef.pos(), side) : null;
+            ItemStack extracted = extractOneFromHandler(handler, slotRef.slot());
+            if (!extracted.isEmpty()) return extracted;
+
+            handler = level.getCapability(Capabilities.ItemHandler.BLOCK, slotRef.pos(), null);
+            extracted = extractOneFromHandler(handler, slotRef.slot());
+            if (!extracted.isEmpty()) return extracted;
+
+            for (Direction dir : Direction.values()) {
+                if (side != null && dir == side) continue;
+                handler = level.getCapability(Capabilities.ItemHandler.BLOCK, slotRef.pos(), dir);
+                extracted = extractOneFromHandler(handler, slotRef.slot());
+                if (!extracted.isEmpty()) return extracted;
+            }
+            return ItemStack.EMPTY;
         }
 
         Container container = slotRef.container();
@@ -96,8 +128,16 @@ public final class NearbyItemSources {
         if (slot == null) return false;
         ItemStack extracted = extractOne(level, slot);
         if (extracted.isEmpty()) return false;
-        villager.getInventory().addItem(extracted);
-        return true;
+        ItemStack remainder = villager.getInventory().addItem(extracted);
+        if (remainder.isEmpty()) return true;
+
+        insertIntoNearbyStorage(level, villager, remainder, horizontalRadius, verticalRadius, center);
+        if (!remainder.isEmpty()) {
+            ItemEntity drop = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
+            drop.setPickUpDelay(0);
+            level.addFreshEntity(drop);
+        }
+        return false;
     }
 
     public static boolean insertIntoNearbyStorage(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, int horizontalRadius, int verticalRadius) {
@@ -115,7 +155,7 @@ public final class NearbyItemSources {
             BlockEntity be = level.getBlockEntity(pos);
             // Exclude processing containers from generic storage insertion.
             // Production tasks (e.g. butcher smoker workflow) target these explicitly.
-            if (townstead$isProcessingContainer(be)) continue;
+            if (isProcessingContainer(level, pos, be)) continue;
             if (be instanceof Container container) {
                 insertIntoContainer(container, stack);
                 if (stack.isEmpty()) return true;
@@ -134,8 +174,19 @@ public final class NearbyItemSources {
         return stack.isEmpty();
     }
 
-    private static boolean townstead$isProcessingContainer(BlockEntity be) {
-        return be instanceof AbstractFurnaceBlockEntity;
+    public static boolean isProcessingContainer(ServerLevel level, BlockPos pos, BlockEntity be) {
+        if (be instanceof AbstractFurnaceBlockEntity) return true;
+        if (level.getBlockState(pos).is(BlockTags.CAMPFIRES)) return true;
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        if (id == null) return false;
+        if ("farmersdelight".equals(id.getNamespace())) {
+            String path = id.getPath();
+            return "cooking_pot".equals(path)
+                    || "skillet".equals(path)
+                    || "stove".equals(path)
+                    || "cutting_board".equals(path);
+        }
+        return false;
     }
 
     private static void insertIntoContainer(Container container, ItemStack stack) {
@@ -173,5 +224,10 @@ public final class NearbyItemSources {
         if (currentBest == null) return true;
         if (candidateDist < currentBest.distanceSqr() - 4.0) return true;
         return candidateDist < currentBest.distanceSqr() + 4.0 && candidateScore > currentBest.score();
+    }
+
+    private static ItemStack extractOneFromHandler(IItemHandler handler, int slot) {
+        if (handler == null || slot < 0 || slot >= handler.getSlots()) return ItemStack.EMPTY;
+        return handler.extractItem(slot, 1, false);
     }
 }

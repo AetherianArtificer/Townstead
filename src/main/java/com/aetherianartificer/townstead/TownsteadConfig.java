@@ -42,6 +42,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue DEBUG_FARMER_AI;
     public static final ModConfigSpec.BooleanValue ENABLE_FARMER_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
+    public static final ModConfigSpec.BooleanValue ENABLE_COOK_REQUEST_CHAT;
+    public static final ModConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
     public static final ModConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
@@ -128,6 +130,12 @@ public final class TownsteadConfig {
         FARMER_REQUEST_INTERVAL_TICKS = b
                 .comment("Minimum ticks between farmer shortage request messages.")
                 .defineInRange("farmerRequestIntervalTicks", 3600, 200, 24000);
+        ENABLE_COOK_REQUEST_CHAT = b
+                .comment("Allow cooks to periodically announce missing kitchen supplies in local chat.")
+                .define("enableCookRequestChat", true);
+        COOK_REQUEST_INTERVAL_TICKS = b
+                .comment("Minimum ticks between cook shortage request messages.")
+                .defineInRange("cookRequestIntervalTicks", 3600, 200, 24000);
         b.pop();
 
         b.push("caregiving");

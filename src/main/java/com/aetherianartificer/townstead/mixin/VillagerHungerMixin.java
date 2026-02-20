@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.mixin;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
+import com.aetherianartificer.townstead.hunger.CookWorkTask;
 import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.SeekFoodTask;
@@ -25,6 +26,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(VillagerEntityMCA.class)
 public abstract class VillagerHungerMixin extends Villager {
+    @Unique
+    private Brain<?> townstead$lastPatchedBrain;
 
     private VillagerHungerMixin() {
         super(null, null);
@@ -43,14 +46,17 @@ public abstract class VillagerHungerMixin extends Villager {
     }
 
     @Unique
-    private static void townstead$addSeekFoodTask(Brain<VillagerEntityMCA> brain) {
+    private void townstead$addSeekFoodTask(Brain<VillagerEntityMCA> brain) {
+        if (brain == null || brain == townstead$lastPatchedBrain) return;
         brain.addActivity(Activity.CORE,
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
                         Pair.of(70, new HarvestWorkTask()),
+                        Pair.of(72, new CookWorkTask()),
                         Pair.of(74, new ButcherWorkTask()),
                         Pair.of(99, new SeekFoodTask()),
                         Pair.of(110, new CareForYoungTask())
                 ));
+        townstead$lastPatchedBrain = brain;
     }
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))

@@ -94,13 +94,13 @@ public final class FarmersDelightCookAssignment {
     }
 
     public static boolean shouldLoseCookProfession(ServerLevel level, VillagerEntityMCA villager) {
-        Optional<Village> home = villager.getResidency().getHomeVillage();
+        Optional<Village> home = resolveVillage(villager);
         if (home.isEmpty()) return true;
         Village village = home.get();
         return totalCookSlots(village) <= 0;
     }
 
-    private static Optional<Village> resolveVillage(VillagerEntityMCA villager) {
+    public static Optional<Village> resolveVillage(VillagerEntityMCA villager) {
         Optional<Village> home = villager.getResidency().getHomeVillage();
         if (home.isPresent() && home.get().isWithinBorder(villager)) return home;
         Optional<Village> nearest = Village.findNearest(villager);
@@ -126,6 +126,22 @@ public final class FarmersDelightCookAssignment {
             total += slotsForKitchenTier(tierFromKitchenType(type));
         }
         return total;
+    }
+
+    public static int highestKitchenTier(Village village) {
+        int best = 0;
+        for (Building building : village.getBuildings().values()) {
+            String type = building.getType();
+            if (!isKitchenType(type)) continue;
+            best = Math.max(best, tierFromKitchenType(type));
+        }
+        return best;
+    }
+
+    public static int effectiveKitchenTier(ServerLevel level, VillagerEntityMCA villager) {
+        Optional<Village> village = resolveVillage(villager);
+        if (village.isEmpty()) return 0;
+        return highestKitchenTier(village.get());
     }
 
     public static boolean isKitchenType(String buildingTypeId) {
