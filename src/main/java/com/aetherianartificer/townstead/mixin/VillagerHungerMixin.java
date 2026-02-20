@@ -3,7 +3,7 @@ package com.aetherianartificer.townstead.mixin;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
-import com.aetherianartificer.townstead.hunger.CookWorkTask;
+import com.aetherianartificer.townstead.compat.farmersdelight.CookWorkTask;
 import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.SeekFoodTask;

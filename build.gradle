@@ -29,6 +29,8 @@ neoForge {
 
 dependencies {
     compileOnly files('libs/mca-neoforge-7.7.5+1.21.1.jar')
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
 // Keep build outputs inside the workspace so sandboxed environments can compile reliably.
@@ -45,4 +47,8 @@ tasks.withType(ProcessResources).configureEach {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }

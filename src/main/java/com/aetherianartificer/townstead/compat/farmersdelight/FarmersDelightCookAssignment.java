@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.compat.farmersdelight;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.VillagerProfession;
@@ -17,7 +18,6 @@ import java.util.Set;
 import java.util.UUID;
 
 public final class FarmersDelightCookAssignment {
-    private static final String KITCHEN_TYPE_PREFIX = "compat/farmersdelight/kitchen_l";
     private static final String[] COOK_PROFESSION_IDS = new String[] {
             "townstead:cook",
             "chefsdelight:cook",
@@ -48,31 +48,7 @@ public final class FarmersDelightCookAssignment {
     }
 
     public static boolean canVillagerWorkAsCook(ServerLevel level, VillagerEntityMCA villager) {
-        Optional<Village> villageOpt = resolveVillage(villager);
-        if (villageOpt.isEmpty()) return false;
-        Village village = villageOpt.get();
-        if (!isEligibleVillageMember(village, villager)) return false;
-
-        int cookSlots = totalCookSlots(village);
-        if (cookSlots <= 0) return false;
-
-        List<VillagerEntityMCA> cooks = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
-        for (VillagerEntityMCA resident : village.getResidents(level)) {
-            if (!isExternalCookProfession(resident.getVillagerData().getProfession())) continue;
-            if (!seen.add(resident.getUUID().toString())) continue;
-            cooks.add(resident);
-        }
-        if (isExternalCookProfession(villager.getVillagerData().getProfession())
-                && seen.add(villager.getUUID().toString())) {
-            cooks.add(villager);
-        }
-        cooks.sort(Comparator.comparing(v -> v.getUUID().toString()));
-
-        for (int i = 0; i < cooks.size() && i < cookSlots; i++) {
-            if (cooks.get(i).getUUID().equals(villager.getUUID())) return true;
-        }
-        return false;
+        return assignedKitchen(level, villager).isPresent();
     }
 
     public static boolean hasAvailableCookSlot(ServerLevel level, VillagerEntityMCA villager) {
@@ -81,8 +57,8 @@ public final class FarmersDelightCookAssignment {
         Village village = villageOpt.get();
         if (!isEligibleVillageMember(village, villager)) return false;
 
-        int cookSlots = totalCookSlots(village);
-        if (cookSlots <= 0) return false;
+        List<KitchenSlot> slots = buildKitchenSlots(village);
+        if (slots.isEmpty()) return false;
 
         int activeCooks = 0;
         for (VillagerEntityMCA resident : village.getResidents(level)) {
@@ -90,14 +66,11 @@ public final class FarmersDelightCookAssignment {
                 activeCooks++;
             }
         }
-        return activeCooks < cookSlots;
+        return activeCooks < slots.size();
     }
 
     public static boolean shouldLoseCookProfession(ServerLevel level, VillagerEntityMCA villager) {
-        Optional<Village> home = resolveVillage(villager);
-        if (home.isEmpty()) return true;
-        Village village = home.get();
-        return totalCookSlots(village) <= 0;
+        return assignedKitchen(level, villager).isEmpty();
     }
 
     public static Optional<Village> resolveVillage(VillagerEntityMCA villager) {
@@ -119,13 +92,7 @@ public final class FarmersDelightCookAssignment {
     }
 
     public static int totalCookSlots(Village village) {
-        int total = 0;
-        for (Building building : village.getBuildings().values()) {
-            String type = building.getType();
-            if (!isKitchenType(type)) continue;
-            total += slotsForKitchenTier(tierFromKitchenType(type));
-        }
-        return total;
+        return buildKitchenSlots(village).size();
     }
 
     public static int highestKitchenTier(Village village) {
@@ -133,36 +100,120 @@ public final class FarmersDelightCookAssignment {
         for (Building building : village.getBuildings().values()) {
             String type = building.getType();
             if (!isKitchenType(type)) continue;
-            best = Math.max(best, tierFromKitchenType(type));
+            best = Math.max(best, kitchenTierFromType(type));
         }
         return best;
     }
 
     public static int effectiveKitchenTier(ServerLevel level, VillagerEntityMCA villager) {
+        Optional<Building> kitchen = assignedKitchen(level, villager);
+        if (kitchen.isPresent()) {
+            return Math.max(0, kitchenTierFromType(kitchen.get().getType()));
+        }
         Optional<Village> village = resolveVillage(villager);
-        if (village.isEmpty()) return 0;
-        return highestKitchenTier(village.get());
+        return village.map(FarmersDelightCookAssignment::highestKitchenTier).orElse(0);
+    }
+
+    public static Optional<Building> assignedKitchen(ServerLevel level, VillagerEntityMCA villager) {
+        Optional<Village> villageOpt = resolveVillage(villager);
+        if (villageOpt.isEmpty()) return Optional.empty();
+        Village village = villageOpt.get();
+        if (!isEligibleVillageMember(village, villager)) return Optional.empty();
+
+        List<KitchenSlot> slots = buildKitchenSlots(village);
+        if (slots.isEmpty()) return Optional.empty();
+
+        List<VillagerEntityMCA> cooks = sortedCookResidents(level, village);
+        if (isExternalCookProfession(villager.getVillagerData().getProfession())) {
+            boolean present = cooks.stream().anyMatch(v -> v.getUUID().equals(villager.getUUID()));
+            if (!present) {
+                cooks.add(villager);
+                cooks.sort(Comparator.comparing(v -> v.getUUID().toString()));
+            }
+        }
+        int idx = -1;
+        for (int i = 0; i < cooks.size(); i++) {
+            if (cooks.get(i).getUUID().equals(villager.getUUID())) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0 || idx >= slots.size()) return Optional.empty();
+        return Optional.of(slots.get(idx).building());
+    }
+
+    public static Set<Long> assignedKitchenBounds(ServerLevel level, VillagerEntityMCA villager) {
+        Optional<Building> kitchen = assignedKitchen(level, villager);
+        if (kitchen.isEmpty()) return Set.of();
+        Set<Long> bounds = new HashSet<>();
+        for (BlockPos bp : (Iterable<BlockPos>) kitchen.get().getBlockPosStream()::iterator) {
+            bounds.add(bp.asLong());
+        }
+        return bounds;
     }
 
     public static boolean isKitchenType(String buildingTypeId) {
-        return buildingTypeId != null && buildingTypeId.startsWith(KITCHEN_TYPE_PREFIX);
+        return CookTierRules.isKitchenType(buildingTypeId);
     }
 
-    private static int tierFromKitchenType(String buildingTypeId) {
-        if (buildingTypeId == null || !buildingTypeId.startsWith(KITCHEN_TYPE_PREFIX)) return 0;
-        try {
-            return Integer.parseInt(buildingTypeId.substring(KITCHEN_TYPE_PREFIX.length()));
-        } catch (NumberFormatException ignored) {
-            return 0;
+    static int kitchenTierFromType(String buildingTypeId) {
+        return CookTierRules.kitchenTierFromType(buildingTypeId);
+    }
+
+    static int slotsForKitchenType(String buildingTypeId) {
+        return CookTierRules.slotsForKitchenType(buildingTypeId);
+    }
+
+    private static List<Building> sortedKitchens(Village village) {
+        List<Building> kitchens = new ArrayList<>();
+        for (Building building : village.getBuildings().values()) {
+            if (!isKitchenType(building.getType())) continue;
+            kitchens.add(building);
         }
+        kitchens.sort((a, b) -> {
+            BlockPos ac = a.getCenter();
+            BlockPos bc = b.getCenter();
+            if (ac != null && bc != null) {
+                if (ac.getY() != bc.getY()) return Integer.compare(ac.getY(), bc.getY());
+                if (ac.getZ() != bc.getZ()) return Integer.compare(ac.getZ(), bc.getZ());
+                if (ac.getX() != bc.getX()) return Integer.compare(ac.getX(), bc.getX());
+            } else if (ac != null) {
+                return -1;
+            } else if (bc != null) {
+                return 1;
+            }
+            return a.getType().compareTo(b.getType());
+        });
+        return kitchens;
     }
 
-    private static int slotsForKitchenTier(int tier) {
-        return switch (tier) {
-            case 1, 2 -> 1;
-            case 3, 4 -> 2;
-            case 5 -> 3;
-            default -> 0;
-        };
+    private static List<VillagerEntityMCA> sortedCookResidents(ServerLevel level, Village village) {
+        List<VillagerEntityMCA> cooks = new ArrayList<>();
+        Set<UUID> seen = new HashSet<>();
+        for (VillagerEntityMCA resident : village.getResidents(level)) {
+            if (!isExternalCookProfession(resident.getVillagerData().getProfession())) continue;
+            if (!seen.add(resident.getUUID())) continue;
+            cooks.add(resident);
+        }
+        cooks.sort(Comparator.comparing(v -> v.getUUID().toString()));
+        return cooks;
+    }
+
+    private static List<KitchenSlot> buildKitchenSlots(Village village) {
+        List<KitchenSlot> slots = new ArrayList<>();
+        for (Building kitchen : sortedKitchens(village)) {
+            int tier = kitchenTierFromType(kitchen.getType());
+            int slotCount = slotsForTier(tier);
+            for (int i = 0; i < slotCount; i++) {
+                slots.add(new KitchenSlot(kitchen, i));
+            }
+        }
+        return slots;
+    }
+
+    private record KitchenSlot(Building building, int ordinal) {}
+
+    static int slotsForTier(int tier) {
+        return CookTierRules.slotsForTier(tier);
     }
 }
