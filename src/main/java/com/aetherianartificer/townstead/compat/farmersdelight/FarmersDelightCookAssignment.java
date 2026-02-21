@@ -117,13 +117,11 @@ public final class FarmersDelightCookAssignment {
     }
 
     /**
-     * Returns the effective recipe tier for this cook, considering both the
-     * kitchen building tier and the cook's personal progression tier.
+     * Returns the effective recipe tier for this cook, based on the kitchen
+     * building tier. Cook personal progression no longer gates recipes.
      */
     public static int effectiveRecipeTier(ServerLevel level, VillagerEntityMCA villager) {
-        int kitchenTier = effectiveKitchenTier(level, villager);
-        int cookTier = CookProgressData.getTier(villager.getData(Townstead.HUNGER_DATA));
-        return Math.min(kitchenTier, cookTier);
+        return effectiveKitchenTier(level, villager);
     }
 
     public static Optional<Building> assignedKitchen(ServerLevel level, VillagerEntityMCA villager) {

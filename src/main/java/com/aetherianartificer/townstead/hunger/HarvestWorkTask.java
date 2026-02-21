@@ -1263,7 +1263,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             );
         };
 
-        if (TownsteadConfig.DEBUG_FARMER_AI.get()) {
+        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
             LOGGER.info(
                     "Farmer {} blueprint plan: pattern={}, plannerType={}, requiredTier={}, policyTier={}, farmerTier={}, effectiveTier={}, source={}, personality={}, cells={}",
                     farmAnchor,
@@ -1317,7 +1317,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             villager.getLongTermMemory().remember("townstead.farmer.tier." + result.tierAfter());
             villager.getLongTermMemory().remember("townstead.farmer.discovery.unlock");
             villager.getLongTermMemory().remember("townstead.farmer.discovery.tier." + result.tierAfter());
-            if (TownsteadConfig.DEBUG_FARMER_AI.get()) {
+            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
                 LOGGER.info(
                         "Farmer {} tier up: {} -> {} (source={}, xp={}, next={})",
                         villager.getUUID(),
@@ -1350,7 +1350,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             if (nextRequestTick < soonest) nextRequestTick = soonest;
         }
 
-        if (TownsteadConfig.DEBUG_FARMER_AI.get()) {
+        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
             LOGGER.info("Farmer {} blocked state: {} -> {}", villager.getUUID(), previous.id(), reason.id());
         }
     }

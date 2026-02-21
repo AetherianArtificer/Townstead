@@ -39,7 +39,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_GROOM_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_GROOM_SCAN_INTERVAL_TICKS;
-    public static final ModConfigSpec.BooleanValue DEBUG_FARMER_AI;
+    public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_AI;
     public static final ModConfigSpec.BooleanValue ENABLE_FARMER_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_COOK_REQUEST_CHAT;
@@ -121,9 +121,9 @@ public final class TownsteadConfig {
         FARMER_GROOM_SCAN_INTERVAL_TICKS = b
                 .comment("Ticks between farmer grooming target scans.")
                 .defineInRange("farmerGroomScanIntervalTicks", 60, 20, 1200);
-        DEBUG_FARMER_AI = b
-                .comment("Enable debug logs for farmer state transitions.")
-                .define("debugFarmerAI", false);
+        DEBUG_VILLAGER_AI = b
+                .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
+                .define("debugVillagerAI", true);
         ENABLE_FARMER_REQUEST_CHAT = b
                 .comment("Allow farmers to periodically announce missing supplies (seeds/tools/etc.) in local chat.")
                 .define("enableFarmerRequestChat", true);
