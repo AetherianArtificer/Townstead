@@ -84,6 +84,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private static Method FD_SKILLET_HAS_STORED_STACK;
     private static Method FD_SKILLET_ADD_ITEM_TO_COOK;
     private static Method FD_SKILLET_IS_HEATED;
+    private static Class<?> FD_CUTTING_BOARD_BE_CLASS;
+    private static Method FD_CUTTING_BOARD_ADD_ITEM;
+    private static Method FD_CUTTING_BOARD_PROCESS;
+    private static Method FD_CUTTING_BOARD_REMOVE_ITEM;
 
     private static final ResourceLocation FD_CUTTING_BOARD = ResourceLocation.parse("farmersdelight:cutting_board");
     private static final ResourceLocation FD_COOKING_POT = ResourceLocation.parse("farmersdelight:cooking_pot");
@@ -190,6 +194,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private String lastFailure = "none";
     private String lastOutputTrace = "none";
     private String lastOutputDest = "none";
+    private ItemStack heldCuttingInput = ItemStack.EMPTY;
     private final Map<ResourceLocation, Integer> stagedInputs = new HashMap<>();
     private final List<RecipeDef> shiftPlan = new ArrayList<>();
     private int shiftPlanIndex;
@@ -250,6 +255,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             stationType = null;
             activeRecipe = null;
             pendingOutput = ItemStack.EMPTY;
+            heldCuttingInput = ItemStack.EMPTY;
             stagedInputs.clear();
             shiftPlan.clear();
             shiftPlanIndex = 0;
@@ -277,6 +283,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             activeRecipe = null;
             cookDoneTick = 0L;
             pendingOutput = ItemStack.EMPTY;
+            heldCuttingInput = ItemStack.EMPTY;
             stagedInputs.clear();
             shiftPlan.clear();
             shiftPlanIndex = 0;
@@ -461,11 +468,11 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
         if (cookDoneTick == 0L) {
             if (townstead$isStationBusyForCook(level, villager, stationAnchor, activeRecipe)) {
-                if (activeRecipe != null && activeRecipe.stationType() == StationType.FIRE_STATION) {
+                if (activeRecipe != null) {
                     BlockPos previousAnchor = stationAnchor;
                     BlockPos previousStand = standPos;
                     StationType previousType = stationType;
-                    if (townstead$acquireStation(level, villager, StationType.FIRE_STATION, activeRecipe)
+                    if (townstead$acquireStation(level, villager, activeRecipe.stationType(), activeRecipe)
                             && stationAnchor != null
                             && !stationAnchor.equals(previousAnchor)
                             && !townstead$isStationBusyForCook(level, villager, stationAnchor, activeRecipe)) {
@@ -519,6 +526,14 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                 activeRecipe = null;
                 nextAcquireTick = gameTime + 20L;
                 return;
+            }
+            // For cutting board recipes, pullAndConsume already consumed the input
+            // (at line 2271). Store it in heldCuttingInput so cuttingBoardProcess can
+            // place it on the board at cook completion.
+            if (activeRecipe.stationType() == StationType.CUTTING_BOARD && !activeRecipe.inputs().isEmpty()) {
+                Ingredient input = activeRecipe.inputs().get(0);
+                Item inputItem = BuiltInRegistries.ITEM.get(input.itemId());
+                heldCuttingInput = new ItemStack(inputItem, 1);
             }
             cookDoneTick = gameTime + activeRecipe.timeTicks();
             lastWorkedStationAnchor = stationAnchor == null ? null : stationAnchor.immutable();
@@ -587,7 +602,22 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             townstead$consumeStagedInputs(level, activeRecipe);
             stagedInputs.clear();
         }
-        pendingOutput = townstead$outputStack(activeRecipe);
+        // For cutting board recipes, trigger the real FD interaction so items pop out.
+        boolean isCuttingBoard = activeRecipe != null
+                && activeRecipe.stationType() == StationType.CUTTING_BOARD;
+        boolean realCuttingBoard = isCuttingBoard
+                && townstead$cuttingBoardProcess(level, villager, activeRecipe);
+        if (!realCuttingBoard) {
+            // If real interaction failed, discard any unused held input and create virtual output.
+            if (isCuttingBoard) {
+                heldCuttingInput = ItemStack.EMPTY;
+            }
+            pendingOutput = townstead$outputStack(activeRecipe);
+            // The STORE phase expects pendingOutput items to be in the villager's inventory.
+            if (!pendingOutput.isEmpty()) {
+                villager.getInventory().addItem(pendingOutput.copy());
+            }
+        }
         townstead$noteCompletedRecipe(activeRecipe);
         activeRecipe = null;
         cookDoneTick = 0L;
@@ -609,6 +639,11 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         activeRecipe = null;
         cookDoneTick = 0L;
         pendingOutput = ItemStack.EMPTY;
+        // Return held cutting input to inventory if the behavior stops mid-cook.
+        if (!heldCuttingInput.isEmpty()) {
+            villager.getInventory().addItem(heldCuttingInput);
+            heldCuttingInput = ItemStack.EMPTY;
+        }
         stationAnchor = null;
         standPos = null;
         stationType = null;
@@ -1737,6 +1772,85 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         }
     }
 
+    private boolean townstead$ensureCuttingBoardReflection() {
+        if (FD_CUTTING_BOARD_BE_CLASS != null
+                && FD_CUTTING_BOARD_ADD_ITEM != null
+                && FD_CUTTING_BOARD_PROCESS != null
+                && FD_CUTTING_BOARD_REMOVE_ITEM != null) {
+            return true;
+        }
+        try {
+            Class<?> playerClass = Class.forName("net.minecraft.world.entity.player.Player");
+            FD_CUTTING_BOARD_BE_CLASS = Class.forName("vectorwing.farmersdelight.common.block.entity.CuttingBoardBlockEntity");
+            FD_CUTTING_BOARD_ADD_ITEM = FD_CUTTING_BOARD_BE_CLASS.getMethod("addItem", ItemStack.class);
+            FD_CUTTING_BOARD_PROCESS = FD_CUTTING_BOARD_BE_CLASS.getMethod("processStoredItemUsingTool", ItemStack.class, playerClass);
+            FD_CUTTING_BOARD_REMOVE_ITEM = FD_CUTTING_BOARD_BE_CLASS.getMethod("removeItem");
+            return true;
+        } catch (Throwable ignored) {
+            FD_CUTTING_BOARD_BE_CLASS = null;
+            FD_CUTTING_BOARD_ADD_ITEM = null;
+            FD_CUTTING_BOARD_PROCESS = null;
+            FD_CUTTING_BOARD_REMOVE_ITEM = null;
+            return false;
+        }
+    }
+
+    /**
+     * Triggers a real Farmer's Delight cutting board interaction: places the input
+     * item on the board, processes it with the cook's knife, and lets the results
+     * pop out as item entities (just like when a player uses the cutting board).
+     * Returns true if the interaction succeeded.  On failure the board is cleaned
+     * up and the caller should fall back to virtual output.
+     */
+    private boolean townstead$cuttingBoardProcess(ServerLevel level, VillagerEntityMCA villager, RecipeDef recipe) {
+        if (stationAnchor == null || recipe == null || recipe.inputs().isEmpty()) return false;
+        if (!townstead$ensureCuttingBoardReflection()) return false;
+        BlockEntity be = level.getBlockEntity(stationAnchor);
+        if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
+
+        // Find the knife in the cook's inventory.
+        SimpleContainer inv = villager.getInventory();
+        ItemStack knifeStack = ItemStack.EMPTY;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (townstead$isKnifeStack(inv.getItem(i))) {
+                knifeStack = inv.getItem(i);
+                break;
+            }
+        }
+        if (knifeStack.isEmpty()) return false;
+
+        // Use the input item that was held aside during GATHER phase.
+        if (heldCuttingInput.isEmpty()) return false;
+        ItemStack inputStack = heldCuttingInput.copy();
+        heldCuttingInput = ItemStack.EMPTY;
+
+        try {
+            // Place item on the cutting board.
+            Object placed = FD_CUTTING_BOARD_ADD_ITEM.invoke(be, inputStack);
+            if (!(placed instanceof Boolean b && b)) {
+                // Board rejected — return to inventory.
+                inv.addItem(inputStack);
+                return false;
+            }
+
+            // Process with the knife — this drops results as ItemEntity and damages the knife.
+            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, (Object) null);
+            if (processed instanceof Boolean ok && ok) {
+                townstead$traceOutput("cutting:real recipe=" + recipe.output());
+                return true;
+            }
+
+            // Processing failed — recipe not matched. Return item to inventory.
+            try {
+                FD_CUTTING_BOARD_REMOVE_ITEM.invoke(be);
+            } catch (Throwable ignored) {}
+            inv.addItem(new ItemStack(inputStack.getItem(), 1));
+        } catch (Throwable t) {
+            inv.addItem(new ItemStack(inputStack.getItem(), 1));
+        }
+        return false;
+    }
+
     private boolean townstead$clearStationResidualInputs(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
         if (pos == null) return false;
         if (townstead$isClaimedByOther(level, villager, pos)) return false;
@@ -2042,7 +2156,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
         stagedInputs.clear();
         Map<ResourceLocation, Integer> stationProvidedInputs = new HashMap<>();
-        if (stationType == StationType.HOT_STATION || stationType == StationType.CUTTING_BOARD) {
+        if (stationType == StationType.HOT_STATION) {
             for (Ingredient ingredient : recipe.inputs()) {
                 Item item = BuiltInRegistries.ITEM.get(ingredient.itemId());
                 int neededToStage = ingredient.count();
@@ -2483,6 +2597,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         }
         if (recipe.stationType() == StationType.HOT_STATION && !townstead$hotStationMatchesRecipe(level, pos, recipe)) {
             return false;
+        }
+        // Cutting board work is simulated from inventory; just verify the block entity exists.
+        if (recipe.stationType() == StationType.CUTTING_BOARD) {
+            return level.getBlockEntity(pos) != null;
         }
 
         BlockEntity be = level.getBlockEntity(pos);
