@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.Collections;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private static final int SEARCH_RADIUS = 24;
@@ -1174,6 +1175,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         usedStoveThisShift = false;
         usedCampfireThisShift = false;
 
+        // Pre-planning: collect finished outputs from all kitchen stations
+        // so fire station surfaces have accurate free-slot counts for discovery.
+        townstead$collectAndUnloadKitchenStations(level, villager);
+
         int tier = Math.max(1, FarmersDelightCookAssignment.effectiveRecipeTier(level, villager));
         boolean hasHotStation = townstead$hasStationType(level, villager, StationType.HOT_STATION);
         boolean hasFireStation = townstead$hasStationType(level, villager, StationType.FIRE_STATION);
@@ -1234,15 +1239,88 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         List<PlannedEntry> stationEntries = new ArrayList<>();
         Set<ResourceLocation> plannedOutputs = new HashSet<>();
 
-        // Split stations into fire and non-fire
+        // Split stations into hot (cooking pot), fire, and cutting board
+        List<StationSlot> hotStations = new ArrayList<>();
         List<StationSlot> fireStations = new ArrayList<>();
-        List<StationSlot> otherStations = new ArrayList<>();
+        List<StationSlot> cuttingStations = new ArrayList<>();
         for (StationSlot s : stations) {
-            if (s.type() == StationType.FIRE_STATION) fireStations.add(s);
-            else otherStations.add(s);
+            if (s.type() == StationType.HOT_STATION) hotStations.add(s);
+            else if (s.type() == StationType.FIRE_STATION) fireStations.add(s);
+            else cuttingStations.add(s);
         }
 
-        // Phase 3a — Round-robin fire station allocation
+        // Phase 3a — Cooking pot allocation (highest priority)
+        for (StationSlot station : hotStations) {
+            List<RecipeDef> compatible = new ArrayList<>();
+            for (RecipeDef recipe : tierRecipes) {
+                if (recipe.stationType() != station.type()) continue;
+                if (!townstead$stationSupportsRecipe(level, station.pos(), recipe)) continue;
+                compatible.add(recipe);
+            }
+            if (compatible.isEmpty()) continue;
+
+            int slotsRemaining = station.capacity();
+
+            while (slotsRemaining > 0) {
+                RecipeDef bestRecipe = null;
+                double bestScore = Double.NEGATIVE_INFINITY;
+                int bestCost = 0;
+
+                for (RecipeDef recipe : compatible) {
+                    if (plannedOutputs.contains(recipe.output())) continue;
+                    if (!townstead$canPlanWithVirtual(recipe, virtualSupply, knifeAvailable, waterAvailable)) continue;
+
+                    int recipeCost = recipe.timeTicks() + 40;
+                    if (!stationEntries.isEmpty() && budgetUsed + recipeCost > workBudget) continue;
+
+                    boolean hasNonRepeatedCandidate = lastCompletedOutput == null || !lastCompletedOutput.equals(recipe.output());
+                    if (!hasNonRepeatedCandidate && consecutiveCompletedOutput >= 2) {
+                        boolean anyOther = false;
+                        for (RecipeDef other : compatible) {
+                            if (other == recipe) continue;
+                            if (plannedOutputs.contains(other.output())) continue;
+                            if (!townstead$canPlanWithVirtual(other, virtualSupply, knifeAvailable, waterAvailable)) continue;
+                            if (lastCompletedOutput == null || !lastCompletedOutput.equals(other.output())) {
+                                anyOther = true;
+                                break;
+                            }
+                        }
+                        if (anyOther) continue;
+                    }
+
+                    double score = townstead$scoreRecipe(
+                            recipe,
+                            0,
+                            outputStock.getOrDefault(recipe.output(), 0),
+                            chainDemand.getOrDefault(recipe.output(), 0),
+                            tier,
+                            hasHotStation,
+                            hasFireStation
+                    );
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestRecipe = recipe;
+                        bestCost = recipeCost;
+                    }
+                }
+
+                if (bestRecipe == null) break;
+
+                stationEntries.add(new PlannedEntry(bestRecipe, station.pos()));
+                plannedOutputs.add(bestRecipe.output());
+                townstead$applyVirtual(bestRecipe, virtualSupply);
+                budgetUsed += bestCost;
+                slotsRemaining--;
+
+                if (budgetUsed >= workBudget) break;
+                if (stationEntries.size() >= SHIFT_PLAN_MAX_RECIPES) break;
+            }
+
+            if (budgetUsed >= workBudget) break;
+            if (stationEntries.size() >= SHIFT_PLAN_MAX_RECIPES) break;
+        }
+
+        // Phase 3b — Round-robin fire station allocation
         int[] fireRemaining = new int[fireStations.size()];
         for (int i = 0; i < fireStations.size(); i++) {
             fireRemaining[i] = fireStations.get(i).capacity();
@@ -1345,8 +1423,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
 
-        // Phase 3b — Sequential non-fire allocation (hot stations, cutting boards)
-        for (StationSlot station : otherStations) {
+        // Phase 3c — Sequential cutting board allocation
+        for (StationSlot station : cuttingStations) {
             List<RecipeDef> compatible = new ArrayList<>();
             for (RecipeDef recipe : tierRecipes) {
                 if (recipe.stationType() != station.type()) continue;
@@ -1416,20 +1494,24 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             if (stationEntries.size() >= SHIFT_PLAN_MAX_RECIPES) break;
         }
 
-        // Phase 4 — Build flat plan (fire entries grouped by station, then others)
+        // Phase 4 — Build flat plan (cooking pot first, then fire grouped, then cutting boards)
+        List<PlannedEntry> hotEntries = new ArrayList<>();
         Map<Long, List<PlannedEntry>> fireGroups = new LinkedHashMap<>();
-        List<PlannedEntry> nonFireEntries = new ArrayList<>();
+        List<PlannedEntry> otherEntries = new ArrayList<>();
         for (PlannedEntry entry : stationEntries) {
-            if (entry.recipe().stationType() == StationType.FIRE_STATION && entry.preferredStation() != null) {
+            if (entry.recipe().stationType() == StationType.HOT_STATION) {
+                hotEntries.add(entry);
+            } else if (entry.recipe().stationType() == StationType.FIRE_STATION && entry.preferredStation() != null) {
                 fireGroups.computeIfAbsent(entry.preferredStation().asLong(), k -> new ArrayList<>()).add(entry);
             } else {
-                nonFireEntries.add(entry);
+                otherEntries.add(entry);
             }
         }
+        shiftPlan.addAll(hotEntries);
         for (List<PlannedEntry> group : fireGroups.values()) {
             shiftPlan.addAll(group);
         }
-        shiftPlan.addAll(nonFireEntries);
+        shiftPlan.addAll(otherEntries);
 
         // Logging
         if (!shiftPlan.isEmpty()) {
@@ -1622,6 +1704,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         if (hasFireStation && recipe.stationType() == StationType.FIRE_STATION) {
             score += 1.5d;
         }
+        // Random jitter for variety — shuffles similarly-scored recipes each plan cycle.
+        score += ThreadLocalRandom.current().nextDouble() * 4.0d;
         return score;
     }
 
@@ -2315,6 +2399,80 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         return movedAny;
     }
 
+    private void townstead$clearCookingPotContents(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
+        if (pos == null) return;
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        if (!FD_COOKING_POT.equals(blockId)) return;
+
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) return;
+
+        boolean clearedAny = false;
+
+        // Try all handler directions + null direction
+        Direction[] directions = new Direction[Direction.values().length + 1];
+        directions[0] = null;
+        System.arraycopy(Direction.values(), 0, directions, 1, Direction.values().length);
+
+        Set<Integer> handlerIds = new HashSet<>();
+        for (Direction dir : directions) {
+            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, dir);
+            if (handler == null) continue;
+            int hid = System.identityHashCode(handler);
+            if (!handlerIds.add(hid)) continue;
+
+            for (int i = 0; i < handler.getSlots(); i++) {
+                ItemStack slot = handler.getStackInSlot(i);
+                if (slot.isEmpty()) continue;
+
+                ItemStack extracted = handler.extractItem(i, slot.getCount(), false);
+                if (extracted.isEmpty()) continue;
+                clearedAny = true;
+
+                ItemStack remainder = villager.getInventory().addItem(extracted);
+                if (!remainder.isEmpty()) {
+                    int insertedNearby = townstead$storeOutputInCookStorage(level, villager, remainder, pos);
+                    if (!remainder.isEmpty() && insertedNearby <= 0) {
+                        ItemEntity drop = new ItemEntity(
+                                level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy()
+                        );
+                        drop.setPickUpDelay(0);
+                        level.addFreshEntity(drop);
+                    }
+                }
+            }
+        }
+
+        // Container fallback
+        if (be instanceof Container container) {
+            for (int i = 0; i < container.getContainerSize(); i++) {
+                ItemStack slot = container.getItem(i);
+                if (slot.isEmpty()) continue;
+
+                ItemStack taken = slot.copy();
+                container.setItem(i, ItemStack.EMPTY);
+                container.setChanged();
+                clearedAny = true;
+
+                ItemStack remainder = villager.getInventory().addItem(taken);
+                if (!remainder.isEmpty()) {
+                    int insertedNearby = townstead$storeOutputInCookStorage(level, villager, remainder, pos);
+                    if (!remainder.isEmpty() && insertedNearby <= 0) {
+                        ItemEntity drop = new ItemEntity(
+                                level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy()
+                        );
+                        drop.setPickUpDelay(0);
+                        level.addFreshEntity(drop);
+                    }
+                }
+            }
+        }
+
+        if (clearedAny) {
+            townstead$traceOutput("cleanup:pot_contents at=" + pos.getX() + "," + pos.getY() + "," + pos.getZ());
+        }
+    }
+
     private void townstead$claimStation(VillagerEntityMCA villager, BlockPos pos, long untilTick) {
         if (pos == null) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
@@ -2566,8 +2724,21 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             while (townstead$count(inv, item) < ingredient.count()) {
                 boolean ok = townstead$pullSingleIngredient(level, villager, item);
                 if (!ok) {
-                    lastFailure = "missing:" + BuiltInRegistries.ITEM.getKey(item);
-                    return false;
+                    // Primary item not found — try alternative items from this ingredient
+                    boolean pulled = false;
+                    for (ResourceLocation altId : ingredient.itemIds()) {
+                        Item altItem = BuiltInRegistries.ITEM.get(altId);
+                        if (altItem == Items.AIR || altItem == item) continue;
+                        if (townstead$pullSingleIngredient(level, villager, altItem)) {
+                            item = altItem;
+                            pulled = true;
+                            break;
+                        }
+                    }
+                    if (!pulled) {
+                        lastFailure = "missing:" + BuiltInRegistries.ITEM.getKey(item);
+                        return false;
+                    }
                 }
             }
         }
@@ -2621,6 +2792,9 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         stagedInputs.clear();
         Map<ResourceLocation, Integer> stationProvidedInputs = new HashMap<>();
         if (stationType == StationType.HOT_STATION) {
+            // Clear any leftover contents from the cooking pot before staging new ingredients.
+            townstead$clearCookingPotContents(level, villager, stationAnchor);
+
             for (Ingredient ingredient : recipe.inputs()) {
                 Item item = townstead$resolveItem(ingredient, inv);
                 ResourceLocation resolvedId = BuiltInRegistries.ITEM.getKey(item);
