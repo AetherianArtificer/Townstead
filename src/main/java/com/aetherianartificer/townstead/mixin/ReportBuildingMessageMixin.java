@@ -18,7 +18,7 @@ public abstract class ReportBuildingMessageMixin {
             case ADD, ADD_ROOM, REMOVE, FULL_SCAN ->
                     VillageManager.get(player.serverLevel())
                             .findNearestVillage(player)
-                            .ifPresent(BuildingTierReconciler::reconcileVillage);
+                            .ifPresent(v -> BuildingTierReconciler.reconcileVillage(v, player.serverLevel()));
             default -> {
             }
         }

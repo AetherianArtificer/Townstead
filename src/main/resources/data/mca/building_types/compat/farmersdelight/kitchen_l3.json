@@ -10,7 +10,7 @@
   "blocks": {
     "#townstead:compat/farmersdelight/kitchen_heat_sources": 2,
     "farmersdelight:cooking_pot": 1,
-    "minecraft:copper_block": 2,
+    "#townstead:compat/farmersdelight/kitchen_copper": 2,
     "#townstead:compat/farmersdelight/kitchen_storage": 2,
     "#townstead:compat/farmersdelight/kitchen_prep_blocks": 1
   }
