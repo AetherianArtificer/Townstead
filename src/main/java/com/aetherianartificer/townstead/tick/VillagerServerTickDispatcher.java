@@ -8,6 +8,7 @@ public final class VillagerServerTickDispatcher {
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
         CookAutoAssignTicker.tick(villager);
+        CookTradeBackfillTicker.tick(villager);
         HungerVillagerTicker.tick(villager);
         ProfessionProgressMemoryTicker.tick(villager);
     }

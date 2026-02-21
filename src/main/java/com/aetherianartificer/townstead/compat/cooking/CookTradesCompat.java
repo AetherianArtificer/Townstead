@@ -80,8 +80,7 @@ public final class CookTradesCompat {
             List<TradeSpec> preferred,
             List<TradeSpec> fallback
     ) {
-        List<VillagerTrades.ItemListing> levelTrades = event.getTrades().get(level);
-        if (levelTrades == null) return;
+        List<VillagerTrades.ItemListing> levelTrades = event.getTrades().computeIfAbsent(level, k -> new ArrayList<>());
 
         List<VillagerTrades.ItemListing> resolved = new ArrayList<>();
         for (TradeSpec spec : preferred) {

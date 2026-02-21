@@ -50,6 +50,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_BLOCKS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
+    public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -121,9 +122,6 @@ public final class TownsteadConfig {
         FARMER_GROOM_SCAN_INTERVAL_TICKS = b
                 .comment("Ticks between farmer grooming target scans.")
                 .defineInRange("farmerGroomScanIntervalTicks", 60, 20, 1200);
-        DEBUG_VILLAGER_AI = b
-                .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
-                .define("debugVillagerAI", true);
         ENABLE_FARMER_REQUEST_CHAT = b
                 .comment("Allow farmers to periodically announce missing supplies (seeds/tools/etc.) in local chat.")
                 .define("enableFarmerRequestChat", true);
@@ -160,6 +158,12 @@ public final class TownsteadConfig {
                         TownsteadConfig::isValidResourceLocationString);
         b.pop();
 
+        b.push("debug");
+        DEBUG_VILLAGER_AI = b
+                .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
+                .define("debugVillagerAI", false);
+        b.pop();
+
         SERVER_SPEC = b.build();
 
         ModConfigSpec.Builder clientBuilder = new ModConfigSpec.Builder();
@@ -167,6 +171,12 @@ public final class TownsteadConfig {
         MUTE_MOOD_VOCALIZATIONS = clientBuilder
                 .comment("Mute villager mood vocalizations tied to laughter/celebration and crying.")
                 .define("muteMoodVocalizations", true);
+        clientBuilder.pop();
+
+        clientBuilder.push("catalog");
+        USE_TOWNSTEAD_CATALOG = clientBuilder
+                .comment("Use the Townstead extended catalog with kitchen building tiers. Disable to use MCA's original catalog.")
+                .define("useTownsteadCatalog", true);
         clientBuilder.pop();
 
         CLIENT_SPEC = clientBuilder.build();
