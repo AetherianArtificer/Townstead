@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.compat.farmersdelight;
 
+import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.hunger.CookProgressData;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
@@ -112,6 +114,16 @@ public final class FarmersDelightCookAssignment {
         }
         Optional<Village> village = resolveVillage(villager);
         return village.map(FarmersDelightCookAssignment::highestKitchenTier).orElse(0);
+    }
+
+    /**
+     * Returns the effective recipe tier for this cook, considering both the
+     * kitchen building tier and the cook's personal progression tier.
+     */
+    public static int effectiveRecipeTier(ServerLevel level, VillagerEntityMCA villager) {
+        int kitchenTier = effectiveKitchenTier(level, villager);
+        int cookTier = CookProgressData.getTier(villager.getData(Townstead.HUNGER_DATA));
+        return Math.min(kitchenTier, cookTier);
     }
 
     public static Optional<Building> assignedKitchen(ServerLevel level, VillagerEntityMCA villager) {

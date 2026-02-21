@@ -130,5 +130,19 @@
   "dialogue.chat.cook_request.unreachable/5": "I keep getting stuck before I can work.",
   "dialogue.chat.cook_request.unreachable/6": "Could someone clear the way to the kitchen?",
 
-  "dialogue.chat.cook_request.unsupported_item": "I don't know how to cook %2$s yet!"
+  "dialogue.chat.cook_request.unsupported_item": "I don't know how to cook %2$s yet!",
+
+  "dialogue.chat.cook_request.skill_too_low/1": "I see recipes on the shelf, but they're beyond me still.",
+  "dialogue.chat.cook_request.skill_too_low/2": "I'm not skilled enough for the fancier dishes yet.",
+  "dialogue.chat.cook_request.skill_too_low/3": "Give me time. I'll learn to cook those soon enough.",
+  "dialogue.chat.cook_request.skill_too_low/4": "Those recipes need a steadier hand than mine... for now.",
+  "dialogue.chat.cook_request.skill_too_low/5": "I need more practice before I can tackle those meals.",
+  "dialogue.chat.cook_request.skill_too_low/6": "I'll stick to what I know while I sharpen my skills.",
+
+  "dialogue.chat.cook_progress.tier_up/1": "I've picked up a few new tricks in the kitchen!",
+  "dialogue.chat.cook_progress.tier_up/2": "My cooking is getting better, I can feel it.",
+  "dialogue.chat.cook_progress.tier_up/3": "I can handle trickier recipes now.",
+  "dialogue.chat.cook_progress.tier_up/4": "The meals are coming together faster these days.",
+  "dialogue.chat.cook_progress.tier_up/5": "Another step up in my culinary craft!",
+  "dialogue.chat.cook_progress.tier_up/6": "I've grown into a better cook."
 }

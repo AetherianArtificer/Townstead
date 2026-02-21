@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.compat.farmersdelight;
 
+import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.hunger.CookProgressData;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -8,6 +10,7 @@ import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -44,6 +47,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
@@ -102,10 +106,12 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private static final TagKey<Block> FD_KITCHEN_STORAGE_NETHER_TAG = TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_nether"));
 
     private enum StationType { CUTTING_BOARD, HOT_STATION, FIRE_STATION }
-    private enum BlockedReason { NONE, NO_KITCHEN, NO_INGREDIENTS, NO_RECIPE, NO_STORAGE, UNREACHABLE }
+    private enum BlockedReason { NONE, NO_KITCHEN, NO_INGREDIENTS, NO_RECIPE, NO_STORAGE, UNREACHABLE, SKILL_TOO_LOW }
     private enum WorkPhase { IDLE, GATHER, COOK, STORE }
 
-    private record Ingredient(ResourceLocation itemId, int count) {}
+    private record Ingredient(List<ResourceLocation> itemIds, int count) {
+        ResourceLocation primaryId() { return itemIds.get(0); }
+    }
     private record RecipeDef(
             int minTier,
             StationType stationType,
@@ -120,6 +126,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     ) {}
 
     private static final List<RecipeDef> RECIPES = List.of(
+            // ── Tier 1 — Fire Station ──
             recipe(1, StationType.FIRE_STATION, "minecraft:cooked_chicken", 1, 100, false, false, in("minecraft:chicken", 1)),
             recipe(1, StationType.FIRE_STATION, "minecraft:cooked_rabbit", 1, 100, false, false, in("minecraft:rabbit", 1)),
             recipe(1, StationType.FIRE_STATION, "minecraft:cooked_cod", 1, 100, false, false, in("minecraft:cod", 1)),
@@ -127,19 +134,50 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             recipe(1, StationType.FIRE_STATION, "minecraft:cooked_porkchop", 1, 100, false, false, in("minecraft:porkchop", 1)),
             recipe(1, StationType.FIRE_STATION, "minecraft:cooked_mutton", 1, 100, false, false, in("minecraft:mutton", 1)),
             recipe(1, StationType.FIRE_STATION, "minecraft:cooked_beef", 1, 100, false, false, in("minecraft:beef", 1)),
+            recipe(1, StationType.FIRE_STATION, "farmersdelight:smoked_ham", 1, 100, false, false, in("farmersdelight:ham", 1)),
+            recipe(1, StationType.FIRE_STATION, "minecraft:bread", 1, 100, false, false, in("farmersdelight:wheat_dough", 1)),
+            recipe(1, StationType.FIRE_STATION, "minecraft:baked_potato", 1, 100, false, false, in("minecraft:potato", 1)),
+
+            // ── Tier 2 — Cutting Board ──
             recipe(2, StationType.CUTTING_BOARD, "farmersdelight:chicken_cuts", 2, 80, true, false, in("minecraft:chicken", 1)),
             recipe(2, StationType.CUTTING_BOARD, "farmersdelight:cod_slice", 2, 80, true, false, in("minecraft:cod", 1)),
             recipe(2, StationType.CUTTING_BOARD, "farmersdelight:salmon_slice", 2, 80, true, false, in("minecraft:salmon", 1)),
             recipe(2, StationType.CUTTING_BOARD, "farmersdelight:mutton_chops", 2, 80, true, false, in("minecraft:mutton", 1)),
             recipe(2, StationType.CUTTING_BOARD, "farmersdelight:bacon", 2, 80, true, false, in("minecraft:porkchop", 1)),
             recipe(2, StationType.CUTTING_BOARD, "farmersdelight:minced_beef", 2, 80, true, false, in("minecraft:beef", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "farmersdelight:cooked_chicken_cuts", 2, 80, true, false, in("minecraft:cooked_chicken", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "farmersdelight:cooked_cod_slice", 2, 80, true, false, in("minecraft:cooked_cod", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "farmersdelight:cooked_salmon_slice", 2, 80, true, false, in("minecraft:cooked_salmon", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "farmersdelight:cooked_mutton_chops", 2, 80, true, false, in("minecraft:cooked_mutton", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "minecraft:porkchop", 2, 80, true, false, in("farmersdelight:ham", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "minecraft:cooked_porkchop", 2, 80, true, false, in("farmersdelight:smoked_ham", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "farmersdelight:cabbage_leaf", 2, 80, true, false, in("farmersdelight:cabbage", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "farmersdelight:rice", 1, 80, true, false, in("farmersdelight:rice_panicle", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "farmersdelight:raw_pasta", 1, 80, true, false, in("farmersdelight:wheat_dough", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "farmersdelight:pumpkin_slice", 4, 80, true, false, in("minecraft:pumpkin", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "minecraft:melon_slice", 9, 80, true, false, in("minecraft:melon", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "minecraft:brown_mushroom", 5, 80, true, false, in("farmersdelight:brown_mushroom_colony", 1)),
+            recipe(2, StationType.CUTTING_BOARD, "minecraft:red_mushroom", 5, 80, true, false, in("farmersdelight:red_mushroom_colony", 1)),
+
+            // ── Tier 2 — Fire Station ──
             recipe(2, StationType.FIRE_STATION, "farmersdelight:cooked_chicken_cuts", 1, 100, false, false, in("farmersdelight:chicken_cuts", 1)),
             recipe(2, StationType.FIRE_STATION, "farmersdelight:cooked_cod_slice", 1, 100, false, false, in("farmersdelight:cod_slice", 1)),
             recipe(2, StationType.FIRE_STATION, "farmersdelight:cooked_salmon_slice", 1, 100, false, false, in("farmersdelight:salmon_slice", 1)),
             recipe(2, StationType.FIRE_STATION, "farmersdelight:cooked_mutton_chops", 1, 100, false, false, in("farmersdelight:mutton_chops", 1)),
             recipe(2, StationType.FIRE_STATION, "farmersdelight:cooked_bacon", 1, 100, false, false, in("farmersdelight:bacon", 1)),
             recipe(2, StationType.FIRE_STATION, "farmersdelight:beef_patty", 1, 100, false, false, in("farmersdelight:minced_beef", 1)),
+
+            // ── Tier 3 — Fire Station ──
             recipe(3, StationType.FIRE_STATION, "farmersdelight:fried_egg", 1, 80, false, false, in("minecraft:egg", 1)),
+
+            // ── Tier 3 — Cutting Board ──
+            recipe(3, StationType.CUTTING_BOARD, "farmersdelight:cake_slice", 7, 80, true, false, in("minecraft:cake", 1)),
+            recipe(3, StationType.CUTTING_BOARD, "farmersdelight:apple_pie_slice", 4, 80, true, false, in("farmersdelight:apple_pie", 1)),
+            recipe(3, StationType.CUTTING_BOARD, "farmersdelight:chocolate_pie_slice", 4, 80, true, false, in("farmersdelight:chocolate_pie", 1)),
+            recipe(3, StationType.CUTTING_BOARD, "farmersdelight:sweet_berry_cheesecake_slice", 4, 80, true, false, in("farmersdelight:sweet_berry_cheesecake", 1)),
+            recipe(3, StationType.CUTTING_BOARD, "farmersdelight:kelp_roll_slice", 3, 80, true, false, in("farmersdelight:kelp_roll", 1)),
+
+            // ── Tier 3 — Cooking Pot ──
             hotRecipe(3, "farmersdelight:cooked_rice", 1, 100, false, false, 1, HOT_VESSEL_POT, in("farmersdelight:rice", 1)),
             hotRecipe(3, "minecraft:mushroom_stew", 1, 120, false, false, 1, HOT_VESSEL_POT,
                     in("minecraft:brown_mushroom", 1), in("minecraft:red_mushroom", 1)),
@@ -153,7 +191,73 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                     in("farmersdelight:rice", 1), in("minecraft:egg", 1), in("minecraft:carrot", 1), in("farmersdelight:onion", 1)),
             hotRecipe(3, "farmersdelight:vegetable_soup", 1, 130, false, false, 1, HOT_VESSEL_POT,
                     in("minecraft:carrot", 1), in("minecraft:potato", 1), in("minecraft:beetroot", 1), in("farmersdelight:cabbage", 1)),
-            hotRecipe(4, "farmersdelight:tomato_sauce", 1, 120, false, false, HOT_VESSEL_POT, in("farmersdelight:tomato", 2))
+            hotRecipe(3, "farmersdelight:tomato_sauce", 1, 120, false, false, HOT_VESSEL_POT, in("farmersdelight:tomato", 2)),
+            hotRecipe(3, "farmersdelight:bone_broth", 1, 120, false, false, 1, HOT_VESSEL_POT,
+                    in("minecraft:bone", 1),
+                    inAny(1, "minecraft:glow_berries", "minecraft:brown_mushroom", "minecraft:red_mushroom", "minecraft:hanging_roots", "minecraft:glow_lichen")),
+            hotRecipe(3, "farmersdelight:cabbage_rolls", 1, 120, false, false, 1, HOT_VESSEL_POT,
+                    inAny(1, "farmersdelight:cabbage", "farmersdelight:cabbage_leaf"),
+                    inAny(1, "minecraft:chicken", "minecraft:porkchop", "minecraft:beef", "minecraft:mutton",
+                            "minecraft:cod", "minecraft:salmon", "minecraft:egg",
+                            "minecraft:brown_mushroom", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot")),
+            hotRecipe(3, "farmersdelight:mushroom_rice", 1, 120, false, false, 1, HOT_VESSEL_POT,
+                    in("minecraft:brown_mushroom", 1), in("minecraft:red_mushroom", 1), in("farmersdelight:rice", 1),
+                    inAny(1, "minecraft:carrot", "minecraft:potato")),
+            hotRecipe(3, "minecraft:rabbit_stew", 1, 140, false, false, 1, HOT_VESSEL_POT,
+                    in("minecraft:baked_potato", 1), in("minecraft:rabbit", 1), in("minecraft:carrot", 1),
+                    inAny(1, "minecraft:brown_mushroom", "minecraft:red_mushroom")),
+
+            // ── Tier 4 — Cooking Pot ──
+            hotRecipe(4, "farmersdelight:chicken_soup", 1, 140, false, false, 1, HOT_VESSEL_POT,
+                    inAny(1, "minecraft:chicken", "farmersdelight:chicken_cuts"), in("minecraft:carrot", 1),
+                    inAny(1, "farmersdelight:cabbage", "farmersdelight:cabbage_leaf"),
+                    inAny(1, "farmersdelight:onion", "farmersdelight:tomato")),
+            hotRecipe(4, "farmersdelight:fish_stew", 1, 140, false, false, 1, HOT_VESSEL_POT,
+                    inAny(1, "minecraft:cod", "farmersdelight:cod_slice", "minecraft:salmon", "farmersdelight:salmon_slice"),
+                    in("farmersdelight:tomato_sauce", 1), in("farmersdelight:onion", 1)),
+            hotRecipe(4, "farmersdelight:pumpkin_soup", 1, 140, false, false, 1, HOT_VESSEL_POT,
+                    in("farmersdelight:pumpkin_slice", 1),
+                    inAny(1, "farmersdelight:cabbage", "farmersdelight:cabbage_leaf"),
+                    inAny(1, "minecraft:porkchop", "farmersdelight:bacon"),
+                    inAny(1, "farmersdelight:milk_bottle", "minecraft:milk_bucket")),
+            hotRecipe(4, "farmersdelight:ratatouille", 1, 140, false, false, 1, HOT_VESSEL_POT,
+                    in("farmersdelight:tomato", 1), in("farmersdelight:onion", 1), in("minecraft:beetroot", 1),
+                    inAny(1, "farmersdelight:onion", "farmersdelight:tomato")),
+            hotRecipe(4, "farmersdelight:dog_food", 1, 120, false, false, 1, HOT_VESSEL_POT,
+                    in("minecraft:rotten_flesh", 1), in("minecraft:bone_meal", 1),
+                    inAny(1, "minecraft:chicken", "minecraft:porkchop", "minecraft:beef", "minecraft:mutton"),
+                    in("farmersdelight:rice", 1)),
+            hotRecipe(4, "farmersdelight:dumplings", 2, 130, false, false, 0, HOT_VESSEL_POT,
+                    in("farmersdelight:wheat_dough", 1),
+                    inAny(1, "farmersdelight:cabbage", "farmersdelight:cabbage_leaf"),
+                    in("farmersdelight:onion", 1),
+                    inAny(1, "minecraft:chicken", "minecraft:porkchop", "minecraft:beef", "minecraft:brown_mushroom")),
+            hotRecipe(4, "farmersdelight:apple_cider", 1, 120, false, false, 0, HOT_VESSEL_POT,
+                    in("minecraft:apple", 2), in("minecraft:sugar", 1)),
+            hotRecipe(4, "farmersdelight:vegetable_noodles", 1, 140, false, false, 1, HOT_VESSEL_POT,
+                    in("minecraft:carrot", 1), in("minecraft:brown_mushroom", 1), in("farmersdelight:raw_pasta", 1),
+                    inAny(1, "farmersdelight:cabbage", "farmersdelight:cabbage_leaf"),
+                    inAny(1, "farmersdelight:onion", "farmersdelight:tomato")),
+
+            // ── Tier 5 — Cooking Pot ──
+            hotRecipe(5, "farmersdelight:pasta_with_meatballs", 1, 150, false, false, 1, HOT_VESSEL_POT,
+                    in("farmersdelight:minced_beef", 1), in("farmersdelight:raw_pasta", 1), in("farmersdelight:tomato_sauce", 1)),
+            hotRecipe(5, "farmersdelight:pasta_with_mutton_chop", 1, 150, false, false, 1, HOT_VESSEL_POT,
+                    inAny(1, "minecraft:mutton", "farmersdelight:mutton_chops"),
+                    in("farmersdelight:raw_pasta", 1), in("farmersdelight:tomato_sauce", 1)),
+            hotRecipe(5, "farmersdelight:noodle_soup", 1, 150, false, false, 1, HOT_VESSEL_POT,
+                    in("farmersdelight:raw_pasta", 1), in("farmersdelight:fried_egg", 1), in("minecraft:dried_kelp", 1),
+                    inAny(1, "minecraft:porkchop", "farmersdelight:bacon")),
+            hotRecipe(5, "farmersdelight:squid_ink_pasta", 1, 150, false, false, 1, HOT_VESSEL_POT,
+                    inAny(1, "minecraft:cod", "farmersdelight:cod_slice", "minecraft:salmon", "farmersdelight:salmon_slice"),
+                    in("farmersdelight:raw_pasta", 1), in("farmersdelight:tomato", 1), in("minecraft:ink_sac", 1)),
+            hotRecipe(5, "farmersdelight:hot_cocoa", 1, 120, false, false, 0, HOT_VESSEL_POT,
+                    inAny(1, "farmersdelight:milk_bottle", "minecraft:milk_bucket"),
+                    in("minecraft:sugar", 1), in("minecraft:cocoa_beans", 2)),
+            hotRecipe(5, "farmersdelight:glow_berry_custard", 1, 120, false, false, 0, HOT_VESSEL_POT,
+                    in("minecraft:glow_berries", 1),
+                    inAny(1, "farmersdelight:milk_bottle", "minecraft:milk_bucket"),
+                    in("minecraft:egg", 1), in("minecraft:sugar", 1))
     );
     private static final Set<ResourceLocation> RECIPE_OUTPUT_IDS;
     private static final Set<ResourceLocation> RECIPE_INPUT_IDS;
@@ -168,7 +272,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                 inputs.add(MINECRAFT_BOWL);
             }
             for (Ingredient ingredient : recipe.inputs()) {
-                inputs.add(ingredient.itemId());
+                inputs.addAll(ingredient.itemIds());
             }
         }
         Set<ResourceLocation> unloadOnly = new HashSet<>(outputs);
@@ -442,7 +546,9 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
         if (activeRecipe == null) {
             if ((shiftPlan.isEmpty() || shiftPlanIndex >= shiftPlan.size()) && !townstead$buildShiftPlan(level, villager)) {
-                townstead$setBlocked(level, villager, gameTime, BlockedReason.NO_INGREDIENTS, "");
+                BlockedReason noRecipeReason = townstead$isSkillBottleneck(level, villager)
+                        ? BlockedReason.SKILL_TOO_LOW : BlockedReason.NO_INGREDIENTS;
+                townstead$setBlocked(level, villager, gameTime, noRecipeReason, "");
                 nextAcquireTick = gameTime + IDLE_BACKOFF;
                 return;
             }
@@ -457,6 +563,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                 BlockedReason reason = townstead$blockedReasonFromFailure();
                 if (reason == BlockedReason.NO_INGREDIENTS && !unsupportedItem.isBlank()) {
                     reason = BlockedReason.NO_RECIPE;
+                } else if (reason == BlockedReason.NO_INGREDIENTS && townstead$isSkillBottleneck(level, villager)) {
+                    reason = BlockedReason.SKILL_TOO_LOW;
                 }
                 shiftPlan.clear();
                 shiftPlanIndex = 0;
@@ -532,7 +640,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             // place it on the board at cook completion.
             if (activeRecipe.stationType() == StationType.CUTTING_BOARD && !activeRecipe.inputs().isEmpty()) {
                 Ingredient input = activeRecipe.inputs().get(0);
-                Item inputItem = BuiltInRegistries.ITEM.get(input.itemId());
+                Item inputItem = townstead$resolveItem(input, villager.getInventory());
                 heldCuttingInput = new ItemStack(inputItem, 1);
             }
             cookDoneTick = gameTime + activeRecipe.timeTicks();
@@ -590,6 +698,12 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                     + " resolved=" + resolved.getCount()
                     + " pending=" + pendingOutput.getCount());
             townstead$noteCompletedRecipe(activeRecipe);
+            int xpAmount = switch (activeRecipe.stationType()) {
+                case CUTTING_BOARD -> 3;
+                case FIRE_STATION -> 2;
+                case HOT_STATION -> 4;
+            };
+            townstead$awardCookXp(level, villager, gameTime, xpAmount, activeRecipe.stationType().name().toLowerCase());
             stagedInputs.clear();
             activeRecipe = null;
             cookDoneTick = 0L;
@@ -619,6 +733,12 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         townstead$noteCompletedRecipe(activeRecipe);
+        int xpAmount2 = switch (activeRecipe.stationType()) {
+            case CUTTING_BOARD -> 3;
+            case FIRE_STATION -> 2;
+            case HOT_STATION -> 4;
+        };
+        townstead$awardCookXp(level, villager, gameTime, xpAmount2, activeRecipe.stationType().name().toLowerCase());
         activeRecipe = null;
         cookDoneTick = 0L;
         townstead$releaseStationClaim(villager, stationAnchor);
@@ -964,7 +1084,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             BlockPos searchCenter
     ) {
         if (targetStationType == null) return null;
-        int tier = Math.max(1, FarmersDelightCookAssignment.effectiveKitchenTier(level, villager));
+        int tier = Math.max(1, FarmersDelightCookAssignment.effectiveRecipeTier(level, villager));
         unsupportedItem = "";
         for (RecipeDef recipe : RECIPES) {
             if (recipe.minTier() > tier || recipe.stationType() != targetStationType) continue;
@@ -983,7 +1103,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         usedStoveThisShift = false;
         usedCampfireThisShift = false;
 
-        int tier = Math.max(1, FarmersDelightCookAssignment.effectiveKitchenTier(level, villager));
+        int tier = Math.max(1, FarmersDelightCookAssignment.effectiveRecipeTier(level, villager));
         boolean hasHotStation = townstead$hasStationType(level, villager, StationType.HOT_STATION);
         boolean hasFireStation = townstead$hasStationType(level, villager, StationType.FIRE_STATION);
         boolean hasCuttingStation = townstead$hasStationType(level, villager, StationType.CUTTING_BOARD);
@@ -999,7 +1119,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             trackedIds.add(recipe.output());
             if (recipe.bowlsRequired() > 0) trackedIds.add(MINECRAFT_BOWL);
             for (Ingredient ingredient : recipe.inputs()) {
-                trackedIds.add(ingredient.itemId());
+                trackedIds.addAll(ingredient.itemIds());
             }
         }
 
@@ -1010,7 +1130,9 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         for (RecipeDef recipe : tierRecipes) {
             outputStock.put(recipe.output(), virtualSupply.getOrDefault(recipe.output(), 0));
             for (Ingredient ingredient : recipe.inputs()) {
-                chainDemand.merge(ingredient.itemId(), 1, Integer::sum);
+                for (ResourceLocation id : ingredient.itemIds()) {
+                    chainDemand.merge(id, 1, Integer::sum);
+                }
             }
         }
 
@@ -1316,9 +1438,11 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         if (recipe != null && recipe.stationType() == StationType.HOT_STATION) {
             allowedHotPrestageItems = new HashSet<>();
             for (Ingredient ingredient : recipe.inputs()) {
-                Item item = BuiltInRegistries.ITEM.get(ingredient.itemId());
-                if (item != Items.AIR) {
-                    allowedHotPrestageItems.add(item);
+                for (ResourceLocation id : ingredient.itemIds()) {
+                    Item item = BuiltInRegistries.ITEM.get(id);
+                    if (item != Items.AIR) {
+                        allowedHotPrestageItems.add(item);
+                    }
                 }
             }
         }
@@ -1472,7 +1596,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         BlockState state = level.getBlockState(pos);
         if (townstead$surfaceBlockedForCooking(level, pos, state)) return false;
         Ingredient input = recipe.inputs().get(0);
-        Item inputItem = BuiltInRegistries.ITEM.get(input.itemId());
+        Item inputItem = BuiltInRegistries.ITEM.get(input.primaryId());
         if (inputItem == Items.AIR) return false;
         ItemStack probe = new ItemStack(inputItem, 1);
 
@@ -1504,14 +1628,14 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             return false;
         }
         Ingredient input = recipe.inputs().get(0);
-        Item inputItem = BuiltInRegistries.ITEM.get(input.itemId());
+        Item inputItem = BuiltInRegistries.ITEM.get(input.primaryId());
         if (inputItem == Items.AIR) {
             lastFailure = "surface_bad_ingredient";
             return false;
         }
         SimpleContainer inv = villager.getInventory();
         if (townstead$count(inv, inputItem) <= 0) {
-            lastFailure = "missing:" + input.itemId();
+            lastFailure = "missing:" + input.primaryId();
             return false;
         }
 
@@ -1524,7 +1648,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         int availableInput = townstead$count(inv, inputItem);
         int maxLoads = Math.min(freeSlots, availableInput / ingredientPerLoad);
         if (maxLoads <= 0) {
-            lastFailure = "missing:" + input.itemId();
+            lastFailure = "missing:" + input.primaryId();
             return false;
         }
 
@@ -1586,7 +1710,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                     }
                     int availableForSkillet = townstead$count(inv, inputItem);
                     if (availableForSkillet < ingredientPerLoad) {
-                        if (loadedCount == 0) lastFailure = "missing:" + input.itemId();
+                        if (loadedCount == 0) lastFailure = "missing:" + input.primaryId();
                         break;
                     }
                     int skilletBatch = Math.min(availableForSkillet, inputItem.getDefaultMaxStackSize());
@@ -1614,7 +1738,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                 break;
             }
             if (!townstead$consume(inv, inputItem, consumedAmount)) {
-                lastFailure = "consume_failed:" + input.itemId();
+                lastFailure = "consume_failed:" + input.primaryId();
                 return loadedCount > 0;
             }
             loadedCount++;
@@ -1918,7 +2042,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             if (bowls < recipe.bowlsRequired()) return false;
         }
         for (Ingredient ingredient : recipe.inputs()) {
-            int available = virtualSupply.getOrDefault(ingredient.itemId(), 0);
+            int available = 0;
+            for (ResourceLocation id : ingredient.itemIds()) {
+                available += virtualSupply.getOrDefault(id, 0);
+            }
             if (available < ingredient.count()) return false;
         }
         return true;
@@ -1930,8 +2057,16 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             virtualSupply.put(MINECRAFT_BOWL, Math.max(0, bowls - recipe.bowlsRequired()));
         }
         for (Ingredient ingredient : recipe.inputs()) {
-            int available = virtualSupply.getOrDefault(ingredient.itemId(), 0);
-            virtualSupply.put(ingredient.itemId(), Math.max(0, available - ingredient.count()));
+            int remaining = ingredient.count();
+            for (ResourceLocation id : ingredient.itemIds()) {
+                if (remaining <= 0) break;
+                int available = virtualSupply.getOrDefault(id, 0);
+                int deduct = Math.min(available, remaining);
+                if (deduct > 0) {
+                    virtualSupply.put(id, available - deduct);
+                    remaining -= deduct;
+                }
+            }
         }
         virtualSupply.merge(recipe.output(), recipe.outputCount(), Integer::sum);
     }
@@ -1977,23 +2112,26 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
         SimpleContainer inv = villager.getInventory();
         for (Ingredient ingredient : recipe.inputs()) {
-            Item item = BuiltInRegistries.ITEM.get(ingredient.itemId());
-            if (item == Items.AIR) {
-                lastFailure = "bad_ingredient:" + ingredient.itemId();
-                return false;
+            boolean foundAny = false;
+            for (ResourceLocation id : ingredient.itemIds()) {
+                Item item = BuiltInRegistries.ITEM.get(id);
+                if (item == Items.AIR) continue;
+                int neededCount = ingredient.count();
+                if (recipe.stationType() == StationType.HOT_STATION) {
+                    int preloaded = townstead$countItemInStation(level, center, item);
+                    neededCount = Math.max(0, neededCount - preloaded);
+                }
+                if (neededCount <= 0) { foundAny = true; break; }
+                if (townstead$count(inv, item) >= neededCount) { foundAny = true; break; }
+                NearbyItemSources.ContainerSlot nearbySlot = NearbyItemSources.findBestNearbySlot(
+                        level, villager, 16, 3, s -> s.is(item), ItemStack::getCount, center
+                );
+                if (nearbySlot != null || townstead$findVillageStorageSlot(level, villager, item) != null) {
+                    foundAny = true; break;
+                }
             }
-            int neededCount = ingredient.count();
-            if (recipe.stationType() == StationType.HOT_STATION) {
-                int preloaded = townstead$countItemInStation(level, center, item);
-                neededCount = Math.max(0, neededCount - preloaded);
-            }
-            if (neededCount <= 0) continue;
-            if (townstead$count(inv, item) >= neededCount) continue;
-            NearbyItemSources.ContainerSlot nearbySlot = NearbyItemSources.findBestNearbySlot(
-                    level, villager, 16, 3, s -> s.is(item), ItemStack::getCount, center
-            );
-            if (nearbySlot == null && townstead$findVillageStorageSlot(level, villager, item) == null) {
-                lastFailure = "missing:" + ingredient.itemId();
+            if (!foundAny) {
+                lastFailure = "missing:" + ingredient.primaryId();
                 return false;
             }
         }
@@ -2121,11 +2259,11 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
         SimpleContainer inv = villager.getInventory();
         for (Ingredient ingredient : recipe.inputs()) {
-            Item item = BuiltInRegistries.ITEM.get(ingredient.itemId());
+            Item item = townstead$resolveItem(ingredient, inv);
             while (townstead$count(inv, item) < ingredient.count()) {
                 boolean ok = townstead$pullSingleIngredient(level, villager, item);
                 if (!ok) {
-                    lastFailure = "missing:" + ingredient.itemId();
+                    lastFailure = "missing:" + BuiltInRegistries.ITEM.getKey(item);
                     return false;
                 }
             }
@@ -2158,13 +2296,14 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         Map<ResourceLocation, Integer> stationProvidedInputs = new HashMap<>();
         if (stationType == StationType.HOT_STATION) {
             for (Ingredient ingredient : recipe.inputs()) {
-                Item item = BuiltInRegistries.ITEM.get(ingredient.itemId());
+                Item item = townstead$resolveItem(ingredient, inv);
+                ResourceLocation resolvedId = BuiltInRegistries.ITEM.getKey(item);
                 int neededToStage = ingredient.count();
                 if (stationType == StationType.HOT_STATION && stationAnchor != null) {
                     int alreadyInStation = townstead$countItemInStation(level, stationAnchor, item);
                     int fromStation = Math.min(ingredient.count(), alreadyInStation);
                     if (fromStation > 0) {
-                        stationProvidedInputs.put(ingredient.itemId(), fromStation);
+                        stationProvidedInputs.put(resolvedId, fromStation);
                         neededToStage = Math.max(0, ingredient.count() - fromStation);
                     }
                 }
@@ -2173,13 +2312,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                 if (neededToStage > 0) {
                     stagedCount = townstead$stageFromInventoryToStation(level, villager, item, neededToStage);
                     if (stagedCount <= 0) {
-                        lastFailure = "station_rejects:" + ingredient.itemId();
+                        lastFailure = "station_rejects:" + resolvedId;
                         return false;
                     }
-                    stagedInputs.merge(ingredient.itemId(), stagedCount, Integer::sum);
+                    stagedInputs.merge(resolvedId, stagedCount, Integer::sum);
                     if (stagedCount < neededToStage) {
                         townstead$rollbackStagedInputs(level, villager);
-                        lastFailure = "station_partial:" + ingredient.itemId();
+                        lastFailure = "station_partial:" + resolvedId;
                         return false;
                     }
                 }
@@ -2201,11 +2340,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         }
 
         for (Ingredient ingredient : recipe.inputs()) {
-            int stagedCount = stagedInputs.getOrDefault(ingredient.itemId(), 0);
-            int fromStation = stationProvidedInputs.getOrDefault(ingredient.itemId(), 0);
+            Item resolvedItem = townstead$resolveItem(ingredient, inv);
+            ResourceLocation resolvedId = BuiltInRegistries.ITEM.getKey(resolvedItem);
+            int stagedCount = stagedInputs.getOrDefault(resolvedId, 0);
+            int fromStation = stationProvidedInputs.getOrDefault(resolvedId, 0);
             int remaining = Math.max(0, ingredient.count() - stagedCount - fromStation);
-            if (remaining > 0 && !townstead$consume(inv, BuiltInRegistries.ITEM.get(ingredient.itemId()), remaining)) {
-                lastFailure = "consume_failed:" + ingredient.itemId();
+            if (remaining > 0 && !townstead$consume(inv, resolvedItem, remaining)) {
+                lastFailure = "consume_failed:" + resolvedId;
                 return false;
             }
         }
@@ -2607,7 +2748,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         if (be == null) return false;
 
         for (Ingredient ingredient : recipe.inputs()) {
-            Item item = BuiltInRegistries.ITEM.get(ingredient.itemId());
+            Item item = BuiltInRegistries.ITEM.get(ingredient.primaryId());
             if (item == Items.AIR) return false;
             if (!townstead$canInsertIntoStation(level, pos, new ItemStack(item, ingredient.count()))) return false;
         }
@@ -3284,6 +3425,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             case NO_STORAGE -> villager.sendChatToAllAround("dialogue.chat.cook_request.no_storage/" + (1 + level.random.nextInt(4)));
             case UNREACHABLE -> villager.sendChatToAllAround("dialogue.chat.cook_request.unreachable/" + (1 + level.random.nextInt(6)));
             case NO_RECIPE -> villager.sendChatToAllAround("dialogue.chat.cook_request.unsupported_item", unsupportedItem.isBlank() ? "that" : unsupportedItem);
+            case SKILL_TOO_LOW -> villager.sendChatToAllAround("dialogue.chat.cook_request.skill_too_low/" + (1 + level.random.nextInt(6)));
             case NONE -> { }
         }
         nextRequestTick = gameTime + Math.max(200, TownsteadConfig.COOK_REQUEST_INTERVAL_TICKS.get());
@@ -3447,6 +3589,62 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private static Ingredient in(String itemId, int count) {
-        return new Ingredient(ResourceLocation.parse(itemId), count);
+        return new Ingredient(List.of(ResourceLocation.parse(itemId)), count);
+    }
+
+    private static Ingredient inAny(int count, String... itemIds) {
+        return new Ingredient(
+                java.util.Arrays.stream(itemIds).map(ResourceLocation::parse).toList(),
+                count
+        );
+    }
+
+    private void townstead$awardCookXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
+        if (amount <= 0) return;
+        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        CookProgressData.GainResult result = CookProgressData.addXp(hunger, amount, gameTime);
+        if (result.appliedXp() <= 0) return;
+        villager.setData(Townstead.HUNGER_DATA, hunger);
+        PacketDistributor.sendToPlayersTrackingEntity(villager, Townstead.townstead$hungerSync(villager, hunger));
+
+        if (result.tierUp()) {
+            villager.setVillagerData(villager.getVillagerData().setLevel(result.tierAfter()));
+            String chatKey = "dialogue.chat.cook_progress.tier_up/" + (1 + level.random.nextInt(6));
+            villager.sendChatToAllAround(chatKey);
+            villager.getLongTermMemory().remember("townstead.cook.tier_up");
+            villager.getLongTermMemory().remember("townstead.cook.tier." + result.tierAfter());
+            villager.getLongTermMemory().remember("townstead.cook.discovery.unlock");
+            villager.getLongTermMemory().remember("townstead.cook.discovery.tier." + result.tierAfter());
+        }
+    }
+
+    private static ResourceLocation townstead$resolveFromSupply(
+            Ingredient ingredient, Map<ResourceLocation, Integer> supply) {
+        for (ResourceLocation id : ingredient.itemIds()) {
+            if (supply.getOrDefault(id, 0) >= ingredient.count()) return id;
+        }
+        return ingredient.primaryId();
+    }
+
+    private Item townstead$resolveItem(Ingredient ingredient, SimpleContainer inv) {
+        for (ResourceLocation id : ingredient.itemIds()) {
+            Item item = BuiltInRegistries.ITEM.get(id);
+            if (item != Items.AIR && townstead$count(inv, item) > 0) return item;
+        }
+        return BuiltInRegistries.ITEM.get(ingredient.primaryId());
+    }
+
+    private boolean townstead$isSkillBottleneck(ServerLevel level, VillagerEntityMCA villager) {
+        int kitchenTier = FarmersDelightCookAssignment.effectiveKitchenTier(level, villager);
+        int cookTier = CookProgressData.getTier(villager.getData(Townstead.HUNGER_DATA));
+        if (cookTier >= kitchenTier) return false;
+        // The kitchen supports higher-tier recipes than the cook can make.
+        // Check if any recipe exists between the cook's tier and the kitchen's tier.
+        for (RecipeDef recipe : RECIPES) {
+            if (recipe.minTier() > cookTier && recipe.minTier() <= kitchenTier) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -56,9 +56,10 @@ public abstract class InteractScreenMixin extends Screen {
         int tier;
         if (mca.getVillagerData().getProfession() == VillagerProfession.FARMER) {
             tier = Math.max(1, HungerClientStore.getFarmerTier(mca.getId()));
-        } else if (mca.getVillagerData().getProfession() == VillagerProfession.BUTCHER
-                || FarmersDelightCookAssignment.isExternalCookProfession(mca.getVillagerData().getProfession())) {
+        } else if (mca.getVillagerData().getProfession() == VillagerProfession.BUTCHER) {
             tier = Math.max(1, HungerClientStore.getButcherTier(mca.getId()));
+        } else if (FarmersDelightCookAssignment.isExternalCookProfession(mca.getVillagerData().getProfession())) {
+            tier = Math.max(1, HungerClientStore.getCookTier(mca.getId()));
         } else {
             return base;
         }

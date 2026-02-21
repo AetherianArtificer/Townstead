@@ -14,6 +14,7 @@ import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.FarmerProgressData;
 import com.aetherianartificer.townstead.hunger.ButcherProgressData;
+import com.aetherianartificer.townstead.hunger.CookProgressData;
 import com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore;
 import com.aetherianartificer.townstead.hunger.ButcherPolicyData;
 import com.aetherianartificer.townstead.hunger.ButcherPolicySetPayload;
@@ -209,7 +210,10 @@ public class Townstead {
                 payload.farmerXpToNext(),
                 payload.butcherTier(),
                 payload.butcherXp(),
-                payload.butcherXpToNext()
+                payload.butcherXpToNext(),
+                payload.cookTier(),
+                payload.cookXp(),
+                payload.cookXpToNext()
         ));
     }
 
@@ -335,7 +339,10 @@ public class Townstead {
                 FarmerProgressData.getXpToNextTier(hunger),
                 ButcherProgressData.getTier(hunger),
                 ButcherProgressData.getXp(hunger),
-                ButcherProgressData.getXpToNextTier(hunger)
+                ButcherProgressData.getXpToNextTier(hunger),
+                CookProgressData.getTier(hunger),
+                CookProgressData.getXp(hunger),
+                CookProgressData.getXpToNextTier(hunger)
         );
     }
 
