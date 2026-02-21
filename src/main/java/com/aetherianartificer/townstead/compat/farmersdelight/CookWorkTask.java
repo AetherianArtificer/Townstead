@@ -477,11 +477,22 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                     standPos = previousStand;
                     stationType = previousType;
                 }
-                if (townstead$clearStationResidualInputs(level, villager, stationAnchor)) {
-                    workPhase = WorkPhase.STORE;
-                    nextAcquireTick = gameTime + 10L;
-                    return;
+                // Do not yank items from surface fire stations — they are actively cooking.
+                if (!townstead$isSurfaceFireStation(level, stationAnchor)) {
+                    if (townstead$clearStationResidualInputs(level, villager, stationAnchor)) {
+                        workPhase = WorkPhase.STORE;
+                        nextAcquireTick = gameTime + 10L;
+                        return;
+                    }
                 }
+                // Station is busy and no alternative fire station was found.
+                // Clear the active recipe so the cook can pick a different recipe type
+                // (e.g. HOT_STATION or CUTTING_BOARD) instead of retrying this one.
+                activeRecipe = null;
+                townstead$releaseStationClaim(villager, stationAnchor);
+                stationAnchor = null;
+                standPos = null;
+                stationType = null;
                 workPhase = WorkPhase.IDLE;
                 nextAcquireTick = gameTime + 20L;
                 return;
