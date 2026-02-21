@@ -1041,12 +1041,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             default:
                 capacity = 0;
         }
-        if (capacity <= 0) {
-            townstead$debugChat(level, villager, "PLAN:skip " + type.name().toLowerCase()
-                    + " " + blockId.getPath() + " cap=0"
-                    + " @ " + pos.getX() + "," + pos.getY() + "," + pos.getZ());
-            return;
-        }
+        if (capacity <= 0) return;
         found.put(key, new StationSlot(pos.immutable(), type, blockId, capacity));
     }
 
@@ -1247,23 +1242,6 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             else otherStations.add(s);
         }
 
-        // Diagnostic: show discovered stations
-        {
-            StringBuilder diag = new StringBuilder("PLAN:discover ");
-            diag.append(fireStations.size()).append(" fire, ").append(otherStations.size()).append(" other");
-            for (StationSlot s : fireStations) {
-                diag.append("\n  fire ").append(s.blockId().getPath())
-                    .append(" cap=").append(s.capacity())
-                    .append(" @ ").append(s.pos().getX()).append(",").append(s.pos().getY()).append(",").append(s.pos().getZ());
-            }
-            for (StationSlot s : otherStations) {
-                diag.append("\n  ").append(s.type().name().toLowerCase()).append(" ").append(s.blockId().getPath())
-                    .append(" cap=").append(s.capacity())
-                    .append(" @ ").append(s.pos().getX()).append(",").append(s.pos().getY()).append(",").append(s.pos().getZ());
-            }
-            townstead$debugChat(level, villager, diag.toString());
-        }
-
         // Phase 3a — Round-robin fire station allocation
         int[] fireRemaining = new int[fireStations.size()];
         for (int i = 0; i < fireStations.size(); i++) {
@@ -1365,11 +1343,6 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                 if (stationEntries.size() >= SHIFT_PLAN_MAX_RECIPES) break;
                 if (budgetUsed >= workBudget) break;
             }
-        }
-
-        if (fireStations.size() > 0 && stationEntries.isEmpty()) {
-            townstead$debugChat(level, villager, "PLAN:fire 0 entries from " + fireStations.size()
-                    + " stations (no ingredients or all filtered)");
         }
 
         // Phase 3b — Sequential non-fire allocation (hot stations, cutting boards)
