@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.tick;
 
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.server.level.ServerLevel;
@@ -11,6 +12,7 @@ public final class CookAutoAssignTicker {
     private CookAutoAssignTicker() {}
 
     public static void tick(VillagerEntityMCA villager) {
+        if (!TownsteadConfig.isTownsteadCookEnabled()) return;
         if (villager.tickCount % COOK_ASSIGN_INTERVAL_TICKS != 0) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (villager.isBaby() || !villager.isAlive() || villager.isSleeping()) return;

@@ -51,6 +51,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ModConfigSpec.ConfigValue<String> COOK_HANDLER;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -158,6 +159,16 @@ public final class TownsteadConfig {
                         TownsteadConfig::isValidResourceLocationString);
         b.pop();
 
+        b.push("chefsdelight_compat");
+        COOK_HANDLER = b
+                .comment("Which mod handles cook AI and profession assignment.",
+                         "\"townstead\" = Townstead cook AI (default).",
+                         "\"chefsdelight\" = Chef's Delight handles cooking; Townstead cook logic is disabled.",
+                         "Only relevant when Chef's Delight is installed.")
+                .define("cookHandler", "townstead",
+                        s -> "townstead".equals(s) || "chefsdelight".equals(s));
+        b.pop();
+
         b.push("debug");
         DEBUG_VILLAGER_AI = b
                 .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
@@ -180,6 +191,10 @@ public final class TownsteadConfig {
         clientBuilder.pop();
 
         CLIENT_SPEC = clientBuilder.build();
+    }
+
+    public static boolean isTownsteadCookEnabled() {
+        return "townstead".equals(COOK_HANDLER.get());
     }
 
     public static boolean isMoodVocalizationMuteEnabled() {

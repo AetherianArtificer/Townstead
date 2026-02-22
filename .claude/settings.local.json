@@ -10,7 +10,8 @@
       "Bash(gh api:*)",
       "WebFetch(domain:api.github.com)",
       "Bash(./gradlew jar:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(cd:*)"
     ]
   }
 }

@@ -331,6 +331,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
+        if (!TownsteadConfig.isTownsteadCookEnabled()) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         VillagerProfession profession = villager.getVillagerData().getProfession();
         if (!FarmersDelightCookAssignment.isExternalCookProfession(profession)) return false;
@@ -2718,6 +2719,14 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
 
+        // For cooking pot recipes, clear leftover contents BEFORE pulling ingredients.
+        // canFulfill counts items preloaded in the pot, but the pull loop below only
+        // checks inventory/storage.  Clearing first moves pot items into inventory so
+        // the pull loop finds them there.
+        if (stationType == StationType.HOT_STATION) {
+            townstead$clearCookingPotContents(level, villager, stationAnchor);
+        }
+
         SimpleContainer inv = villager.getInventory();
         for (Ingredient ingredient : recipe.inputs()) {
             Item item = townstead$resolveItem(ingredient, inv);
@@ -2792,9 +2801,6 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         stagedInputs.clear();
         Map<ResourceLocation, Integer> stationProvidedInputs = new HashMap<>();
         if (stationType == StationType.HOT_STATION) {
-            // Clear any leftover contents from the cooking pot before staging new ingredients.
-            townstead$clearCookingPotContents(level, villager, stationAnchor);
-
             for (Ingredient ingredient : recipe.inputs()) {
                 Item item = townstead$resolveItem(ingredient, inv);
                 ResourceLocation resolvedId = BuiltInRegistries.ITEM.getKey(item);

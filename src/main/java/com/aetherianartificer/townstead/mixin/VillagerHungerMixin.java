@@ -48,11 +48,17 @@ public abstract class VillagerHungerMixin extends Villager {
     @Unique
     private void townstead$addSeekFoodTask(Brain<VillagerEntityMCA> brain) {
         if (brain == null || brain == townstead$lastPatchedBrain) return;
-        brain.addActivity(Activity.CORE,
+        // Work behaviors go in Activity.WORK so they set WALK_TARGET after MCA's
+        // built-in work behaviors, preventing job-site pathing from overriding ours.
+        brain.addActivity(Activity.WORK,
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
                         Pair.of(70, new HarvestWorkTask()),
                         Pair.of(72, new CookWorkTask()),
-                        Pair.of(74, new ButcherWorkTask()),
+                        Pair.of(74, new ButcherWorkTask())
+                ));
+        // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
+        brain.addActivity(Activity.CORE,
+                ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
                         Pair.of(99, new SeekFoodTask()),
                         Pair.of(110, new CareForYoungTask())
                 ));
