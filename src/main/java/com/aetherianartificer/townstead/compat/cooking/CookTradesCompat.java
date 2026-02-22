@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.compat.cooking;
 
+import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -20,6 +21,7 @@ public final class CookTradesCompat {
     private CookTradesCompat() {}
 
     public static void onVillagerTrades(VillagerTradesEvent event) {
+        if (!ModCompat.isLoaded("farmersdelight")) return;
         if (!FarmersDelightCookAssignment.isExternalCookProfession(event.getType())) return;
 
         addTieredSellTrades(event, 1, 2, List.of(

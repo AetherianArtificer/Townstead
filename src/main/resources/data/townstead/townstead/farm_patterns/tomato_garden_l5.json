@@ -1,0 +1,56 @@
+{
+  "id": "tomato_garden_l5",
+  "family": "tomato_garden",
+  "level": 5,
+  "tier": 5,
+  "requiredTier": 5,
+  "plannerType": "tomato_garden",
+  "required_mod": "farmersdelight",
+  "size": {
+    "x": 15,
+    "z": 15
+  },
+  "grid": [
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP"
+  ],
+  "water_cells": [
+    [7, 7],
+    [4, 7],
+    [10, 7],
+    [7, 4],
+    [7, 10],
+    [4, 4],
+    [10, 10]
+  ],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "mono",
+    "allow_rotation": false
+  },
+  "constraints": {
+    "irrigation_required": true,
+    "max_water_cells": 12,
+    "notes": "full tomato garden complex; maximum density for experienced farmers"
+  },
+  "weights": {
+    "yield_weight": 1.0,
+    "hydration_reliability_weight": 0.90,
+    "walking_efficiency_weight": 0.55,
+    "maintenance_weight": 0.65,
+    "diversity_weight": 0.25
+  }
+}

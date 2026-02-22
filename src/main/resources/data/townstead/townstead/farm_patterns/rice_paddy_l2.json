@@ -1,0 +1,42 @@
+{
+  "id": "rice_paddy_l2",
+  "family": "rice_paddy",
+  "level": 2,
+  "tier": 2,
+  "requiredTier": 2,
+  "plannerType": "rice_paddy",
+  "required_mod": "farmersdelight",
+  "size": {
+    "x": 9,
+    "z": 9
+  },
+  "grid": [
+    "PPPPPPPPP",
+    "PWWWWWWWP",
+    "PWWWWWWWP",
+    "PWWWWWWWP",
+    "PWWWWWWWP",
+    "PWWWWWWWP",
+    "PWWWWWWWP",
+    "PWWWWWWWP",
+    "PPPPPPPPP"
+  ],
+  "water_cells": [],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "mono",
+    "allow_rotation": false
+  },
+  "constraints": {
+    "irrigation_required": false,
+    "max_water_cells": 0,
+    "notes": "medium rice paddy with expanded water area"
+  },
+  "weights": {
+    "yield_weight": 0.70,
+    "hydration_reliability_weight": 0.92,
+    "walking_efficiency_weight": 0.52,
+    "maintenance_weight": 0.65,
+    "diversity_weight": 0.20
+  }
+}

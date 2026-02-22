@@ -1,0 +1,44 @@
+{
+  "id": "rice_paddy_l4",
+  "family": "rice_paddy",
+  "level": 4,
+  "tier": 4,
+  "requiredTier": 4,
+  "plannerType": "rice_paddy",
+  "required_mod": "farmersdelight",
+  "size": {
+    "x": 11,
+    "z": 11
+  },
+  "grid": [
+    "PPPWWWWWPPP",
+    "PPWWWWWWWPP",
+    "PWWWWWWWWWP",
+    "WWWWWWWWWWW",
+    "WWWWWWWWWWW",
+    "WWWWWWWWWWW",
+    "WWWWWWWWWWW",
+    "WWWWWWWWWWW",
+    "PWWWWWWWWWP",
+    "PPWWWWWWWPP",
+    "PPPWWWWWPPP"
+  ],
+  "water_cells": [],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "mono",
+    "allow_rotation": false
+  },
+  "constraints": {
+    "irrigation_required": false,
+    "max_water_cells": 0,
+    "notes": "large rice paddy complex with extensive flooding"
+  },
+  "weights": {
+    "yield_weight": 0.88,
+    "hydration_reliability_weight": 0.96,
+    "walking_efficiency_weight": 0.44,
+    "maintenance_weight": 0.55,
+    "diversity_weight": 0.20
+  }
+}

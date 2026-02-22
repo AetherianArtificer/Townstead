@@ -1,0 +1,48 @@
+{
+  "id": "tomato_garden_l3",
+  "family": "tomato_garden",
+  "level": 3,
+  "tier": 3,
+  "requiredTier": 3,
+  "plannerType": "tomato_garden",
+  "required_mod": "farmersdelight",
+  "size": {
+    "x": 11,
+    "z": 11
+  },
+  "grid": [
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP",
+    "PPPPPPPPPPP"
+  ],
+  "water_cells": [
+    [5, 5],
+    [3, 5],
+    [7, 5]
+  ],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "mono",
+    "allow_rotation": false
+  },
+  "constraints": {
+    "irrigation_required": true,
+    "max_water_cells": 8,
+    "notes": "medium tomato garden with triple irrigation"
+  },
+  "weights": {
+    "yield_weight": 0.85,
+    "hydration_reliability_weight": 0.78,
+    "walking_efficiency_weight": 0.66,
+    "maintenance_weight": 0.75,
+    "diversity_weight": 0.25
+  }
+}

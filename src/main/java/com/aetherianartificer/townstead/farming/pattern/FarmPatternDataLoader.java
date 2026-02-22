@@ -49,7 +49,8 @@ public final class FarmPatternDataLoader extends SimpleJsonResourceReloadListene
                     LOGGER.warn("Rejected farm pattern '{}': {}", location, String.join("; ", schemaErrors));
                     continue;
                 }
-                if (FarmPatternRegistry.register(new FarmPatternDefinition(id, plannerType, requiredTier, family, level), false)) {
+                String requiredMod = GsonHelper.getAsString(json, "required_mod", "").trim();
+                if (FarmPatternRegistry.register(new FarmPatternDefinition(id, plannerType, requiredTier, family, level, requiredMod), false)) {
                     loaded++;
                 } else {
                     rejected++;

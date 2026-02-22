@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead;
 
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
+import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
 import com.google.common.collect.ImmutableSet;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
@@ -102,6 +103,7 @@ public class Townstead {
 
     private void onCommonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            if (!ModCompat.isLoaded("farmersdelight")) return;
             VillagerProfession cook = COOK_PROFESSION.get();
             // MCA drops non-important professions with no JOB_SITE memory.
             // Mark cook important so kitchen-assigned cooks are retained.

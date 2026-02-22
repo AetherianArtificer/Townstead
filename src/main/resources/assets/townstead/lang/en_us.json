@@ -112,6 +112,13 @@
   "townstead.configuration.cookRequestIntervalTicks": "Cook Request Interval Ticks",
   "townstead.configuration.cookRequestIntervalTicks.tooltip": "Minimum ticks between cook shortage request messages.",
 
+  "townstead.configuration.chefsdelight_compat": "Chef's Delight",
+  "townstead.configuration.chefsdelight_compat.tooltip": "Controls integration with Chef's Delight mod.",
+  "townstead.configuration.chefsdelight_compat.enableTownsteadCook": "Townstead Cook Handler",
+  "townstead.configuration.chefsdelight_compat.enableTownsteadCook.tooltip": "When enabled, Townstead handles cook AI and profession assignment. Disable to let Chef's Delight handle cooking instead.",
+  "townstead.configuration.enableTownsteadCook": "Townstead Cook Handler",
+  "townstead.configuration.enableTownsteadCook.tooltip": "When enabled, Townstead handles cook AI and profession assignment. Disable to let Chef's Delight handle cooking instead.",
+
   "townstead.configuration.debug": "Debug",
   "townstead.configuration.debug.tooltip": "Developer diagnostic settings.",
   "townstead.configuration.debug.debugVillagerAI": "Debug Villager AI",
@@ -211,6 +218,8 @@
   "townstead.farming.family.market_garden": "Market Garden",
   "townstead.farming.family.orchard_blocks": "Orchard Blocks",
   "townstead.farming.family.dryland_rows": "Dryland Rows",
+  "townstead.farming.family.rice_paddy": "Rice Paddy",
+  "townstead.farming.family.tomato_garden": "Tomato Garden",
   "townstead.farmer.tier.inline": "Level %s",
   "townstead.farmer.tier.label": "Farmer Tier: L%s",
   "townstead.farmer.next_unlock.label": "Next Unlock: %s XP",

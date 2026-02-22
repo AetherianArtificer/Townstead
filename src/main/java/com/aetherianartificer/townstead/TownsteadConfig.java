@@ -7,6 +7,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.ModConfigSpec;
+import com.aetherianartificer.townstead.compat.ModCompat;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -51,7 +52,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
-    public static final ModConfigSpec.ConfigValue<String> COOK_HANDLER;
+    public static final ModConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -159,15 +160,16 @@ public final class TownsteadConfig {
                         TownsteadConfig::isValidResourceLocationString);
         b.pop();
 
-        b.push("chefsdelight_compat");
-        COOK_HANDLER = b
-                .comment("Which mod handles cook AI and profession assignment.",
-                         "\"townstead\" = Townstead cook AI (default).",
-                         "\"chefsdelight\" = Chef's Delight handles cooking; Townstead cook logic is disabled.",
-                         "Only relevant when Chef's Delight is installed.")
-                .define("cookHandler", "townstead",
-                        s -> "townstead".equals(s) || "chefsdelight".equals(s));
-        b.pop();
+        if (ModCompat.isLoaded("chefsdelight")) {
+            b.push("chefsdelight_compat");
+            ENABLE_TOWNSTEAD_COOK = b
+                    .comment("When enabled, Townstead handles cook AI and profession assignment.",
+                             "When disabled, Chef's Delight handles cooking instead.")
+                    .define("enableTownsteadCook", true);
+            b.pop();
+        } else {
+            ENABLE_TOWNSTEAD_COOK = null;
+        }
 
         b.push("debug");
         DEBUG_VILLAGER_AI = b
@@ -194,7 +196,10 @@ public final class TownsteadConfig {
     }
 
     public static boolean isTownsteadCookEnabled() {
-        return "townstead".equals(COOK_HANDLER.get());
+        if (!ModCompat.isLoaded("farmersdelight")) return false;
+        // No Chef's Delight → Townstead is the only cook handler, always enabled.
+        if (ENABLE_TOWNSTEAD_COOK == null) return true;
+        return ENABLE_TOWNSTEAD_COOK.get();
     }
 
     public static boolean isMoodVocalizationMuteEnabled() {

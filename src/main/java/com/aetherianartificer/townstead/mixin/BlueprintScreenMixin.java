@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.mixin.accessor.BlueprintScreenAccessor;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.aetherianartificer.townstead.compat.ModCompat;
 import net.conczin.mca.MCA;
 import net.conczin.mca.client.gui.BlueprintScreen;
 import net.conczin.mca.client.gui.widget.TooltipButtonWidget;
@@ -914,6 +915,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
         all = all.stream()
                 .filter(BuildingType::visible)
+                .filter(bt -> ModCompat.isCompatAvailable(bt.name()))
                 .sorted(Comparator.comparing(this::townstead$catalogSortKey))
                 .collect(Collectors.toList());
         townstead$catalogEntries = all;

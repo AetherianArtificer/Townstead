@@ -1,0 +1,40 @@
+{
+  "id": "rice_paddy_l1",
+  "family": "rice_paddy",
+  "level": 1,
+  "tier": 1,
+  "requiredTier": 1,
+  "plannerType": "rice_paddy",
+  "required_mod": "farmersdelight",
+  "size": {
+    "x": 7,
+    "z": 7
+  },
+  "grid": [
+    "PPPPPPP",
+    "PWWWWWP",
+    "PWWWWWP",
+    "PWWWWWP",
+    "PWWWWWP",
+    "PWWWWWP",
+    "PPPPPPP"
+  ],
+  "water_cells": [],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "mono",
+    "allow_rotation": false
+  },
+  "constraints": {
+    "irrigation_required": false,
+    "max_water_cells": 0,
+    "notes": "compact starter rice paddy; farmer places water as soil prep"
+  },
+  "weights": {
+    "yield_weight": 0.60,
+    "hydration_reliability_weight": 0.90,
+    "walking_efficiency_weight": 0.55,
+    "maintenance_weight": 0.70,
+    "diversity_weight": 0.20
+  }
+}

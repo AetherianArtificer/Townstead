@@ -1,0 +1,42 @@
+{
+  "id": "rice_paddy_l3",
+  "family": "rice_paddy",
+  "level": 3,
+  "tier": 3,
+  "requiredTier": 3,
+  "plannerType": "rice_paddy",
+  "required_mod": "farmersdelight",
+  "size": {
+    "x": 9,
+    "z": 9
+  },
+  "grid": [
+    "PPWWWWWPP",
+    "PWWWWWWWP",
+    "WWWWWWWWW",
+    "WWWWWWWWW",
+    "WWWWWWWWW",
+    "WWWWWWWWW",
+    "WWWWWWWWW",
+    "PWWWWWWWP",
+    "PPWWWWWPP"
+  ],
+  "water_cells": [],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "mono",
+    "allow_rotation": false
+  },
+  "constraints": {
+    "irrigation_required": false,
+    "max_water_cells": 0,
+    "notes": "dense rice paddy with more water cells and minimal borders"
+  },
+  "weights": {
+    "yield_weight": 0.78,
+    "hydration_reliability_weight": 0.95,
+    "walking_efficiency_weight": 0.48,
+    "maintenance_weight": 0.60,
+    "diversity_weight": 0.20
+  }
+}

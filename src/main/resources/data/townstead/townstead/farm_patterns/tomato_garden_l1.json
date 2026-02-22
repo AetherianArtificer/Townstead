@@ -1,0 +1,42 @@
+{
+  "id": "tomato_garden_l1",
+  "family": "tomato_garden",
+  "level": 1,
+  "tier": 1,
+  "requiredTier": 1,
+  "plannerType": "tomato_garden",
+  "required_mod": "farmersdelight",
+  "size": {
+    "x": 7,
+    "z": 7
+  },
+  "grid": [
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP",
+    "PPPPPPP"
+  ],
+  "water_cells": [
+    [3, 3]
+  ],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "mono",
+    "allow_rotation": false
+  },
+  "constraints": {
+    "irrigation_required": true,
+    "max_water_cells": 4,
+    "notes": "dense starter tomato garden; perennial crop needs no replanting paths"
+  },
+  "weights": {
+    "yield_weight": 0.75,
+    "hydration_reliability_weight": 0.70,
+    "walking_efficiency_weight": 0.72,
+    "maintenance_weight": 0.80,
+    "diversity_weight": 0.25
+  }
+}

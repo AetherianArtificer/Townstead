@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -22,6 +23,7 @@ public final class CookTradeBackfillTicker {
     private CookTradeBackfillTicker() {}
 
     public static void tick(VillagerEntityMCA villager) {
+        if (!ModCompat.isLoaded("farmersdelight")) return;
         if (villager.tickCount % CHECK_INTERVAL_TICKS != 37) return;
         if (!FarmersDelightCookAssignment.isExternalCookProfession(villager.getVillagerData().getProfession())) return;
 

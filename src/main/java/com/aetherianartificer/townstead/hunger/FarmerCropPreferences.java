@@ -1,7 +1,10 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Personality;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -12,6 +15,7 @@ import net.minecraft.world.level.block.StemBlock;
 import net.neoforged.neoforge.common.Tags;
 
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Map;
 
 public final class FarmerCropPreferences {
@@ -70,12 +74,37 @@ public final class FarmerCropPreferences {
             Map.entry(Items.RED_MUSHROOM, traits(2, 2, 1, 3, 3, 3, CropCategory.MEDICINAL, CropCategory.SPICE, CropCategory.LUXURY))
     );
 
+    // Farmer's Delight crop traits — resolved lazily since FD items aren't available at compile time.
+    private static volatile Map<Item, CropTraits> fdTraits;
+
+    private static Map<Item, CropTraits> getFdTraits() {
+        if (fdTraits != null) return fdTraits;
+        Map<Item, CropTraits> map = new HashMap<>();
+        resolve(map, "farmersdelight", "onion",
+                traits(3, 3, 3, 3, 3, 2, CropCategory.VEGETABLE, CropCategory.SPICE, CropCategory.STAPLE));
+        resolve(map, "farmersdelight", "cabbage_seeds",
+                traits(4, 3, 3, 2, 2, 2, CropCategory.VEGETABLE, CropCategory.STAPLE));
+        resolve(map, "farmersdelight", "rice",
+                traits(4, 3, 5, 2, 3, 2, CropCategory.STAPLE, CropCategory.INDUSTRIAL));
+        resolve(map, "farmersdelight", "tomato_seeds",
+                traits(3, 3, 3, 2, 3, 2, CropCategory.FRUIT, CropCategory.VEGETABLE, CropCategory.CASH));
+        fdTraits = Map.copyOf(map);
+        return fdTraits;
+    }
+
+    private static void resolve(Map<Item, CropTraits> map, String namespace, String path, CropTraits traits) {
+        BuiltInRegistries.ITEM.getOptional(ResourceLocation.fromNamespaceAndPath(namespace, path))
+                .ifPresent(item -> map.put(item, traits));
+    }
+
     private FarmerCropPreferences() {}
 
     public static CropTraits traitsFor(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
         CropTraits vanilla = VANILLA.get(stack.getItem());
         if (vanilla != null) return vanilla;
+        CropTraits fd = getFdTraits().get(stack.getItem());
+        if (fd != null) return fd;
         if (!isSeedLike(stack)) return null;
         return NEUTRAL_TRAITS;
     }
@@ -102,6 +131,7 @@ public final class FarmerCropPreferences {
     public static boolean isSeedLike(ItemStack stack) {
         if (stack.is(ItemTags.VILLAGER_PLANTABLE_SEEDS)) return true;
         if (stack.is(Tags.Items.SEEDS)) return true;
+        if (FarmerCropCompatRegistry.isSeed(stack)) return true;
         if (!(stack.getItem() instanceof BlockItem blockItem)) return false;
         return blockItem.getBlock() instanceof CropBlock || blockItem.getBlock() instanceof StemBlock;
     }

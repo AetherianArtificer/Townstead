@@ -68,6 +68,7 @@ public final class FarmPatternRegistry {
 
         String requested = id == null ? "" : id.trim();
         FarmPatternDefinition exact = requested.isEmpty() ? null : merged.get(requested);
+        if (exact != null && !exact.isAvailable()) exact = null;
         if (exact != null && exact.requiredTier() <= normalizedTier) {
             FarmPatternDefinition familyBest = bestByFamily(merged.values(), exact.family(), normalizedTier);
             return familyBest != null ? familyBest : exact;
@@ -88,6 +89,7 @@ public final class FarmPatternRegistry {
 
         FarmPatternDefinition bestAny = null;
         for (FarmPatternDefinition candidate : merged.values()) {
+            if (!candidate.isAvailable()) continue;
             if (candidate.requiredTier() > normalizedTier) continue;
             if (bestAny == null
                     || candidate.requiredTier() > bestAny.requiredTier()
@@ -118,6 +120,7 @@ public final class FarmPatternRegistry {
         FarmPatternDefinition best = null;
         for (FarmPatternDefinition candidate : patterns) {
             if (!family.equals(candidate.family())) continue;
+            if (!candidate.isAvailable()) continue;
             if (candidate.requiredTier() > maxTier) continue;
             if (best == null
                     || candidate.level() > best.level()

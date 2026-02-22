@@ -1,0 +1,46 @@
+{
+  "id": "rice_paddy_l5",
+  "family": "rice_paddy",
+  "level": 5,
+  "tier": 5,
+  "requiredTier": 5,
+  "plannerType": "rice_paddy",
+  "required_mod": "farmersdelight",
+  "size": {
+    "x": 13,
+    "z": 13
+  },
+  "grid": [
+    "PPPPWWWWWPPPP",
+    "PPPWWWWWWWPPP",
+    "PPWWWWWWWWWPP",
+    "PWWWWWWWWWWWP",
+    "WWWWWWWWWWWWW",
+    "WWWWWWWWWWWWW",
+    "WWWWWWWWWWWWW",
+    "WWWWWWWWWWWWW",
+    "WWWWWWWWWWWWW",
+    "PWWWWWWWWWWWP",
+    "PPWWWWWWWWWPP",
+    "PPPWWWWWWWPPP",
+    "PPPPWWWWWPPPP"
+  ],
+  "water_cells": [],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "mono",
+    "allow_rotation": false
+  },
+  "constraints": {
+    "irrigation_required": false,
+    "max_water_cells": 0,
+    "notes": "full paddy complex; maximum water coverage for experienced farmers"
+  },
+  "weights": {
+    "yield_weight": 1.0,
+    "hydration_reliability_weight": 0.98,
+    "walking_efficiency_weight": 0.40,
+    "maintenance_weight": 0.50,
+    "diversity_weight": 0.20
+  }
+}
