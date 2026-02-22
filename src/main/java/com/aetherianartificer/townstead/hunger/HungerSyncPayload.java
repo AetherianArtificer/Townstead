@@ -14,7 +14,10 @@ public record HungerSyncPayload(
         int farmerXpToNext,
         int butcherTier,
         int butcherXp,
-        int butcherXpToNext
+        int butcherXpToNext,
+        int cookTier,
+        int cookXp,
+        int cookXpToNext
 ) implements CustomPacketPayload {
 
     public static final Type<HungerSyncPayload> TYPE =
@@ -30,8 +33,14 @@ public record HungerSyncPayload(
                 buf.writeVarInt(payload.butcherTier());
                 buf.writeVarInt(payload.butcherXp());
                 buf.writeVarInt(payload.butcherXpToNext());
+                buf.writeVarInt(payload.cookTier());
+                buf.writeVarInt(payload.cookXp());
+                buf.writeVarInt(payload.cookXpToNext());
             },
             buf -> new HungerSyncPayload(
+                    buf.readVarInt(),
+                    buf.readVarInt(),
+                    buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),

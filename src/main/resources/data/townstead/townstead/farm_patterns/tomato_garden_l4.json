@@ -1,0 +1,52 @@
+{
+  "id": "tomato_garden_l4",
+  "family": "tomato_garden",
+  "level": 4,
+  "tier": 4,
+  "requiredTier": 4,
+  "plannerType": "tomato_garden",
+  "required_mod": "farmersdelight",
+  "size": {
+    "x": 13,
+    "z": 13
+  },
+  "grid": [
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP",
+    "PPPPPPPPPPPPP"
+  ],
+  "water_cells": [
+    [6, 6],
+    [3, 6],
+    [9, 6],
+    [6, 3],
+    [6, 9]
+  ],
+  "path_cells": [],
+  "crop_rules": {
+    "mode": "mono",
+    "allow_rotation": false
+  },
+  "constraints": {
+    "irrigation_required": true,
+    "max_water_cells": 10,
+    "notes": "large tomato garden with cross irrigation pattern"
+  },
+  "weights": {
+    "yield_weight": 0.92,
+    "hydration_reliability_weight": 0.84,
+    "walking_efficiency_weight": 0.60,
+    "maintenance_weight": 0.70,
+    "diversity_weight": 0.25
+  }
+}

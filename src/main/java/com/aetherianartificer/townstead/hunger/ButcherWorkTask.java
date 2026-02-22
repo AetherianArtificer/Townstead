@@ -83,7 +83,8 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        VillagerProfession profession = villager.getVillagerData().getProfession();
+        if (profession != VillagerProfession.BUTCHER) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         return townstead$findNearestSmoker(level, villager, level.getGameTime()) != null;

@@ -1,0 +1,19 @@
+{
+  "color": "ffe6c468",
+  "visible": true,
+  "priority": 4,
+  "icon": true,
+  "iconU": 244,
+  "iconV": 180,
+  "townsteadNodeItem": "farmersdelight:netherite_knife",
+  "noBeds": true,
+  "blocks": {
+    "farmersdelight:stove": 3,
+    "farmersdelight:cooking_pot": 1,
+    "farmersdelight:skillet": 2,
+    "#townstead:compat/farmersdelight/kitchen_copper": 4,
+    "minecraft:gold_block": 2,
+    "#townstead:compat/farmersdelight/kitchen_storage_nether": 3,
+    "#townstead:compat/farmersdelight/kitchen_prep_blocks": 3
+  }
+}

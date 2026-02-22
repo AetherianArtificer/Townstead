@@ -1,0 +1,16 @@
+{
+  "color": "ffd3b57c",
+  "visible": true,
+  "priority": 2,
+  "icon": true,
+  "iconU": 241,
+  "iconV": 180,
+  "townsteadNodeItem": "farmersdelight:cutting_board",
+  "noBeds": true,
+  "blocks": {
+    "#townstead:compat/farmersdelight/kitchen_heat_sources": 1,
+    "#townstead:compat/farmersdelight/kitchen_workstations": 1,
+    "#townstead:compat/farmersdelight/kitchen_storage": 1,
+    "#townstead:compat/farmersdelight/kitchen_prep_blocks": 1
+  }
+}

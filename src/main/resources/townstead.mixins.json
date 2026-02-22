@@ -3,11 +3,17 @@
   "package": "com.aetherianartificer.townstead.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "ChefsDelightProfessionGuardMixin",
     "FarmBlockMixin",
-    "VillagerHungerMixin"
+    "ReportBuildingMessageMixin",
+    "VillagerHungerMixin",
+    "VillagerServerTickMixin"
   ],
   "client": [
+    "BlueprintScreenMixin",
+    "LegacyImageButtonMixin",
     "accessor.AbstractDynamicScreenAccessor",
+    "accessor.BlueprintScreenAccessor",
     "accessor.InteractScreenAccessor",
     "InteractScreenMixin",
     "VillagerEditorMixin"

@@ -5,6 +5,7 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.BoneMealItem;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
@@ -26,6 +27,7 @@ public final class WorkSupplyManager {
     public static void restockForCurrentJob(ServerLevel level, VillagerEntityMCA villager, Chore job) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) return;
         if (job == null || job == Chore.NONE) return;
+        boolean isFarmer = villager.getVillagerData().getProfession() == VillagerProfession.FARMER;
 
         SimpleContainer inv = villager.getInventory();
         Class<?> toolType = job.getToolType();
@@ -36,7 +38,7 @@ public final class WorkSupplyManager {
                     stack -> 1);
         }
 
-        if (job == Chore.HARVEST) {
+        if (job == Chore.HARVEST && isFarmer) {
             boolean hasSeed = contains(inv, WorkSupplyManager::isPlantableSeed);
             if (!hasSeed) {
                 NearbyItemSources.pullSingleToInventory(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,

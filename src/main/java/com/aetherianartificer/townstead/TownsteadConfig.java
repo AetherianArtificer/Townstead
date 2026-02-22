@@ -7,6 +7,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.ModConfigSpec;
+import com.aetherianartificer.townstead.compat.ModCompat;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -39,15 +40,19 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_GROOM_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_GROOM_SCAN_INTERVAL_TICKS;
-    public static final ModConfigSpec.BooleanValue DEBUG_FARMER_AI;
+    public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_AI;
     public static final ModConfigSpec.BooleanValue ENABLE_FARMER_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
+    public static final ModConfigSpec.BooleanValue ENABLE_COOK_REQUEST_CHAT;
+    public static final ModConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
     public static final ModConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_BLOCKS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
+    public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ModConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -119,15 +124,18 @@ public final class TownsteadConfig {
         FARMER_GROOM_SCAN_INTERVAL_TICKS = b
                 .comment("Ticks between farmer grooming target scans.")
                 .defineInRange("farmerGroomScanIntervalTicks", 60, 20, 1200);
-        DEBUG_FARMER_AI = b
-                .comment("Enable debug logs for farmer state transitions.")
-                .define("debugFarmerAI", false);
         ENABLE_FARMER_REQUEST_CHAT = b
                 .comment("Allow farmers to periodically announce missing supplies (seeds/tools/etc.) in local chat.")
                 .define("enableFarmerRequestChat", true);
         FARMER_REQUEST_INTERVAL_TICKS = b
                 .comment("Minimum ticks between farmer shortage request messages.")
                 .defineInRange("farmerRequestIntervalTicks", 3600, 200, 24000);
+        ENABLE_COOK_REQUEST_CHAT = b
+                .comment("Allow cooks to periodically announce missing kitchen supplies in local chat.")
+                .define("enableCookRequestChat", true);
+        COOK_REQUEST_INTERVAL_TICKS = b
+                .comment("Minimum ticks between cook shortage request messages.")
+                .defineInRange("cookRequestIntervalTicks", 3600, 200, 24000);
         b.pop();
 
         b.push("caregiving");
@@ -152,6 +160,23 @@ public final class TownsteadConfig {
                         TownsteadConfig::isValidResourceLocationString);
         b.pop();
 
+        if (ModCompat.isLoaded("chefsdelight")) {
+            b.push("chefsdelight_compat");
+            ENABLE_TOWNSTEAD_COOK = b
+                    .comment("When enabled, Townstead handles cook AI and profession assignment.",
+                             "When disabled, Chef's Delight handles cooking instead.")
+                    .define("enableTownsteadCook", true);
+            b.pop();
+        } else {
+            ENABLE_TOWNSTEAD_COOK = null;
+        }
+
+        b.push("debug");
+        DEBUG_VILLAGER_AI = b
+                .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
+                .define("debugVillagerAI", false);
+        b.pop();
+
         SERVER_SPEC = b.build();
 
         ModConfigSpec.Builder clientBuilder = new ModConfigSpec.Builder();
@@ -161,7 +186,20 @@ public final class TownsteadConfig {
                 .define("muteMoodVocalizations", true);
         clientBuilder.pop();
 
+        clientBuilder.push("catalog");
+        USE_TOWNSTEAD_CATALOG = clientBuilder
+                .comment("Use the Townstead extended catalog with kitchen building tiers. Disable to use MCA's original catalog.")
+                .define("useTownsteadCatalog", true);
+        clientBuilder.pop();
+
         CLIENT_SPEC = clientBuilder.build();
+    }
+
+    public static boolean isTownsteadCookEnabled() {
+        if (!ModCompat.isLoaded("farmersdelight")) return false;
+        // No Chef's Delight → Townstead is the only cook handler, always enabled.
+        if (ENABLE_TOWNSTEAD_COOK == null) return true;
+        return ENABLE_TOWNSTEAD_COOK.get();
     }
 
     public static boolean isMoodVocalizationMuteEnabled() {

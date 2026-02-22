@@ -1,0 +1,18 @@
+{
+  "color": "ffddb767",
+  "visible": true,
+  "priority": 3,
+  "icon": true,
+  "iconU": 243,
+  "iconV": 180,
+  "townsteadNodeItem": "farmersdelight:stove",
+  "noBeds": true,
+  "blocks": {
+    "farmersdelight:stove": 2,
+    "farmersdelight:cooking_pot": 1,
+    "farmersdelight:skillet": 1,
+    "minecraft:gold_block": 1,
+    "#townstead:compat/farmersdelight/kitchen_storage_upgraded": 2,
+    "#townstead:compat/farmersdelight/kitchen_prep_blocks": 2
+  }
+}

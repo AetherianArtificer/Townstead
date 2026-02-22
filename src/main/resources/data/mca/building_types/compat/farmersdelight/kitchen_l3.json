@@ -1,0 +1,17 @@
+{
+  "color": "ffd7b873",
+  "visible": true,
+  "priority": 3,
+  "icon": true,
+  "iconU": 242,
+  "iconV": 180,
+  "townsteadNodeItem": "farmersdelight:cooking_pot",
+  "noBeds": true,
+  "blocks": {
+    "#townstead:compat/farmersdelight/kitchen_heat_sources": 2,
+    "farmersdelight:cooking_pot": 1,
+    "#townstead:compat/farmersdelight/kitchen_copper": 2,
+    "#townstead:compat/farmersdelight/kitchen_storage": 2,
+    "#townstead:compat/farmersdelight/kitchen_prep_blocks": 1
+  }
+}

@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.hunger.farm;
 
+import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
@@ -31,6 +32,18 @@ public final class FarmPlanner {
             int maxClusters,
             int maxPlots
     ) {
+        return planStarterRows(level, anchor, horizontalRadius, verticalRadius, maxClusters, maxPlots, "starter_rows");
+    }
+
+    public static FarmBlueprint planStarterRows(
+            ServerLevel level,
+            BlockPos anchor,
+            int horizontalRadius,
+            int verticalRadius,
+            int maxClusters,
+            int maxPlots,
+            String plannerType
+    ) {
         Map<Long, BlockPos> baseSoils = new HashMap<>();
 
         BlockPos min = anchor.offset(-horizontalRadius, -verticalRadius, -horizontalRadius);
@@ -49,7 +62,7 @@ public final class FarmPlanner {
         addExistingSoils(baseSoils.values(), keys, soils, maxPlots);
 
         List<BlockPos> origins = candidateClusterOrigins(anchor, horizontalRadius, verticalRadius);
-        if (origins.isEmpty()) return soils.isEmpty() ? FarmBlueprint.empty(anchor) : new FarmBlueprint("starter_rows", anchor, soils, keys);
+        if (origins.isEmpty()) return soils.isEmpty() ? FarmBlueprint.empty(anchor) : new FarmBlueprint(plannerType, anchor, soils, keys, plannerType);
 
         BlockPos priorityCenter = baseSoils.isEmpty() ? anchor : findNearestToAnchor(baseSoils.values(), anchor);
         int planY = priorityCenter == null ? anchor.getY() : priorityCenter.getY();
@@ -69,7 +82,7 @@ public final class FarmPlanner {
         }
 
         if (soils.isEmpty()) return FarmBlueprint.empty(anchor);
-        return new FarmBlueprint("starter_rows", anchor, soils, keys);
+        return new FarmBlueprint(plannerType, anchor, soils, keys, plannerType);
     }
 
     private static boolean isLane(BlockPos anchor, BlockPos pos) {
@@ -81,7 +94,8 @@ public final class FarmPlanner {
         BlockState state = level.getBlockState(pos);
         if (state.getBlock() instanceof FarmBlock) return true;
         BlockState above = level.getBlockState(pos.above());
-        return above.getBlock() instanceof CropBlock;
+        if (above.getBlock() instanceof CropBlock) return true;
+        return FarmerCropCompatRegistry.isExistingFarmSoil(level, pos);
     }
 
     private static boolean isPotentialExpansionSoil(ServerLevel level, BlockPos pos) {

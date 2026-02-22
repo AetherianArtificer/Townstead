@@ -1,0 +1,49 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "farmersdelight:oak_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:spruce_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:birch_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:jungle_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:acacia_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:dark_oak_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:mangrove_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:cherry_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:bamboo_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:crimson_cabinet",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:warped_cabinet",
+      "required": false
+    }
+  ]
+}

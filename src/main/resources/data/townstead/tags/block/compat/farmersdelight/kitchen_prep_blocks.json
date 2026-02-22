@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "farmersdelight:cutting_board",
+      "required": false
+    }
+  ]
+}

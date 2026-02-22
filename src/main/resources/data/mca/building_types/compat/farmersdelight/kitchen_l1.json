@@ -1,0 +1,15 @@
+{
+  "color": "ffcfb487",
+  "visible": true,
+  "priority": 2,
+  "icon": true,
+  "iconU": 240,
+  "iconV": 180,
+  "townsteadNodeItem": "minecraft:campfire",
+  "noBeds": true,
+  "blocks": {
+    "#townstead:compat/farmersdelight/kitchen_heat_sources": 1,
+    "#townstead:compat/farmersdelight/kitchen_workstations": 1,
+    "#townstead:compat/farmersdelight/kitchen_storage": 1
+  }
+}
