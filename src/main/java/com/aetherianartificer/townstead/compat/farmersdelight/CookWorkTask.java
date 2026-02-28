@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.compat.farmersdelight;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.hunger.CookProgressData;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.google.common.collect.ImmutableMap;
@@ -82,6 +84,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private static final int ROOM_SEARCH_EXPAND_Y = 6;
     private static final int ROOM_FLOOD_MAX_NODES = 16384;
     private static final long ROOM_BOUNDS_CACHE_TICKS = 80L;
+    private static final long WATER_PURIFICATION_INTERVAL_TICKS = 200L;
     private static Class<?> FD_STOVE_BE_CLASS;
     private static Method FD_STOVE_GET_NEXT_EMPTY_SLOT;
     private static Method FD_STOVE_GET_MATCHING_RECIPE;
@@ -299,6 +302,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private long nextDebugTick;
     private long nextRequestTick;
     private long nextStandReacquireTick;
+    private long nextPurificationTick;
     private BlockedReason blocked = BlockedReason.NONE;
     private String unsupportedItem = "";
     private String lastFailure = "none";
@@ -353,6 +357,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         lastFailure = "none";
         nextAcquireTick = 0L;
         nextStandReacquireTick = 0L;
+        nextPurificationTick = gameTime + WATER_PURIFICATION_INTERVAL_TICKS;
         if (shiftPlan.isEmpty() || shiftPlanIndex >= shiftPlan.size()) {
             townstead$buildShiftPlan(level, villager);
         }
@@ -375,6 +380,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             lastCompletedOutput = null;
             consecutiveCompletedOutput = 0;
             nextStandReacquireTick = 0L;
+            nextPurificationTick = 0L;
             lastWorkedStationAnchor = null;
             lastWorkedFireStationAnchor = null;
             fireStationUsageCounts.clear();
@@ -400,6 +406,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             workPhase = WorkPhase.IDLE;
             lastFailure = "no_kitchen_slot";
             nextAcquireTick = gameTime + IDLE_BACKOFF;
+            nextPurificationTick = 0L;
             fireStationUsageCounts.clear();
             usedSkilletThisShift = false;
             usedStoveThisShift = false;
@@ -548,6 +555,11 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                         + " rem=0");
             }
             pendingOutput = ItemStack.EMPTY;
+        }
+
+        if (gameTime >= nextPurificationTick) {
+            nextPurificationTick = gameTime + WATER_PURIFICATION_INTERVAL_TICKS;
+            townstead$tryQueueWaterBottlePurification(level, villager);
         }
 
         if (activeRecipe == null) {
@@ -794,6 +806,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         usedSkilletThisShift = false;
         usedStoveThisShift = false;
         usedCampfireThisShift = false;
+        nextPurificationTick = 0L;
         cachedKitchenWorkArea = Set.of();
         cachedKitchenWorkAnchor = null;
         cachedKitchenWorkUntil = 0L;
@@ -1920,6 +1933,73 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         // Always process currently claimed station even if it's just outside strict building bounds.
         townstead$collectSurfaceCookDrops(level, villager, stationAnchor);
         townstead$unloadReadyOutputsFromStation(level, villager, stationAnchor);
+    }
+
+    private boolean townstead$tryQueueWaterBottlePurification(ServerLevel level, VillagerEntityMCA villager) {
+        if (!TownsteadConfig.ENABLE_COOK_WATER_PURIFICATION.get()) return false;
+        if (activeRecipe != null || cookDoneTick > 0L || !pendingOutput.isEmpty()) return false;
+
+        ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
+        if (!bridge.isActive()) return false;
+
+        SimpleContainer inventory = villager.getInventory();
+        int impureBottleSlot = -1;
+        int worstPurity = Integer.MAX_VALUE;
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack.isEmpty() || !stack.is(Items.POTION)) continue;
+            if (!bridge.itemRestoresThirst(stack) || !bridge.isDrink(stack)) continue;
+            if (!bridge.isPurityWaterContainer(stack)) continue;
+
+            int purity = Math.max(0, bridge.purity(stack));
+            if (purity >= 3) continue;
+            if (purity < worstPurity) {
+                worstPurity = purity;
+                impureBottleSlot = i;
+            }
+        }
+        if (impureBottleSlot < 0) return false;
+
+        ItemStack source = inventory.getItem(impureBottleSlot);
+        ItemStack singleBottle = source.copyWithCount(1);
+        if (!townstead$queueBottleToSkillet(level, villager, singleBottle)) return false;
+        source.shrink(1);
+        return true;
+    }
+
+    private boolean townstead$queueBottleToSkillet(ServerLevel level, VillagerEntityMCA villager, ItemStack bottle) {
+        if (bottle.isEmpty()) return false;
+        if (!townstead$ensureSkilletReflection()) return false;
+
+        if (townstead$queueBottleToSkilletAt(level, villager, stationAnchor, bottle)) {
+            return true;
+        }
+
+        Set<Long> kitchenBounds = townstead$activeKitchenBounds(villager, townstead$activeKitchenReference(villager));
+        for (long key : kitchenBounds) {
+            if (townstead$queueBottleToSkilletAt(level, villager, BlockPos.of(key), bottle)) {
+                return true;
+            }
+        }
+
+        BlockPos center = stationAnchor != null ? stationAnchor : villager.blockPosition();
+        for (BlockPos pos : BlockPos.betweenClosed(
+                center.offset(-12, -3, -12),
+                center.offset(12, 3, 12))) {
+            if (townstead$queueBottleToSkilletAt(level, villager, pos, bottle)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean townstead$queueBottleToSkilletAt(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, ItemStack bottle) {
+        if (pos == null || bottle.isEmpty()) return false;
+        if (!FD_SKILLET.equals(BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()))) return false;
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be == null || !FD_SKILLET_BE_CLASS.isInstance(be)) return false;
+        if (!townstead$skilletIsHeated(be) || townstead$skilletHasStoredStack(be)) return false;
+        return townstead$skilletAddItem(level, villager, be, bottle.copyWithCount(1), pos) > 0;
     }
 
     private boolean townstead$isSurfaceFireStation(ServerLevel level, BlockPos pos) {

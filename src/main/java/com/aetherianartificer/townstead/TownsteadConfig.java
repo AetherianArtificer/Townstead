@@ -19,9 +19,17 @@ public final class TownsteadConfig {
     public static final ModConfigSpec CLIENT_SPEC;
 
     public static final ModConfigSpec.BooleanValue ENABLE_SELF_INVENTORY_EATING;
+    public static final ModConfigSpec.BooleanValue ENABLE_SELF_INVENTORY_DRINKING;
     public static final ModConfigSpec.BooleanValue ENABLE_GROUND_ITEM_SOURCING;
+    public static final ModConfigSpec.BooleanValue ENABLE_GROUND_ITEM_THIRST_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_CONTAINER_SOURCING;
+    public static final ModConfigSpec.BooleanValue ENABLE_CONTAINER_THIRST_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_CROP_SOURCING;
+    public static final ModConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
+    public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
+    public static final ModConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
+    public static final ModConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
+    public static final ModConfigSpec.BooleanValue PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES;
     public static final ModConfigSpec.BooleanValue ENABLE_FARM_ASSIST;
     public static final ModConfigSpec.BooleanValue ENABLE_WORK_SUPPLY_AUTOMATION;
     public static final ModConfigSpec.BooleanValue ENABLE_HARVEST_OUTPUT_STORAGE;
@@ -61,15 +69,39 @@ public final class TownsteadConfig {
         ENABLE_SELF_INVENTORY_EATING = b
                 .comment("Allow villagers to eat from their own inventory.")
                 .define("enableSelfInventoryEating", true);
+        ENABLE_SELF_INVENTORY_DRINKING = b
+                .comment("Allow villagers to drink thirst-restoring items from their own inventory.")
+                .define("enableSelfInventoryDrinking", true);
         ENABLE_GROUND_ITEM_SOURCING = b
                 .comment("Allow villagers to collect food from ground items.")
                 .define("enableGroundItemSourcing", true);
+        ENABLE_GROUND_ITEM_THIRST_SOURCING = b
+                .comment("Allow villagers to collect thirst-restoring items from ground items when Thirst Was Taken is installed.")
+                .define("enableGroundItemThirstSourcing", true);
         ENABLE_CONTAINER_SOURCING = b
                 .comment("Allow villagers to pull food from containers / item handlers.")
                 .define("enableContainerSourcing", true);
+        ENABLE_CONTAINER_THIRST_SOURCING = b
+                .comment("Allow villagers to pull thirst-restoring items from containers / item handlers.")
+                .define("enableContainerThirstSourcing", true);
         ENABLE_CROP_SOURCING = b
                 .comment("Allow villagers to harvest mature crops for food.")
                 .define("enableCropSourcing", true);
+        ENABLE_CROP_THIRST_SOURCING = b
+                .comment("Allow villagers to harvest mature crops for thirst-restoring food/drink items.")
+                .define("enableCropThirstSourcing", true);
+        ENABLE_VILLAGER_THIRST = b
+                .comment("Enable villager thirst simulation when Thirst Was Taken is installed.")
+                .define("enableVillagerThirst", true);
+        THIRST_LETHAL_FALLBACK = b
+                .comment("Allow dehydration to kill villagers when hardcore status cannot be detected.")
+                .define("thirstLethalFallback", false);
+        ENABLE_COOK_WATER_PURIFICATION = b
+                .comment("Allow cook villagers to opportunistically purify impure water bottles in available kitchen skillets.")
+                .define("enableCookWaterPurification", true);
+        PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES = b
+                .comment("When villagers drink from bottles, prefer depositing empty bottles into kitchen storage.")
+                .define("preferKitchenStorageForEmptyBottles", true);
         ENABLE_FARM_ASSIST = b
                 .comment("Enable lightweight farming assist: anti-trample and idle unstuck nudges for harvest chore.")
                 .define("enableFarmAssist", true);

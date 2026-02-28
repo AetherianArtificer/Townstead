@@ -10,6 +10,7 @@ public final class VillagerServerTickDispatcher {
         CookAutoAssignTicker.tick(villager);
         CookTradeBackfillTicker.tick(villager);
         HungerVillagerTicker.tick(villager);
+        ThirstVillagerTicker.tick(villager);
         ProfessionProgressMemoryTicker.tick(villager);
     }
 }
