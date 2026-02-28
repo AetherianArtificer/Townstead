@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ThirstVillagerTicker {
     private static final ResourceLocation TOWNSTEAD_SPEED_PENALTY =
             ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "thirst_speed_penalty");
+    private static final long BIOME_MODIFIER_RESAMPLE_TICKS = 100L;
     private static final TagKey<Block> FD_KITCHEN_STORAGE_TAG =
             TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage"));
     private static final TagKey<Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
@@ -62,6 +63,13 @@ public final class ThirstVillagerTicker {
 
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
         CompoundTag thirst = self.getData(Townstead.THIRST_DATA);
+        long gameTime = level.getGameTime();
+
+        if (gameTime >= state.nextBiomeModifierSampleTick) {
+            state.biomeModifier = bridge.exhaustionBiomeModifier(level, self.blockPosition());
+            state.nextBiomeModifierSampleTick = gameTime + BIOME_MODIFIER_RESAMPLE_TICKS;
+        }
+        float biomeModifier = state.biomeModifier;
 
         boolean thirstChanged = VillagerDrinkingManager.tickAndFinalize(self, thirst);
 
@@ -79,19 +87,19 @@ public final class ThirstVillagerTicker {
         state.prevZ = self.getZ();
         if (distSq > 0.0025) {
             float dist = (float) Math.sqrt(distSq);
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + dist * ThirstData.EXHAUSTION_MOVEMENT_PER_BLOCK);
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (dist * ThirstData.EXHAUSTION_MOVEMENT_PER_BLOCK * biomeModifier));
         }
 
         VillagerBrain<?> brain = self.getVillagerBrain();
         Chore currentJob = brain.getCurrentJob();
         if (brain.isPanicking() || self.getLastHurtByMob() != null) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + ThirstData.EXHAUSTION_COMBAT);
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_COMBAT * biomeModifier));
         } else if (currentJob != Chore.NONE) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + ThirstData.EXHAUSTION_CHORE);
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_CHORE * biomeModifier));
         } else if (isGuardPatrolling(self)) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + ThirstData.EXHAUSTION_GUARD_PATROL);
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_GUARD_PATROL * biomeModifier));
         } else if (!isResting(self)) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + ThirstData.EXHAUSTION_AWAKE_BASELINE);
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier));
         }
 
         thirstChanged |= ThirstData.processExhaustion(thirst);
@@ -102,7 +110,6 @@ public final class ThirstVillagerTicker {
         Activity currentActivity = currentScheduleActivity(self);
         if (state.lastActivity != null && currentActivity != state.lastActivity) {
             int t = ThirstData.getThirst(thirst);
-            long gameTime = self.level().getGameTime();
             long lastDrank = ThirstData.getLastDrankTime(thirst);
             boolean canDrink = (gameTime - lastDrank) >= ThirstData.MIN_DRINK_INTERVAL
                     && !VillagerDrinkingManager.isDrinking(self)
@@ -122,7 +129,6 @@ public final class ThirstVillagerTicker {
         state.lastActivity = currentActivity;
 
         if (ThirstData.getThirst(thirst) < ThirstData.ADEQUATE_THRESHOLD) {
-            long gameTime = self.level().getGameTime();
             long lastDrank = ThirstData.getLastDrankTime(thirst);
             long minDrinkInterval = ThirstData.isDrinkingMode(thirst)
                     ? 20L
@@ -344,6 +350,8 @@ public final class ThirstVillagerTicker {
     private static final class TickState {
         private double prevX;
         private double prevZ;
+        private float biomeModifier = 1.0f;
+        private long nextBiomeModifierSampleTick;
         private Activity lastActivity;
         private int lastSyncedThirst = -1;
         private int lastSyncedQuenched = -1;

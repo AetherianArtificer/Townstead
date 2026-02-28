@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.CookWorkTask;
+import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.SeekFoodTask;
@@ -25,6 +26,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.ArrayList;
 
 @Mixin(VillagerEntityMCA.class)
 public abstract class VillagerHungerMixin extends Villager {
@@ -59,12 +62,13 @@ public abstract class VillagerHungerMixin extends Villager {
                         Pair.of(74, new ButcherWorkTask())
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
-        brain.addActivity(Activity.CORE,
-                ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
-                        Pair.of(98, new SeekDrinkTask()),
-                        Pair.of(99, new SeekFoodTask()),
-                        Pair.of(110, new CareForYoungTask())
-                ));
+        ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();
+        if (ThirstWasTakenBridge.INSTANCE.isActive()) {
+            coreBehaviors.add(Pair.of(98, new SeekDrinkTask()));
+        }
+        coreBehaviors.add(Pair.of(99, new SeekFoodTask()));
+        coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
+        brain.addActivity(Activity.CORE, ImmutableList.copyOf(coreBehaviors));
         townstead$lastPatchedBrain = brain;
     }
 
@@ -72,7 +76,8 @@ public abstract class VillagerHungerMixin extends Villager {
     private void townstead$readEditorHunger(CompoundTag nbt, CallbackInfo ci) {
         VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
         boolean hasHunger = nbt.contains(HungerData.EDITOR_KEY_HUNGER);
-        boolean hasThirst = nbt.contains(ThirstData.EDITOR_KEY_THIRST);
+        boolean hasThirst = ThirstWasTakenBridge.INSTANCE.isActive()
+                && nbt.contains(ThirstData.EDITOR_KEY_THIRST);
         if (!hasHunger && !hasThirst) return;
 
         if (hasHunger) {

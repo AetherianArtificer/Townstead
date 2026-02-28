@@ -2,9 +2,11 @@ package com.aetherianartificer.townstead.compat.thirst;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -25,6 +27,9 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
     private static final int FALLBACK_PURIFIED_POISON = 0;
     private static final boolean FALLBACK_QUENCH_WHEN_DEBUFFED = true;
     private static final boolean FALLBACK_EXTRA_HYDRATION_TO_QUENCHED = true;
+    private static final float FALLBACK_THIRST_DEPLETION_MODIFIER = 1.2f;
+    private static final float FALLBACK_NETHER_THIRST_DEPLETION_MODIFIER = 3.0f;
+    private static final float MODIFIER_HARSHNESS = 0.5f;
 
     private boolean initialized;
     private boolean active;
@@ -117,6 +122,39 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
     }
 
     @Override
+    public float exhaustionBiomeModifier(Level level, BlockPos pos) {
+        if (level == null || pos == null) return 1.0f;
+        initIfNeeded();
+        if (!active) return 1.0f;
+
+        if (level.dimensionType().ultraWarm()) {
+            return Math.max(0.0f, readConfigFloat("NETHER_THIRST_DEPLETION_MODIFIER", FALLBACK_NETHER_THIRST_DEPLETION_MODIFIER));
+        }
+
+        float humidity = resolveBiomeDownfall(level, pos) + 0.6f;
+        if (humidity <= 0.6f) {
+            humidity += 0.5f;
+        }
+
+        float temp = resolveBiomeTemperature(level, pos) + 0.2f;
+        if (temp <= 0.0f) {
+            temp = (float) Math.exp(temp);
+        } else if (temp > 1.0f) {
+            temp /= 2.0f;
+        }
+
+        float depletion = readConfigFloat("THIRST_DEPLETION_MODIFIER", FALLBACK_THIRST_DEPLETION_MODIFIER);
+        float modifier = depletion * (temp / Math.max(0.001f, humidity));
+        if (modifier < 1.0f) {
+            float offset = (1.0f - modifier) * MODIFIER_HARSHNESS;
+            modifier = 1.0f - offset;
+        }
+
+        if (!Float.isFinite(modifier)) return 1.0f;
+        return Math.max(0.0f, modifier);
+    }
+
+    @Override
     public boolean extraHydrationToQuenched() {
         return readConfigBoolean("EXTRA_HYDRATION_CONVERT_TO_QUENCHED", FALLBACK_EXTRA_HYDRATION_TO_QUENCHED);
     }
@@ -193,6 +231,12 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
         return fallback;
     }
 
+    private float readConfigFloat(String fieldName, float fallback) {
+        Object value = readConfigValue(fieldName);
+        if (value instanceof Number n) return n.floatValue();
+        return fallback;
+    }
+
     private boolean readConfigBoolean(String fieldName, boolean fallback) {
         Object value = readConfigValue(fieldName);
         if (value instanceof Boolean b) return b;
@@ -211,5 +255,66 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private float resolveBiomeDownfall(Level level, BlockPos pos) {
+        Object biome = level.getBiome(pos).value();
+        Float direct = invokeFloatNoArg(biome, "getDownfall");
+        if (direct != null) return direct;
+
+        Object climate = invokeNoArg(biome, "getModifiedClimateSettings");
+        Float climateValue = invokeFloatNoArg(climate, "downfall");
+        if (climateValue != null) return climateValue;
+        climateValue = invokeFloatNoArg(climate, "getDownfall");
+        if (climateValue != null) return climateValue;
+
+        return 0.5f;
+    }
+
+    private float resolveBiomeTemperature(Level level, BlockPos pos) {
+        Object biome = level.getBiome(pos).value();
+        Float base = invokeFloatNoArg(biome, "getBaseTemperature");
+        if (base != null) return base;
+
+        Float atPos = invokeFloatBlockPosArg(biome, "getTemperature", pos);
+        if (atPos != null) return atPos;
+
+        Object climate = invokeNoArg(biome, "getModifiedClimateSettings");
+        Float climateValue = invokeFloatNoArg(climate, "temperature");
+        if (climateValue != null) return climateValue;
+        climateValue = invokeFloatNoArg(climate, "getTemperature");
+        if (climateValue != null) return climateValue;
+
+        return 0.8f;
+    }
+
+    private Object invokeNoArg(Object target, String methodName) {
+        if (target == null) return null;
+        try {
+            Method method = target.getClass().getMethod(methodName);
+            return method.invoke(target);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Float invokeFloatNoArg(Object target, String methodName) {
+        if (target == null) return null;
+        try {
+            Method method = target.getClass().getMethod(methodName);
+            Object value = method.invoke(target);
+            if (value instanceof Number n) return n.floatValue();
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private Float invokeFloatBlockPosArg(Object target, String methodName, BlockPos pos) {
+        if (target == null || pos == null) return null;
+        try {
+            Method method = target.getClass().getMethod(methodName, BlockPos.class);
+            Object value = method.invoke(target, pos);
+            if (value instanceof Number n) return n.floatValue();
+        } catch (Exception ignored) {}
+        return null;
     }
 }

@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.mixin;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
+import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.ThirstSetPayload;
@@ -52,8 +53,11 @@ public abstract class VillagerEditorMixin extends Screen {
         if (!"debug".equals(page)) return;
 
         // Read current hunger from client store (synced from server)
+        boolean thirstAvailable = ThirstWasTakenBridge.INSTANCE.isActive();
         townstead$editorHunger = HungerClientStore.get(villager.getId());
-        townstead$editorThirst = ThirstClientStore.getThirst(villager.getId());
+        townstead$editorThirst = thirstAvailable
+                ? ThirstClientStore.getThirst(villager.getId())
+                : ThirstData.DEFAULT_THIRST;
 
         // Position below the mood control (last widget on debug page)
         int hungerY = height / 2 - 80 + 130;
@@ -94,38 +98,40 @@ public abstract class VillagerEditorMixin extends Screen {
                 }).pos(width / 2 + dataWidth - bw, hungerY).size(bw, 20).build()
         );
 
-        Button thirstDisplay = addRenderableWidget(
-                Button.builder(townstead$thirstLabel(), b -> {})
-                        .pos(width / 2 + bw * 2, thirstY)
-                        .size(dataWidth - bw * 4, 20)
-                        .build()
-        );
-        townstead$thirstDisplay = thirstDisplay;
+        if (thirstAvailable) {
+            Button thirstDisplay = addRenderableWidget(
+                    Button.builder(townstead$thirstLabel(), b -> {})
+                            .pos(width / 2 + bw * 2, thirstY)
+                            .size(dataWidth - bw * 4, 20)
+                            .build()
+            );
+            townstead$thirstDisplay = thirstDisplay;
 
-        addRenderableWidget(
-                Button.builder(Component.literal("-1"), b -> {
-                    townstead$modThirst(-1);
-                    thirstDisplay.setMessage(townstead$thirstLabel());
-                }).pos(width / 2, thirstY).size(bw, 20).build()
-        );
-        addRenderableWidget(
-                Button.builder(Component.literal("-5"), b -> {
-                    townstead$modThirst(-5);
-                    thirstDisplay.setMessage(townstead$thirstLabel());
-                }).pos(width / 2 + bw, thirstY).size(bw, 20).build()
-        );
-        addRenderableWidget(
-                Button.builder(Component.literal("+5"), b -> {
-                    townstead$modThirst(5);
-                    thirstDisplay.setMessage(townstead$thirstLabel());
-                }).pos(width / 2 + dataWidth - bw * 2, thirstY).size(bw, 20).build()
-        );
-        addRenderableWidget(
-                Button.builder(Component.literal("+1"), b -> {
-                    townstead$modThirst(1);
-                    thirstDisplay.setMessage(townstead$thirstLabel());
-                }).pos(width / 2 + dataWidth - bw, thirstY).size(bw, 20).build()
-        );
+            addRenderableWidget(
+                    Button.builder(Component.literal("-1"), b -> {
+                        townstead$modThirst(-1);
+                        thirstDisplay.setMessage(townstead$thirstLabel());
+                    }).pos(width / 2, thirstY).size(bw, 20).build()
+            );
+            addRenderableWidget(
+                    Button.builder(Component.literal("-5"), b -> {
+                        townstead$modThirst(-5);
+                        thirstDisplay.setMessage(townstead$thirstLabel());
+                    }).pos(width / 2 + bw, thirstY).size(bw, 20).build()
+            );
+            addRenderableWidget(
+                    Button.builder(Component.literal("+5"), b -> {
+                        townstead$modThirst(5);
+                        thirstDisplay.setMessage(townstead$thirstLabel());
+                    }).pos(width / 2 + dataWidth - bw * 2, thirstY).size(bw, 20).build()
+            );
+            addRenderableWidget(
+                    Button.builder(Component.literal("+1"), b -> {
+                        townstead$modThirst(1);
+                        thirstDisplay.setMessage(townstead$thirstLabel());
+                    }).pos(width / 2 + dataWidth - bw, thirstY).size(bw, 20).build()
+            );
+        }
 
         // Register callback: when server sync arrives, update the display
         // (only if user hasn't manually edited yet)
@@ -135,16 +141,20 @@ public abstract class VillagerEditorMixin extends Screen {
                 townstead$hungerDisplay.setMessage(townstead$hungerLabel());
             }
         });
-        ThirstClientStore.setOnChange(() -> {
-            if (!townstead$thirstDirty && townstead$thirstDisplay != null && "debug".equals(this.page)) {
-                townstead$editorThirst = ThirstClientStore.getThirst(villager.getId());
-                townstead$thirstDisplay.setMessage(townstead$thirstLabel());
-            }
-        });
+        if (thirstAvailable) {
+            ThirstClientStore.setOnChange(() -> {
+                if (!townstead$thirstDirty && townstead$thirstDisplay != null && "debug".equals(this.page)) {
+                    townstead$editorThirst = ThirstClientStore.getThirst(villager.getId());
+                    townstead$thirstDisplay.setMessage(townstead$thirstLabel());
+                }
+            });
+        }
 
         // Request fresh hunger data from server
         PacketDistributor.sendToServer(new HungerSetPayload(villager.getId(), -1));
-        PacketDistributor.sendToServer(new ThirstSetPayload(villager.getId(), -1));
+        if (thirstAvailable) {
+            PacketDistributor.sendToServer(new ThirstSetPayload(villager.getId(), -1));
+        }
     }
 
     @Inject(method = "removed", at = @At("TAIL"))
