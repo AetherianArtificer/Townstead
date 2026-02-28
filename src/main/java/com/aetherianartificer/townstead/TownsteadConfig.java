@@ -65,43 +65,73 @@ public final class TownsteadConfig {
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
 
-        b.push("food_sources");
+        b.translation("townstead.configuration.needs").push("needs");
+        b.translation("townstead.configuration.needs.hunger").push("hunger");
         ENABLE_SELF_INVENTORY_EATING = b
+                .translation("townstead.configuration.needs.hunger.enableSelfInventoryEating")
                 .comment("Allow villagers to eat from their own inventory.")
                 .define("enableSelfInventoryEating", true);
-        ENABLE_SELF_INVENTORY_DRINKING = b
-                .comment("Allow villagers to drink thirst-restoring items from their own inventory.")
-                .define("enableSelfInventoryDrinking", true);
         ENABLE_GROUND_ITEM_SOURCING = b
+                .translation("townstead.configuration.needs.hunger.enableGroundItemSourcing")
                 .comment("Allow villagers to collect food from ground items.")
                 .define("enableGroundItemSourcing", true);
-        ENABLE_GROUND_ITEM_THIRST_SOURCING = b
-                .comment("Allow villagers to collect thirst-restoring items from ground items when Thirst Was Taken is installed.")
-                .define("enableGroundItemThirstSourcing", true);
         ENABLE_CONTAINER_SOURCING = b
+                .translation("townstead.configuration.needs.hunger.enableContainerSourcing")
                 .comment("Allow villagers to pull food from containers / item handlers.")
                 .define("enableContainerSourcing", true);
-        ENABLE_CONTAINER_THIRST_SOURCING = b
-                .comment("Allow villagers to pull thirst-restoring items from containers / item handlers.")
-                .define("enableContainerThirstSourcing", true);
         ENABLE_CROP_SOURCING = b
+                .translation("townstead.configuration.needs.hunger.enableCropSourcing")
                 .comment("Allow villagers to harvest mature crops for food.")
                 .define("enableCropSourcing", true);
-        ENABLE_CROP_THIRST_SOURCING = b
-                .comment("Allow villagers to harvest mature crops for thirst-restoring food/drink items.")
-                .define("enableCropThirstSourcing", true);
-        ENABLE_VILLAGER_THIRST = b
-                .comment("Enable villager thirst simulation when Thirst Was Taken is installed.")
-                .define("enableVillagerThirst", true);
-        THIRST_LETHAL_FALLBACK = b
-                .comment("Allow dehydration to kill villagers when hardcore status cannot be detected.")
-                .define("thirstLethalFallback", false);
-        ENABLE_COOK_WATER_PURIFICATION = b
-                .comment("Allow cook villagers to opportunistically purify impure water bottles in available kitchen skillets.")
-                .define("enableCookWaterPurification", true);
-        PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES = b
-                .comment("When villagers drink from bottles, prefer depositing empty bottles into kitchen storage.")
-                .define("preferKitchenStorageForEmptyBottles", true);
+        b.pop();
+        if (ModCompat.isLoaded("thirst")) {
+            b.translation("townstead.configuration.needs.thirst").push("thirst");
+            ENABLE_SELF_INVENTORY_DRINKING = b
+                    .translation("townstead.configuration.needs.thirst.enableSelfInventoryDrinking")
+                    .comment("Allow villagers to drink thirst-restoring items from their own inventory.")
+                    .define("enableSelfInventoryDrinking", true);
+            ENABLE_GROUND_ITEM_THIRST_SOURCING = b
+                    .translation("townstead.configuration.needs.thirst.enableGroundItemThirstSourcing")
+                    .comment("Allow villagers to collect thirst-restoring items from ground items when Thirst Was Taken is installed.")
+                    .define("enableGroundItemThirstSourcing", true);
+            ENABLE_CONTAINER_THIRST_SOURCING = b
+                    .translation("townstead.configuration.needs.thirst.enableContainerThirstSourcing")
+                    .comment("Allow villagers to pull thirst-restoring items from containers / item handlers.")
+                    .define("enableContainerThirstSourcing", true);
+            ENABLE_CROP_THIRST_SOURCING = b
+                    .translation("townstead.configuration.needs.thirst.enableCropThirstSourcing")
+                    .comment("Allow villagers to harvest mature crops for thirst-restoring food/drink items.")
+                    .define("enableCropThirstSourcing", true);
+            ENABLE_VILLAGER_THIRST = b
+                    .translation("townstead.configuration.needs.thirst.enableVillagerThirst")
+                    .comment("Enable villager thirst simulation when Thirst Was Taken is installed.")
+                    .define("enableVillagerThirst", true);
+            THIRST_LETHAL_FALLBACK = b
+                    .translation("townstead.configuration.needs.thirst.thirstLethalFallback")
+                    .comment("Allow dehydration to kill villagers when hardcore status cannot be detected.")
+                    .define("thirstLethalFallback", false);
+            ENABLE_COOK_WATER_PURIFICATION = b
+                    .translation("townstead.configuration.needs.thirst.enableCookWaterPurification")
+                    .comment("Allow cook villagers to opportunistically purify impure water bottles in available kitchen skillets.")
+                    .define("enableCookWaterPurification", true);
+            PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES = b
+                    .translation("townstead.configuration.needs.thirst.preferKitchenStorageForEmptyBottles")
+                    .comment("When villagers drink from bottles, prefer depositing empty bottles into kitchen storage.")
+                    .define("preferKitchenStorageForEmptyBottles", true);
+            b.pop();
+        } else {
+            ENABLE_SELF_INVENTORY_DRINKING = null;
+            ENABLE_GROUND_ITEM_THIRST_SOURCING = null;
+            ENABLE_CONTAINER_THIRST_SOURCING = null;
+            ENABLE_CROP_THIRST_SOURCING = null;
+            ENABLE_VILLAGER_THIRST = null;
+            THIRST_LETHAL_FALLBACK = null;
+            ENABLE_COOK_WATER_PURIFICATION = null;
+            PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES = null;
+        }
+        b.pop();
+
+        b.push("food_sources");
         ENABLE_FARM_ASSIST = b
                 .comment("Enable lightweight farming assist: anti-trample and idle unstuck nudges for harvest chore.")
                 .define("enableFarmAssist", true);
@@ -232,6 +262,38 @@ public final class TownsteadConfig {
         // No Chef's Delight → Townstead is the only cook handler, always enabled.
         if (ENABLE_TOWNSTEAD_COOK == null) return true;
         return ENABLE_TOWNSTEAD_COOK.get();
+    }
+
+    public static boolean isSelfInventoryDrinkingEnabled() {
+        return ENABLE_SELF_INVENTORY_DRINKING != null && ENABLE_SELF_INVENTORY_DRINKING.get();
+    }
+
+    public static boolean isGroundItemThirstSourcingEnabled() {
+        return ENABLE_GROUND_ITEM_THIRST_SOURCING != null && ENABLE_GROUND_ITEM_THIRST_SOURCING.get();
+    }
+
+    public static boolean isContainerThirstSourcingEnabled() {
+        return ENABLE_CONTAINER_THIRST_SOURCING != null && ENABLE_CONTAINER_THIRST_SOURCING.get();
+    }
+
+    public static boolean isCropThirstSourcingEnabled() {
+        return ENABLE_CROP_THIRST_SOURCING != null && ENABLE_CROP_THIRST_SOURCING.get();
+    }
+
+    public static boolean isVillagerThirstEnabled() {
+        return ENABLE_VILLAGER_THIRST != null && ENABLE_VILLAGER_THIRST.get();
+    }
+
+    public static boolean isThirstLethalFallbackEnabled() {
+        return THIRST_LETHAL_FALLBACK != null && THIRST_LETHAL_FALLBACK.get();
+    }
+
+    public static boolean isCookWaterPurificationEnabled() {
+        return ENABLE_COOK_WATER_PURIFICATION != null && ENABLE_COOK_WATER_PURIFICATION.get();
+    }
+
+    public static boolean isPreferKitchenStorageForEmptyBottlesEnabled() {
+        return PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES != null && PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES.get();
     }
 
     public static boolean isMoodVocalizationMuteEnabled() {

@@ -56,7 +56,7 @@ public final class ThirstVillagerTicker {
     public static void tick(VillagerEntityMCA self) {
         if (!(self.level() instanceof ServerLevel level)) return;
         ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
-        if (!TownsteadConfig.ENABLE_VILLAGER_THIRST.get() || !bridge.isActive()) {
+        if (!TownsteadConfig.isVillagerThirstEnabled() || !bridge.isActive()) {
             removeSpeedModifier(self);
             return;
         }
@@ -190,7 +190,7 @@ public final class ThirstVillagerTicker {
     }
 
     private static boolean tryDrinkFromInventory(VillagerEntityMCA self, ThirstCompatBridge bridge) {
-        if (!TownsteadConfig.ENABLE_SELF_INVENTORY_DRINKING.get()) return false;
+        if (!TownsteadConfig.isSelfInventoryDrinkingEnabled()) return false;
         ItemStack drink = findBestDrink(self.getInventory(), bridge);
         if (drink.isEmpty()) return false;
         if (!VillagerDrinkingManager.startDrinking(self, drink)) return false;
@@ -219,11 +219,11 @@ public final class ThirstVillagerTicker {
 
     private static boolean shouldApplyDehydrationDamage(ServerLevel level) {
         if (level.getServer().isHardcore()) return true;
-        return TownsteadConfig.THIRST_LETHAL_FALLBACK.get();
+        return TownsteadConfig.isThirstLethalFallbackEnabled();
     }
 
     private static void storeEmptyBottles(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES.get()) return;
+        if (!TownsteadConfig.isPreferKitchenStorageForEmptyBottlesEnabled()) return;
         SimpleContainer inventory = villager.getInventory();
         int moved = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
@@ -245,7 +245,7 @@ public final class ThirstVillagerTicker {
 
     private static boolean storeBottle(ServerLevel level, VillagerEntityMCA villager, ItemStack bottle) {
         if (bottle.isEmpty()) return true;
-        if (TownsteadConfig.PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES.get()
+        if (TownsteadConfig.isPreferKitchenStorageForEmptyBottlesEnabled()
                 && ModCompat.isLoaded("farmersdelight")
                 && insertIntoTaggedStorage(level, villager, bottle)) {
             return bottle.isEmpty();

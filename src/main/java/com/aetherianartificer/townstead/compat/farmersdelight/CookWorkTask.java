@@ -1936,35 +1936,74 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean townstead$tryQueueWaterBottlePurification(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.ENABLE_COOK_WATER_PURIFICATION.get()) return false;
-        if (activeRecipe != null || cookDoneTick > 0L || !pendingOutput.isEmpty()) return false;
+        if (!TownsteadConfig.isCookWaterPurificationEnabled()) return false;
+        if (cookDoneTick > 0L || !pendingOutput.isEmpty()) return false;
 
         ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
         if (!bridge.isActive()) return false;
 
         SimpleContainer inventory = villager.getInventory();
-        int impureBottleSlot = -1;
-        int worstPurity = Integer.MAX_VALUE;
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (stack.isEmpty() || !stack.is(Items.POTION)) continue;
-            if (!bridge.itemRestoresThirst(stack) || !bridge.isDrink(stack)) continue;
-            if (!bridge.isPurityWaterContainer(stack)) continue;
-
-            int purity = Math.max(0, bridge.purity(stack));
-            if (purity >= 3) continue;
-            if (purity < worstPurity) {
-                worstPurity = purity;
-                impureBottleSlot = i;
+        int impureBottleSlot = townstead$bestImpureWaterContainerSlot(inventory, bridge);
+        if (impureBottleSlot < 0) {
+            BlockPos searchCenter = stationAnchor != null ? stationAnchor : villager.blockPosition();
+            if (!townstead$pullSingleImpureWaterContainer(level, villager, bridge, searchCenter)) {
+                return false;
             }
+            impureBottleSlot = townstead$bestImpureWaterContainerSlot(inventory, bridge);
         }
         if (impureBottleSlot < 0) return false;
 
         ItemStack source = inventory.getItem(impureBottleSlot);
-        ItemStack singleBottle = source.copyWithCount(1);
-        if (!townstead$queueBottleToSkillet(level, villager, singleBottle)) return false;
+        if (!townstead$queueBottleToSkillet(level, villager, source.copyWithCount(1))) return false;
         source.shrink(1);
         return true;
+    }
+
+    private int townstead$bestImpureWaterContainerSlot(SimpleContainer inventory, ThirstCompatBridge bridge) {
+        int bestSlot = -1;
+        int bestScore = Integer.MIN_VALUE;
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            int score = townstead$impureWaterContainerPurificationScore(stack, bridge);
+            if (score > bestScore) {
+                bestScore = score;
+                bestSlot = i;
+            }
+        }
+        return bestScore > 0 ? bestSlot : -1;
+    }
+
+    private boolean townstead$pullSingleImpureWaterContainer(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            ThirstCompatBridge bridge,
+            BlockPos center
+    ) {
+        java.util.function.Predicate<ItemStack> matcher =
+                stack -> townstead$impureWaterContainerPurificationScore(stack, bridge) > 0;
+        java.util.function.ToIntFunction<ItemStack> scorer =
+                stack -> townstead$impureWaterContainerPurificationScore(stack, bridge);
+        if (NearbyItemSources.pullSingleToInventory(level, villager, 16, 3, matcher, scorer, center)) {
+            return true;
+        }
+        NearbyItemSources.ContainerSlot villageSlot = townstead$findVillageStorageSlot(level, villager, matcher);
+        if (villageSlot == null) return false;
+        ItemStack extracted = NearbyItemSources.extractOne(level, villageSlot);
+        if (extracted.isEmpty()) return false;
+        return townstead$addToInventoryOrNearbyStorage(level, villager, extracted, center);
+    }
+
+    private int townstead$impureWaterContainerPurificationScore(ItemStack stack, ThirstCompatBridge bridge) {
+        if (stack.isEmpty()) return 0;
+        if (!bridge.itemRestoresThirst(stack) || !bridge.isDrink(stack)) return 0;
+        if (!bridge.isPurityWaterContainer(stack)) return 0;
+
+        int purity = Math.max(0, Math.min(3, bridge.purity(stack)));
+        if (purity >= 3) return 0;
+
+        // Prefer the dirtiest water first so purification impact is maximized.
+        int impurity = 3 - purity;
+        return (impurity * 100) + Math.max(0, bridge.hydration(stack));
     }
 
     private boolean townstead$queueBottleToSkillet(ServerLevel level, VillagerEntityMCA villager, ItemStack bottle) {

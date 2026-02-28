@@ -51,7 +51,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
-        if (!bridge.isActive() || !TownsteadConfig.ENABLE_VILLAGER_THIRST.get()) return false;
+        if (!bridge.isActive() || !TownsteadConfig.isVillagerThirstEnabled()) return false;
         if (VillagerEatingManager.isEating(villager) || VillagerDrinkingManager.isDrinking(villager)) return false;
 
         VillagerBrain<?> brain = villager.getVillagerBrain();
@@ -72,7 +72,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         long minInterval = (drinkingMode || t <= ThirstData.EMERGENCY_THRESHOLD) ? 20L : ThirstData.MIN_DRINK_INTERVAL;
         if ((gameTime - lastDrank) < minInterval) return false;
 
-        if (TownsteadConfig.ENABLE_SELF_INVENTORY_DRINKING.get() && tryDrinkFromInventory(villager, bridge)) {
+        if (TownsteadConfig.isSelfInventoryDrinkingEnabled() && tryDrinkFromInventory(villager, bridge)) {
             cooldown = (drinkingMode || t < ThirstData.ADEQUATE_THRESHOLD) ? 5 : 200;
             return false;
         }
@@ -89,17 +89,17 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
 
         ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
 
-        if (TownsteadConfig.ENABLE_GROUND_ITEM_THIRST_SOURCING.get() && findGroundDrink(level, villager, bridge)) {
+        if (TownsteadConfig.isGroundItemThirstSourcingEnabled() && findGroundDrink(level, villager, bridge)) {
             BehaviorUtils.setWalkAndLookTargetMemories(villager, targetItem, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
 
-        if (TownsteadConfig.ENABLE_CONTAINER_THIRST_SOURCING.get() && findContainerDrink(level, villager, bridge)) {
+        if (TownsteadConfig.isContainerThirstSourcingEnabled() && findContainerDrink(level, villager, bridge)) {
             BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
 
-        if (TownsteadConfig.ENABLE_CROP_THIRST_SOURCING.get() && findMatureCrop(level, villager)) {
+        if (TownsteadConfig.isCropThirstSourcingEnabled() && findMatureCrop(level, villager)) {
             BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
