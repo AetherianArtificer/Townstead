@@ -53,7 +53,6 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_COOK_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
-    public static final ModConfigSpec.IntValue PRODUCTION_STATION_RETRY_BACKOFF_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
     public static final ModConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
@@ -66,6 +65,7 @@ public final class TownsteadConfig {
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
 
+        // ── Needs ──
         b.translation("townstead.configuration.needs").push("needs");
         b.translation("townstead.configuration.needs.hunger").push("hunger");
         ENABLE_SELF_INVENTORY_EATING = b
@@ -132,107 +132,141 @@ public final class TownsteadConfig {
         }
         b.pop();
 
-        b.push("food_sources");
+        // ── Farming ──
+        b.translation("townstead.configuration.farming").push("farming");
         ENABLE_FARM_ASSIST = b
+                .translation("townstead.configuration.farming.enableFarmAssist")
                 .comment("Enable lightweight farming assist: anti-trample and idle unstuck nudges for harvest chore.")
                 .define("enableFarmAssist", true);
-        ENABLE_WORK_SUPPLY_AUTOMATION = b
-                .comment("Allow chore supply restocking and output storage automation from nearby containers.")
-                .define("enableWorkSupplyAutomation", false);
-        ENABLE_HARVEST_OUTPUT_STORAGE = b
-                .comment("Allow harvesting villagers to store gathered output in nearby containers.")
-                .define("enableHarvestOutputStorage", true);
         ENABLE_FARMER_STABILITY_V2 = b
+                .translation("townstead.configuration.farming.enableFarmerStabilityV2")
                 .comment("Enable Townstead farmer stabilization (anti-thrash, retries, blocked states).")
                 .define("enableFarmerStabilityV2", true);
         FARMER_FARM_RADIUS = b
+                .translation("townstead.configuration.farming.farmerFarmRadius")
                 .comment("Maximum horizontal farm radius around anchor used by farmer AI.")
                 .defineInRange("farmerFarmRadius", 12, 4, 32);
         FARMER_CELL_COOLDOWN_TICKS = b
+                .translation("townstead.configuration.farming.farmerCellCooldownTicks")
                 .comment("Minimum ticks before reworking the same soil cell.")
                 .defineInRange("farmerCellCooldownTicks", 120, 0, 2400);
         FARMER_PATHFAIL_MAX_RETRIES = b
+                .translation("townstead.configuration.farming.farmerPathfailMaxRetries")
                 .comment("How many times a target can fail pathing before temporary blacklist.")
                 .defineInRange("farmerPathfailMaxRetries", 3, 1, 20);
         FARMER_IDLE_BACKOFF_TICKS = b
+                .translation("townstead.configuration.farming.farmerIdleBackoffTicks")
                 .comment("Ticks to wait before reacquiring work after no valid target.")
                 .defineInRange("farmerIdleBackoffTicks", 60, 0, 1200);
         FARMER_SEED_RESERVE = b
+                .translation("townstead.configuration.farming.farmerSeedReserve")
                 .comment("Minimum seed count to keep before allowing expansion tilling.")
                 .defineInRange("farmerSeedReserve", 8, 0, 64);
         FARMER_MAX_CLUSTERS = b
+                .translation("townstead.configuration.farming.farmerMaxClusters")
                 .comment("Maximum planned connected plot clusters per farm area.")
                 .defineInRange("farmerMaxClusters", 6, 1, 64);
         FARMER_MAX_PLOTS = b
+                .translation("townstead.configuration.farming.farmerMaxPlots")
                 .comment("Maximum planned soil plot cells per farm area.")
                 .defineInRange("farmerMaxPlots", 192, 16, 1024);
         ENABLE_FARMER_WATER_PLACEMENT = b
+                .translation("townstead.configuration.farming.enableFarmerWaterPlacement")
                 .comment("Allow farmers to place water sources in planned farm tiles when hydration is insufficient.")
                 .define("enableFarmerWaterPlacement", true);
         FARMER_WATER_PLACEMENTS_PER_DAY = b
+                .translation("townstead.configuration.farming.farmerWaterPlacementsPerDay")
                 .comment("Maximum water source placements a farmer can perform per Minecraft day.")
                 .defineInRange("farmerWaterPlacementsPerDay", 2, 0, 16);
         FARMER_HYDRATION_MIN_PERCENT = b
+                .translation("townstead.configuration.farming.farmerHydrationMinPercent")
                 .comment("Minimum planned farm hydration coverage percent required before expansion tilling.")
                 .defineInRange("farmerHydrationMinPercent", 35, 0, 100);
         FARMER_WATER_SOURCE_SEARCH_RADIUS = b
+                .translation("townstead.configuration.farming.farmerWaterSourceSearchRadius")
                 .comment("Maximum horizontal distance farmers may travel to find water for bucket refills.")
                 .defineInRange("farmerWaterSourceSearchRadius", 72, 8, 192);
         FARMER_WATER_SOURCE_VERTICAL_RADIUS = b
+                .translation("townstead.configuration.farming.farmerWaterSourceVerticalRadius")
                 .comment("Vertical search radius for nearby water sources when refilling buckets.")
                 .defineInRange("farmerWaterSourceVerticalRadius", 8, 2, 32);
         FARMER_GROOM_RADIUS = b
+                .translation("townstead.configuration.farming.farmerGroomRadius")
                 .comment("Radius around planned farm cells where farmers may clear removable weeds.")
                 .defineInRange("farmerGroomRadius", 1, 0, 4);
         FARMER_GROOM_SCAN_INTERVAL_TICKS = b
+                .translation("townstead.configuration.farming.farmerGroomScanIntervalTicks")
                 .comment("Ticks between farmer grooming target scans.")
                 .defineInRange("farmerGroomScanIntervalTicks", 60, 20, 1200);
         ENABLE_FARMER_REQUEST_CHAT = b
+                .translation("townstead.configuration.farming.enableFarmerRequestChat")
                 .comment("Allow farmers to periodically announce missing supplies (seeds/tools/etc.) in local chat.")
                 .define("enableFarmerRequestChat", true);
         FARMER_REQUEST_INTERVAL_TICKS = b
+                .translation("townstead.configuration.farming.farmerRequestIntervalTicks")
                 .comment("Minimum ticks between farmer shortage request messages.")
                 .defineInRange("farmerRequestIntervalTicks", 3600, 200, 24000);
-        ENABLE_COOK_REQUEST_CHAT = b
-                .comment("Allow cooks to periodically announce missing kitchen supplies in local chat.")
-                .define("enableCookRequestChat", true);
-        COOK_REQUEST_INTERVAL_TICKS = b
-                .comment("Minimum ticks between cook shortage request messages.")
-                .defineInRange("cookRequestIntervalTicks", 3600, 200, 24000);
         b.pop();
 
-        b.translation("townstead.configuration.professions.production").push("professions.production");
-        PRODUCTION_STATION_RETRY_BACKOFF_TICKS = b
-                .translation("townstead.configuration.professions.production.stationRetryBackoffTicks")
-                .comment("Ticks to wait before retrying a station claim after contention or transient failure.")
-                .defineInRange("stationRetryBackoffTicks", 20, 5, 400);
-        b.pop();
+        // ── Cooking ──
+        if (ModCompat.isLoaded("farmersdelight")) {
+            b.translation("townstead.configuration.cooking").push("cooking");
+            ENABLE_COOK_REQUEST_CHAT = b
+                    .translation("townstead.configuration.cooking.enableCookRequestChat")
+                    .comment("Allow cooks to periodically announce missing kitchen supplies in local chat.")
+                    .define("enableCookRequestChat", true);
+            COOK_REQUEST_INTERVAL_TICKS = b
+                    .translation("townstead.configuration.cooking.cookRequestIntervalTicks")
+                    .comment("Minimum ticks between cook shortage request messages.")
+                    .defineInRange("cookRequestIntervalTicks", 3600, 200, 24000);
+            b.pop();
+        } else {
+            ENABLE_COOK_REQUEST_CHAT = null;
+            COOK_REQUEST_INTERVAL_TICKS = null;
+        }
 
-        b.push("caregiving");
+        // ── Caregiving ──
+        b.translation("townstead.configuration.caregiving").push("caregiving");
         ENABLE_FEEDING_YOUNG = b
+                .translation("townstead.configuration.caregiving.enableFeedingYoung")
                 .comment("Allow adults to feed hungry babies/toddlers/children.")
                 .define("enableFeedingYoung", true);
         ENABLE_NON_PARENT_CAREGIVERS = b
+                .translation("townstead.configuration.caregiving.enableNonParentCaregivers")
                 .comment("Allow non-parent villagers to help feed children when parents are absent.")
                 .define("enableNonParentCaregivers", true);
         b.pop();
 
-        b.push("shared_storage");
+        // ── Storage ──
+        b.translation("townstead.configuration.storage").push("storage");
+        ENABLE_WORK_SUPPLY_AUTOMATION = b
+                .translation("townstead.configuration.storage.enableWorkSupplyAutomation")
+                .comment("Allow chore supply restocking and output storage automation from nearby containers.")
+                .define("enableWorkSupplyAutomation", false);
+        ENABLE_HARVEST_OUTPUT_STORAGE = b
+                .translation("townstead.configuration.storage.enableHarvestOutputStorage")
+                .comment("Allow harvesting villagers to store gathered output in nearby containers.")
+                .define("enableHarvestOutputStorage", true);
         RESPECT_PROTECTED_STORAGE = b
+                .translation("townstead.configuration.storage.respectProtectedStorage")
                 .comment("If true, villagers will not take food from protected storage blocks/tags.")
                 .define("respectProtectedStorage", true);
         PROTECTED_STORAGE_BLOCKS = b
+                .translation("townstead.configuration.storage.protectedStorageBlocks")
                 .comment("Block IDs that villagers must not take food from.")
                 .defineListAllowEmpty("protectedStorageBlocks", List.of(), TownsteadConfig::isValidResourceLocationString);
         PROTECTED_STORAGE_TAGS = b
+                .translation("townstead.configuration.storage.protectedStorageTags")
                 .comment("Block tags (e.g. modid:tag_name) treated as protected storage.")
                 .defineListAllowEmpty("protectedStorageTags", List.of("townstead:protected_food_storage"),
                         TownsteadConfig::isValidResourceLocationString);
         b.pop();
 
+        // ── Chef's Delight ──
         if (ModCompat.isLoaded("chefsdelight")) {
-            b.push("chefsdelight_compat");
+            b.translation("townstead.configuration.chefsdelight_compat").push("chefsdelight_compat");
             ENABLE_TOWNSTEAD_COOK = b
+                    .translation("townstead.configuration.chefsdelight_compat.enableTownsteadCook")
                     .comment("When enabled, Townstead handles cook AI and profession assignment.",
                              "When disabled, Chef's Delight handles cooking instead.")
                     .define("enableTownsteadCook", true);
@@ -241,23 +275,30 @@ public final class TownsteadConfig {
             ENABLE_TOWNSTEAD_COOK = null;
         }
 
-        b.push("debug");
+        // ── Debug ──
+        b.translation("townstead.configuration.debug").push("debug");
         DEBUG_VILLAGER_AI = b
+                .translation("townstead.configuration.debug.debugVillagerAI")
                 .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
                 .define("debugVillagerAI", false);
         b.pop();
 
         SERVER_SPEC = b.build();
 
+        // ── Client Settings ──
+
         ModConfigSpec.Builder clientBuilder = new ModConfigSpec.Builder();
-        clientBuilder.push("mood_audio");
+
+        clientBuilder.translation("townstead.configuration.mood_audio").push("mood_audio");
         MUTE_MOOD_VOCALIZATIONS = clientBuilder
+                .translation("townstead.configuration.mood_audio.muteMoodVocalizations")
                 .comment("Mute villager mood vocalizations tied to laughter/celebration and crying.")
                 .define("muteMoodVocalizations", true);
         clientBuilder.pop();
 
-        clientBuilder.push("catalog");
+        clientBuilder.translation("townstead.configuration.catalog").push("catalog");
         USE_TOWNSTEAD_CATALOG = clientBuilder
+                .translation("townstead.configuration.catalog.useTownsteadCatalog")
                 .comment("Use the Townstead extended catalog with kitchen building tiers. Disable to use MCA's original catalog.")
                 .define("useTownsteadCatalog", true);
         clientBuilder.pop();
@@ -267,7 +308,6 @@ public final class TownsteadConfig {
 
     public static boolean isTownsteadCookEnabled() {
         if (!ModCompat.isLoaded("farmersdelight")) return false;
-        // No Chef's Delight → Townstead is the only cook handler, always enabled.
         if (ENABLE_TOWNSTEAD_COOK == null) return true;
         return ENABLE_TOWNSTEAD_COOK.get();
     }
@@ -306,10 +346,6 @@ public final class TownsteadConfig {
 
     public static boolean isMoodVocalizationMuteEnabled() {
         return MUTE_MOOD_VOCALIZATIONS.get();
-    }
-
-    public static int productionStationRetryBackoffTicks() {
-        return PRODUCTION_STATION_RETRY_BACKOFF_TICKS.get();
     }
 
     private static boolean isValidResourceLocationString(final @NotNull Object o) {
