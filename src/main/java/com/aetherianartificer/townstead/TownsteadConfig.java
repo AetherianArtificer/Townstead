@@ -53,6 +53,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_COOK_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
+    public static final ModConfigSpec.IntValue PRODUCTION_STATION_RETRY_BACKOFF_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
     public static final ModConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
@@ -200,6 +201,13 @@ public final class TownsteadConfig {
                 .defineInRange("cookRequestIntervalTicks", 3600, 200, 24000);
         b.pop();
 
+        b.translation("townstead.configuration.professions.production").push("professions.production");
+        PRODUCTION_STATION_RETRY_BACKOFF_TICKS = b
+                .translation("townstead.configuration.professions.production.stationRetryBackoffTicks")
+                .comment("Ticks to wait before retrying a station claim after contention or transient failure.")
+                .defineInRange("stationRetryBackoffTicks", 20, 5, 400);
+        b.pop();
+
         b.push("caregiving");
         ENABLE_FEEDING_YOUNG = b
                 .comment("Allow adults to feed hungry babies/toddlers/children.")
@@ -298,6 +306,10 @@ public final class TownsteadConfig {
 
     public static boolean isMoodVocalizationMuteEnabled() {
         return MUTE_MOOD_VOCALIZATIONS.get();
+    }
+
+    public static int productionStationRetryBackoffTicks() {
+        return PRODUCTION_STATION_RETRY_BACKOFF_TICKS.get();
     }
 
     private static boolean isValidResourceLocationString(final @NotNull Object o) {
