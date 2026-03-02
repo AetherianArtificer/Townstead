@@ -3,8 +3,11 @@ package com.aetherianartificer.townstead.mixin;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
+import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.mixin.accessor.AbstractDynamicScreenAccessor;
 import com.aetherianartificer.townstead.mixin.accessor.InteractScreenAccessor;
+import com.aetherianartificer.townstead.thirst.ThirstClientStore;
+import com.aetherianartificer.townstead.thirst.ThirstData;
 import net.conczin.mca.client.gui.InteractScreen;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerLike;
@@ -36,6 +39,12 @@ public abstract class InteractScreenMixin extends Screen {
     private static final int HUNGER_ICON_Y = 120;
     private static final int HUNGER_ICON_SIZE = 24;
     private static final float HUNGER_ICON_SCALE = 16.0f / 9.0f;
+    private static final int THIRST_ICON_X = 70;
+    private static final int THIRST_ICON_Y = 145;
+    private static final int THIRST_ICON_SIZE = 24;
+    private static final float THIRST_ICON_SCALE = 16.0f / 9.0f;
+    private static final int THIRST_ICON_TEX_W = 25;
+    private static final int THIRST_ICON_TEX_H = 9;
 
     @Shadow @Final private VillagerLike<?> villager;
 
@@ -94,6 +103,17 @@ public abstract class InteractScreenMixin extends Screen {
                     )
                     .withStyle(Style.EMPTY.withColor(state.getColor()));
             ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, hungerLabel, "hunger");
+        }
+
+        if (ThirstWasTakenBridge.INSTANCE.isActive() && townstead$isHoveringThirstIcon()) {
+            int thirst = ThirstClientStore.getThirst(entityId);
+            ThirstData.ThirstState thirstState = ThirstData.getState(thirst);
+            Component thirstLabel = Component.translatable(
+                            "townstead.thirst.icon.tooltip",
+                            thirst
+                    )
+                    .withStyle(Style.EMPTY.withColor(thirstState.getColor()));
+            ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, thirstLabel, "thirst");
         }
     }
 
@@ -168,10 +188,27 @@ public abstract class InteractScreenMixin extends Screen {
         pose.scale(HUNGER_ICON_SCALE, HUNGER_ICON_SCALE, 1.0f);
         context.blit(sprite, 0, 0, 0, 0, 9, 9, 9, 9);
         pose.popPose();
+
+        if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
+
+        int thirst = ThirstClientStore.getThirst(villager.asEntity().getId());
+        int thirstU = townstead$thirstIconU(thirst);
+        int thirstX = THIRST_ICON_X + ((THIRST_ICON_SIZE - 16) / 2);
+        int thirstY = THIRST_ICON_Y + ((THIRST_ICON_SIZE - 16) / 2);
+
+        pose.pushPose();
+        pose.translate(thirstX, thirstY, 0);
+        pose.scale(THIRST_ICON_SCALE, THIRST_ICON_SCALE, 1.0f);
+        context.blit(ThirstWasTakenBridge.INSTANCE.iconTexture(), 0, 0, thirstU, 0, 9, 9, THIRST_ICON_TEX_W, THIRST_ICON_TEX_H);
+        pose.popPose();
     }
 
     private boolean townstead$isHoveringHungerIcon() {
         return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("hunger");
+    }
+
+    private boolean townstead$isHoveringThirstIcon() {
+        return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("thirst");
     }
 
     private ResourceLocation townstead$hungerIconSprite(HungerData.HungerState state) {
@@ -180,6 +217,12 @@ public abstract class InteractScreenMixin extends Screen {
             case HUNGRY -> FOOD_HALF;
             case FAMISHED, STARVING -> FOOD_EMPTY;
         };
+    }
+
+    private int townstead$thirstIconU(int thirst) {
+        if (thirst > 13) return 16; // full droplet
+        if (thirst > 6) return 8;   // half droplet
+        return 0;                   // empty droplet
     }
 
     private Activity townstead$getCurrentScheduleActivity() {

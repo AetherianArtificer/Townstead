@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
+import com.aetherianartificer.townstead.thirst.VillagerDrinkingManager;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -78,7 +79,9 @@ public final class HungerVillagerTicker {
             int h = HungerData.getHunger(hunger);
             long gameTime = self.level().getGameTime();
             long lastAte = HungerData.getLastAteTime(hunger);
-            boolean canEat = (gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL && !VillagerEatingManager.isEating(self);
+            boolean canEat = (gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL
+                    && !VillagerEatingManager.isEating(self)
+                    && !VillagerDrinkingManager.isDrinking(self);
             if (canEat) {
                 boolean shouldEat = false;
                 if (state.lastActivity == Activity.REST && h < HungerData.BREAKFAST_THRESHOLD) {
@@ -99,7 +102,9 @@ public final class HungerVillagerTicker {
             long minEatInterval = HungerData.isEatingMode(hunger)
                     ? 20L
                     : (HungerData.getHunger(hunger) < HungerData.EMERGENCY_THRESHOLD ? 20L : HungerData.MIN_EAT_INTERVAL);
-            if ((gameTime - lastAte) >= minEatInterval && !VillagerEatingManager.isEating(self)) {
+            if ((gameTime - lastAte) >= minEatInterval
+                    && !VillagerEatingManager.isEating(self)
+                    && !VillagerDrinkingManager.isDrinking(self)) {
                 hungerChanged |= tryEatFromInventory(self);
             }
         }

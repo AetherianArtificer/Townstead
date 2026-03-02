@@ -24,6 +24,11 @@ import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.ButcherStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
+import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.thirst.ThirstClientStore;
+import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.thirst.ThirstSetPayload;
+import com.aetherianartificer.townstead.thirst.ThirstSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.interaction.gifts.GiftPredicate;
 import net.conczin.mca.registry.ProfessionsMCA;
@@ -67,6 +72,12 @@ public class Townstead {
 
     public static final Supplier<AttachmentType<CompoundTag>> HUNGER_DATA = ATTACHMENTS.register(
             "hunger_data",
+            () -> AttachmentType.builder(() -> new CompoundTag())
+                    .serialize(net.minecraft.nbt.CompoundTag.CODEC)
+                    .build()
+    );
+    public static final Supplier<AttachmentType<CompoundTag>> THIRST_DATA = ATTACHMENTS.register(
+            "thirst_data",
             () -> AttachmentType.builder(() -> new CompoundTag())
                     .serialize(net.minecraft.nbt.CompoundTag.CODEC)
                     .build()
@@ -126,6 +137,15 @@ public class Townstead {
                     HungerData.HungerState current = HungerData.getState(h);
                     return townstead$hungerAtLeast(current, state) ? 1.0f : 0.0f;
                 });
+        GiftPredicate.register("thirst", (json, name) ->
+                        GsonHelper.convertToString(json, name).toLowerCase(Locale.ROOT),
+                state -> (villager, stack, player) -> {
+                    if (!ThirstWasTakenBridge.INSTANCE.isActive()) return 0.0f;
+                    CompoundTag data = villager.getData(THIRST_DATA);
+                    int t = ThirstData.getThirst(data);
+                    ThirstData.ThirstState current = ThirstData.getState(t);
+                    return townstead$thirstAtLeast(current, state) ? 1.0f : 0.0f;
+                });
     }
 
     private static boolean townstead$hungerAtLeast(HungerData.HungerState current, String minimumState) {
@@ -149,6 +169,27 @@ public class Townstead {
         return currentSeverity >= requiredSeverity;
     }
 
+    private static boolean townstead$thirstAtLeast(ThirstData.ThirstState current, String minimumState) {
+        int currentSeverity = switch (current) {
+            case QUENCHED -> 0;
+            case HYDRATED -> 1;
+            case THIRSTY -> 2;
+            case PARCHED -> 3;
+            case DEHYDRATED -> 4;
+        };
+
+        int requiredSeverity = switch (minimumState) {
+            case "quenched" -> 0;
+            case "hydrated" -> 1;
+            case "thirsty" -> 2;
+            case "parched" -> 3;
+            case "dehydrated" -> 4;
+            default -> Integer.MAX_VALUE;
+        };
+
+        return currentSeverity >= requiredSeverity;
+    }
+
     private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
         try {
             Class.forName("net.minecraft.client.Minecraft");
@@ -161,11 +202,19 @@ public class Townstead {
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
         var registrar = event.registrar(MOD_ID).versioned("1");
+        boolean thirstAvailable = ThirstWasTakenBridge.INSTANCE.isActive();
         registrar.playToClient(
                 HungerSyncPayload.TYPE,
                 HungerSyncPayload.STREAM_CODEC,
                 this::handleHungerSync
         );
+        if (thirstAvailable) {
+            registrar.playToClient(
+                    ThirstSyncPayload.TYPE,
+                    ThirstSyncPayload.STREAM_CODEC,
+                    this::handleThirstSync
+            );
+        }
         registrar.playToClient(
                 FarmStatusSyncPayload.TYPE,
                 FarmStatusSyncPayload.STREAM_CODEC,
@@ -191,6 +240,13 @@ public class Townstead {
                 HungerSetPayload.STREAM_CODEC,
                 this::handleHungerSet
         );
+        if (thirstAvailable) {
+            registrar.playToServer(
+                    ThirstSetPayload.TYPE,
+                    ThirstSetPayload.STREAM_CODEC,
+                    this::handleThirstSet
+            );
+        }
         registrar.playToServer(
                 FarmingPolicySetPayload.TYPE,
                 FarmingPolicySetPayload.STREAM_CODEC,
@@ -216,6 +272,15 @@ public class Townstead {
                 payload.cookTier(),
                 payload.cookXp(),
                 payload.cookXpToNext()
+        ));
+    }
+
+    private void handleThirstSync(ThirstSyncPayload payload, IPayloadContext context) {
+        if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
+        context.enqueueWork(() -> ThirstClientStore.set(
+                payload.entityId(),
+                payload.thirst(),
+                payload.quenched()
         ));
     }
 
@@ -264,6 +329,35 @@ public class Townstead {
             PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
             int syncedHunger = sync.hunger();
             LOGGER.debug("Hunger set: {} -> {}", currentHunger, syncedHunger);
+        });
+    }
+
+    private void handleThirstSet(ThirstSetPayload payload, IPayloadContext context) {
+        if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            Entity entity = sp.serverLevel().getEntity(payload.entityId());
+            if (!(entity instanceof VillagerEntityMCA villager)) return;
+
+            CompoundTag thirst = villager.getData(THIRST_DATA);
+            int currentThirst = ThirstData.getThirst(thirst);
+
+            if (payload.thirst() == -1) {
+                PacketDistributor.sendToPlayer(sp, townstead$thirstSync(villager, thirst));
+                return;
+            }
+
+            int newThirst = payload.thirst();
+            LOGGER.debug("ThirstSet packet: entityId={}, target={}", payload.entityId(), newThirst);
+            ThirstData.setThirst(thirst, newThirst);
+            if (newThirst > currentThirst) {
+                ThirstData.setQuenched(thirst, Math.min(newThirst, ThirstData.MAX_QUENCHED));
+            }
+            ThirstData.setExhaustion(thirst, 0f);
+            villager.setData(THIRST_DATA, thirst);
+            ThirstSyncPayload sync = townstead$thirstSync(villager, thirst);
+            PacketDistributor.sendToPlayer(sp, sync);
+            PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
         });
     }
 
@@ -322,6 +416,10 @@ public class Townstead {
 
         CompoundTag hunger = villager.getData(HUNGER_DATA);
         PacketDistributor.sendToPlayer(sp, townstead$hungerSync(villager, hunger));
+        if (ThirstWasTakenBridge.INSTANCE.isActive()) {
+            CompoundTag thirst = villager.getData(THIRST_DATA);
+            PacketDistributor.sendToPlayer(sp, townstead$thirstSync(villager, thirst));
+        }
         PacketDistributor.sendToPlayer(sp, new FarmStatusSyncPayload(
                 villager.getId(),
                 HungerData.getFarmBlockedReason(hunger).id()
@@ -348,8 +446,17 @@ public class Townstead {
         );
     }
 
+    public static ThirstSyncPayload townstead$thirstSync(VillagerEntityMCA villager, CompoundTag thirst) {
+        return new ThirstSyncPayload(
+                villager.getId(),
+                ThirstData.getThirst(thirst),
+                ThirstData.getQuenched(thirst)
+        );
+    }
+
     private void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
         HungerClientStore.clear();
+        ThirstClientStore.clear();
         FarmingPolicyClientStore.clear();
         ButcherPolicyClientStore.clear();
     }
