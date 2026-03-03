@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.compat.farmersdelight;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.IngredientResolver;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
@@ -22,7 +23,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.behavior.BlockPosTracker;
@@ -35,14 +35,14 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.level.block.state.BlockState;
 
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class CookWorkTask extends Behavior<VillagerEntityMCA> {
+public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
 
     // ── Constants ──
 
@@ -67,35 +67,33 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     // ── State machine ──
 
-    private enum CookState { ACQUIRE_STATION, SELECT_RECIPE, GATHER, COOK, COLLECT }
-    private enum BlockedReason { NONE, NO_KITCHEN, NO_INGREDIENTS, NO_RECIPE, NO_STORAGE, UNREACHABLE }
+    private enum BaristaState { ACQUIRE_STATION, SELECT_RECIPE, GATHER, BREW, COLLECT }
+    private enum BlockedReason { NONE, NO_CAFE, NO_INGREDIENTS, NO_RECIPE, NO_STORAGE, UNREACHABLE }
 
-    private CookState state = CookState.ACQUIRE_STATION;
+    private BaristaState state = BaristaState.ACQUIRE_STATION;
     private long stateEnteredTick;
     private BlockPos stationAnchor;
     private BlockPos standPos;
     private StationType stationType;
     private DiscoveredRecipe activeRecipe;
     private ItemStack pendingOutput = ItemStack.EMPTY;
-    private long cookDoneTick;
+    private long brewDoneTick;
     private long nextStandReacquireTick;
     private long nextDebugTick;
     private long nextRequestTick;
-    private long nextKnifeAcquireTick;
     private BlockedReason blocked = BlockedReason.NONE;
-    private ItemStack heldCuttingInput = ItemStack.EMPTY;
     private final Map<ResourceLocation, Integer> stagedInputs = new HashMap<>();
     private final Set<Long> usedStations = new HashSet<>();
     private final Map<ResourceLocation, Long> recipeCooldownUntil = new HashMap<>();
     private int recipeAttempts;
     private long idleUntilTick;
 
-    // Kitchen bounds cache
-    private Set<Long> cachedKitchenWorkArea = Set.of();
-    private BlockPos cachedKitchenWorkAnchor = null;
-    private long cachedKitchenWorkUntil = 0L;
+    // Cafe bounds cache
+    private Set<Long> cachedCafeWorkArea = Set.of();
+    private BlockPos cachedCafeWorkAnchor = null;
+    private long cachedCafeWorkUntil = 0L;
 
-    public CookWorkTask() {
+    public BaristaWorkTask() {
         super(ImmutableMap.of(
                 MemoryModuleType.WALK_TARGET, MemoryStatus.REGISTERED,
                 MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED
@@ -106,10 +104,11 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
+        if (!ModCompat.isLoaded("rusticdelight")) return false;
         if (!TownsteadConfig.isTownsteadCookEnabled()) return false;
         VillagerProfession profession = villager.getVillagerData().getProfession();
-        if (!FarmersDelightCookAssignment.isExternalCookProfession(profession)) return false;
-        if (!FarmersDelightCookAssignment.canVillagerWorkAsCook(level, villager)) return false;
+        if (!FarmersDelightBaristaAssignment.isBaristaProfession(profession)) return false;
+        if (!FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         return currentActivity(villager) == Activity.WORK;
@@ -117,10 +116,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!FarmersDelightCookAssignment.isExternalCookProfession(villager.getVillagerData().getProfession())) return;
-        if (!FarmersDelightCookAssignment.canVillagerWorkAsCook(level, villager)) return;
+        if (!FarmersDelightBaristaAssignment.isBaristaProfession(villager.getVillagerData().getProfession())) return;
+        if (!FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager)) return;
         blocked = BlockedReason.NONE;
-        state = CookState.ACQUIRE_STATION;
+        state = BaristaState.ACQUIRE_STATION;
         stateEnteredTick = gameTime;
         recipeAttempts = 0;
         usedStations.clear();
@@ -128,8 +127,9 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (!ModCompat.isLoaded("rusticdelight")) return false;
         if (!TownsteadConfig.isTownsteadCookEnabled()) return false;
-        if (!FarmersDelightCookAssignment.isExternalCookProfession(villager.getVillagerData().getProfession())) return false;
+        if (!FarmersDelightBaristaAssignment.isBaristaProfession(villager.getVillagerData().getProfession())) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         return currentActivity(villager) == Activity.WORK;
@@ -143,21 +143,20 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         stationType = null;
         activeRecipe = null;
         pendingOutput = ItemStack.EMPTY;
-        heldCuttingInput = ItemStack.EMPTY;
         stagedInputs.clear();
         usedStations.clear();
         recipeCooldownUntil.clear();
         recipeAttempts = 0;
         idleUntilTick = 0L;
-        cachedKitchenWorkArea = Set.of();
-        cachedKitchenWorkAnchor = null;
-        cachedKitchenWorkUntil = 0L;
-        state = CookState.ACQUIRE_STATION;
+        cachedCafeWorkArea = Set.of();
+        cachedCafeWorkAnchor = null;
+        cachedCafeWorkUntil = 0L;
+        state = BaristaState.ACQUIRE_STATION;
     }
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!FarmersDelightCookAssignment.canVillagerWorkAsCook(level, villager)) {
+        if (!FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager)) {
             clearAll(villager, gameTime);
             return;
         }
@@ -166,18 +165,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
         debugTick(level, villager, gameTime);
 
-        // Opportunistic knife grab
-        if (!StationHandler.hasKnife(villager.getInventory()) && gameTime >= nextKnifeAcquireTick) {
-            Set<Long> bounds = activeKitchenBounds(villager, activeKitchenReference(villager));
-            BlockPos center = stationAnchor != null ? stationAnchor : nearestKitchenAnchor(villager);
-            IngredientResolver.findKitchenStorageSlot(level, villager, StationHandler::isKnifeStack, bounds);
-            nextKnifeAcquireTick = gameTime + 200L;
-        }
-
         // State timeout
-        if (gameTime - stateEnteredTick > STATE_TIMEOUT_TICKS && state != CookState.COOK) {
+        if (gameTime - stateEnteredTick > STATE_TIMEOUT_TICKS && state != BaristaState.BREW) {
             debugChat(level, villager, "STATE:timeout in " + state.name() + ", resetting");
-            transition(CookState.ACQUIRE_STATION, gameTime);
+            transition(BaristaState.ACQUIRE_STATION, gameTime);
             releaseStationClaim(villager, stationAnchor);
             stationAnchor = null;
             activeRecipe = null;
@@ -188,7 +179,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             case ACQUIRE_STATION -> tickAcquireStation(level, villager, gameTime);
             case SELECT_RECIPE -> tickSelectRecipe(level, villager, gameTime);
             case GATHER -> tickGather(level, villager, gameTime);
-            case COOK -> tickCook(level, villager, gameTime);
+            case BREW -> tickBrew(level, villager, gameTime);
             case COLLECT -> tickCollect(level, villager, gameTime);
         }
     }
@@ -198,30 +189,25 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private void tickAcquireStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         releaseStationClaim(villager, stationAnchor);
         activeRecipe = null;
-        heldCuttingInput = ItemStack.EMPTY;
         stagedInputs.clear();
 
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
-        if (kitchenBounds.isEmpty()) {
-            setBlocked(level, villager, gameTime, BlockedReason.NO_KITCHEN, "");
+        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
+        if (cafeBounds.isEmpty()) {
+            setBlocked(level, villager, gameTime, BlockedReason.NO_CAFE, "");
             idleUntilTick = gameTime + IDLE_BACKOFF;
             return;
         }
 
-        List<StationSlot> stations = StationHandler.discoverStations(level, villager, kitchenBounds, SEARCH_RADIUS, VERTICAL_RADIUS);
+        List<StationSlot> stations = StationHandler.discoverStations(level, villager, cafeBounds, SEARCH_RADIUS, VERTICAL_RADIUS);
+        // Filter to only HOT_STATION and FIRE_STATION (barista doesn't use cutting board)
+        stations = stations.stream()
+                .filter(s -> s.type() == StationType.HOT_STATION || s.type() == StationType.FIRE_STATION)
+                .toList();
         if (stations.isEmpty()) {
-            debugChat(level, villager, "ACQUIRE:no stations found in kitchen (" + kitchenBounds.size() + " bounds)");
-            setBlocked(level, villager, gameTime, BlockedReason.NO_KITCHEN, "");
+            debugChat(level, villager, "ACQUIRE:no stations found in cafe (" + cafeBounds.size() + " bounds)");
+            setBlocked(level, villager, gameTime, BlockedReason.NO_CAFE, "");
             idleUntilTick = gameTime + IDLE_BACKOFF;
             return;
-        }
-        // Log discovered station types on first acquire
-        if (usedStations.isEmpty()) {
-            Map<String, Integer> typeCounts = new LinkedHashMap<>();
-            for (StationSlot slot : stations) {
-                typeCounts.merge(slot.type().name(), 1, Integer::sum);
-            }
-            debugChat(level, villager, "ACQUIRE:found " + stations.size() + " stations " + typeCounts);
         }
 
         // Partition stations into: fresh (not tried, not claimed), tried, occupied
@@ -237,16 +223,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
 
-        // If no fresh stations, reset used list and try again
         if (fresh.isEmpty()) {
             if (anyOccupied && usedStations.isEmpty()) {
-                // All stations are occupied by other cooks — wait longer
                 debugChat(level, villager, "ACQUIRE:all stations occupied, waiting");
                 idleUntilTick = gameTime + OCCUPIED_BACKOFF;
                 setBlocked(level, villager, gameTime, BlockedReason.UNREACHABLE, "");
                 return;
             }
-            // All tried but some might be free now — reset and backoff briefly
             debugChat(level, villager, "ACQUIRE:all stations tried, resetting");
             usedStations.clear();
             recipeAttempts = 0;
@@ -254,12 +237,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        // Random pick from fresh stations
         StationSlot best = fresh.get(ThreadLocalRandom.current().nextInt(fresh.size()));
 
         BlockPos stand = StationHandler.findStandingPosition(level, villager, best.pos());
         if (stand == null) {
-            // Can't reach this one, mark as used and try again next tick
             usedStations.add(best.pos().asLong());
             return;
         }
@@ -274,7 +255,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
         debugChat(level, villager, "ACQUIRE:" + stationType.name()
                 + " at " + stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ());
-        transition(CookState.SELECT_RECIPE, gameTime);
+        transition(BaristaState.SELECT_RECIPE, gameTime);
     }
 
     // ── State: SELECT_RECIPE ──
@@ -282,32 +263,31 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private void tickSelectRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (!ensureNearStation(level, villager, gameTime)) return;
 
-        // Verify station still valid
         if (stationAnchor == null || !StationHandler.isStation(level, stationAnchor)) {
-            transition(CookState.ACQUIRE_STATION, gameTime);
+            transition(BaristaState.ACQUIRE_STATION, gameTime);
             return;
         }
 
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
+        int tier = Math.max(1, FarmersDelightBaristaAssignment.effectiveRecipeTier(level, villager));
         DiscoveredRecipe recipe = RecipeSelector.pickRecipe(
-                level, villager, stationType, stationAnchor, kitchenBounds, recipeCooldownUntil,
-                true, false);
+                level, villager, stationType, stationAnchor, cafeBounds, recipeCooldownUntil,
+                false, true, tier);
 
         if (recipe == null) {
-            int tier = Math.max(1, FarmersDelightCookAssignment.effectiveRecipeTier(level, villager));
-            int available = ModRecipeRegistry.getRecipesForStation(level, stationType, tier).size();
-            debugChat(level, villager, "SELECT:no recipe for " + stationType.name()
+            int available = ModRecipeRegistry.getBeverageRecipesForStation(level, stationType, tier).size();
+            debugChat(level, villager, "SELECT:no beverage recipe for " + stationType.name()
                     + " (tier=" + tier + ", candidates=" + available + "), rotating");
             usedStations.add(stationAnchor.asLong());
             setBlocked(level, villager, gameTime, BlockedReason.NO_RECIPE, "");
-            transition(CookState.ACQUIRE_STATION, gameTime);
+            transition(BaristaState.ACQUIRE_STATION, gameTime);
             return;
         }
 
         activeRecipe = recipe;
         recipeAttempts = 0;
         debugChat(level, villager, "SELECT:" + recipe.output() + " tier=" + recipe.tier());
-        transition(CookState.GATHER, gameTime);
+        transition(BaristaState.GATHER, gameTime);
     }
 
     // ── State: GATHER ──
@@ -315,19 +295,18 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private void tickGather(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (!ensureNearStation(level, villager, gameTime)) return;
         if (activeRecipe == null) {
-            transition(CookState.SELECT_RECIPE, gameTime);
+            transition(BaristaState.SELECT_RECIPE, gameTime);
             return;
         }
 
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
         boolean success = IngredientResolver.pullAndConsume(
-                level, villager, activeRecipe, stationAnchor, stationType, stagedInputs, kitchenBounds);
+                level, villager, activeRecipe, stationAnchor, stationType, stagedInputs, cafeBounds);
 
         if (!success) {
             debugChat(level, villager, "GATHER:failed for " + activeRecipe.output());
             IngredientResolver.rollbackStagedInputs(level, villager, stationAnchor, stagedInputs);
             setBlocked(level, villager, gameTime, BlockedReason.NO_INGREDIENTS, "");
-            // Blacklist this recipe so it's not immediately re-selected
             recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
             activeRecipe = null;
             recipeAttempts++;
@@ -335,37 +314,22 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                 debugChat(level, villager, "GATHER:max attempts, rotating station");
                 usedStations.add(stationAnchor.asLong());
                 idleUntilTick = gameTime + IDLE_BACKOFF;
-                transition(CookState.ACQUIRE_STATION, gameTime);
+                transition(BaristaState.ACQUIRE_STATION, gameTime);
             } else {
-                // Try a different recipe on the same station
-                transition(CookState.SELECT_RECIPE, gameTime);
+                transition(BaristaState.SELECT_RECIPE, gameTime);
             }
             return;
         }
 
-        // For cutting board, hold aside the input for the COOK phase
-        if (stationType == StationType.CUTTING_BOARD && !activeRecipe.inputs().isEmpty()) {
-            SimpleContainer inv = villager.getInventory();
-            for (ResourceLocation id : activeRecipe.inputs().get(0).itemIds()) {
-                Item item = BuiltInRegistries.ITEM.get(id);
-                if (item == Items.AIR) continue;
-                if (StationHandler.count(inv, item) > 0) {
-                    heldCuttingInput = new ItemStack(item, 1);
-                    StationHandler.consume(inv, item, 1);
-                    break;
-                }
-            }
-        }
-
         debugChat(level, villager, "GATHER:success for " + activeRecipe.output());
-        cookDoneTick = gameTime + activeRecipe.cookTimeTicks();
+        brewDoneTick = gameTime + activeRecipe.cookTimeTicks();
         playSound(level);
-        transition(CookState.COOK, gameTime);
+        transition(BaristaState.BREW, gameTime);
     }
 
-    // ── State: COOK ──
+    // ── State: BREW ──
 
-    private void tickCook(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+    private void tickBrew(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor != null && standPos != null) {
             BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
             villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(stationAnchor));
@@ -378,9 +342,9 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         if (stationType == StationType.FIRE_STATION && stationAnchor != null) {
             Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
             List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
-            Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+            Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
             for (ItemStack drop : drops) {
-                int stored = IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, kitchenBounds);
+                IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, cafeBounds);
                 if (!drop.isEmpty()) {
                     ItemStack remainder = villager.getInventory().addItem(drop);
                     if (!remainder.isEmpty()) {
@@ -392,54 +356,28 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
 
-        if (gameTime < cookDoneTick) return;
+        if (gameTime < brewDoneTick) return;
 
-        // Cutting board: process now
-        if (stationType == StationType.CUTTING_BOARD && activeRecipe != null) {
-            SimpleContainer inv = villager.getInventory();
-            ItemStack knifeStack = ItemStack.EMPTY;
-            for (int i = 0; i < inv.getContainerSize(); i++) {
-                if (StationHandler.isKnifeStack(inv.getItem(i))) {
-                    knifeStack = inv.getItem(i);
-                    break;
-                }
-            }
-            if (!heldCuttingInput.isEmpty()) {
-                boolean processed = StationHandler.cuttingBoardProcess(
-                        level, villager, stationAnchor, heldCuttingInput, knifeStack);
-                heldCuttingInput = ItemStack.EMPTY;
-                if (!processed) {
-                    debugChat(level, villager, "COOK:cutting board failed");
-                    // Produce virtual output as fallback
-                    Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-                    if (outputItem != Items.AIR) {
-                        pendingOutput = new ItemStack(outputItem, activeRecipe.outputCount());
-                        villager.getInventory().addItem(pendingOutput.copy());
-                    }
-                }
-            }
-        }
-
-        debugChat(level, villager, "COOK:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
-        transition(CookState.COLLECT, gameTime);
+        debugChat(level, villager, "BREW:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
+        transition(BaristaState.COLLECT, gameTime);
     }
 
     // ── State: COLLECT ──
 
     private void tickCollect(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (activeRecipe == null) {
-            transition(CookState.SELECT_RECIPE, gameTime);
+            transition(BaristaState.SELECT_RECIPE, gameTime);
             return;
         }
 
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
         Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
 
         // Collect surface drops
         if (stationAnchor != null) {
             List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
             for (ItemStack drop : drops) {
-                int stored = IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, kitchenBounds);
+                IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, cafeBounds);
                 if (!drop.isEmpty()) {
                     ItemStack remainder = villager.getInventory().addItem(drop);
                     if (!remainder.isEmpty()) {
@@ -458,14 +396,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                 int extracted = StationHandler.extractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
                 if (extracted > 0) {
                     ItemStack output = new ItemStack(outputItem, extracted);
-                    int stored = IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, kitchenBounds);
+                    IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, cafeBounds);
                     if (!output.isEmpty()) {
                         villager.getInventory().addItem(output);
                     }
                 } else {
-                    // Fallback: produce virtual output
                     ItemStack output = new ItemStack(outputItem, activeRecipe.outputCount());
-                    int stored = IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, kitchenBounds);
+                    IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, cafeBounds);
                     if (!output.isEmpty()) {
                         villager.getInventory().addItem(output);
                     }
@@ -473,28 +410,28 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
 
-        // Store any pending output from cutting board / fire
+        // Store any pending output
         if (!pendingOutput.isEmpty()) {
-            int stored = IngredientResolver.storeOutputInCookStorage(level, villager, pendingOutput, stationAnchor, kitchenBounds);
+            IngredientResolver.storeOutputInCookStorage(level, villager, pendingOutput, stationAnchor, cafeBounds);
             if (!pendingOutput.isEmpty()) {
                 villager.getInventory().addItem(pendingOutput);
             }
             pendingOutput = ItemStack.EMPTY;
         }
 
-        // Also store anything in inventory that's a recipe output
-        SimpleContainer inv = villager.getInventory();
+        // Store any inventory items that are recipe outputs
+        net.minecraft.world.SimpleContainer inv = villager.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
             ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (itemId != null && outputIds.contains(itemId)) {
-                IngredientResolver.storeOutputInCookStorage(level, villager, stack, stationAnchor, kitchenBounds);
+                IngredientResolver.storeOutputInCookStorage(level, villager, stack, stationAnchor, cafeBounds);
             }
         }
 
         // Award XP
-        awardCookXP(level, villager);
+        awardBaristaXP(level, villager);
 
         // Mark recipe cooldown
         recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
@@ -503,14 +440,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         activeRecipe = null;
         stagedInputs.clear();
 
-        // Track station usage
         if (stationAnchor != null) usedStations.add(stationAnchor.asLong());
 
-        // Station rotation: 50% chance to rotate if other types available
+        // Station rotation: 50% chance to rotate
         if (ThreadLocalRandom.current().nextDouble() < 0.5d) {
-            transition(CookState.ACQUIRE_STATION, gameTime);
+            transition(BaristaState.ACQUIRE_STATION, gameTime);
         } else {
-            transition(CookState.SELECT_RECIPE, gameTime);
+            transition(BaristaState.SELECT_RECIPE, gameTime);
         }
     }
 
@@ -518,7 +454,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     private boolean ensureNearStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null || standPos == null) {
-            transition(CookState.ACQUIRE_STATION, gameTime);
+            transition(BaristaState.ACQUIRE_STATION, gameTime);
             return false;
         }
 
@@ -527,9 +463,9 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         double distSq = villager.distanceToSqr(standPos.getX() + 0.5, standPos.getY() + 0.5, standPos.getZ() + 0.5);
         double anchorDistSq = villager.distanceToSqr(
                 stationAnchor.getX() + 0.5, stationAnchor.getY() + 0.5, stationAnchor.getZ() + 0.5);
-        boolean inKitchen = isVillagerInActiveKitchen(villager);
+        boolean inCafe = isVillagerInActiveCafe(villager);
 
-        if (distSq > ARRIVAL_DISTANCE_SQ && anchorDistSq > NEAR_STATION_DISTANCE_SQ && !inKitchen) {
+        if (distSq > ARRIVAL_DISTANCE_SQ && anchorDistSq > NEAR_STATION_DISTANCE_SQ && !inCafe) {
             if (gameTime >= nextStandReacquireTick) {
                 nextStandReacquireTick = gameTime + STAND_REACQUIRE_INTERVAL_TICKS;
                 BlockPos refreshed = StationHandler.findStandingPosition(level, villager, stationAnchor);
@@ -543,76 +479,41 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     // ── State transition ──
 
-    private void transition(CookState newState, long gameTime) {
+    private void transition(BaristaState newState, long gameTime) {
         state = newState;
         stateEnteredTick = gameTime;
     }
 
-    // ── Kitchen bounds ──
+    // ── Cafe bounds ──
 
-    private Set<Long> activeKitchenBounds(VillagerEntityMCA villager, BlockPos anchor) {
+    private Set<Long> activeCafeBounds(VillagerEntityMCA villager, BlockPos anchor) {
         long gameTime = villager.level().getGameTime();
-        if (anchor != null && cachedKitchenWorkAnchor != null
-                && anchor.equals(cachedKitchenWorkAnchor)
-                && gameTime <= cachedKitchenWorkUntil
-                && !cachedKitchenWorkArea.isEmpty()) {
-            return cachedKitchenWorkArea;
+        if (anchor != null && cachedCafeWorkAnchor != null
+                && anchor.equals(cachedCafeWorkAnchor)
+                && gameTime <= cachedCafeWorkUntil
+                && !cachedCafeWorkArea.isEmpty()) {
+            return cachedCafeWorkArea;
         }
 
         if (villager.level() instanceof ServerLevel level) {
-            Set<Long> assigned = FarmersDelightCookAssignment.assignedKitchenBounds(level, villager);
+            Set<Long> assigned = FarmersDelightBaristaAssignment.assignedCafeBounds(level, villager);
             if (!assigned.isEmpty()) {
-                Set<Long> roomAware = roomExpandedKitchenArea(level, assigned, anchor != null ? anchor : villager.blockPosition());
-                cacheKitchenWorkArea(anchor, gameTime, roomAware);
+                Set<Long> roomAware = roomExpandedCafeArea(level, assigned, anchor != null ? anchor : villager.blockPosition());
+                cacheCafeWorkArea(anchor, gameTime, roomAware);
                 return roomAware;
             }
         }
 
-        List<Building> kitchens = StationHandler.kitchenBuildings(villager);
-        if (kitchens.isEmpty()) return Set.of();
-
-        Building selected = null;
-        if (anchor != null) {
-            long anchorKey = anchor.asLong();
-            for (Building building : kitchens) {
-                for (BlockPos bp : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
-                    if (bp.asLong() == anchorKey) { selected = building; break; }
-                }
-                if (selected != null) break;
-            }
-        }
-        if (selected == null) {
-            BlockPos reference = anchor != null ? anchor : villager.blockPosition();
-            double best = Double.MAX_VALUE;
-            for (Building building : kitchens) {
-                BlockPos center = building.getCenter();
-                if (center == null) continue;
-                double dist = reference.distSqr(center);
-                if (dist < best) { best = dist; selected = building; }
-            }
-            if (selected == null) selected = kitchens.get(0);
-        }
-
-        Set<Long> bounds = new HashSet<>();
-        for (BlockPos bp : (Iterable<BlockPos>) selected.getBlockPosStream()::iterator) {
-            bounds.add(bp.asLong());
-        }
-        if (!(villager.level() instanceof ServerLevel level)) {
-            cacheKitchenWorkArea(anchor, gameTime, bounds);
-            return bounds;
-        }
-        Set<Long> roomAware = roomExpandedKitchenArea(level, bounds, anchor != null ? anchor : villager.blockPosition());
-        cacheKitchenWorkArea(anchor, gameTime, roomAware);
-        return roomAware;
+        return Set.of();
     }
 
-    private void cacheKitchenWorkArea(BlockPos anchor, long gameTime, Set<Long> bounds) {
-        cachedKitchenWorkAnchor = anchor == null ? null : anchor.immutable();
-        cachedKitchenWorkArea = bounds == null ? Set.of() : bounds;
-        cachedKitchenWorkUntil = gameTime + ROOM_BOUNDS_CACHE_TICKS;
+    private void cacheCafeWorkArea(BlockPos anchor, long gameTime, Set<Long> bounds) {
+        cachedCafeWorkAnchor = anchor == null ? null : anchor.immutable();
+        cachedCafeWorkArea = bounds == null ? Set.of() : bounds;
+        cachedCafeWorkUntil = gameTime + ROOM_BOUNDS_CACHE_TICKS;
     }
 
-    private Set<Long> roomExpandedKitchenArea(ServerLevel level, Set<Long> baseBounds, BlockPos reference) {
+    private Set<Long> roomExpandedCafeArea(ServerLevel level, Set<Long> baseBounds, BlockPos reference) {
         if (baseBounds == null || baseBounds.isEmpty() || reference == null) {
             return baseBounds == null ? Set.of() : baseBounds;
         }
@@ -691,9 +592,9 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         return state.getCollisionShape(level, pos).isEmpty();
     }
 
-    private BlockPos activeKitchenReference(VillagerEntityMCA villager) {
+    private BlockPos activeCafeReference(VillagerEntityMCA villager) {
         if (villager.level() instanceof ServerLevel level) {
-            Optional<Building> assigned = FarmersDelightCookAssignment.assignedKitchen(level, villager);
+            Optional<Building> assigned = FarmersDelightBaristaAssignment.assignedCafe(level, villager);
             if (assigned.isPresent()) {
                 BlockPos center = assigned.get().getCenter();
                 if (center != null) return center;
@@ -703,24 +604,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         if (stationAnchor != null) return stationAnchor;
-        BlockPos nearest = nearestKitchenAnchor(villager);
-        return nearest != null ? nearest : villager.blockPosition();
+        return villager.blockPosition();
     }
 
-    private boolean isVillagerInActiveKitchen(VillagerEntityMCA villager) {
-        Set<Long> bounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+    private boolean isVillagerInActiveCafe(VillagerEntityMCA villager) {
+        Set<Long> bounds = activeCafeBounds(villager, activeCafeReference(villager));
         if (bounds.isEmpty()) return false;
         return StationHandler.isInKitchenWorkArea(bounds, villager.blockPosition());
-    }
-
-    private @Nullable BlockPos nearestKitchenAnchor(VillagerEntityMCA villager) {
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (BlockPos anchor : StationHandler.kitchenAnchors((ServerLevel) villager.level(), villager)) {
-            double dist = villager.distanceToSqr(anchor.getX() + 0.5, anchor.getY() + 0.5, anchor.getZ() + 0.5);
-            if (dist < bestDist) { bestDist = dist; best = anchor; }
-        }
-        return best;
     }
 
     // ── Station claims ──
@@ -733,7 +623,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     // ── XP ──
 
-    private void awardCookXP(ServerLevel level, VillagerEntityMCA villager) {
+    private void awardBaristaXP(ServerLevel level, VillagerEntityMCA villager) {
         if (activeRecipe == null) return;
         int xp = Math.max(1, activeRecipe.tier());
         CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
@@ -745,11 +635,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
 
     private void playSound(ServerLevel level) {
         if (stationAnchor == null || stationType == null) return;
-        if (stationType == StationType.CUTTING_BOARD) {
-            level.playSound(null, stationAnchor, SoundEvents.AXE_STRIP, net.minecraft.sounds.SoundSource.BLOCKS, 0.35f, 1.1f);
-        } else {
-            level.playSound(null, stationAnchor, SoundEvents.CAMPFIRE_CRACKLE, net.minecraft.sounds.SoundSource.BLOCKS, 0.35f, 1.0f);
-        }
+        level.playSound(null, stationAnchor, SoundEvents.CAMPFIRE_CRACKLE, net.minecraft.sounds.SoundSource.BLOCKS, 0.35f, 1.0f);
     }
 
     // ── Blocked state ──
@@ -757,18 +643,18 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private void setBlocked(ServerLevel level, VillagerEntityMCA villager, long gameTime, BlockedReason reason, String itemName) {
         blocked = reason;
         if (reason == BlockedReason.NONE) return;
-        if (!TownsteadConfig.ENABLE_COOK_REQUEST_CHAT.get()) return;
+        if (!TownsteadConfig.isBaristaRequestChatEnabled()) return;
         if (gameTime < nextRequestTick) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
         switch (blocked) {
-            case NO_KITCHEN -> villager.sendChatToAllAround("dialogue.chat.cook_request.no_kitchen/" + (1 + level.random.nextInt(4)));
-            case NO_INGREDIENTS -> villager.sendChatToAllAround("dialogue.chat.cook_request.no_ingredients/" + (1 + level.random.nextInt(6)));
-            case NO_STORAGE -> villager.sendChatToAllAround("dialogue.chat.cook_request.no_storage/" + (1 + level.random.nextInt(4)));
-            case UNREACHABLE -> villager.sendChatToAllAround("dialogue.chat.cook_request.unreachable/" + (1 + level.random.nextInt(6)));
-            case NO_RECIPE -> villager.sendChatToAllAround("dialogue.chat.cook_request.unsupported_item", itemName.isBlank() ? "that" : itemName);
+            case NO_CAFE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_cafe/" + (1 + level.random.nextInt(4)));
+            case NO_INGREDIENTS -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_ingredients/" + (1 + level.random.nextInt(4)));
+            case NO_STORAGE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_storage/" + (1 + level.random.nextInt(4)));
+            case UNREACHABLE -> villager.sendChatToAllAround("dialogue.chat.barista_request.unreachable/" + (1 + level.random.nextInt(4)));
+            case NO_RECIPE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_recipe/" + (1 + level.random.nextInt(4)));
             case NONE -> {}
         }
-        nextRequestTick = gameTime + Math.max(200, TownsteadConfig.COOK_REQUEST_INTERVAL_TICKS.get());
+        nextRequestTick = gameTime + Math.max(200, TownsteadConfig.BARISTA_REQUEST_INTERVAL_TICKS.get());
     }
 
     // ── Reset ──
@@ -780,17 +666,16 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         stationType = null;
         activeRecipe = null;
         pendingOutput = ItemStack.EMPTY;
-        heldCuttingInput = ItemStack.EMPTY;
         stagedInputs.clear();
         usedStations.clear();
         recipeCooldownUntil.clear();
         recipeAttempts = 0;
         idleUntilTick = 0L;
-        state = CookState.ACQUIRE_STATION;
+        state = BaristaState.ACQUIRE_STATION;
         stateEnteredTick = gameTime;
-        cachedKitchenWorkArea = Set.of();
-        cachedKitchenWorkAnchor = null;
-        cachedKitchenWorkUntil = 0L;
+        cachedCafeWorkArea = Set.of();
+        cachedCafeWorkAnchor = null;
+        cachedCafeWorkUntil = 0L;
     }
 
     // ── Activity ──
@@ -805,23 +690,23 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private void debugChat(ServerLevel level, VillagerEntityMCA villager, String msg) {
         if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
         if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
-        player.sendSystemMessage(Component.literal("[Cook:" + villager.getName().getString() + "] " + msg));
+        player.sendSystemMessage(Component.literal("[Barista:" + villager.getName().getString() + "] " + msg));
     }
 
     private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
         if (gameTime < nextDebugTick) return;
         if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
-        String cookName = villager.getName().getString();
-        String cookId = villager.getUUID().toString();
-        if (cookId.length() > 8) cookId = cookId.substring(0, 8);
+        String name = villager.getName().getString();
+        String id = villager.getUUID().toString();
+        if (id.length() > 8) id = id.substring(0, 8);
         String recipe = activeRecipe == null ? "none" : activeRecipe.output().toString();
         String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();
         String station = stationType == null ? "none" : stationType.name().toLowerCase();
         String idleInfo = gameTime < idleUntilTick ? " idle=" + (idleUntilTick - gameTime) : "";
-        player.sendSystemMessage(Component.literal("[CookDBG:" + cookName + "#" + cookId + "] state=" + state.name()
+        player.sendSystemMessage(Component.literal("[BaristaDBG:" + name + "#" + id + "] state=" + state.name()
                 + " station=" + station + " anchor=" + anchor + " recipe=" + recipe
-                + " doneAt=" + cookDoneTick + " blocked=" + blocked.name()
+                + " doneAt=" + brewDoneTick + " blocked=" + blocked.name()
                 + " used=" + usedStations.size() + idleInfo));
         nextDebugTick = gameTime + 100L;
     }

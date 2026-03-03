@@ -1,0 +1,20 @@
+{
+  "color": "ffcbaf87",
+  "visible": true,
+  "priority": 4,
+  "icon": true,
+  "iconU": 244,
+  "iconV": 184,
+  "townsteadNodeItem": "rusticdelight:chocolate_coffee",
+  "noBeds": true,
+  "blocks": {
+    "farmersdelight:stove": 6,
+    "farmersdelight:cooking_pot": 4,
+    "farmersdelight:skillet": 2,
+    "rusticdelight:roasted_coffee_beans_bag": 2,
+    "#townstead:compat/farmersdelight/kitchen_copper": 4,
+    "minecraft:gold_block": 2,
+    "minecraft:flower_pot": 3,
+    "#townstead:compat/farmersdelight/kitchen_storage_nether": 3
+  }
+}

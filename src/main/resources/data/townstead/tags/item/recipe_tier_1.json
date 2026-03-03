@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "rusticdelight:coffee", "required": false },
+    { "id": "rusticdelight:roasted_coffee_beans", "required": false }
+  ]
+}

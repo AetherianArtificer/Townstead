@@ -95,6 +95,18 @@ public class Townstead {
             )
     );
 
+    public static final Supplier<VillagerProfession> BARISTA_PROFESSION = PROFESSIONS.register(
+            "barista",
+            () -> new VillagerProfession(
+                    "barista",
+                    PoiType.NONE,
+                    PoiType.NONE,
+                    ImmutableSet.of(),
+                    ImmutableSet.of(),
+                    SoundEvents.VILLAGER_WORK_BUTCHER
+            )
+    );
+
     public Townstead(IEventBus modBus, ModContainer modContainer) {
         ATTACHMENTS.register(modBus);
         PROFESSIONS.register(modBus);
@@ -120,6 +132,12 @@ public class Townstead {
             // Mark cook important so kitchen-assigned cooks are retained.
             ProfessionsMCA.IS_IMPORTANT.add(cook);
             ProfessionsMCA.CAN_NOT_TRADE.remove(cook);
+
+            if (ModCompat.isLoaded("rusticdelight")) {
+                VillagerProfession barista = BARISTA_PROFESSION.get();
+                ProfessionsMCA.IS_IMPORTANT.add(barista);
+                ProfessionsMCA.CAN_NOT_TRADE.remove(barista);
+            }
         });
     }
 
