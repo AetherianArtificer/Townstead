@@ -124,10 +124,8 @@ public final class RecipeSelector {
             if (!TownsteadConfig.isCookWaterPurificationEnabled() || !ThirstWasTakenBridge.INSTANCE.isActive()) {
                 return Double.NEGATIVE_INFINITY;
             }
-            // Use scarcity scoring — if no purified water is stocked, score high
-            double score = Math.max(0.0d, 20.0d - currentStock * 3.0d);
-            score += perCookJitter(cookSeed, recipe.id()) * 1.0d;
-            return score;
+            // Fall through to standard scoring — potions have no nutrition/saturation,
+            // so scarcity will be the primary driver, competing fairly with other beverages.
         }
 
         // ── Primary factor: least-stocked items scored highest ──

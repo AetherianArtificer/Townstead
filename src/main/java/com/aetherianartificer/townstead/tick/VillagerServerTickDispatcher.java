@@ -11,6 +11,7 @@ public final class VillagerServerTickDispatcher {
         CookAutoAssignTicker.tick(villager);
         BaristaAutoAssignTicker.tick(villager);
         CookTradeBackfillTicker.tick(villager);
+        BaristaTradeBackfillTicker.tick(villager);
         HungerVillagerTicker.tick(villager);
         if (ThirstWasTakenBridge.INSTANCE.isActive()) {
             ThirstVillagerTicker.tick(villager);

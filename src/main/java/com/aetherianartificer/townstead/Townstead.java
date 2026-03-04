@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.cooking.BaristaTradesCompat;
 import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
 import com.google.common.collect.ImmutableSet;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
@@ -118,6 +119,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
+        NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         registerDialogueConditions();
         FarmPatternRegistry.bootstrap();
         ButcherProfileRegistry.bootstrap();
