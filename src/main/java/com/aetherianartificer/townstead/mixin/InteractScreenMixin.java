@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
+import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.mixin.accessor.AbstractDynamicScreenAccessor;
@@ -69,6 +70,8 @@ public abstract class InteractScreenMixin extends Screen {
             tier = Math.max(1, HungerClientStore.getButcherTier(mca.getId()));
         } else if (FarmersDelightCookAssignment.isExternalCookProfession(mca.getVillagerData().getProfession())) {
             tier = Math.max(1, HungerClientStore.getCookTier(mca.getId()));
+        } else if (FarmersDelightBaristaAssignment.isBaristaProfession(mca.getVillagerData().getProfession())) {
+            tier = Math.max(1, mca.getVillagerData().getLevel());
         } else {
             return base;
         }

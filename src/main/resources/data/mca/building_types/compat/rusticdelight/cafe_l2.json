@@ -1,0 +1,17 @@
+{
+  "color": "ff9b7f57",
+  "visible": true,
+  "priority": 2,
+  "icon": true,
+  "iconU": 241,
+  "iconV": 184,
+  "townsteadNodeItem": "rusticdelight:roasted_coffee_beans",
+  "noBeds": true,
+  "blocks": {
+    "farmersdelight:cooking_pot": 2,
+    "farmersdelight:skillet": 1,
+    "rusticdelight:roasted_coffee_beans_bag": 1,
+    "minecraft:flower_pot": 2,
+    "#townstead:compat/farmersdelight/kitchen_storage": 3
+  }
+}

@@ -4,8 +4,11 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
@@ -36,6 +39,7 @@ public final class ModRecipeRegistry {
             int bowlsRequired,
             List<RecipeIngredient> inputs,
             boolean purification,
+            boolean beverage,
             @Nullable RecipeHolder<?> source
     ) {}
 
@@ -46,6 +50,21 @@ public final class ModRecipeRegistry {
     private static final ResourceLocation MINECRAFT_POTION = ResourceLocation.parse("minecraft:potion");
     private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
             ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "impure_water_container");
+    private static final ResourceLocation RUSTIC_COFFEE_BEANS =
+            ResourceLocation.parse("rusticdelight:coffee_beans");
+    private static final ResourceLocation RUSTIC_ROASTED_COFFEE_BEANS =
+            ResourceLocation.parse("rusticdelight:roasted_coffee_beans");
+
+    private static final TagKey<Item>[] TIER_TAGS;
+    static {
+        @SuppressWarnings("unchecked")
+        TagKey<Item>[] tags = new TagKey[5];
+        for (int i = 0; i < 5; i++) {
+            tags[i] = TagKey.create(Registries.ITEM,
+                    ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "recipe_tier_" + (i + 1)));
+        }
+        TIER_TAGS = tags;
+    }
 
     private static final long CACHE_TICKS = 200L;
     private static ResourceLocation cachedDimension = null;
@@ -68,6 +87,18 @@ public final class ModRecipeRegistry {
     public static List<DiscoveredRecipe> getRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
         return getRecipes(level).stream()
                 .filter(r -> r.stationType() == stationType && r.tier() <= maxTier)
+                .toList();
+    }
+
+    public static List<DiscoveredRecipe> getFoodRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
+        return getRecipes(level).stream()
+                .filter(r -> r.stationType() == stationType && r.tier() <= maxTier && !r.beverage())
+                .toList();
+    }
+
+    public static List<DiscoveredRecipe> getBeverageRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
+        return getRecipes(level).stream()
+                .filter(r -> r.stationType() == stationType && r.tier() <= maxTier && r.beverage())
                 .toList();
     }
 
@@ -107,6 +138,20 @@ public final class ModRecipeRegistry {
             recipes.add(syntheticPurificationRecipe());
         }
 
+        // 5. Synthetic coffee roasting recipe (if Rustic Delight is present and no campfire recipe already covers it)
+        if (BuiltInRegistries.ITEM.containsKey(RUSTIC_COFFEE_BEANS)
+                && BuiltInRegistries.ITEM.containsKey(RUSTIC_ROASTED_COFFEE_BEANS)) {
+            boolean alreadyHasRoasting = recipes.stream().anyMatch(r ->
+                    r.stationType() == StationType.FIRE_STATION
+                            && r.output().equals(RUSTIC_ROASTED_COFFEE_BEANS));
+            if (!alreadyHasRoasting) {
+                recipes.add(syntheticCoffeeRoastingRecipe());
+            }
+        }
+
+        // 6. Apply tag-based tier overrides
+        applyTierTagOverrides(level, recipes);
+
         return recipes;
     }
 
@@ -124,6 +169,7 @@ public final class ModRecipeRegistry {
             if (inputs.isEmpty()) continue;
 
             int cookTime = safeCookTime(recipe, 100);
+            boolean beverage = outputId.getPath().contains("coffee");
             int tier = autoTier(StationType.FIRE_STATION, inputs.size(), cookTime);
 
             out.add(new DiscoveredRecipe(
@@ -137,6 +183,7 @@ public final class ModRecipeRegistry {
                     0,
                     inputs,
                     false,
+                    beverage,
                     holder
             ));
         }
@@ -160,7 +207,7 @@ public final class ModRecipeRegistry {
             List<RecipeIngredient> inputs = extractIngredients(recipe);
             if (inputs.isEmpty()) continue;
 
-            int bowls = reflectContainerBowls(recipe);
+            ContainerInfo container = reflectContainer(recipe);
             int cookTime = safeCookTime(recipe, 120);
             int tier = autoTier(StationType.HOT_STATION, inputs.size(), cookTime);
 
@@ -175,9 +222,10 @@ public final class ModRecipeRegistry {
                     Math.max(1, result.getCount()),
                     cookTime,
                     false,
-                    bowls,
+                    container.bowlsRequired(),
                     inputs,
                     false,
+                    container.beverage(),
                     holder
             ));
         }
@@ -219,6 +267,7 @@ public final class ModRecipeRegistry {
                     0,
                     inputs,
                     false,
+                    false,
                     holder
             ));
         }
@@ -237,6 +286,30 @@ public final class ModRecipeRegistry {
         return Math.min(5, base + complexity + timePenalty);
     }
 
+    // ── Tag-based tier overrides ──
+
+    private static void applyTierTagOverrides(ServerLevel level, List<DiscoveredRecipe> recipes) {
+        for (int i = 0; i < recipes.size(); i++) {
+            DiscoveredRecipe r = recipes.get(i);
+            Item outputItem = BuiltInRegistries.ITEM.get(r.output());
+            if (outputItem == Items.AIR) continue;
+            ItemStack probe = new ItemStack(outputItem);
+            for (int t = 0; t < TIER_TAGS.length; t++) {
+                if (probe.is(TIER_TAGS[t])) {
+                    int newTier = t + 1;
+                    if (newTier != r.tier()) {
+                        recipes.set(i, new DiscoveredRecipe(
+                                r.id(), r.stationType(), newTier, r.output(), r.outputCount(),
+                                r.cookTimeTicks(), r.requiresTool(), r.bowlsRequired(),
+                                r.inputs(), r.purification(), r.beverage(), r.source()
+                        ));
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     // ── Synthetic purification recipe ──
 
     private static DiscoveredRecipe syntheticPurificationRecipe() {
@@ -250,6 +323,26 @@ public final class ModRecipeRegistry {
                 false,
                 0,
                 List.of(new RecipeIngredient(List.of(TOWNSTEAD_IMPURE_WATER_INPUT), 1)),
+                true,
+                true,
+                null
+        );
+    }
+
+    // ── Synthetic coffee roasting recipe ──
+
+    private static DiscoveredRecipe syntheticCoffeeRoastingRecipe() {
+        return new DiscoveredRecipe(
+                ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "coffee_roasting"),
+                StationType.FIRE_STATION,
+                1,
+                RUSTIC_ROASTED_COFFEE_BEANS,
+                1,
+                100,
+                false,
+                0,
+                List.of(new RecipeIngredient(List.of(RUSTIC_COFFEE_BEANS), 1)),
+                false,
                 true,
                 null
         );
@@ -304,18 +397,27 @@ public final class ModRecipeRegistry {
         return fallback;
     }
 
-    private static int reflectContainerBowls(Recipe<?> recipe) {
+    private record ContainerInfo(int bowlsRequired, boolean beverage) {
+        static final ContainerInfo NONE = new ContainerInfo(0, false);
+    }
+
+    private static ContainerInfo reflectContainer(Recipe<?> recipe) {
         String[] methods = {"getContainer", "getOutputContainer"};
         for (String name : methods) {
             try {
                 Method m = recipe.getClass().getMethod(name);
                 Object value = m.invoke(recipe);
-                if (value instanceof ItemStack stack && stack.is(Items.BOWL)) {
-                    return Math.max(1, stack.getCount());
+                if (value instanceof ItemStack stack && !stack.isEmpty()) {
+                    if (stack.is(Items.BOWL)) {
+                        return new ContainerInfo(Math.max(1, stack.getCount()), false);
+                    }
+                    if (stack.is(Items.GLASS_BOTTLE)) {
+                        return new ContainerInfo(0, true);
+                    }
                 }
             } catch (Throwable ignored) {}
         }
-        return 0;
+        return ContainerInfo.NONE;
     }
 
     private static boolean reflectRequiresTool(Recipe<?> recipe) {

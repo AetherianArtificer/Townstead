@@ -53,6 +53,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_COOK_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
+    public static final ModConfigSpec.BooleanValue ENABLE_BARISTA_REQUEST_CHAT;
+    public static final ModConfigSpec.IntValue BARISTA_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
     public static final ModConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
@@ -219,10 +221,27 @@ public final class TownsteadConfig {
                     .translation("townstead.configuration.cooking.cookRequestIntervalTicks")
                     .comment("Minimum ticks between cook shortage request messages.")
                     .defineInRange("cookRequestIntervalTicks", 3600, 200, 24000);
+            if (ModCompat.isLoaded("rusticdelight")) {
+                b.translation("townstead.configuration.cooking.barista").push("barista");
+                ENABLE_BARISTA_REQUEST_CHAT = b
+                        .translation("townstead.configuration.cooking.barista.enableBaristaRequestChat")
+                        .comment("Allow baristas to periodically announce missing cafe supplies in local chat.")
+                        .define("enableBaristaRequestChat", true);
+                BARISTA_REQUEST_INTERVAL_TICKS = b
+                        .translation("townstead.configuration.cooking.barista.baristaRequestIntervalTicks")
+                        .comment("Minimum ticks between barista shortage request messages.")
+                        .defineInRange("baristaRequestIntervalTicks", 3600, 200, 24000);
+                b.pop();
+            } else {
+                ENABLE_BARISTA_REQUEST_CHAT = null;
+                BARISTA_REQUEST_INTERVAL_TICKS = null;
+            }
             b.pop();
         } else {
             ENABLE_COOK_REQUEST_CHAT = null;
             COOK_REQUEST_INTERVAL_TICKS = null;
+            ENABLE_BARISTA_REQUEST_CHAT = null;
+            BARISTA_REQUEST_INTERVAL_TICKS = null;
         }
 
         // ── Caregiving ──
@@ -342,6 +361,10 @@ public final class TownsteadConfig {
 
     public static boolean isPreferKitchenStorageForEmptyBottlesEnabled() {
         return PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES != null && PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES.get();
+    }
+
+    public static boolean isBaristaRequestChatEnabled() {
+        return ENABLE_BARISTA_REQUEST_CHAT != null && ENABLE_BARISTA_REQUEST_CHAT.get();
     }
 
     public static boolean isMoodVocalizationMuteEnabled() {

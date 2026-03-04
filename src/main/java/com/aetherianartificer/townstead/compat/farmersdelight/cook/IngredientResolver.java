@@ -129,9 +129,11 @@ public final class IngredientResolver {
             if (!StationHandler.isSurfaceFireStation(level, center)) return false;
             if (!StationHandler.surfaceHasFreeSlot(level, center)) return false;
             ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
+            // For purification, only check if the item is impure water — don't require a
+            // campfire cooking recipe, since TWP handles purification via its own event system
+            // and the station validity is already confirmed above.
             java.util.function.Predicate<ItemStack> matcher = stack ->
-                    StationHandler.impureWaterScore(stack, bridge) > 0
-                            && StationHandler.surfaceCanCookInputStack(level, center, stack);
+                    StationHandler.impureWaterScore(stack, bridge) > 0;
             if (StationHandler.bestImpureWaterSlot(villager.getInventory(), bridge, matcher) >= 0) return true;
             NearbyItemSources.ContainerSlot nearbySlot = NearbyItemSources.findBestNearbySlot(
                     level, villager, 16, 3, matcher, ItemStack::getCount, center);
@@ -254,6 +256,12 @@ public final class IngredientResolver {
         if (recipe.purification()) {
             if (!TownsteadConfig.isCookWaterPurificationEnabled() || !ThirstWasTakenBridge.INSTANCE.isActive()) return false;
             ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
+            // Pull impure water from nearby/kitchen storage into inventory
+            java.util.function.Predicate<ItemStack> impureMatcher = stack ->
+                    StationHandler.impureWaterScore(stack, bridge) > 0;
+            for (int i = 0; i < 8; i++) {
+                if (!pullSingleTool(level, villager, impureMatcher, center, kitchenBounds)) break;
+            }
             return StationHandler.loadPurificationFireStation(level, villager, stationAnchor, bridge);
         }
 

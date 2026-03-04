@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "rusticdelight:syrup", "required": false },
+    { "id": "rusticdelight:milk_coffee", "required": false },
+    { "id": "rusticdelight:honey_coffee", "required": false },
+    { "id": "rusticdelight:syrup_coffee", "required": false }
+  ]
+}

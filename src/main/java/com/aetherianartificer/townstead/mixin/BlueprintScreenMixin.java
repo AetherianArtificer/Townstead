@@ -92,6 +92,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private static final String KITCHEN_TYPE_PREFIX = "compat/farmersdelight/kitchen_l";
     @Unique
+    private static final String CAFE_TYPE_PREFIX = "compat/rusticdelight/cafe_l";
+    @Unique
     private static final int ADV_WINDOW_W = 320;
     @Unique
     private static final int ADV_WINDOW_H = 188;
@@ -954,6 +956,14 @@ public abstract class BlueprintScreenMixin extends Screen {
                     }
                     nodeX = 24 + (tier - 1) * 56;
                     nodeY = y + 8;
+                } else if (name.startsWith(CAFE_TYPE_PREFIX)) {
+                    int tier = 1;
+                    try {
+                        tier = Integer.parseInt(name.substring(CAFE_TYPE_PREFIX.length()));
+                    } catch (NumberFormatException ignored) {
+                    }
+                    nodeX = 24 + (tier - 1) * 56;
+                    nodeY = y + 8;
                 } else {
                     nodeX = 24 + col * 56;
                     nodeY = y + 8 + row * 42;
@@ -991,27 +1001,32 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private void townstead$drawCatalogConnections(GuiGraphics context, int insideX, int insideY, int insideW,
             int insideH) {
-        for (int tier = 1; tier < 5; tier++) {
-            NodeData from = null;
-            NodeData to = null;
-            String fromId = KITCHEN_TYPE_PREFIX + tier;
-            String toId = KITCHEN_TYPE_PREFIX + (tier + 1);
-            for (NodeData node : townstead$catalogNodes) {
-                String name = node.type().name();
-                if (fromId.equals(name))
-                    from = node;
-                if (toId.equals(name))
-                    to = node;
+        for (String prefix : new String[] { KITCHEN_TYPE_PREFIX, CAFE_TYPE_PREFIX }) {
+            for (int tier = 1; tier < 5; tier++) {
+                NodeData from = null;
+                NodeData to = null;
+                String fromId = prefix + tier;
+                String toId = prefix + (tier + 1);
+                for (NodeData node : townstead$catalogNodes) {
+                    String name = node.type().name();
+                    if (fromId.equals(name))
+                        from = node;
+                    if (toId.equals(name))
+                        to = node;
+                }
+                if (from == null || to == null)
+                    continue;
+                int x1 = insideX
+                        + (int) Math.round((from.worldX() + 26 + townstead$catalogPanX) * townstead$catalogZoom);
+                int y1 = insideY
+                        + (int) Math.round((from.worldY() + 13 + townstead$catalogPanY) * townstead$catalogZoom);
+                int x2 = insideX + (int) Math.round((to.worldX() + townstead$catalogPanX) * townstead$catalogZoom);
+                int y2 = insideY
+                        + (int) Math.round((to.worldY() + 13 + townstead$catalogPanY) * townstead$catalogZoom);
+                int minY = Math.min(y1, y2);
+                int maxY = Math.max(y1, y2);
+                context.fill(Math.min(x1, x2), minY, Math.max(x1, x2) + 1, maxY + 1, 0xFFA6B6CC);
             }
-            if (from == null || to == null)
-                continue;
-            int x1 = insideX + (int) Math.round((from.worldX() + 26 + townstead$catalogPanX) * townstead$catalogZoom);
-            int y1 = insideY + (int) Math.round((from.worldY() + 13 + townstead$catalogPanY) * townstead$catalogZoom);
-            int x2 = insideX + (int) Math.round((to.worldX() + townstead$catalogPanX) * townstead$catalogZoom);
-            int y2 = insideY + (int) Math.round((to.worldY() + 13 + townstead$catalogPanY) * townstead$catalogZoom);
-            int minY = Math.min(y1, y2);
-            int maxY = Math.max(y1, y2);
-            context.fill(Math.min(x1, x2), minY, Math.max(x1, x2) + 1, maxY + 1, 0xFFA6B6CC);
         }
     }
 
@@ -1146,6 +1161,8 @@ public abstract class BlueprintScreenMixin extends Screen {
         String mod = parts[1];
         if ("farmersdelight".equals(mod))
             return "Farmer's Delight";
+        if ("rusticdelight".equals(mod))
+            return "Rustic Delight";
         return mod.substring(0, 1).toUpperCase(Locale.ROOT) + mod.substring(1);
     }
 

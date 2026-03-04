@@ -353,6 +353,10 @@ public final class StationHandler {
                 if (FD_STOVE.equals(id)) {
                     if (stoveBlockedAbove(be)) break;
                     Optional<?> match = stoveMatchingRecipe(be, one);
+                    if (match.isEmpty()) {
+                        // Fallback: use campfire recipe (stoves can cook campfire recipes)
+                        match = campfireRecipeForInput(level, one);
+                    }
                     if (match.isEmpty()) break;
                     Integer slot = stoveNextEmptySlot(be);
                     if (slot == null || slot < 0) break;
@@ -399,18 +403,24 @@ public final class StationHandler {
         SimpleContainer inv = villager.getInventory();
         int loaded = 0;
 
+        // For purification, don't require a campfire cooking recipe match —
+        // TWP handles purity via its own event system. Just check for impure water.
+        java.util.function.Predicate<ItemStack> impureFilter = stack -> !stack.isEmpty();
+        int PURIFICATION_COOK_TIME = 100;
+
         if (state.is(BlockTags.CAMPFIRES) && be instanceof CampfireBlockEntity campfire) {
             int free = surfaceFreeSlotCount(level, pos);
             for (int i = 0; i < free; i++) {
-                int slot = bestImpureWaterSlot(inv, bridge,
-                        stack -> !stack.isEmpty() && campfire.getCookableRecipe(stack.copyWithCount(1)).isPresent());
+                int slot = bestImpureWaterSlot(inv, bridge, impureFilter);
                 if (slot < 0) break;
                 ItemStack source = inv.getItem(slot);
                 if (source.isEmpty()) break;
                 ItemStack oneItem = source.copyWithCount(1);
-                Optional<RecipeHolder<CampfireCookingRecipe>> match = campfire.getCookableRecipe(oneItem);
-                if (match.isEmpty()) break;
-                if (!campfire.placeFood(villager, oneItem, match.get().value().getCookingTime())) break;
+                // Try recipe match for cook time, fall back to synthetic cook time
+                int cookTime = campfire.getCookableRecipe(oneItem)
+                        .map(h -> h.value().getCookingTime())
+                        .orElse(PURIFICATION_COOK_TIME);
+                if (!campfire.placeFood(villager, oneItem, cookTime)) break;
                 source.shrink(1);
                 loaded++;
             }
@@ -419,14 +429,19 @@ public final class StationHandler {
             while (true) {
                 Integer slotIndex = stoveNextEmptySlot(be);
                 if (slotIndex == null || slotIndex < 0) break;
-                int slot = bestImpureWaterSlot(inv, bridge,
-                        stack -> !stack.isEmpty() && stoveMatchingRecipe(be, stack.copyWithCount(1)).isPresent());
+                int slot = bestImpureWaterSlot(inv, bridge, impureFilter);
                 if (slot < 0) break;
                 ItemStack source = inv.getItem(slot);
                 if (source.isEmpty()) break;
-                Optional<?> match = stoveMatchingRecipe(be, source.copyWithCount(1));
-                if (match.isEmpty()) break;
-                if (!stoveAddItem(be, source.copyWithCount(1), match.get(), slotIndex)) break;
+                ItemStack oneItem = source.copyWithCount(1);
+                // Try stove recipe, then campfire recipe fallback
+                Optional<?> match = stoveMatchingRecipe(be, oneItem);
+                if (match.isEmpty()) match = campfireRecipeForInput(level, oneItem);
+                if (match.isEmpty()) {
+                    // No recipe at all — stoveAddItem requires one, so skip stove for purification
+                    break;
+                }
+                if (!stoveAddItem(be, oneItem, match.get(), slotIndex)) break;
                 source.shrink(1);
                 loaded++;
             }
@@ -434,8 +449,7 @@ public final class StationHandler {
             if (!skilletIsHeated(be) || skilletHasStoredStack(be)) return false;
             if (state.hasProperty(BlockStateProperties.WATERLOGGED)
                     && Boolean.TRUE.equals(state.getValue(BlockStateProperties.WATERLOGGED))) return false;
-            int slot = bestImpureWaterSlot(inv, bridge,
-                    stack -> !stack.isEmpty() && campfireRecipeForInput(level, stack.copyWithCount(1)).isPresent());
+            int slot = bestImpureWaterSlot(inv, bridge, impureFilter);
             if (slot < 0) return false;
             ItemStack source = inv.getItem(slot);
             if (source.isEmpty()) return false;

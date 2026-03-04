@@ -92,6 +92,22 @@ public final class FarmerCropPreferences {
         return fdTraits;
     }
 
+    // Rustic Delight crop traits — resolved lazily since RD items aren't available at compile time.
+    private static volatile Map<Item, CropTraits> rdTraits;
+
+    private static Map<Item, CropTraits> getRdTraits() {
+        if (rdTraits != null) return rdTraits;
+        Map<Item, CropTraits> map = new HashMap<>();
+        resolve(map, "rusticdelight", "cotton_seeds",
+                traits(3, 3, 2, 2, 3, 1, CropCategory.FIBER, CropCategory.INDUSTRIAL));
+        resolve(map, "rusticdelight", "bell_pepper_seeds",
+                traits(3, 3, 3, 2, 3, 2, CropCategory.VEGETABLE, CropCategory.SPICE, CropCategory.CASH));
+        resolve(map, "rusticdelight", "coffee_beans",
+                traits(2, 2, 3, 3, 5, 3, CropCategory.BREW, CropCategory.CASH, CropCategory.LUXURY));
+        rdTraits = Map.copyOf(map);
+        return rdTraits;
+    }
+
     private static void resolve(Map<Item, CropTraits> map, String namespace, String path, CropTraits traits) {
         BuiltInRegistries.ITEM.getOptional(ResourceLocation.fromNamespaceAndPath(namespace, path))
                 .ifPresent(item -> map.put(item, traits));
@@ -105,6 +121,8 @@ public final class FarmerCropPreferences {
         if (vanilla != null) return vanilla;
         CropTraits fd = getFdTraits().get(stack.getItem());
         if (fd != null) return fd;
+        CropTraits rd = getRdTraits().get(stack.getItem());
+        if (rd != null) return rd;
         if (!isSeedLike(stack)) return null;
         return NEUTRAL_TRAITS;
     }

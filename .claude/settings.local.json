@@ -11,7 +11,9 @@
       "WebFetch(domain:api.github.com)",
       "Bash(./gradlew jar:*)",
       "Bash(curl:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(xargs grep:*)",
+      "WebFetch(domain:farmersdelight.fandom.com)"
     ]
   }
 }

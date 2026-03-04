@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.mixin;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
+import com.aetherianartificer.townstead.compat.farmersdelight.BaristaWorkTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.CookWorkTask;
 import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
@@ -59,6 +60,7 @@ public abstract class VillagerHungerMixin extends Villager {
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
                         Pair.of(70, new HarvestWorkTask()),
                         Pair.of(72, new CookWorkTask()),
+                        Pair.of(72, new BaristaWorkTask()),
                         Pair.of(74, new ButcherWorkTask())
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.

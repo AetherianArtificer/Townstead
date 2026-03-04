@@ -9,7 +9,9 @@ public final class VillagerServerTickDispatcher {
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
         CookAutoAssignTicker.tick(villager);
+        BaristaAutoAssignTicker.tick(villager);
         CookTradeBackfillTicker.tick(villager);
+        BaristaTradeBackfillTicker.tick(villager);
         HungerVillagerTicker.tick(villager);
         if (ThirstWasTakenBridge.INSTANCE.isActive()) {
             ThirstVillagerTicker.tick(villager);

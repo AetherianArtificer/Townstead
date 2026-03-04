@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.cooking.BaristaTradesCompat;
 import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
 import com.google.common.collect.ImmutableSet;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
@@ -95,6 +96,18 @@ public class Townstead {
             )
     );
 
+    public static final Supplier<VillagerProfession> BARISTA_PROFESSION = PROFESSIONS.register(
+            "barista",
+            () -> new VillagerProfession(
+                    "barista",
+                    PoiType.NONE,
+                    PoiType.NONE,
+                    ImmutableSet.of(),
+                    ImmutableSet.of(),
+                    SoundEvents.VILLAGER_WORK_BUTCHER
+            )
+    );
+
     public Townstead(IEventBus modBus, ModContainer modContainer) {
         ATTACHMENTS.register(modBus);
         PROFESSIONS.register(modBus);
@@ -106,6 +119,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
+        NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         registerDialogueConditions();
         FarmPatternRegistry.bootstrap();
         ButcherProfileRegistry.bootstrap();
@@ -120,6 +134,12 @@ public class Townstead {
             // Mark cook important so kitchen-assigned cooks are retained.
             ProfessionsMCA.IS_IMPORTANT.add(cook);
             ProfessionsMCA.CAN_NOT_TRADE.remove(cook);
+
+            if (ModCompat.isLoaded("rusticdelight")) {
+                VillagerProfession barista = BARISTA_PROFESSION.get();
+                ProfessionsMCA.IS_IMPORTANT.add(barista);
+                ProfessionsMCA.CAN_NOT_TRADE.remove(barista);
+            }
         });
     }
 

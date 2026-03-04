@@ -7,7 +7,8 @@ import java.util.List;
 
 public final class FarmerStockDroppableCompatRegistry {
     private static final List<FarmerStockDroppableCompat> PROVIDERS = List.of(
-            new FarmersDelightStockDroppableCompat()
+            new FarmersDelightStockDroppableCompat(),
+            new RusticDelightStockDroppableCompat()
     );
 
     private FarmerStockDroppableCompatRegistry() {}

@@ -32,9 +32,44 @@ public final class RecipeSelector {
             Set<Long> kitchenBounds,
             Map<ResourceLocation, Long> recipeCooldownUntil
     ) {
-        if (targetStationType == null) return null;
+        return pickRecipe(level, villager, targetStationType, stationPos, kitchenBounds, recipeCooldownUntil, false, false);
+    }
+
+    public static @Nullable DiscoveredRecipe pickRecipe(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            StationType targetStationType,
+            @Nullable BlockPos stationPos,
+            Set<Long> kitchenBounds,
+            Map<ResourceLocation, Long> recipeCooldownUntil,
+            boolean excludeBeverages,
+            boolean beveragesOnly
+    ) {
         int tier = Math.max(1, FarmersDelightCookAssignment.effectiveRecipeTier(level, villager));
-        List<DiscoveredRecipe> recipes = ModRecipeRegistry.getRecipesForStation(level, targetStationType, tier);
+        return pickRecipe(level, villager, targetStationType, stationPos, kitchenBounds,
+                recipeCooldownUntil, excludeBeverages, beveragesOnly, tier);
+    }
+
+    public static @Nullable DiscoveredRecipe pickRecipe(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            StationType targetStationType,
+            @Nullable BlockPos stationPos,
+            Set<Long> kitchenBounds,
+            Map<ResourceLocation, Long> recipeCooldownUntil,
+            boolean excludeBeverages,
+            boolean beveragesOnly,
+            int tier
+    ) {
+        if (targetStationType == null) return null;
+        List<DiscoveredRecipe> recipes;
+        if (beveragesOnly) {
+            recipes = ModRecipeRegistry.getBeverageRecipesForStation(level, targetStationType, tier);
+        } else if (excludeBeverages) {
+            recipes = ModRecipeRegistry.getFoodRecipesForStation(level, targetStationType, tier);
+        } else {
+            recipes = ModRecipeRegistry.getRecipesForStation(level, targetStationType, tier);
+        }
         if (recipes.isEmpty()) return null;
 
         // Build output stock snapshot for scarcity scoring
@@ -54,9 +89,12 @@ public final class RecipeSelector {
         long cookSeed = villager.getUUID().getLeastSignificantBits();
 
         // Collect all viable recipes with scores
+        long now = level.getGameTime();
         List<DiscoveredRecipe> viable = new ArrayList<>();
         List<Double> scores = new ArrayList<>();
         for (DiscoveredRecipe recipe : recipes) {
+            Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
+            if (cooldownUntil != null && cooldownUntil > now) continue;
             if (stationPos != null && !StationHandler.stationSupportsRecipe(level, stationPos, recipe)) continue;
             if (!IngredientResolver.canFulfill(level, villager, recipe, stationPos, kitchenBounds)) continue;
             double score = scoreRecipe(
@@ -65,7 +103,6 @@ public final class RecipeSelector {
                     chainDemand.getOrDefault(recipe.output(), 0),
                     cookSeed
             );
-            score -= recipeCooldownPenalty(level, recipe, recipeCooldownUntil);
             viable.add(recipe);
             scores.add(score);
         }
@@ -87,10 +124,8 @@ public final class RecipeSelector {
             if (!TownsteadConfig.isCookWaterPurificationEnabled() || !ThirstWasTakenBridge.INSTANCE.isActive()) {
                 return Double.NEGATIVE_INFINITY;
             }
-            // Use scarcity scoring — if no purified water is stocked, score high
-            double score = Math.max(0.0d, 20.0d - currentStock * 3.0d);
-            score += perCookJitter(cookSeed, recipe.id()) * 1.0d;
-            return score;
+            // Fall through to standard scoring — potions have no nutrition/saturation,
+            // so scarcity will be the primary driver, competing fairly with other beverages.
         }
 
         // ── Primary factor: least-stocked items scored highest ──
