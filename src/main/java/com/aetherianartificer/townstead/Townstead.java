@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.thirst.RusticDelightThirstCompat;
 import com.aetherianartificer.townstead.compat.cooking.BaristaTradesCompat;
 import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
 import com.google.common.collect.ImmutableSet;
@@ -141,6 +142,7 @@ public class Townstead {
                 ProfessionsMCA.CAN_NOT_TRADE.remove(barista);
             }
         });
+        event.enqueueWork(RusticDelightThirstCompat::register);
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {
