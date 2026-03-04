@@ -7,7 +7,6 @@ import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegi
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;

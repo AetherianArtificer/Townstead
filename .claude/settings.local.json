@@ -13,7 +13,11 @@
       "Bash(curl:*)",
       "Bash(cd:*)",
       "Bash(xargs grep:*)",
-      "WebFetch(domain:farmersdelight.fandom.com)"
+      "WebFetch(domain:farmersdelight.fandom.com)",
+      "Bash(unzip:*)",
+      "Bash(javap:*)",
+      "Bash(jar tf:*)",
+      "Bash(jar xf:*)"
     ]
   }
 }

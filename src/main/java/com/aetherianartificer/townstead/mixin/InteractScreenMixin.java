@@ -4,7 +4,8 @@ import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
+import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.mixin.accessor.AbstractDynamicScreenAccessor;
 import com.aetherianartificer.townstead.mixin.accessor.InteractScreenAccessor;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
@@ -44,8 +45,6 @@ public abstract class InteractScreenMixin extends Screen {
     private static final int THIRST_ICON_Y = 145;
     private static final int THIRST_ICON_SIZE = 24;
     private static final float THIRST_ICON_SCALE = 16.0f / 9.0f;
-    private static final int THIRST_ICON_TEX_W = 25;
-    private static final int THIRST_ICON_TEX_H = 9;
 
     @Shadow @Final private VillagerLike<?> villager;
 
@@ -109,7 +108,7 @@ public abstract class InteractScreenMixin extends Screen {
             ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, hungerLabel, "hunger");
         }
 
-        if (ThirstWasTakenBridge.INSTANCE.isActive() && townstead$isHoveringThirstIcon()) {
+        if (ThirstBridgeResolver.isActive() && townstead$isHoveringThirstIcon()) {
             int thirst = ThirstClientStore.getThirst(entityId);
             ThirstData.ThirstState thirstState = ThirstData.getState(thirst);
             Component thirstLabel = Component.translatable(
@@ -193,17 +192,18 @@ public abstract class InteractScreenMixin extends Screen {
         context.blit(sprite, 0, 0, 0, 0, 9, 9, 9, 9);
         pose.popPose();
 
-        if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+        if (bridge == null) return;
 
         int thirst = ThirstClientStore.getThirst(villager.asEntity().getId());
-        int thirstU = townstead$thirstIconU(thirst);
+        ThirstCompatBridge.ThirstIconInfo icon = bridge.iconInfo(thirst);
         int thirstX = THIRST_ICON_X + ((THIRST_ICON_SIZE - 16) / 2);
         int thirstY = THIRST_ICON_Y + ((THIRST_ICON_SIZE - 16) / 2);
 
         pose.pushPose();
         pose.translate(thirstX, thirstY, 0);
         pose.scale(THIRST_ICON_SCALE, THIRST_ICON_SCALE, 1.0f);
-        context.blit(ThirstWasTakenBridge.INSTANCE.iconTexture(), 0, 0, thirstU, 0, 9, 9, THIRST_ICON_TEX_W, THIRST_ICON_TEX_H);
+        context.blit(icon.texture(), 0, 0, icon.u(), icon.v(), 9, 9, icon.texW(), icon.texH());
         pose.popPose();
     }
 
@@ -221,12 +221,6 @@ public abstract class InteractScreenMixin extends Screen {
             case HUNGRY -> FOOD_HALF;
             case FAMISHED, STARVING -> FOOD_EMPTY;
         };
-    }
-
-    private int townstead$thirstIconU(int thirst) {
-        if (thirst > 13) return 16; // full droplet
-        if (thirst > 6) return 8;   // half droplet
-        return 0;                   // empty droplet
     }
 
     private Activity townstead$getCurrentScheduleActivity() {

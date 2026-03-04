@@ -3,7 +3,7 @@ package com.aetherianartificer.townstead.mixin;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.ThirstSetPayload;
@@ -53,7 +53,7 @@ public abstract class VillagerEditorMixin extends Screen {
         if (!"debug".equals(page)) return;
 
         // Read current hunger from client store (synced from server)
-        boolean thirstAvailable = ThirstWasTakenBridge.INSTANCE.isActive();
+        boolean thirstAvailable = ThirstBridgeResolver.isActive();
         townstead$editorHunger = HungerClientStore.get(villager.getId());
         townstead$editorThirst = thirstAvailable
                 ? ThirstClientStore.getThirst(villager.getId())

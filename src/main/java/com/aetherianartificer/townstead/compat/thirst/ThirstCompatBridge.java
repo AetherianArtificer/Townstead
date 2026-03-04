@@ -19,5 +19,13 @@ public interface ThirstCompatBridge {
     PurityResult evaluatePurity(int purity, RandomSource random);
     ResourceLocation iconTexture();
 
+    boolean supportsPurification();
+
+    default void purifyResult(ItemStack input, ItemStack output) {}
+
+    ThirstIconInfo iconInfo(int thirst);
+
     record PurityResult(boolean applyHydration, boolean sickness, boolean poison, int purity) {}
+
+    record ThirstIconInfo(ResourceLocation texture, int u, int v, int texW, int texH) {}
 }
