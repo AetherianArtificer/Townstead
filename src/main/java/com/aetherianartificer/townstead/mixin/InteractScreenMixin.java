@@ -75,8 +75,9 @@ public abstract class InteractScreenMixin extends Screen {
         } else {
             return base;
         }
+        String levelKey = "townstead.profession.level." + Math.min(tier, 5);
         return base.append(Component.literal(" "))
-                .append(Component.translatable("townstead.farmer.tier.inline", tier)
+                .append(Component.translatable(levelKey)
                         .withStyle(ChatFormatting.DARK_GRAY));
     }
 
