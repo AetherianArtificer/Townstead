@@ -846,7 +846,7 @@ public final class StationHandler {
 
     public static List<ItemStack> collectSurfaceCookDrops(ServerLevel level, BlockPos pos, Set<ResourceLocation> outputIds) {
         if (pos == null) return List.of();
-        AABB area = new AABB(pos).inflate(1.5, 1.0, 1.5);
+        AABB area = new AABB(pos).inflate(3.0, 2.0, 3.0);
         List<ItemEntity> drops = level.getEntitiesOfClass(ItemEntity.class, area, entity -> {
             ItemStack stack = entity.getItem();
             if (stack.isEmpty()) return false;
