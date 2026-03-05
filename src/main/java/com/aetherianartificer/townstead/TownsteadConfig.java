@@ -8,6 +8,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -87,7 +88,7 @@ public final class TownsteadConfig {
                 .comment("Allow villagers to harvest mature crops for food.")
                 .define("enableCropSourcing", true);
         b.pop();
-        if (ModCompat.isLoaded("thirst")) {
+        if (ThirstBridgeResolver.anyThirstModLoaded()) {
             b.translation("townstead.configuration.needs.thirst").push("thirst");
             ENABLE_SELF_INVENTORY_DRINKING = b
                     .translation("townstead.configuration.needs.thirst.enableSelfInventoryDrinking")
