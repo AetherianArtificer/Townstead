@@ -11,7 +11,7 @@
     "farmersdelight:cooking_pot": 2,
     "farmersdelight:skillet": 1,
     "rusticdelight:roasted_coffee_beans_bag": 1,
-    "minecraft:flower_pot": 2,
+    "#townstead:flower_pot": 2,
     "#townstead:compat/farmersdelight/kitchen_storage": 3
   }
 }

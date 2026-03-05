@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead;
 
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
+import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.thirst.RusticDelightThirstCompat;
 import com.aetherianartificer.townstead.compat.cooking.BaristaTradesCompat;
@@ -43,6 +44,7 @@ import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.sounds.SoundEvents;
 import java.util.Locale;
+import net.minecraft.server.packs.repository.Pack;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -123,6 +125,7 @@ public class Townstead {
         townstead$registerClientConfigScreen(modContainer);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::registerPayloads);
+        modBus.addListener(this::addPackFinders);
         NeoForge.EVENT_BUS.addListener(this::onClientDisconnect);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
@@ -132,6 +135,13 @@ public class Townstead {
         FarmPatternRegistry.bootstrap();
         ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
+    }
+
+    private void addPackFinders(net.neoforged.neoforge.event.AddPackFindersEvent event) {
+        if (event.getPackType() == net.minecraft.server.packs.PackType.SERVER_DATA) {
+            Pack pack = DynamicFlowerPotTagPack.create();
+            if (pack != null) event.addRepositorySource(c -> c.accept(pack));
+        }
     }
 
     private void onCommonSetup(FMLCommonSetupEvent event) {

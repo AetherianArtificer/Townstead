@@ -12,7 +12,7 @@
     "farmersdelight:skillet": 1,
     "rusticdelight:roasted_coffee_beans_bag": 1,
     "#townstead:compat/farmersdelight/kitchen_copper": 2,
-    "minecraft:flower_pot": 3,
+    "#townstead:flower_pot": 3,
     "#townstead:compat/farmersdelight/kitchen_storage": 4
   }
 }
