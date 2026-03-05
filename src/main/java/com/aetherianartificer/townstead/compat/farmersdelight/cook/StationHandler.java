@@ -118,12 +118,14 @@ public final class StationHandler {
             int verticalRadius
     ) {
         Map<Long, StationSlot> found = new LinkedHashMap<>();
+        // Scan building blocks from cook-assigned kitchen buildings
         for (Building building : kitchenBuildings(villager)) {
             for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
                 if (!isInKitchenWorkArea(kitchenBounds, pos)) continue;
                 tryAddStation(level, villager, pos, found);
             }
         }
+        // Scan around kitchen anchors
         for (BlockPos anchor : kitchenAnchors(level, villager)) {
             for (BlockPos pos : BlockPos.betweenClosed(
                     anchor.offset(-searchRadius, -verticalRadius, -searchRadius),
@@ -131,6 +133,10 @@ public final class StationHandler {
                 if (!isInKitchenWorkArea(kitchenBounds, pos)) continue;
                 tryAddStation(level, villager, pos, found);
             }
+        }
+        // Scan all positions within the provided bounds directly (covers cafe and other non-kitchen areas)
+        for (long key : kitchenBounds) {
+            tryAddStation(level, villager, BlockPos.of(key), found);
         }
         return new ArrayList<>(found.values());
     }
