@@ -3,9 +3,12 @@ package com.aetherianartificer.townstead.compat.thirst;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
 
@@ -64,12 +67,15 @@ public final class LSOBridge implements ThirstCompatBridge {
     public boolean isPurityWaterContainer(ItemStack stack) {
         if (stack.isEmpty()) return false;
         initIfNeeded();
-        if (!active || getHydrationEnumTagMethod == null) return false;
-        try {
-            return getHydrationEnumTagMethod.invoke(null, stack) != null;
-        } catch (Exception e) {
-            return false;
+        if (!active) return false;
+        // Canteens: tracked via HydrationEnum tag
+        if (getHydrationEnumTagMethod != null) {
+            try {
+                if (getHydrationEnumTagMethod.invoke(null, stack) != null) return true;
+            } catch (Exception ignored) {}
         }
+        // Vanilla water bottles: LSO treats these as impure drinkables (no HydrationEnum tag)
+        return isWaterPotion(stack);
     }
 
     @Override
@@ -97,14 +103,17 @@ public final class LSOBridge implements ThirstCompatBridge {
     @Override
     public int purity(ItemStack stack) {
         initIfNeeded();
-        if (!active || getHydrationEnumTagMethod == null) return 2;
-        try {
-            Object enumTag = getHydrationEnumTagMethod.invoke(null, stack);
-            if (enumTag == null) return 2;
-            return mapHydrationEnum(enumTag);
-        } catch (Exception e) {
-            return 2;
+        if (!active) return 2;
+        // Check HydrationEnum tag first (canteens)
+        if (getHydrationEnumTagMethod != null) {
+            try {
+                Object enumTag = getHydrationEnumTagMethod.invoke(null, stack);
+                if (enumTag != null) return mapHydrationEnum(enumTag);
+            } catch (Exception ignored) {}
         }
+        // Vanilla water bottles without HydrationEnum: always NORMAL (impure)
+        if (isWaterPotion(stack)) return 1;
+        return 2;
     }
 
     @Override
@@ -197,6 +206,12 @@ public final class LSOBridge implements ThirstCompatBridge {
         else if (thirst > 6) u = 18;  // half droplet
         else u = 0;                    // empty/container droplet
         return new ThirstIconInfo(LSO_OVERLAY, u, 0, 256, 256);
+    }
+
+    private static boolean isWaterPotion(ItemStack stack) {
+        if (!stack.is(Items.POTION)) return false;
+        var contents = stack.get(DataComponents.POTION_CONTENTS);
+        return contents != null && contents.is(Potions.WATER);
     }
 
     private Object getConsumable(ItemStack stack) {
