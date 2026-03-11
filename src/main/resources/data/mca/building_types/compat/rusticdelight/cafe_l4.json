@@ -14,7 +14,7 @@
     "rusticdelight:roasted_coffee_beans_bag": 2,
     "#townstead:compat/farmersdelight/kitchen_copper": 2,
     "minecraft:gold_block": 1,
-    "minecraft:flower_pot": 3,
+    "#townstead:flower_pot": 3,
     "#townstead:compat/farmersdelight/kitchen_storage_upgraded": 3
   }
 }

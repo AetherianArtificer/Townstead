@@ -1,0 +1,18 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "legendarysurvivaloverhaul"
+    }
+  ],
+  "type": "townstead:purification_campfire",
+  "ingredient": {
+    "item": "legendarysurvivaloverhaul:large_canteen"
+  },
+  "result": {
+    "count": 1,
+    "id": "legendarysurvivaloverhaul:large_canteen"
+  },
+  "experience": 0.0,
+  "cookingtime": 100
+}

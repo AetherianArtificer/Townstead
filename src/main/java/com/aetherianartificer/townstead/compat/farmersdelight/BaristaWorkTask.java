@@ -37,6 +37,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -59,6 +60,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
     private static final float WALK_SPEED = 0.52f;
     private static final long RECIPE_REPEAT_COOLDOWN_TICKS = 200L;
     private static final int STATE_TIMEOUT_TICKS = 100;
+    private static final int OPPORTUNISTIC_SWEEP_INTERVAL = 10;
     private static final int MAX_RECIPE_ATTEMPTS = 3;
     private static final long ROOM_BOUNDS_CACHE_TICKS = 80L;
     private static final int ROOM_SEARCH_EXPAND_XZ = 24;
@@ -67,8 +69,10 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
 
     // ── State machine ──
 
-    private enum BaristaState { ACQUIRE_STATION, SELECT_RECIPE, GATHER, BREW, COLLECT }
+    private enum BaristaState { ACQUIRE_STATION, SELECT_RECIPE, GATHER, BREW, COLLECT, COLLECT_WAIT }
     private enum BlockedReason { NONE, NO_CAFE, NO_INGREDIENTS, NO_RECIPE, NO_STORAGE, UNREACHABLE }
+
+    private static final int COLLECT_WAIT_MAX_TICKS = 40;
 
     private BaristaState state = BaristaState.ACQUIRE_STATION;
     private long stateEnteredTick;
@@ -166,7 +170,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         debugTick(level, villager, gameTime);
 
         // State timeout
-        if (gameTime - stateEnteredTick > STATE_TIMEOUT_TICKS && state != BaristaState.BREW) {
+        if (gameTime - stateEnteredTick > STATE_TIMEOUT_TICKS && state != BaristaState.BREW && state != BaristaState.COLLECT_WAIT) {
             debugChat(level, villager, "STATE:timeout in " + state.name() + ", resetting");
             transition(BaristaState.ACQUIRE_STATION, gameTime);
             releaseStationClaim(villager, stationAnchor);
@@ -175,12 +179,18 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             recipeAttempts = 0;
         }
 
+        // Opportunistic sweep: pick up any recipe outputs near the villager
+        if (gameTime % OPPORTUNISTIC_SWEEP_INTERVAL == 0) {
+            sweepNearbyOutputs(level, villager);
+        }
+
         switch (state) {
             case ACQUIRE_STATION -> tickAcquireStation(level, villager, gameTime);
             case SELECT_RECIPE -> tickSelectRecipe(level, villager, gameTime);
             case GATHER -> tickGather(level, villager, gameTime);
             case BREW -> tickBrew(level, villager, gameTime);
             case COLLECT -> tickCollect(level, villager, gameTime);
+            case COLLECT_WAIT -> tickCollectWait(level, villager, gameTime);
         }
     }
 
@@ -372,24 +382,14 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
 
         Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
         Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
+        boolean collected = false;
 
-        // Collect surface drops
+        // Collect surface drops (campfire/fire station items that pop out)
         if (stationAnchor != null) {
-            List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
-            for (ItemStack drop : drops) {
-                IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, cafeBounds);
-                if (!drop.isEmpty()) {
-                    ItemStack remainder = villager.getInventory().addItem(drop);
-                    if (!remainder.isEmpty()) {
-                        ItemEntity entity = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder);
-                        entity.setPickUpDelay(0);
-                        level.addFreshEntity(entity);
-                    }
-                }
-            }
+            collected |= collectAndStoreSurfaceDrops(level, villager, cafeBounds, outputIds);
         }
 
-        // Extract output from hot station
+        // Extract output from hot station (cooking pot)
         if (stationType == StationType.HOT_STATION && stationAnchor != null) {
             Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
             if (outputItem != Items.AIR) {
@@ -400,7 +400,71 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
                     if (!output.isEmpty()) {
                         villager.getInventory().addItem(output);
                     }
+                    collected = true;
                 } else {
+                    // Output not ready yet — wait for the station to finish
+                    transition(BaristaState.COLLECT_WAIT, gameTime);
+                    return;
+                }
+            }
+        }
+
+        // For fire station, if nothing was collected yet, wait for items to land
+        if (stationType == StationType.FIRE_STATION && !collected) {
+            transition(BaristaState.COLLECT_WAIT, gameTime);
+            return;
+        }
+
+        finishCollect(level, villager, cafeBounds, outputIds, gameTime);
+    }
+
+    // ── State: COLLECT_WAIT ──
+
+    private void tickCollectWait(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (activeRecipe == null) {
+            transition(BaristaState.SELECT_RECIPE, gameTime);
+            return;
+        }
+
+        // Keep looking at the station while waiting
+        if (stationAnchor != null && standPos != null) {
+            BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
+            villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(stationAnchor));
+        }
+
+        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
+        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
+        boolean collected = false;
+
+        // Try collecting surface drops
+        if (stationAnchor != null) {
+            collected |= collectAndStoreSurfaceDrops(level, villager, cafeBounds, outputIds);
+        }
+
+        // Try extracting from hot station
+        if (stationType == StationType.HOT_STATION && stationAnchor != null) {
+            Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
+            if (outputItem != Items.AIR) {
+                int extracted = StationHandler.extractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
+                if (extracted > 0) {
+                    ItemStack output = new ItemStack(outputItem, extracted);
+                    IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, cafeBounds);
+                    if (!output.isEmpty()) {
+                        villager.getInventory().addItem(output);
+                    }
+                    collected = true;
+                }
+            }
+        }
+
+        // If we collected something, or timed out, finish
+        long elapsed = gameTime - stateEnteredTick;
+        if (collected || elapsed >= COLLECT_WAIT_MAX_TICKS) {
+            if (!collected && stationType == StationType.HOT_STATION && activeRecipe != null) {
+                // Timed out waiting — produce virtual output as fallback
+                Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
+                if (outputItem != Items.AIR) {
+                    debugChat(level, villager, "COLLECT_WAIT:timeout, virtual output for " + activeRecipe.output());
                     ItemStack output = new ItemStack(outputItem, activeRecipe.outputCount());
                     IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, cafeBounds);
                     if (!output.isEmpty()) {
@@ -408,8 +472,32 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
                     }
                 }
             }
+            finishCollect(level, villager, cafeBounds, outputIds, gameTime);
         }
+    }
 
+    // ── Shared collect helpers ──
+
+    private boolean collectAndStoreSurfaceDrops(ServerLevel level, VillagerEntityMCA villager,
+                                                 Set<Long> cafeBounds, Set<ResourceLocation> outputIds) {
+        List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
+        if (drops.isEmpty()) return false;
+        for (ItemStack drop : drops) {
+            IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, cafeBounds);
+            if (!drop.isEmpty()) {
+                ItemStack remainder = villager.getInventory().addItem(drop);
+                if (!remainder.isEmpty()) {
+                    ItemEntity entity = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder);
+                    entity.setPickUpDelay(0);
+                    level.addFreshEntity(entity);
+                }
+            }
+        }
+        return true;
+    }
+
+    private void finishCollect(ServerLevel level, VillagerEntityMCA villager,
+                               Set<Long> cafeBounds, Set<ResourceLocation> outputIds, long gameTime) {
         // Store any pending output
         if (!pendingOutput.isEmpty()) {
             IngredientResolver.storeOutputInCookStorage(level, villager, pendingOutput, stationAnchor, cafeBounds);
@@ -434,9 +522,11 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         awardBaristaXP(level, villager);
 
         // Mark recipe cooldown
-        recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
+        if (activeRecipe != null) {
+            recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
+        }
 
-        debugChat(level, villager, "COLLECT:done " + activeRecipe.output());
+        debugChat(level, villager, "COLLECT:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
         activeRecipe = null;
         stagedInputs.clear();
 
@@ -447,6 +537,37 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             transition(BaristaState.ACQUIRE_STATION, gameTime);
         } else {
             transition(BaristaState.SELECT_RECIPE, gameTime);
+        }
+    }
+
+    // ── Opportunistic output sweep ──
+
+    private void sweepNearbyOutputs(ServerLevel level, VillagerEntityMCA villager) {
+        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
+        if (outputIds.isEmpty()) return;
+        AABB area = villager.getBoundingBox().inflate(3.0, 2.0, 3.0);
+        List<ItemEntity> drops = level.getEntitiesOfClass(ItemEntity.class, area, entity -> {
+            ItemStack stack = entity.getItem();
+            if (stack.isEmpty()) return false;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            return id != null && outputIds.contains(id);
+        });
+        if (drops.isEmpty()) return;
+        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
+        BlockPos storageRef = stationAnchor != null ? stationAnchor : villager.blockPosition();
+        for (ItemEntity drop : drops) {
+            ItemStack stack = drop.getItem().copy();
+            if (stack.isEmpty()) continue;
+            drop.discard();
+            IngredientResolver.storeOutputInCookStorage(level, villager, stack, storageRef, cafeBounds);
+            if (!stack.isEmpty()) {
+                ItemStack remainder = villager.getInventory().addItem(stack);
+                if (!remainder.isEmpty()) {
+                    ItemEntity entity = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder);
+                    entity.setPickUpDelay(0);
+                    level.addFreshEntity(entity);
+                }
+            }
         }
     }
 

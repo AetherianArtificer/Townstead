@@ -10,7 +10,7 @@
   "blocks": {
     "farmersdelight:cooking_pot": 1,
     "rusticdelight:roasted_coffee_beans_bag": 1,
-    "minecraft:flower_pot": 1,
+    "#townstead:flower_pot": 1,
     "#townstead:compat/farmersdelight/kitchen_storage": 1
   }
 }

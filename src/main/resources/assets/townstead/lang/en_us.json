@@ -240,6 +240,7 @@
   "buildingType.compat.rusticdelight.cafe_l4.description": "A well-appointed caf\u00e9 hall with stove-brewed specialties and premium decoration.",
   "buildingType.compat.rusticdelight.cafe_l5": "Grand Coffee House",
   "buildingType.compat.rusticdelight.cafe_l5.description": "The finest coffee house a village can offer.",
+  "tag.block.townstead.flower_pot": "Flower Pot",
   "tag.block.townstead.compat/farmersdelight/kitchen_heat_sources": "Kitchen Heat Sources",
   "tag.block.townstead.compat/farmersdelight/kitchen_workstations": "Kitchen Workstations",
   "tag.block.townstead.compat/farmersdelight/kitchen_storage": "Storage",

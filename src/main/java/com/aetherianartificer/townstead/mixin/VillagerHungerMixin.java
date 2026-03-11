@@ -5,7 +5,7 @@ import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.BaristaWorkTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.CookWorkTask;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.SeekFoodTask;
@@ -21,6 +21,7 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.schedule.Activity;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -65,7 +66,7 @@ public abstract class VillagerHungerMixin extends Villager {
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();
-        if (ThirstWasTakenBridge.INSTANCE.isActive()) {
+        if (ThirstBridgeResolver.isActive()) {
             coreBehaviors.add(Pair.of(98, new SeekDrinkTask()));
         }
         coreBehaviors.add(Pair.of(99, new SeekFoodTask()));
@@ -78,8 +79,9 @@ public abstract class VillagerHungerMixin extends Villager {
     private void townstead$readEditorHunger(CompoundTag nbt, CallbackInfo ci) {
         VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
         boolean hasHunger = nbt.contains(HungerData.EDITOR_KEY_HUNGER);
-        boolean hasThirst = ThirstWasTakenBridge.INSTANCE.isActive()
-                && nbt.contains(ThirstData.EDITOR_KEY_THIRST);
+        boolean bridgeActive = ThirstBridgeResolver.isActive();
+        boolean nbtHasThirst = nbt.contains(ThirstData.EDITOR_KEY_THIRST);
+        boolean hasThirst = bridgeActive && nbtHasThirst;
         if (!hasHunger && !hasThirst) return;
 
         if (hasHunger) {
@@ -91,11 +93,16 @@ public abstract class VillagerHungerMixin extends Villager {
         }
 
         if (hasThirst) {
+            int newThirst = nbt.getInt(ThirstData.EDITOR_KEY_THIRST);
             CompoundTag thirst = self.getData(Townstead.THIRST_DATA);
-            ThirstData.setThirst(thirst, nbt.getInt(ThirstData.EDITOR_KEY_THIRST));
+            ThirstData.setThirst(thirst, newThirst);
             ThirstData.setQuenched(thirst, nbt.getInt(ThirstData.EDITOR_KEY_QUENCHED));
             ThirstData.setExhaustion(thirst, nbt.getFloat(ThirstData.EDITOR_KEY_EXHAUSTION));
             self.setData(Townstead.THIRST_DATA, thirst);
+            // Immediately sync to client so the interact screen reflects the change
+            if (!self.level().isClientSide) {
+                PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
+            }
         }
     }
 }

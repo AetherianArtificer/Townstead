@@ -4,7 +4,7 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.aetherianartificer.townstead.thirst.ThirstData;
@@ -55,8 +55,8 @@ public final class ThirstVillagerTicker {
 
     public static void tick(VillagerEntityMCA self) {
         if (!(self.level() instanceof ServerLevel level)) return;
-        ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
-        if (!TownsteadConfig.isVillagerThirstEnabled() || !bridge.isActive()) {
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+        if (bridge == null || !TownsteadConfig.isVillagerThirstEnabled()) {
             removeSpeedModifier(self);
             return;
         }

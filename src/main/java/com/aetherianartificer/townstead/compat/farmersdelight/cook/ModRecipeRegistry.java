@@ -2,7 +2,9 @@ package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
+import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -134,7 +136,8 @@ public final class ModRecipeRegistry {
         discoverCuttingBoardRecipes(level, recipes);
 
         // 4. Synthetic purification recipe
-        if (TownsteadConfig.isCookWaterPurificationEnabled() && ThirstWasTakenBridge.INSTANCE.isActive()) {
+        ThirstCompatBridge thirstBridge = ThirstBridgeResolver.get();
+        if (thirstBridge != null && TownsteadConfig.isCookWaterPurificationEnabled() && thirstBridge.supportsPurification()) {
             recipes.add(syntheticPurificationRecipe());
         }
 
@@ -324,7 +327,7 @@ public final class ModRecipeRegistry {
                 0,
                 List.of(new RecipeIngredient(List.of(TOWNSTEAD_IMPURE_WATER_INPUT), 1)),
                 true,
-                true,
+                ModCompat.isLoaded("rusticdelight"),
                 null
         );
     }
