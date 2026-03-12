@@ -21,6 +21,7 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.schedule.Activity;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -91,11 +92,15 @@ public abstract class VillagerHungerMixin extends Villager {
         }
 
         if (hasThirst) {
+            int newThirst = nbt.getInt(ThirstData.EDITOR_KEY_THIRST);
             CompoundTag thirst = self.getData(Townstead.THIRST_DATA);
-            ThirstData.setThirst(thirst, nbt.getInt(ThirstData.EDITOR_KEY_THIRST));
+            ThirstData.setThirst(thirst, newThirst);
             ThirstData.setQuenched(thirst, nbt.getInt(ThirstData.EDITOR_KEY_QUENCHED));
             ThirstData.setExhaustion(thirst, nbt.getFloat(ThirstData.EDITOR_KEY_EXHAUSTION));
             self.setData(Townstead.THIRST_DATA, thirst);
+            if (!self.level().isClientSide) {
+                PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
+            }
         }
     }
 }
