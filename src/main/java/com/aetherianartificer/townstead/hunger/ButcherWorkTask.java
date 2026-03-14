@@ -2,6 +2,9 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+//? if forge {
+/*import com.aetherianartificer.townstead.TownsteadNetwork;
+*///?}
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileDefinition;
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileRegistry;
 import com.google.common.collect.ImmutableMap;
@@ -22,7 +25,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.SmokerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+//? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
+//?}
 
 import java.util.HashMap;
 import java.util.Map;
@@ -364,7 +369,11 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
 
         ItemStack stack = villager.getInventory().getItem(slot);
         if (stack.isEmpty()) return false;
+        //? if >=1.21 {
         smoker.setItem(0, stack.copyWithCount(1));
+        //?} else {
+        /*ItemStack one0 = stack.copy(); one0.setCount(1); smoker.setItem(0, one0);
+        *///?}
         stack.shrink(1);
         smoker.setChanged();
         return true;
@@ -383,7 +392,11 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
 
         ItemStack stack = villager.getInventory().getItem(slot);
         if (stack.isEmpty()) return false;
+        //? if >=1.21 {
         smoker.setItem(1, stack.copyWithCount(1));
+        //?} else {
+        /*ItemStack one1 = stack.copy(); one1.setCount(1); smoker.setItem(1, one1);
+        *///?}
         stack.shrink(1);
         smoker.setChanged();
         return true;
@@ -499,7 +512,11 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack slot = inv.getItem(i);
             if (slot.isEmpty()) return true;
+            //? if >=1.21 {
             if (!ItemStack.isSameItemSameComponents(slot, stack)) continue;
+            //?} else {
+            /*if (!ItemStack.isSameItemSameTags(slot, stack)) continue;
+            *///?}
             if (slot.getCount() < Math.min(slot.getMaxStackSize(), inv.getMaxStackSize())) return true;
         }
         return false;
@@ -632,12 +649,24 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         if (blockedReason == reason) return;
         blockedReason = reason;
 
+        //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         if (HungerData.getButcherBlockedReason(hunger) != reason) {
             HungerData.setButcherBlockedReason(hunger, reason);
+            //? if neoforge {
             villager.setData(Townstead.HUNGER_DATA, hunger);
+            //?} else {
+            /*villager.getPersistentData().put("townstead_hunger", hunger);
+            *///?}
         }
+        //? if neoforge {
         PacketDistributor.sendToPlayersTrackingEntity(villager, new ButcherStatusSyncPayload(villager.getId(), reason.id()));
+        //?} else if forge {
+        /*TownsteadNetwork.sendToTrackingEntity(villager, new ButcherStatusSyncPayload(villager.getId(), reason.id()));
+        *///?}
         if (reason == HungerData.ButcherBlockedReason.NONE) {
             nextRequestTick = 0;
         } else {
@@ -685,9 +714,17 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private int townstead$butcherTier(VillagerEntityMCA villager) {
+        //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         int tier = ButcherProgressData.getTier(hunger);
+        //? if neoforge {
         villager.setData(Townstead.HUNGER_DATA, hunger);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", hunger);
+        *///?}
         return tier;
     }
 
@@ -730,10 +767,18 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
 
     private void townstead$awardButcherXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
         if (amount <= 0) return;
+        //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         ButcherProgressData.GainResult result = ButcherProgressData.addXp(hunger, amount, gameTime);
         if (result.appliedXp() <= 0) return;
+        //? if neoforge {
         villager.setData(Townstead.HUNGER_DATA, hunger);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", hunger);
+        *///?}
 
         if (result.tierUp()) {
             String chatKey = "dialogue.chat.butcher_progress.tier_up/" + (1 + level.random.nextInt(6));

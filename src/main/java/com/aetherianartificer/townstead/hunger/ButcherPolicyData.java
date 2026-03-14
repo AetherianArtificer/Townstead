@@ -2,12 +2,16 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileRegistry;
 import net.minecraft.core.BlockPos;
+//? if >=1.21 {
 import net.minecraft.core.HolderLookup;
+//?}
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+//? if >=1.21 {
 import net.minecraft.util.datafix.DataFixTypes;
+//?}
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 
@@ -24,10 +28,14 @@ public final class ButcherPolicyData extends SavedData {
 
     public static ButcherPolicyData get(ServerLevel level) {
         DimensionDataStorage storage = level.getServer().overworld().getDataStorage();
+        //? if >=1.21 {
         return storage.computeIfAbsent(
                 new Factory<>(ButcherPolicyData::new, ButcherPolicyData::load, DataFixTypes.LEVEL),
                 DATA_NAME
         );
+        //?} else {
+        /*return storage.computeIfAbsent(ButcherPolicyData::load, ButcherPolicyData::new, DATA_NAME);
+        *///?}
     }
 
     public ResolvedButcherPolicy resolveForAnchor(BlockPos anchor) {
@@ -77,7 +85,11 @@ public final class ButcherPolicyData extends SavedData {
         setDirty();
     }
 
+    //? if >=1.21 {
     public static ButcherPolicyData load(CompoundTag tag, HolderLookup.Provider registries) {
+    //?} else {
+    /*public static ButcherPolicyData load(CompoundTag tag) {
+    *///?}
         ButcherPolicyData data = new ButcherPolicyData();
         data.defaultProfileId = normalizeProfileId(tag.getString("defaultProfileId"));
         data.defaultTier = tag.contains("defaultTier") ? normalizeTier(tag.getInt("defaultTier")) : 5;
@@ -91,7 +103,11 @@ public final class ButcherPolicyData extends SavedData {
     }
 
     @Override
+    //? if >=1.21 {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    //?} else {
+    /*public CompoundTag save(CompoundTag tag) {
+    *///?}
         tag.putString("defaultProfileId", normalizeProfileId(defaultProfileId));
         tag.putInt("defaultTier", normalizeTier(defaultTier));
 

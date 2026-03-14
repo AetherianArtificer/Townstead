@@ -2,6 +2,9 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+//? if forge {
+/*import com.aetherianartificer.townstead.TownsteadNetwork;
+*///?}
 import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import com.aetherianartificer.townstead.compat.farming.FarmerHarvestToolCompatRegistry;
 import com.aetherianartificer.townstead.compat.farming.FarmerRemovableWeedCompatRegistry;
@@ -15,7 +18,9 @@ import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
+//? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
@@ -41,8 +46,12 @@ import net.minecraft.world.level.block.AttachedStemBlock;
 import net.minecraft.world.level.block.BushBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+//? if neoforge {
 import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.network.PacketDistributor;
+//?} else if forge {
+/*import net.minecraftforge.common.Tags;
+*///?}
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1053,7 +1062,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
 
     private boolean townstead$isRemovableWeed(BlockState state) {
         if (state.isAir()) return false;
+        //? if >=1.21 {
         return state.is(Blocks.SHORT_GRASS)
+        //?} else {
+        /*return state.is(Blocks.GRASS)
+        *///?}
                 || state.is(Blocks.TALL_GRASS)
                 || state.is(Blocks.FERN)
                 || state.is(Blocks.LARGE_FERN)
@@ -1090,10 +1103,20 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         int best = -1;
         int nutrition = -1;
         for (int i = 0; i < inv.getContainerSize(); i++) {
+            //? if >=1.21 {
             FoodProperties food = inv.getItem(i).get(DataComponents.FOOD);
+            //?} else {
+            /*FoodProperties food = inv.getItem(i).getFoodProperties(null);
+            *///?}
+            //? if >=1.21 {
             if (food == null || food.nutrition() <= 0) continue;
             if (food.nutrition() > nutrition) {
                 nutrition = food.nutrition();
+            //?} else {
+            /*if (food == null || food.getNutrition() <= 0) continue;
+            if (food.getNutrition() > nutrition) {
+                nutrition = food.getNutrition();
+            *///?}
                 best = i;
             }
         }
@@ -1255,7 +1278,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (!force && !anchorChanged && gameTime < nextBlueprintPlanTick) return;
 
         FarmingPolicyData.ResolvedFarmingPolicy policy = FarmingPolicyData.get(level).resolveForAnchor(farmAnchor);
+        //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         int villagerTier = FarmerProgressData.getTier(hunger);
         int policyTier = policy.tier();
         int effectiveTier = Math.max(1, Math.min(policyTier, villagerTier));
@@ -1393,11 +1420,23 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
 
     private void townstead$awardFarmerXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
         if (amount <= 0) return;
+        //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         FarmerProgressData.GainResult result = FarmerProgressData.addXp(hunger, amount, gameTime);
         if (result.appliedXp() <= 0) return;
+        //? if neoforge {
         villager.setData(Townstead.HUNGER_DATA, hunger);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", hunger);
+        *///?}
+        //? if neoforge {
         PacketDistributor.sendToPlayersTrackingEntity(villager, Townstead.townstead$hungerSync(villager, hunger));
+        //?} else if forge {
+        /*TownsteadNetwork.sendToTrackingEntity(villager, Townstead.townstead$hungerSync(villager, hunger));
+        *///?}
 
         if (result.tierUp()) {
             String chatKey = "dialogue.chat.farmer_progress.tier_up/" + (1 + level.random.nextInt(6));
@@ -1425,12 +1464,24 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         HungerData.FarmBlockedReason previous = blockedReason;
         blockedReason = reason;
 
+        //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         if (HungerData.getFarmBlockedReason(hunger) != reason) {
             HungerData.setFarmBlockedReason(hunger, reason);
+            //? if neoforge {
             villager.setData(Townstead.HUNGER_DATA, hunger);
+            //?} else {
+            /*villager.getPersistentData().put("townstead_hunger", hunger);
+            *///?}
         }
+        //? if neoforge {
         PacketDistributor.sendToPlayersTrackingEntity(villager, new FarmStatusSyncPayload(villager.getId(), reason.id()));
+        //?} else if forge {
+        /*TownsteadNetwork.sendToTrackingEntity(villager, new FarmStatusSyncPayload(villager.getId(), reason.id()));
+        *///?}
         if (reason == HungerData.FarmBlockedReason.NONE) {
             nextRequestTick = 0;
         } else {

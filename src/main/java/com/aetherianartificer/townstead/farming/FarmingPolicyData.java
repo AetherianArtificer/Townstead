@@ -2,12 +2,16 @@ package com.aetherianartificer.townstead.farming;
 
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import net.minecraft.core.BlockPos;
+//? if >=1.21 {
 import net.minecraft.core.HolderLookup;
+//?}
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+//? if >=1.21 {
 import net.minecraft.util.datafix.DataFixTypes;
+//?}
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 
@@ -24,10 +28,14 @@ public final class FarmingPolicyData extends SavedData {
 
     public static FarmingPolicyData get(ServerLevel level) {
         DimensionDataStorage storage = level.getServer().overworld().getDataStorage();
+        //? if >=1.21 {
         return storage.computeIfAbsent(
                 new Factory<>(FarmingPolicyData::new, FarmingPolicyData::load, DataFixTypes.LEVEL),
                 DATA_NAME
         );
+        //?} else {
+        /*return storage.computeIfAbsent(FarmingPolicyData::load, FarmingPolicyData::new, DATA_NAME);
+        *///?}
     }
 
     public ResolvedFarmingPolicy resolveForAnchor(BlockPos anchor) {
@@ -84,7 +92,11 @@ public final class FarmingPolicyData extends SavedData {
         setDirty();
     }
 
+    //? if >=1.21 {
     public static FarmingPolicyData load(CompoundTag tag, HolderLookup.Provider registries) {
+    //?} else {
+    /*public static FarmingPolicyData load(CompoundTag tag) {
+    *///?}
         FarmingPolicyData data = new FarmingPolicyData();
         data.defaultPatternId = normalizePatternId(tag.getString("defaultPatternId"));
         data.defaultTier = tag.contains("defaultTier") ? normalizeTier(tag.getInt("defaultTier")) : 5;
@@ -98,7 +110,11 @@ public final class FarmingPolicyData extends SavedData {
     }
 
     @Override
+    //? if >=1.21 {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    //?} else {
+    /*public CompoundTag save(CompoundTag tag) {
+    *///?}
         tag.putString("defaultPatternId", normalizePatternId(defaultPatternId));
         tag.putInt("defaultTier", normalizeTier(defaultTier));
 

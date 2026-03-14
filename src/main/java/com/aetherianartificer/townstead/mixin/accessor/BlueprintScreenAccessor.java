@@ -12,15 +12,15 @@ import java.util.List;
 
 @Mixin(BlueprintScreen.class)
 public interface BlueprintScreenAccessor {
-    @Accessor("village")
+    @Accessor(value = "village", remap = false)
     Village townstead$getVillage();
 
-    @Accessor("catalogButtons")
+    @Accessor(value = "catalogButtons", remap = false)
     List<Button> townstead$getCatalogButtons();
 
-    @Invoker("setPage")
+    @Invoker(value = "setPage", remap = false)
     void townstead$invokeSetPage(String page);
 
-    @Invoker("getBlockName")
+    @Invoker(value = "getBlockName", remap = false)
     net.minecraft.network.chat.Component townstead$invokeGetBlockName(net.minecraft.resources.ResourceLocation id);
 }

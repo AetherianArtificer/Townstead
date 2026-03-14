@@ -13,8 +13,14 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
+//? if neoforge {
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
+//?} else if forge {
+/*import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.items.IItemHandler;
+*///?}
+
 
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
@@ -54,7 +60,11 @@ public final class NearbyItemSources {
             }
 
             if (be != null) {
+                //? if neoforge {
                 IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+                //?} else if forge {
+                /*IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+                *///?}
                 if (handler != null) {
                     for (int i = 0; i < handler.getSlots(); i++) {
                         ItemStack stack = handler.getStackInSlot(i);
@@ -67,7 +77,11 @@ public final class NearbyItemSources {
                     }
                 }
                 for (Direction side : Direction.values()) {
+                    //? if neoforge {
                     handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
+                    //?} else if forge {
+                    /*handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null);
+                    *///?}
                     if (handler == null) continue;
                     for (int i = 0; i < handler.getSlots(); i++) {
                         ItemStack stack = handler.getStackInSlot(i);
@@ -90,17 +104,31 @@ public final class NearbyItemSources {
 
         if (slotRef.isItemHandler()) {
             Direction side = slotRef.side();
+            BlockEntity be = level.getBlockEntity(slotRef.pos());
+            if (be == null) return ItemStack.EMPTY;
+            //? if neoforge {
             IItemHandler handler = side != null ? level.getCapability(Capabilities.ItemHandler.BLOCK, slotRef.pos(), side) : null;
+            //?} else if forge {
+            /*IItemHandler handler = side != null ? be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null) : null;
+            *///?}
             ItemStack extracted = extractOneFromHandler(handler, slotRef.slot());
             if (!extracted.isEmpty()) return extracted;
 
+            //? if neoforge {
             handler = level.getCapability(Capabilities.ItemHandler.BLOCK, slotRef.pos(), null);
+            //?} else if forge {
+            /*handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+            *///?}
             extracted = extractOneFromHandler(handler, slotRef.slot());
             if (!extracted.isEmpty()) return extracted;
 
             for (Direction dir : Direction.values()) {
                 if (side != null && dir == side) continue;
+                //? if neoforge {
                 handler = level.getCapability(Capabilities.ItemHandler.BLOCK, slotRef.pos(), dir);
+                //?} else if forge {
+                /*handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER, dir).orElse(null);
+                *///?}
                 extracted = extractOneFromHandler(handler, slotRef.slot());
                 if (!extracted.isEmpty()) return extracted;
             }
@@ -111,7 +139,11 @@ public final class NearbyItemSources {
         if (container == null || slotRef.slot() >= container.getContainerSize()) return ItemStack.EMPTY;
         ItemStack stack = container.getItem(slotRef.slot());
         if (stack.isEmpty()) return ItemStack.EMPTY;
+        //? if >=1.21 {
         ItemStack extracted = stack.copyWithCount(1);
+        //?} else {
+        /*ItemStack extracted = stack.copy(); extracted.setCount(1);
+        *///?}
         stack.shrink(1);
         container.setChanged();
         return extracted;
@@ -162,7 +194,11 @@ public final class NearbyItemSources {
             }
 
             if (be != null) {
+                //? if neoforge {
                 IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+                //?} else if forge {
+                /*IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+                *///?}
                 if (handler != null) {
                     for (int i = 0; i < handler.getSlots(); i++) {
                         stack = handler.insertItem(i, stack, false);
@@ -195,7 +231,11 @@ public final class NearbyItemSources {
             if (stack.isEmpty()) return;
             ItemStack slot = container.getItem(i);
             if (slot.isEmpty()) continue;
+            //? if >=1.21 {
             if (!ItemStack.isSameItemSameComponents(slot, stack)) continue;
+            //?} else {
+            /*if (!ItemStack.isSameItemSameTags(slot, stack)) continue;
+            *///?}
             if (!container.canPlaceItem(i, stack)) continue;
             int limit = Math.min(container.getMaxStackSize(), slot.getMaxStackSize());
             if (slot.getCount() >= limit) continue;
@@ -214,7 +254,11 @@ public final class NearbyItemSources {
             if (!container.canPlaceItem(i, stack)) continue;
             int move = Math.min(stack.getCount(), Math.min(container.getMaxStackSize(), stack.getMaxStackSize()));
             if (move <= 0) continue;
+            //? if >=1.21 {
             container.setItem(i, stack.copyWithCount(move));
+            //?} else {
+            /*ItemStack portion = stack.copy(); portion.setCount(move); container.setItem(i, portion);
+            *///?}
             stack.shrink(move);
             container.setChanged();
         }

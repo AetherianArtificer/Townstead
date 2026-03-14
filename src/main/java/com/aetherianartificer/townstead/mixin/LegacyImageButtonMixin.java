@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
+//? if neoforge {
 import com.aetherianartificer.townstead.compat.ModCompat;
 import net.conczin.mca.client.gui.widget.LegacyImageButton;
 import net.minecraft.client.gui.GuiGraphics;
@@ -16,7 +17,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LegacyImageButton.class)
 public abstract class LegacyImageButtonMixin {
+    //? if >=1.21 {
     private static final ResourceLocation COOKING_POT_ID = ResourceLocation.fromNamespaceAndPath("farmersdelight", "cooking_pot");
+    //?} else {
+    /*private static final ResourceLocation COOKING_POT_ID = new ResourceLocation("farmersdelight", "cooking_pot");
+    *///?}
     private static final String KITCHEN_KEY_PREFIX = "buildingType.compat/farmersdelight/kitchen_l";
     private static final int BG_NORMAL = 0xFF9B9B9B;
     private static final int BG_HOVER = 0xFF5B86C8;
@@ -73,3 +78,6 @@ public abstract class LegacyImageButtonMixin {
         return translatable.getKey().startsWith(KITCHEN_KEY_PREFIX);
     }
 }
+//?} else {
+/*public abstract class LegacyImageButtonMixin {}
+*///?}

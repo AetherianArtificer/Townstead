@@ -13,8 +13,13 @@ import java.lang.reflect.Method;
 
 public final class ThirstWasTakenBridge implements ThirstCompatBridge {
     public static final ThirstWasTakenBridge INSTANCE = new ThirstWasTakenBridge();
+    //? if >=1.21 {
     private static final ResourceLocation THIRST_ICONS =
             ResourceLocation.fromNamespaceAndPath("thirst", "textures/gui/thirst_icons.png");
+    //?} else {
+    /*private static final ResourceLocation THIRST_ICONS =
+            new ResourceLocation("thirst", "textures/gui/thirst_icons.png");
+    *///?}
 
     private static final int FALLBACK_DEFAULT_PURITY = 2;
     private static final int FALLBACK_DIRTY_NAUSEA = 100;

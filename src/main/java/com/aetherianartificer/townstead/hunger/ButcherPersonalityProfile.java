@@ -19,11 +19,16 @@ public record ButcherPersonalityProfile(
         PROFILES.put(Personality.UNASSIGNED, DEFAULT);
         PROFILES.put(Personality.FRIENDLY, new ButcherPersonalityProfile(1.00, 0.95, 0.90, 0.95));
         PROFILES.put(Personality.FLIRTY, new ButcherPersonalityProfile(0.95, 1.05, 0.85, 1.00));
+        //? if neoforge {
         PROFILES.put(Personality.PLAYFUL, new ButcherPersonalityProfile(1.10, 0.95, 0.85, 0.90));
+        //?} else {
+        /*PROFILES.put(Personality.WITTY, new ButcherPersonalityProfile(1.10, 0.95, 0.85, 0.90));
+        *///?}
         PROFILES.put(Personality.GLOOMY, new ButcherPersonalityProfile(0.90, 1.15, 1.25, 1.10));
         PROFILES.put(Personality.SENSITIVE, new ButcherPersonalityProfile(0.95, 1.10, 1.10, 1.05));
         PROFILES.put(Personality.GREEDY, new ButcherPersonalityProfile(1.20, 0.90, 0.95, 0.80));
         PROFILES.put(Personality.ODD, DEFAULT);
+        //? if neoforge {
         PROFILES.put(Personality.CRABBY, new ButcherPersonalityProfile(0.85, 1.20, 1.40, 1.15));
         PROFILES.put(Personality.EXTROVERTED, new ButcherPersonalityProfile(1.05, 0.90, 0.75, 0.90));
         PROFILES.put(Personality.INTROVERTED, new ButcherPersonalityProfile(0.95, 1.05, 1.30, 1.05));
@@ -31,6 +36,14 @@ public record ButcherPersonalityProfile(
         PROFILES.put(Personality.ANXIOUS, new ButcherPersonalityProfile(0.95, 1.00, 0.80, 1.00));
         PROFILES.put(Personality.PEACEFUL, new ButcherPersonalityProfile(0.98, 1.00, 1.15, 1.00));
         PROFILES.put(Personality.UPBEAT, new ButcherPersonalityProfile(1.15, 0.85, 0.85, 0.85));
+        //?} else {
+        /*PROFILES.put(Personality.GRUMPY, new ButcherPersonalityProfile(0.85, 1.20, 1.40, 1.15));
+        PROFILES.put(Personality.CONFIDENT, new ButcherPersonalityProfile(1.05, 0.90, 0.75, 0.90));
+        PROFILES.put(Personality.SHY, new ButcherPersonalityProfile(0.95, 1.05, 1.30, 1.05));
+        PROFILES.put(Personality.LAZY, new ButcherPersonalityProfile(0.90, 1.10, 1.20, 1.10));
+        PROFILES.put(Personality.ATHLETIC, new ButcherPersonalityProfile(0.95, 1.00, 0.80, 1.00));
+        PROFILES.put(Personality.PEPPY, new ButcherPersonalityProfile(1.15, 0.85, 0.85, 0.85));
+        *///?}
     }
 
     public static ButcherPersonalityProfile forVillager(VillagerEntityMCA villager) {

@@ -32,7 +32,11 @@ public final class FarmersDelightCookAssignment {
     public static boolean isExternalCookProfession(VillagerProfession profession) {
         if (profession == null) return false;
         for (String id : COOK_PROFESSION_IDS) {
+            //? if >=1.21 {
             ResourceLocation key = ResourceLocation.parse(id);
+            //?} else {
+            /*ResourceLocation key = new ResourceLocation(id);
+            *///?}
             if (!BuiltInRegistries.VILLAGER_PROFESSION.containsKey(key)) continue;
             if (BuiltInRegistries.VILLAGER_PROFESSION.get(key) == profession) return true;
         }
@@ -41,7 +45,11 @@ public final class FarmersDelightCookAssignment {
 
     public static VillagerProfession resolveAssignableCookProfession() {
         for (String id : COOK_PROFESSION_IDS) {
+            //? if >=1.21 {
             ResourceLocation key = ResourceLocation.parse(id);
+            //?} else {
+            /*ResourceLocation key = new ResourceLocation(id);
+            *///?}
             if (!BuiltInRegistries.VILLAGER_PROFESSION.containsKey(key)) continue;
             VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.get(key);
             if (profession != null && profession != VillagerProfession.NONE) return profession;

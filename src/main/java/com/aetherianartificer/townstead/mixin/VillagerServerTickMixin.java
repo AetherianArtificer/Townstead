@@ -10,7 +10,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(VillagerEntityMCA.class)
 public abstract class VillagerServerTickMixin {
 
+    //? if neoforge {
     @Inject(method = "aiStep", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_8107_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$serverTick(CallbackInfo ci) {
         VillagerServerTickDispatcher.tick((VillagerEntityMCA) (Object) this);
     }

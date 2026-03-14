@@ -4,7 +4,9 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileDefinition;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
+//? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
@@ -12,7 +14,9 @@ import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
+//? if >=1.21 {
 import net.minecraft.world.item.crafting.SingleRecipeInput;
+//?}
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
 public final class ButcherSupplyManager {
@@ -126,7 +130,11 @@ public final class ButcherSupplyManager {
             }
             if (moveCount <= 0) continue;
 
+            //? if >=1.21 {
             ItemStack moving = stack.copyWithCount(moveCount);
+            //?} else {
+            /*ItemStack moving = stack.copy(); moving.setCount(moveCount);
+            *///?}
             boolean fullyStored = NearbyItemSources.insertIntoNearbyStorage(
                     level,
                     villager,
@@ -155,17 +163,31 @@ public final class ButcherSupplyManager {
         } else if (!isUnlockedForTier(stack, tier)) {
             return false;
         }
+        //? if >=1.21 {
         var recipe = level.getRecipeManager().getRecipeFor(
                 RecipeType.SMOKING,
                 new SingleRecipeInput(stack),
                 level
         );
         if (recipe.isEmpty()) return false;
-
         ItemStack output = recipe.get().value().assemble(new SingleRecipeInput(stack), level.registryAccess());
+        //?} else {
+        /*net.minecraft.world.SimpleContainer wrapper = new net.minecraft.world.SimpleContainer(stack);
+        var recipe = level.getRecipeManager().getRecipeFor(
+                RecipeType.SMOKING,
+                wrapper,
+                level
+        );
+        if (recipe.isEmpty()) return false;
+        ItemStack output = recipe.get().assemble(wrapper, level.registryAccess());
+        *///?}
         if (output.isEmpty()) return false;
         // Guard against no-op or loop recipes (input -> same input) to avoid deadlocks.
+        //? if >=1.21 {
         if (ItemStack.isSameItemSameComponents(output, stack)) return false;
+        //?} else {
+        /*if (ItemStack.isSameItemSameTags(output, stack)) return false;
+        *///?}
         // If profile declares output rules, require the smoked result to match those rules.
         if (profile != null && profile.hasOutputFilters() && !profile.matchesOutput(output)) return false;
         return true;
@@ -201,15 +223,24 @@ public final class ButcherSupplyManager {
 
     public static boolean isSmokerBlockerInput(ItemStack stack, ServerLevel level) {
         if (stack.isEmpty()) return false;
+        //? if >=1.21 {
         return level.getRecipeManager().getRecipeFor(
                 RecipeType.SMOKING,
                 new SingleRecipeInput(stack),
                 level
         ).isEmpty();
+        //?} else {
+        /*return level.getRecipeManager().getRecipeFor(
+                RecipeType.SMOKING,
+                new net.minecraft.world.SimpleContainer(stack),
+                level
+        ).isEmpty();
+        *///?}
     }
 
     public static boolean hasUsableSmokingRecipe(ItemStack stack, ServerLevel level) {
         if (stack.isEmpty()) return false;
+        //? if >=1.21 {
         var recipe = level.getRecipeManager().getRecipeFor(
                 RecipeType.SMOKING,
                 new SingleRecipeInput(stack),
@@ -217,8 +248,22 @@ public final class ButcherSupplyManager {
         );
         if (recipe.isEmpty()) return false;
         ItemStack output = recipe.get().value().assemble(new SingleRecipeInput(stack), level.registryAccess());
+        //?} else {
+        /*net.minecraft.world.SimpleContainer wrapper2 = new net.minecraft.world.SimpleContainer(stack);
+        var recipe = level.getRecipeManager().getRecipeFor(
+                RecipeType.SMOKING,
+                wrapper2,
+                level
+        );
+        if (recipe.isEmpty()) return false;
+        ItemStack output = recipe.get().assemble(wrapper2, level.registryAccess());
+        *///?}
         if (output.isEmpty()) return false;
+        //? if >=1.21 {
         return !ItemStack.isSameItemSameComponents(output, stack);
+        //?} else {
+        /*return !ItemStack.isSameItemSameTags(output, stack);
+        *///?}
     }
 
     private static boolean isPreferredRawFood(ItemStack stack) {
@@ -275,10 +320,20 @@ public final class ButcherSupplyManager {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (excludeButcherOutput && isButcherOutput(stack, null)) continue;
+            //? if >=1.21 {
             FoodProperties food = stack.get(DataComponents.FOOD);
+            //?} else {
+            /*FoodProperties food = stack.getFoodProperties(null);
+            *///?}
+            //? if >=1.21 {
             if (food == null || food.nutrition() <= 0) continue;
             if (food.nutrition() > bestNutrition) {
                 bestNutrition = food.nutrition();
+            //?} else {
+            /*if (food == null || food.getNutrition() <= 0) continue;
+            if (food.getNutrition() > bestNutrition) {
+                bestNutrition = food.getNutrition();
+            *///?}
                 bestSlot = i;
             }
         }

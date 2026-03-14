@@ -28,7 +28,11 @@ public final class FarmersDelightBaristaAssignment {
     public static boolean isBaristaProfession(VillagerProfession profession) {
         if (profession == null) return false;
         for (String id : BARISTA_PROFESSION_IDS) {
+            //? if >=1.21 {
             ResourceLocation key = ResourceLocation.parse(id);
+            //?} else {
+            /*ResourceLocation key = new ResourceLocation(id);
+            *///?}
             if (!BuiltInRegistries.VILLAGER_PROFESSION.containsKey(key)) continue;
             if (BuiltInRegistries.VILLAGER_PROFESSION.get(key) == profession) return true;
         }

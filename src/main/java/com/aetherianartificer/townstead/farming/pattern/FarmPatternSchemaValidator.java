@@ -49,7 +49,7 @@ public final class FarmPatternSchemaValidator {
         int height = grid.size();
         boolean[][] plantable = null;
         if (!grid.isEmpty()) {
-            width = grid.getFirst().length();
+            width = grid.get(0).length();
             if (width <= 0) {
                 errors.add("grid rows must not be empty");
             } else {

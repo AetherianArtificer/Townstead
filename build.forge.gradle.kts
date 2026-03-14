@@ -1,0 +1,104 @@
+plugins {
+    `java-library`
+    id("net.minecraftforge.gradle") version "[6.0,6.2)"
+}
+
+stonecutter {
+    const("neoforge", false)
+    const("forge", true)
+    replacements {
+        // MCA 7.7+ (NeoForge) uses net.conczin.mca; MCA 7.6 (Forge) uses forge.net.mca
+        string(true) { replace("net.conczin.mca.registry", "forge.net.mca") }
+        string(true) { replace("net.conczin.mca", "forge.net.mca") }
+    }
+}
+
+version = "${property("mod_version")}+${stonecutter.current.version}"
+group = property("mod_group") as String
+
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+
+minecraft {
+    mappings("official", "1.20.1")
+
+    runs {
+        create("client") {
+            workingDirectory(project.file("run"))
+            property("forge.logging.markers", "REGISTRIES")
+            property("forge.logging.console.level", "debug")
+            mods {
+                create(property("mod_id") as String) {
+                    source(sourceSets.main.get())
+                }
+            }
+        }
+        create("server") {
+            workingDirectory(project.file("run"))
+            property("forge.logging.markers", "REGISTRIES")
+            property("forge.logging.console.level", "debug")
+            mods {
+                create(property("mod_id") as String) {
+                    source(sourceSets.main.get())
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    maven("https://maven.architectury.dev/")
+}
+
+dependencies {
+    "minecraft"("net.minecraftforge:forge:1.20.1-47.3.0")
+    compileOnly(files("${rootProject.projectDir}/libs/mca-forge-7.6.15+1.20.1-universal.jar"))
+    compileOnly("dev.architectury:architectury-forge:9.2.14")
+    annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
+    testImplementation(platform("org.junit:junit-bom:5.10.2"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+}
+
+layout.buildDirectory.set(file("${rootProject.projectDir}/.cache/townstead-build-1.20.1-forge"))
+
+tasks.withType<ProcessResources> {
+    val replaceProperties = mapOf("version" to project.version)
+    inputs.properties(replaceProperties)
+    filesMatching("META-INF/mods.toml") { expand(replaceProperties) }
+    exclude("META-INF/neoforge.mods.toml")
+    // Downgrade mixin compatibility level and remove NeoForge-only mixins for Forge
+    filesMatching("townstead.mixins.json") {
+        filter {
+            it.replace("JAVA_21", "JAVA_17")
+              .replace("\"LegacyImageButtonMixin\",\n", "")
+              .replace("\"LegacyImageButtonMixin\",", "")
+              .replace(",\n    \"LegacyImageButtonMixin\"", "")
+        }
+    }
+    // Use correct pack format for 1.20.1
+    filesMatching("pack.mcmeta") {
+        filter { it.replace("\"pack_format\": 34", "\"pack_format\": 15") }
+    }
+    // 1.20.1 uses plural tag directories (tags/blocks/, tags/items/) instead of singular
+    // Move compat building types to a non-loading location for conditional runtime loading
+    eachFile {
+        if (path.contains("/tags/block/")) {
+            path = path.replace("/tags/block/", "/tags/blocks/")
+        }
+        if (path.contains("/tags/item/")) {
+            path = path.replace("/tags/item/", "/tags/items/")
+        }
+        if (path.startsWith("data/mca/building_types/compat/")) {
+            path = path.replace("data/mca/", "townstead_compat/")
+        }
+    }
+}
+
+tasks.withType<JavaCompile> { options.encoding = "UTF-8" }
+tasks.withType<Test> { useJUnitPlatform() }
+
+tasks.named<Jar>("jar") {
+    manifest {
+        attributes("MixinConfigs" to "townstead.mixins.json")
+    }
+    finalizedBy("reobfJar")
+}

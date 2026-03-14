@@ -2,16 +2,24 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import net.minecraft.network.FriendlyByteBuf;
+//? if neoforge {
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+//?}
 import net.minecraft.resources.ResourceLocation;
 
 /**
  * Client -> Server butcher policy update/query payload.
  * tier == -1 is treated as a query-only request.
  */
+//? if neoforge {
 public record ButcherPolicySetPayload(String profileId, int tier) implements CustomPacketPayload {
+//?} else {
+/*public record ButcherPolicySetPayload(String profileId, int tier) {
+*///?}
+
+    //? if neoforge {
     public static final Type<ButcherPolicySetPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "butcher_policy_set"));
 
@@ -26,4 +34,22 @@ public record ButcherPolicySetPayload(String profileId, int tier) implements Cus
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
     }
+    //?}
+
+    //? if neoforge {
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "butcher_policy_set");
+    //?} else {
+    /*public static final ResourceLocation ID = new ResourceLocation(Townstead.MOD_ID, "butcher_policy_set");
+    *///?}
+
+    //? if forge {
+    /*public void write(FriendlyByteBuf buf) {
+        buf.writeUtf(profileId);
+        buf.writeVarInt(tier);
+    }
+
+    public static ButcherPolicySetPayload read(FriendlyByteBuf buf) {
+        return new ButcherPolicySetPayload(buf.readUtf(), buf.readVarInt());
+    }
+    *///?}
 }

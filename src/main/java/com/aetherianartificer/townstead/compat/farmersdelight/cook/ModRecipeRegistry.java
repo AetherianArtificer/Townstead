@@ -13,7 +13,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
+//? if >=1.21 {
 import net.minecraft.world.item.crafting.RecipeHolder;
+//?}
 import net.minecraft.world.item.crafting.RecipeType;
 
 import javax.annotation.Nullable;
@@ -41,9 +43,14 @@ public final class ModRecipeRegistry {
             List<RecipeIngredient> inputs,
             boolean purification,
             boolean beverage,
+            //? if >=1.21 {
             @Nullable RecipeHolder<?> source
+            //?} else {
+            /*@Nullable Recipe<?> source
+            *///?}
     ) {}
 
+    //? if >=1.21 {
     private static final ResourceLocation FD_COOKING_POT = ResourceLocation.parse("farmersdelight:cooking_pot");
     private static final ResourceLocation FD_COOKING_TYPE_ID = ResourceLocation.parse("farmersdelight:cooking");
     private static final ResourceLocation FD_CUTTING_TYPE_ID = ResourceLocation.parse("farmersdelight:cutting");
@@ -55,14 +62,32 @@ public final class ModRecipeRegistry {
             ResourceLocation.parse("rusticdelight:coffee_beans");
     private static final ResourceLocation RUSTIC_ROASTED_COFFEE_BEANS =
             ResourceLocation.parse("rusticdelight:roasted_coffee_beans");
+    //?} else {
+    /*private static final ResourceLocation FD_COOKING_POT = new ResourceLocation("farmersdelight", "cooking_pot");
+    private static final ResourceLocation FD_COOKING_TYPE_ID = new ResourceLocation("farmersdelight", "cooking");
+    private static final ResourceLocation FD_CUTTING_TYPE_ID = new ResourceLocation("farmersdelight", "cutting");
+    private static final ResourceLocation MINECRAFT_BOWL = new ResourceLocation("minecraft", "bowl");
+    private static final ResourceLocation MINECRAFT_POTION = new ResourceLocation("minecraft", "potion");
+    private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
+            new ResourceLocation(Townstead.MOD_ID, "impure_water_container");
+    private static final ResourceLocation RUSTIC_COFFEE_BEANS =
+            new ResourceLocation("rusticdelight", "coffee_beans");
+    private static final ResourceLocation RUSTIC_ROASTED_COFFEE_BEANS =
+            new ResourceLocation("rusticdelight", "roasted_coffee_beans");
+    *///?}
 
     private static final TagKey<Item>[] TIER_TAGS;
     static {
         @SuppressWarnings("unchecked")
         TagKey<Item>[] tags = new TagKey[5];
         for (int i = 0; i < 5; i++) {
+            //? if >=1.21 {
             tags[i] = TagKey.create(Registries.ITEM,
                     ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "recipe_tier_" + (i + 1)));
+            //?} else {
+            /*tags[i] = TagKey.create(Registries.ITEM,
+                    new ResourceLocation(Townstead.MOD_ID, "recipe_tier_" + (i + 1)));
+            *///?}
         }
         TIER_TAGS = tags;
     }
@@ -159,8 +184,14 @@ public final class ModRecipeRegistry {
     // ── Campfire recipes ──
 
     private static void discoverCampfireRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
+        //? if >=1.21 {
         for (RecipeHolder<?> holder : level.getRecipeManager().getAllRecipesFor(RecipeType.CAMPFIRE_COOKING)) {
             Recipe<?> recipe = holder.value();
+            ResourceLocation recipeId = holder.id();
+        //?} else {
+        /*for (Recipe<?> recipe : level.getRecipeManager().getAllRecipesFor(RecipeType.CAMPFIRE_COOKING)) {
+            ResourceLocation recipeId = recipe.getId();
+        *///?}
             ItemStack result = safeGetResult(level, recipe);
             if (result.isEmpty()) continue;
             ResourceLocation outputId = BuiltInRegistries.ITEM.getKey(result.getItem());
@@ -174,7 +205,7 @@ public final class ModRecipeRegistry {
             int tier = autoTier(StationType.FIRE_STATION, inputs.size(), cookTime);
 
             out.add(new DiscoveredRecipe(
-                    holder.id(),
+                    recipeId,
                     StationType.FIRE_STATION,
                     tier,
                     outputId,
@@ -185,7 +216,11 @@ public final class ModRecipeRegistry {
                     inputs,
                     false,
                     beverage,
+                    //? if >=1.21 {
                     holder
+                    //?} else {
+                    /*recipe
+                    *///?}
             ));
         }
     }
@@ -194,11 +229,21 @@ public final class ModRecipeRegistry {
 
     @SuppressWarnings("unchecked")
     private static void discoverCookingPotRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
+        //? if >=1.21 {
         Collection<RecipeHolder<?>> holders = getRecipesForType(level, FD_COOKING_TYPE_ID);
+        //?} else {
+        /*Collection<Recipe<?>> holders = getRecipesForType(level, FD_COOKING_TYPE_ID);
+        *///?}
 
         Set<String> signatures = new HashSet<>();
+        //? if >=1.21 {
         for (RecipeHolder<?> holder : holders) {
             Recipe<?> recipe = holder.value();
+            ResourceLocation recipeId = holder.id();
+        //?} else {
+        /*for (Recipe<?> recipe : holders) {
+            ResourceLocation recipeId = recipe.getId();
+        *///?}
 
             ItemStack result = safeGetResult(level, recipe);
             if (result.isEmpty()) continue;
@@ -216,7 +261,7 @@ public final class ModRecipeRegistry {
             if (!signatures.add(sig)) continue;
 
             out.add(new DiscoveredRecipe(
-                    holder.id(),
+                    recipeId,
                     StationType.HOT_STATION,
                     tier,
                     outputId,
@@ -227,7 +272,11 @@ public final class ModRecipeRegistry {
                     inputs,
                     false,
                     container.beverage(),
+                    //? if >=1.21 {
                     holder
+                    //?} else {
+                    /*recipe
+                    *///?}
             ));
         }
     }
@@ -236,11 +285,21 @@ public final class ModRecipeRegistry {
 
     @SuppressWarnings("unchecked")
     private static void discoverCuttingBoardRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
+        //? if >=1.21 {
         Collection<RecipeHolder<?>> holders = getRecipesForType(level, FD_CUTTING_TYPE_ID);
+        //?} else {
+        /*Collection<Recipe<?>> holders = getRecipesForType(level, FD_CUTTING_TYPE_ID);
+        *///?}
 
         Set<String> signatures = new HashSet<>();
+        //? if >=1.21 {
         for (RecipeHolder<?> holder : holders) {
             Recipe<?> recipe = holder.value();
+            ResourceLocation recipeId = holder.id();
+        //?} else {
+        /*for (Recipe<?> recipe : holders) {
+            ResourceLocation recipeId = recipe.getId();
+        *///?}
 
             ItemStack result = safeGetResult(level, recipe);
             if (result.isEmpty()) continue;
@@ -258,7 +317,7 @@ public final class ModRecipeRegistry {
             if (!signatures.add(sig)) continue;
 
             out.add(new DiscoveredRecipe(
-                    holder.id(),
+                    recipeId,
                     StationType.CUTTING_BOARD,
                     tier,
                     outputId,
@@ -269,7 +328,11 @@ public final class ModRecipeRegistry {
                     inputs,
                     false,
                     false,
+                    //? if >=1.21 {
                     holder
+                    //?} else {
+                    /*recipe
+                    *///?}
             ));
         }
     }
@@ -315,7 +378,11 @@ public final class ModRecipeRegistry {
 
     private static DiscoveredRecipe syntheticPurificationRecipe() {
         return new DiscoveredRecipe(
+                //? if >=1.21 {
                 ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "purification"),
+                //?} else {
+                /*new ResourceLocation(Townstead.MOD_ID, "purification"),
+                *///?}
                 StationType.FIRE_STATION,
                 1,
                 MINECRAFT_POTION,
@@ -334,7 +401,11 @@ public final class ModRecipeRegistry {
 
     private static DiscoveredRecipe syntheticCoffeeRoastingRecipe() {
         return new DiscoveredRecipe(
+                //? if >=1.21 {
                 ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "coffee_roasting"),
+                //?} else {
+                /*new ResourceLocation(Townstead.MOD_ID, "coffee_roasting"),
+                *///?}
                 StationType.FIRE_STATION,
                 1,
                 RUSTIC_ROASTED_COFFEE_BEANS,
@@ -356,11 +427,11 @@ public final class ModRecipeRegistry {
      * registered under that type. This works for any mod that registers recipes
      * under the FD recipe types (e.g. addon mods adding cooking pot recipes).
      */
+    //? if >=1.21 {
     @SuppressWarnings("unchecked")
     private static List<RecipeHolder<?>> getRecipesForType(ServerLevel level, ResourceLocation typeId) {
         RecipeType<?> type = BuiltInRegistries.RECIPE_TYPE.get(typeId);
         if (type == null) return List.of();
-        // RecipeType identity check — the registry returns the default (crafting) for unknown keys
         ResourceLocation resolved = BuiltInRegistries.RECIPE_TYPE.getKey(type);
         if (!typeId.equals(resolved)) return List.of();
         try {
@@ -370,6 +441,21 @@ public final class ModRecipeRegistry {
             return List.of();
         }
     }
+    //?} else {
+    /*@SuppressWarnings("unchecked")
+    private static List<Recipe<?>> getRecipesForType(ServerLevel level, ResourceLocation typeId) {
+        RecipeType<?> type = BuiltInRegistries.RECIPE_TYPE.get(typeId);
+        if (type == null) return List.of();
+        ResourceLocation resolved = BuiltInRegistries.RECIPE_TYPE.getKey(type);
+        if (!typeId.equals(resolved)) return List.of();
+        try {
+            return (List<Recipe<?>>) (List<?>) level.getRecipeManager()
+                    .getAllRecipesFor((RecipeType) type);
+        } catch (Throwable e) {
+            return List.of();
+        }
+    }
+    *///?}
 
     // ── Reflection helpers ──
 

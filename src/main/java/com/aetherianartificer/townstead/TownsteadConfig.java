@@ -6,7 +6,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+//? if neoforge {
 import net.neoforged.neoforge.common.ModConfigSpec;
+//?} else if forge {
+/*import net.minecraftforge.common.ForgeConfigSpec;
+*///?}
 import com.aetherianartificer.townstead.compat.ModCompat;
 import org.jetbrains.annotations.NotNull;
 
@@ -15,6 +19,7 @@ import java.util.List;
 public final class TownsteadConfig {
     private TownsteadConfig() {}
 
+    //? if neoforge {
     public static final ModConfigSpec SERVER_SPEC;
     public static final ModConfigSpec CLIENT_SPEC;
 
@@ -63,9 +68,63 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ModConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
+    //?} else if forge {
+    /*public static final ForgeConfigSpec SERVER_SPEC;
+    public static final ForgeConfigSpec CLIENT_SPEC;
+
+    public static final ForgeConfigSpec.BooleanValue ENABLE_SELF_INVENTORY_EATING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_SELF_INVENTORY_DRINKING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_GROUND_ITEM_SOURCING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_GROUND_ITEM_THIRST_SOURCING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_CONTAINER_SOURCING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_CONTAINER_THIRST_SOURCING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_CROP_SOURCING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
+    public static final ForgeConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
+    public static final ForgeConfigSpec.BooleanValue PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_FARM_ASSIST;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_WORK_SUPPLY_AUTOMATION;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_HARVEST_OUTPUT_STORAGE;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_FARMER_STABILITY_V2;
+    public static final ForgeConfigSpec.IntValue FARMER_FARM_RADIUS;
+    public static final ForgeConfigSpec.IntValue FARMER_CELL_COOLDOWN_TICKS;
+    public static final ForgeConfigSpec.IntValue FARMER_PATHFAIL_MAX_RETRIES;
+    public static final ForgeConfigSpec.IntValue FARMER_IDLE_BACKOFF_TICKS;
+    public static final ForgeConfigSpec.IntValue FARMER_SEED_RESERVE;
+    public static final ForgeConfigSpec.IntValue FARMER_MAX_CLUSTERS;
+    public static final ForgeConfigSpec.IntValue FARMER_MAX_PLOTS;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_FARMER_WATER_PLACEMENT;
+    public static final ForgeConfigSpec.IntValue FARMER_WATER_PLACEMENTS_PER_DAY;
+    public static final ForgeConfigSpec.IntValue FARMER_HYDRATION_MIN_PERCENT;
+    public static final ForgeConfigSpec.IntValue FARMER_WATER_SOURCE_SEARCH_RADIUS;
+    public static final ForgeConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
+    public static final ForgeConfigSpec.IntValue FARMER_GROOM_RADIUS;
+    public static final ForgeConfigSpec.IntValue FARMER_GROOM_SCAN_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_AI;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_FARMER_REQUEST_CHAT;
+    public static final ForgeConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_COOK_REQUEST_CHAT;
+    public static final ForgeConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_BARISTA_REQUEST_CHAT;
+    public static final ForgeConfigSpec.IntValue BARISTA_REQUEST_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
+    public static final ForgeConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_BLOCKS;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
+    public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
+    public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
+    *///?}
 
     static {
+        //? if neoforge {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
+        //?} else if forge {
+        /*ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
+        *///?}
 
         // ── Needs ──
         b.translation("townstead.configuration.needs").push("needs");
@@ -306,7 +365,11 @@ public final class TownsteadConfig {
 
         // ── Client Settings ──
 
+        //? if neoforge {
         ModConfigSpec.Builder clientBuilder = new ModConfigSpec.Builder();
+        //?} else if forge {
+        /*ForgeConfigSpec.Builder clientBuilder = new ForgeConfigSpec.Builder();
+        *///?}
 
         clientBuilder.translation("townstead.configuration.mood_audio").push("mood_audio");
         MUTE_MOOD_VOCALIZATIONS = clientBuilder

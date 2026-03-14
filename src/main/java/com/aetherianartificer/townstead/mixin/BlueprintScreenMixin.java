@@ -1,5 +1,8 @@
 package com.aetherianartificer.townstead.mixin;
 
+//? if forge {
+/*import com.aetherianartificer.townstead.TownsteadNetwork;
+*///?}
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
@@ -12,7 +15,11 @@ import com.aetherianartificer.townstead.compat.ModCompat;
 import net.conczin.mca.MCA;
 import net.conczin.mca.client.gui.BlueprintScreen;
 import net.conczin.mca.client.gui.widget.TooltipButtonWidget;
+//? if neoforge {
 import net.conczin.mca.network.Network;
+//?} else {
+/*import net.conczin.mca.cobalt.network.NetworkHandler;
+*///?}
 import net.conczin.mca.network.c2s.GetVillageRequest;
 import net.conczin.mca.network.c2s.ReportBuildingMessage;
 import net.conczin.mca.resources.BuildingTypes;
@@ -35,7 +42,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
+//? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
+//?}
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -65,14 +74,14 @@ import java.util.Enumeration;
 
 @Mixin(BlueprintScreen.class)
 public abstract class BlueprintScreenMixin extends Screen {
-    @Shadow
+    @Shadow(remap = false)
     private String page;
 
-    @Shadow
+    @Shadow(remap = false)
     private void setPage(String page) {
     }
 
-    @Shadow
+    @Shadow(remap = false)
     protected abstract void drawBuildingIcon(GuiGraphics context, ResourceLocation texture, int x, int y, int u, int v);
 
     @Unique
@@ -196,7 +205,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         super(Component.empty());
     }
 
-    @Inject(method = "setPage", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "setPage", remap = false, at = @At("HEAD"), cancellable = true)
     private void townstead$redirectCatalogPage(String pageName, CallbackInfo ci) {
         if (!"catalog".equals(pageName) || townstead$redirectingCatalog)
             return;
@@ -213,7 +222,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         ci.cancel();
     }
 
-    @Inject(method = "setPage", at = @At("TAIL"))
+    @Inject(method = "setPage", remap = false, at = @At("TAIL"))
     private void townstead$injectFarmingPage(String pageName, CallbackInfo ci) {
         townstead$collectNavButtons();
         townstead$applyNavScroll();
@@ -221,7 +230,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (TOWNSTEAD_FARMING_PAGE.equals(this.page)) {
             townstead$refreshFamilies();
             townstead$syncFromClientStore();
+            //? if neoforge {
             PacketDistributor.sendToServer(new FarmingPolicySetPayload("", -1));
+            //?} else if forge {
+            /*TownsteadNetwork.sendToServer(new FarmingPolicySetPayload("", -1));
+            *///?}
             townstead$addFarmingPageControls();
             townstead$setNavVisible(true);
         } else if (TOWNSTEAD_CATALOG_PAGE.equals(this.page)) {
@@ -257,7 +270,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
+    //? if neoforge {
     @Inject(method = "render", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_88315_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$renderFarmingPage(GuiGraphics context, int mouseX, int mouseY, float partialTicks,
             CallbackInfo ci) {
         if (!TOWNSTEAD_FARMING_PAGE.equals(this.page))
@@ -276,7 +293,11 @@ public abstract class BlueprintScreenMixin extends Screen {
                 cy + 38, 0xA0A0A0);
     }
 
+    //? if neoforge {
     @Inject(method = "render", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_88315_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$refreshMapUpgradeButton(GuiGraphics context, int mouseX, int mouseY, float partialTicks,
             CallbackInfo ci) {
         if (!"map".equals(this.page) || townstead$upgradeBuildingButton == null)
@@ -284,7 +305,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$upgradeBuildingButton.active = townstead$upgradeTargetTypeAtPlayer() != null;
     }
 
+    //? if neoforge {
     @Inject(method = "render", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_88315_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$renderCompatCatalog(GuiGraphics context, int mouseX, int mouseY, float partialTicks,
             CallbackInfo ci) {
         if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page))
@@ -486,7 +511,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
-    @Inject(method = "drawBuildingIcon", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "drawBuildingIcon", remap = false, at = @At("HEAD"), cancellable = true)
     private void townstead$drawCompatBuildingIcon(
             GuiGraphics context,
             ResourceLocation texture,
@@ -537,7 +562,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         });
     }
 
+    //? if neoforge {
     @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_6050_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$scrollNav(double mouseX, double mouseY, double horizontalAmount, double verticalAmount,
             CallbackInfoReturnable<Boolean> cir) {
         if (TOWNSTEAD_CATALOG_PAGE.equals(this.page))
@@ -566,7 +595,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         cir.cancel();
     }
 
+    //? if neoforge {
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_6375_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$catalogMouseClicked(double mouseX, double mouseY, int button,
             CallbackInfoReturnable<Boolean> cir) {
         if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page) || button != 0)
@@ -601,7 +634,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         cir.cancel();
     }
 
+    //? if neoforge {
     @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_7979_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$catalogMouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY,
             CallbackInfoReturnable<Boolean> cir) {
         if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page) || button != 0)
@@ -638,7 +675,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         cir.cancel();
     }
 
+    //? if neoforge {
     @Inject(method = "mouseReleased", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_6348_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$catalogMouseReleased(double mouseX, double mouseY, int button,
             CallbackInfoReturnable<Boolean> cir) {
         if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page) || button != 0)
@@ -649,7 +690,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         cir.cancel();
     }
 
+    //? if neoforge {
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_7933_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$catalogKeyScroll(int keyCode, int scanCode, int modifiers,
             CallbackInfoReturnable<Boolean> cir) {
         if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page))
@@ -769,8 +814,13 @@ public abstract class BlueprintScreenMixin extends Screen {
         String nextType = townstead$upgradeTargetTypeAtPlayer();
         if (nextType == null)
             return;
+        //? if neoforge {
         Network.sendToServer(new ReportBuildingMessage(ReportBuildingMessage.Action.FORCE_TYPE, nextType));
         Network.sendToServer(new GetVillageRequest());
+        //?} else {
+        /*NetworkHandler.sendToServer(new ReportBuildingMessage(ReportBuildingMessage.Action.FORCE_TYPE, nextType));
+        NetworkHandler.sendToServer(new GetVillageRequest());
+        *///?}
         BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
         accessor.townstead$invokeSetPage("map");
     }
@@ -1088,7 +1138,11 @@ public abstract class BlueprintScreenMixin extends Screen {
                             InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
                         JsonObject obj = JsonParser.parseReader(reader).getAsJsonObject();
                         if (obj.has("townsteadNodeItem")) {
+                            //? if >=1.21 {
                             result = Optional.of(ResourceLocation.parse(obj.get("townsteadNodeItem").getAsString()));
+                            //?} else {
+                            /*result = Optional.of(new ResourceLocation(obj.get("townsteadNodeItem").getAsString()));
+                            *///?}
                             break;
                         }
                     }
@@ -1459,7 +1513,11 @@ public abstract class BlueprintScreenMixin extends Screen {
                 : townstead$farmingFamilies.get(townstead$farmingFamilyIndex);
         // Keep policy tier cap at max so per-villager progression drives effective
         // unlocks.
+        //? if neoforge {
         PacketDistributor.sendToServer(new FarmingPolicySetPayload(family, 5));
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(new FarmingPolicySetPayload(family, 5));
+        *///?}
     }
 
     @Unique

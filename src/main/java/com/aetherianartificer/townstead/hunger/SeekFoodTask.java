@@ -7,7 +7,9 @@ import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
+//? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
@@ -61,7 +63,11 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
             return false;
         }
 
+        //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         int h = HungerData.getHunger(hunger);
         boolean eatingMode = HungerData.isEatingMode(hunger);
         if (h >= HungerData.LUNCH_THRESHOLD) return false;
@@ -174,7 +180,11 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         targetPos = null;
         targetItem = null;
         targetContainerSlot = null;
+        //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         cooldown = (HungerData.isEatingMode(hunger) || HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD) ? 5 : 200;
     }
 
@@ -187,9 +197,18 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
+            //? if >=1.21 {
             FoodProperties food = stack.get(DataComponents.FOOD);
+            //?} else {
+            /*FoodProperties food = stack.getFoodProperties(null);
+            *///?}
+            //? if >=1.21 {
             if (food != null && food.nutrition() > bestNutrition) {
                 bestNutrition = food.nutrition();
+            //?} else {
+            /*if (food != null && food.getNutrition() > bestNutrition) {
+                bestNutrition = food.getNutrition();
+            *///?}
                 best = stack;
             }
         }
@@ -207,8 +226,16 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         AABB searchBox = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
         List<ItemEntity> items = level.getEntitiesOfClass(ItemEntity.class, searchBox,
                 item -> {
+                    //? if >=1.21 {
                     FoodProperties food = item.getItem().get(DataComponents.FOOD);
+                    //?} else {
+                    /*FoodProperties food = item.getItem().getFoodProperties(null);
+                    *///?}
+                    //? if >=1.21 {
                     return food != null && food.nutrition() > 0 && !item.isRemoved();
+                    //?} else {
+                    /*return food != null && food.getNutrition() > 0 && !item.isRemoved();
+                    *///?}
                 });
 
         if (items.isEmpty()) return false;
@@ -233,12 +260,28 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     private boolean findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
         targetContainerSlot = NearbyItemSources.findBestNearbySlot(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
                 stack -> {
+                    //? if >=1.21 {
                     FoodProperties food = stack.get(DataComponents.FOOD);
+                    //?} else {
+                    /*FoodProperties food = stack.getFoodProperties(null);
+                    *///?}
+                    //? if >=1.21 {
                     return food != null && food.nutrition() > 0;
+                    //?} else {
+                    /*return food != null && food.getNutrition() > 0;
+                    *///?}
                 },
                 stack -> {
+                    //? if >=1.21 {
                     FoodProperties food = stack.get(DataComponents.FOOD);
+                    //?} else {
+                    /*FoodProperties food = stack.getFoodProperties(null);
+                    *///?}
+                    //? if >=1.21 {
                     return food != null ? food.nutrition() : 0;
+                    //?} else {
+                    /*return food != null ? food.getNutrition() : 0;
+                    *///?}
                 });
         if (targetContainerSlot == null) return false;
         targetType = TargetType.CONTAINER;
@@ -305,7 +348,11 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         boolean ate = false;
 
         for (ItemStack drop : drops) {
+            //? if >=1.21 {
             FoodProperties food = drop.get(DataComponents.FOOD);
+            //?} else {
+            /*FoodProperties food = drop.getFoodProperties(null);
+            *///?}
             if (food != null && !ate) {
                 if (VillagerEatingManager.startEating(villager, drop)) {
                     drop.shrink(1);

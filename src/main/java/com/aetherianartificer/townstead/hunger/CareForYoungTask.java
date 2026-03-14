@@ -8,7 +8,9 @@ import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.AgeState;
 import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.core.BlockPos;
+//? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
@@ -153,7 +155,11 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
             }
             if (caregiver.distanceToSqr(sourceItem) <= (CLOSE_ENOUGH + 1) * (CLOSE_ENOUGH + 1)) {
                 ItemStack stack = sourceItem.getItem();
+                //? if >=1.21 {
                 ItemStack one = stack.copyWithCount(1);
+                //?} else {
+                /*ItemStack one = stack.copy(); one.setCount(1);
+                *///?}
                 if (townstead$isFood(one)) {
                     stack.shrink(1);
                     if (stack.isEmpty()) sourceItem.discard();
@@ -241,7 +247,11 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
+        //? if >=1.21 {
         FoodProperties props = food.get(DataComponents.FOOD);
+        //?} else {
+        /*FoodProperties props = food.getFoodProperties(null);
+        *///?}
         if (props == null) {
             doStop(level, caregiver, gameTime);
             return;
@@ -249,10 +259,18 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
         food.shrink(1);
         caregiver.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+        //? if neoforge {
         CompoundTag childHunger = childTarget.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag childHunger = childTarget.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         HungerData.applyFood(childHunger, props);
         HungerData.setLastAteTime(childHunger, level.getGameTime());
+        //? if neoforge {
         childTarget.setData(Townstead.HUNGER_DATA, childHunger);
+        //?} else {
+        /*childTarget.getPersistentData().put("townstead_hunger", childHunger);
+        *///?}
 
         nextFeedTick = gameTime + FEED_INTERVAL;
         if (!townstead$isYoungHungry(childTarget)) {
@@ -283,7 +301,11 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     private boolean townstead$mayCareFor(VillagerEntityMCA caregiver, VillagerEntityMCA child) {
         if (townstead$isParentOf(caregiver, child)) return true;
         if (!TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS.get()) return false;
+        //? if neoforge {
         if (caregiver.getVillagerBrain().getPersonality() == Personality.CRABBY) return false;
+        //?} else {
+        /*if (caregiver.getVillagerBrain().getPersonality() == Personality.GRUMPY) return false;
+        *///?}
         return !townstead$parentsNearby(child);
     }
 
@@ -311,7 +333,11 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         if (!(ageState == AgeState.BABY || ageState == AgeState.TODDLER || ageState == AgeState.CHILD)) {
             return false;
         }
+        //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         return HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD;
     }
 
@@ -324,9 +350,18 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         int bestNutrition = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
+            //? if >=1.21 {
             FoodProperties food = stack.get(DataComponents.FOOD);
+            //?} else {
+            /*FoodProperties food = stack.getFoodProperties(null);
+            *///?}
+            //? if >=1.21 {
             if (food != null && food.nutrition() > bestNutrition) {
                 bestNutrition = food.nutrition();
+            //?} else {
+            /*if (food != null && food.getNutrition() > bestNutrition) {
+                bestNutrition = food.getNutrition();
+            *///?}
                 best = stack;
             }
         }
@@ -334,8 +369,16 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean townstead$isFood(ItemStack stack) {
+        //? if >=1.21 {
         FoodProperties food = stack.get(DataComponents.FOOD);
+        //?} else {
+        /*FoodProperties food = stack.getFoodProperties(null);
+        *///?}
+        //? if >=1.21 {
         return food != null && food.nutrition() > 0;
+        //?} else {
+        /*return food != null && food.getNutrition() > 0;
+        *///?}
     }
 
     private boolean townstead$findGroundItem(ServerLevel level, VillagerEntityMCA villager) {
@@ -355,12 +398,28 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     private boolean townstead$findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
         sourceContainerSlot = NearbyItemSources.findBestNearbySlot(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
                 stack -> {
+                    //? if >=1.21 {
                     FoodProperties food = stack.get(DataComponents.FOOD);
+                    //?} else {
+                    /*FoodProperties food = stack.getFoodProperties(null);
+                    *///?}
+                    //? if >=1.21 {
                     return food != null && food.nutrition() > 0;
+                    //?} else {
+                    /*return food != null && food.getNutrition() > 0;
+                    *///?}
                 },
                 stack -> {
+                    //? if >=1.21 {
                     FoodProperties food = stack.get(DataComponents.FOOD);
+                    //?} else {
+                    /*FoodProperties food = stack.getFoodProperties(null);
+                    *///?}
+                    //? if >=1.21 {
                     return food != null ? food.nutrition() : 0;
+                    //?} else {
+                    /*return food != null ? food.getNutrition() : 0;
+                    *///?}
                 });
         if (sourceContainerSlot == null) return false;
         sourceType = SourceType.CONTAINER;

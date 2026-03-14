@@ -10,11 +10,17 @@ import net.minecraft.world.item.BoneMealItem;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.BlockItem;
+//? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.StemBlock;
+//? if neoforge {
 import net.neoforged.neoforge.common.Tags;
+//?} else if forge {
+/*import net.minecraftforge.common.Tags;
+*///?}
 
 import java.util.function.Predicate;
 
@@ -102,10 +108,20 @@ public final class WorkSupplyManager {
         int bestNutrition = -1;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
+            //? if >=1.21 {
             FoodProperties food = stack.get(DataComponents.FOOD);
+            //?} else {
+            /*FoodProperties food = stack.getFoodProperties(null);
+            *///?}
+            //? if >=1.21 {
             if (food == null || food.nutrition() <= 0) continue;
             if (food.nutrition() > bestNutrition) {
                 bestNutrition = food.nutrition();
+            //?} else {
+            /*if (food == null || food.getNutrition() <= 0) continue;
+            if (food.getNutrition() > bestNutrition) {
+                bestNutrition = food.getNutrition();
+            *///?}
                 bestSlot = i;
             }
         }

@@ -6,6 +6,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(InteractScreen.class)
 public interface InteractScreenAccessor {
-    @Invoker("hoveringOverText")
+    @Invoker(value = "hoveringOverText", remap = false)
     boolean townstead$invokeHoveringOverText(int x, int y, int width);
 }

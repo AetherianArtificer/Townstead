@@ -14,14 +14,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ChefsDelightProfessionGuardMixin extends Villager {
     private ChefsDelightProfessionGuardMixin() { super(null, null); }
 
-    @Inject(method = "setProfession", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "setProfession", remap = false, at = @At("HEAD"), cancellable = true)
     private void townstead$blockChefsDelightProfession(VillagerProfession profession, CallbackInfo ci) {
         if (ChefsDelightCompat.shouldBlockProfession(profession)) {
             ci.cancel();
         }
     }
 
+    //? if neoforge {
     @Inject(method = "setVillagerData", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_34375_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$blockChefsDelightVillagerData(VillagerData data, CallbackInfo ci) {
         if (ChefsDelightCompat.shouldBlockProfession(data.getProfession())) {
             ci.cancel();

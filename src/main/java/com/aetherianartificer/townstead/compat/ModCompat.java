@@ -1,7 +1,11 @@
 package com.aetherianartificer.townstead.compat;
 
 import net.minecraft.resources.ResourceLocation;
+//? if neoforge {
 import net.neoforged.fml.ModList;
+//?} else if forge {
+/*import net.minecraftforge.fml.ModList;
+*///?}
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
