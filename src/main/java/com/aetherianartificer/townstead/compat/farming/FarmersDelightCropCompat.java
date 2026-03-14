@@ -59,7 +59,11 @@ public final class FarmersDelightCropCompat implements FarmerCropCompat {
 
         // Drop 1-2 tomatoes (matching FD's right-click harvest logic)
         List<ItemStack> drops = new ArrayList<>();
+        //? if >=1.21 {
         ResourceLocation tomatoId = ResourceLocation.fromNamespaceAndPath(MOD_ID, "tomato");
+        //?} else {
+        /*ResourceLocation tomatoId = new ResourceLocation(MOD_ID, "tomato");
+        *///?}
         BuiltInRegistries.ITEM.getOptional(tomatoId).ifPresent(tomato -> {
             int count = 1 + level.random.nextInt(2);
             drops.add(new ItemStack(tomato, count));

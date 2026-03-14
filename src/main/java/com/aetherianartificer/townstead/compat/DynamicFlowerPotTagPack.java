@@ -5,10 +5,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+//? if >=1.21 {
 import net.minecraft.server.packs.PackLocationInfo;
+import net.minecraft.server.packs.PackSelectionConfig;
+//?}
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.PackSelectionConfig;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.metadata.MetadataSectionSerializer;
@@ -30,11 +32,17 @@ import java.util.Set;
  * This ensures modded flower pots are automatically included.
  */
 public final class DynamicFlowerPotTagPack {
+    //? if >=1.21 {
     private static final ResourceLocation TAG_PATH = ResourceLocation.fromNamespaceAndPath(
             Townstead.MOD_ID, "tags/block/flower_pot.json");
+    //?} else {
+    /*private static final ResourceLocation TAG_PATH = new ResourceLocation(
+            Townstead.MOD_ID, "tags/blocks/flower_pot.json");
+    *///?}
 
     private DynamicFlowerPotTagPack() {}
 
+    //? if >=1.21 {
     public static Pack create() {
         PackLocationInfo info = new PackLocationInfo(
                 Townstead.MOD_ID + "_dynamic_tags",
@@ -59,6 +67,19 @@ public final class DynamicFlowerPotTagPack {
                 new PackSelectionConfig(true, Pack.Position.TOP, false)
         );
     }
+    //?} else {
+    /*public static Pack create() {
+        return Pack.readMetaAndCreate(
+                Townstead.MOD_ID + "_dynamic_tags",
+                net.minecraft.network.chat.Component.literal("Townstead Dynamic Tags"),
+                true,
+                id -> new FlowerPotTagPackResources(id),
+                PackType.SERVER_DATA,
+                Pack.Position.TOP,
+                PackSource.BUILT_IN
+        );
+    }
+    *///?}
 
     private static byte[] generateTagJson() {
         JsonObject root = new JsonObject();
@@ -74,6 +95,7 @@ public final class DynamicFlowerPotTagPack {
     }
 
     private static class FlowerPotTagPackResources implements PackResources {
+        //? if >=1.21 {
         private final PackLocationInfo info;
 
         FlowerPotTagPackResources(PackLocationInfo info) {
@@ -84,12 +106,28 @@ public final class DynamicFlowerPotTagPack {
         public PackLocationInfo location() {
             return info;
         }
+        //?} else {
+        /*private final String id;
+
+        FlowerPotTagPackResources(String id) {
+            this.id = id;
+        }
+
+        @Override
+        public String packId() {
+            return id;
+        }
+        *///?}
 
         @Nullable
         @Override
         public IoSupplier<InputStream> getRootResource(String... path) {
             if (path.length == 1 && "pack.mcmeta".equals(path[0])) {
+                //? if >=1.21 {
                 String meta = "{\"pack\":{\"pack_format\":34,\"description\":\"Townstead dynamic tags\"}}";
+                //?} else {
+                /*String meta = "{\"pack\":{\"pack_format\":15,\"description\":\"Townstead dynamic tags\"}}";
+                *///?}
                 byte[] bytes = meta.getBytes(StandardCharsets.UTF_8);
                 return () -> new ByteArrayInputStream(bytes);
             }
@@ -119,12 +157,21 @@ public final class DynamicFlowerPotTagPack {
         @Nullable
         @Override
         public <T> T getMetadataSection(MetadataSectionSerializer<T> serializer) throws IOException {
+            //? if >=1.21 {
             if (serializer == PackMetadataSection.TYPE) {
                 return (T) new PackMetadataSection(
                         net.minecraft.network.chat.Component.literal("Townstead dynamic tags"),
                         34
                 );
             }
+            //?} else {
+            /*if (serializer == PackMetadataSection.TYPE) {
+                return (T) new PackMetadataSection(
+                        net.minecraft.network.chat.Component.literal("Townstead dynamic tags"),
+                        15
+                );
+            }
+            *///?}
             return null;
         }
 

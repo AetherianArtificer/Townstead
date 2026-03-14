@@ -28,7 +28,11 @@ public final class CookTradeBackfillTicker {
         if (!FarmersDelightCookAssignment.isExternalCookProfession(villager.getVillagerData().getProfession())) return;
 
         int currentLevel = villager.getVillagerData().getLevel();
+        //? if neoforge {
         CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         int populatedLevel = data.getInt(KEY_TRADES_POPULATED_LEVEL);
 
         if (populatedLevel >= currentLevel) return;
@@ -55,13 +59,21 @@ public final class CookTradeBackfillTicker {
         }
 
         data.putInt(KEY_TRADES_POPULATED_LEVEL, currentLevel);
+        //? if neoforge {
         villager.setData(Townstead.HUNGER_DATA, data);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", data);
+        *///?}
     }
 
     private static boolean hasMatchingOffer(MerchantOffers offers, MerchantOffer candidate) {
         ItemStack result = candidate.getResult();
         for (MerchantOffer existing : offers) {
+            //? if >=1.21 {
             if (ItemStack.isSameItemSameComponents(existing.getResult(), result)) return true;
+            //?} else {
+            /*if (ItemStack.isSameItemSameTags(existing.getResult(), result)) return true;
+            *///?}
         }
         return false;
     }

@@ -31,9 +31,17 @@ public final class VillagerDrinkingManager {
         ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
         if (!bridge.isActive() || !bridge.itemRestoresThirst(drinkStack)) return false;
 
+        //? if >=1.21 {
         ItemStack oneSip = drinkStack.copyWithCount(1);
+        //?} else {
+        /*ItemStack oneSip = drinkStack.copy(); oneSip.setCount(1);
+        *///?}
         ItemStack previousMainHand = villager.getMainHandItem().copy();
+        //? if >=1.21 {
         int useDuration = oneSip.getUseDuration(villager);
+        //?} else {
+        /*int useDuration = oneSip.getUseDuration();
+        *///?}
         if (useDuration <= 0) useDuration = 32;
 
         boolean shouldDropBottle = bridge.isDrink(oneSip) && oneSip.is(Items.POTION);

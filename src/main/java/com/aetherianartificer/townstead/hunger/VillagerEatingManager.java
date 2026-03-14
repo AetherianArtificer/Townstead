@@ -1,7 +1,9 @@
 package com.aetherianartificer.townstead.hunger;
 
 import net.conczin.mca.entity.VillagerEntityMCA;
+//? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.food.FoodProperties;
@@ -28,12 +30,24 @@ public final class VillagerEatingManager {
 
     public static boolean startEating(VillagerEntityMCA villager, ItemStack foodStack) {
         if (foodStack.isEmpty() || isEating(villager)) return false;
+        //? if >=1.21 {
         FoodProperties food = foodStack.get(DataComponents.FOOD);
+        //?} else {
+        /*FoodProperties food = foodStack.getFoodProperties(null);
+        *///?}
         if (food == null) return false;
 
+        //? if >=1.21 {
         ItemStack oneBite = foodStack.copyWithCount(1);
+        //?} else {
+        /*ItemStack oneBite = foodStack.copy(); oneBite.setCount(1);
+        *///?}
         ItemStack previousMainHand = villager.getMainHandItem().copy();
+        //? if >=1.21 {
         int useDuration = oneBite.getUseDuration(villager);
+        //?} else {
+        /*int useDuration = oneBite.getUseDuration();
+        *///?}
         if (useDuration <= 0) useDuration = 32;
 
         PENDING.put(villager.getId(),
@@ -65,7 +79,11 @@ public final class VillagerEatingManager {
         PENDING.remove(villager.getId());
         villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
 
+        //? if >=1.21 {
         FoodProperties food = pending.food().get(DataComponents.FOOD);
+        //?} else {
+        /*FoodProperties food = pending.food().getFoodProperties(null);
+        *///?}
         if (food == null) return false;
 
         int before = HungerData.getHunger(hungerTag);

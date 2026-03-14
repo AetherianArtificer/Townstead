@@ -1,5 +1,8 @@
 package com.aetherianartificer.townstead.mixin;
 
+//? if forge {
+/*import com.aetherianartificer.townstead.TownsteadNetwork;
+*///?}
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
@@ -13,7 +16,9 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+//? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
+//?}
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -25,9 +30,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(VillagerEditorScreen.class)
 public abstract class VillagerEditorMixin extends Screen {
 
-    @Shadow protected String page;
-    @Shadow @Final protected VillagerEntityMCA villager;
-    @Shadow protected CompoundTag villagerData;
+    @Shadow(remap = false) protected String page;
+    @Shadow(remap = false) @Final protected VillagerEntityMCA villager;
+    @Shadow(remap = false) protected CompoundTag villagerData;
 
     private VillagerEditorMixin() {
         super(null);
@@ -40,7 +45,7 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique private boolean townstead$hungerDirty;
     @Unique private boolean townstead$thirstDirty;
 
-    @Inject(method = "setPage", at = @At("TAIL"))
+    @Inject(method = "setPage", remap = false, at = @At("TAIL"))
     private void townstead$addHungerDebug(String page, CallbackInfo ci) {
         // Clean up callback when switching pages
         townstead$hungerDisplay = null;
@@ -151,13 +156,24 @@ public abstract class VillagerEditorMixin extends Screen {
         }
 
         // Request fresh hunger data from server
+        //? if neoforge {
         PacketDistributor.sendToServer(new HungerSetPayload(villager.getId(), -1));
         if (thirstAvailable) {
             PacketDistributor.sendToServer(new ThirstSetPayload(villager.getId(), -1));
         }
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(new HungerSetPayload(villager.getId(), -1));
+        if (thirstAvailable) {
+            TownsteadNetwork.sendToServer(new ThirstSetPayload(villager.getId(), -1));
+        }
+        *///?}
     }
 
+    //? if neoforge {
     @Inject(method = "removed", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_7861_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$cleanupOnClose(CallbackInfo ci) {
         HungerClientStore.clearOnChange();
         ThirstClientStore.clearOnChange();
@@ -165,7 +181,11 @@ public abstract class VillagerEditorMixin extends Screen {
         townstead$thirstDisplay = null;
     }
 
+    //? if neoforge {
     @Inject(method = "tick", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_86600_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$refreshDebugValue(CallbackInfo ci) {
         if (!"debug".equals(this.page)) return;
         if (!townstead$hungerDirty && townstead$hungerDisplay != null) {

@@ -8,9 +8,9 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(AbstractDynamicScreen.class)
 public interface AbstractDynamicScreenAccessor {
-    @Invoker("hoveringOverIcon")
+    @Invoker(value = "hoveringOverIcon", remap = false)
     boolean townstead$invokeHoveringOverIcon(String icon);
 
-    @Invoker("drawHoveringIconText")
+    @Invoker(value = "drawHoveringIconText", remap = false)
     void townstead$invokeDrawHoveringIconText(GuiGraphics context, Component text, String icon);
 }

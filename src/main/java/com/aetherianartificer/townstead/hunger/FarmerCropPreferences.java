@@ -12,7 +12,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.StemBlock;
+//? if neoforge {
 import net.neoforged.neoforge.common.Tags;
+//?} else if forge {
+/*import net.minecraftforge.common.Tags;
+*///?}
 
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -109,7 +113,11 @@ public final class FarmerCropPreferences {
     }
 
     private static void resolve(Map<Item, CropTraits> map, String namespace, String path, CropTraits traits) {
+        //? if >=1.21 {
         BuiltInRegistries.ITEM.getOptional(ResourceLocation.fromNamespaceAndPath(namespace, path))
+        //?} else {
+        /*BuiltInRegistries.ITEM.getOptional(new ResourceLocation(namespace, path))
+        *///?}
                 .ifPresent(item -> map.put(item, traits));
     }
 
@@ -166,11 +174,16 @@ public final class FarmerCropPreferences {
         return switch (p) {
             case FRIENDLY -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.FODDER, CropCategory.VEGETABLE);
             case FLIRTY -> pref(c, 2.2, CropCategory.LUXURY, CropCategory.FRUIT, CropCategory.SPICE);
+            //? if neoforge {
             case PLAYFUL -> pref(c, 2.1, CropCategory.FAST, CropCategory.FRUIT, CropCategory.DYE);
+            //?} else {
+            /*case WITTY -> pref(c, 2.1, CropCategory.FAST, CropCategory.FRUIT, CropCategory.DYE);
+            *///?}
             case GLOOMY -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.MEDICINAL);
             case SENSITIVE -> pref(c, 2.0, CropCategory.MEDICINAL, CropCategory.STAPLE, CropCategory.FRUIT);
             case GREEDY -> pref(c, 2.5, CropCategory.CASH, CropCategory.BREW, CropCategory.LUXURY);
             case ODD -> pref(c, 2.3, CropCategory.SPICE, CropCategory.BREW, CropCategory.LUXURY);
+            //? if neoforge {
             case CRABBY -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.VEGETABLE);
             case EXTROVERTED -> pref(c, 2.2, CropCategory.CASH, CropCategory.FAST, CropCategory.FRUIT);
             case INTROVERTED -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.MEDICINAL);
@@ -178,6 +191,14 @@ public final class FarmerCropPreferences {
             case ANXIOUS -> pref(c, 2.1, CropCategory.FAST, CropCategory.STAPLE);
             case PEACEFUL -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.FRUIT, CropCategory.MEDICINAL);
             case UPBEAT -> pref(c, 2.2, CropCategory.FAST, CropCategory.CASH, CropCategory.FRUIT);
+            //?} else {
+            /*case GRUMPY -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.VEGETABLE);
+            case CONFIDENT -> pref(c, 2.2, CropCategory.CASH, CropCategory.FAST, CropCategory.FRUIT);
+            case SHY -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.MEDICINAL);
+            case LAZY -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.INDUSTRIAL);
+            case ATHLETIC -> pref(c, 2.1, CropCategory.FAST, CropCategory.STAPLE);
+            case PEPPY -> pref(c, 2.2, CropCategory.FAST, CropCategory.CASH, CropCategory.FRUIT);
+            *///?}
             default -> pref(c, 1.6, CropCategory.STAPLE, CropCategory.VEGETABLE);
         };
     }
@@ -192,47 +213,76 @@ public final class FarmerCropPreferences {
     private static double yieldWeight(Personality p) {
         return switch (p) {
             case GREEDY -> 0.55;
+            //? if neoforge {
             case CRABBY, RELAXED -> 0.35;
+            //?} else {
+            /*case GRUMPY, LAZY -> 0.35;
+            *///?}
             default -> 0.45;
         };
     }
 
     private static double growthWeight(Personality p) {
         return switch (p) {
+            //? if neoforge {
             case PLAYFUL, EXTROVERTED, ANXIOUS, UPBEAT -> 0.55;
             case GLOOMY, CRABBY -> 0.30;
+            //?} else {
+            /*case WITTY, CONFIDENT, PEPPY -> 0.55;
+            case GLOOMY, GRUMPY -> 0.30;
+            *///?}
             default -> 0.40;
         };
     }
 
     private static double valueWeight(Personality p) {
         return switch (p) {
+            //? if neoforge {
             case GREEDY, FLIRTY, EXTROVERTED -> 0.65;
             case GLOOMY, INTROVERTED -> 0.30;
+            //?} else {
+            /*case GREEDY, FLIRTY, CONFIDENT -> 0.65;
+            case GLOOMY, SHY -> 0.30;
+            *///?}
             default -> 0.45;
         };
     }
 
     private static double riskWeight(Personality p) {
         return switch (p) {
+            //? if neoforge {
             case ANXIOUS, SENSITIVE, PEACEFUL, INTROVERTED -> 0.45;
             case ODD, PLAYFUL -> 0.20;
+            //?} else {
+            /*case SENSITIVE, SHY -> 0.45;
+            case ODD, WITTY -> 0.20;
+            *///?}
             default -> 0.30;
         };
     }
 
     private static double laborWeight(Personality p) {
         return switch (p) {
+            //? if neoforge {
             case CRABBY, RELAXED -> 0.35;
             case GREEDY, UPBEAT -> 0.20;
+            //?} else {
+            /*case GRUMPY, LAZY -> 0.35;
+            case GREEDY, PEPPY -> 0.20;
+            *///?}
             default -> 0.25;
         };
     }
 
     private static double dryPenaltyWeight(Personality p) {
         return switch (p) {
+            //? if neoforge {
             case ANXIOUS, SENSITIVE, PEACEFUL, INTROVERTED -> 0.65;
             case GREEDY, PLAYFUL, ODD -> 0.30;
+            //?} else {
+            /*case SENSITIVE, SHY -> 0.65;
+            case GREEDY, WITTY, ODD -> 0.30;
+            *///?}
             default -> 0.45;
         };
     }

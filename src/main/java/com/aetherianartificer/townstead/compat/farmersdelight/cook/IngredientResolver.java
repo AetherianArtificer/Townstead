@@ -24,8 +24,13 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.BlockEntity;
+//? if neoforge {
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
+//?} else if forge {
+/*import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.items.IItemHandler;
+*///?}
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -33,9 +38,15 @@ import java.util.*;
 public final class IngredientResolver {
     private IngredientResolver() {}
 
+    //? if >=1.21 {
     private static final ResourceLocation MINECRAFT_BOWL = ResourceLocation.parse("minecraft:bowl");
     private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
             ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "impure_water_container");
+    //?} else {
+    /*private static final ResourceLocation MINECRAFT_BOWL = new ResourceLocation("minecraft", "bowl");
+    private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
+            new ResourceLocation(Townstead.MOD_ID, "impure_water_container");
+    *///?}
 
     // ── Supply snapshot ──
 
@@ -96,7 +107,7 @@ public final class IngredientResolver {
                     continue;
                 }
 
-                IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+                IItemHandler handler = StationHandler.getItemHandler(be, level, pos, null);
                 if (handler == null) continue;
                 for (int i = 0; i < handler.getSlots(); i++) {
                     ItemStack stack = handler.getStackInSlot(i);
@@ -316,9 +327,14 @@ public final class IngredientResolver {
             int ingredientPerLoad = Math.max(1, input.count());
             int freeSlots = StationHandler.surfaceFreeSlotCount(level, stationAnchor);
             ResourceLocation stationId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(stationAnchor).getBlock());
+            //? if >=1.21 {
+            int maxStack = item.getDefaultMaxStackSize();
             int target = ResourceLocation.parse("farmersdelight:skillet").equals(stationId)
-                    ? item.getDefaultMaxStackSize()
-                    : freeSlots * ingredientPerLoad;
+            //?} else {
+            /*int maxStack = item.getMaxStackSize();
+            int target = new ResourceLocation("farmersdelight", "skillet").equals(stationId)
+            *///?}
+                    ? maxStack : freeSlots * ingredientPerLoad;
             while (StationHandler.count(inv, item) < target) {
                 if (!pullSingleIngredient(level, villager, item, center, kitchenBounds)) break;
             }
@@ -431,7 +447,11 @@ public final class IngredientResolver {
 
         ItemStack toInsert = new ItemStack(item, removed);
         ItemStack remainder;
+        //? if >=1.21 {
         ResourceLocation FD_COOKING_POT = ResourceLocation.parse("farmersdelight:cooking_pot");
+        //?} else {
+        /*ResourceLocation FD_COOKING_POT = new ResourceLocation("farmersdelight", "cooking_pot");
+        *///?}
         if (stationType == StationType.HOT_STATION && item != Items.BOWL && stationAnchor != null
                 && FD_COOKING_POT.equals(BuiltInRegistries.BLOCK.getKey(level.getBlockState(stationAnchor).getBlock()))) {
             remainder = StationHandler.insertIntoCookingPotIngredients(level, stationAnchor, toInsert);
@@ -543,7 +563,7 @@ public final class IngredientResolver {
                 insertIntoContainer(container, stack);
             }
             if (!stack.isEmpty()) {
-                IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+                IItemHandler handler = StationHandler.getItemHandler(be, level, pos, null);
                 if (handler != null) {
                     ItemStack remainder = StationHandler.insertIntoHandler(handler, stack, false);
                     int inserted = stack.getCount() - remainder.getCount();
@@ -551,7 +571,7 @@ public final class IngredientResolver {
                 }
                 for (Direction dir : Direction.values()) {
                     if (stack.isEmpty()) break;
-                    handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, dir);
+                    handler = StationHandler.getItemHandler(be, level, pos, dir);
                     if (handler == null) continue;
                     ItemStack remainder = StationHandler.insertIntoHandler(handler, stack, false);
                     int inserted = stack.getCount() - remainder.getCount();
@@ -599,7 +619,7 @@ public final class IngredientResolver {
                     }
                 }
 
-                IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+                IItemHandler handler = StationHandler.getItemHandler(be, level, pos, null);
                 if (handler != null) {
                     for (int i = 0; i < handler.getSlots(); i++) {
                         ItemStack stack = handler.getStackInSlot(i);
@@ -612,7 +632,7 @@ public final class IngredientResolver {
                     }
                 }
                 for (Direction side : Direction.values()) {
-                    handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
+                    handler = StationHandler.getItemHandler(be, level, pos, side);
                     if (handler == null) continue;
                     for (int i = 0; i < handler.getSlots(); i++) {
                         ItemStack stack = handler.getStackInSlot(i);
@@ -728,7 +748,7 @@ public final class IngredientResolver {
             if (stack.isEmpty()) return;
             ItemStack slot = container.getItem(i);
             if (slot.isEmpty()) continue;
-            if (!ItemStack.isSameItemSameComponents(slot, stack)) continue;
+            if (!StationHandler.isSameItemComponents(slot, stack)) continue;
             if (!container.canPlaceItem(i, stack)) continue;
             int limit = Math.min(container.getMaxStackSize(), slot.getMaxStackSize());
             if (slot.getCount() >= limit) continue;
@@ -745,7 +765,7 @@ public final class IngredientResolver {
             if (!container.canPlaceItem(i, stack)) continue;
             int move = Math.min(stack.getCount(), Math.min(container.getMaxStackSize(), stack.getMaxStackSize()));
             if (move <= 0) continue;
-            container.setItem(i, stack.copyWithCount(move));
+            container.setItem(i, StationHandler.copyWithCount(stack, move));
             stack.shrink(move);
             container.setChanged();
         }

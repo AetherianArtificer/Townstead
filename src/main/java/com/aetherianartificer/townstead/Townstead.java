@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead;
 
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
+import com.aetherianartificer.townstead.compat.ConditionalCompatPack;
 import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.thirst.RusticDelightThirstCompat;
@@ -44,6 +45,7 @@ import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.sounds.SoundEvents;
 import java.util.Locale;
 import net.minecraft.server.packs.repository.Pack;
+//? if neoforge {
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -59,6 +61,19 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
+//?} else if forge {
+/*import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModContainer;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.registries.DeferredRegister;
+*///?}
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,11 +84,14 @@ public class Townstead {
     public static final String MOD_ID = "townstead";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+    //? if neoforge {
     private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
             DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, MOD_ID);
+    //?}
     private static final DeferredRegister<VillagerProfession> PROFESSIONS =
             DeferredRegister.create(net.minecraft.core.registries.Registries.VILLAGER_PROFESSION, MOD_ID);
 
+    //? if neoforge {
     public static final Supplier<AttachmentType<CompoundTag>> HUNGER_DATA = ATTACHMENTS.register(
             "hunger_data",
             () -> AttachmentType.builder(() -> new CompoundTag())
@@ -86,6 +104,7 @@ public class Townstead {
                     .serialize(net.minecraft.nbt.CompoundTag.CODEC)
                     .build()
     );
+    //?}
 
     public static final Supplier<VillagerProfession> COOK_PROFESSION = PROFESSIONS.register(
             "cook",
@@ -111,6 +130,7 @@ public class Townstead {
             )
     );
 
+    //? if neoforge {
     public Townstead(IEventBus modBus, ModContainer modContainer) {
         ATTACHMENTS.register(modBus);
         PROFESSIONS.register(modBus);
@@ -129,13 +149,47 @@ public class Townstead {
         ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
     }
+    //?} else if forge {
+    /*public Townstead() {
+        IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+        PROFESSIONS.register(modBus);
+        ModContainer modContainer = net.minecraftforge.fml.ModLoadingContext.get().getActiveContainer();
+        modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC, modContainer));
+        townstead$registerClientConfigScreen(modContainer);
+        TownsteadNetwork.register();
+        modBus.addListener(this::onCommonSetup);
+        modBus.addListener(this::addPackFinders);
+        MinecraftForge.EVENT_BUS.addListener(this::onClientDisconnect);
+        MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
+        MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
+        MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
+        MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
+        registerDialogueConditions();
+        FarmPatternRegistry.bootstrap();
+        ButcherProfileRegistry.bootstrap();
+        LOGGER.info("Townstead loaded");
+    }
+    *///?}
 
+    //? if neoforge {
     private void addPackFinders(net.neoforged.neoforge.event.AddPackFindersEvent event) {
         if (event.getPackType() == net.minecraft.server.packs.PackType.SERVER_DATA) {
             Pack pack = DynamicFlowerPotTagPack.create();
             if (pack != null) event.addRepositorySource(c -> c.accept(pack));
+            Pack compatPack = ConditionalCompatPack.create();
+            if (compatPack != null) event.addRepositorySource(c -> c.accept(compatPack));
         }
     }
+    //?} else if forge {
+    /*private void addPackFinders(net.minecraftforge.event.AddPackFindersEvent event) {
+        if (event.getPackType() == net.minecraft.server.packs.PackType.SERVER_DATA) {
+            Pack pack = DynamicFlowerPotTagPack.create();
+            if (pack != null) event.addRepositorySource(c -> c.accept(pack));
+            Pack compatPack = ConditionalCompatPack.create();
+            if (compatPack != null) event.addRepositorySource(c -> c.accept(compatPack));
+        }
+    }
+    *///?}
 
     private void onCommonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
@@ -143,13 +197,23 @@ public class Townstead {
             VillagerProfession cook = COOK_PROFESSION.get();
             // MCA drops non-important professions with no JOB_SITE memory.
             // Mark cook important so kitchen-assigned cooks are retained.
+            //? if neoforge {
             ProfessionsMCA.IS_IMPORTANT.add(cook);
             ProfessionsMCA.CAN_NOT_TRADE.remove(cook);
+            //?} else {
+            /*ProfessionsMCA.isImportant.add(cook);
+            ProfessionsMCA.canNotTrade.remove(cook);
+            *///?}
 
             if (ModCompat.isLoaded("rusticdelight")) {
                 VillagerProfession barista = BARISTA_PROFESSION.get();
+                //? if neoforge {
                 ProfessionsMCA.IS_IMPORTANT.add(barista);
                 ProfessionsMCA.CAN_NOT_TRADE.remove(barista);
+                //?} else {
+                /*ProfessionsMCA.isImportant.add(barista);
+                ProfessionsMCA.canNotTrade.remove(barista);
+                *///?}
             }
         });
         event.enqueueWork(RusticDelightThirstCompat::register);
@@ -164,7 +228,11 @@ public class Townstead {
         GiftPredicate.register("hunger", (json, name) ->
                 GsonHelper.convertToString(json, name).toLowerCase(Locale.ROOT),
                 state -> (villager, stack, player) -> {
+                    //? if neoforge {
                     CompoundTag data = villager.getData(HUNGER_DATA);
+                    //?} else if forge {
+                    /*CompoundTag data = villager.getPersistentData().getCompound("townstead:hunger_data");
+                    *///?}
                     int h = HungerData.getHunger(data);
                     HungerData.HungerState current = HungerData.getState(h);
                     return townstead$hungerAtLeast(current, state) ? 1.0f : 0.0f;
@@ -173,7 +241,11 @@ public class Townstead {
                         GsonHelper.convertToString(json, name).toLowerCase(Locale.ROOT),
                 state -> (villager, stack, player) -> {
                     if (!ThirstWasTakenBridge.INSTANCE.isActive()) return 0.0f;
+                    //? if neoforge {
                     CompoundTag data = villager.getData(THIRST_DATA);
+                    //?} else if forge {
+                    /*CompoundTag data = villager.getPersistentData().getCompound("townstead:thirst_data");
+                    *///?}
                     int t = ThirstData.getThirst(data);
                     ThirstData.ThirstState current = ThirstData.getState(t);
                     return townstead$thirstAtLeast(current, state) ? 1.0f : 0.0f;
@@ -225,13 +297,18 @@ public class Townstead {
     private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
         try {
             Class.forName("net.minecraft.client.Minecraft");
+            //? if neoforge {
             modContainer.registerConfig(ModConfig.Type.CLIENT, TownsteadConfig.CLIENT_SPEC);
+            //?} else if forge {
+            /*modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.CLIENT, TownsteadConfig.CLIENT_SPEC, modContainer));
+            *///?}
             TownsteadClient.registerConfigScreen(modContainer);
         } catch (ClassNotFoundException ignored) {
             // Dedicated server: no client config screen.
         }
     }
 
+    //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
         var registrar = event.registrar(MOD_ID).versioned("1");
         boolean thirstAvailable = ThirstWasTakenBridge.INSTANCE.isActive();
@@ -441,11 +518,13 @@ public class Townstead {
             ));
         });
     }
+    //?}
 
     private void onStartTracking(PlayerEvent.StartTracking event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
 
+        //? if neoforge {
         CompoundTag hunger = villager.getData(HUNGER_DATA);
         PacketDistributor.sendToPlayer(sp, townstead$hungerSync(villager, hunger));
         if (ThirstWasTakenBridge.INSTANCE.isActive()) {
@@ -460,6 +539,22 @@ public class Townstead {
                 villager.getId(),
                 HungerData.getButcherBlockedReason(hunger).id()
         ));
+        //?} else if forge {
+        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
+        TownsteadNetwork.sendToPlayer(sp, townstead$hungerSync(villager, hunger));
+        if (ThirstWasTakenBridge.INSTANCE.isActive()) {
+            CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
+            TownsteadNetwork.sendToPlayer(sp, townstead$thirstSync(villager, thirst));
+        }
+        TownsteadNetwork.sendToPlayer(sp, new FarmStatusSyncPayload(
+                villager.getId(),
+                HungerData.getFarmBlockedReason(hunger).id()
+        ));
+        TownsteadNetwork.sendToPlayer(sp, new ButcherStatusSyncPayload(
+                villager.getId(),
+                HungerData.getButcherBlockedReason(hunger).id()
+        ));
+        *///?}
     }
 
     public static HungerSyncPayload townstead$hungerSync(VillagerEntityMCA villager, CompoundTag hunger) {
@@ -486,7 +581,11 @@ public class Townstead {
         );
     }
 
+    //? if neoforge {
     private void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
+    //?} else if forge {
+    /*private void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
+    *///?}
         HungerClientStore.clear();
         ThirstClientStore.clear();
         FarmingPolicyClientStore.clear();

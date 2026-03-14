@@ -856,9 +856,17 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     private void awardCookXP(ServerLevel level, VillagerEntityMCA villager) {
         if (activeRecipe == null) return;
         int xp = Math.max(1, activeRecipe.tier());
+        //? if neoforge {
         CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         CookProgressData.addXp(data, xp, level.getGameTime());
+        //? if neoforge {
         villager.setData(Townstead.HUNGER_DATA, data);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", data);
+        *///?}
     }
 
     // ── Sound ──

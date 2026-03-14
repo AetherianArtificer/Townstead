@@ -8,9 +8,15 @@ import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+//? if >=1.21 {
 import net.minecraft.world.item.trading.ItemCost;
+//?}
 import net.minecraft.world.item.trading.MerchantOffer;
+//? if neoforge {
 import net.neoforged.neoforge.event.village.VillagerTradesEvent;
+//?} else if forge {
+/*import net.minecraftforge.event.village.VillagerTradesEvent;
+*///?}
 
 import java.util.ArrayList;
 import java.util.List;
@@ -106,7 +112,11 @@ public final class CookTradesCompat {
         Item item = resolveItem(spec.itemId());
         if (item == null) return null;
         return (trader, random) -> new MerchantOffer(
+                //? if >=1.21 {
                 new ItemCost(Items.EMERALD, spec.emeraldCost()),
+                //?} else {
+                /*new ItemStack(Items.EMERALD, spec.emeraldCost()),
+                *///?}
                 new ItemStack(item, spec.itemCount()),
                 spec.maxUses(),
                 spec.villagerXp(),

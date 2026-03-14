@@ -2,6 +2,9 @@ package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+//? if forge {
+/*import com.aetherianartificer.townstead.TownsteadNetwork;
+*///?}
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
@@ -31,23 +34,46 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+//? if neoforge {
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.network.PacketDistributor;
+//?} else if forge {
+/*import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.items.IItemHandler;
+*///?}
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class ThirstVillagerTicker {
+    //? if >=1.21 {
     private static final ResourceLocation TOWNSTEAD_SPEED_PENALTY =
             ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "thirst_speed_penalty");
+    //?} else {
+    /*private static final ResourceLocation TOWNSTEAD_SPEED_PENALTY =
+            new ResourceLocation(Townstead.MOD_ID, "thirst_speed_penalty");
+    *///?}
     private static final long BIOME_MODIFIER_RESAMPLE_TICKS = 100L;
+    //? if >=1.21 {
     private static final TagKey<Block> FD_KITCHEN_STORAGE_TAG =
             TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage"));
     private static final TagKey<Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
             TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_upgraded"));
     private static final TagKey<Block> FD_KITCHEN_STORAGE_NETHER_TAG =
             TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_nether"));
+    //?} else {
+    /*private static final TagKey<Block> FD_KITCHEN_STORAGE_TAG =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage"));
+    private static final TagKey<Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage_upgraded"));
+    private static final TagKey<Block> FD_KITCHEN_STORAGE_NETHER_TAG =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage_nether"));
+    *///?}
+    //? if forge {
+    /*private static final java.util.UUID TOWNSTEAD_SPEED_PENALTY_UUID =
+            java.util.UUID.nameUUIDFromBytes("townstead:thirst_speed_penalty".getBytes());
+    *///?}
 
     private static final Map<Integer, TickState> STATE = new ConcurrentHashMap<>();
 
@@ -62,7 +88,11 @@ public final class ThirstVillagerTicker {
         }
 
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
+        //? if neoforge {
         CompoundTag thirst = self.getData(Townstead.THIRST_DATA);
+        //?} else {
+        /*CompoundTag thirst = self.getPersistentData().getCompound("townstead_thirst");
+        *///?}
         long gameTime = level.getGameTime();
 
         if (gameTime >= state.nextBiomeModifierSampleTick) {
@@ -174,14 +204,22 @@ public final class ThirstVillagerTicker {
         }
 
         updateSpeedModifier(self, ThirstData.getThirst(thirst));
+        //? if neoforge {
         self.setData(Townstead.THIRST_DATA, thirst);
+        //?} else {
+        /*self.getPersistentData().put("townstead_thirst", thirst);
+        *///?}
 
         int thirstLevel = ThirstData.getThirst(thirst);
         int quenchedLevel = ThirstData.getQuenched(thirst);
         if (thirstLevel != state.lastSyncedThirst || quenchedLevel != state.lastSyncedQuenched || thirstChanged) {
             state.lastSyncedThirst = thirstLevel;
             state.lastSyncedQuenched = quenchedLevel;
+            //? if neoforge {
             PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
+            //?} else if forge {
+            /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
+            *///?}
         }
 
         if (!self.isAlive() || self.isRemoved()) {
@@ -270,7 +308,11 @@ public final class ThirstVillagerTicker {
                 if (stack.isEmpty()) return true;
             }
             if (be != null) {
+                //? if neoforge {
                 IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+                //?} else if forge {
+                /*IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+                *///?}
                 if (handler != null) {
                     for (int slot = 0; slot < handler.getSlots(); slot++) {
                         stack = handler.insertItem(slot, stack, false);
@@ -287,7 +329,11 @@ public final class ThirstVillagerTicker {
             if (stack.isEmpty()) return;
             ItemStack slot = container.getItem(i);
             if (slot.isEmpty()) continue;
+            //? if >=1.21 {
             if (!ItemStack.isSameItemSameComponents(slot, stack)) continue;
+            //?} else {
+            /*if (!ItemStack.isSameItemSameTags(slot, stack)) continue;
+            *///?}
             if (!container.canPlaceItem(i, stack)) continue;
             int limit = Math.min(container.getMaxStackSize(), slot.getMaxStackSize());
             if (slot.getCount() >= limit) continue;
@@ -302,7 +348,11 @@ public final class ThirstVillagerTicker {
             if (!slot.isEmpty()) continue;
             if (!container.canPlaceItem(i, stack)) continue;
             int move = Math.min(stack.getCount(), Math.min(container.getMaxStackSize(), stack.getMaxStackSize()));
+            //? if >=1.21 {
             container.setItem(i, stack.copyWithCount(move));
+            //?} else {
+            /*ItemStack portion = stack.copy(); portion.setCount(move); container.setItem(i, portion);
+            *///?}
             stack.shrink(move);
             container.setChanged();
         }
@@ -310,8 +360,13 @@ public final class ThirstVillagerTicker {
 
     private static boolean isGuardPatrolling(VillagerEntityMCA self) {
         var profession = self.getVillagerData().getProfession();
+        //? if neoforge {
         return (profession == ProfessionsMCA.GUARD || profession == ProfessionsMCA.ARCHER)
                 && currentScheduleActivity(self) == Activity.WORK;
+        //?} else {
+        /*return (profession == ProfessionsMCA.GUARD.get() || profession == ProfessionsMCA.ARCHER.get())
+                && currentScheduleActivity(self) == Activity.WORK;
+        *///?}
     }
 
     private static boolean isResting(VillagerEntityMCA self) {
@@ -326,6 +381,7 @@ public final class ThirstVillagerTicker {
     private static void updateSpeedModifier(VillagerEntityMCA self, int currentThirst) {
         AttributeInstance speedAttr = self.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttr == null) return;
+        //? if >=1.21 {
         AttributeModifier existing = speedAttr.getModifier(TOWNSTEAD_SPEED_PENALTY);
         if (currentThirst <= ThirstData.SPEED_PENALTY_THRESHOLD) {
             if (existing == null) {
@@ -338,13 +394,33 @@ public final class ThirstVillagerTicker {
             return;
         }
         if (existing != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY);
+        //?} else {
+        /*AttributeModifier existing = speedAttr.getModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
+        if (currentThirst <= ThirstData.SPEED_PENALTY_THRESHOLD) {
+            if (existing == null) {
+                speedAttr.addTransientModifier(new AttributeModifier(
+                        TOWNSTEAD_SPEED_PENALTY_UUID,
+                        "townstead:thirst_speed_penalty",
+                        ThirstData.SPEED_PENALTY_AMOUNT,
+                        AttributeModifier.Operation.MULTIPLY_TOTAL
+                ));
+            }
+            return;
+        }
+        if (existing != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
+        *///?}
     }
 
     private static void removeSpeedModifier(VillagerEntityMCA self) {
         AttributeInstance speedAttr = self.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttr == null) return;
+        //? if >=1.21 {
         AttributeModifier existing = speedAttr.getModifier(TOWNSTEAD_SPEED_PENALTY);
         if (existing != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY);
+        //?} else {
+        /*AttributeModifier existing = speedAttr.getModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
+        if (existing != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
+        *///?}
     }
 
     private static final class TickState {

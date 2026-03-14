@@ -181,8 +181,13 @@ public final class HungerData {
      * Apply food restoration from eating. Returns the new hunger value.
      */
     public static int applyFood(CompoundTag tag, FoodProperties food) {
+        //? if >=1.21 {
         int nutrition = food.nutrition();
         float satMod = food.saturation();
+        //?} else {
+        /*int nutrition = food.getNutrition();
+        float satMod = food.getSaturationModifier();
+        *///?}
 
         int hungerRestored = (int)(nutrition * FOOD_SCALE);
         int oldHunger = getHunger(tag);

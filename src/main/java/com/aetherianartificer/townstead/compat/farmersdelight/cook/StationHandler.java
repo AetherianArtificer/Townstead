@@ -24,7 +24,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CampfireCookingRecipe;
+//? if >=1.21 {
 import net.minecraft.world.item.crafting.RecipeHolder;
+//?}
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -33,8 +35,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.item.ItemEntity;
+//? if neoforge {
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
+//?} else if forge {
+/*import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.items.IItemHandler;
+*///?}
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
 
@@ -46,14 +53,49 @@ import java.util.*;
 public final class StationHandler {
     private StationHandler() {}
 
+    // ── Cross-version capability helpers ──
+
+    static @Nullable IItemHandler getItemHandler(ServerLevel level, BlockPos pos, @Nullable Direction side) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) return null;
+        return getItemHandler(be, level, pos, side);
+    }
+
+    static @Nullable IItemHandler getItemHandler(BlockEntity be, ServerLevel level, BlockPos pos, @Nullable Direction side) {
+        //? if neoforge {
+        return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
+        //?} else if forge {
+        /*if (side != null) return be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null);
+        return be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+        *///?}
+    }
+
+    //? if >=1.21 {
+    static ItemStack copyOne(ItemStack stack) { return stack.copyWithCount(1); }
+    static ItemStack copyWithCount(ItemStack stack, int count) { return stack.copyWithCount(count); }
+    static boolean isSameItemComponents(ItemStack a, ItemStack b) { return isSameItemComponents(a, b); }
+    //?} else {
+    /*static ItemStack copyOne(ItemStack stack) { ItemStack c = stack.copy(); c.setCount(1); return c; }
+    static ItemStack copyWithCount(ItemStack stack, int count) { ItemStack c = stack.copy(); c.setCount(count); return c; }
+    static boolean isSameItemComponents(ItemStack a, ItemStack b) { return ItemStack.isSameItemSameTags(a, b); }
+    *///?}
+
     // ── Block IDs ──
 
+    //? if >=1.21 {
     private static final ResourceLocation FD_CUTTING_BOARD = ResourceLocation.parse("farmersdelight:cutting_board");
     private static final ResourceLocation FD_COOKING_POT = ResourceLocation.parse("farmersdelight:cooking_pot");
     private static final ResourceLocation FD_SKILLET = ResourceLocation.parse("farmersdelight:skillet");
     private static final ResourceLocation FD_STOVE = ResourceLocation.parse("farmersdelight:stove");
+    //?} else {
+    /*private static final ResourceLocation FD_CUTTING_BOARD = new ResourceLocation("farmersdelight", "cutting_board");
+    private static final ResourceLocation FD_COOKING_POT = new ResourceLocation("farmersdelight", "cooking_pot");
+    private static final ResourceLocation FD_SKILLET = new ResourceLocation("farmersdelight", "skillet");
+    private static final ResourceLocation FD_STOVE = new ResourceLocation("farmersdelight", "stove");
+    *///?}
     static final int FD_COOKING_POT_CONTAINER_SLOT = 7;
     static final int FD_COOKING_POT_INGREDIENT_SLOT_COUNT = 6;
+    //? if >=1.21 {
     static final TagKey<Item> KNIFE_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:tools/knife"));
     static final TagKey<net.minecraft.world.level.block.Block> FD_KITCHEN_STORAGE_TAG =
             TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage"));
@@ -61,6 +103,15 @@ public final class StationHandler {
             TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_upgraded"));
     static final TagKey<net.minecraft.world.level.block.Block> FD_KITCHEN_STORAGE_NETHER_TAG =
             TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_nether"));
+    //?} else {
+    /*static final TagKey<Item> KNIFE_TAG = TagKey.create(Registries.ITEM, new ResourceLocation("c", "tools/knife"));
+    static final TagKey<net.minecraft.world.level.block.Block> FD_KITCHEN_STORAGE_TAG =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage"));
+    static final TagKey<net.minecraft.world.level.block.Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage_upgraded"));
+    static final TagKey<net.minecraft.world.level.block.Block> FD_KITCHEN_STORAGE_NETHER_TAG =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage_nether"));
+    *///?}
 
     // ── Reflection fields ──
 
@@ -248,7 +299,7 @@ public final class StationHandler {
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (FD_STOVE.equals(id)) {
             if (stoveBlockedAbove(be)) return 0;
-            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+            IItemHandler handler = getItemHandler(level, pos, null);
             if (handler == null) {
                 Integer slot = stoveNextEmptySlot(be);
                 return (slot != null && slot >= 0) ? 1 : 0;
@@ -302,13 +353,13 @@ public final class StationHandler {
         if (surfaceBlockedForCooking(level, pos, state)) return false;
         BlockEntity be = level.getBlockEntity(pos);
         if (state.is(BlockTags.CAMPFIRES) && be instanceof CampfireBlockEntity campfire) {
-            return campfire.getCookableRecipe(probe.copyWithCount(1)).isPresent();
+            return campfire.getCookableRecipe(copyOne(probe)).isPresent();
         }
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (FD_STOVE.equals(id)) {
             if (stoveBlockedAbove(be)) return false;
-            if (stoveMatchingRecipe(be, probe.copyWithCount(1)).isPresent()) return true;
-            return campfireRecipeForInput(level, probe.copyWithCount(1)).isPresent();
+            if (stoveMatchingRecipe(be, copyOne(probe)).isPresent()) return true;
+            return campfireRecipeForInput(level, copyOne(probe)).isPresent();
         }
         if (FD_SKILLET.equals(id)) {
             if (!skilletIsHeated(be)) return false;
@@ -316,7 +367,7 @@ public final class StationHandler {
                     && Boolean.TRUE.equals(state.getValue(BlockStateProperties.WATERLOGGED))) {
                 return false;
             }
-            return campfireRecipeForInput(level, probe.copyWithCount(1)).isPresent();
+            return campfireRecipeForInput(level, copyOne(probe)).isPresent();
         }
         return false;
     }
@@ -350,9 +401,15 @@ public final class StationHandler {
             boolean loaded = false;
             int consumedAmount = ingredientPerLoad;
             if (state.is(BlockTags.CAMPFIRES) && be instanceof CampfireBlockEntity campfire) {
+                //? if >=1.21 {
                 Optional<RecipeHolder<CampfireCookingRecipe>> match = campfire.getCookableRecipe(one);
                 if (match.isEmpty()) break;
                 int cookTime = match.get().value().getCookingTime();
+                //?} else {
+                /*Optional<CampfireCookingRecipe> match = campfire.getCookableRecipe(one);
+                if (match.isEmpty()) break;
+                int cookTime = match.get().getCookingTime();
+                *///?}
                 loaded = campfire.placeFood(villager, one.copy(), cookTime);
             } else {
                 ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
@@ -373,7 +430,11 @@ public final class StationHandler {
                             && Boolean.TRUE.equals(state.getValue(BlockStateProperties.WATERLOGGED))) break;
                     if (skilletHasStoredStack(be)) break;
                     if (campfireRecipeForInput(level, one).isEmpty()) break;
+                    //? if >=1.21 {
                     int skilletBatch = Math.min(count(inv, inputItem), inputItem.getDefaultMaxStackSize());
+                    //?} else {
+                    /*int skilletBatch = Math.min(count(inv, inputItem), inputItem.getMaxStackSize());
+                    *///?}
                     if (skilletBatch <= 0) break;
                     int inserted = skilletAddItem(level, villager, be, new ItemStack(inputItem, skilletBatch), stationAnchor);
                     if (inserted >= ingredientPerLoad) {
@@ -421,11 +482,17 @@ public final class StationHandler {
                 if (slot < 0) break;
                 ItemStack source = inv.getItem(slot);
                 if (source.isEmpty()) break;
-                ItemStack oneItem = source.copyWithCount(1);
+                ItemStack oneItem = copyOne(source);
                 // Try recipe match for cook time, fall back to synthetic cook time
+                //? if >=1.21 {
                 int cookTime = campfire.getCookableRecipe(oneItem)
                         .map(h -> h.value().getCookingTime())
                         .orElse(PURIFICATION_COOK_TIME);
+                //?} else {
+                /*int cookTime = campfire.getCookableRecipe(oneItem)
+                        .map(h -> h.getCookingTime())
+                        .orElse(PURIFICATION_COOK_TIME);
+                *///?}
                 if (!campfire.placeFood(villager, oneItem, cookTime)) break;
                 source.shrink(1);
                 loaded++;
@@ -439,7 +506,7 @@ public final class StationHandler {
                 if (slot < 0) break;
                 ItemStack source = inv.getItem(slot);
                 if (source.isEmpty()) break;
-                ItemStack oneItem = source.copyWithCount(1);
+                ItemStack oneItem = copyOne(source);
                 // Try stove recipe, then campfire recipe fallback
                 Optional<?> match = stoveMatchingRecipe(be, oneItem);
                 if (match.isEmpty()) match = campfireRecipeForInput(level, oneItem);
@@ -459,11 +526,11 @@ public final class StationHandler {
             if (slot < 0) return false;
             ItemStack source = inv.getItem(slot);
             if (source.isEmpty()) return false;
-            ItemStack prototype = source.copyWithCount(1);
+            ItemStack prototype = copyOne(source);
             int available = countMatchingImpure(inv, prototype, bridge);
             if (available <= 0) return false;
             int batch = Math.min(available, source.getMaxStackSize());
-            int inserted = skilletAddItem(level, villager, be, prototype.copyWithCount(batch), pos);
+            int inserted = skilletAddItem(level, villager, be, copyWithCount(prototype, batch), pos);
             if (inserted <= 0) return false;
             loaded += consumeMatchingImpure(inv, prototype, bridge, inserted);
         }
@@ -505,7 +572,7 @@ public final class StationHandler {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
-            if (!ItemStack.isSameItemSameComponents(stack, prototype)) continue;
+            if (!isSameItemComponents(stack, prototype)) continue;
             if (impureWaterScore(stack, bridge) <= 0) continue;
             total += stack.getCount();
         }
@@ -518,7 +585,7 @@ public final class StationHandler {
         for (int i = 0; i < inv.getContainerSize() && consumed < amount; i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
-            if (!ItemStack.isSameItemSameComponents(stack, prototype)) continue;
+            if (!isSameItemComponents(stack, prototype)) continue;
             if (impureWaterScore(stack, bridge) <= 0) continue;
             int move = Math.min(amount - consumed, stack.getCount());
             stack.shrink(move);
@@ -623,7 +690,7 @@ public final class StationHandler {
             return false;
         }
 
-        handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+        handler = getItemHandler(level, pos, null);
         if (handler != null) {
             for (int i = 0; i < handler.getSlots(); i++) {
                 ItemStack slot = handler.getStackInSlot(i);
@@ -635,7 +702,7 @@ public final class StationHandler {
         }
 
         for (Direction dir : Direction.values()) {
-            handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, dir);
+            handler = getItemHandler(level, pos, dir);
             if (handler == null) continue;
             for (int i = 0; i < handler.getSlots(); i++) {
                 ItemStack slot = handler.getStackInSlot(i);
@@ -665,7 +732,7 @@ public final class StationHandler {
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return 0;
         int removed = 0;
-        IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+        IItemHandler handler = getItemHandler(level, pos, null);
         if (handler != null) {
             for (int i = 0; i < handler.getSlots() && removed < amount; i++) {
                 if (!handler.getStackInSlot(i).is(item)) continue;
@@ -675,7 +742,7 @@ public final class StationHandler {
             if (removed >= amount) return removed;
         }
         for (Direction dir : Direction.values()) {
-            handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, dir);
+            handler = getItemHandler(level, pos, dir);
             if (handler == null) continue;
             for (int i = 0; i < handler.getSlots() && removed < amount; i++) {
                 if (!handler.getStackInSlot(i).is(item)) continue;
@@ -716,14 +783,14 @@ public final class StationHandler {
             remainder = insertIntoHandler(handler, remainder, false);
             if (remainder.isEmpty()) return ItemStack.EMPTY;
         } else {
-            handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+            handler = getItemHandler(level, pos, null);
             if (handler != null) {
                 remainder = insertIntoHandler(handler, remainder, false);
                 if (remainder.isEmpty()) return ItemStack.EMPTY;
             }
             for (Direction dir : Direction.values()) {
                 if (remainder.isEmpty()) return ItemStack.EMPTY;
-                handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, dir);
+                handler = getItemHandler(level, pos, dir);
                 if (handler == null) continue;
                 remainder = insertIntoHandler(handler, remainder, false);
             }
@@ -733,14 +800,14 @@ public final class StationHandler {
             for (int i = 0; i < container.getContainerSize(); i++) {
                 if (remainder.isEmpty()) break;
                 ItemStack slot = container.getItem(i);
-                if (!slot.isEmpty() && !ItemStack.isSameItemSameComponents(slot, remainder)) continue;
+                if (!slot.isEmpty() && !isSameItemComponents(slot, remainder)) continue;
                 if (!container.canPlaceItem(i, remainder)) continue;
                 int limit = Math.min(container.getMaxStackSize(), remainder.getMaxStackSize());
                 int move = slot.isEmpty()
                         ? Math.min(limit, remainder.getCount())
                         : Math.min(limit - slot.getCount(), remainder.getCount());
                 if (move <= 0) continue;
-                if (slot.isEmpty()) container.setItem(i, remainder.copyWithCount(move));
+                if (slot.isEmpty()) container.setItem(i, copyWithCount(remainder, move));
                 else slot.grow(move);
                 remainder.shrink(move);
                 container.setChanged();
@@ -756,7 +823,7 @@ public final class StationHandler {
 
         ItemStack remainder = stack.copy();
         while (!remainder.isEmpty()) {
-            ItemStack single = remainder.copyWithCount(1);
+            ItemStack single = copyOne(remainder);
             if (!insertSingleIntoCookingPotIngredientSlot(level, pos, single)) break;
             remainder.shrink(1);
         }
@@ -768,9 +835,9 @@ public final class StationHandler {
 
     private static boolean insertSingleIntoCookingPotIngredientSlot(ServerLevel level, BlockPos pos, ItemStack single) {
         if (single.isEmpty()) return true;
-        if (single.getCount() != 1) single = single.copyWithCount(1);
+        if (single.getCount() != 1) single = copyOne(single);
         for (Direction dir : Direction.values()) {
-            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, dir);
+            IItemHandler handler = getItemHandler(level, pos, dir);
             if (handler == null) continue;
             int slots = Math.min(FD_COOKING_POT_INGREDIENT_SLOT_COUNT, handler.getSlots());
             for (int slot = 0; slot < slots; slot++) {
@@ -791,7 +858,7 @@ public final class StationHandler {
         ItemStack remainder = stack.copy();
         for (Direction dir : Direction.values()) {
             if (dir == Direction.UP) continue;
-            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, dir);
+            IItemHandler handler = getItemHandler(level, pos, dir);
             if (handler == null) continue;
             if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) continue;
             remainder = handler.insertItem(FD_COOKING_POT_CONTAINER_SLOT, remainder, simulate);
@@ -807,7 +874,7 @@ public final class StationHandler {
         int best = 0;
         for (Direction dir : Direction.values()) {
             if (dir == Direction.UP) continue;
-            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, dir);
+            IItemHandler handler = getItemHandler(level, pos, dir);
             if (handler == null) continue;
             if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) continue;
             ItemStack slot = handler.getStackInSlot(FD_COOKING_POT_CONTAINER_SLOT);
@@ -826,7 +893,7 @@ public final class StationHandler {
             }
             return total;
         }
-        handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+        handler = getItemHandler(level, pos, null);
         if (handler != null) {
             for (int i = 0; i < handler.getSlots(); i++) {
                 if (handler.getStackInSlot(i).is(item)) total += handler.getStackInSlot(i).getCount();
@@ -881,7 +948,7 @@ public final class StationHandler {
         System.arraycopy(Direction.values(), 0, directions, 1, Direction.values().length);
         Set<Integer> handlerIds = new HashSet<>();
         for (Direction dir : directions) {
-            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, dir);
+            IItemHandler handler = getItemHandler(level, pos, dir);
             if (handler == null) continue;
             if (!handlerIds.add(System.identityHashCode(handler))) continue;
             for (int i = 0; i < handler.getSlots(); i++) {
@@ -1078,12 +1145,13 @@ public final class StationHandler {
         if (pos == null) return null;
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         if (FD_COOKING_POT.equals(id) || FD_SKILLET.equals(id) || FD_CUTTING_BOARD.equals(id)) {
-            IItemHandler up = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, Direction.UP);
+            IItemHandler up = getItemHandler(level, pos, Direction.UP);
             if (up != null) return up;
         }
         return null;
     }
 
+    //? if >=1.21 {
     public static Optional<RecipeHolder<CampfireCookingRecipe>> campfireRecipeForInput(ServerLevel level, ItemStack stack) {
         if (level == null || stack == null || stack.isEmpty()) return Optional.empty();
         for (RecipeHolder<CampfireCookingRecipe> holder : level.getRecipeManager().getAllRecipesFor(RecipeType.CAMPFIRE_COOKING)) {
@@ -1093,6 +1161,16 @@ public final class StationHandler {
         }
         return Optional.empty();
     }
+    //?} else {
+    /*public static Optional<CampfireCookingRecipe> campfireRecipeForInput(ServerLevel level, ItemStack stack) {
+        if (level == null || stack == null || stack.isEmpty()) return Optional.empty();
+        for (CampfireCookingRecipe recipe : level.getRecipeManager().getAllRecipesFor(RecipeType.CAMPFIRE_COOKING)) {
+            if (recipe.getIngredients().isEmpty()) continue;
+            if (recipe.getIngredients().get(0).test(stack)) return Optional.of(recipe);
+        }
+        return Optional.empty();
+    }
+    *///?}
 
     // ── Fire surface helpers ──
 
@@ -1122,11 +1200,15 @@ public final class StationHandler {
             return true;
         }
         try {
-            Class<?> recipeHolderClass = Class.forName("net.minecraft.world.item.crafting.RecipeHolder");
             FD_STOVE_BE_CLASS = Class.forName("vectorwing.farmersdelight.common.block.entity.StoveBlockEntity");
             FD_STOVE_GET_NEXT_EMPTY_SLOT = FD_STOVE_BE_CLASS.getMethod("getNextEmptySlot");
             FD_STOVE_GET_MATCHING_RECIPE = FD_STOVE_BE_CLASS.getMethod("getMatchingRecipe", ItemStack.class);
+            //? if >=1.21 {
+            Class<?> recipeHolderClass = Class.forName("net.minecraft.world.item.crafting.RecipeHolder");
             FD_STOVE_ADD_ITEM = FD_STOVE_BE_CLASS.getMethod("addItem", ItemStack.class, recipeHolderClass, int.class);
+            //?} else {
+            /*FD_STOVE_ADD_ITEM = FD_STOVE_BE_CLASS.getMethod("addItem", ItemStack.class, CampfireCookingRecipe.class, int.class);
+            *///?}
             FD_STOVE_IS_BLOCKED_ABOVE = FD_STOVE_BE_CLASS.getMethod("isStoveBlockedAbove");
             return true;
         } catch (Throwable ignored) {

@@ -33,9 +33,13 @@ import java.util.List;
 
 @Mixin(InteractScreen.class)
 public abstract class InteractScreenMixin extends Screen {
+    //? if >=1.21 {
     private static final ResourceLocation FOOD_FULL = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_full.png");
     private static final ResourceLocation FOOD_HALF = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_half.png");
     private static final ResourceLocation FOOD_EMPTY = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_empty.png");
+    //?} else {
+    /*private static final ResourceLocation ICONS = new ResourceLocation("minecraft", "textures/gui/icons.png");
+    *///?}
     private static final int HUNGER_ICON_X = 70;
     private static final int HUNGER_ICON_Y = 120;
     private static final int HUNGER_ICON_SIZE = 24;
@@ -47,7 +51,7 @@ public abstract class InteractScreenMixin extends Screen {
     private static final int THIRST_ICON_TEX_W = 25;
     private static final int THIRST_ICON_TEX_H = 9;
 
-    @Shadow @Final private VillagerLike<?> villager;
+    @Shadow(remap = false) @Final private VillagerLike<?> villager;
 
     private InteractScreenMixin() {
         super(null);
@@ -55,6 +59,7 @@ public abstract class InteractScreenMixin extends Screen {
 
     @Redirect(
             method = "drawTextPopups",
+            remap = false,
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/conczin/mca/entity/VillagerLike;getProfessionText()Lnet/minecraft/network/chat/MutableComponent;"
@@ -81,7 +86,7 @@ public abstract class InteractScreenMixin extends Screen {
                         .withStyle(ChatFormatting.DARK_GRAY));
     }
 
-    @Inject(method = "drawTextPopups", at = @At("TAIL"))
+    @Inject(method = "drawTextPopups", remap = false, at = @At("TAIL"))
     private void townstead$drawHungerStatus(GuiGraphics context, CallbackInfo ci) {
         int entityId = villager.asEntity().getId();
         int hunger = HungerClientStore.get(entityId);
@@ -123,6 +128,7 @@ public abstract class InteractScreenMixin extends Screen {
 
     @Redirect(
             method = "drawTextPopups",
+            remap = false,
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/gui/GuiGraphics;renderTooltip(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V"
@@ -144,6 +150,7 @@ public abstract class InteractScreenMixin extends Screen {
 
     @Redirect(
             method = "drawTextPopups",
+            remap = false,
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/gui/GuiGraphics;renderComponentTooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;II)V"
@@ -165,6 +172,7 @@ public abstract class InteractScreenMixin extends Screen {
 
     @Redirect(
             method = "drawTextPopups",
+            remap = false,
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/conczin/mca/client/gui/InteractScreen;hoveringOverText(III)Z"
@@ -179,10 +187,9 @@ public abstract class InteractScreenMixin extends Screen {
         return ((InteractScreenAccessor) instance).townstead$invokeHoveringOverText(x, shiftedY, w);
     }
 
-    @Inject(method = "drawIcons", at = @At("TAIL"))
+    @Inject(method = "drawIcons", remap = false, at = @At("TAIL"))
     private void townstead$drawHungerIcon(GuiGraphics context, CallbackInfo ci) {
         int hunger = HungerClientStore.get(villager.asEntity().getId());
-        ResourceLocation sprite = townstead$hungerIconSprite(HungerData.getState(hunger));
         int iconX = HUNGER_ICON_X + ((HUNGER_ICON_SIZE - 16) / 2);
         int iconY = HUNGER_ICON_Y + ((HUNGER_ICON_SIZE - 16) / 2);
 
@@ -190,7 +197,13 @@ public abstract class InteractScreenMixin extends Screen {
         pose.pushPose();
         pose.translate(iconX, iconY, 0);
         pose.scale(HUNGER_ICON_SCALE, HUNGER_ICON_SCALE, 1.0f);
+        //? if >=1.21 {
+        ResourceLocation sprite = townstead$hungerIconSprite(HungerData.getState(hunger));
         context.blit(sprite, 0, 0, 0, 0, 9, 9, 9, 9);
+        //?} else {
+        /*int u = townstead$hungerIconU(HungerData.getState(hunger));
+        context.blit(ICONS, 0, 0, u, 27, 9, 9, 256, 256);
+        *///?}
         pose.popPose();
 
         if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
@@ -215,6 +228,7 @@ public abstract class InteractScreenMixin extends Screen {
         return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("thirst");
     }
 
+    //? if >=1.21 {
     private ResourceLocation townstead$hungerIconSprite(HungerData.HungerState state) {
         return switch (state) {
             case WELL_FED, ADEQUATE -> FOOD_FULL;
@@ -222,6 +236,15 @@ public abstract class InteractScreenMixin extends Screen {
             case FAMISHED, STARVING -> FOOD_EMPTY;
         };
     }
+    //?} else {
+    /*private int townstead$hungerIconU(HungerData.HungerState state) {
+        return switch (state) {
+            case WELL_FED, ADEQUATE -> 52;
+            case HUNGRY -> 61;
+            case FAMISHED, STARVING -> 16;
+        };
+    }
+    *///?}
 
     private int townstead$thirstIconU(int thirst) {
         if (thirst > 13) return 16; // full droplet

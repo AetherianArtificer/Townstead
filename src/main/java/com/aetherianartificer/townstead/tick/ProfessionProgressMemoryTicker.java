@@ -17,7 +17,11 @@ public final class ProfessionProgressMemoryTicker {
     private ProfessionProgressMemoryTicker() {}
 
     public static void tick(VillagerEntityMCA villager) {
+        //? if neoforge {
         CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         String currentKey = professionKey(villager.getVillagerData().getProfession());
         if (currentKey == null) return;
 

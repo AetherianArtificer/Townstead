@@ -62,7 +62,11 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
             return false;
         }
 
+        //? if neoforge {
         CompoundTag thirst = villager.getData(Townstead.THIRST_DATA);
+        //?} else {
+        /*CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
+        *///?}
         int t = ThirstData.getThirst(thirst);
         boolean drinkingMode = ThirstData.isDrinkingMode(thirst);
         if (t >= ThirstData.LUNCH_THRESHOLD && !drinkingMode) return false;
@@ -167,7 +171,11 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         targetPos = null;
         targetItem = null;
         targetContainerSlot = null;
+        //? if neoforge {
         CompoundTag thirst = villager.getData(Townstead.THIRST_DATA);
+        //?} else {
+        /*CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
+        *///?}
         cooldown = (ThirstData.isDrinkingMode(thirst) || ThirstData.getThirst(thirst) < ThirstData.ADEQUATE_THRESHOLD) ? 5 : 200;
     }
 

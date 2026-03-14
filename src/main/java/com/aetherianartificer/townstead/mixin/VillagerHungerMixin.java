@@ -1,6 +1,9 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.Townstead;
+//? if forge {
+/*import com.aetherianartificer.townstead.TownsteadNetwork;
+*///?}
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.BaristaWorkTask;
@@ -21,7 +24,9 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.schedule.Activity;
+//? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
+//?}
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -41,13 +46,21 @@ public abstract class VillagerHungerMixin extends Villager {
     }
 
     @SuppressWarnings("unchecked")
+    //? if neoforge {
     @Inject(method = "makeBrain", at = @At("RETURN"))
+    //?} else {
+    /*@Inject(method = "m_8075_", remap = false, at = @At("RETURN"))
+    *///?}
     private void townstead$registerSeekFoodOnCreate(Dynamic<?> dynamic, CallbackInfoReturnable<Brain<?>> cir) {
         townstead$addSeekFoodTask((Brain<VillagerEntityMCA>) cir.getReturnValue());
     }
 
     @SuppressWarnings("unchecked")
+    //? if neoforge {
     @Inject(method = "refreshBrain", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_35483_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$registerSeekFood(ServerLevel world, CallbackInfo ci) {
         townstead$addSeekFoodTask((Brain<VillagerEntityMCA>) (Brain<?>) getBrain());
     }
@@ -75,7 +88,11 @@ public abstract class VillagerHungerMixin extends Villager {
         townstead$lastPatchedBrain = brain;
     }
 
+    //? if neoforge {
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_7378_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$readEditorHunger(CompoundTag nbt, CallbackInfo ci) {
         VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
         boolean hasHunger = nbt.contains(HungerData.EDITOR_KEY_HUNGER);
@@ -84,22 +101,42 @@ public abstract class VillagerHungerMixin extends Villager {
         if (!hasHunger && !hasThirst) return;
 
         if (hasHunger) {
+            //? if neoforge {
             CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
+            //?} else {
+            /*CompoundTag hunger = self.getPersistentData().getCompound("townstead_hunger");
+            *///?}
             HungerData.setHunger(hunger, nbt.getInt(HungerData.EDITOR_KEY_HUNGER));
             HungerData.setSaturation(hunger, nbt.getFloat(HungerData.EDITOR_KEY_SATURATION));
             HungerData.setExhaustion(hunger, nbt.getFloat(HungerData.EDITOR_KEY_EXHAUSTION));
+            //? if neoforge {
             self.setData(Townstead.HUNGER_DATA, hunger);
+            //?} else {
+            /*self.getPersistentData().put("townstead_hunger", hunger);
+            *///?}
         }
 
         if (hasThirst) {
             int newThirst = nbt.getInt(ThirstData.EDITOR_KEY_THIRST);
+            //? if neoforge {
             CompoundTag thirst = self.getData(Townstead.THIRST_DATA);
+            //?} else {
+            /*CompoundTag thirst = self.getPersistentData().getCompound("townstead_thirst");
+            *///?}
             ThirstData.setThirst(thirst, newThirst);
             ThirstData.setQuenched(thirst, nbt.getInt(ThirstData.EDITOR_KEY_QUENCHED));
             ThirstData.setExhaustion(thirst, nbt.getFloat(ThirstData.EDITOR_KEY_EXHAUSTION));
+            //? if neoforge {
             self.setData(Townstead.THIRST_DATA, thirst);
+            //?} else {
+            /*self.getPersistentData().put("townstead_thirst", thirst);
+            *///?}
             if (!self.level().isClientSide) {
+                //? if neoforge {
                 PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
+                //?} else if forge {
+                /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
+                *///?}
             }
         }
     }

@@ -12,12 +12,21 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 
 public final class FarmersDelightKnifeCompat implements FarmerHarvestToolCompat {
+    //? if >=1.21 {
     private static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(Registries.ITEM,
             ResourceLocation.fromNamespaceAndPath("forge", "tools/knives"));
     private static final TagKey<Item> KNIFE_TAG_C = TagKey.create(Registries.ITEM,
             ResourceLocation.fromNamespaceAndPath("c", "tools/knives"));
     private static final TagKey<Item> KNIFE_TAG_FD = TagKey.create(Registries.ITEM,
             ResourceLocation.fromNamespaceAndPath("farmersdelight", "tools/knives"));
+    //?} else {
+    /*private static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(Registries.ITEM,
+            new ResourceLocation("forge", "tools/knives"));
+    private static final TagKey<Item> KNIFE_TAG_C = TagKey.create(Registries.ITEM,
+            new ResourceLocation("c", "tools/knives"));
+    private static final TagKey<Item> KNIFE_TAG_FD = TagKey.create(Registries.ITEM,
+            new ResourceLocation("farmersdelight", "tools/knives"));
+    *///?}
 
     @Override
     public String modId() {

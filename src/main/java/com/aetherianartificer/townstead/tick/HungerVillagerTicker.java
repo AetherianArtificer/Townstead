@@ -2,6 +2,9 @@ package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+//? if forge {
+/*import com.aetherianartificer.townstead.TownsteadNetwork;
+*///?}
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.aetherianartificer.townstead.thirst.VillagerDrinkingManager;
@@ -9,7 +12,9 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.registry.ProfessionsMCA;
+//? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -20,14 +25,25 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
+//? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
+//?}
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class HungerVillagerTicker {
+    //? if >=1.21 {
     private static final ResourceLocation TOWNSTEAD_SPEED_PENALTY =
             ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "hunger_speed_penalty");
+    //?} else {
+    /*private static final ResourceLocation TOWNSTEAD_SPEED_PENALTY =
+            new ResourceLocation(Townstead.MOD_ID, "hunger_speed_penalty");
+    *///?}
+    //? if forge {
+    /*private static final java.util.UUID TOWNSTEAD_SPEED_PENALTY_UUID =
+            java.util.UUID.nameUUIDFromBytes("townstead:hunger_speed_penalty".getBytes());
+    *///?}
 
     private static final Map<Integer, TickState> STATE = new ConcurrentHashMap<>();
 
@@ -37,7 +53,11 @@ public final class HungerVillagerTicker {
         if (!(self.level() instanceof ServerLevel level)) return;
 
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
+        //? if neoforge {
         CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag hunger = self.getPersistentData().getCompound("townstead_hunger");
+        *///?}
         boolean hungerChanged = VillagerEatingManager.tickAndFinalize(self, hunger);
 
         int currentHungerLevel = HungerData.getHunger(hunger);
@@ -126,12 +146,20 @@ public final class HungerVillagerTicker {
         }
 
         updateSpeedModifier(self, HungerData.getHunger(hunger));
+        //? if neoforge {
         self.setData(Townstead.HUNGER_DATA, hunger);
+        //?} else {
+        /*self.getPersistentData().put("townstead_hunger", hunger);
+        *///?}
 
         int currentHunger = HungerData.getHunger(hunger);
         if (currentHunger != state.lastSyncedHunger || hungerChanged) {
             state.lastSyncedHunger = currentHunger;
+            //? if neoforge {
             PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$hungerSync(self, hunger));
+            //?} else if forge {
+            /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$hungerSync(self, hunger));
+            *///?}
         }
 
         if (!self.isAlive() || self.isRemoved()) {
@@ -141,8 +169,13 @@ public final class HungerVillagerTicker {
 
     private static boolean isGuardPatrolling(VillagerEntityMCA self) {
         var profession = self.getVillagerData().getProfession();
+        //? if neoforge {
         return (profession == ProfessionsMCA.GUARD || profession == ProfessionsMCA.ARCHER)
                 && currentScheduleActivity(self) == Activity.WORK;
+        //?} else {
+        /*return (profession == ProfessionsMCA.GUARD.get() || profession == ProfessionsMCA.ARCHER.get())
+                && currentScheduleActivity(self) == Activity.WORK;
+        *///?}
     }
 
     private static boolean isResting(VillagerEntityMCA self) {
@@ -162,7 +195,11 @@ public final class HungerVillagerTicker {
     }
 
     private static boolean consumeFood(VillagerEntityMCA self, ItemStack food) {
+        //? if >=1.21 {
         FoodProperties props = food.get(DataComponents.FOOD);
+        //?} else {
+        /*FoodProperties props = food.getFoodProperties(null);
+        *///?}
         if (props == null) return false;
         if (!VillagerEatingManager.startEating(self, food)) return false;
         food.shrink(1);
@@ -174,9 +211,18 @@ public final class HungerVillagerTicker {
         int bestNutrition = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
+            //? if >=1.21 {
             FoodProperties food = stack.get(DataComponents.FOOD);
+            //?} else {
+            /*FoodProperties food = stack.getFoodProperties(null);
+            *///?}
+            //? if >=1.21 {
             if (food != null && food.nutrition() > bestNutrition) {
                 bestNutrition = food.nutrition();
+            //?} else {
+            /*if (food != null && food.getNutrition() > bestNutrition) {
+                bestNutrition = food.getNutrition();
+            *///?}
                 best = stack;
             }
         }
@@ -186,6 +232,7 @@ public final class HungerVillagerTicker {
     private static void updateSpeedModifier(VillagerEntityMCA self, int currentHunger) {
         AttributeInstance speedAttr = self.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttr == null) return;
+        //? if >=1.21 {
         AttributeModifier existing = speedAttr.getModifier(TOWNSTEAD_SPEED_PENALTY);
         if (currentHunger < HungerData.SPEED_PENALTY_THRESHOLD) {
             if (existing == null) {
@@ -198,6 +245,21 @@ public final class HungerVillagerTicker {
             return;
         }
         if (existing != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY);
+        //?} else {
+        /*AttributeModifier existing = speedAttr.getModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
+        if (currentHunger < HungerData.SPEED_PENALTY_THRESHOLD) {
+            if (existing == null) {
+                speedAttr.addTransientModifier(new AttributeModifier(
+                        TOWNSTEAD_SPEED_PENALTY_UUID,
+                        "townstead:hunger_speed_penalty",
+                        HungerData.SPEED_PENALTY_AMOUNT,
+                        AttributeModifier.Operation.MULTIPLY_TOTAL
+                ));
+            }
+            return;
+        }
+        if (existing != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
+        *///?}
     }
 
     private static final class TickState {

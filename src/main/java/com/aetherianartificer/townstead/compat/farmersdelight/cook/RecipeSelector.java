@@ -8,7 +8,9 @@ import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegi
 import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
+//? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -140,9 +142,18 @@ public final class RecipeSelector {
         // ── Secondary factor: recipe quality (nutrition, complexity) ──
         Item outputItem = BuiltInRegistries.ITEM.get(recipe.output());
         ItemStack outputStack = outputItem == Items.AIR ? ItemStack.EMPTY : new ItemStack(outputItem, recipe.outputCount());
+        //? if >=1.21 {
         FoodProperties food = outputStack.isEmpty() ? null : outputStack.get(DataComponents.FOOD);
+        //?} else {
+        /*FoodProperties food = outputStack.isEmpty() ? null : outputStack.getFoodProperties(null);
+        *///?}
+        //? if >=1.21 {
         double nutrition = food != null ? food.nutrition() : 0.0d;
         double saturation = food != null ? food.saturation() : 0.0d;
+        //?} else {
+        /*double nutrition = food != null ? food.getNutrition() : 0.0d;
+        double saturation = food != null ? food.getSaturationModifier() : 0.0d;
+        *///?}
 
         // Quality score is secondary — kept small relative to scarcity
         double qualityScore = nutrition * 0.5d + saturation * 1.0d;
