@@ -1128,7 +1128,13 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
         Optional<ResourceLocation> result = Optional.empty();
         try {
+            //? if forge {
+            /*String relPath = buildingTypeName.startsWith("compat/")
+                    ? "townstead_compat/building_types/" + buildingTypeName + ".json"
+                    : "data/mca/building_types/" + buildingTypeName + ".json";
+            *///?} else {
             String relPath = "data/mca/building_types/" + buildingTypeName + ".json";
+            //?}
             ClassLoader cl = BlueprintScreenMixin.class.getClassLoader();
             if (cl != null) {
                 Enumeration<URL> urls = cl.getResources(relPath);

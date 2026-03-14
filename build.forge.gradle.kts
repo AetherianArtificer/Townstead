@@ -10,6 +10,8 @@ stonecutter {
         // MCA 7.7+ (NeoForge) uses net.conczin.mca; MCA 7.6 (Forge) uses forge.net.mca
         string(true) { replace("net.conczin.mca.registry", "forge.net.mca") }
         string(true) { replace("net.conczin.mca", "forge.net.mca") }
+        // Same replacement for JVM internal format (used in @At target descriptors)
+        string(true) { replace("net/conczin/mca", "forge/net/mca") }
     }
 }
 
