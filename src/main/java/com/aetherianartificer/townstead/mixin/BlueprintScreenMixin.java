@@ -204,7 +204,7 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     // --- Shift page state ---
     @Unique
-    private static final int SHIFT_ROWS_PER_PAGE = 6;
+    private static final int SHIFT_ROWS_PER_PAGE = 7;
     @Unique
     private static final int SHIFT_CELL_H = 12;
     @Unique
@@ -1669,10 +1669,10 @@ public abstract class BlueprintScreenMixin extends Screen {
                 Component.literal("<"),
                 b -> townstead$shiftPageDelta(-1)));
 
-        // Reset all button
-        int legendY = this.height / 2 + 54;
+        // Reset all button — bottom-aligned with the Refresh nav button
+        int refreshBottom = this.height / 2 - 56 + 22 * 5 + 20;
         addRenderableWidget(new ButtonWidget(
-                rightEdge - 60, legendY + 12, 60, 14,
+                rightEdge - 60, refreshBottom - 14, 60, 14,
                 Component.translatable("townstead.shift.reset"),
                 b -> townstead$resetAllShifts()));
 
@@ -1833,8 +1833,9 @@ public abstract class BlueprintScreenMixin extends Screen {
             }
         }
 
-        // Legend row
-        int legendY = this.height / 2 + 54;
+        // Legend row — bottom-aligned with the Refresh nav button
+        int refreshBottom = this.height / 2 - 56 + 22 * 5 + 20;
+        int legendY = refreshBottom - 9;
         int legendX = leftX;
         for (int i = 0; i < ShiftData.ORDINAL_COLORS.length; i++) {
             int lx = legendX + i * 42;
