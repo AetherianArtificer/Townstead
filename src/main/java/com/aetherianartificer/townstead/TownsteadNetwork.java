@@ -10,6 +10,13 @@ import com.aetherianartificer.townstead.hunger.*;
 import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.shift.ShiftClientStore;
+import com.aetherianartificer.townstead.shift.ShiftData;
+import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
+import com.aetherianartificer.townstead.shift.ShiftSetPayload;
+import com.aetherianartificer.townstead.shift.ShiftSyncPayload;
+import com.aetherianartificer.townstead.thirst.ThirstClientStore;
+import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.ThirstSetPayload;
 import com.aetherianartificer.townstead.thirst.ThirstSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -66,6 +73,12 @@ public final class TownsteadNetwork {
             registerC2S(ThirstSetPayload.class, ThirstSetPayload::write, ThirstSetPayload::read,
                     TownsteadNetwork::handleThirstSet);
         }
+
+        // Shift management
+        registerS2C(ShiftSyncPayload.class, ShiftSyncPayload::write, ShiftSyncPayload::read,
+                TownsteadNetwork::handleShiftSync);
+        registerC2S(ShiftSetPayload.class, ShiftSetPayload::write, ShiftSetPayload::read,
+                TownsteadNetwork::handleShiftSet);
     }
 
     // ── Send helpers ──
@@ -231,6 +244,40 @@ public final class TownsteadNetwork {
         sendToPlayer(sp, new ButcherPolicySyncPayload(
                 data.getDefaultProfileId(), data.getDefaultTier(), data.getAreas().size()
         ));
+    }
+
+    private static void handleShiftSync(ShiftSyncPayload payload) {
+        ShiftClientStore.set(payload.villagerUuid(), payload.shifts());
+    }
+
+    private static void handleShiftSet(ShiftSetPayload payload, ServerPlayer sp) {
+        if (!sp.hasPermissions(2)) return;
+
+        VillagerEntityMCA villager = null;
+        for (net.minecraft.server.level.ServerLevel level : sp.getServer().getAllLevels()) {
+            Entity entity = level.getEntity(payload.villagerUuid());
+            if (entity instanceof VillagerEntityMCA v) { villager = v; break; }
+        }
+        if (villager == null) return;
+
+        // Query mode
+        if (payload.shifts().length == 0) {
+            CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
+            sendToPlayer(sp, new ShiftSyncPayload(payload.villagerUuid(), ShiftData.getShifts(shiftTag)));
+            return;
+        }
+
+        if (payload.shifts().length != ShiftData.HOURS_PER_DAY) return;
+
+        CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
+        ShiftData.setShifts(shiftTag, payload.shifts());
+        villager.getPersistentData().put("townstead_shift", shiftTag);
+
+        ShiftScheduleApplier.apply(villager);
+
+        ShiftSyncPayload sync = new ShiftSyncPayload(payload.villagerUuid(), payload.shifts());
+        sendToPlayer(sp, sync);
+        sendToTrackingEntity(villager, sync);
     }
 }
 *///?}
