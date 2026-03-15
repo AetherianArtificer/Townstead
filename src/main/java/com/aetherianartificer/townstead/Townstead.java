@@ -13,6 +13,11 @@ import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
+import com.aetherianartificer.townstead.shift.ShiftClientStore;
+import com.aetherianartificer.townstead.shift.ShiftData;
+import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
+import com.aetherianartificer.townstead.shift.ShiftSetPayload;
+import com.aetherianartificer.townstead.shift.ShiftSyncPayload;
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileDataLoader;
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileRegistry;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
@@ -100,6 +105,12 @@ public class Townstead {
     );
     public static final Supplier<AttachmentType<CompoundTag>> THIRST_DATA = ATTACHMENTS.register(
             "thirst_data",
+            () -> AttachmentType.builder(() -> new CompoundTag())
+                    .serialize(net.minecraft.nbt.CompoundTag.CODEC)
+                    .build()
+    );
+    public static final Supplier<AttachmentType<CompoundTag>> SHIFT_DATA = ATTACHMENTS.register(
+            "shift_data",
             () -> AttachmentType.builder(() -> new CompoundTag())
                     .serialize(net.minecraft.nbt.CompoundTag.CODEC)
                     .build()
@@ -366,6 +377,16 @@ public class Townstead {
                 ButcherPolicySetPayload.STREAM_CODEC,
                 this::handleButcherPolicySet
         );
+        registrar.playToClient(
+                ShiftSyncPayload.TYPE,
+                ShiftSyncPayload.STREAM_CODEC,
+                this::handleShiftSync
+        );
+        registrar.playToServer(
+                ShiftSetPayload.TYPE,
+                ShiftSetPayload.STREAM_CODEC,
+                this::handleShiftSet
+        );
     }
 
     private void handleHungerSync(HungerSyncPayload payload, IPayloadContext context) {
@@ -518,6 +539,49 @@ public class Townstead {
             ));
         });
     }
+
+    private void handleShiftSync(ShiftSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ShiftClientStore.set(payload.villagerUuid(), payload.shifts()));
+    }
+
+    private void handleShiftSet(ShiftSetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            if (!sp.hasPermissions(2)) return;
+
+            // Find the villager by UUID across all loaded dimensions
+            VillagerEntityMCA villager = null;
+            for (net.minecraft.server.level.ServerLevel level : sp.getServer().getAllLevels()) {
+                Entity entity = level.getEntity(payload.villagerUuid());
+                if (entity instanceof VillagerEntityMCA v) { villager = v; break; }
+            }
+            if (villager == null) return;
+
+            // Query mode: empty shifts array
+            if (payload.shifts().length == 0) {
+                CompoundTag shiftTag = villager.getData(SHIFT_DATA);
+                PacketDistributor.sendToPlayer(sp, new ShiftSyncPayload(
+                        payload.villagerUuid(), ShiftData.getShifts(shiftTag)));
+                return;
+            }
+
+            // Validate and apply
+            if (payload.shifts().length != ShiftData.HOURS_PER_DAY) return;
+
+            CompoundTag shiftTag = villager.getData(SHIFT_DATA);
+            ShiftData.setShifts(shiftTag, payload.shifts());
+            villager.setData(SHIFT_DATA, shiftTag);
+
+            // Apply schedule to the brain immediately
+            ShiftScheduleApplier.apply(villager);
+
+            // Sync back to all tracking players
+            ShiftSyncPayload sync = new ShiftSyncPayload(payload.villagerUuid(), payload.shifts());
+            PacketDistributor.sendToPlayer(sp, sync);
+            PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+        });
+    }
+
     //?}
 
     private void onStartTracking(PlayerEvent.StartTracking event) {
@@ -539,6 +603,11 @@ public class Townstead {
                 villager.getId(),
                 HungerData.getButcherBlockedReason(hunger).id()
         ));
+        CompoundTag shift = villager.getData(SHIFT_DATA);
+        if (ShiftData.hasCustomShifts(shift)) {
+            PacketDistributor.sendToPlayer(sp, new ShiftSyncPayload(
+                    villager.getUUID(), ShiftData.getShifts(shift)));
+        }
         //?} else if forge {
         /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
         TownsteadNetwork.sendToPlayer(sp, townstead$hungerSync(villager, hunger));
@@ -554,6 +623,11 @@ public class Townstead {
                 villager.getId(),
                 HungerData.getButcherBlockedReason(hunger).id()
         ));
+        CompoundTag shift = villager.getPersistentData().getCompound("townstead_shift");
+        if (ShiftData.hasCustomShifts(shift)) {
+            TownsteadNetwork.sendToPlayer(sp, new ShiftSyncPayload(
+                    villager.getUUID(), ShiftData.getShifts(shift)));
+        }
         *///?}
     }
 
@@ -590,5 +664,6 @@ public class Townstead {
         ThirstClientStore.clear();
         FarmingPolicyClientStore.clear();
         ButcherPolicyClientStore.clear();
+        ShiftClientStore.clear();
     }
 }

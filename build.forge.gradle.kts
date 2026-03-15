@@ -17,6 +17,7 @@ stonecutter {
 
 version = "${property("mod_version")}+${stonecutter.current.version}"
 group = property("mod_group") as String
+base.archivesName.set("townstead")
 
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 
