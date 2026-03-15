@@ -221,6 +221,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     private final Map<UUID, int[]> townstead$shiftEdits = new HashMap<>();
     @Unique
     private boolean townstead$shiftQueried = false;
+    @Unique
+    private int townstead$shiftPaintOrdinal = -1; // -1 = cycle mode, 0-3 = paint mode
 
     @Unique
     private record NodeData(int index, BuildingType type, String group, int worldX, int worldY) {
@@ -1646,6 +1648,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$shiftPage = 0;
         townstead$shiftEdits.clear();
         townstead$shiftQueried = false;
+        townstead$shiftPaintOrdinal = -1;
         townstead$populateShiftVillagers();
 
         // Controls row at the top
@@ -1834,14 +1837,21 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
 
         // Legend row — bottom-aligned with the Refresh nav button
+        // Clickable: select a legend to enter paint mode, click again to deselect
         int refreshBottom = this.height / 2 - 56 + 22 * 5 + 20;
-        int legendY = refreshBottom - 9;
+        int legendY = refreshBottom - 11;
         int legendX = leftX;
         for (int i = 0; i < ShiftData.ORDINAL_COLORS.length; i++) {
             int lx = legendX + i * 42;
+            boolean selected = townstead$shiftPaintOrdinal == i;
+            // Selection highlight: draw a border around the selected legend item
+            if (selected) {
+                context.fill(lx - 2, legendY - 2, lx + 40, legendY + 11, 0xFFFFFFFF);
+                context.fill(lx - 1, legendY - 1, lx + 39, legendY + 10, 0xFF000000);
+            }
             context.fill(lx, legendY, lx + 8, legendY + 8, ShiftData.ORDINAL_COLORS[i]);
             context.drawString(this.font, Component.translatable(ShiftData.ORDINAL_TO_KEY[i]),
-                    lx + 10, legendY, 0xC0C0C0, false);
+                    lx + 10, legendY, selected ? 0xFFFFFF : 0xC0C0C0, false);
         }
 
         // Tooltip for hovered cell
@@ -1886,16 +1896,41 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page) || button != 0)
             return;
 
+        // Check legend clicks (toggle paint mode)
+        int leftX = this.width / 2 - 80;
+        int refreshBottom = this.height / 2 - 56 + 22 * 5 + 20;
+        int legendY = refreshBottom - 11;
+        if (mouseY >= legendY - 2 && mouseY <= legendY + 11) {
+            for (int i = 0; i < ShiftData.ORDINAL_COLORS.length; i++) {
+                int lx = leftX + i * 42;
+                if (mouseX >= lx - 2 && mouseX <= lx + 40) {
+                    townstead$shiftPaintOrdinal = (townstead$shiftPaintOrdinal == i) ? -1 : i;
+                    cir.setReturnValue(true);
+                    cir.cancel();
+                    return;
+                }
+            }
+        }
+
+        // Grid cell click
+        if (townstead$shiftApplyCell(mouseX, mouseY)) {
+            cir.setReturnValue(true);
+            cir.cancel();
+        }
+    }
+
+    @Unique
+    private boolean townstead$shiftApplyCell(double mouseX, double mouseY) {
         int gridX = townstead$shiftGridLeft();
         int cellW = townstead$shiftCellW();
         int gridY = this.height / 2 - 48;
 
         if (mouseX < gridX || mouseX >= gridX + ShiftData.HOURS_PER_DAY * cellW)
-            return;
+            return false;
 
         int h = (int) ((mouseX - gridX) / cellW);
         if (h < 0 || h >= ShiftData.HOURS_PER_DAY)
-            return;
+            return false;
 
         int startIdx = townstead$shiftPage * SHIFT_ROWS_PER_PAGE;
         int endIdx = Math.min(startIdx + SHIFT_ROWS_PER_PAGE, townstead$shiftVillagerUuids.size());
@@ -1908,19 +1943,43 @@ public abstract class BlueprintScreenMixin extends Screen {
                         ? townstead$shiftEdits.get(uuid)
                         : ShiftClientStore.get(uuid);
                 int[] shifts = Arrays.copyOf(existing, existing.length);
-                // Cycle: IDLE -> WORK -> MEET -> REST -> IDLE
-                shifts[h] = (shifts[h] + 1) % ShiftData.ORDINAL_TO_ACTIVITY.length;
+
+                if (townstead$shiftPaintOrdinal >= 0) {
+                    // Paint mode: set to selected activity
+                    if (shifts[h] == townstead$shiftPaintOrdinal) return true; // already painted
+                    shifts[h] = townstead$shiftPaintOrdinal;
+                } else {
+                    // Cycle mode: IDLE -> WORK -> MEET -> REST -> IDLE
+                    shifts[h] = (shifts[h] + 1) % ShiftData.ORDINAL_TO_ACTIVITY.length;
+                }
+
                 townstead$shiftEdits.put(uuid, shifts);
-                // Send immediately
                 //? if neoforge {
                 PacketDistributor.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(shifts, shifts.length)));
                 //?} else if forge {
                 /*TownsteadNetwork.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(shifts, shifts.length)));
                 *///?}
-                cir.setReturnValue(true);
-                cir.cancel();
-                return;
+                return true;
             }
+        }
+        return false;
+    }
+
+    //? if neoforge {
+    @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_7979_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
+    private void townstead$shiftMouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY,
+            CallbackInfoReturnable<Boolean> cir) {
+        if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page) || button != 0)
+            return;
+        // Only paint while dragging if in paint mode
+        if (townstead$shiftPaintOrdinal < 0)
+            return;
+        if (townstead$shiftApplyCell(mouseX, mouseY)) {
+            cir.setReturnValue(true);
+            cir.cancel();
         }
     }
 
