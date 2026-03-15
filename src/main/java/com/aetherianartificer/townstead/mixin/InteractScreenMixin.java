@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
+import com.aetherianartificer.townstead.shift.ShiftClientStore;
+import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
@@ -255,6 +257,15 @@ public abstract class InteractScreenMixin extends Screen {
     private Activity townstead$getCurrentScheduleActivity() {
         if (!(villager.asEntity() instanceof VillagerEntityMCA mca)) return null;
         long dayTime = mca.level().getDayTime() % 24000L;
+        // Use custom shift data from the client store if available
+        if (ShiftClientStore.has(mca.getUUID())) {
+            int tickHour = (int) (dayTime / ShiftData.TICKS_PER_HOUR) % ShiftData.HOURS_PER_DAY;
+            int[] shifts = ShiftClientStore.get(mca.getUUID());
+            int ord = shifts[tickHour];
+            if (ord >= 0 && ord < ShiftData.ORDINAL_TO_ACTIVITY.length) {
+                return ShiftData.ORDINAL_TO_ACTIVITY[ord];
+            }
+        }
         return mca.getBrain().getSchedule().getActivityAt((int) dayTime);
     }
 

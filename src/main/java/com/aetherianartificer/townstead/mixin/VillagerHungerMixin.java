@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.Townstead;
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
+import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.BaristaWorkTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.CookWorkTask;
@@ -86,6 +87,12 @@ public abstract class VillagerHungerMixin extends Villager {
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
         brain.addActivity(Activity.CORE, ImmutableList.copyOf(coreBehaviors));
         townstead$lastPatchedBrain = brain;
+
+        // Apply custom shift schedule if one has been assigned
+        VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
+        if (!self.level().isClientSide) {
+            ShiftScheduleApplier.apply(self);
+        }
     }
 
     //? if neoforge {
