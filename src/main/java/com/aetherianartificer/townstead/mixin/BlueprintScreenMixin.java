@@ -206,11 +206,9 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private static final int SHIFT_ROWS_PER_PAGE = 6;
     @Unique
-    private static final int SHIFT_CELL_W = 12;
+    private static final int SHIFT_CELL_H = 12;
     @Unique
-    private static final int SHIFT_CELL_H = 14;
-    @Unique
-    private static final int SHIFT_NAME_W = 60;
+    private static final int SHIFT_NAME_W = 50;
     @Unique
     private Button townstead$shiftNavButton;
     @Unique
@@ -1629,35 +1627,52 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     @Unique
+    private int townstead$shiftGridLeft() {
+        return this.width / 2 - 80 + SHIFT_NAME_W + 4;
+    }
+
+    @Unique
+    private int townstead$shiftGridRight() {
+        return this.width / 2 + 176;
+    }
+
+    @Unique
+    private int townstead$shiftCellW() {
+        return (townstead$shiftGridRight() - townstead$shiftGridLeft()) / ShiftData.HOURS_PER_DAY;
+    }
+
+    @Unique
     private void townstead$initShiftPage() {
         townstead$shiftPage = 0;
         townstead$shiftEdits.clear();
         townstead$shiftQueried = false;
         townstead$populateShiftVillagers();
 
-        // Add back button
-        int backX = this.width / 2 - 40;
-        int backY = this.height / 2 - 74;
+        // Controls row at the top
+        int topY = this.height / 2 - 74;
+        int leftX = this.width / 2 - 80;
+
+        // Back button
         addRenderableWidget(new ButtonWidget(
-                backX, backY, 40, 14,
+                leftX, topY, 40, 14,
                 Component.literal("<< Back"),
                 b -> setPage("villagers")));
 
-        // Pagination buttons
-        int pageY = this.height / 2 - 56;
+        // Pagination buttons (right-aligned)
+        int rightEdge = townstead$shiftGridRight();
         addRenderableWidget(new ButtonWidget(
-                this.width / 2 - 40, pageY, 20, 14,
-                Component.literal("<"),
-                b -> townstead$shiftPageDelta(-1)));
-        addRenderableWidget(new ButtonWidget(
-                this.width / 2 + 100, pageY, 20, 14,
+                rightEdge - 42, topY, 20, 14,
                 Component.literal(">"),
                 b -> townstead$shiftPageDelta(1)));
+        addRenderableWidget(new ButtonWidget(
+                rightEdge - 64, topY, 20, 14,
+                Component.literal("<"),
+                b -> townstead$shiftPageDelta(-1)));
 
         // Reset all button
-        int resetY = this.height / 2 + 72;
+        int legendY = this.height / 2 + 54;
         addRenderableWidget(new ButtonWidget(
-                this.width / 2 + 20, resetY, 80, 14,
+                rightEdge - 60, legendY + 12, 60, 14,
                 Component.translatable("townstead.shift.reset"),
                 b -> townstead$resetAllShifts()));
 
@@ -1744,28 +1759,33 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page))
             return;
 
-        int cx = this.width / 2 + 30;
+        int leftX = this.width / 2 - 80;
+        int gridX = townstead$shiftGridLeft();
+        int gridRight = townstead$shiftGridRight();
+        int cellW = townstead$shiftCellW();
         int titleY = this.height / 2 - 74;
-        context.drawCenteredString(this.font, Component.translatable("townstead.shift.title"), cx, titleY, 0xFFFFFF);
 
-        // Page indicator
+        // Title (centered between back button and pagination)
+        int titleCenterX = (leftX + 42 + gridRight - 66) / 2;
+        context.drawCenteredString(this.font, Component.translatable("townstead.shift.title"),
+                titleCenterX, titleY + 3, 0xFFFFFF);
+
+        // Page indicator (to the left of the < > buttons)
         int totalPages = townstead$shiftTotalPages();
-        String pageText = String.format("Page %d/%d", townstead$shiftPage + 1, totalPages);
-        context.drawCenteredString(this.font, Component.literal(pageText),
-                this.width / 2 + 40, this.height / 2 - 53, 0xA0A0A0);
+        String pageText = String.format("%d/%d", townstead$shiftPage + 1, totalPages);
+        context.drawString(this.font, Component.literal(pageText),
+                gridRight - 66 - this.font.width(pageText) - 4, titleY + 4, 0xA0A0A0, false);
 
-        // Grid origin
-        int gridX = this.width / 2 - 40 + SHIFT_NAME_W + 2;
-        int gridY = this.height / 2 - 40;
+        // Grid content Y
+        int gridY = this.height / 2 - 48;
 
-        // Draw hour labels
+        // Draw hour labels (every hour, half-scale)
         for (int h = 0; h < ShiftData.HOURS_PER_DAY; h++) {
             int displayHour = ShiftData.toDisplayHour(h);
-            String label = ShiftData.formatHour(displayHour);
-            int lx = gridX + h * SHIFT_CELL_W;
-            // Rotate text by drawing vertically
+            String label = String.valueOf(displayHour);
+            int lx = gridX + h * cellW;
             context.pose().pushPose();
-            context.pose().translate(lx + SHIFT_CELL_W / 2.0f + 1, gridY - 2, 0);
+            context.pose().translate(lx + cellW / 2.0f, gridY - 2, 0);
             context.pose().scale(0.5f, 0.5f, 1.0f);
             context.drawString(this.font, label, -this.font.width(label) / 2, -this.font.lineHeight, 0xC0C0C0, false);
             context.pose().popPose();
@@ -1788,52 +1808,45 @@ public abstract class BlueprintScreenMixin extends Screen {
             if (!truncated.equals(name)) truncated += "..";
 
             context.drawString(this.font, truncated,
-                    this.width / 2 - 40, rowY + (SHIFT_CELL_H - this.font.lineHeight) / 2 + 1, 0xFFFFFF, false);
+                    leftX, rowY + (SHIFT_CELL_H - this.font.lineHeight) / 2 + 1, 0xFFFFFF, false);
 
             // Get shifts (prefer local edits, then client store)
             int[] shifts = townstead$shiftEdits.containsKey(uuid)
                     ? townstead$shiftEdits.get(uuid)
                     : ShiftClientStore.get(uuid);
 
-            // Draw 24 cells
+            // Draw 24 colored cells (no text - colors are self-explanatory with legend)
             for (int h = 0; h < ShiftData.HOURS_PER_DAY; h++) {
-                int cellX = gridX + h * SHIFT_CELL_W;
+                int cellX = gridX + h * cellW;
                 int cellY = rowY;
                 int ord = shifts[h];
                 if (ord < 0 || ord >= ShiftData.ORDINAL_COLORS.length) ord = ShiftData.ORD_IDLE;
 
                 int color = ShiftData.ORDINAL_COLORS[ord];
-                context.fill(cellX, cellY, cellX + SHIFT_CELL_W - 1, cellY + SHIFT_CELL_H - 1, color);
-
-                // Draw letter label centered
-                String label = ShiftData.ORDINAL_LABELS[ord];
-                context.pose().pushPose();
-                context.pose().translate(cellX + SHIFT_CELL_W / 2.0f - 0.5f, cellY + (SHIFT_CELL_H - this.font.lineHeight) / 2.0f + 1, 0);
-                context.pose().scale(0.75f, 0.75f, 1.0f);
-                context.drawString(this.font, label, -this.font.width(label) / 2, 0, 0xFFFFFF, false);
-                context.pose().popPose();
+                context.fill(cellX, cellY, cellX + cellW - 1, cellY + SHIFT_CELL_H - 1, color);
 
                 // Hover highlight
-                if (mouseX >= cellX && mouseX < cellX + SHIFT_CELL_W - 1
+                if (mouseX >= cellX && mouseX < cellX + cellW - 1
                         && mouseY >= cellY && mouseY < cellY + SHIFT_CELL_H - 1) {
-                    context.fill(cellX, cellY, cellX + SHIFT_CELL_W - 1, cellY + SHIFT_CELL_H - 1, 0x40FFFFFF);
+                    context.fill(cellX, cellY, cellX + cellW - 1, cellY + SHIFT_CELL_H - 1, 0x40FFFFFF);
                 }
             }
         }
 
-        // Legend
-        int legendY = this.height / 2 + 58;
-        int legendX = this.width / 2 - 35;
+        // Legend row
+        int legendY = this.height / 2 + 54;
+        int legendX = leftX;
         for (int i = 0; i < ShiftData.ORDINAL_COLORS.length; i++) {
-            int lx = legendX + i * 50;
+            int lx = legendX + i * 42;
             context.fill(lx, legendY, lx + 8, legendY + 8, ShiftData.ORDINAL_COLORS[i]);
             context.drawString(this.font, Component.translatable(ShiftData.ORDINAL_TO_KEY[i]),
                     lx + 10, legendY, 0xC0C0C0, false);
         }
 
         // Tooltip for hovered cell
-        if (mouseX >= gridX && mouseX < gridX + ShiftData.HOURS_PER_DAY * SHIFT_CELL_W) {
-            int h = (mouseX - gridX) / SHIFT_CELL_W;
+        int totalGridW = ShiftData.HOURS_PER_DAY * cellW;
+        if (mouseX >= gridX && mouseX < gridX + totalGridW) {
+            int h = (mouseX - gridX) / cellW;
             if (h >= 0 && h < ShiftData.HOURS_PER_DAY) {
                 int hoveredRow = -1;
                 for (int row = 0; row < endIdx - startIdx; row++) {
@@ -1872,13 +1885,14 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page) || button != 0)
             return;
 
-        int gridX = this.width / 2 - 40 + SHIFT_NAME_W + 2;
-        int gridY = this.height / 2 - 40;
+        int gridX = townstead$shiftGridLeft();
+        int cellW = townstead$shiftCellW();
+        int gridY = this.height / 2 - 48;
 
-        if (mouseX < gridX || mouseX >= gridX + ShiftData.HOURS_PER_DAY * SHIFT_CELL_W)
+        if (mouseX < gridX || mouseX >= gridX + ShiftData.HOURS_PER_DAY * cellW)
             return;
 
-        int h = (int) ((mouseX - gridX) / SHIFT_CELL_W);
+        int h = (int) ((mouseX - gridX) / cellW);
         if (h < 0 || h >= ShiftData.HOURS_PER_DAY)
             return;
 
@@ -1920,9 +1934,10 @@ public abstract class BlueprintScreenMixin extends Screen {
             return;
 
         // Scroll changes page if cursor is over the grid area
-        int gridX = this.width / 2 - 40 + SHIFT_NAME_W + 2;
-        int gridY = this.height / 2 - 40;
-        int gridRight = gridX + SHIFT_NAME_W + 2 + ShiftData.HOURS_PER_DAY * SHIFT_CELL_W;
+        int gridX = townstead$shiftGridLeft();
+        int cellW = townstead$shiftCellW();
+        int gridY = this.height / 2 - 48;
+        int gridRight = gridX + ShiftData.HOURS_PER_DAY * cellW;
         int gridBottom = gridY + SHIFT_ROWS_PER_PAGE * (SHIFT_CELL_H + 2);
 
         if (mouseX >= gridX && mouseX <= gridRight && mouseY >= gridY && mouseY <= gridBottom) {
