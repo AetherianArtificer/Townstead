@@ -246,6 +246,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     private Map<UUID, Integer> townstead$profVillagerEntityIds = new HashMap<>();
     @Unique
     private UUID townstead$profSelectedVillager = null;
+    @Unique
+    private int townstead$profScroll = 0;
 
     @Unique
     private record NodeData(int index, BuildingType type, String group, int worldX, int worldY) {
@@ -2072,6 +2074,7 @@ public abstract class BlueprintScreenMixin extends Screen {
     private void townstead$initProfessionPage() {
         townstead$profPage = 0;
         townstead$profSelectedVillager = null;
+        townstead$profScroll = 0;
         townstead$populateProfVillagers();
 
         int leftX = this.width / 2 - 80;
@@ -2083,7 +2086,7 @@ public abstract class BlueprintScreenMixin extends Screen {
                 Component.literal("<< Back"),
                 b -> setPage("villagers")));
 
-        // Pagination (right-aligned with profession panel)
+        // Villager list pagination (right-aligned with profession panel)
         int profRight = this.width / 2 + 176;
         addRenderableWidget(new ButtonWidget(
                 profRight - 20, topY, 20, 14,
@@ -2093,6 +2096,19 @@ public abstract class BlueprintScreenMixin extends Screen {
                 profRight - 42, topY, 20, 14,
                 Component.literal("<"),
                 b -> townstead$profPageDelta(-1)));
+
+        // Profession list scroll buttons — bottom-aligned with Refresh button
+        int profPanelX = this.width / 2 + 48;
+        int refreshBottom = this.height / 2 - 56 + 22 * 5 + 20;
+        int scrollBtnY = refreshBottom - 14;
+        addRenderableWidget(new ButtonWidget(
+                profPanelX, scrollBtnY, 20, 14,
+                Component.literal("\u25B2"),
+                b -> townstead$profScroll = Math.max(0, townstead$profScroll - 1)));
+        addRenderableWidget(new ButtonWidget(
+                profRight - 20, scrollBtnY, 20, 14,
+                Component.literal("\u25BC"),
+                b -> townstead$profScroll++));
 
         // Query available professions from server
         //? if neoforge {
@@ -2255,14 +2271,19 @@ public abstract class BlueprintScreenMixin extends Screen {
                 }
             }
 
-            // Draw profession buttons
-            int btnY = listY;
+            // Draw profession buttons with scroll support
             int btnH = 14;
             int btnW = profPanelRight - profPanelX;
+            int panelBottom = this.height / 2 - 56 + 22 * 5 + 20 - 16;
+            int maxVisible = (panelBottom - listY) / (btnH + 1);
+            int maxScroll = Math.max(0, available.size() - maxVisible);
+            townstead$profScroll = Math.max(0, Math.min(townstead$profScroll, maxScroll));
+
+            context.enableScissor(profPanelX, listY, profPanelRight, panelBottom);
             for (int i = 0; i < available.size(); i++) {
                 String profId = available.get(i);
-                int by = btnY + i * (btnH + 1);
-                if (by + btnH > this.height / 2 + 76) break; // don't overflow
+                int by = listY + (i - townstead$profScroll) * (btnH + 1);
+                if (by + btnH < listY || by > panelBottom) continue;
 
                 boolean isCurrent = profId.equals(currentProfId);
 
@@ -2284,6 +2305,7 @@ public abstract class BlueprintScreenMixin extends Screen {
                         profPanelX + 2, by + (btnH - this.font.lineHeight) / 2 + 1,
                         isCurrent ? 0xFFFFFF : 0xC0C0C0, false);
             }
+            context.disableScissor();
         } else {
             // No villager selected - show hint
             context.drawCenteredString(this.font, Component.translatable("townstead.profession.select"),
@@ -2318,6 +2340,7 @@ public abstract class BlueprintScreenMixin extends Screen {
                 if (mouseY >= rowY && mouseY < rowY + rowH) {
                     UUID uuid = townstead$profVillagerUuids.get(startIdx + row);
                     townstead$profSelectedVillager = uuid.equals(townstead$profSelectedVillager) ? null : uuid;
+                    townstead$profScroll = 0;
                     cir.setReturnValue(true);
                     cir.cancel();
                     return;
@@ -2325,14 +2348,15 @@ public abstract class BlueprintScreenMixin extends Screen {
             }
         }
 
-        // Check profession button clicks
-        if (townstead$profSelectedVillager != null && mouseX >= profPanelX && mouseX < profPanelRight) {
+        // Check profession button clicks (only above the scroll buttons)
+        int profPanelBottom = this.height / 2 - 56 + 22 * 5 + 20 - 16;
+        if (townstead$profSelectedVillager != null && mouseX >= profPanelX && mouseX < profPanelRight
+                && mouseY < profPanelBottom) {
             List<String> available = ProfessionClientStore.get();
-            int btnY = listY;
             int btnH = 14;
             for (int i = 0; i < available.size(); i++) {
-                int by = btnY + i * (btnH + 1);
-                if (by + btnH > this.height / 2 + 76) break;
+                int by = listY + (i - townstead$profScroll) * (btnH + 1);
+                if (by + btnH < listY || by > this.height / 2 - 56 + 22 * 5 + 20 - 16) continue;
                 if (mouseY >= by && mouseY < by + btnH) {
                     String profId = available.get(i);
                     //? if neoforge {
@@ -2360,14 +2384,29 @@ public abstract class BlueprintScreenMixin extends Screen {
 
         int leftX = this.width / 2 - 80;
         int listRight = this.width / 2 + 40;
+        int profPanelX = listRight + 8;
+        int profPanelRight = this.width / 2 + 176;
         int listY = this.height / 2 - 48;
         int listBottom = listY + PROF_ROWS_PER_PAGE * 15;
 
+        // Scroll villager list (left side)
         if (mouseX >= leftX && mouseX <= listRight && mouseY >= listY && mouseY <= listBottom) {
             if (verticalAmount < 0) {
                 townstead$profPageDelta(1);
             } else if (verticalAmount > 0) {
                 townstead$profPageDelta(-1);
+            }
+            cir.setReturnValue(true);
+            cir.cancel();
+            return;
+        }
+
+        // Scroll profession panel (right side)
+        if (mouseX >= profPanelX && mouseX <= profPanelRight && mouseY >= listY && mouseY <= this.height / 2 + 76) {
+            if (verticalAmount < 0) {
+                townstead$profScroll++;
+            } else if (verticalAmount > 0) {
+                townstead$profScroll = Math.max(0, townstead$profScroll - 1);
             }
             cir.setReturnValue(true);
             cir.cancel();

@@ -1,22 +1,24 @@
 package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Village;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.ai.village.poi.PoiManager;
-import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.entity.npc.VillagerProfession;
 
+import com.aetherianartificer.townstead.Townstead;
+
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -53,29 +55,53 @@ public final class ProfessionScanner {
         // Townstead professions: Cook and Barista based on building slots
         scanTownsteadProfessions(level, village, result);
 
+        // Remove professions suppressed by Townstead (e.g. Chef's Delight when Townstead cook is active)
+        filterSuppressedProfessions(result);
+
         return new ArrayList<>(result);
     }
 
+    private static final Map<String, String> BUILDING_TYPE_TO_PROFESSION = Map.ofEntries(
+            Map.entry("butcher", "minecraft:butcher"),
+            Map.entry("library", "minecraft:librarian"),
+            Map.entry("blacksmith", "minecraft:armorer"),
+            Map.entry("forge", "minecraft:armorer"),
+            Map.entry("fisher", "minecraft:fisherman"),
+            Map.entry("farm", "minecraft:farmer"),
+            Map.entry("fletcher", "minecraft:fletcher"),
+            Map.entry("cartographer", "minecraft:cartographer"),
+            Map.entry("mason", "minecraft:mason"),
+            Map.entry("shepherd", "minecraft:shepherd"),
+            Map.entry("tannery", "minecraft:leatherworker"),
+            Map.entry("temple", "minecraft:cleric"),
+            Map.entry("church", "minecraft:cleric"),
+            Map.entry("tool_smith", "minecraft:toolsmith"),
+            Map.entry("weapon_smith", "minecraft:weaponsmith")
+    );
+
     private static void scanVanillaProfessions(ServerLevel level, Village village, Set<String> result) {
-        BlockPos center = BlockPos.containing(village.getCenter().getX(),
-                village.getCenter().getY(), village.getCenter().getZ());
-        // Use the larger of the village's X or Z span as the scan radius, plus margin
-        int radius = Math.max(village.getBox().getXSpan(), village.getBox().getZSpan()) / 2 + 16;
+        // Map building types to professions — only intentional buildings count,
+        // not incidental workstation blocks in unrelated buildings
+        Set<String> buildingTypes = new HashSet<>();
+        for (var building : village.getBuildings().values()) {
+            buildingTypes.add(building.getType());
+        }
 
-        PoiManager poiManager = level.getPoiManager();
+        for (String buildingType : buildingTypes) {
+            String profId = BUILDING_TYPE_TO_PROFESSION.get(buildingType);
+            if (profId != null) {
+                result.add(profId);
+            }
+        }
 
-        // For each registered profession, check if any matching workstation POI exists
-        for (var entry : BuiltInRegistries.VILLAGER_PROFESSION.entrySet()) {
-            VillagerProfession profession = entry.getValue();
-            // Skip NONE (already added) and professions with no workstation requirement
-            if (profession == VillagerProfession.NONE) continue;
-            if (profession.heldJobSite() == PoiType.NONE) continue;
-
-            // Check if any POI matching this profession's heldJobSite exists in the village area
-            long count = poiManager.getCountInRange(
-                    profession.heldJobSite(), center, radius, PoiManager.Occupancy.ANY);
-            if (count > 0) {
-                result.add(professionKey(profession));
+        // Also include professions that current village residents already hold
+        // (covers edge cases and modded professions)
+        for (var entity : level.getAllEntities()) {
+            if (entity instanceof VillagerEntityMCA villager && village.isWithinBorder(villager)) {
+                VillagerProfession prof = villager.getVillagerData().getProfession();
+                if (prof != VillagerProfession.NONE) {
+                    result.add(professionKey(prof));
+                }
             }
         }
     }
@@ -122,6 +148,15 @@ public final class ProfessionScanner {
     private static String professionKey(VillagerProfession profession) {
         ResourceLocation key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
         return key != null ? key.toString() : "minecraft:none";
+    }
+
+    private static void filterSuppressedProfessions(Set<String> result) {
+        // When Townstead cook mode is active, suppress Chef's Delight professions
+        // (Townstead provides its own cook/barista that integrate with the kitchen system)
+        if (TownsteadConfig.isTownsteadCookEnabled()) {
+            result.remove("chefsdelight:chef");
+            result.remove("chefsdelight:cook");
+        }
     }
 
     private static void addIfRegistered(Set<String> result, String namespace, String path) {
