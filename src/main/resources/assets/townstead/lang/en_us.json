@@ -200,6 +200,11 @@
   "townstead.shift.reset": "Reset All",
   "townstead.shift.page": "Page %d/%d",
 
+  "gui.blueprint.professions": "Professions",
+  "townstead.profession.title": "Professions",
+  "townstead.profession.none": "None",
+  "townstead.profession.select": "Select a villager",
+
   "townstead.profession.level.1": "Novice",
   "townstead.profession.level.2": "Apprentice",
   "townstead.profession.level.3": "Journeyman",

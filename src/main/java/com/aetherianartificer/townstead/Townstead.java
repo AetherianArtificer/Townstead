@@ -13,6 +13,11 @@ import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
+import com.aetherianartificer.townstead.profession.ProfessionClientStore;
+import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
+import com.aetherianartificer.townstead.profession.ProfessionScanner;
+import com.aetherianartificer.townstead.profession.ProfessionSetPayload;
+import com.aetherianartificer.townstead.profession.ProfessionSyncPayload;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
@@ -387,6 +392,21 @@ public class Townstead {
                 ShiftSetPayload.STREAM_CODEC,
                 this::handleShiftSet
         );
+        registrar.playToServer(
+                ProfessionQueryPayload.TYPE,
+                ProfessionQueryPayload.STREAM_CODEC,
+                this::handleProfessionQuery
+        );
+        registrar.playToClient(
+                ProfessionSyncPayload.TYPE,
+                ProfessionSyncPayload.STREAM_CODEC,
+                this::handleProfessionSync
+        );
+        registrar.playToServer(
+                ProfessionSetPayload.TYPE,
+                ProfessionSetPayload.STREAM_CODEC,
+                this::handleProfessionSet
+        );
     }
 
     private void handleHungerSync(HungerSyncPayload payload, IPayloadContext context) {
@@ -582,6 +602,49 @@ public class Townstead {
         });
     }
 
+    private void handleProfessionQuery(ProfessionQueryPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            java.util.List<String> available = ProfessionScanner.scanAvailableProfessions(sp);
+            PacketDistributor.sendToPlayer(sp, new ProfessionSyncPayload(available));
+        });
+    }
+
+    private void handleProfessionSync(ProfessionSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ProfessionClientStore.set(payload.professionIds()));
+    }
+
+    private void handleProfessionSet(ProfessionSetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            if (!sp.hasPermissions(2)) return;
+
+            VillagerEntityMCA villager = null;
+            for (net.minecraft.server.level.ServerLevel level : sp.getServer().getAllLevels()) {
+                Entity entity = level.getEntity(payload.villagerUuid());
+                if (entity instanceof VillagerEntityMCA v) { villager = v; break; }
+            }
+            if (villager == null) return;
+
+            //? if >=1.21 {
+            net.minecraft.resources.ResourceLocation profId = net.minecraft.resources.ResourceLocation.parse(payload.professionId());
+            //?} else {
+            /*net.minecraft.resources.ResourceLocation profId = new net.minecraft.resources.ResourceLocation(payload.professionId());
+            *///?}
+            net.minecraft.world.entity.npc.VillagerProfession newProf =
+                    net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.get(profId);
+            if (newProf == null) return;
+
+            villager.setVillagerData(villager.getVillagerData().setProfession(newProf));
+            if (newProf != net.minecraft.world.entity.npc.VillagerProfession.NONE) {
+                if (villager.getVillagerData().getLevel() < 1) {
+                    villager.setVillagerData(villager.getVillagerData().setLevel(1));
+                }
+            }
+            villager.refreshBrain((net.minecraft.server.level.ServerLevel) villager.level());
+        });
+    }
+
     //?}
 
     private void onStartTracking(PlayerEvent.StartTracking event) {
@@ -665,5 +728,6 @@ public class Townstead {
         FarmingPolicyClientStore.clear();
         ButcherPolicyClientStore.clear();
         ShiftClientStore.clear();
+        ProfessionClientStore.clear();
     }
 }
