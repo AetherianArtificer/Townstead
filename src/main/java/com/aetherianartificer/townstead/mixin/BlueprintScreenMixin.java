@@ -28,6 +28,8 @@ import net.conczin.mca.network.c2s.ReportBuildingMessage;
 import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.entity.VillagerLike;
+import net.minecraft.world.entity.npc.VillagerProfession;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.util.compat.ButtonWidget;
@@ -217,6 +219,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     private List<UUID> townstead$shiftVillagerUuids = List.of();
     @Unique
     private Map<UUID, String> townstead$shiftVillagerNames = new HashMap<>();
+    @Unique
+    private Map<UUID, Integer> townstead$shiftVillagerEntityIds = new HashMap<>();
     @Unique
     private final Map<UUID, int[]> townstead$shiftEdits = new HashMap<>();
     @Unique
@@ -1687,6 +1691,7 @@ public abstract class BlueprintScreenMixin extends Screen {
     private void townstead$populateShiftVillagers() {
         townstead$shiftVillagerUuids = new ArrayList<>();
         townstead$shiftVillagerNames.clear();
+        townstead$shiftVillagerEntityIds.clear();
 
         Village village = ((BlueprintScreenAccessor) this).townstead$getVillage();
         if (village == null || this.minecraft == null) return;
@@ -1706,6 +1711,7 @@ public abstract class BlueprintScreenMixin extends Screen {
                 townstead$shiftVillagerUuids.add(uuid);
                 String name = villager.getDisplayName().getString();
                 townstead$shiftVillagerNames.put(uuid, name);
+                townstead$shiftVillagerEntityIds.put(uuid, entity.getId());
             }
         }
 
@@ -1852,6 +1858,29 @@ public abstract class BlueprintScreenMixin extends Screen {
             context.fill(lx, legendY, lx + 8, legendY + 8, ShiftData.ORDINAL_COLORS[i]);
             context.drawString(this.font, Component.translatable(ShiftData.ORDINAL_TO_KEY[i]),
                     lx + 10, legendY, selected ? 0xFFFFFF : 0xC0C0C0, false);
+        }
+
+        // Tooltip for hovered villager name
+        for (int row = 0; row < endIdx - startIdx; row++) {
+            int rowY = gridY + row * (SHIFT_CELL_H + 2);
+            if (mouseX >= leftX && mouseX < gridX && mouseY >= rowY && mouseY < rowY + SHIFT_CELL_H) {
+                UUID uuid = townstead$shiftVillagerUuids.get(startIdx + row);
+                Integer entityId = townstead$shiftVillagerEntityIds.get(uuid);
+                if (entityId != null && this.minecraft != null && this.minecraft.level != null) {
+                    net.minecraft.world.entity.Entity entity = this.minecraft.level.getEntity(entityId);
+                    if (entity instanceof VillagerEntityMCA mca) {
+                        VillagerProfession prof = mca.getVillagerData().getProfession();
+                        String profName = ((VillagerLike<?>) mca).getProfessionText().getString();
+                        int level = mca.getVillagerData().getLevel();
+                        String levelKey = "townstead.profession.level." + Math.min(Math.max(level, 1), 5);
+                        String levelName = Component.translatable(levelKey).getString();
+                        context.renderTooltip(this.font,
+                                Component.literal(profName + " - " + levelName),
+                                mouseX, mouseY);
+                    }
+                }
+                break;
+            }
         }
 
         // Tooltip for hovered cell
