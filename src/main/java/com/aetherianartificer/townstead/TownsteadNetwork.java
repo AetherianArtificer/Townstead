@@ -294,12 +294,12 @@ public final class TownsteadNetwork {
     }
 
     private static void handleProfessionQuery(ProfessionQueryPayload payload, ServerPlayer sp) {
-        java.util.List<String> available = ProfessionScanner.scanAvailableProfessions(sp);
-        sendToPlayer(sp, new ProfessionSyncPayload(available));
+        ProfessionScanner.ScanResult scan = ProfessionScanner.scanAvailableProfessions(sp);
+        sendToPlayer(sp, new ProfessionSyncPayload(scan.professionIds(), scan.usedSlots(), scan.maxSlots()));
     }
 
     private static void handleProfessionSync(ProfessionSyncPayload payload) {
-        ProfessionClientStore.set(payload.professionIds());
+        ProfessionClientStore.set(payload.professionIds(), payload.usedSlots(), payload.maxSlots());
     }
 
     private static void handleProfessionSet(ProfessionSetPayload payload, ServerPlayer sp) {

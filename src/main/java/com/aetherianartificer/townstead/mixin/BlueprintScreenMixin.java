@@ -2259,7 +2259,7 @@ public abstract class BlueprintScreenMixin extends Screen {
 
         // Right panel: available professions for selected villager
         if (townstead$profSelectedVillager != null) {
-            List<String> available = ProfessionClientStore.get();
+            List<String> available = ProfessionClientStore.getProfessions();
 
             // Get the selected villager's current profession
             String currentProfId = "minecraft:none";
@@ -2286,24 +2286,38 @@ public abstract class BlueprintScreenMixin extends Screen {
                 if (by + btnH < listY || by > panelBottom) continue;
 
                 boolean isCurrent = profId.equals(currentProfId);
+                boolean isFull = ProfessionClientStore.isFull(i) && !isCurrent;
+                int maxS = ProfessionClientStore.getMax(i);
+                int usedS = ProfessionClientStore.getUsed(i);
 
-                // Background
-                int bgColor = isCurrent ? 0xFF3A6A3A : 0xFF333333;
-                if (mouseX >= profPanelX && mouseX < profPanelRight && mouseY >= by && mouseY < by + btnH) {
+                // Background: green=current, red=full, gray=available
+                int bgColor;
+                if (isCurrent) {
+                    bgColor = 0xFF3A6A3A;
+                } else if (isFull) {
+                    bgColor = 0xFF5A2A2A;
+                } else {
+                    bgColor = 0xFF333333;
+                }
+                if (!isFull && mouseX >= profPanelX && mouseX < profPanelRight && mouseY >= by && mouseY < by + btnH) {
                     bgColor = isCurrent ? 0xFF4A8A4A : 0xFF555555;
                 }
                 context.fill(profPanelX, by, profPanelRight, by + btnH, bgColor);
 
-                // Label
+                // Label with slot count for limited professions
                 String displayName = townstead$profDisplayName(profId);
+                if (maxS >= 0) {
+                    displayName += " (" + usedS + "/" + maxS + ")";
+                }
                 String truncDisplay = displayName;
                 while (this.font.width(truncDisplay) > btnW - 4 && truncDisplay.length() > 1) {
                     truncDisplay = truncDisplay.substring(0, truncDisplay.length() - 1);
                 }
                 if (!truncDisplay.equals(displayName)) truncDisplay += "..";
+                int textColor = isFull ? 0xFF6666 : (isCurrent ? 0xFFFFFF : 0xC0C0C0);
                 context.drawString(this.font, truncDisplay,
                         profPanelX + 2, by + (btnH - this.font.lineHeight) / 2 + 1,
-                        isCurrent ? 0xFFFFFF : 0xC0C0C0, false);
+                        textColor, false);
             }
             context.disableScissor();
         } else {
@@ -2352,12 +2366,18 @@ public abstract class BlueprintScreenMixin extends Screen {
         int profPanelBottom = this.height / 2 - 56 + 22 * 5 + 20 - 16;
         if (townstead$profSelectedVillager != null && mouseX >= profPanelX && mouseX < profPanelRight
                 && mouseY < profPanelBottom) {
-            List<String> available = ProfessionClientStore.get();
+            List<String> available = ProfessionClientStore.getProfessions();
             int btnH = 14;
             for (int i = 0; i < available.size(); i++) {
                 int by = listY + (i - townstead$profScroll) * (btnH + 1);
                 if (by + btnH < listY || by > this.height / 2 - 56 + 22 * 5 + 20 - 16) continue;
                 if (mouseY >= by && mouseY < by + btnH) {
+                    // Don't allow selecting full professions
+                    if (ProfessionClientStore.isFull(i)) {
+                        cir.setReturnValue(true);
+                        cir.cancel();
+                        return;
+                    }
                     String profId = available.get(i);
                     //? if neoforge {
                     PacketDistributor.sendToServer(new ProfessionSetPayload(townstead$profSelectedVillager, profId));

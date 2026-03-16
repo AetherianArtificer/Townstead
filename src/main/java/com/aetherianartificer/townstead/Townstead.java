@@ -605,13 +605,13 @@ public class Townstead {
     private void handleProfessionQuery(ProfessionQueryPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
-            java.util.List<String> available = ProfessionScanner.scanAvailableProfessions(sp);
-            PacketDistributor.sendToPlayer(sp, new ProfessionSyncPayload(available));
+            ProfessionScanner.ScanResult scan = ProfessionScanner.scanAvailableProfessions(sp);
+            PacketDistributor.sendToPlayer(sp, new ProfessionSyncPayload(scan.professionIds(), scan.usedSlots(), scan.maxSlots()));
         });
     }
 
     private void handleProfessionSync(ProfessionSyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> ProfessionClientStore.set(payload.professionIds()));
+        context.enqueueWork(() -> ProfessionClientStore.set(payload.professionIds(), payload.usedSlots(), payload.maxSlots()));
     }
 
     private void handleProfessionSet(ProfessionSetPayload payload, IPayloadContext context) {
