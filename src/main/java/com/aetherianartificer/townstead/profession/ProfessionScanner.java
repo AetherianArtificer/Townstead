@@ -58,7 +58,14 @@ public final class ProfessionScanner {
         // Remove professions suppressed by Townstead (e.g. Chef's Delight when Townstead cook is active)
         filterSuppressedProfessions(result);
 
-        return new ArrayList<>(result);
+        // Sort alphabetically by display name, but keep "None" first
+        ArrayList<String> sorted = new ArrayList<>(result);
+        sorted.sort((a, b) -> {
+            if ("minecraft:none".equals(a)) return -1;
+            if ("minecraft:none".equals(b)) return 1;
+            return a.compareTo(b);
+        });
+        return sorted;
     }
 
     private static final Map<String, String> BUILDING_TYPE_TO_PROFESSION = Map.ofEntries(

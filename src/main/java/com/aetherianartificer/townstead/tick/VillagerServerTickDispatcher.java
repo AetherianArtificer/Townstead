@@ -17,5 +17,6 @@ public final class VillagerServerTickDispatcher {
             ThirstVillagerTicker.tick(villager);
         }
         ProfessionProgressMemoryTicker.tick(villager);
+        GuardRestEnforcerTicker.tick(villager);
     }
 }
