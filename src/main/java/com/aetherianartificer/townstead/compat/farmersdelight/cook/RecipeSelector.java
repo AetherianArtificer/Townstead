@@ -5,7 +5,8 @@ import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCook
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
+import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 //? if >=1.21 {
@@ -123,7 +124,8 @@ public final class RecipeSelector {
             long cookSeed
     ) {
         if (recipe.purification()) {
-            if (!TownsteadConfig.isCookWaterPurificationEnabled() || !ThirstWasTakenBridge.INSTANCE.isActive()) {
+            ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+            if (bridge == null || !TownsteadConfig.isCookWaterPurificationEnabled() || !bridge.supportsPurification()) {
                 return Double.NEGATIVE_INFINITY;
             }
             // Fall through to standard scoring — potions have no nutrition/saturation,

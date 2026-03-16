@@ -201,6 +201,20 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
         return THIRST_ICONS;
     }
 
+    @Override
+    public boolean supportsPurification() {
+        return true;
+    }
+
+    @Override
+    public ThirstIconInfo iconInfo(int thirst) {
+        int u;
+        if (thirst > 13) u = 16;      // full droplet
+        else if (thirst > 6) u = 8;   // half droplet
+        else u = 0;                    // empty droplet
+        return new ThirstIconInfo(THIRST_ICONS, u, 0, 25, 9);
+    }
+
     private void initIfNeeded() {
         if (initialized) return;
         initialized = true;

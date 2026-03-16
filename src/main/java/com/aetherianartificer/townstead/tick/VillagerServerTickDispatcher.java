@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.tick;
 
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import net.conczin.mca.entity.VillagerEntityMCA;
 
 public final class VillagerServerTickDispatcher {
@@ -13,7 +13,7 @@ public final class VillagerServerTickDispatcher {
         CookTradeBackfillTicker.tick(villager);
         BaristaTradeBackfillTicker.tick(villager);
         HungerVillagerTicker.tick(villager);
-        if (ThirstWasTakenBridge.INSTANCE.isActive()) {
+        if (ThirstBridgeResolver.isActive()) {
             ThirstVillagerTicker.tick(villager);
         }
         ProfessionProgressMemoryTicker.tick(villager);

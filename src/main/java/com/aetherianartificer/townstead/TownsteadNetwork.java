@@ -7,7 +7,7 @@ import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
 import com.aetherianartificer.townstead.hunger.*;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
@@ -72,7 +72,7 @@ public final class TownsteadNetwork {
         registerC2S(ButcherPolicySetPayload.class, ButcherPolicySetPayload::write, ButcherPolicySetPayload::read,
                 TownsteadNetwork::handleButcherPolicySet);
 
-        if (ThirstWasTakenBridge.INSTANCE.isActive()) {
+        if (ThirstBridgeResolver.anyThirstModLoaded()) {
             registerS2C(ThirstSyncPayload.class, ThirstSyncPayload::write, ThirstSyncPayload::read,
                     TownsteadNetwork::handleThirstSync);
             registerC2S(ThirstSetPayload.class, ThirstSetPayload::write, ThirstSetPayload::read,
@@ -155,7 +155,7 @@ public final class TownsteadNetwork {
     }
 
     private static void handleThirstSync(ThirstSyncPayload payload) {
-        if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
+        if (!ThirstBridgeResolver.isActive()) return;
         ThirstClientStore.set(payload.entityId(), payload.thirst(), payload.quenched());
     }
 
@@ -204,7 +204,7 @@ public final class TownsteadNetwork {
     }
 
     private static void handleThirstSet(ThirstSetPayload payload, ServerPlayer sp) {
-        if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
+        if (!ThirstBridgeResolver.isActive()) return;
         Entity entity = sp.serverLevel().getEntity(payload.entityId());
         if (!(entity instanceof VillagerEntityMCA villager)) return;
 

@@ -8,7 +8,7 @@ import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegi
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
@@ -59,7 +59,7 @@ public final class IngredientResolver {
         Map<ResourceLocation, Integer> supply = new HashMap<>();
         if (trackedIds.isEmpty()) return supply;
         boolean trackImpureWater = trackedIds.contains(TOWNSTEAD_IMPURE_WATER_INPUT);
-        ThirstCompatBridge thirstBridge = trackImpureWater ? ThirstWasTakenBridge.INSTANCE : null;
+        ThirstCompatBridge thirstBridge = trackImpureWater ? ThirstBridgeResolver.get() : null;
 
         // Inventory
         SimpleContainer inv = villager.getInventory();
@@ -136,10 +136,10 @@ public final class IngredientResolver {
     ) {
         BlockPos center = stationPos != null ? stationPos : villager.blockPosition();
         if (recipe.purification()) {
-            if (!TownsteadConfig.isCookWaterPurificationEnabled() || !ThirstWasTakenBridge.INSTANCE.isActive()) return false;
+            ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+            if (bridge == null || !TownsteadConfig.isCookWaterPurificationEnabled() || !bridge.supportsPurification()) return false;
             if (!StationHandler.isSurfaceFireStation(level, center)) return false;
             if (!StationHandler.surfaceHasFreeSlot(level, center)) return false;
-            ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
             // For purification, only check if the item is impure water — don't require a
             // campfire cooking recipe, since TWP handles purification via its own event system
             // and the station validity is already confirmed above.
@@ -213,7 +213,8 @@ public final class IngredientResolver {
             boolean waterAvailable
     ) {
         if (recipe.purification()) {
-            if (!TownsteadConfig.isCookWaterPurificationEnabled() || !ThirstWasTakenBridge.INSTANCE.isActive()) return false;
+            ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+            if (bridge == null || !TownsteadConfig.isCookWaterPurificationEnabled() || !bridge.supportsPurification()) return false;
             return virtualSupply.getOrDefault(TOWNSTEAD_IMPURE_WATER_INPUT, 0) > 0;
         }
         if (recipe.requiresTool() && !knifeAvailable) return false;
@@ -265,8 +266,8 @@ public final class IngredientResolver {
 
         // Purification path
         if (recipe.purification()) {
-            if (!TownsteadConfig.isCookWaterPurificationEnabled() || !ThirstWasTakenBridge.INSTANCE.isActive()) return false;
-            ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
+            ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+            if (bridge == null || !TownsteadConfig.isCookWaterPurificationEnabled() || !bridge.supportsPurification()) return false;
             // Pull impure water from nearby/kitchen storage into inventory
             java.util.function.Predicate<ItemStack> impureMatcher = stack ->
                     StationHandler.impureWaterScore(stack, bridge) > 0;

@@ -38,7 +38,8 @@ import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.ButcherStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.PurificationCampfireRecipe;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.ThirstSetPayload;
@@ -100,6 +101,8 @@ public class Townstead {
     //?}
     private static final DeferredRegister<VillagerProfession> PROFESSIONS =
             DeferredRegister.create(net.minecraft.core.registries.Registries.VILLAGER_PROFESSION, MOD_ID);
+    private static final DeferredRegister<net.minecraft.world.item.crafting.RecipeSerializer<?>> RECIPE_SERIALIZERS =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.RECIPE_SERIALIZER, MOD_ID);
 
     //? if neoforge {
     public static final Supplier<AttachmentType<CompoundTag>> HUNGER_DATA = ATTACHMENTS.register(
@@ -150,6 +153,10 @@ public class Townstead {
     public Townstead(IEventBus modBus, ModContainer modContainer) {
         ATTACHMENTS.register(modBus);
         PROFESSIONS.register(modBus);
+        if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
+            RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
+        }
+        RECIPE_SERIALIZERS.register(modBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC);
         townstead$registerClientConfigScreen(modContainer);
         modBus.addListener(this::onCommonSetup);
@@ -169,6 +176,10 @@ public class Townstead {
     /*public Townstead() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         PROFESSIONS.register(modBus);
+        if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
+            RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
+        }
+        RECIPE_SERIALIZERS.register(modBus);
         ModContainer modContainer = net.minecraftforge.fml.ModLoadingContext.get().getActiveContainer();
         modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC, modContainer));
         townstead$registerClientConfigScreen(modContainer);
@@ -256,7 +267,7 @@ public class Townstead {
         GiftPredicate.register("thirst", (json, name) ->
                         GsonHelper.convertToString(json, name).toLowerCase(Locale.ROOT),
                 state -> (villager, stack, player) -> {
-                    if (!ThirstWasTakenBridge.INSTANCE.isActive()) return 0.0f;
+                    if (!ThirstBridgeResolver.isActive()) return 0.0f;
                     //? if neoforge {
                     CompoundTag data = villager.getData(THIRST_DATA);
                     //?} else if forge {
@@ -327,7 +338,7 @@ public class Townstead {
     //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
         var registrar = event.registrar(MOD_ID).versioned("1");
-        boolean thirstAvailable = ThirstWasTakenBridge.INSTANCE.isActive();
+        boolean thirstAvailable = ThirstBridgeResolver.anyThirstModLoaded();
         registrar.playToClient(
                 HungerSyncPayload.TYPE,
                 HungerSyncPayload.STREAM_CODEC,
@@ -426,7 +437,7 @@ public class Townstead {
     }
 
     private void handleThirstSync(ThirstSyncPayload payload, IPayloadContext context) {
-        if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
+        if (!ThirstBridgeResolver.isActive()) return;
         context.enqueueWork(() -> ThirstClientStore.set(
                 payload.entityId(),
                 payload.thirst(),
@@ -483,7 +494,7 @@ public class Townstead {
     }
 
     private void handleThirstSet(ThirstSetPayload payload, IPayloadContext context) {
-        if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
+        if (!ThirstBridgeResolver.isActive()) return;
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
             Entity entity = sp.serverLevel().getEntity(payload.entityId());
@@ -654,7 +665,7 @@ public class Townstead {
         //? if neoforge {
         CompoundTag hunger = villager.getData(HUNGER_DATA);
         PacketDistributor.sendToPlayer(sp, townstead$hungerSync(villager, hunger));
-        if (ThirstWasTakenBridge.INSTANCE.isActive()) {
+        if (ThirstBridgeResolver.isActive()) {
             CompoundTag thirst = villager.getData(THIRST_DATA);
             PacketDistributor.sendToPlayer(sp, townstead$thirstSync(villager, thirst));
         }
@@ -674,7 +685,7 @@ public class Townstead {
         //?} else if forge {
         /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
         TownsteadNetwork.sendToPlayer(sp, townstead$hungerSync(villager, hunger));
-        if (ThirstWasTakenBridge.INSTANCE.isActive()) {
+        if (ThirstBridgeResolver.isActive()) {
             CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
             TownsteadNetwork.sendToPlayer(sp, townstead$thirstSync(villager, thirst));
         }

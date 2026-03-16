@@ -2,7 +2,7 @@ package com.aetherianartificer.townstead.thirst;
 
 import com.aetherianartificer.townstead.compat.mca.McaSicknessAdapter;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -28,8 +28,8 @@ public final class VillagerDrinkingManager {
 
     public static boolean startDrinking(VillagerEntityMCA villager, ItemStack drinkStack) {
         if (drinkStack.isEmpty() || isDrinking(villager)) return false;
-        ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
-        if (!bridge.isActive() || !bridge.itemRestoresThirst(drinkStack)) return false;
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+        if (bridge == null || !bridge.itemRestoresThirst(drinkStack)) return false;
 
         //? if >=1.21 {
         ItemStack oneSip = drinkStack.copyWithCount(1);
@@ -69,8 +69,8 @@ public final class VillagerDrinkingManager {
         PENDING.remove(villager.getId());
         villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
 
-        ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
-        if (!bridge.isActive()) return false;
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+        if (bridge == null) return false;
 
         int beforeThirst = ThirstData.getThirst(thirstTag);
         int beforeQuenched = ThirstData.getQuenched(thirstTag);
