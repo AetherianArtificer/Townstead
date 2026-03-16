@@ -9,6 +9,9 @@ import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternDefinition;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.mixin.accessor.BlueprintScreenAccessor;
+import com.aetherianartificer.townstead.profession.ProfessionClientStore;
+import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
+import com.aetherianartificer.townstead.profession.ProfessionSetPayload;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
@@ -99,6 +102,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     private static final String TOWNSTEAD_CATALOG_PAGE = "townstead_catalog";
     @Unique
     private static final String TOWNSTEAD_SHIFT_PAGE = "townstead_shift";
+    @Unique
+    private static final String TOWNSTEAD_PROFESSION_PAGE = "townstead_profession";
     @Unique
     private static final int NAV_BUTTON_WIDTH = 80;
     @Unique
@@ -228,6 +233,22 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private int townstead$shiftPaintOrdinal = -1; // -1 = cycle mode, 0-3 = paint mode
 
+    // --- Profession page state ---
+    @Unique
+    private static final int PROF_ROWS_PER_PAGE = 7;
+    @Unique
+    private int townstead$profPage = 0;
+    @Unique
+    private List<UUID> townstead$profVillagerUuids = List.of();
+    @Unique
+    private Map<UUID, String> townstead$profVillagerNames = new HashMap<>();
+    @Unique
+    private Map<UUID, Integer> townstead$profVillagerEntityIds = new HashMap<>();
+    @Unique
+    private UUID townstead$profSelectedVillager = null;
+    @Unique
+    private int townstead$profScroll = 0;
+
     @Unique
     private record NodeData(int index, BuildingType type, String group, int worldX, int worldY) {
     }
@@ -275,6 +296,9 @@ public abstract class BlueprintScreenMixin extends Screen {
         } else if (TOWNSTEAD_SHIFT_PAGE.equals(this.page)) {
             townstead$initShiftPage();
             townstead$setNavVisible(true);
+        } else if (TOWNSTEAD_PROFESSION_PAGE.equals(this.page)) {
+            townstead$initProfessionPage();
+            townstead$setNavVisible(true);
         } else if (TOWNSTEAD_CATALOG_PAGE.equals(this.page)) {
             townstead$nodeItemIconCache.clear();
             townstead$buildCatalogEntries();
@@ -302,6 +326,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$upgradeBuildingButton = null;
             townstead$shiftEdits.clear();
             townstead$shiftQueried = false;
+            townstead$profSelectedVillager = null;
             townstead$setNavVisible(true);
         }
         for (Button b : townstead$navButtons) {
@@ -1626,6 +1651,11 @@ public abstract class BlueprintScreenMixin extends Screen {
                 Component.translatable("gui.blueprint.shifts"),
                 Component.empty(),
                 b -> setPage(TOWNSTEAD_SHIFT_PAGE)));
+        addRenderableWidget(new TooltipButtonWidget(
+                x, y + 22, 96, 20,
+                Component.translatable("gui.blueprint.professions"),
+                Component.empty(),
+                b -> setPage(TOWNSTEAD_PROFESSION_PAGE)));
     }
 
     @Unique
@@ -2030,6 +2060,373 @@ public abstract class BlueprintScreenMixin extends Screen {
                 townstead$shiftPageDelta(1);
             } else if (verticalAmount > 0) {
                 townstead$shiftPageDelta(-1);
+            }
+            cir.setReturnValue(true);
+            cir.cancel();
+        }
+    }
+
+    // =====================================================================
+    // Profession Manager page
+    // =====================================================================
+
+    @Unique
+    private void townstead$initProfessionPage() {
+        townstead$profPage = 0;
+        townstead$profSelectedVillager = null;
+        townstead$profScroll = 0;
+        townstead$populateProfVillagers();
+
+        int leftX = this.width / 2 - 80;
+        int topY = this.height / 2 - 74;
+
+        // Back button
+        addRenderableWidget(new ButtonWidget(
+                leftX, topY, 40, 14,
+                Component.literal("<< Back"),
+                b -> setPage("villagers")));
+
+        // Villager list pagination (right-aligned with profession panel)
+        int profRight = this.width / 2 + 176;
+        addRenderableWidget(new ButtonWidget(
+                profRight - 20, topY, 20, 14,
+                Component.literal(">"),
+                b -> townstead$profPageDelta(1)));
+        addRenderableWidget(new ButtonWidget(
+                profRight - 42, topY, 20, 14,
+                Component.literal("<"),
+                b -> townstead$profPageDelta(-1)));
+
+        // Profession list scroll buttons — bottom-aligned with Refresh button
+        int profPanelX = this.width / 2 + 48;
+        int refreshBottom = this.height / 2 - 56 + 22 * 5 + 20;
+        int scrollBtnY = refreshBottom - 14;
+        addRenderableWidget(new ButtonWidget(
+                profPanelX, scrollBtnY, 20, 14,
+                Component.literal("\u25B2"),
+                b -> townstead$profScroll = Math.max(0, townstead$profScroll - 1)));
+        addRenderableWidget(new ButtonWidget(
+                profRight - 20, scrollBtnY, 20, 14,
+                Component.literal("\u25BC"),
+                b -> townstead$profScroll++));
+
+        // Query available professions from server
+        //? if neoforge {
+        PacketDistributor.sendToServer(new ProfessionQueryPayload());
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(new ProfessionQueryPayload());
+        *///?}
+    }
+
+    @Unique
+    private void townstead$populateProfVillagers() {
+        townstead$profVillagerUuids = new ArrayList<>();
+        townstead$profVillagerNames.clear();
+        townstead$profVillagerEntityIds.clear();
+
+        Village village = ((BlueprintScreenAccessor) this).townstead$getVillage();
+        if (village == null || this.minecraft == null) return;
+
+        ClientLevel level = this.minecraft.level;
+        if (level == null) return;
+
+        Set<UUID> residentUuids = new HashSet<>();
+        village.getResidentsUUIDs().forEach(residentUuids::add);
+
+        for (net.minecraft.world.entity.Entity entity : level.entitiesForRendering()) {
+            if (entity instanceof VillagerEntityMCA villager && residentUuids.contains(entity.getUUID())) {
+                UUID uuid = entity.getUUID();
+                townstead$profVillagerUuids.add(uuid);
+                townstead$profVillagerNames.put(uuid, villager.getDisplayName().getString());
+                townstead$profVillagerEntityIds.put(uuid, entity.getId());
+            }
+        }
+
+        townstead$profVillagerUuids.sort(Comparator.comparing(
+                uuid -> townstead$profVillagerNames.getOrDefault(uuid, uuid.toString())));
+    }
+
+    @Unique
+    private void townstead$profPageDelta(int delta) {
+        int totalPages = Math.max(1, (int) Math.ceil(townstead$profVillagerUuids.size() / (double) PROF_ROWS_PER_PAGE));
+        townstead$profPage = Math.max(0, Math.min(townstead$profPage + delta, totalPages - 1));
+    }
+
+    @Unique
+    private String townstead$profDisplayName(String professionId) {
+        if ("minecraft:none".equals(professionId)) {
+            return Component.translatable("townstead.profession.none").getString();
+        }
+        // Try standard villager profession translation key patterns
+        //? if >=1.21 {
+        ResourceLocation id = ResourceLocation.parse(professionId);
+        //?} else {
+        /*ResourceLocation id = new ResourceLocation(professionId);
+        *///?}
+        // Vanilla: "entity.minecraft.villager.farmer"
+        // Modded: "entity.mca.villager.guard"
+        String key = "entity." + id.getNamespace() + ".villager." + id.getPath();
+        String translated = Component.translatable(key).getString();
+        if (!translated.equals(key)) return translated;
+        // Fallback: capitalize the path
+        String path = id.getPath();
+        if (path.isEmpty()) return professionId;
+        return path.substring(0, 1).toUpperCase(Locale.ROOT) + path.substring(1);
+    }
+
+    @Unique
+    private String townstead$currentProfessionId(VillagerEntityMCA mca) {
+        VillagerProfession prof = mca.getVillagerData().getProfession();
+        ResourceLocation key = net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.getKey(prof);
+        return key != null ? key.toString() : "minecraft:none";
+    }
+
+    //? if neoforge {
+    @Inject(method = "render", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_88315_", remap = false, at = @At("TAIL"))
+    *///?}
+    private void townstead$renderProfessionPage(GuiGraphics context, int mouseX, int mouseY, float partialTicks,
+            CallbackInfo ci) {
+        if (!TOWNSTEAD_PROFESSION_PAGE.equals(this.page))
+            return;
+
+        int leftX = this.width / 2 - 80;
+        int topY = this.height / 2 - 74;
+        int listRight = this.width / 2 + 40;
+        int profPanelX = listRight + 8;
+        int profPanelRight = this.width / 2 + 176;
+
+        // Title (centered between back button and pagination)
+        int titleCenterX = (leftX + 42 + profPanelRight - 44) / 2;
+        context.drawCenteredString(this.font, Component.translatable("townstead.profession.title"),
+                titleCenterX, topY + 3, 0xFFFFFF);
+
+        // Page indicator (to the left of < > buttons)
+        int totalPages = Math.max(1, (int) Math.ceil(townstead$profVillagerUuids.size() / (double) PROF_ROWS_PER_PAGE));
+        String pageText = String.format("%d/%d", townstead$profPage + 1, totalPages);
+        context.drawString(this.font, Component.literal(pageText),
+                profPanelRight - 44 - this.font.width(pageText) - 4, topY + 4, 0xA0A0A0, false);
+
+        // Villager list
+        int listY = this.height / 2 - 48;
+        int rowH = 14;
+        int startIdx = townstead$profPage * PROF_ROWS_PER_PAGE;
+        int endIdx = Math.min(startIdx + PROF_ROWS_PER_PAGE, townstead$profVillagerUuids.size());
+
+        for (int row = 0; row < endIdx - startIdx; row++) {
+            UUID uuid = townstead$profVillagerUuids.get(startIdx + row);
+            String name = townstead$profVillagerNames.getOrDefault(uuid, "???");
+            int rowY = listY + row * (rowH + 1);
+
+            // Highlight selected
+            boolean selected = uuid.equals(townstead$profSelectedVillager);
+            if (selected) {
+                context.fill(leftX - 1, rowY - 1, listRight + 1, rowY + rowH, 0x40FFFFFF);
+            }
+
+            // Hover highlight
+            if (mouseX >= leftX && mouseX < listRight && mouseY >= rowY && mouseY < rowY + rowH) {
+                context.fill(leftX, rowY, listRight, rowY + rowH, 0x20FFFFFF);
+            }
+
+            // Name (left)
+            String truncName = name;
+            int maxNameW = 54;
+            while (this.font.width(truncName) > maxNameW && truncName.length() > 1) {
+                truncName = truncName.substring(0, truncName.length() - 1);
+            }
+            if (!truncName.equals(name)) truncName += "..";
+            context.drawString(this.font, truncName,
+                    leftX + 2, rowY + (rowH - this.font.lineHeight) / 2 + 1, 0xFFFFFF, false);
+
+            // Current profession (right, smaller)
+            Integer entityId = townstead$profVillagerEntityIds.get(uuid);
+            String profText = "???";
+            if (entityId != null && this.minecraft != null && this.minecraft.level != null) {
+                net.minecraft.world.entity.Entity entity = this.minecraft.level.getEntity(entityId);
+                if (entity instanceof VillagerEntityMCA mca) {
+                    profText = ((VillagerLike<?>) mca).getProfessionText().getString();
+                }
+            }
+            context.pose().pushPose();
+            int profTextX = leftX + 58;
+            context.pose().translate(profTextX, rowY + (rowH - this.font.lineHeight * 0.7f) / 2 + 1, 0);
+            context.pose().scale(0.7f, 0.7f, 1.0f);
+            context.drawString(this.font, profText, 0, 0, 0xA0A0A0, false);
+            context.pose().popPose();
+        }
+
+        // Right panel: available professions for selected villager
+        if (townstead$profSelectedVillager != null) {
+            List<String> available = ProfessionClientStore.getProfessions();
+
+            // Get the selected villager's current profession
+            String currentProfId = "minecraft:none";
+            Integer selEntityId = townstead$profVillagerEntityIds.get(townstead$profSelectedVillager);
+            if (selEntityId != null && this.minecraft != null && this.minecraft.level != null) {
+                net.minecraft.world.entity.Entity entity = this.minecraft.level.getEntity(selEntityId);
+                if (entity instanceof VillagerEntityMCA mca) {
+                    currentProfId = townstead$currentProfessionId(mca);
+                }
+            }
+
+            // Draw profession buttons with scroll support
+            int btnH = 14;
+            int btnW = profPanelRight - profPanelX;
+            int panelBottom = this.height / 2 - 56 + 22 * 5 + 20 - 16;
+            int maxVisible = (panelBottom - listY) / (btnH + 1);
+            int maxScroll = Math.max(0, available.size() - maxVisible);
+            townstead$profScroll = Math.max(0, Math.min(townstead$profScroll, maxScroll));
+
+            context.enableScissor(profPanelX, listY, profPanelRight, panelBottom);
+            for (int i = 0; i < available.size(); i++) {
+                String profId = available.get(i);
+                int by = listY + (i - townstead$profScroll) * (btnH + 1);
+                if (by + btnH < listY || by > panelBottom) continue;
+
+                boolean isCurrent = profId.equals(currentProfId);
+                boolean isFull = ProfessionClientStore.isFull(i) && !isCurrent;
+                int maxS = ProfessionClientStore.getMax(i);
+                int usedS = ProfessionClientStore.getUsed(i);
+
+                // Background: green=current, red=full, gray=available
+                int bgColor;
+                if (isCurrent) {
+                    bgColor = 0xFF3A6A3A;
+                } else if (isFull) {
+                    bgColor = 0xFF5A2A2A;
+                } else {
+                    bgColor = 0xFF333333;
+                }
+                if (!isFull && mouseX >= profPanelX && mouseX < profPanelRight && mouseY >= by && mouseY < by + btnH) {
+                    bgColor = isCurrent ? 0xFF4A8A4A : 0xFF555555;
+                }
+                context.fill(profPanelX, by, profPanelRight, by + btnH, bgColor);
+
+                // Label with slot count for limited professions
+                String displayName = townstead$profDisplayName(profId);
+                if (maxS >= 0) {
+                    displayName += " (" + usedS + "/" + maxS + ")";
+                }
+                String truncDisplay = displayName;
+                while (this.font.width(truncDisplay) > btnW - 4 && truncDisplay.length() > 1) {
+                    truncDisplay = truncDisplay.substring(0, truncDisplay.length() - 1);
+                }
+                if (!truncDisplay.equals(displayName)) truncDisplay += "..";
+                int textColor = isFull ? 0xFF6666 : (isCurrent ? 0xFFFFFF : 0xC0C0C0);
+                context.drawString(this.font, truncDisplay,
+                        profPanelX + 2, by + (btnH - this.font.lineHeight) / 2 + 1,
+                        textColor, false);
+            }
+            context.disableScissor();
+        } else {
+            // No villager selected - show hint
+            context.drawCenteredString(this.font, Component.translatable("townstead.profession.select"),
+                    (profPanelX + profPanelRight) / 2, this.height / 2, 0x808080);
+        }
+    }
+
+    //? if neoforge {
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_6375_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
+    private void townstead$professionMouseClicked(double mouseX, double mouseY, int button,
+            CallbackInfoReturnable<Boolean> cir) {
+        if (!TOWNSTEAD_PROFESSION_PAGE.equals(this.page) || button != 0)
+            return;
+
+        int leftX = this.width / 2 - 80;
+        int listRight = this.width / 2 + 40;
+        int profPanelX = listRight + 8;
+        int profPanelRight = this.width / 2 + 176;
+        int listY = this.height / 2 - 48;
+        int rowH = 14;
+
+        // Check villager list clicks
+        int startIdx = townstead$profPage * PROF_ROWS_PER_PAGE;
+        int endIdx = Math.min(startIdx + PROF_ROWS_PER_PAGE, townstead$profVillagerUuids.size());
+
+        if (mouseX >= leftX && mouseX < listRight) {
+            for (int row = 0; row < endIdx - startIdx; row++) {
+                int rowY = listY + row * (rowH + 1);
+                if (mouseY >= rowY && mouseY < rowY + rowH) {
+                    UUID uuid = townstead$profVillagerUuids.get(startIdx + row);
+                    townstead$profSelectedVillager = uuid.equals(townstead$profSelectedVillager) ? null : uuid;
+                    townstead$profScroll = 0;
+                    cir.setReturnValue(true);
+                    cir.cancel();
+                    return;
+                }
+            }
+        }
+
+        // Check profession button clicks (only above the scroll buttons)
+        int profPanelBottom = this.height / 2 - 56 + 22 * 5 + 20 - 16;
+        if (townstead$profSelectedVillager != null && mouseX >= profPanelX && mouseX < profPanelRight
+                && mouseY < profPanelBottom) {
+            List<String> available = ProfessionClientStore.getProfessions();
+            int btnH = 14;
+            for (int i = 0; i < available.size(); i++) {
+                int by = listY + (i - townstead$profScroll) * (btnH + 1);
+                if (by + btnH < listY || by > this.height / 2 - 56 + 22 * 5 + 20 - 16) continue;
+                if (mouseY >= by && mouseY < by + btnH) {
+                    // Don't allow selecting full professions
+                    if (ProfessionClientStore.isFull(i)) {
+                        cir.setReturnValue(true);
+                        cir.cancel();
+                        return;
+                    }
+                    String profId = available.get(i);
+                    //? if neoforge {
+                    PacketDistributor.sendToServer(new ProfessionSetPayload(townstead$profSelectedVillager, profId));
+                    //?} else if forge {
+                    /*TownsteadNetwork.sendToServer(new ProfessionSetPayload(townstead$profSelectedVillager, profId));
+                    *///?}
+                    cir.setReturnValue(true);
+                    cir.cancel();
+                    return;
+                }
+            }
+        }
+    }
+
+    //? if neoforge {
+    @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_6050_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
+    private void townstead$professionScrollPage(double mouseX, double mouseY, double horizontalAmount, double verticalAmount,
+            CallbackInfoReturnable<Boolean> cir) {
+        if (!TOWNSTEAD_PROFESSION_PAGE.equals(this.page))
+            return;
+
+        int leftX = this.width / 2 - 80;
+        int listRight = this.width / 2 + 40;
+        int profPanelX = listRight + 8;
+        int profPanelRight = this.width / 2 + 176;
+        int listY = this.height / 2 - 48;
+        int listBottom = listY + PROF_ROWS_PER_PAGE * 15;
+
+        // Scroll villager list (left side)
+        if (mouseX >= leftX && mouseX <= listRight && mouseY >= listY && mouseY <= listBottom) {
+            if (verticalAmount < 0) {
+                townstead$profPageDelta(1);
+            } else if (verticalAmount > 0) {
+                townstead$profPageDelta(-1);
+            }
+            cir.setReturnValue(true);
+            cir.cancel();
+            return;
+        }
+
+        // Scroll profession panel (right side)
+        if (mouseX >= profPanelX && mouseX <= profPanelRight && mouseY >= listY && mouseY <= this.height / 2 + 76) {
+            if (verticalAmount < 0) {
+                townstead$profScroll++;
+            } else if (verticalAmount > 0) {
+                townstead$profScroll = Math.max(0, townstead$profScroll - 1);
             }
             cir.setReturnValue(true);
             cir.cancel();

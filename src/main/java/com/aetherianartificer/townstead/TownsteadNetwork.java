@@ -10,6 +10,11 @@ import com.aetherianartificer.townstead.hunger.*;
 import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.profession.ProfessionClientStore;
+import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
+import com.aetherianartificer.townstead.profession.ProfessionScanner;
+import com.aetherianartificer.townstead.profession.ProfessionSetPayload;
+import com.aetherianartificer.townstead.profession.ProfessionSyncPayload;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
@@ -79,6 +84,14 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleShiftSync);
         registerC2S(ShiftSetPayload.class, ShiftSetPayload::write, ShiftSetPayload::read,
                 TownsteadNetwork::handleShiftSet);
+
+        // Profession management
+        registerC2S(ProfessionQueryPayload.class, ProfessionQueryPayload::write, ProfessionQueryPayload::read,
+                TownsteadNetwork::handleProfessionQuery);
+        registerS2C(ProfessionSyncPayload.class, ProfessionSyncPayload::write, ProfessionSyncPayload::read,
+                TownsteadNetwork::handleProfessionSync);
+        registerC2S(ProfessionSetPayload.class, ProfessionSetPayload::write, ProfessionSetPayload::read,
+                TownsteadNetwork::handleProfessionSet);
     }
 
     // ── Send helpers ──
@@ -278,6 +291,39 @@ public final class TownsteadNetwork {
         ShiftSyncPayload sync = new ShiftSyncPayload(payload.villagerUuid(), payload.shifts());
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);
+    }
+
+    private static void handleProfessionQuery(ProfessionQueryPayload payload, ServerPlayer sp) {
+        ProfessionScanner.ScanResult scan = ProfessionScanner.scanAvailableProfessions(sp);
+        sendToPlayer(sp, new ProfessionSyncPayload(scan.professionIds(), scan.usedSlots(), scan.maxSlots()));
+    }
+
+    private static void handleProfessionSync(ProfessionSyncPayload payload) {
+        ProfessionClientStore.set(payload.professionIds(), payload.usedSlots(), payload.maxSlots());
+    }
+
+    private static void handleProfessionSet(ProfessionSetPayload payload, ServerPlayer sp) {
+        if (!sp.hasPermissions(2)) return;
+
+        VillagerEntityMCA villager = null;
+        for (net.minecraft.server.level.ServerLevel level : sp.getServer().getAllLevels()) {
+            Entity entity = level.getEntity(payload.villagerUuid());
+            if (entity instanceof VillagerEntityMCA v) { villager = v; break; }
+        }
+        if (villager == null) return;
+
+        net.minecraft.resources.ResourceLocation profId = new net.minecraft.resources.ResourceLocation(payload.professionId());
+        net.minecraft.world.entity.npc.VillagerProfession newProf =
+                net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.get(profId);
+        if (newProf == null) return;
+
+        villager.setVillagerData(villager.getVillagerData().setProfession(newProf));
+        if (newProf != net.minecraft.world.entity.npc.VillagerProfession.NONE) {
+            if (villager.getVillagerData().getLevel() < 1) {
+                villager.setVillagerData(villager.getVillagerData().setLevel(1));
+            }
+        }
+        villager.refreshBrain((net.minecraft.server.level.ServerLevel) villager.level());
     }
 }
 *///?}

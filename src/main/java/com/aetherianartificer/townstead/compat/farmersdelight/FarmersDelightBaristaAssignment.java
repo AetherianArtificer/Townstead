@@ -74,6 +74,10 @@ public final class FarmersDelightBaristaAssignment {
         return effectiveCafeTier(level, villager);
     }
 
+    public static int totalCafeSlots(Village village) {
+        return buildCafeSlots(village).size();
+    }
+
     public static int highestCafeTier(Village village) {
         int best = 0;
         for (Building building : village.getBuildings().values()) {
