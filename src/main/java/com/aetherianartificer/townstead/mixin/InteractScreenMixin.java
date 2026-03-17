@@ -155,7 +155,7 @@ public abstract class InteractScreenMixin extends Screen {
                             energy
                     )
                     .withStyle(Style.EMPTY.withColor(fatigueState.getColor()));
-            context.renderTooltip(font, energyLabel, FATIGUE_ICON_X + FATIGUE_ICON_SIZE + 4, FATIGUE_ICON_Y + FATIGUE_ICON_SIZE / 2);
+            context.renderTooltip(font, energyLabel, FATIGUE_ICON_X + 16, FATIGUE_ICON_Y + 20);
         }
     }
 
