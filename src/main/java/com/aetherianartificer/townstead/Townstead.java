@@ -534,8 +534,7 @@ public class Townstead {
                 return;
             }
 
-            // Keep policy writes gated to privileged users for now.
-            if (!sp.hasPermissions(2)) return;
+
 
             data.setDefaultPolicy(payload.patternId(), payload.tier());
             PacketDistributor.sendToPlayer(sp, new FarmingPolicySyncPayload(
@@ -559,7 +558,7 @@ public class Townstead {
                 return;
             }
 
-            if (!sp.hasPermissions(2)) return;
+
 
             data.setDefaultPolicy(payload.profileId(), payload.tier());
             PacketDistributor.sendToPlayer(sp, new ButcherPolicySyncPayload(
@@ -577,7 +576,6 @@ public class Townstead {
     private void handleShiftSet(ShiftSetPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
-            if (!sp.hasPermissions(2)) return;
 
             // Find the villager by UUID across all loaded dimensions
             VillagerEntityMCA villager = null;
@@ -627,7 +625,6 @@ public class Townstead {
     private void handleProfessionSet(ProfessionSetPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
-            if (!sp.hasPermissions(2)) return;
 
             VillagerEntityMCA villager = null;
             for (net.minecraft.server.level.ServerLevel level : sp.getServer().getAllLevels()) {

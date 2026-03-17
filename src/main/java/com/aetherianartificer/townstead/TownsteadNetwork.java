@@ -237,7 +237,6 @@ public final class TownsteadNetwork {
             ));
             return;
         }
-        if (!sp.hasPermissions(2)) return;
         data.setDefaultPolicy(payload.patternId(), payload.tier());
         sendToPlayer(sp, new FarmingPolicySyncPayload(
                 data.getDefaultPatternId(), data.getDefaultTier(), data.getAreas().size()
@@ -252,7 +251,6 @@ public final class TownsteadNetwork {
             ));
             return;
         }
-        if (!sp.hasPermissions(2)) return;
         data.setDefaultPolicy(payload.profileId(), payload.tier());
         sendToPlayer(sp, new ButcherPolicySyncPayload(
                 data.getDefaultProfileId(), data.getDefaultTier(), data.getAreas().size()
@@ -264,7 +262,6 @@ public final class TownsteadNetwork {
     }
 
     private static void handleShiftSet(ShiftSetPayload payload, ServerPlayer sp) {
-        if (!sp.hasPermissions(2)) return;
 
         VillagerEntityMCA villager = null;
         for (net.minecraft.server.level.ServerLevel level : sp.getServer().getAllLevels()) {
@@ -303,7 +300,6 @@ public final class TownsteadNetwork {
     }
 
     private static void handleProfessionSet(ProfessionSetPayload payload, ServerPlayer sp) {
-        if (!sp.hasPermissions(2)) return;
 
         VillagerEntityMCA villager = null;
         for (net.minecraft.server.level.ServerLevel level : sp.getServer().getAllLevels()) {
