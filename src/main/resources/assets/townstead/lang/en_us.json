@@ -348,7 +348,9 @@
 
   "townstead.configuration.needs.fatigue": "Fatigue",
   "townstead.configuration.needs.fatigue.tooltip": "Controls villager fatigue and sleep needs.",
-  "townstead.configuration.needs.fatigue.enableVillagerFatigue": "Enable Villager Fatigue",
+  "townstead.configuration.needs.fatigue.enableVillagerFatigue": "Enable Villager Energy",
+  "townstead.configuration.needs.fatigue.enableFatigueAlerts": "Energy Collapse Alerts",
+  "townstead.configuration.needs.fatigue.enableFatigueAlerts.tooltip": "Show local chat alerts when villagers collapse from exhaustion or recover.",
   "townstead.configuration.needs.fatigue.enableVillagerFatigue.tooltip": "Enable villager fatigue simulation. Villagers accumulate fatigue during activity and recover through rest.",
   "townstead.configuration.needs.fatigue.fatigueCollapseThreshold": "Collapse Threshold",
   "townstead.configuration.needs.fatigue.fatigueCollapseThreshold.tooltip": "Fatigue level that triggers collapse when no bed is available.",
@@ -378,5 +380,15 @@
   "dialogue.chat.fatigue.tired/3": "I wouldn't mind an early night tonight.",
   "dialogue.chat.fatigue.tired/4": "Getting a little worn out. Nothing a good nap won't fix.",
   "dialogue.chat.fatigue.tired/5": "Is it almost time for rest? I could use the sleep.",
-  "dialogue.chat.fatigue.tired/6": "The day's been long. I'm looking forward to bed."
+  "dialogue.chat.fatigue.tired/6": "The day's been long. I'm looking forward to bed.",
+
+  "dialogue.chat.energy.collapsed/1": "I can't go on... I need to rest...",
+  "dialogue.chat.energy.collapsed/2": "*collapses* ...someone... help...",
+  "dialogue.chat.energy.collapsed/3": "My legs... gave out... need sleep...",
+  "dialogue.chat.energy.collapsed/4": "I'm done... I can't move another step...",
+
+  "dialogue.chat.energy.recovered/1": "*gets up slowly* ...I think I can manage now.",
+  "dialogue.chat.energy.recovered/2": "Ugh... that was awful. I'm back on my feet, at least.",
+  "dialogue.chat.energy.recovered/3": "I feel a little better. Let me try to get going again.",
+  "dialogue.chat.energy.recovered/4": "*stretches* ...alright, I'm okay. I think."
 }

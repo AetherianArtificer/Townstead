@@ -57,6 +57,20 @@ public abstract class InteractScreenMixin extends Screen {
     private static final int FATIGUE_ICON_X = 70;
     private static final int FATIGUE_ICON_Y = 170;
     private static final int FATIGUE_ICON_SIZE = 24;
+    private static final float FATIGUE_ICON_SCALE = 16.0f / 9.0f;
+    //? if >=1.21 {
+    private static final ResourceLocation ENERGY_FULL = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_full.png");
+    private static final ResourceLocation ENERGY_THREE_QUARTER = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_three_quarter.png");
+    private static final ResourceLocation ENERGY_HALF = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_half.png");
+    private static final ResourceLocation ENERGY_QUARTER = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_quarter.png");
+    private static final ResourceLocation ENERGY_EMPTY = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_empty.png");
+    //?} else {
+    /*private static final ResourceLocation ENERGY_FULL = new ResourceLocation("townstead", "textures/gui/energy_full.png");
+    private static final ResourceLocation ENERGY_THREE_QUARTER = new ResourceLocation("townstead", "textures/gui/energy_three_quarter.png");
+    private static final ResourceLocation ENERGY_HALF = new ResourceLocation("townstead", "textures/gui/energy_half.png");
+    private static final ResourceLocation ENERGY_QUARTER = new ResourceLocation("townstead", "textures/gui/energy_quarter.png");
+    private static final ResourceLocation ENERGY_EMPTY = new ResourceLocation("townstead", "textures/gui/energy_empty.png");
+    *///?}
 
     @Shadow(remap = false) @Final private VillagerLike<?> villager;
 
@@ -211,28 +225,18 @@ public abstract class InteractScreenMixin extends Screen {
         *///?}
         pose.popPose();
 
-        // Draw energy icon (colored bar indicator)
+        // Draw energy bolt icon
         int fatigue = FatigueClientStore.getFatigue(villager.asEntity().getId());
-        int energy = FatigueData.toEnergy(fatigue);
         FatigueData.FatigueState fatigueState = FatigueData.getState(fatigue);
-        int stateColor = fatigueState.getColor() | 0xFF000000;
+        int energyIconX = FATIGUE_ICON_X + ((FATIGUE_ICON_SIZE - 16) / 2);
+        int energyIconY = FATIGUE_ICON_Y + ((FATIGUE_ICON_SIZE - 16) / 2);
 
-        // Background bar
-        int barX = FATIGUE_ICON_X + 2;
-        int barY = FATIGUE_ICON_Y + 4;
-        int barW = 20;
-        int barH = 16;
-        context.fill(barX, barY, barX + barW, barY + barH, 0xFF222222);
-        // Filled portion based on energy level
-        int fillW = (int)(barW * (energy / (float) FatigueData.MAX_FATIGUE));
-        if (fillW > 0) {
-            context.fill(barX, barY, barX + fillW, barY + barH, stateColor);
-        }
-        // Border
-        context.fill(barX, barY, barX + barW, barY + 1, 0xFF666666);
-        context.fill(barX, barY + barH - 1, barX + barW, barY + barH, 0xFF666666);
-        context.fill(barX, barY, barX + 1, barY + barH, 0xFF666666);
-        context.fill(barX + barW - 1, barY, barX + barW, barY + barH, 0xFF666666);
+        pose.pushPose();
+        pose.translate(energyIconX, energyIconY, 0);
+        pose.scale(FATIGUE_ICON_SCALE, FATIGUE_ICON_SCALE, 1.0f);
+        ResourceLocation energySprite = townstead$energyIconSprite(fatigueState);
+        context.blit(energySprite, 0, 0, 0, 0, 9, 9, 9, 9);
+        pose.popPose();
 
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
         if (bridge == null) return;
@@ -282,6 +286,16 @@ public abstract class InteractScreenMixin extends Screen {
         };
     }
     *///?}
+
+    private ResourceLocation townstead$energyIconSprite(FatigueData.FatigueState state) {
+        return switch (state) {
+            case RESTED -> ENERGY_FULL;
+            case ALERT -> ENERGY_THREE_QUARTER;
+            case TIRED -> ENERGY_HALF;
+            case DROWSY -> ENERGY_QUARTER;
+            case EXHAUSTED -> ENERGY_EMPTY;
+        };
+    }
 
     private Activity townstead$getCurrentScheduleActivity() {
         if (!(villager.asEntity() instanceof VillagerEntityMCA mca)) return null;

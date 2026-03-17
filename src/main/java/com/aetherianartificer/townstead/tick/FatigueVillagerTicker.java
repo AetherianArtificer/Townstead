@@ -138,13 +138,24 @@ public final class FatigueVillagerTicker {
                 FatigueData.setCollapsed(fatigue, true);
                 FatigueData.setGated(fatigue, true);
                 changed = true;
+                // Alert nearby players
+                if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
+                    self.sendChatToAllAround("dialogue.chat.energy.collapsed/"
+                            + (1 + level.random.nextInt(4)));
+                }
             }
 
             // --- Gate release check ---
             if (currentFatigue < recoveryGate && FatigueData.isGated(fatigue)) {
+                boolean wasCollapsedHere = FatigueData.isCollapsed(fatigue);
                 FatigueData.setGated(fatigue, false);
                 FatigueData.setCollapsed(fatigue, false);
                 changed = true;
+                // Alert nearby players on wake from collapse
+                if (wasCollapsedHere && TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
+                    self.sendChatToAllAround("dialogue.chat.energy.recovered/"
+                            + (1 + level.random.nextInt(4)));
+                }
             }
 
             // --- Auto-drink coffee when drowsy or worse ---
