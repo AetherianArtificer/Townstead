@@ -3,7 +3,7 @@ package com.aetherianartificer.townstead.thirst;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.google.common.collect.ImmutableMap;
@@ -50,8 +50,8 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
-        if (!bridge.isActive() || !TownsteadConfig.isVillagerThirstEnabled()) return false;
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+        if (bridge == null || !TownsteadConfig.isVillagerThirstEnabled()) return false;
         if (VillagerEatingManager.isEating(villager) || VillagerDrinkingManager.isDrinking(villager)) return false;
 
         VillagerBrain<?> brain = villager.getVillagerBrain();
@@ -91,7 +91,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         targetItem = null;
         targetContainerSlot = null;
 
-        ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
 
         if (TownsteadConfig.isGroundItemThirstSourcingEnabled() && findGroundDrink(level, villager, bridge)) {
             BehaviorUtils.setWalkAndLookTargetMemories(villager, targetItem, WALK_SPEED, CLOSE_ENOUGH);
@@ -195,7 +195,10 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
 
         if (best.isEmpty() || bestScore <= 0) return false;
         if (!VillagerDrinkingManager.startDrinking(villager, best)) return false;
-        best.shrink(1);
+        ItemStack remainder = bridge.onDrinkConsumed(best);
+        if (remainder.isEmpty()) {
+            best.shrink(1);
+        }
         return true;
     }
 
@@ -262,8 +265,16 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
     private void pickUpAndDrink(VillagerEntityMCA villager, ItemEntity itemEntity) {
         ItemStack stack = itemEntity.getItem();
         if (!VillagerDrinkingManager.startDrinking(villager, stack)) return;
-        stack.shrink(1);
-        if (stack.isEmpty()) itemEntity.discard();
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+        ItemStack remainder = bridge != null ? bridge.onDrinkConsumed(stack) : ItemStack.EMPTY;
+        if (remainder.isEmpty()) {
+            stack.shrink(1);
+            if (stack.isEmpty()) itemEntity.discard();
+        } else {
+            // Container item (e.g. canteen) — pick it up into inventory
+            itemEntity.discard();
+            villager.getInventory().addItem(remainder);
+        }
     }
 
     private void takeFromContainerAndDrink(VillagerEntityMCA villager) {
@@ -273,12 +284,18 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         if (extracted.isEmpty()) return;
         if (!VillagerDrinkingManager.startDrinking(villager, extracted)) {
             villager.getInventory().addItem(extracted);
+            return;
+        }
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+        ItemStack remainder = bridge != null ? bridge.onDrinkConsumed(extracted) : ItemStack.EMPTY;
+        if (!remainder.isEmpty()) {
+            villager.getInventory().addItem(remainder);
         }
     }
 
     private void harvestCropAndDrink(ServerLevel level, VillagerEntityMCA villager) {
         if (targetPos == null) return;
-        ThirstCompatBridge bridge = ThirstWasTakenBridge.INSTANCE;
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
 
         BlockState state = level.getBlockState(targetPos);
         if (!(state.getBlock() instanceof CropBlock crop) || !crop.isMaxAge(state)) return;

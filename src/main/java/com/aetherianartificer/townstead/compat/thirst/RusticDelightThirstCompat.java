@@ -33,6 +33,8 @@ public final class RusticDelightThirstCompat {
     public static void register() {
         if (!ModCompat.isLoaded("thirst")) return;
         if (!ModCompat.isLoaded("rusticdelight")) return;
+        // LSO has its own data-driven hydration system; TWP-specific item registration is unnecessary
+        if (ModCompat.isLoaded("legendarysurvivaloverhaul")) return;
 
         try {
             Class<?> thirstHelper = Class.forName("dev.ghen.thirst.api.ThirstHelper");

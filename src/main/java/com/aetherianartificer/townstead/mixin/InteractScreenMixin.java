@@ -6,7 +6,8 @@ import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
+import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.mixin.accessor.AbstractDynamicScreenAccessor;
 import com.aetherianartificer.townstead.mixin.accessor.InteractScreenAccessor;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
@@ -28,6 +29,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -50,8 +52,6 @@ public abstract class InteractScreenMixin extends Screen {
     private static final int THIRST_ICON_Y = 145;
     private static final int THIRST_ICON_SIZE = 24;
     private static final float THIRST_ICON_SCALE = 16.0f / 9.0f;
-    private static final int THIRST_ICON_TEX_W = 25;
-    private static final int THIRST_ICON_TEX_H = 9;
 
     @Shadow(remap = false) @Final private VillagerLike<?> villager;
 
@@ -94,7 +94,6 @@ public abstract class InteractScreenMixin extends Screen {
         int hunger = HungerClientStore.get(entityId);
         HungerData.HungerState state = HungerData.getState(hunger);
 
-        // Position after traits row (row index 5, using h=17 spacing matching MCA's layout)
         int h = 17;
         int y = 30 + h * 4;
 
@@ -116,7 +115,7 @@ public abstract class InteractScreenMixin extends Screen {
             ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, hungerLabel, "hunger");
         }
 
-        if (ThirstWasTakenBridge.INSTANCE.isActive() && townstead$isHoveringThirstIcon()) {
+        if (ThirstBridgeResolver.isActive() && townstead$isHoveringThirstIcon()) {
             int thirst = ThirstClientStore.getThirst(entityId);
             ThirstData.ThirstState thirstState = ThirstData.getState(thirst);
             Component thirstLabel = Component.translatable(
@@ -128,65 +127,51 @@ public abstract class InteractScreenMixin extends Screen {
         }
     }
 
-    @Redirect(
-            method = "drawTextPopups",
-            remap = false,
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderTooltip(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V"
-            )
-    )
-    private void townstead$shiftTraitsTooltip(
-            GuiGraphics context,
-            net.minecraft.client.gui.Font font,
-            Component text,
-            int x,
-            int y
-    ) {
-        int shiftedY = y;
-        if (x == 10 && y == 98 && text.getString().startsWith("Traits")) {
-            shiftedY = y + 17;
-        }
-        context.renderTooltip(font, text, x, shiftedY);
+    private static final int TRAITS_Y = 30 + 17 * 4; // 98
+
+    //? if >=1.21 {
+    @ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderTooltip(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V"),
+            index = 3)
+    //?} else {
+    /*@ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;m_280557_(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V"),
+            index = 3)
+    *///?}
+    private int townstead$shiftTraitsTooltipY(int y) {
+        return y >= TRAITS_Y ? y + 17 : y;
     }
 
-    @Redirect(
-            method = "drawTextPopups",
-            remap = false,
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderComponentTooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;II)V"
-            )
-    )
-    private void townstead$shiftTraitsComponentTooltip(
-            GuiGraphics context,
-            net.minecraft.client.gui.Font font,
-            List<Component> text,
-            int x,
-            int y
-    ) {
-        int shiftedY = y;
-        if (x == 10 && y == 98 && !text.isEmpty() && text.get(0).getString().startsWith("Traits")) {
-            shiftedY = y + 17;
-        }
-        context.renderComponentTooltip(font, text, x, shiftedY);
+    //? if >=1.21 {
+    @ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderComponentTooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;II)V"),
+            index = 3)
+    //?} else {
+    /*@ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;m_280666_(Lnet/minecraft/client/gui/Font;Ljava/util/List;II)V"),
+            index = 3)
+    *///?}
+    private int townstead$shiftTraitsComponentTooltipY(int y) {
+        return y >= TRAITS_Y ? y + 17 : y;
     }
 
-    @Redirect(
-            method = "drawTextPopups",
-            remap = false,
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/conczin/mca/client/gui/InteractScreen;hoveringOverText(III)Z"
-            )
-    )
-    private boolean townstead$shiftTraitsHoverHitbox(InteractScreen instance, int x, int y, int w) {
-        int shiftedY = y;
-        // Traits line moved down by one row, so move its hover hitbox too.
-        if (x == 10 && y == 98 && w == 128) {
-            shiftedY = y + 17;
-        }
-        return ((InteractScreenAccessor) instance).townstead$invokeHoveringOverText(x, shiftedY, w);
+    //? if >=1.21 {
+    @ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/conczin/mca/client/gui/InteractScreen;hoveringOverText(III)Z"),
+            index = 1)
+    //?} else {
+    /*@ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lforge/net/mca/client/gui/InteractScreen;hoveringOverText(III)Z"),
+            index = 1)
+    *///?}
+    private int townstead$shiftTraitsHoverY(int y) {
+        return y >= TRAITS_Y ? y + 17 : y;
     }
 
     @Inject(method = "drawIcons", remap = false, at = @At("TAIL"))
@@ -208,17 +193,18 @@ public abstract class InteractScreenMixin extends Screen {
         *///?}
         pose.popPose();
 
-        if (!ThirstWasTakenBridge.INSTANCE.isActive()) return;
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+        if (bridge == null) return;
 
         int thirst = ThirstClientStore.getThirst(villager.asEntity().getId());
-        int thirstU = townstead$thirstIconU(thirst);
+        ThirstCompatBridge.ThirstIconInfo icon = bridge.iconInfo(thirst);
         int thirstX = THIRST_ICON_X + ((THIRST_ICON_SIZE - 16) / 2);
         int thirstY = THIRST_ICON_Y + ((THIRST_ICON_SIZE - 16) / 2);
 
         pose.pushPose();
         pose.translate(thirstX, thirstY, 0);
         pose.scale(THIRST_ICON_SCALE, THIRST_ICON_SCALE, 1.0f);
-        context.blit(ThirstWasTakenBridge.INSTANCE.iconTexture(), 0, 0, thirstU, 0, 9, 9, THIRST_ICON_TEX_W, THIRST_ICON_TEX_H);
+        context.blit(icon.texture(), 0, 0, icon.u(), icon.v(), 9, 9, icon.texW(), icon.texH());
         pose.popPose();
     }
 
@@ -247,12 +233,6 @@ public abstract class InteractScreenMixin extends Screen {
         };
     }
     *///?}
-
-    private int townstead$thirstIconU(int thirst) {
-        if (thirst > 13) return 16; // full droplet
-        if (thirst > 6) return 8;   // half droplet
-        return 0;                   // empty droplet
-    }
 
     private Activity townstead$getCurrentScheduleActivity() {
         if (!(villager.asEntity() instanceof VillagerEntityMCA mca)) return null;

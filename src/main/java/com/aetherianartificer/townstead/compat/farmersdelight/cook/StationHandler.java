@@ -7,7 +7,6 @@ import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegi
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
-import com.aetherianartificer.townstead.compat.thirst.ThirstWasTakenBridge;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
@@ -73,7 +72,7 @@ public final class StationHandler {
     //? if >=1.21 {
     static ItemStack copyOne(ItemStack stack) { return stack.copyWithCount(1); }
     static ItemStack copyWithCount(ItemStack stack, int count) { return stack.copyWithCount(count); }
-    static boolean isSameItemComponents(ItemStack a, ItemStack b) { return isSameItemComponents(a, b); }
+    static boolean isSameItemComponents(ItemStack a, ItemStack b) { return ItemStack.isSameItemSameComponents(a, b); }
     //?} else {
     /*static ItemStack copyOne(ItemStack stack) { ItemStack c = stack.copy(); c.setCount(1); return c; }
     static ItemStack copyWithCount(ItemStack stack, int count) { ItemStack c = stack.copy(); c.setCount(count); return c; }

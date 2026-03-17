@@ -19,5 +19,21 @@ public interface ThirstCompatBridge {
     PurityResult evaluatePurity(int purity, RandomSource random);
     ResourceLocation iconTexture();
 
+    boolean supportsPurification();
+
+    default void purifyResult(ItemStack input, ItemStack output) {}
+
+    /**
+     * Called after a villager consumes a drink. Mutates the stack in-place to reflect
+     * consumption (e.g. reduce canteen capacity). Returns the remainder item that should
+     * stay in inventory, or {@link ItemStack#EMPTY} if the item is fully consumed
+     * (normal shrink behavior).
+     */
+    default ItemStack onDrinkConsumed(ItemStack drinkStack) { return ItemStack.EMPTY; }
+
+    ThirstIconInfo iconInfo(int thirst);
+
     record PurityResult(boolean applyHydration, boolean sickness, boolean poison, int purity) {}
+
+    record ThirstIconInfo(ResourceLocation texture, int u, int v, int texW, int texH) {}
 }

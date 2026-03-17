@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
 import net.neoforged.fml.ModContainer;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
@@ -10,6 +11,7 @@ import net.neoforged.neoforge.common.NeoForge;
 //?} else if forge {
 /*import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.sound.PlaySoundEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraft.client.gui.screens.Screen;
@@ -17,6 +19,12 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.CommonComponents;
 *///?}
+import com.aetherianartificer.townstead.hunger.HungerClientStore;
+import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
+import com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore;
+import com.aetherianartificer.townstead.thirst.ThirstClientStore;
+import com.aetherianartificer.townstead.shift.ShiftClientStore;
+import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 
 public final class TownsteadClient {
     private static boolean hooksRegistered;
@@ -29,6 +37,7 @@ public final class TownsteadClient {
                 (IConfigScreenFactory) (container, parent) -> new ConfigurationScreen(container, parent));
         if (!hooksRegistered) {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
+            NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             hooksRegistered = true;
         }
         //?} else if forge {
@@ -37,9 +46,23 @@ public final class TownsteadClient {
                         new ConfigInfoScreen(parent)));
         if (!hooksRegistered) {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
+            MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             hooksRegistered = true;
         }
         *///?}
+    }
+
+    //? if neoforge {
+    private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
+    //?} else if forge {
+    /*private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
+    *///?}
+        HungerClientStore.clear();
+        ThirstClientStore.clear();
+        FarmingPolicyClientStore.clear();
+        ButcherPolicyClientStore.clear();
+        ShiftClientStore.clear();
+        ProfessionClientStore.clear();
     }
 
     private static void onPlaySound(PlaySoundEvent event) {
