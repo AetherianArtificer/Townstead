@@ -63,7 +63,6 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.attachment.AttachmentType;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -79,7 +78,6 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -162,7 +160,6 @@ public class Townstead {
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::registerPayloads);
         modBus.addListener(this::addPackFinders);
-        NeoForge.EVENT_BUS.addListener(this::onClientDisconnect);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -186,7 +183,6 @@ public class Townstead {
         TownsteadNetwork.register();
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
-        MinecraftForge.EVENT_BUS.addListener(this::onClientDisconnect);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -329,8 +325,11 @@ public class Townstead {
             //?} else if forge {
             /*modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.CLIENT, TownsteadConfig.CLIENT_SPEC, modContainer));
             *///?}
-            TownsteadClient.registerConfigScreen(modContainer);
-        } catch (ClassNotFoundException ignored) {
+            // Load TownsteadClient via reflection to avoid pulling in client-only
+            // imports (ConfigScreenHandler, etc.) on dedicated servers.
+            Class<?> clientClass = Class.forName("com.aetherianartificer.townstead.TownsteadClient");
+            clientClass.getMethod("registerConfigScreen", ModContainer.class).invoke(null, modContainer);
+        } catch (Exception ignored) {
             // Dedicated server: no client config screen.
         }
     }
@@ -729,16 +728,4 @@ public class Townstead {
         );
     }
 
-    //? if neoforge {
-    private void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
-    //?} else if forge {
-    /*private void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
-    *///?}
-        HungerClientStore.clear();
-        ThirstClientStore.clear();
-        FarmingPolicyClientStore.clear();
-        ButcherPolicyClientStore.clear();
-        ShiftClientStore.clear();
-        ProfessionClientStore.clear();
-    }
 }
