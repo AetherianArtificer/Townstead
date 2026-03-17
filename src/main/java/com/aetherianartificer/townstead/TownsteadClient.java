@@ -22,6 +22,7 @@ import net.minecraft.network.chat.CommonComponents;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore;
+import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
@@ -59,6 +60,7 @@ public final class TownsteadClient {
     *///?}
         HungerClientStore.clear();
         ThirstClientStore.clear();
+        FatigueClientStore.clear();
         FarmingPolicyClientStore.clear();
         ButcherPolicyClientStore.clear();
         ShiftClientStore.clear();

@@ -69,6 +69,11 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ModConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
+    public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
+    public static final ModConfigSpec.IntValue FATIGUE_COLLAPSE_THRESHOLD;
+    public static final ModConfigSpec.IntValue FATIGUE_RECOVERY_GATE;
+    public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
+    public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     //?} else if forge {
     /*public static final ForgeConfigSpec SERVER_SPEC;
     public static final ForgeConfigSpec CLIENT_SPEC;
@@ -118,6 +123,11 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
+    public static final ForgeConfigSpec.IntValue FATIGUE_COLLAPSE_THRESHOLD;
+    public static final ForgeConfigSpec.IntValue FATIGUE_RECOVERY_GATE;
+    public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
+    public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     *///?}
 
     static {
@@ -192,6 +202,29 @@ public final class TownsteadConfig {
             ENABLE_COOK_WATER_PURIFICATION = null;
             PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES = null;
         }
+        // ── Fatigue ──
+        b.translation("townstead.configuration.needs.fatigue").push("fatigue");
+        ENABLE_VILLAGER_FATIGUE = b
+                .translation("townstead.configuration.needs.fatigue.enableVillagerFatigue")
+                .comment("Enable villager fatigue simulation. Villagers accumulate fatigue during activity and recover through rest.")
+                .define("enableVillagerFatigue", true);
+        FATIGUE_COLLAPSE_THRESHOLD = b
+                .translation("townstead.configuration.needs.fatigue.fatigueCollapseThreshold")
+                .comment("Fatigue level that triggers collapse when no bed is available.")
+                .defineInRange("fatigueCollapseThreshold", 16, 10, 20);
+        FATIGUE_RECOVERY_GATE = b
+                .translation("townstead.configuration.needs.fatigue.fatigueRecoveryGate")
+                .comment("Fatigue must drop below this to resume work after reaching exhaustion.")
+                .defineInRange("fatigueRecoveryGate", 12, 4, 16);
+        FATIGUE_NOCTURNAL_MULTIPLIER = b
+                .translation("townstead.configuration.needs.fatigue.fatigueNocturnalMultiplier")
+                .comment("Fatigue accumulation multiplier when working during aligned cycle hours.")
+                .define("fatigueNocturnalMultiplier", 0.75);
+        FATIGUE_MISALIGNED_MULTIPLIER = b
+                .translation("townstead.configuration.needs.fatigue.fatigueMisalignedMultiplier")
+                .comment("Fatigue accumulation multiplier when working during misaligned cycle hours.")
+                .define("fatigueMisalignedMultiplier", 1.25);
+        b.pop();
         b.pop();
 
         // ── Farming ──
@@ -437,6 +470,10 @@ public final class TownsteadConfig {
 
     private static boolean isValidResourceLocationString(final @NotNull Object o) {
         return o instanceof String s && ResourceLocation.tryParse(s) != null;
+    }
+
+    public static boolean isVillagerFatigueEnabled() {
+        return ENABLE_VILLAGER_FATIGUE.get();
     }
 
     public static boolean isProtectedStorage(BlockState state) {

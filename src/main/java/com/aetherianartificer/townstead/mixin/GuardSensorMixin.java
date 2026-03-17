@@ -1,8 +1,5 @@
 package com.aetherianartificer.townstead.mixin;
 
-import com.aetherianartificer.townstead.shift.ShiftClientStore;
-import com.aetherianartificer.townstead.shift.ShiftData;
-import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.sensor.GuardEnemiesSensor;
 import net.minecraft.server.level.ServerLevel;
@@ -14,11 +11,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Suppresses guard enemy detection when the villager's shift schedule says REST.
- * This ensures guards/archers respect their assigned rest hours.
+ * Suppresses guard enemy detection when the villager's shift schedule says REST,
+ * unless the guard was recently hurt (within last 200 ticks) — allowing reactive combat.
  */
 @Mixin(GuardEnemiesSensor.class)
 public class GuardSensorMixin {
+
+    private static final int RECENT_HURT_TICKS = 200;
 
     //? if neoforge {
     @Inject(method = "doTick", remap = false, at = @At("HEAD"), cancellable = true)
@@ -31,16 +30,22 @@ public class GuardSensorMixin {
         // Check if the villager's current schedule activity is REST
         Activity current = villager.getBrain().getSchedule()
                 .getActivityAt((int) (level.getDayTime() % 24000L));
-        if (current == Activity.REST) {
-            // Clear any existing guard enemy memory so they stop fighting
-            //? if neoforge {
-            villager.getBrain().eraseMemory(net.conczin.mca.entity.ai.MemoryModuleTypeMCA.NEAREST_GUARD_ENEMY);
-            //?} else {
-            /*villager.getBrain().eraseMemory(
-                    ((net.minecraft.world.entity.ai.memory.MemoryModuleType<?>)
-                    forge.net.mca.entity.ai.MemoryModuleTypeMCA.NEAREST_GUARD_ENEMY.get()));
-            *///?}
-            ci.cancel();
+        if (current != Activity.REST) return;
+
+        // If recently hurt, allow the sensor to run so guard can identify attacker
+        if (villager.getLastHurtByMob() != null
+                && (villager.tickCount - villager.getLastHurtByMobTimestamp()) < RECENT_HURT_TICKS) {
+            return;
         }
+
+        // Clear any existing guard enemy memory so they stop fighting
+        //? if neoforge {
+        villager.getBrain().eraseMemory(net.conczin.mca.entity.ai.MemoryModuleTypeMCA.NEAREST_GUARD_ENEMY);
+        //?} else {
+        /*villager.getBrain().eraseMemory(
+                ((net.minecraft.world.entity.ai.memory.MemoryModuleType<?>)
+                forge.net.mca.entity.ai.MemoryModuleTypeMCA.NEAREST_GUARD_ENEMY.get()));
+        *///?}
+        ci.cancel();
     }
 }

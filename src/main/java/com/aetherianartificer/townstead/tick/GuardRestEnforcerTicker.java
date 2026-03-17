@@ -9,10 +9,12 @@ import net.minecraft.world.entity.schedule.Activity;
 
 /**
  * Every tick, checks if a guard/archer villager's schedule says REST.
- * If so, clears all combat-related memories to prevent them from
- * patrolling or engaging enemies while they should be sleeping.
+ * If so, clears patrol memories but allows reactive combat when recently hurt.
+ * Guards during REST seek bed, react to attacks, but don't patrol.
  */
 public final class GuardRestEnforcerTicker {
+
+    private static final int RECENT_HURT_TICKS = 200;
 
     private GuardRestEnforcerTicker() {}
 
@@ -34,9 +36,16 @@ public final class GuardRestEnforcerTicker {
         Activity current = brain.getSchedule().getActivityAt((int) dayTime);
         if (current != Activity.REST) return;
 
-        // Clear all combat-related memories to enforce rest
-        brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
-        brain.eraseMemory(MemoryModuleType.WALK_TARGET);
-        brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
+        // If recently hurt, let them fight — skip enforcement
+        if (villager.getLastHurtByMob() != null
+                && (villager.tickCount - villager.getLastHurtByMobTimestamp()) < RECENT_HURT_TICKS) {
+            return;
+        }
+
+        // Only erase patrol memories if no active attack target
+        if (brain.getMemory(MemoryModuleType.ATTACK_TARGET).isEmpty()) {
+            brain.eraseMemory(MemoryModuleType.WALK_TARGET);
+            brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
+        }
     }
 }

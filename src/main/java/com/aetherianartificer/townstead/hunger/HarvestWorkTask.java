@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
@@ -127,6 +128,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
+        if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
@@ -1638,5 +1640,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
     private int townstead$scaleInt(int base, double scale, int min, int max) {
         int scaled = (int) Math.round(base * scale);
         return Math.max(min, Math.min(max, scaled));
+    }
+
+    private static boolean townstead$isFatigueGated(VillagerEntityMCA villager) {
+        if (!TownsteadConfig.isVillagerFatigueEnabled()) return false;
+        //? if neoforge {
+        CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+        //?} else {
+        /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
+        *///?}
+        return FatigueData.isGated(fatigue);
     }
 }

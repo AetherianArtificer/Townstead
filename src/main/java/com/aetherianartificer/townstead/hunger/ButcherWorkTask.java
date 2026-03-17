@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
@@ -87,6 +88,7 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
+        if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         VillagerProfession profession = villager.getVillagerData().getProfession();
         if (profession != VillagerProfession.BUTCHER) return false;
@@ -814,5 +816,15 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         NO_BLOCKER,
         CLEARED,
         FAILED
+    }
+
+    private static boolean townstead$isFatigueGated(VillagerEntityMCA villager) {
+        if (!TownsteadConfig.isVillagerFatigueEnabled()) return false;
+        //? if neoforge {
+        CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+        //?} else {
+        /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
+        *///?}
+        return FatigueData.isGated(fatigue);
     }
 }

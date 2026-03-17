@@ -1,10 +1,16 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
+import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
+import net.minecraft.core.Direction;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.Pose;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.BaristaWorkTask;
@@ -46,6 +52,57 @@ public abstract class VillagerHungerMixin extends Villager {
         super(null, null);
     }
 
+    /**
+     * When a villager is collapsed from fatigue (sleeping without a bed),
+     * return their facing direction so the renderer lays them flat on the ground.
+     * Vanilla only returns a direction when sleeping on a BedBlock.
+     */
+    @Override
+    public Direction getBedOrientation() {
+        Direction orig = super.getBedOrientation();
+        if (orig != null) return orig;
+        // Collapsed villagers: use their horizontal facing so they lay flat
+        if (isSleeping()) {
+            //? if neoforge {
+            CompoundTag fatigueTag = ((VillagerEntityMCA)(Object)this).getData(Townstead.FATIGUE_DATA);
+            //?} else {
+            /*CompoundTag fatigueTag = getPersistentData().getCompound("townstead_fatigue");
+            *///?}
+            if (FatigueData.isCollapsed(fatigueTag)) {
+                return getDirection();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Give collapsed villagers a wider, taller ground-level hitbox so the player
+     * can click on them. Default SLEEPING dims are paper-thin (0.2 tall).
+     * We return a low-but-clickable box (1.8 wide, 0.6 tall) at ground level.
+     */
+    //? if neoforge {
+    @Inject(method = "getDefaultDimensions", at = @At("HEAD"), cancellable = true, remap = false)
+    private void townstead$keepCollapsedHitbox(Pose pose, CallbackInfoReturnable<EntityDimensions> cir) {
+        if (pose == Pose.SLEEPING) {
+            VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
+            CompoundTag fatigueTag = self.getData(Townstead.FATIGUE_DATA);
+            if (FatigueData.isCollapsed(fatigueTag)) {
+                cir.setReturnValue(EntityDimensions.fixed(1.8f, 0.6f));
+            }
+        }
+    }
+    //?} else {
+    /*@Inject(method = "getDimensions", at = @At("HEAD"), cancellable = true, remap = false)
+    private void townstead$keepCollapsedHitbox(Pose pose, CallbackInfoReturnable<EntityDimensions> cir) {
+        if (pose == Pose.SLEEPING) {
+            CompoundTag fatigueTag = getPersistentData().getCompound("townstead_fatigue");
+            if (FatigueData.isCollapsed(fatigueTag)) {
+                cir.setReturnValue(EntityDimensions.fixed(1.8f, 0.6f));
+            }
+        }
+    }
+    *///?}
+
     @SuppressWarnings("unchecked")
     //? if neoforge {
     @Inject(method = "makeBrain", at = @At("RETURN"))
@@ -83,6 +140,7 @@ public abstract class VillagerHungerMixin extends Villager {
         if (ThirstBridgeResolver.isActive()) {
             coreBehaviors.add(Pair.of(98, new SeekDrinkTask()));
         }
+        coreBehaviors.add(Pair.of(65, new SeekBedWhenFatiguedTask()));
         coreBehaviors.add(Pair.of(99, new SeekFoodTask()));
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
         brain.addActivity(Activity.CORE, ImmutableList.copyOf(coreBehaviors));
@@ -106,7 +164,8 @@ public abstract class VillagerHungerMixin extends Villager {
         boolean bridgeActive = ThirstBridgeResolver.isActive();
         boolean nbtHasThirst = nbt.contains(ThirstData.EDITOR_KEY_THIRST);
         boolean hasThirst = bridgeActive && nbtHasThirst;
-        if (!hasHunger && !hasThirst) return;
+        boolean hasFatigue = nbt.contains(FatigueData.EDITOR_KEY_FATIGUE);
+        if (!hasHunger && !hasThirst && !hasFatigue) return;
 
         if (hasHunger) {
             //? if neoforge {
@@ -144,6 +203,35 @@ public abstract class VillagerHungerMixin extends Villager {
                 PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
                 //?} else if forge {
                 /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
+                *///?}
+            }
+        }
+
+        if (hasFatigue) {
+            int newFatigue = nbt.getInt(FatigueData.EDITOR_KEY_FATIGUE);
+            //? if neoforge {
+            CompoundTag fatigue = self.getData(Townstead.FATIGUE_DATA);
+            //?} else {
+            /*CompoundTag fatigue = self.getPersistentData().getCompound("townstead_fatigue");
+            *///?}
+            FatigueData.setFatigue(fatigue, newFatigue);
+            // Clear collapse/gate if below thresholds
+            if (newFatigue < FatigueData.COLLAPSE_THRESHOLD) {
+                FatigueData.setCollapsed(fatigue, false);
+            }
+            if (newFatigue < FatigueData.RECOVERY_GATE) {
+                FatigueData.setGated(fatigue, false);
+            }
+            //? if neoforge {
+            self.setData(Townstead.FATIGUE_DATA, fatigue);
+            //?} else {
+            /*self.getPersistentData().put("townstead_fatigue", fatigue);
+            *///?}
+            if (!self.level().isClientSide) {
+                //? if neoforge {
+                PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
+                //?} else if forge {
+                /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
                 *///?}
             }
         }
