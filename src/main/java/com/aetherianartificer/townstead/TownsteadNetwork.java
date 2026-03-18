@@ -6,6 +6,10 @@ import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
+import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
+import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
+import com.aetherianartificer.townstead.fatigue.FatigueSyncPayload;
 import com.aetherianartificer.townstead.hunger.*;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
@@ -78,6 +82,12 @@ public final class TownsteadNetwork {
             registerC2S(ThirstSetPayload.class, ThirstSetPayload::write, ThirstSetPayload::read,
                     TownsteadNetwork::handleThirstSet);
         }
+
+        // Fatigue management
+        registerS2C(FatigueSyncPayload.class, FatigueSyncPayload::write, FatigueSyncPayload::read,
+                TownsteadNetwork::handleFatigueSync);
+        registerC2S(FatigueSetPayload.class, FatigueSetPayload::write, FatigueSetPayload::read,
+                TownsteadNetwork::handleFatigueSet);
 
         // Shift management
         registerS2C(ShiftSyncPayload.class, ShiftSyncPayload::write, ShiftSyncPayload::read,
@@ -255,6 +265,37 @@ public final class TownsteadNetwork {
         sendToPlayer(sp, new ButcherPolicySyncPayload(
                 data.getDefaultProfileId(), data.getDefaultTier(), data.getAreas().size()
         ));
+    }
+
+    private static void handleFatigueSync(FatigueSyncPayload payload) {
+        FatigueClientStore.set(payload.entityId(), payload.fatigue(), payload.collapsed());
+    }
+
+    private static void handleFatigueSet(FatigueSetPayload payload, ServerPlayer sp) {
+        Entity entity = sp.serverLevel().getEntity(payload.entityId());
+        if (!(entity instanceof VillagerEntityMCA villager)) return;
+
+        CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
+        int currentFatigue = FatigueData.getFatigue(fatigue);
+
+        if (payload.fatigue() == -1) {
+            sendToPlayer(sp, Townstead.townstead$fatigueSync(villager, fatigue));
+            return;
+        }
+
+        int newFatigue = payload.fatigue();
+        Townstead.LOGGER.debug("FatigueSet packet: entityId={}, target={}", payload.entityId(), newFatigue);
+        FatigueData.setFatigue(fatigue, newFatigue);
+        if (newFatigue < FatigueData.COLLAPSE_THRESHOLD) {
+            FatigueData.setCollapsed(fatigue, false);
+        }
+        if (newFatigue < FatigueData.RECOVERY_GATE) {
+            FatigueData.setGated(fatigue, false);
+        }
+        villager.getPersistentData().put("townstead_fatigue", fatigue);
+        FatigueSyncPayload sync = Townstead.townstead$fatigueSync(villager, fatigue);
+        sendToPlayer(sp, sync);
+        sendToTrackingEntity(villager, sync);
     }
 
     private static void handleShiftSync(ShiftSyncPayload payload) {

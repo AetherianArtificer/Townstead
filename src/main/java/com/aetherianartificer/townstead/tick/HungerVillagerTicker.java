@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.aetherianartificer.townstead.thirst.VillagerDrinkingManager;
@@ -90,7 +91,20 @@ public final class HungerVillagerTicker {
         }
 
         hungerChanged |= HungerData.processExhaustion(hunger);
-        if (!isResting(self) && self.tickCount % HungerData.PASSIVE_DRAIN_INTERVAL == 0) {
+        // Drowsy/exhausted villagers drain hunger 1.25x faster (shorter interval)
+        int passiveInterval = HungerData.PASSIVE_DRAIN_INTERVAL;
+        if (TownsteadConfig.isVillagerFatigueEnabled()) {
+            //? if neoforge {
+            CompoundTag fatigueTag = self.getData(Townstead.FATIGUE_DATA);
+            //?} else {
+            /*CompoundTag fatigueTag = self.getPersistentData().getCompound("townstead_fatigue");
+            *///?}
+            int fatigue = FatigueData.getFatigue(fatigueTag);
+            if (fatigue >= FatigueData.DROWSY_THRESHOLD) {
+                passiveInterval = (int)(passiveInterval / FatigueData.DROWSY_HUNGER_MULTIPLIER);
+            }
+        }
+        if (!isResting(self) && self.tickCount % passiveInterval == 0) {
             hungerChanged |= HungerData.passiveDrain(hunger);
         }
 

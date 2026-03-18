@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.compat.farmersdelight;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.IngredientResolver;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
@@ -111,6 +112,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!TownsteadConfig.isTownsteadCookEnabled()) return false;
+        if (townstead$isFatigueGated(villager)) return false;
         VillagerProfession profession = villager.getVillagerData().getProfession();
         if (!FarmersDelightCookAssignment.isExternalCookProfession(profession)) return false;
         if (!FarmersDelightCookAssignment.canVillagerWorkAsCook(level, villager)) return false;
@@ -952,5 +954,15 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
                 + " doneAt=" + cookDoneTick + " blocked=" + blocked.name()
                 + " used=" + usedStations.size() + idleInfo));
         nextDebugTick = gameTime + 100L;
+    }
+
+    private static boolean townstead$isFatigueGated(VillagerEntityMCA villager) {
+        if (!TownsteadConfig.isVillagerFatigueEnabled()) return false;
+        //? if neoforge {
+        net.minecraft.nbt.CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+        //?} else {
+        /*net.minecraft.nbt.CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
+        *///?}
+        return FatigueData.isGated(fatigue) || FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD;
     }
 }

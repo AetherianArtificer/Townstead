@@ -1,16 +1,22 @@
 package com.aetherianartificer.townstead.tick;
 
+import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.registry.ProfessionsMCA;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
 
 /**
- * Every tick, checks if a guard/archer villager's schedule says REST.
- * If so, clears all combat-related memories to prevent them from
- * patrolling or engaging enemies while they should be sleeping.
+ * During REST, prevents guards/archers from aimlessly patrolling.
+ * Does NOT interfere with:
+ * - Combat (attack targets are never erased)
+ * - Bed-seeking (skipped when drowsy+)
+ * - Enemy detection (handled by GuardEnemiesSensor, always active)
  */
 public final class GuardRestEnforcerTicker {
 
@@ -19,7 +25,6 @@ public final class GuardRestEnforcerTicker {
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
 
-        // Only applies to guards/archers
         VillagerProfession prof = villager.getVillagerData().getProfession();
         //? if neoforge {
         boolean isGuard = prof == ProfessionsMCA.GUARD || prof == ProfessionsMCA.ARCHER;
@@ -28,15 +33,33 @@ public final class GuardRestEnforcerTicker {
         *///?}
         if (!isGuard) return;
 
-        // Check if their schedule says REST right now
         Brain<?> brain = villager.getBrain();
         long dayTime = villager.level().getDayTime() % 24000L;
         Activity current = brain.getSchedule().getActivityAt((int) dayTime);
         if (current != Activity.REST) return;
 
-        // Clear all combat-related memories to enforce rest
-        brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
+        // Has an attack target — let them fight, don't touch anything
+        if (brain.getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) return;
+
+        // Drowsy or worse — let them seek bed
+        if (TownsteadConfig.isVillagerFatigueEnabled()) {
+            //? if neoforge {
+            CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+            //?} else {
+            /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
+            *///?}
+            if (FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD) return;
+        }
+
+        // Already sleeping in a bed — don't disturb
+        if (villager.isSleeping()) return;
+
+        // Has a HOME memory — let vanilla SleepInBed walk them to bed
+        if (brain.getMemory(MemoryModuleType.HOME).isPresent()) return;
+
+        // No threat, not drowsy, not in bed, no home — prevent aimless patrol
         brain.eraseMemory(MemoryModuleType.WALK_TARGET);
         brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
+        villager.getNavigation().stop();
     }
 }

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -284,6 +285,17 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         VillagerBrain<?> brain = caregiver.getVillagerBrain();
         if (brain.isPanicking() || caregiver.getLastHurtByMob() != null) {
             return false;
+        }
+        // Exhausted villagers cannot volunteer as caregivers
+        if (TownsteadConfig.isVillagerFatigueEnabled()) {
+            //? if neoforge {
+            CompoundTag fatigueTag = caregiver.getData(Townstead.FATIGUE_DATA);
+            //?} else {
+            /*CompoundTag fatigueTag = caregiver.getPersistentData().getCompound("townstead_fatigue");
+            *///?}
+            if (FatigueData.getFatigue(fatigueTag) >= FatigueData.COLLAPSE_THRESHOLD) {
+                return false;
+            }
         }
         return true;
     }

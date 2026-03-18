@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.mixin;
 
+import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
@@ -52,6 +54,23 @@ public abstract class InteractScreenMixin extends Screen {
     private static final int THIRST_ICON_Y = 145;
     private static final int THIRST_ICON_SIZE = 24;
     private static final float THIRST_ICON_SCALE = 16.0f / 9.0f;
+    private static final int FATIGUE_ICON_X = 70;
+    private static final int FATIGUE_ICON_Y = 170;
+    private static final int FATIGUE_ICON_SIZE = 24;
+    private static final float FATIGUE_ICON_SCALE = 16.0f / 9.0f;
+    //? if >=1.21 {
+    private static final ResourceLocation ENERGY_FULL = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_full.png");
+    private static final ResourceLocation ENERGY_THREE_QUARTER = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_three_quarter.png");
+    private static final ResourceLocation ENERGY_HALF = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_half.png");
+    private static final ResourceLocation ENERGY_QUARTER = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_quarter.png");
+    private static final ResourceLocation ENERGY_EMPTY = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/energy_empty.png");
+    //?} else {
+    /*private static final ResourceLocation ENERGY_FULL = new ResourceLocation("townstead", "textures/gui/energy_full.png");
+    private static final ResourceLocation ENERGY_THREE_QUARTER = new ResourceLocation("townstead", "textures/gui/energy_three_quarter.png");
+    private static final ResourceLocation ENERGY_HALF = new ResourceLocation("townstead", "textures/gui/energy_half.png");
+    private static final ResourceLocation ENERGY_QUARTER = new ResourceLocation("townstead", "textures/gui/energy_quarter.png");
+    private static final ResourceLocation ENERGY_EMPTY = new ResourceLocation("townstead", "textures/gui/energy_empty.png");
+    *///?}
 
     @Shadow(remap = false) @Final private VillagerLike<?> villager;
 
@@ -125,6 +144,19 @@ public abstract class InteractScreenMixin extends Screen {
                     .withStyle(Style.EMPTY.withColor(thirstState.getColor()));
             ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, thirstLabel, "thirst");
         }
+
+        if (townstead$isHoveringFatigueIcon()) {
+            int fatigue = FatigueClientStore.getFatigue(entityId);
+            int energy = FatigueData.toEnergy(fatigue);
+            FatigueData.FatigueState fatigueState = FatigueData.getState(fatigue);
+            Component energyLabel = Component.translatable(
+                            "townstead.energy.icon.tooltip",
+                            Component.translatable(fatigueState.getTranslationKey()),
+                            energy
+                    )
+                    .withStyle(Style.EMPTY.withColor(fatigueState.getColor()));
+            context.renderTooltip(font, energyLabel, FATIGUE_ICON_X + 16, FATIGUE_ICON_Y + 20);
+        }
     }
 
     private static final int TRAITS_Y = 30 + 17 * 4; // 98
@@ -193,6 +225,19 @@ public abstract class InteractScreenMixin extends Screen {
         *///?}
         pose.popPose();
 
+        // Draw energy bolt icon
+        int fatigue = FatigueClientStore.getFatigue(villager.asEntity().getId());
+        FatigueData.FatigueState fatigueState = FatigueData.getState(fatigue);
+        int energyIconX = FATIGUE_ICON_X + ((FATIGUE_ICON_SIZE - 16) / 2);
+        int energyIconY = FATIGUE_ICON_Y + ((FATIGUE_ICON_SIZE - 16) / 2);
+
+        pose.pushPose();
+        pose.translate(energyIconX, energyIconY, 0);
+        pose.scale(FATIGUE_ICON_SCALE, FATIGUE_ICON_SCALE, 1.0f);
+        ResourceLocation energySprite = townstead$energyIconSprite(fatigueState);
+        context.blit(energySprite, 0, 0, 0, 0, 9, 9, 9, 9);
+        pose.popPose();
+
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
         if (bridge == null) return;
 
@@ -216,6 +261,14 @@ public abstract class InteractScreenMixin extends Screen {
         return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("thirst");
     }
 
+    private boolean townstead$isHoveringFatigueIcon() {
+        if (minecraft == null) return false;
+        double mx = minecraft.mouseHandler.xpos() * width / minecraft.getWindow().getScreenWidth();
+        double my = minecraft.mouseHandler.ypos() * height / minecraft.getWindow().getScreenHeight();
+        return mx >= FATIGUE_ICON_X && mx <= FATIGUE_ICON_X + FATIGUE_ICON_SIZE
+                && my >= FATIGUE_ICON_Y && my <= FATIGUE_ICON_Y + FATIGUE_ICON_SIZE;
+    }
+
     //? if >=1.21 {
     private ResourceLocation townstead$hungerIconSprite(HungerData.HungerState state) {
         return switch (state) {
@@ -233,6 +286,16 @@ public abstract class InteractScreenMixin extends Screen {
         };
     }
     *///?}
+
+    private ResourceLocation townstead$energyIconSprite(FatigueData.FatigueState state) {
+        return switch (state) {
+            case RESTED -> ENERGY_FULL;
+            case ALERT -> ENERGY_THREE_QUARTER;
+            case TIRED -> ENERGY_HALF;
+            case DROWSY -> ENERGY_QUARTER;
+            case EXHAUSTED -> ENERGY_EMPTY;
+        };
+    }
 
     private Activity townstead$getCurrentScheduleActivity() {
         if (!(villager.asEntity() instanceof VillagerEntityMCA mca)) return null;

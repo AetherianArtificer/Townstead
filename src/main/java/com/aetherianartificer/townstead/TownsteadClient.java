@@ -1,9 +1,13 @@
 package com.aetherianartificer.townstead;
 
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
+import com.aetherianartificer.townstead.fatigue.EnergyTooltipComponent;
+import com.mojang.datafixers.util.Either;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
@@ -22,6 +26,7 @@ import net.minecraft.network.chat.CommonComponents;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore;
+import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
@@ -38,6 +43,7 @@ public final class TownsteadClient {
         if (!hooksRegistered) {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
+            NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
             hooksRegistered = true;
         }
         //?} else if forge {
@@ -59,11 +65,21 @@ public final class TownsteadClient {
     *///?}
         HungerClientStore.clear();
         ThirstClientStore.clear();
+        FatigueClientStore.clear();
         FarmingPolicyClientStore.clear();
         ButcherPolicyClientStore.clear();
         ShiftClientStore.clear();
         ProfessionClientStore.clear();
     }
+
+    //? if neoforge {
+    private static void onGatherTooltipComponents(RenderTooltipEvent.GatherComponents event) {
+        if (event.getItemStack().is(FatigueData.ENERGY_RESTORING_TAG)) {
+            event.getTooltipElements().add(Either.right(
+                    new EnergyTooltipComponent(FatigueData.ENERGY_RESTORE_AMOUNT)));
+        }
+    }
+    //?}
 
     private static void onPlaySound(PlaySoundEvent event) {
         if (!TownsteadConfig.isMoodVocalizationMuteEnabled()) return;

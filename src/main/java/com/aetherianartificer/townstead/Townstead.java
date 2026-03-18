@@ -5,6 +5,10 @@ import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
 import com.aetherianartificer.townstead.compat.ConditionalCompatPack;
 import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
+import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
+import com.aetherianartificer.townstead.fatigue.FatigueSyncPayload;
 import com.aetherianartificer.townstead.compat.thirst.RusticDelightThirstCompat;
 import com.aetherianartificer.townstead.compat.cooking.BaristaTradesCompat;
 import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
@@ -121,6 +125,12 @@ public class Townstead {
                     .serialize(net.minecraft.nbt.CompoundTag.CODEC)
                     .build()
     );
+    public static final Supplier<AttachmentType<CompoundTag>> FATIGUE_DATA = ATTACHMENTS.register(
+            "fatigue_data",
+            () -> AttachmentType.builder(() -> new CompoundTag())
+                    .serialize(net.minecraft.nbt.CompoundTag.CODEC)
+                    .build()
+    );
     //?}
 
     public static final Supplier<VillagerProfession> COOK_PROFESSION = PROFESSIONS.register(
@@ -160,6 +170,7 @@ public class Townstead {
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::registerPayloads);
         modBus.addListener(this::addPackFinders);
+        townstead$registerClientTooltipFactory(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -181,6 +192,7 @@ public class Townstead {
         modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC, modContainer));
         townstead$registerClientConfigScreen(modContainer);
         TownsteadNetwork.register();
+        townstead$registerClientTooltipFactory(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -273,6 +285,19 @@ public class Townstead {
                     ThirstData.ThirstState current = ThirstData.getState(t);
                     return townstead$thirstAtLeast(current, state) ? 1.0f : 0.0f;
                 });
+        GiftPredicate.register("fatigue", (json, name) ->
+                        GsonHelper.convertToString(json, name).toLowerCase(Locale.ROOT),
+                state -> (villager, stack, player) -> {
+                    if (!TownsteadConfig.isVillagerFatigueEnabled()) return 0.0f;
+                    //? if neoforge {
+                    CompoundTag data = villager.getData(FATIGUE_DATA);
+                    //?} else if forge {
+                    /*CompoundTag data = villager.getPersistentData().getCompound("townstead:fatigue_data");
+                    *///?}
+                    int f = FatigueData.getFatigue(data);
+                    FatigueData.FatigueState current = FatigueData.getState(f);
+                    return townstead$fatigueAtLeast(current, state) ? 1.0f : 0.0f;
+                });
     }
 
     private static boolean townstead$hungerAtLeast(HungerData.HungerState current, String minimumState) {
@@ -316,6 +341,48 @@ public class Townstead {
 
         return currentSeverity >= requiredSeverity;
     }
+
+    private static boolean townstead$fatigueAtLeast(FatigueData.FatigueState current, String minimumState) {
+        int currentSeverity = switch (current) {
+            case RESTED -> 0;
+            case ALERT -> 1;
+            case TIRED -> 2;
+            case DROWSY -> 3;
+            case EXHAUSTED -> 4;
+        };
+
+        int requiredSeverity = switch (minimumState) {
+            case "rested" -> 0;
+            case "alert" -> 1;
+            case "tired" -> 2;
+            case "drowsy" -> 3;
+            case "exhausted" -> 4;
+            default -> Integer.MAX_VALUE;
+        };
+
+        return currentSeverity >= requiredSeverity;
+    }
+
+    //? if neoforge {
+    private static void townstead$registerClientTooltipFactory(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent event) ->
+                            event.register(
+                                    com.aetherianartificer.townstead.fatigue.EnergyTooltipComponent.class,
+                                    com.aetherianartificer.townstead.fatigue.ClientEnergyTooltipComponent::new
+                            )
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no tooltip rendering.
+        }
+    }
+    //?} else {
+    /*private static void townstead$registerClientTooltipFactory(Object modBus) {
+        // Forge 1.20.1: tooltip component registration not supported
+    }
+    *///?}
 
     private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
         try {
@@ -416,6 +483,16 @@ public class Townstead {
                 ProfessionSetPayload.TYPE,
                 ProfessionSetPayload.STREAM_CODEC,
                 this::handleProfessionSet
+        );
+        registrar.playToClient(
+                FatigueSyncPayload.TYPE,
+                FatigueSyncPayload.STREAM_CODEC,
+                this::handleFatigueSync
+        );
+        registrar.playToServer(
+                FatigueSetPayload.TYPE,
+                FatigueSetPayload.STREAM_CODEC,
+                this::handleFatigueSet
         );
     }
 
@@ -652,6 +729,45 @@ public class Townstead {
         });
     }
 
+    private void handleFatigueSync(FatigueSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> FatigueClientStore.set(
+                payload.entityId(),
+                payload.fatigue(),
+                payload.collapsed()
+        ));
+    }
+
+    private void handleFatigueSet(FatigueSetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            Entity entity = sp.serverLevel().getEntity(payload.entityId());
+            if (!(entity instanceof VillagerEntityMCA villager)) return;
+
+            CompoundTag fatigue = villager.getData(FATIGUE_DATA);
+            int currentFatigue = FatigueData.getFatigue(fatigue);
+
+            if (payload.fatigue() == -1) {
+                PacketDistributor.sendToPlayer(sp, townstead$fatigueSync(villager, fatigue));
+                return;
+            }
+
+            int newFatigue = payload.fatigue();
+            LOGGER.debug("FatigueSet packet: entityId={}, target={}", payload.entityId(), newFatigue);
+            FatigueData.setFatigue(fatigue, newFatigue);
+            // Clear collapse/gate flags when setting via editor
+            if (newFatigue < FatigueData.COLLAPSE_THRESHOLD) {
+                FatigueData.setCollapsed(fatigue, false);
+            }
+            if (newFatigue < FatigueData.RECOVERY_GATE) {
+                FatigueData.setGated(fatigue, false);
+            }
+            villager.setData(FATIGUE_DATA, fatigue);
+            FatigueSyncPayload sync = townstead$fatigueSync(villager, fatigue);
+            PacketDistributor.sendToPlayer(sp, sync);
+            PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+        });
+    }
+
     //?}
 
     private void onStartTracking(PlayerEvent.StartTracking event) {
@@ -673,6 +789,8 @@ public class Townstead {
                 villager.getId(),
                 HungerData.getButcherBlockedReason(hunger).id()
         ));
+        CompoundTag fatigue = villager.getData(FATIGUE_DATA);
+        PacketDistributor.sendToPlayer(sp, townstead$fatigueSync(villager, fatigue));
         CompoundTag shift = villager.getData(SHIFT_DATA);
         if (ShiftData.hasCustomShifts(shift)) {
             PacketDistributor.sendToPlayer(sp, new ShiftSyncPayload(
@@ -693,6 +811,8 @@ public class Townstead {
                 villager.getId(),
                 HungerData.getButcherBlockedReason(hunger).id()
         ));
+        CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
+        TownsteadNetwork.sendToPlayer(sp, townstead$fatigueSync(villager, fatigue));
         CompoundTag shift = villager.getPersistentData().getCompound("townstead_shift");
         if (ShiftData.hasCustomShifts(shift)) {
             TownsteadNetwork.sendToPlayer(sp, new ShiftSyncPayload(
@@ -722,6 +842,14 @@ public class Townstead {
                 villager.getId(),
                 ThirstData.getThirst(thirst),
                 ThirstData.getQuenched(thirst)
+        );
+    }
+
+    public static FatigueSyncPayload townstead$fatigueSync(VillagerEntityMCA villager, CompoundTag fatigue) {
+        return new FatigueSyncPayload(
+                villager.getId(),
+                FatigueData.getFatigue(fatigue),
+                FatigueData.isCollapsed(fatigue)
         );
     }
 

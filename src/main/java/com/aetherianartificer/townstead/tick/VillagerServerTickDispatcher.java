@@ -16,6 +16,7 @@ public final class VillagerServerTickDispatcher {
         if (ThirstBridgeResolver.isActive()) {
             ThirstVillagerTicker.tick(villager);
         }
+        FatigueVillagerTicker.tick(villager);
         ProfessionProgressMemoryTicker.tick(villager);
         GuardRestEnforcerTicker.tick(villager);
     }

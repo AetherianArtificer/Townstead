@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 import net.conczin.mca.entity.VillagerEntityMCA;
 //? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
@@ -89,6 +90,10 @@ public final class VillagerEatingManager {
         int before = HungerData.getHunger(hungerTag);
         HungerData.applyFood(hungerTag, food);
         HungerData.setLastAteTime(hungerTag, villager.level().getGameTime());
+
+        // Coffee items reduce fatigue
+        FatigueData.applyCoffeeEffect(villager, pending.food());
+
         return HungerData.getHunger(hungerTag) != before;
     }
 }

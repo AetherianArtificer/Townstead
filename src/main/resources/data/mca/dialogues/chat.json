@@ -66,6 +66,37 @@
           }
         },
         {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 10, "fatigue": "exhausted" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.fatigue.exhausted"
+          }
+        },
+        {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 8, "fatigue": "drowsy" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.fatigue.drowsy"
+          }
+        },
+        {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 4, "fatigue": "tired" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.fatigue.tired",
+            "positive": 2
+          }
+        },
+        {
           "baseChance": 5,
           "conditions": [
             { "chance": 4, "personality": "gloomy" },
