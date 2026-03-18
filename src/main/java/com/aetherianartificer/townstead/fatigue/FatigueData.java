@@ -18,13 +18,16 @@ public final class FatigueData {
     public static final int MAX_FATIGUE = 20;
 
     // --- Accumulation rates (per 500-tick interval) ---
-    public static final float RATE_WORK = 0.4f;
-    public static final float RATE_MEET = 0.2f;
+    // At 0.5/interval, 16h aligned work → Drowsy; 10h → high Alert
+    public static final float RATE_WORK = 0.5f;
+    public static final float RATE_MEET = 0.25f;
     public static final float RATE_IDLE = 0.1f;
 
     // --- Recovery rates (per 500-tick interval, subtracted) ---
-    public static final float RECOVERY_BED_ALIGNED = -0.8f;
-    public static final float RECOVERY_BED_MISALIGNED = -0.4f;
+    // Aligned bed: -1.25/interval → full recovery (20pts) in 16 intervals = 8 MC hours
+    public static final float RECOVERY_BED_ALIGNED = -1.25f;
+    // Misaligned bed: -0.6/interval → full recovery in ~17 MC hours
+    public static final float RECOVERY_BED_MISALIGNED = -0.6f;
     public static final float RECOVERY_REST_NO_BED = -0.05f;
     public static final float RECOVERY_COLLAPSED = -0.03f;
 

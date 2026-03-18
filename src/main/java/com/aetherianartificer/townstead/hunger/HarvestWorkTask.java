@@ -1649,6 +1649,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         //?} else {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
-        return FatigueData.isGated(fatigue);
+        return FatigueData.isGated(fatigue) || FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD;
     }
 }

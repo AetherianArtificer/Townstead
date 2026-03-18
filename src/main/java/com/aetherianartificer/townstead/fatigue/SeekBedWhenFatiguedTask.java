@@ -12,6 +12,7 @@ import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
@@ -25,8 +26,8 @@ import java.util.Optional;
 public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     private static final int MAX_DURATION = 600;
     private static final float WALK_SPEED = 0.5f;
-    private static final int CLOSE_ENOUGH = 2;
-    private static final int BED_INTERACT_DIST_SQ = 4;
+    private static final int CLOSE_ENOUGH = 1;
+    private static final int BED_INTERACT_DIST_SQ = 9;
 
     private BlockPos bedPos;
     private int cooldown;
@@ -50,7 +51,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
 
-        // Only seek bed when drowsy or worse (fatigue >= 61)
+        // Seek bed when drowsy or worse (energy <= 8)
         if (FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD) return false;
         // Don't seek bed if already collapsed (they can't move)
         if (FatigueData.isCollapsed(fatigue)) return false;
@@ -103,18 +104,24 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         double distSq = villager.distanceToSqr(bedPos.getX() + 0.5, bedPos.getY() + 0.5, bedPos.getZ() + 0.5);
         if (distSq <= BED_INTERACT_DIST_SQ) {
             BlockState state = level.getBlockState(bedPos);
-            if (state.getBlock() instanceof BedBlock && !state.getValue(BedBlock.OCCUPIED)) {
-                // Find the head part of the bed for sleeping
-                BlockPos headPos = bedPos;
-                if (state.getValue(BedBlock.PART) == BedPart.FOOT) {
-                    headPos = bedPos.relative(BedBlock.getConnectedDirection(state));
-                }
-                villager.startSleeping(headPos);
-                doStop(level, villager, gameTime);
-            } else {
+            if (!(state.getBlock() instanceof BedBlock) || state.getValue(BedBlock.OCCUPIED)) {
                 // Bed is occupied or gone
                 doStop(level, villager, gameTime);
+                return;
             }
+            // Find the head part of the bed for sleeping
+            BlockPos headPos = bedPos;
+            if (state.getValue(BedBlock.PART) == BedPart.FOOT) {
+                headPos = bedPos.relative(BedBlock.getConnectedDirection(state));
+            }
+            // Set the brain's active activity to REST so vanilla's SleepInBed
+            // behavior handles the actual sleeping mechanics
+            villager.getBrain().setActiveActivityIfPossible(Activity.REST);
+            // Also try startSleeping directly as a fallback
+            if (!villager.isSleeping()) {
+                villager.startSleeping(headPos);
+            }
+            doStop(level, villager, gameTime);
         }
     }
 
@@ -129,8 +136,8 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         //?} else {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
-        // Stop seeking bed once rested enough (below tired threshold)
-        return FatigueData.getFatigue(fatigue) >= FatigueData.TIRED_THRESHOLD;
+        // Stop seeking bed once rested enough (below drowsy threshold)
+        return FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD;
     }
 
     @Override

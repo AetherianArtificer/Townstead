@@ -963,6 +963,6 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         //?} else {
         /*net.minecraft.nbt.CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
-        return FatigueData.isGated(fatigue);
+        return FatigueData.isGated(fatigue) || FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD;
     }
 }

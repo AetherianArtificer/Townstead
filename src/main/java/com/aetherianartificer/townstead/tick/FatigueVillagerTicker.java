@@ -9,6 +9,7 @@ import com.aetherianartificer.townstead.fatigue.FatigueData;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.Personality;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -17,6 +18,8 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.schedule.Activity;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.state.BlockState;
 //? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
 //?}
@@ -62,19 +65,53 @@ public final class FatigueVillagerTicker {
             self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
             self.getNavigation().stop();
             // Force SLEEPING pose for visual rotation (lying on back).
-            // Don't use startSleeping() — it repositions to bed height and floats.
             if (!self.hasPose(net.minecraft.world.entity.Pose.SLEEPING)) {
                 self.setPose(net.minecraft.world.entity.Pose.SLEEPING);
                 self.refreshDimensions();
             }
-        } else if (state.wasCollapsed) {
-            // Collapse just ended — restore standing pose
-            if (self.hasPose(net.minecraft.world.entity.Pose.SLEEPING) && !self.isSleeping()) {
-                self.setPose(net.minecraft.world.entity.Pose.STANDING);
-                self.refreshDimensions();
+        } else if (self.hasPose(net.minecraft.world.entity.Pose.SLEEPING) && !self.isSleeping()) {
+            // Not collapsed and not in a bed — clean up stale SLEEPING pose
+            self.setPose(net.minecraft.world.entity.Pose.STANDING);
+            self.refreshDimensions();
+        }
+
+        // Sleeping villagers should not keep executing stale movement orders, and
+        // invalid bed links need to be cleared so they do not slide around prone.
+        if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
+            if (!hasValidSleepingBed(self)) {
+                self.stopSleeping();
+                self.getNavigation().stop();
+                self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+                self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+            } else {
+                self.getNavigation().stop();
+                self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+                self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+                self.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
             }
         }
-        state.wasCollapsed = FatigueData.isCollapsed(fatigue);
+
+        // --- Combat wake-up (every tick) ---
+        // If a sleeping villager has an attack target, wake them up immediately.
+        if (self.isSleeping()
+                && self.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) {
+            self.stopSleeping();
+        }
+
+        // --- Fatigue sleep enforcement (every tick) ---
+        // When a villager is sleeping in a bed for fatigue recovery (not normal scheduled
+        // rest), keep the brain in REST so the schedule can't switch to WORK.
+        // Only applies when fatigued enough to warrant it (tired+), and only when the
+        // schedule says they SHOULDN'T be resting (i.e. they went to bed due to fatigue).
+        // Release once they recover below tired threshold.
+        if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
+            int f = FatigueData.getFatigue(fatigue);
+            Activity scheduled = currentScheduleActivity(self);
+            if (f >= FatigueData.TIRED_THRESHOLD && scheduled != Activity.REST) {
+                // Fatigue-driven sleep outside scheduled REST — keep in bed
+                self.getBrain().setActiveActivityIfPossible(Activity.REST);
+            }
+        }
 
         // --- Accumulation / recovery on interval ---
         if (self.tickCount % FatigueData.ACCUMULATION_INTERVAL == 0) {
@@ -266,6 +303,19 @@ public final class FatigueVillagerTicker {
         return self.getBrain().getSchedule().getActivityAt((int) dayTime);
     }
 
+    private static boolean hasValidSleepingBed(VillagerEntityMCA self) {
+        return self.getSleepingPos()
+                .map(BlockPos::immutable)
+                .filter(pos -> self.level().isLoaded(pos))
+                .map(self.level()::getBlockState)
+                .map(FatigueVillagerTicker::isBedBlock)
+                .orElse(false);
+    }
+
+    private static boolean isBedBlock(BlockState state) {
+        return state.getBlock() instanceof BedBlock;
+    }
+
     private static void updateSpeedModifier(VillagerEntityMCA self, int currentFatigue, TickState state) {
         double penalty = FatigueData.getSpeedPenalty(currentFatigue);
         if (penalty == state.lastPenalty) return;
@@ -301,7 +351,6 @@ public final class FatigueVillagerTicker {
     private static final class TickState {
         private int lastSyncedFatigue = -1;
         private boolean lastSyncedCollapsed = false;
-        private boolean wasCollapsed = false;
         private double lastPenalty = 0.0;
         private float fatigueResidue = 0f;
     }
