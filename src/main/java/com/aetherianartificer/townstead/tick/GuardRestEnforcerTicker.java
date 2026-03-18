@@ -1,7 +1,11 @@
 package com.aetherianartificer.townstead.tick;
 
+import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.fatigue.FatigueData;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.registry.ProfessionsMCA;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.VillagerProfession;
@@ -9,8 +13,8 @@ import net.minecraft.world.entity.schedule.Activity;
 
 /**
  * Every tick, checks if a guard/archer villager's schedule says REST.
- * If so, clears patrol memories but allows reactive combat when recently hurt.
- * Guards during REST seek bed, react to attacks, but don't patrol.
+ * If so, clears patrol memories but allows reactive combat when recently hurt,
+ * and allows bed-seeking when fatigued.
  */
 public final class GuardRestEnforcerTicker {
 
@@ -40,6 +44,18 @@ public final class GuardRestEnforcerTicker {
         if (villager.getLastHurtByMob() != null
                 && (villager.tickCount - villager.getLastHurtByMobTimestamp()) < RECENT_HURT_TICKS) {
             return;
+        }
+
+        // If fatigued, let them seek a bed — don't erase walk targets
+        if (TownsteadConfig.isVillagerFatigueEnabled()) {
+            //? if neoforge {
+            CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+            //?} else {
+            /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
+            *///?}
+            if (FatigueData.getFatigue(fatigue) >= FatigueData.TIRED_THRESHOLD) {
+                return;
+            }
         }
 
         // Only erase patrol memories if no active attack target

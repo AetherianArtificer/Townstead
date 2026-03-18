@@ -345,6 +345,7 @@
   "townstead.energy.exhausted": "Exhausted",
   "townstead.energy.editor": "Energy: %d",
   "townstead.energy.icon.tooltip": "Energy: %s (%s/20)",
+  "townstead.energy.tooltip.restores": "\u26a1 Restores %s Energy",
 
   "townstead.configuration.needs.fatigue": "Fatigue",
   "townstead.configuration.needs.fatigue.tooltip": "Controls villager fatigue and sleep needs.",

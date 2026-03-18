@@ -170,6 +170,7 @@ public class Townstead {
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::registerPayloads);
         modBus.addListener(this::addPackFinders);
+        townstead$registerClientTooltipFactory(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -191,6 +192,7 @@ public class Townstead {
         modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC, modContainer));
         townstead$registerClientConfigScreen(modContainer);
         TownsteadNetwork.register();
+        townstead$registerClientTooltipFactory(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -360,6 +362,27 @@ public class Townstead {
 
         return currentSeverity >= requiredSeverity;
     }
+
+    //? if neoforge {
+    private static void townstead$registerClientTooltipFactory(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent event) ->
+                            event.register(
+                                    com.aetherianartificer.townstead.fatigue.EnergyTooltipComponent.class,
+                                    com.aetherianartificer.townstead.fatigue.ClientEnergyTooltipComponent::new
+                            )
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no tooltip rendering.
+        }
+    }
+    //?} else {
+    /*private static void townstead$registerClientTooltipFactory(Object modBus) {
+        // Forge 1.20.1: tooltip component registration not supported
+    }
+    *///?}
 
     private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
         try {
