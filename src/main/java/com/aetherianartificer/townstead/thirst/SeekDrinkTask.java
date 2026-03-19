@@ -54,8 +54,9 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         if (bridge == null || !TownsteadConfig.isVillagerThirstEnabled()) return false;
         if (VillagerEatingManager.isEating(villager) || VillagerDrinkingManager.isDrinking(villager)) return false;
 
-        VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
+        // Only block when fleeing from a mob — not during environmental panic
+        // (thirst damage), otherwise villagers enter a death spiral.
+        if (villager.getLastHurtByMob() != null) return false;
 
         if (cooldown > 0) {
             cooldown--;
@@ -161,8 +162,8 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (targetType == TargetType.NONE) return false;
         if (targetType == TargetType.GROUND_ITEM && (targetItem == null || targetItem.isRemoved())) return false;
-        VillagerBrain<?> brain = villager.getVillagerBrain();
-        return !brain.isPanicking() && villager.getLastHurtByMob() == null;
+        if (villager.getLastHurtByMob() != null) return false;
+        return true;
     }
 
     @Override

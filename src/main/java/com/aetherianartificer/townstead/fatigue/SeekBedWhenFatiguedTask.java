@@ -55,8 +55,9 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         if (FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD) return false;
         // Don't seek bed if already collapsed (they can't move)
         if (FatigueData.isCollapsed(fatigue)) return false;
-        // Panicking villagers shouldn't wander to bed
-        if (villager.getVillagerBrain().isPanicking() || villager.getLastHurtByMob() != null) return false;
+        // Don't seek bed while fleeing from a mob — but DO allow it during
+        // environmental panic (thirst damage, fire, etc.)
+        if (villager.getLastHurtByMob() != null) return false;
 
         // Find bed via HOME memory
         Optional<GlobalPos> home = villager.getBrain().getMemory(MemoryModuleType.HOME);
@@ -129,7 +130,6 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (villager.isSleeping()) return false;
         if (bedPos == null) return false;
-        if (villager.getVillagerBrain().isPanicking() || villager.getLastHurtByMob() != null) return false;
 
         //? if neoforge {
         CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);

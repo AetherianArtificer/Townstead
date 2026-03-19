@@ -53,10 +53,9 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (VillagerEatingManager.isEating(villager) || VillagerDrinkingManager.isDrinking(villager)) return false;
 
-        VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null) {
-            return false;
-        }
+        // Only block when fleeing from a mob — not during environmental panic
+        // (thirst/hunger damage), otherwise villagers enter a death spiral.
+        if (villager.getLastHurtByMob() != null) return false;
 
         if (cooldown > 0) {
             cooldown--;
@@ -165,10 +164,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         if (targetType == TargetType.NONE) return false;
         if (targetType == TargetType.GROUND_ITEM && (targetItem == null || targetItem.isRemoved())) return false;
         if (VillagerDrinkingManager.isDrinking(villager)) return false;
-        VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null) {
-            return false;
-        }
+        if (villager.getLastHurtByMob() != null) return false;
         return true;
     }
 
