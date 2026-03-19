@@ -146,6 +146,14 @@ public abstract class VillagerHungerMixin extends Villager {
         brain.addActivity(Activity.CORE, ImmutableList.copyOf(coreBehaviors));
         townstead$lastPatchedBrain = brain;
 
+        // Prevent villagers from ever pathfinding onto fire-damage blocks (stoves, campfires).
+        // Default malus is 8.0 (avoidable) — set to -1.0 (impassable).
+        //? if >=1.21 {
+        setPathfindingMalus(net.minecraft.world.level.pathfinder.PathType.DAMAGE_FIRE, -1.0f);
+        //?} else {
+        /*setPathfindingMalus(net.minecraft.world.level.pathfinder.BlockPathTypes.DAMAGE_FIRE, -1.0f);
+        *///?}
+
         // Apply custom shift schedule if one has been assigned
         VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
         if (!self.level().isClientSide) {
