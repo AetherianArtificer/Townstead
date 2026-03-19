@@ -24,7 +24,7 @@ public final class ThirstData {
     public static final int EMERGENCY_THRESHOLD = 4;
 
     public static final int MOOD_CHECK_INTERVAL = 2400;
-    public static final int PASSIVE_DRAIN_INTERVAL = 500;
+    public static final int PASSIVE_DRAIN_INTERVAL = 2000;
     public static final long MIN_DRINK_INTERVAL = 200;
 
     public static final int SPEED_PENALTY_THRESHOLD = 3;
