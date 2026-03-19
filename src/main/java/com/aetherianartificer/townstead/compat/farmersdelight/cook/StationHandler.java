@@ -64,7 +64,8 @@ public final class StationHandler {
         //? if neoforge {
         return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
         //?} else if forge {
-        /*if (side != null) return be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null);
+        /*if (be == null) return null;
+        if (side != null) return be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null);
         return be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
         *///?}
     }
