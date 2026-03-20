@@ -60,6 +60,16 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         // (thirst damage), otherwise villagers enter a death spiral.
         if (villager.getLastHurtByMob() != null) return false;
 
+        // Don't interrupt an existing walk target unless critically thirsty
+        if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isPresent()) {
+            //? if neoforge {
+            int quickCheck = ThirstData.getThirst(villager.getData(Townstead.THIRST_DATA));
+            //?} else {
+            /*int quickCheck = ThirstData.getThirst(villager.getPersistentData().getCompound("townstead_thirst"));
+            *///?}
+            if (quickCheck >= ThirstData.EMERGENCY_THRESHOLD) return false;
+        }
+
         if (cooldown > 0) {
             cooldown--;
             return false;

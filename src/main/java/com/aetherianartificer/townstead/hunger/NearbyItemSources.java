@@ -22,6 +22,7 @@ import net.minecraftforge.items.IItemHandler;
 *///?}
 
 
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
@@ -46,6 +47,7 @@ public final class NearbyItemSources {
             if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
 
             BlockEntity be = level.getBlockEntity(pos);
+            if (be == null) continue;
             if (isProcessingContainer(level, pos, be)) continue;
             if (be instanceof Container container) {
                 for (int i = 0; i < container.getContainerSize(); i++) {
@@ -97,6 +99,42 @@ public final class NearbyItemSources {
         }
 
         return best;
+    }
+
+    /**
+     * Collect ALL matching container slots (not just the best).
+     * Used when the caller needs to do reachability checks and can't rely on a single result.
+     */
+    public static void collectMatchingSlots(ServerLevel level, VillagerEntityMCA villager, int horizontalRadius, int verticalRadius,
+                                             Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer, BlockPos center,
+                                             Consumer<ContainerSlot> consumer) {
+        for (BlockPos pos : BlockPos.betweenClosed(
+                center.offset(-horizontalRadius, -verticalRadius, -horizontalRadius),
+                center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
+
+            if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
+
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be == null) continue;
+            if (isProcessingContainer(level, pos, be)) continue;
+
+            // Find the best slot in THIS container
+            ContainerSlot bestInContainer = null;
+            if (be instanceof Container container) {
+                for (int i = 0; i < container.getContainerSize(); i++) {
+                    ItemStack stack = container.getItem(i);
+                    if (!matcher.test(stack)) continue;
+                    int score = scorer.applyAsInt(stack);
+                    double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+                    if (bestInContainer == null || score > bestInContainer.score()) {
+                        bestInContainer = new ContainerSlot(pos.immutable(), container, false, i, score, dist, null);
+                    }
+                }
+            }
+            if (bestInContainer != null) {
+                consumer.accept(bestInContainer);
+            }
+        }
     }
 
     public static ItemStack extractOne(ServerLevel level, ContainerSlot slotRef) {

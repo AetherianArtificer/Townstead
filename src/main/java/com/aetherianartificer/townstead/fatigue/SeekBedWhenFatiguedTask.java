@@ -51,8 +51,13 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
 
+        int currentFatigue = FatigueData.getFatigue(fatigue);
         // Seek bed when drowsy or worse (energy <= 8)
-        if (FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD) return false;
+        if (currentFatigue < FatigueData.DROWSY_THRESHOLD) return false;
+        // Only override an existing walk target if exhausted (energy <= 4)
+        // At drowsy, wait for walk target to clear naturally (work tasks yield)
+        if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isPresent()
+                && currentFatigue < 16) return false;
         // Don't seek bed if already collapsed (they can't move)
         if (FatigueData.isCollapsed(fatigue)) return false;
         // Don't seek bed while fleeing from a mob — but DO allow it during
@@ -79,10 +84,6 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         /*if (state.getValue(BedBlock.OCCUPIED)) return false;
         *///?}
 
-        // Verify the bed is actually reachable
-        net.minecraft.world.level.pathfinder.Path path = villager.getNavigation().createPath(pos, CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) return false;
-
         bedPos = pos;
         return true;
     }
@@ -90,6 +91,13 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (bedPos == null) return;
+        // Verify reachability at start, not every tick in checkExtraStartConditions
+        net.minecraft.world.level.pathfinder.Path path = villager.getNavigation().createPath(bedPos, CLOSE_ENOUGH);
+        if (path == null || !path.canReach()) {
+            bedPos = null;
+            doStop(level, villager, gameTime);
+            return;
+        }
         BehaviorUtils.setWalkAndLookTargetMemories(villager, bedPos, WALK_SPEED, CLOSE_ENOUGH);
     }
 

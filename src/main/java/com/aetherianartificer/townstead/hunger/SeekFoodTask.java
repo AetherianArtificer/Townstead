@@ -61,6 +61,16 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         // (thirst/hunger damage), otherwise villagers enter a death spiral.
         if (villager.getLastHurtByMob() != null) return false;
 
+        // Don't interrupt an existing walk target unless critically hungry
+        if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isPresent()) {
+            //? if neoforge {
+            int quickCheck = HungerData.getHunger(villager.getData(Townstead.HUNGER_DATA));
+            //?} else {
+            /*int quickCheck = HungerData.getHunger(villager.getPersistentData().getCompound("townstead_hunger"));
+            *///?}
+            if (quickCheck >= HungerData.EMERGENCY_THRESHOLD) return false;
+        }
+
         if (cooldown > 0) {
             cooldown--;
             return false;
@@ -251,18 +261,19 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
             }
         }
 
-        // Gather container slots
+        // Gather container slots — collect ALL matching slots, not just the "best"
         if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) {
-            NearbyItemSources.ContainerSlot slot = NearbyItemSources.findBestNearbySlot(
+            NearbyItemSources.collectMatchingSlots(
                     level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
                     stack -> getNutrition(stack) > 0,
-                    SeekFoodTask::getNutrition);
-            if (slot != null) {
-                int n = slot.score();
-                double dist = villager.distanceToSqr(
-                        slot.pos().getX() + 0.5, slot.pos().getY() + 0.5, slot.pos().getZ() + 0.5);
-                candidates.add(new FoodCandidate(TargetType.CONTAINER, n, dist, null, slot, slot.pos()));
-            }
+                    SeekFoodTask::getNutrition,
+                    villager.blockPosition(),
+                    slot -> {
+                        int n = slot.score();
+                        double dist = villager.distanceToSqr(
+                                slot.pos().getX() + 0.5, slot.pos().getY() + 0.5, slot.pos().getZ() + 0.5);
+                        candidates.add(new FoodCandidate(TargetType.CONTAINER, n, dist, null, slot, slot.pos()));
+                    });
         }
 
         if (candidates.isEmpty()) return false;
