@@ -10,7 +10,9 @@ public final class ThirstData {
     public static final int MAX_THIRST = 20;
     public static final int MAX_QUENCHED = 20;
 
-    public static final float EXHAUSTION_THRESHOLD = 4.0f;
+    // Threshold is 5x hunger's (4.0) to compensate for the 0-20 scale vs hunger's 0-100.
+    // This makes thirst drain proportionally similar to hunger from activity.
+    public static final float EXHAUSTION_THRESHOLD = 20.0f;
     public static final float EXHAUSTION_CHORE = 0.012f;
     public static final float EXHAUSTION_GUARD_PATROL = 0.008f;
     public static final float EXHAUSTION_COMBAT = 0.02f;

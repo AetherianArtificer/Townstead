@@ -6,6 +6,7 @@
     "ChefsDelightProfessionGuardMixin",
     "FarmBlockMixin",
     "ReportBuildingMessageMixin",
+    "TombstoneRevivalMixin",
     "VillagerHungerMixin",
     "VillagerServerTickMixin"
   ],

@@ -21,14 +21,16 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
 
+import java.util.Comparator;
 import java.util.List;
 
 public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
 
-    private static final int SEARCH_RADIUS = 16;
-    private static final int VERTICAL_RADIUS = 4;
+    private static final int SEARCH_RADIUS = 48;
+    private static final int VERTICAL_RADIUS = 8;
     private static final float WALK_SPEED = 0.6f;
     private static final int CLOSE_ENOUGH = 2;
     private static final int MAX_DURATION = 600;
@@ -209,23 +211,22 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
                 item -> thirstScore(item.getItem(), bridge) > 0 && !item.isRemoved());
         if (items.isEmpty()) return false;
 
-        ItemEntity best = null;
-        int bestScore = Integer.MIN_VALUE;
-        double bestDist = Double.MAX_VALUE;
+        // Sort by thirst score descending, then distance ascending
+        items.sort(Comparator
+                .comparingInt((ItemEntity item) -> -thirstScore(item.getItem(), bridge))
+                .thenComparingDouble(villager::distanceToSqr));
+
+        // Pick the best reachable item
         for (ItemEntity item : items) {
-            int score = thirstScore(item.getItem(), bridge);
-            double dist = villager.distanceToSqr(item);
-            if (score > bestScore || (score == bestScore && dist < bestDist)) {
-                bestScore = score;
-                bestDist = dist;
-                best = item;
+            Path path = villager.getNavigation().createPath(item.blockPosition(), CLOSE_ENOUGH);
+            if (path != null && path.canReach()) {
+                targetType = TargetType.GROUND_ITEM;
+                targetItem = item;
+                return true;
             }
         }
 
-        if (best == null) return false;
-        targetType = TargetType.GROUND_ITEM;
-        targetItem = best;
-        return true;
+        return false;
     }
 
     private boolean findContainerDrink(ServerLevel level, VillagerEntityMCA villager, ThirstCompatBridge bridge) {
@@ -233,6 +234,9 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
                 stack -> thirstScore(stack, bridge) > 0,
                 stack -> thirstScore(stack, bridge));
         if (targetContainerSlot == null) return false;
+        // Check reachability
+        Path path = villager.getNavigation().createPath(targetContainerSlot.pos(), CLOSE_ENOUGH);
+        if (path == null || !path.canReach()) return false;
         targetType = TargetType.CONTAINER;
         targetPos = targetContainerSlot.pos();
         return true;
@@ -258,6 +262,9 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         }
 
         if (bestPos == null) return false;
+        // Check reachability
+        Path cropPath = villager.getNavigation().createPath(bestPos, CLOSE_ENOUGH);
+        if (cropPath == null || !cropPath.canReach()) return false;
         targetType = TargetType.CROP;
         targetPos = bestPos;
         return true;

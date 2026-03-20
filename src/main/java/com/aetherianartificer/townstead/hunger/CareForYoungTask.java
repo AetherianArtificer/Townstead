@@ -25,6 +25,7 @@ import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
 
 import java.util.Comparator;
@@ -37,8 +38,8 @@ import java.util.stream.Stream;
  * Parents have priority. Non-crabby villagers help if no parent is nearby.
  */
 public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
-    private static final int SEARCH_RADIUS = 16;
-    private static final int VERTICAL_RADIUS = 4;
+    private static final int SEARCH_RADIUS = 48;
+    private static final int VERTICAL_RADIUS = 8;
     private static final float WALK_SPEED = 0.75f;
     private static final int CLOSE_ENOUGH = 2;
     private static final int MAX_DURATION = 1200;
@@ -399,12 +400,17 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
                 item -> !item.isRemoved() && townstead$isFood(item.getItem()));
         if (items.isEmpty()) return false;
 
-        sourceItem = items.stream()
-                .min(Comparator.comparingDouble(villager::distanceToSqr))
-                .orElse(null);
-        if (sourceItem == null) return false;
-        sourceType = SourceType.GROUND_ITEM;
-        return true;
+        // Sort by distance, pick first reachable
+        items.sort(Comparator.comparingDouble(villager::distanceToSqr));
+        for (ItemEntity item : items) {
+            Path path = villager.getNavigation().createPath(item.blockPosition(), CLOSE_ENOUGH);
+            if (path != null && path.canReach()) {
+                sourceItem = item;
+                sourceType = SourceType.GROUND_ITEM;
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean townstead$findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
@@ -434,6 +440,9 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
                     *///?}
                 });
         if (sourceContainerSlot == null) return false;
+        // Check reachability
+        Path path = villager.getNavigation().createPath(sourceContainerSlot.pos(), CLOSE_ENOUGH);
+        if (path == null || !path.canReach()) return false;
         sourceType = SourceType.CONTAINER;
         sourcePos = sourceContainerSlot.pos();
         return true;
@@ -458,6 +467,9 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         }
 
         if (bestPos == null) return false;
+        // Check reachability
+        Path path = villager.getNavigation().createPath(bestPos, CLOSE_ENOUGH);
+        if (path == null || !path.canReach()) return false;
         sourceType = SourceType.CROP;
         sourcePos = bestPos;
         return true;

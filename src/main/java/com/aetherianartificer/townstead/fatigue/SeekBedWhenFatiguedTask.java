@@ -79,6 +79,10 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         /*if (state.getValue(BedBlock.OCCUPIED)) return false;
         *///?}
 
+        // Verify the bed is actually reachable
+        net.minecraft.world.level.pathfinder.Path path = villager.getNavigation().createPath(pos, CLOSE_ENOUGH);
+        if (path == null || !path.canReach()) return false;
+
         bedPos = pos;
         return true;
     }

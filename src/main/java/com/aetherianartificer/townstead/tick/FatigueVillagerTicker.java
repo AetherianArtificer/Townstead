@@ -64,15 +64,13 @@ public final class FatigueVillagerTicker {
             self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
             self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
             self.getNavigation().stop();
-            // Force SLEEPING pose for visual rotation (lying on back).
-            if (!self.hasPose(net.minecraft.world.entity.Pose.SLEEPING)) {
-                self.setPose(net.minecraft.world.entity.Pose.SLEEPING);
-                self.refreshDimensions();
+            // Spawn exhaustion particles every 10 ticks
+            if (self.tickCount % 10 == 0) {
+                level.sendParticles(
+                        net.minecraft.core.particles.ParticleTypes.SMOKE,
+                        self.getX(), self.getEyeY() + 0.3, self.getZ(),
+                        2, 0.15, 0.1, 0.15, 0.01);
             }
-        } else if (self.hasPose(net.minecraft.world.entity.Pose.SLEEPING) && !self.isSleeping()) {
-            // Not collapsed and not in a bed — clean up stale SLEEPING pose
-            self.setPose(net.minecraft.world.entity.Pose.STANDING);
-            self.refreshDimensions();
         }
 
         // Sleeping villagers should not keep executing stale movement orders, and
@@ -167,8 +165,20 @@ public final class FatigueVillagerTicker {
             changed = FatigueData.getFatigue(fatigue) != oldFatigue;
 
             int currentFatigue = FatigueData.getFatigue(fatigue);
-            int collapseThreshold = TownsteadConfig.FATIGUE_COLLAPSE_THRESHOLD.get();
-            int recoveryGate = TownsteadConfig.FATIGUE_RECOVERY_GATE.get();
+            int collapseThreshold = FatigueData.COLLAPSE_THRESHOLD;
+            int recoveryGate = FatigueData.RECOVERY_GATE;
+
+            // --- Safety: clear stale collapse if fatigue is below threshold ---
+            // Handles config changes or editor resets that leave the flag set
+            if (FatigueData.isCollapsed(fatigue) && currentFatigue < collapseThreshold) {
+                FatigueData.setCollapsed(fatigue, false);
+                FatigueData.setGated(fatigue, false);
+                changed = true;
+                if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
+                    self.sendChatToAllAround("dialogue.chat.energy.recovered/"
+                            + (1 + level.random.nextInt(4)));
+                }
+            }
 
             // --- Collapse check ---
             if (currentFatigue >= collapseThreshold && !inBed && !FatigueData.isCollapsed(fatigue)) {

@@ -186,18 +186,9 @@ public final class ThirstVillagerTicker {
             ThirstData.setMoodDrift(thirst, drift);
         }
 
-        if (ThirstData.getThirst(thirst) <= 0) {
-            int damageTimer = ThirstData.getDamageTimer(thirst) + 1;
-            if (damageTimer >= ThirstData.DAMAGE_INTERVAL) {
-                if (shouldApplyDehydrationDamage(level) && self.isAlive()) {
-                    self.hurt(level.damageSources().starve(), 1.0f);
-                }
-                damageTimer = 0;
-            }
-            ThirstData.setDamageTimer(thirst, damageTimer);
-        } else {
-            ThirstData.setDamageTimer(thirst, 0);
-        }
+        // Dehydration no longer deals damage — villagers get speed penalties
+        // and mood pressure instead, matching hunger's non-lethal approach.
+        ThirstData.setDamageTimer(thirst, 0);
 
         if (self.tickCount % 100 == 0) {
             storeEmptyBottles(level, self);

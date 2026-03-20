@@ -71,8 +71,6 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
     public static final ModConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
-    public static final ModConfigSpec.IntValue FATIGUE_COLLAPSE_THRESHOLD;
-    public static final ModConfigSpec.IntValue FATIGUE_RECOVERY_GATE;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     //?} else if forge {
@@ -126,8 +124,6 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
-    public static final ForgeConfigSpec.IntValue FATIGUE_COLLAPSE_THRESHOLD;
-    public static final ForgeConfigSpec.IntValue FATIGUE_RECOVERY_GATE;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     *///?}
@@ -214,14 +210,6 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.needs.fatigue.enableFatigueAlerts")
                 .comment("Show local chat alerts when villagers collapse from exhaustion or recover.")
                 .define("enableFatigueAlerts", true);
-        FATIGUE_COLLAPSE_THRESHOLD = b
-                .translation("townstead.configuration.needs.fatigue.fatigueCollapseThreshold")
-                .comment("Fatigue level that triggers collapse when no bed is available.")
-                .defineInRange("fatigueCollapseThreshold", 16, 10, 20);
-        FATIGUE_RECOVERY_GATE = b
-                .translation("townstead.configuration.needs.fatigue.fatigueRecoveryGate")
-                .comment("Fatigue must drop below this to resume work after reaching exhaustion.")
-                .defineInRange("fatigueRecoveryGate", 12, 4, 16);
         FATIGUE_NOCTURNAL_MULTIPLIER = b
                 .translation("townstead.configuration.needs.fatigue.fatigueNocturnalMultiplier")
                 .comment("Fatigue accumulation multiplier when working during aligned cycle hours.")

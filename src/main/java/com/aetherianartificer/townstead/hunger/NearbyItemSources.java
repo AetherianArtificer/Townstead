@@ -215,12 +215,22 @@ public final class NearbyItemSources {
         if (level.getBlockState(pos).is(BlockTags.CAMPFIRES)) return true;
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         if (id == null) return false;
-        if ("farmersdelight".equals(id.getNamespace())) {
-            String path = id.getPath();
+        String ns = id.getNamespace();
+        String path = id.getPath();
+        if ("farmersdelight".equals(ns)) {
             return "cooking_pot".equals(path)
                     || "skillet".equals(path)
                     || "stove".equals(path)
                     || "cutting_board".equals(path);
+        }
+        // Exclude blocks that are clearly machines/devices, not storage
+        if (path.contains("machine") || path.contains("vending")
+                || path.contains("terminal") || path.contains("interface")
+                || path.contains("generator") || path.contains("engine")
+                || path.contains("press") || path.contains("crusher")
+                || path.contains("grinder") || path.contains("centrifuge")
+                || path.contains("assembler") || path.contains("processor")) {
+            return true;
         }
         return false;
     }
