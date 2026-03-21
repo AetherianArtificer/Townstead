@@ -28,8 +28,11 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     private static final float WALK_SPEED = 0.5f;
     private static final int CLOSE_ENOUGH = 1;
     private static final int BED_INTERACT_DIST_SQ = 9;
+    private static final int BED_SEARCH_RADIUS = 48;
+    private static final long EMERGENCY_CLAIM_TTL = MAX_DURATION + 200L;
 
     private BlockPos bedPos;
+    private BlockPos emergencyClaimPos;
     private int cooldown;
 
     public SeekBedWhenFatiguedTask() {
@@ -51,40 +54,40 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
 
-        int currentFatigue = FatigueData.getFatigue(fatigue);
         // Seek bed when drowsy or worse (energy <= 8)
-        if (currentFatigue < FatigueData.DROWSY_THRESHOLD) return false;
-        // Only override an existing walk target if exhausted (energy <= 4)
-        // At drowsy, wait for walk target to clear naturally (work tasks yield)
-        if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isPresent()
-                && currentFatigue < 16) return false;
+        if (FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD) return false;
         // Don't seek bed if already collapsed (they can't move)
         if (FatigueData.isCollapsed(fatigue)) return false;
         // Don't seek bed while fleeing from a mob — but DO allow it during
         // environmental panic (thirst damage, fire, etc.)
         if (villager.getLastHurtByMob() != null) return false;
 
-        // Find bed via HOME memory
+        emergencyClaimPos = null;
+
+        // Try assigned bed first (HOME memory)
         Optional<GlobalPos> home = villager.getBrain().getMemory(MemoryModuleType.HOME);
-        if (home.isEmpty()) return false;
+        if (home.isPresent()) {
+            GlobalPos globalBed = home.get();
+            if (globalBed.dimension() == level.dimension()) {
+                BlockPos pos = normalizeBedHead(level, globalBed.pos());
+                if (pos != null && villager.blockPosition().distSqr(pos) <= 64 * 64) {
+                    BlockState state = level.getBlockState(pos);
+                    if (state.getBlock() instanceof BedBlock) {
+                        //? if >=1.21 {
+                        if (!state.getValue(BedBlock.OCCUPIED)) { bedPos = pos; return true; }
+                        //?} else {
+                        /*if (!state.getValue(BedBlock.OCCUPIED)) { bedPos = pos; return true; }
+                        *///?}
+                    }
+                }
+            }
+        }
 
-        GlobalPos globalBed = home.get();
-        if (globalBed.dimension() != level.dimension()) return false;
-
-        BlockPos pos = globalBed.pos();
-        // Don't walk too far (64 blocks)
-        if (villager.blockPosition().distSqr(pos) > 64 * 64) return false;
-
-        // Verify bed still exists
-        BlockState state = level.getBlockState(pos);
-        if (!(state.getBlock() instanceof BedBlock)) return false;
-        //? if >=1.21 {
-        if (state.getValue(BedBlock.OCCUPIED)) return false;
-        //?} else {
-        /*if (state.getValue(BedBlock.OCCUPIED)) return false;
-        *///?}
-
-        bedPos = pos;
+        // No assigned bed or it's unavailable — find any nearby unclaimed bed
+        BlockPos found = findNearbyUnclaimedBed(level, villager, level.getGameTime());
+        if (found == null) return false;
+        bedPos = found;
+        emergencyClaimPos = found;
         return true;
     }
 
@@ -94,9 +97,13 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         // Verify reachability at start, not every tick in checkExtraStartConditions
         net.minecraft.world.level.pathfinder.Path path = villager.getNavigation().createPath(bedPos, CLOSE_ENOUGH);
         if (path == null || !path.canReach()) {
+            releaseEmergencyClaim(level, villager);
             bedPos = null;
             doStop(level, villager, gameTime);
             return;
+        }
+        if (emergencyClaimPos != null) {
+            EmergencyBedClaims.renew(level, villager.getUUID(), emergencyClaimPos, gameTime + EMERGENCY_CLAIM_TTL);
         }
         BehaviorUtils.setWalkAndLookTargetMemories(villager, bedPos, WALK_SPEED, CLOSE_ENOUGH);
     }
@@ -106,6 +113,15 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         if (bedPos == null) {
             doStop(level, villager, gameTime);
             return;
+        }
+
+        if (emergencyClaimPos != null) {
+            if (!EmergencyBedClaims.isClaimedBy(level, villager.getUUID(), emergencyClaimPos)) {
+                releaseEmergencyClaim(level, villager);
+                doStop(level, villager, gameTime);
+                return;
+            }
+            EmergencyBedClaims.renew(level, villager.getUUID(), emergencyClaimPos, gameTime + EMERGENCY_CLAIM_TTL);
         }
 
         // Keep walking toward bed
@@ -119,18 +135,28 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
             BlockState state = level.getBlockState(bedPos);
             if (!(state.getBlock() instanceof BedBlock) || state.getValue(BedBlock.OCCUPIED)) {
                 // Bed is occupied or gone
+                releaseEmergencyClaim(level, villager);
                 doStop(level, villager, gameTime);
                 return;
             }
-            // Find the head part of the bed for sleeping
-            BlockPos headPos = bedPos;
-            if (state.getValue(BedBlock.PART) == BedPart.FOOT) {
-                headPos = bedPos.relative(BedBlock.getConnectedDirection(state));
+
+            BlockPos headPos = normalizeBedHead(level, bedPos);
+            if (headPos == null) {
+                releaseEmergencyClaim(level, villager);
+                doStop(level, villager, gameTime);
+                return;
             }
+
+            if (emergencyClaimPos != null && !headPos.equals(emergencyClaimPos)) {
+                releaseEmergencyClaim(level, villager);
+                doStop(level, villager, gameTime);
+                return;
+            }
+
             // Set the brain's active activity to REST so vanilla's SleepInBed
-            // behavior handles the actual sleeping mechanics
+            // behavior handles the actual sleeping mechanics when HOME exists.
             villager.getBrain().setActiveActivityIfPossible(Activity.REST);
-            // Also try startSleeping directly as a fallback
+            // Fallback sleeps directly for emergency beds without mutating HOME.
             if (!villager.isSleeping()) {
                 villager.startSleeping(headPos);
             }
@@ -141,7 +167,10 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (villager.isSleeping()) return false;
-        if (bedPos == null) return false;
+        if (bedPos == null) {
+            releaseEmergencyClaim(level, villager);
+            return false;
+        }
 
         //? if neoforge {
         CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
@@ -149,12 +178,86 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
         // Stop seeking bed once rested enough (below drowsy threshold)
-        return FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD;
+        boolean keepUsing = FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD;
+        if (!keepUsing) {
+            releaseEmergencyClaim(level, villager);
+        }
+        return keepUsing;
     }
 
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (!villager.isSleeping()) {
+            releaseEmergencyClaim(level, villager);
+        }
         bedPos = null;
         cooldown = 100;
+    }
+
+    private static BlockPos findNearbyUnclaimedBed(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        // Use the POI system to find beds with space, then add a Townstead-local
+        // temporary claim so fallback sleeping does not rewrite permanent HOME.
+        var poiManager = level.getPoiManager();
+        BlockPos center = villager.blockPosition();
+
+        //? if >=1.21 {
+        var bedType = net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME;
+        java.util.Optional<BlockPos> found = poiManager.findClosest(
+                holder -> holder.is(bedType),
+                pos -> {
+                    BlockPos headPos = normalizeBedHead(level, pos);
+                    if (headPos == null) return false;
+                    BlockState state = level.getBlockState(headPos);
+                    return state.getBlock() instanceof BedBlock
+                            && !state.getValue(BedBlock.OCCUPIED)
+                            && !EmergencyBedClaims.isClaimedByOther(level, villager.getUUID(), headPos);
+                },
+                center, BED_SEARCH_RADIUS,
+                net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.HAS_SPACE
+        );
+        //?} else {
+        /*java.util.Optional<BlockPos> found = poiManager.findClosest(
+                holder -> holder.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME),
+                pos -> {
+                    BlockPos headPos = normalizeBedHead(level, pos);
+                    if (headPos == null) return false;
+                    BlockState state = level.getBlockState(headPos);
+                    return state.getBlock() instanceof BedBlock
+                            && !state.getValue(BedBlock.OCCUPIED)
+                            && !EmergencyBedClaims.isClaimedByOther(level, villager.getUUID(), headPos);
+                },
+                center, BED_SEARCH_RADIUS,
+                net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.HAS_SPACE
+        );
+        *///?}
+
+        if (found.isEmpty()) return null;
+
+        BlockPos headPos = normalizeBedHead(level, found.get());
+        if (headPos == null) return null;
+        if (!EmergencyBedClaims.tryClaim(
+                level,
+                villager.getUUID(),
+                headPos,
+                gameTime + EMERGENCY_CLAIM_TTL
+        )) {
+            return null;
+        }
+        return headPos;
+    }
+
+    private static BlockPos normalizeBedHead(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof BedBlock)) return null;
+        if (state.getValue(BedBlock.PART) == BedPart.FOOT) {
+            return pos.relative(BedBlock.getConnectedDirection(state));
+        }
+        return pos.immutable();
+    }
+
+    private void releaseEmergencyClaim(ServerLevel level, VillagerEntityMCA villager) {
+        if (emergencyClaimPos == null) return;
+        EmergencyBedClaims.release(level, villager.getUUID(), emergencyClaimPos);
+        emergencyClaimPos = null;
     }
 }

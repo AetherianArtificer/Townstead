@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
+import com.aetherianartificer.townstead.fatigue.EmergencyBedClaims;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -78,10 +79,13 @@ public final class FatigueVillagerTicker {
         if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
             if (!hasValidSleepingBed(self)) {
                 self.stopSleeping();
+                EmergencyBedClaims.releaseAll(level, self.getUUID());
                 self.getNavigation().stop();
                 self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
                 self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
             } else {
+                self.getSleepingPos().ifPresent(pos ->
+                        EmergencyBedClaims.renew(level, self.getUUID(), pos, level.getGameTime() + 200L));
                 self.getNavigation().stop();
                 self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
                 self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
@@ -94,20 +98,27 @@ public final class FatigueVillagerTicker {
         if (self.isSleeping()
                 && self.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) {
             self.stopSleeping();
+            EmergencyBedClaims.releaseAll(level, self.getUUID());
         }
 
-        // --- Fatigue sleep enforcement (every tick) ---
-        // When a villager is sleeping in a bed for fatigue recovery (not normal scheduled
-        // rest), keep the brain in REST so the schedule can't switch to WORK.
-        // Only applies when fatigued enough to warrant it (tired+), and only when the
-        // schedule says they SHOULDN'T be resting (i.e. they went to bed due to fatigue).
-        // Release once they recover below tired threshold.
-        if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
-            int f = FatigueData.getFatigue(fatigue);
-            Activity scheduled = currentScheduleActivity(self);
-            if (f >= FatigueData.TIRED_THRESHOLD && scheduled != Activity.REST) {
-                // Fatigue-driven sleep outside scheduled REST — keep in bed
-                self.getBrain().setActiveActivityIfPossible(Activity.REST);
+        // --- Fatigue schedule override (every tick) ---
+        // When a villager is drowsy+, temporarily override their schedule to REST
+        // so MCA's brain naturally switches to REST and SleepInBed works.
+        // When recovered, restore the original schedule.
+        int sleepCheckFatigue = FatigueData.getFatigue(fatigue);
+        if (!FatigueData.isCollapsed(fatigue)
+                && sleepCheckFatigue >= FatigueData.DROWSY_THRESHOLD
+                && currentScheduleActivity(self) != Activity.REST) {
+            if (!state.scheduleOverridden) {
+                // Override schedule to REST
+                com.aetherianartificer.townstead.shift.ShiftScheduleApplier.overrideToRest(self);
+                state.scheduleOverridden = true;
+            }
+        } else if (sleepCheckFatigue < FatigueData.DROWSY_THRESHOLD) {
+            // Recovered below drowsy — restore original schedule if overridden
+            if (state.scheduleOverridden || currentScheduleActivity(self) == Activity.REST) {
+                com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(self);
+                state.scheduleOverridden = false;
             }
         }
 
@@ -131,8 +142,9 @@ public final class FatigueVillagerTicker {
                         ? FatigueData.RECOVERY_BED_ALIGNED
                         : FatigueData.RECOVERY_BED_MISALIGNED;
                 applyFatigueDelta(fatigue, state, recovery);
-            } else if (activity == Activity.REST) {
-                // REST without bed: tiny recovery
+            } else if (activity == Activity.REST && !state.scheduleOverridden) {
+                // Genuine scheduled REST without bed: tiny recovery
+                // (Not from fatigue override — that only counts if actually in bed)
                 applyFatigueDelta(fatigue, state, FatigueData.RECOVERY_REST_NO_BED);
             } else {
                 // Accumulation based on activity
@@ -256,6 +268,7 @@ public final class FatigueVillagerTicker {
 
         // --- Cleanup ---
         if (!self.isAlive() || self.isRemoved()) {
+            EmergencyBedClaims.releaseAll(level, self.getUUID());
             STATE.remove(self.getId());
         }
     }
@@ -363,5 +376,6 @@ public final class FatigueVillagerTicker {
         private boolean lastSyncedCollapsed = false;
         private double lastPenalty = 0.0;
         private float fatigueResidue = 0f;
+        private boolean scheduleOverridden = false;
     }
 }

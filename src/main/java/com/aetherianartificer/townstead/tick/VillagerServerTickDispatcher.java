@@ -1,7 +1,9 @@
 package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
+import com.aetherianartificer.townstead.fatigue.EmergencyBedClaims;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.server.level.ServerLevel;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,6 +25,9 @@ public final class VillagerServerTickDispatcher {
 
         // Clean up dead/removed entities
         if (!villager.isAlive() || villager.isRemoved()) {
+            if (villager.level() instanceof ServerLevel level) {
+                EmergencyBedClaims.releaseAll(level, villager.getUUID());
+            }
             LAST_TICK.remove(villager.getId());
             return;
         }

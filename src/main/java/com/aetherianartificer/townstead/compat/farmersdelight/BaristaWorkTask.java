@@ -291,7 +291,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             debugChat(level, villager, "SELECT:no beverage recipe for " + stationType.name()
                     + " (tier=" + tier + ", candidates=" + available + "), rotating");
             usedStations.add(stationAnchor.asLong());
-            setBlocked(level, villager, gameTime, BlockedReason.NO_RECIPE, "");
+            setBlocked(level, villager, gameTime, BlockedReason.NO_RECIPE, townstead$stationDisplayName(stationType));
             transition(BaristaState.ACQUIRE_STATION, gameTime);
             return;
         }
@@ -318,7 +318,8 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         if (!success) {
             debugChat(level, villager, "GATHER:failed for " + activeRecipe.output());
             IngredientResolver.rollbackStagedInputs(level, villager, stationAnchor, stagedInputs);
-            setBlocked(level, villager, gameTime, BlockedReason.NO_INGREDIENTS, "");
+            String recipeName = townstead$itemDisplayName(level, activeRecipe.output());
+            setBlocked(level, villager, gameTime, BlockedReason.NO_INGREDIENTS, recipeName);
             recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
             activeRecipe = null;
             recipeAttempts++;
@@ -779,10 +780,16 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
         switch (blocked) {
             case NO_CAFE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_cafe/" + (1 + level.random.nextInt(4)));
-            case NO_INGREDIENTS -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_ingredients/" + (1 + level.random.nextInt(4)));
+            case NO_INGREDIENTS -> {
+                if (itemName != null && !itemName.isBlank()) {
+                    villager.sendChatToAllAround("dialogue.chat.barista_request.no_ingredients_item", itemName);
+                } else {
+                    villager.sendChatToAllAround("dialogue.chat.barista_request.no_ingredients/" + (1 + level.random.nextInt(4)));
+                }
+            }
             case NO_STORAGE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_storage/" + (1 + level.random.nextInt(4)));
             case UNREACHABLE -> villager.sendChatToAllAround("dialogue.chat.barista_request.unreachable/" + (1 + level.random.nextInt(4)));
-            case NO_RECIPE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_recipe/" + (1 + level.random.nextInt(4)));
+            case NO_RECIPE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_recipe_item", itemName.isBlank() ? "that station" : itemName);
             case NONE -> {}
         }
         nextRequestTick = gameTime + Math.max(200, TownsteadConfig.BARISTA_REQUEST_INTERVAL_TICKS.get());
@@ -850,5 +857,22 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         /*net.minecraft.nbt.CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
         return FatigueData.isGated(fatigue) || FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD;
+    }
+
+    private static String townstead$stationDisplayName(ModRecipeRegistry.StationType stationType) {
+        String raw = stationType.name().toLowerCase().replace('_', ' ');
+        StringBuilder sb = new StringBuilder();
+        boolean capitalize = true;
+        for (char c : raw.toCharArray()) {
+            sb.append(capitalize ? Character.toUpperCase(c) : c);
+            capitalize = (c == ' ');
+        }
+        return sb.toString();
+    }
+
+    private static String townstead$itemDisplayName(ServerLevel level, net.minecraft.resources.ResourceLocation itemId) {
+        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(itemId);
+        if (item == null) return itemId.getPath();
+        return item.getDefaultInstance().getHoverName().getString();
     }
 }
