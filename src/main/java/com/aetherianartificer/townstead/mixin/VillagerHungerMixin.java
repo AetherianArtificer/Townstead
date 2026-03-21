@@ -8,9 +8,6 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
-import net.minecraft.core.Direction;
-import net.minecraft.world.entity.EntityDimensions;
-import net.minecraft.world.entity.Pose;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.BaristaWorkTask;
@@ -51,57 +48,6 @@ public abstract class VillagerHungerMixin extends Villager {
     private VillagerHungerMixin() {
         super(null, null);
     }
-
-    /**
-     * When a villager is collapsed from fatigue (sleeping without a bed),
-     * return their facing direction so the renderer lays them flat on the ground.
-     * Vanilla only returns a direction when sleeping on a BedBlock.
-     */
-    @Override
-    public Direction getBedOrientation() {
-        Direction orig = super.getBedOrientation();
-        if (orig != null) return orig;
-        // Collapsed villagers: use their horizontal facing so they lay flat
-        if (isSleeping()) {
-            //? if neoforge {
-            CompoundTag fatigueTag = ((VillagerEntityMCA)(Object)this).getData(Townstead.FATIGUE_DATA);
-            //?} else {
-            /*CompoundTag fatigueTag = getPersistentData().getCompound("townstead_fatigue");
-            *///?}
-            if (FatigueData.isCollapsed(fatigueTag)) {
-                return getDirection();
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Give collapsed villagers a wider, taller ground-level hitbox so the player
-     * can click on them. Default SLEEPING dims are paper-thin (0.2 tall).
-     * We return a low-but-clickable box (1.8 wide, 0.6 tall) at ground level.
-     */
-    //? if neoforge {
-    @Inject(method = "getDefaultDimensions", at = @At("HEAD"), cancellable = true, remap = false)
-    private void townstead$keepCollapsedHitbox(Pose pose, CallbackInfoReturnable<EntityDimensions> cir) {
-        if (pose == Pose.SLEEPING) {
-            VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
-            CompoundTag fatigueTag = self.getData(Townstead.FATIGUE_DATA);
-            if (FatigueData.isCollapsed(fatigueTag)) {
-                cir.setReturnValue(EntityDimensions.fixed(1.8f, 0.6f));
-            }
-        }
-    }
-    //?} else {
-    /*@Inject(method = "getDimensions", at = @At("HEAD"), cancellable = true, remap = false)
-    private void townstead$keepCollapsedHitbox(Pose pose, CallbackInfoReturnable<EntityDimensions> cir) {
-        if (pose == Pose.SLEEPING) {
-            CompoundTag fatigueTag = getPersistentData().getCompound("townstead_fatigue");
-            if (FatigueData.isCollapsed(fatigueTag)) {
-                cir.setReturnValue(EntityDimensions.fixed(1.8f, 0.6f));
-            }
-        }
-    }
-    *///?}
 
     @SuppressWarnings("unchecked")
     //? if neoforge {
@@ -145,6 +91,19 @@ public abstract class VillagerHungerMixin extends Villager {
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
         brain.addActivity(Activity.CORE, ImmutableList.copyOf(coreBehaviors));
         townstead$lastPatchedBrain = brain;
+
+        // Prevent villagers from ever pathfinding onto fire-damage blocks (stoves, campfires).
+        // Default malus is 8.0 (avoidable) — set to -1.0 (impassable).
+        // Guard: pathfindingMalus map is null during makeBrain (entity not fully constructed).
+        try {
+            //? if >=1.21 {
+            setPathfindingMalus(net.minecraft.world.level.pathfinder.PathType.DAMAGE_FIRE, -1.0f);
+            //?} else {
+            /*setPathfindingMalus(net.minecraft.world.level.pathfinder.BlockPathTypes.DAMAGE_FIRE, -1.0f);
+            *///?}
+        } catch (NullPointerException ignored) {
+            // Entity still constructing — will be set on refreshBrain
+        }
 
         // Apply custom shift schedule if one has been assigned
         VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;

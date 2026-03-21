@@ -24,12 +24,16 @@ import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
+import net.minecraft.world.level.pathfinder.Path;
+
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
-    private static final int SEARCH_RADIUS = 16;
-    private static final int VERTICAL_RADIUS = 4;
+    private static final int SEARCH_RADIUS = 48;
+    private static final int VERTICAL_RADIUS = 8;
     private static final float WALK_SPEED = 0.6f;
     private static final int CLOSE_ENOUGH = 2;
     private static final int MAX_DURATION = 600; // ~30 seconds
@@ -53,9 +57,18 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (VillagerEatingManager.isEating(villager) || VillagerDrinkingManager.isDrinking(villager)) return false;
 
-        VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null) {
-            return false;
+        // Only block when fleeing from a mob — not during environmental panic
+        // (thirst/hunger damage), otherwise villagers enter a death spiral.
+        if (villager.getLastHurtByMob() != null) return false;
+
+        // Don't interrupt an existing walk target unless critically hungry
+        if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isPresent()) {
+            //? if neoforge {
+            int quickCheck = HungerData.getHunger(villager.getData(Townstead.HUNGER_DATA));
+            //?} else {
+            /*int quickCheck = HungerData.getHunger(villager.getPersistentData().getCompound("townstead_hunger"));
+            *///?}
+            if (quickCheck >= HungerData.EMERGENCY_THRESHOLD) return false;
         }
 
         if (cooldown > 0) {
@@ -93,19 +106,18 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         targetItem = null;
         targetContainerSlot = null;
 
-        // Priority 1: Ground items
-        if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get() && findGroundItem(level, villager)) {
-            BehaviorUtils.setWalkAndLookTargetMemories(villager, targetItem, WALK_SPEED, CLOSE_ENOUGH);
+        // Search ground items and containers together, scored by nutrition (desc)
+        // then distance (asc). Pick the best reachable one.
+        if (findBestFoodSource(level, villager)) {
+            if (targetType == TargetType.GROUND_ITEM) {
+                BehaviorUtils.setWalkAndLookTargetMemories(villager, targetItem, WALK_SPEED, CLOSE_ENOUGH);
+            } else {
+                BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
+            }
             return;
         }
 
-        // Priority 2: Containers
-        if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && findContainerFood(level, villager)) {
-            BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
-            return;
-        }
-
-        // Priority 3: Mature crops
+        // Absolute last resort: eat raw crops off the stalk
         if (TownsteadConfig.ENABLE_CROP_SOURCING.get() && findMatureCrop(level, villager)) {
             BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
             return;
@@ -165,10 +177,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         if (targetType == TargetType.NONE) return false;
         if (targetType == TargetType.GROUND_ITEM && (targetItem == null || targetItem.isRemoved())) return false;
         if (VillagerDrinkingManager.isDrinking(villager)) return false;
-        VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null) {
-            return false;
-        }
+        if (villager.getLastHurtByMob() != null) return false;
         return true;
     }
 
@@ -222,6 +231,77 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
     // --- Search methods ---
 
+    /**
+     * Candidate from any food source, scored by nutrition and distance.
+     */
+    private record FoodCandidate(TargetType type, int nutrition, double distSq,
+                                  ItemEntity item, NearbyItemSources.ContainerSlot slot, BlockPos pos) {
+        /**
+         * Score: nutrition is primary (higher = better), distance is secondary (lower = better).
+         * A cooked steak (nutrition 8) at 15 blocks beats raw corn (nutrition 1) at 3 blocks.
+         */
+        double score() {
+            // Nutrition dominates: multiply by 100 so even 1 nutrition difference outweighs distance
+            return nutrition * 100.0 - distSq;
+        }
+    }
+
+    private boolean findBestFoodSource(ServerLevel level, VillagerEntityMCA villager) {
+        List<FoodCandidate> candidates = new ArrayList<>();
+
+        // Gather ground items
+        if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get()) {
+            AABB searchBox = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
+            for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, searchBox)) {
+                int n = getNutrition(item.getItem());
+                if (n > 0 && !item.isRemoved()) {
+                    candidates.add(new FoodCandidate(TargetType.GROUND_ITEM, n,
+                            villager.distanceToSqr(item), item, null, null));
+                }
+            }
+        }
+
+        // Gather container slots — collect ALL matching slots, not just the "best"
+        if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) {
+            NearbyItemSources.collectMatchingSlots(
+                    level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                    stack -> getNutrition(stack) > 0,
+                    SeekFoodTask::getNutrition,
+                    villager.blockPosition(),
+                    slot -> {
+                        int n = slot.score();
+                        double dist = villager.distanceToSqr(
+                                slot.pos().getX() + 0.5, slot.pos().getY() + 0.5, slot.pos().getZ() + 0.5);
+                        candidates.add(new FoodCandidate(TargetType.CONTAINER, n, dist, null, slot, slot.pos()));
+                    });
+        }
+
+        if (candidates.isEmpty()) return false;
+
+        // Sort by score descending (best first)
+        candidates.sort(Comparator.comparingDouble(c -> -c.score()));
+
+        // Pick the first reachable candidate
+        for (FoodCandidate c : candidates) {
+            BlockPos pathTarget = c.type == TargetType.GROUND_ITEM
+                    ? c.item.blockPosition() : c.pos;
+            Path path = villager.getNavigation().createPath(pathTarget, CLOSE_ENOUGH);
+            if (path != null && path.canReach()) {
+                if (c.type == TargetType.GROUND_ITEM) {
+                    targetType = TargetType.GROUND_ITEM;
+                    targetItem = c.item;
+                } else {
+                    targetType = TargetType.CONTAINER;
+                    targetContainerSlot = c.slot;
+                    targetPos = c.pos;
+                }
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private boolean findGroundItem(ServerLevel level, VillagerEntityMCA villager) {
         AABB searchBox = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
         List<ItemEntity> items = level.getEntitiesOfClass(ItemEntity.class, searchBox,
@@ -240,21 +320,23 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
         if (items.isEmpty()) return false;
 
-        // Pick closest
-        ItemEntity closest = null;
-        double closestDist = Double.MAX_VALUE;
+        // Sort by nutrition descending, then distance ascending as tiebreaker.
+        // This ensures cooked foods are preferred over raw even if further away.
+        items.sort(Comparator
+                .comparingInt((ItemEntity item) -> -getNutrition(item.getItem()))
+                .thenComparingDouble(villager::distanceToSqr));
+
+        // Pick the best reachable item
         for (ItemEntity item : items) {
-            double dist = villager.distanceToSqr(item);
-            if (dist < closestDist) {
-                closestDist = dist;
-                closest = item;
+            Path path = villager.getNavigation().createPath(item.blockPosition(), CLOSE_ENOUGH);
+            if (path != null && path.canReach()) {
+                targetType = TargetType.GROUND_ITEM;
+                targetItem = item;
+                return true;
             }
         }
 
-        if (closest == null) return false;
-        targetType = TargetType.GROUND_ITEM;
-        targetItem = closest;
-        return true;
+        return false;
     }
 
     private boolean findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
@@ -284,6 +366,9 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
                     *///?}
                 });
         if (targetContainerSlot == null) return false;
+        // Check reachability
+        Path path = villager.getNavigation().createPath(targetContainerSlot.pos(), CLOSE_ENOUGH);
+        if (path == null || !path.canReach()) return false;
         targetType = TargetType.CONTAINER;
         targetPos = targetContainerSlot.pos();
         return true;
@@ -309,9 +394,22 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         }
 
         if (bestPos == null) return false;
+        // Check reachability
+        Path path = villager.getNavigation().createPath(bestPos, CLOSE_ENOUGH);
+        if (path == null || !path.canReach()) return false;
         targetType = TargetType.CROP;
         targetPos = bestPos;
         return true;
+    }
+
+    private static int getNutrition(ItemStack stack) {
+        //? if >=1.21 {
+        FoodProperties food = stack.get(DataComponents.FOOD);
+        return food != null ? food.nutrition() : 0;
+        //?} else {
+        /*FoodProperties food = stack.getFoodProperties(null);
+        return food != null ? food.getNutrition() : 0;
+        *///?}
     }
 
     // --- Consumption methods ---

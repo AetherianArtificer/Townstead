@@ -337,6 +337,11 @@
   "dialogue.chat.barista_request.no_recipe/2": "None of my recipes match what's available.",
   "dialogue.chat.barista_request.no_recipe/3": "I need a better-equipped cafe for the drinks I know.",
   "dialogue.chat.barista_request.no_recipe/4": "Maybe a cafe upgrade would unlock new recipes for me.",
+  "dialogue.chat.barista_request.no_recipe_item": "I don't know any recipes for the %2$s yet.",
+  "dialogue.chat.barista_request.no_ingredients_item": "I want to make %2$s but I'm missing the ingredients.",
+
+  "dialogue.chat.cook_request.no_recipe_item": "I don't know any recipes for the %2$s yet.",
+  "dialogue.chat.cook_request.no_ingredients_item": "I want to make %2$s but I can't find the ingredients.",
 
   "townstead.energy.energized": "Energized",
   "townstead.energy.alert": "Alert",

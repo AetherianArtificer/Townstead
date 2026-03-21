@@ -29,7 +29,8 @@ public final class FatigueData {
     // Misaligned bed: -0.6/interval → full recovery in ~17 MC hours
     public static final float RECOVERY_BED_MISALIGNED = -0.6f;
     public static final float RECOVERY_REST_NO_BED = -0.05f;
-    public static final float RECOVERY_COLLAPSED = -0.03f;
+    // -0.4/interval → clears collapse (2pts) in ~5 intervals ≈ 2 minutes
+    public static final float RECOVERY_COLLAPSED = -0.4f;
 
     // --- Multipliers ---
     public static final float COMBAT_MULTIPLIER = 2.0f;
@@ -41,9 +42,11 @@ public final class FatigueData {
     // Alert:     4-7 fatigue (energy 13-16)
     // Tired:     8-11 fatigue (energy 9-12)
     // Drowsy:    12-15 fatigue (energy 5-8)
-    // Exhausted: 16-20 fatigue (energy 0-4)
-    public static final int COLLAPSE_THRESHOLD = 16;
-    public static final int RECOVERY_GATE = 12;
+    // Exhausted: 16-19 fatigue (energy 1-4)
+    // Collapsed: 20 fatigue (energy 0)
+    // Collapse at energy 0, recover when energy reaches 2
+    public static final int COLLAPSE_THRESHOLD = 20;
+    public static final int RECOVERY_GATE = 18;
     public static final int TIRED_THRESHOLD = 8;
     public static final int DROWSY_THRESHOLD = 12;
 
