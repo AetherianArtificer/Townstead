@@ -38,12 +38,16 @@ import java.util.stream.Stream;
  * Parents have priority. Non-crabby villagers help if no parent is nearby.
  */
 public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
+    private static final String SEARCH_CADENCE_KEY = "care_food_search";
+    private static final String CLAIM_CATEGORY = "consumable";
     private static final int SEARCH_RADIUS = 48;
     private static final int VERTICAL_RADIUS = 8;
     private static final float WALK_SPEED = 0.75f;
     private static final int CLOSE_ENOUGH = 2;
     private static final int MAX_DURATION = 1200;
     private static final int FEED_INTERVAL = 30;
+    private static final int UNREACHABLE_TARGET_TTL_TICKS = 40;
+    private static final int MAX_PATH_ATTEMPTS_PER_SEARCH = 5;
 
     private enum Phase { NONE, ACQUIRE, FEED }
     private enum SourceType { NONE, GROUND_ITEM, CONTAINER, CROP }
@@ -72,6 +76,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
             cooldown--;
             return false;
         }
+        if (!VillagerSearchCadence.isDue(level, caregiver, SEARCH_CADENCE_KEY)) return false;
 
         if (!townstead$isEligibleCaregiver(caregiver)) return false;
 
@@ -111,6 +116,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
             return;
         }
         cooldown = 100;
+        VillagerSearchCadence.schedule(level, caregiver, SEARCH_CADENCE_KEY, cooldown, 30);
     }
 
     @Override
@@ -147,6 +153,8 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         sourceContainerSlot = null;
         nextFeedTick = 0L;
         cooldown = 80;
+        ConsumableTargetClaims.releaseAll(caregiver.getUUID());
+        VillagerSearchCadence.schedule(level, caregiver, SEARCH_CADENCE_KEY, cooldown, 20);
     }
 
     private void townstead$tickAcquire(ServerLevel level, VillagerEntityMCA caregiver, long gameTime) {
@@ -205,6 +213,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
                 if (state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state)) {
                     List<ItemStack> drops = CropBlock.getDrops(state, level, sourcePos, null);
                     level.destroyBlock(sourcePos, false, caregiver);
+                    NearbyCropIndex.invalidate(level, sourcePos);
                     for (ItemStack drop : drops) {
                         caregiver.getInventory().addItem(drop);
                     }
@@ -402,13 +411,23 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
         // Sort by distance, pick first reachable
         items.sort(Comparator.comparingDouble(villager::distanceToSqr));
+        int pathAttempts = 0;
         for (ItemEntity item : items) {
+            if (pathAttempts >= MAX_PATH_ATTEMPTS_PER_SEARCH) break;
+            if (!TargetReachabilityCache.canAttempt(level, villager, item.blockPosition())) continue;
+            if (ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item)) continue;
+            pathAttempts++;
             Path path = villager.getNavigation().createPath(item.blockPosition(), CLOSE_ENOUGH);
             if (path != null && path.canReach()) {
+                TargetReachabilityCache.clear(level, villager, item.blockPosition());
+                if (!ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, item, level.getGameTime() + MAX_DURATION + 20L)) {
+                    continue;
+                }
                 sourceItem = item;
                 sourceType = SourceType.GROUND_ITEM;
                 return true;
             }
+            TargetReachabilityCache.recordFailure(level, villager, item.blockPosition(), UNREACHABLE_TARGET_TTL_TICKS);
         }
         return false;
     }
@@ -440,36 +459,40 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
                     *///?}
                 });
         if (sourceContainerSlot == null) return false;
+        if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, sourceContainerSlot)) {
+            return false;
+        }
         // Check reachability
+        if (!TargetReachabilityCache.canAttempt(level, villager, sourceContainerSlot.pos())) return false;
         Path path = villager.getNavigation().createPath(sourceContainerSlot.pos(), CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) return false;
+        if (path == null || !path.canReach()) {
+            TargetReachabilityCache.recordFailure(level, villager, sourceContainerSlot.pos(), UNREACHABLE_TARGET_TTL_TICKS);
+            return false;
+        }
+        TargetReachabilityCache.clear(level, villager, sourceContainerSlot.pos());
+        if (!ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, sourceContainerSlot, level.getGameTime() + MAX_DURATION + 20L)) {
+            return false;
+        }
         sourceType = SourceType.CONTAINER;
         sourcePos = sourceContainerSlot.pos();
         return true;
     }
 
     private boolean townstead$findMatureCrop(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos center = villager.blockPosition();
-        BlockPos bestPos = null;
-        double bestDist = Double.MAX_VALUE;
-
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-SEARCH_RADIUS, -VERTICAL_RADIUS, -SEARCH_RADIUS),
-                center.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
-            BlockState state = level.getBlockState(pos);
-            if (!(state.getBlock() instanceof CropBlock crop) || !crop.isMaxAge(state)) continue;
-
-            double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                bestPos = pos.immutable();
-            }
-        }
-
+        BlockPos bestPos = NearbyCropIndex.snapshot(level, villager.blockPosition(), SEARCH_RADIUS, VERTICAL_RADIUS)
+                .nearestTo(villager);
         if (bestPos == null) return false;
         // Check reachability
+        if (!TargetReachabilityCache.canAttempt(level, villager, bestPos)) return false;
         Path path = villager.getNavigation().createPath(bestPos, CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) return false;
+        if (path == null || !path.canReach()) {
+            TargetReachabilityCache.recordFailure(level, villager, bestPos, UNREACHABLE_TARGET_TTL_TICKS);
+            return false;
+        }
+        TargetReachabilityCache.clear(level, villager, bestPos);
+        if (!ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, bestPos, level.getGameTime() + MAX_DURATION + 20L)) {
+            return false;
+        }
         sourceType = SourceType.CROP;
         sourcePos = bestPos;
         return true;

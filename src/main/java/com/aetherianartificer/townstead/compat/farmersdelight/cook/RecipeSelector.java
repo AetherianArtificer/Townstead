@@ -86,7 +86,8 @@ public final class RecipeSelector {
                 }
             }
         }
-        Map<ResourceLocation, Integer> outputStock = IngredientResolver.buildSupplySnapshot(level, villager, trackedIds, kitchenBounds);
+        KitchenStorageIndex.Snapshot kitchenSnapshot = KitchenStorageIndex.snapshot(level, villager, kitchenBounds);
+        Map<ResourceLocation, Integer> outputStock = IngredientResolver.buildSupplySnapshot(level, villager, trackedIds, kitchenBounds, kitchenSnapshot);
 
         // Per-cook jitter seed
         long cookSeed = villager.getUUID().getLeastSignificantBits();
@@ -99,7 +100,7 @@ public final class RecipeSelector {
             Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
             if (cooldownUntil != null && cooldownUntil > now) continue;
             if (stationPos != null && !StationHandler.stationSupportsRecipe(level, stationPos, recipe)) continue;
-            if (!IngredientResolver.canFulfill(level, villager, recipe, stationPos, kitchenBounds)) continue;
+            if (!IngredientResolver.canFulfill(level, villager, recipe, stationPos, kitchenBounds, kitchenSnapshot)) continue;
             double score = scoreRecipe(
                     recipe,
                     outputStock.getOrDefault(recipe.output(), 0),

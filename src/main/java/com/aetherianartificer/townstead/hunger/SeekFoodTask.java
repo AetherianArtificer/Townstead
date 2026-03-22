@@ -31,12 +31,16 @@ import java.util.Comparator;
 import java.util.List;
 
 public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
+    private static final String SEARCH_CADENCE_KEY = "food_search";
+    private static final String CLAIM_CATEGORY = "consumable";
 
     private static final int SEARCH_RADIUS = 48;
     private static final int VERTICAL_RADIUS = 8;
     private static final float WALK_SPEED = 0.6f;
     private static final int CLOSE_ENOUGH = 2;
     private static final int MAX_DURATION = 600; // ~30 seconds
+    private static final int UNREACHABLE_TARGET_TTL_TICKS = 40;
+    private static final int MAX_PATH_ATTEMPTS_PER_SEARCH = 5;
 
     private enum TargetType { NONE, GROUND_ITEM, CONTAINER, CROP }
 
@@ -75,6 +79,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
             cooldown--;
             return false;
         }
+        if (!VillagerSearchCadence.isDue(level, villager, SEARCH_CADENCE_KEY)) return false;
 
         //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
@@ -93,6 +98,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         // Check inventory first.
         if (TownsteadConfig.ENABLE_SELF_INVENTORY_EATING.get() && tryEatFromInventory(villager)) {
             cooldown = (eatingMode || h < HungerData.ADEQUATE_THRESHOLD) ? 5 : 200;
+            VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 20);
             return false;
         }
 
@@ -125,6 +131,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
         // Nothing found — give up
         cooldown = 200;
+        VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 40);
     }
 
     @Override
@@ -189,12 +196,14 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         targetPos = null;
         targetItem = null;
         targetContainerSlot = null;
+        ConsumableTargetClaims.releaseAll(villager.getUUID());
         //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
         //?} else {
         /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
         cooldown = (HungerData.isEatingMode(hunger) || HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD) ? 5 : 200;
+        VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 20);
     }
 
     // --- Inventory eating (starts vanilla item-use eating flow) ---
@@ -263,17 +272,12 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
         // Gather container slots — collect ALL matching slots, not just the "best"
         if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) {
-            NearbyItemSources.collectMatchingSlots(
-                    level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                    stack -> getNutrition(stack) > 0,
-                    SeekFoodTask::getNutrition,
-                    villager.blockPosition(),
-                    slot -> {
-                        int n = slot.score();
-                        double dist = villager.distanceToSqr(
-                                slot.pos().getX() + 0.5, slot.pos().getY() + 0.5, slot.pos().getZ() + 0.5);
-                        candidates.add(new FoodCandidate(TargetType.CONTAINER, n, dist, null, slot, slot.pos()));
-                    });
+            NearbyItemSources.collectBestFoodSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS, villager.blockPosition(), slot -> {
+                int n = slot.score();
+                double dist = villager.distanceToSqr(
+                        slot.pos().getX() + 0.5, slot.pos().getY() + 0.5, slot.pos().getZ() + 0.5);
+                candidates.add(new FoodCandidate(TargetType.CONTAINER, n, dist, null, slot, slot.pos()));
+            });
         }
 
         if (candidates.isEmpty()) return false;
@@ -282,11 +286,34 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         candidates.sort(Comparator.comparingDouble(c -> -c.score()));
 
         // Pick the first reachable candidate
+        int pathAttempts = 0;
         for (FoodCandidate c : candidates) {
+            if (pathAttempts >= MAX_PATH_ATTEMPTS_PER_SEARCH) break;
+            if (c.type == TargetType.GROUND_ITEM && ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, c.item)) {
+                continue;
+            }
+            if (c.type == TargetType.CONTAINER && ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, c.slot)) {
+                continue;
+            }
+            if (c.type == TargetType.CROP && ConsumableTargetClaims.isClaimedByOtherPos(level, villager.getUUID(), CLAIM_CATEGORY, c.pos)) {
+                continue;
+            }
             BlockPos pathTarget = c.type == TargetType.GROUND_ITEM
                     ? c.item.blockPosition() : c.pos;
+            if (!TargetReachabilityCache.canAttempt(level, villager, pathTarget)) continue;
+            pathAttempts++;
             Path path = villager.getNavigation().createPath(pathTarget, CLOSE_ENOUGH);
             if (path != null && path.canReach()) {
+                TargetReachabilityCache.clear(level, villager, pathTarget);
+                long claimUntil = level.getGameTime() + MAX_DURATION + 20L;
+                boolean claimed = c.type == TargetType.GROUND_ITEM
+                        ? ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, c.item, claimUntil)
+                        : c.type == TargetType.CONTAINER
+                        ? ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, c.slot, claimUntil)
+                        : ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, c.pos, claimUntil);
+                if (!claimed) {
+                    continue;
+                }
                 if (c.type == TargetType.GROUND_ITEM) {
                     targetType = TargetType.GROUND_ITEM;
                     targetItem = c.item;
@@ -297,6 +324,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
                 }
                 return true;
             }
+            TargetReachabilityCache.recordFailure(level, villager, pathTarget, UNREACHABLE_TARGET_TTL_TICKS);
         }
 
         return false;
@@ -375,28 +403,20 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean findMatureCrop(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos center = villager.blockPosition();
-        BlockPos bestPos = null;
-        double bestDist = Double.MAX_VALUE;
-
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-SEARCH_RADIUS, -VERTICAL_RADIUS, -SEARCH_RADIUS),
-                center.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
-
-            BlockState state = level.getBlockState(pos);
-            if (state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state)) {
-                double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestPos = pos.immutable();
-                }
-            }
-        }
-
+        BlockPos bestPos = NearbyCropIndex.snapshot(level, villager.blockPosition(), SEARCH_RADIUS, VERTICAL_RADIUS)
+                .nearestTo(villager);
         if (bestPos == null) return false;
         // Check reachability
+        if (!TargetReachabilityCache.canAttempt(level, villager, bestPos)) return false;
         Path path = villager.getNavigation().createPath(bestPos, CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) return false;
+        if (path == null || !path.canReach()) {
+            TargetReachabilityCache.recordFailure(level, villager, bestPos, UNREACHABLE_TARGET_TTL_TICKS);
+            return false;
+        }
+        TargetReachabilityCache.clear(level, villager, bestPos);
+        if (!ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, bestPos, level.getGameTime() + MAX_DURATION + 20L)) {
+            return false;
+        }
         targetType = TargetType.CROP;
         targetPos = bestPos;
         return true;
@@ -442,6 +462,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         // Break the crop and look for food in the drops
         List<ItemStack> drops = CropBlock.getDrops(state, level, targetPos, null);
         level.destroyBlock(targetPos, false, villager);
+        NearbyCropIndex.invalidate(level, targetPos);
 
         boolean ate = false;
 

@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegi
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
+import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
@@ -68,6 +69,17 @@ public final class StationHandler {
         if (side != null) return be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null);
         return be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
         *///?}
+    }
+
+    private static boolean handlerHasUnexpectedContents(IItemHandler handler, @Nullable Set<Item> allowedPrestage, boolean allowPotBowlPrestage) {
+        for (int i = 0; i < handler.getSlots(); i++) {
+            ItemStack slot = handler.getStackInSlot(i);
+            if (slot.isEmpty()) continue;
+            if (allowPotBowlPrestage && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(Items.BOWL)) continue;
+            if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
+            return true;
+        }
+        return false;
     }
 
     //? if >=1.21 {
@@ -168,28 +180,13 @@ public final class StationHandler {
             int searchRadius,
             int verticalRadius
     ) {
-        Map<Long, StationSlot> found = new LinkedHashMap<>();
-        // Scan building blocks from cook-assigned kitchen buildings
-        for (Building building : kitchenBuildings(villager)) {
-            for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
-                if (!isInKitchenWorkArea(kitchenBounds, pos)) continue;
-                tryAddStation(level, villager, pos, found);
-            }
+        List<StationSlot> discovered = new ArrayList<>();
+        for (StationSlot slot : KitchenStationIndex.snapshot(level, kitchenBounds).stations()) {
+            if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) continue;
+            if (findStandingPosition(level, villager, slot.pos()) == null) continue;
+            discovered.add(slot);
         }
-        // Scan around kitchen anchors
-        for (BlockPos anchor : kitchenAnchors(level, villager)) {
-            for (BlockPos pos : BlockPos.betweenClosed(
-                    anchor.offset(-searchRadius, -verticalRadius, -searchRadius),
-                    anchor.offset(searchRadius, verticalRadius, searchRadius))) {
-                if (!isInKitchenWorkArea(kitchenBounds, pos)) continue;
-                tryAddStation(level, villager, pos, found);
-            }
-        }
-        // Scan all positions within the provided bounds directly (covers cafe and other non-kitchen areas)
-        for (long key : kitchenBounds) {
-            tryAddStation(level, villager, BlockPos.of(key), found);
-        }
-        return new ArrayList<>(found.values());
+        return discovered;
     }
 
     private static void tryAddStation(
@@ -677,41 +674,23 @@ public final class StationHandler {
 
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return false;
+        StorageSearchContext searchContext = new StorageSearchContext(level);
 
         IItemHandler handler = preferredIngredientHandler(level, pos);
         if (handler != null) {
-            for (int i = 0; i < handler.getSlots(); i++) {
-                ItemStack slot = handler.getStackInSlot(i);
-                if (slot.isEmpty()) continue;
-                if (allowPotBowlPrestage && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(Items.BOWL)) continue;
-                if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
-                return true;
-            }
+            if (handlerHasUnexpectedContents(handler, allowedPrestage, allowPotBowlPrestage)) return true;
             return false;
         }
 
-        handler = getItemHandler(level, pos, null);
-        if (handler != null) {
-            for (int i = 0; i < handler.getSlots(); i++) {
-                ItemStack slot = handler.getStackInSlot(i);
-                if (slot.isEmpty()) continue;
-                if (allowPotBowlPrestage && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(Items.BOWL)) continue;
-                if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
-                return true;
+        final Set<Item> allowedPrestageFinal = allowedPrestage;
+        final boolean[] found = new boolean[1];
+        searchContext.forEachUniqueItemHandler(pos, (side, uniqueHandler) -> {
+            if (found[0]) return;
+            if (handlerHasUnexpectedContents(uniqueHandler, allowedPrestageFinal, allowPotBowlPrestage)) {
+                found[0] = true;
             }
-        }
-
-        for (Direction dir : Direction.values()) {
-            handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            for (int i = 0; i < handler.getSlots(); i++) {
-                ItemStack slot = handler.getStackInSlot(i);
-                if (slot.isEmpty()) continue;
-                if (allowPotBowlPrestage && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(Items.BOWL)) continue;
-                if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
-                return true;
-            }
-        }
+        });
+        if (found[0]) return true;
 
         if (be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize(); i++) {
@@ -731,26 +710,18 @@ public final class StationHandler {
         if (amount <= 0 || pos == null) return 0;
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return 0;
-        int removed = 0;
-        IItemHandler handler = getItemHandler(level, pos, null);
-        if (handler != null) {
-            for (int i = 0; i < handler.getSlots() && removed < amount; i++) {
+        final int[] removedRef = new int[1];
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (removedRef[0] >= amount) return;
+            for (int i = 0; i < handler.getSlots() && removedRef[0] < amount; i++) {
                 if (!handler.getStackInSlot(i).is(item)) continue;
-                ItemStack extracted = handler.extractItem(i, amount - removed, false);
-                removed += extracted.getCount();
+                ItemStack extracted = handler.extractItem(i, amount - removedRef[0], false);
+                removedRef[0] += extracted.getCount();
             }
-            if (removed >= amount) return removed;
-        }
-        for (Direction dir : Direction.values()) {
-            handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            for (int i = 0; i < handler.getSlots() && removed < amount; i++) {
-                if (!handler.getStackInSlot(i).is(item)) continue;
-                ItemStack extracted = handler.extractItem(i, amount - removed, false);
-                removed += extracted.getCount();
-            }
-            if (removed >= amount) return removed;
-        }
+        });
+        int removed = removedRef[0];
+        if (removed >= amount) return removed;
         if (be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize() && removed < amount; i++) {
                 ItemStack slot = container.getItem(i);
@@ -760,6 +731,9 @@ public final class StationHandler {
                 removed += take;
                 container.setChanged();
             }
+        }
+        if (removed > 0) {
+            KitchenStationIndex.invalidate(level, pos);
         }
         return removed;
     }
@@ -778,22 +752,19 @@ public final class StationHandler {
         if (be == null) return stack;
 
         ItemStack remainder = stack.copy();
+        StorageSearchContext searchContext = new StorageSearchContext(level);
         IItemHandler handler = preferredIngredientHandler(level, pos);
         if (handler != null) {
             remainder = insertIntoHandler(handler, remainder, false);
             if (remainder.isEmpty()) return ItemStack.EMPTY;
         } else {
-            handler = getItemHandler(level, pos, null);
-            if (handler != null) {
-                remainder = insertIntoHandler(handler, remainder, false);
-                if (remainder.isEmpty()) return ItemStack.EMPTY;
-            }
-            for (Direction dir : Direction.values()) {
-                if (remainder.isEmpty()) return ItemStack.EMPTY;
-                handler = getItemHandler(level, pos, dir);
-                if (handler == null) continue;
-                remainder = insertIntoHandler(handler, remainder, false);
-            }
+            final ItemStack[] remainderRef = new ItemStack[]{remainder};
+            searchContext.forEachUniqueItemHandler(pos, (dir, uniqueHandler) -> {
+                if (remainderRef[0].isEmpty()) return;
+                remainderRef[0] = insertIntoHandler(uniqueHandler, remainderRef[0], false);
+            });
+            remainder = remainderRef[0];
+            if (remainder.isEmpty()) return ItemStack.EMPTY;
         }
 
         if (!remainder.isEmpty() && be instanceof Container container) {
@@ -812,6 +783,9 @@ public final class StationHandler {
                 remainder.shrink(move);
                 container.setChanged();
             }
+        }
+        if (remainder.getCount() != stack.getCount()) {
+            KitchenStationIndex.invalidate(level, pos);
         }
         return remainder;
     }
@@ -836,17 +810,25 @@ public final class StationHandler {
     private static boolean insertSingleIntoCookingPotIngredientSlot(ServerLevel level, BlockPos pos, ItemStack single) {
         if (single.isEmpty()) return true;
         if (single.getCount() != 1) single = copyOne(single);
-        for (Direction dir : Direction.values()) {
-            IItemHandler handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
+        final ItemStack singleCopy = single;
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        final boolean[] inserted = new boolean[1];
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (inserted[0] || dir == null) return;
             int slots = Math.min(FD_COOKING_POT_INGREDIENT_SLOT_COUNT, handler.getSlots());
             for (int slot = 0; slot < slots; slot++) {
                 if (!handler.getStackInSlot(slot).isEmpty()) continue;
-                ItemStack rem = handler.insertItem(slot, single.copy(), false);
-                if (rem.isEmpty()) return true;
+                ItemStack rem = handler.insertItem(slot, singleCopy.copy(), false);
+                if (rem.isEmpty()) {
+                    inserted[0] = true;
+                    return;
+                }
             }
+        });
+        if (inserted[0]) {
+            KitchenStationIndex.invalidate(level, pos);
         }
-        return false;
+        return inserted[0];
     }
 
     public static ItemStack insertIntoCookingPotContainerSlot(ServerLevel level, BlockPos pos, ItemStack stack, boolean simulate) {
@@ -855,15 +837,18 @@ public final class StationHandler {
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         if (!FD_COOKING_POT.equals(blockId)) return stack;
 
-        ItemStack remainder = stack.copy();
-        for (Direction dir : Direction.values()) {
-            if (dir == Direction.UP) continue;
-            IItemHandler handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) continue;
-            remainder = handler.insertItem(FD_COOKING_POT_CONTAINER_SLOT, remainder, simulate);
-            if (remainder.isEmpty()) return ItemStack.EMPTY;
+        final ItemStack[] remainderRef = new ItemStack[]{stack.copy()};
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandlerExcept(pos, Direction.UP, (dir, handler) -> {
+            if (remainderRef[0].isEmpty()) return;
+            if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) return;
+            remainderRef[0] = handler.insertItem(FD_COOKING_POT_CONTAINER_SLOT, remainderRef[0], simulate);
+        });
+        ItemStack remainder = remainderRef[0];
+        if (!simulate && remainder.getCount() != stack.getCount()) {
+            KitchenStationIndex.invalidate(level, pos);
         }
+        if (remainder.isEmpty()) return ItemStack.EMPTY;
         return remainder;
     }
 
@@ -871,16 +856,14 @@ public final class StationHandler {
         if (pos == null) return 0;
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         if (!FD_COOKING_POT.equals(blockId)) return 0;
-        int best = 0;
-        for (Direction dir : Direction.values()) {
-            if (dir == Direction.UP) continue;
-            IItemHandler handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) continue;
+        final int[] bestRef = new int[1];
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandlerExcept(pos, Direction.UP, (dir, handler) -> {
+            if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) return;
             ItemStack slot = handler.getStackInSlot(FD_COOKING_POT_CONTAINER_SLOT);
-            if (slot.is(Items.BOWL)) best = Math.max(best, slot.getCount());
-        }
-        return best;
+            if (slot.is(Items.BOWL)) bestRef[0] = Math.max(bestRef[0], slot.getCount());
+        });
+        return bestRef[0];
     }
 
     public static int countItemInStation(ServerLevel level, BlockPos pos, Item item) {
@@ -941,21 +924,15 @@ public final class StationHandler {
 
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return false;
-        boolean clearedAny = false;
+        final boolean[] clearedAnyRef = new boolean[1];
+        StorageSearchContext searchContext = new StorageSearchContext(level);
 
-        Direction[] directions = new Direction[Direction.values().length + 1];
-        directions[0] = null;
-        System.arraycopy(Direction.values(), 0, directions, 1, Direction.values().length);
-        Set<Integer> handlerIds = new HashSet<>();
-        for (Direction dir : directions) {
-            IItemHandler handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            if (!handlerIds.add(System.identityHashCode(handler))) continue;
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
             for (int i = 0; i < handler.getSlots(); i++) {
                 if (handler.getStackInSlot(i).isEmpty()) continue;
                 ItemStack extracted = handler.extractItem(i, handler.getStackInSlot(i).getCount(), false);
                 if (extracted.isEmpty()) continue;
-                clearedAny = true;
+                clearedAnyRef[0] = true;
                 ItemStack remainder = villager.getInventory().addItem(extracted);
                 if (!remainder.isEmpty()) {
                     ItemEntity drop = new ItemEntity(
@@ -964,7 +941,7 @@ public final class StationHandler {
                     level.addFreshEntity(drop);
                 }
             }
-        }
+        });
         if (be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize(); i++) {
                 ItemStack slot = container.getItem(i);
@@ -972,7 +949,7 @@ public final class StationHandler {
                 ItemStack taken = slot.copy();
                 container.setItem(i, ItemStack.EMPTY);
                 container.setChanged();
-                clearedAny = true;
+                clearedAnyRef[0] = true;
                 ItemStack remainder = villager.getInventory().addItem(taken);
                 if (!remainder.isEmpty()) {
                     ItemEntity drop = new ItemEntity(
@@ -985,9 +962,12 @@ public final class StationHandler {
 
         // Reflection fallback: clear remaining items (e.g. bowl in container slot)
         // that IItemHandler and Container couldn't extract
-        if (clearRemainingViaReflection(be, villager, level)) clearedAny = true;
+        if (clearRemainingViaReflection(be, villager, level)) clearedAnyRef[0] = true;
 
-        return clearedAny;
+        if (clearedAnyRef[0]) {
+            KitchenStationIndex.invalidate(level, pos);
+        }
+        return clearedAnyRef[0];
     }
 
     private static boolean clearRemainingViaReflection(BlockEntity be, VillagerEntityMCA villager, ServerLevel level) {

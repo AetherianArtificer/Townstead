@@ -230,7 +230,17 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        return checkExtraStartConditions(level, villager);
+        if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
+        if (townstead$isFatigueGated(villager)) return false;
+        VillagerBrain<?> brain = villager.getVillagerBrain();
+        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return false;
+        if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
+        if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
+        if (farmAnchor != null && level.getBlockState(farmAnchor).getBlock() instanceof ComposterBlock) {
+            return true;
+        }
+        farmAnchor = townstead$findNearestComposter(level, villager);
+        return farmAnchor != null;
     }
 
     @Override
@@ -404,11 +414,19 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private void townstead$refreshTargetCache(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        cachedHarvestTarget = townstead$findNearestMatureCrop(level, villager, gameTime);
-        cachedPlantTarget = townstead$findNearestPlantSpot(level, villager, gameTime);
-        cachedTillTarget = townstead$findNearestTillSpot(level, villager, gameTime);
+        HarvestWorkIndex.FarmSnapshot snapshot = HarvestWorkIndex.snapshot(
+                level,
+                farmAnchor,
+                farmBlueprint,
+                townstead$farmRadius(),
+                VERTICAL_RADIUS,
+                townstead$groomRadius()
+        );
+        cachedHarvestTarget = townstead$findNearestMatureCrop(snapshot, villager, gameTime);
+        cachedPlantTarget = townstead$findNearestPlantSpot(snapshot, villager, gameTime);
+        cachedTillTarget = townstead$findNearestTillSpot(snapshot, villager, gameTime);
         if (gameTime >= nextGroomScanTick) {
-            cachedGroomTarget = townstead$findNearestGroomSpot(level, villager, gameTime);
+            cachedGroomTarget = townstead$findNearestGroomSpot(snapshot, villager, gameTime);
             nextGroomScanTick = gameTime + townstead$groomScanIntervalTicks();
         } else {
             cachedGroomTarget = null;
@@ -487,54 +505,25 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         };
     }
 
-    private BlockPos townstead$findNearestMatureCrop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        List<BlockPos> candidates = townstead$collectHarvestCandidates(level, gameTime);
-        if (candidates.isEmpty()) return null;
-
-        // Prefer finishing a local harvest cluster before hopping across the farm.
+    private BlockPos townstead$findNearestMatureCrop(HarvestWorkIndex.FarmSnapshot snapshot, VillagerEntityMCA villager, long gameTime) {
+        if (snapshot == HarvestWorkIndex.FarmSnapshot.EMPTY) return null;
         if (lastHarvestPos != null && gameTime - lastHarvestTick <= HARVEST_CLUSTER_STICK_TICKS) {
-            BlockPos clustered = townstead$nearestCandidateToVillager(
+            BlockPos clustered = snapshot.nearestHarvestTarget(
                     villager,
-                    candidates,
-                    pos -> pos.distManhattan(lastHarvestPos) <= HARVEST_CLUSTER_RADIUS
+                    pos -> !townstead$isBlacklisted(pos, gameTime) && pos.distManhattan(lastHarvestPos) <= HARVEST_CLUSTER_RADIUS
             );
             if (clustered != null) return clustered;
         }
-        return townstead$nearestCandidateToVillager(villager, candidates, pos -> true);
+        return snapshot.nearestHarvestTarget(villager, pos -> !townstead$isBlacklisted(pos, gameTime));
     }
 
-    private BlockPos townstead$findNearestPlantSpot(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        BlockPos bestPos = null;
-        double bestDist = Double.MAX_VALUE;
-        for (BlockPos soilPos : townstead$iterateSoilCells(level)) {
-            if (!(level.getBlockState(soilPos).getBlock() instanceof FarmBlock)) continue;
-            BlockPos above = soilPos.above();
-            if (townstead$isBlacklisted(above, gameTime)) continue;
-            if (!level.getBlockState(above).isAir()) continue;
-            double dist = villager.distanceToSqr(above.getX() + 0.5, above.getY() + 0.5, above.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                bestPos = above.immutable();
-            }
-        }
-
-        // Scan for compat plantable spots (e.g. rice water positions)
-        if (FarmerCropCompatRegistry.hasAnyLoadedProvider() && townstead$hasCompatSeed(villager.getInventory())) {
-            int farmRadius = townstead$farmRadius();
-            for (BlockPos pos : BlockPos.betweenClosed(
-                    farmAnchor.offset(-farmRadius, -VERTICAL_RADIUS, -farmRadius),
-                    farmAnchor.offset(farmRadius, VERTICAL_RADIUS, farmRadius))) {
-                if (townstead$isBlacklisted(pos, gameTime)) continue;
-                if (!FarmerCropCompatRegistry.isPlantableSpot(level, pos)) continue;
-                double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestPos = pos.immutable();
-                }
-            }
-        }
-
-        return bestPos;
+    private BlockPos townstead$findNearestPlantSpot(HarvestWorkIndex.FarmSnapshot snapshot, VillagerEntityMCA villager, long gameTime) {
+        if (snapshot == HarvestWorkIndex.FarmSnapshot.EMPTY) return null;
+        return snapshot.nearestPlantTarget(
+                villager,
+                FarmerCropCompatRegistry.hasAnyLoadedProvider() && townstead$hasCompatSeed(villager.getInventory()),
+                pos -> !townstead$isBlacklisted(pos, gameTime)
+        );
     }
 
     private boolean townstead$hasCompatSeed(SimpleContainer inv) {
@@ -544,54 +533,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         return false;
     }
 
-    private BlockPos townstead$findNearestTillSpot(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        BlockPos bestHydrated = null;
-        double bestHydratedDist = Double.MAX_VALUE;
-        BlockPos bestAny = null;
-        double bestAnyDist = Double.MAX_VALUE;
-
-        for (BlockPos soilPos : townstead$iterateSoilCells(level)) {
-            if (townstead$isBlacklisted(soilPos, gameTime)) continue;
-            if (!townstead$isTillable(level, soilPos, gameTime)) continue;
-            double dist = villager.distanceToSqr(soilPos.getX() + 0.5, soilPos.getY() + 0.5, soilPos.getZ() + 0.5);
-            if (dist < bestAnyDist) {
-                bestAnyDist = dist;
-                bestAny = soilPos.immutable();
-            }
-            if (townstead$hasNearbyWater(level, soilPos) && dist < bestHydratedDist) {
-                bestHydratedDist = dist;
-                bestHydrated = soilPos.immutable();
-            }
-        }
-        if (bestHydrated != null) return bestHydrated;
-        return bestAny;
+    private BlockPos townstead$findNearestTillSpot(HarvestWorkIndex.FarmSnapshot snapshot, VillagerEntityMCA villager, long gameTime) {
+        if (snapshot == HarvestWorkIndex.FarmSnapshot.EMPTY) return null;
+        return snapshot.nearestTillTarget(villager, true, pos -> !townstead$isBlacklisted(pos, gameTime) && !townstead$isRecentlyWorked(pos, gameTime));
     }
 
-    private BlockPos townstead$findNearestGroomSpot(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        int groomRadius = townstead$groomRadius();
-        for (BlockPos soilPos : townstead$iterateSoilCells(level)) {
-            if (!townstead$isPlannedSoil(soilPos)) continue;
-            for (int dx = -groomRadius; dx <= groomRadius; dx++) {
-                for (int dz = -groomRadius; dz <= groomRadius; dz++) {
-                    BlockPos base = soilPos.offset(dx, 0, dz);
-                    if (!townstead$isInsideFarmRadius(base)) continue;
-                    if (!townstead$isPlannedOrAdjacentSoil(base)) continue;
-                    BlockPos top = base.above();
-                    if (townstead$isBlacklisted(top, gameTime)) continue;
-                    if (townstead$isRecentlyWorked(top, gameTime)) continue;
-                    BlockState topState = level.getBlockState(top);
-                    if (!townstead$isRemovableWeed(topState)) continue;
-                    double dist = villager.distanceToSqr(top.getX() + 0.5, top.getY() + 0.5, top.getZ() + 0.5);
-                    if (dist < bestDist) {
-                        bestDist = dist;
-                        best = top.immutable();
-                    }
-                }
-            }
-        }
-        return best;
+    private BlockPos townstead$findNearestGroomSpot(HarvestWorkIndex.FarmSnapshot snapshot, VillagerEntityMCA villager, long gameTime) {
+        if (snapshot == HarvestWorkIndex.FarmSnapshot.EMPTY) return null;
+        return snapshot.nearestGroomTarget(villager, pos -> !townstead$isBlacklisted(pos, gameTime) && !townstead$isRecentlyWorked(pos, gameTime));
     }
 
     private void townstead$doHarvest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -606,6 +555,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             }
             villager.swing(villager.getDominantHand());
             townstead$markWorked(targetPos, gameTime);
+            HarvestWorkIndex.invalidate(level, targetPos);
             lastHarvestPos = targetPos.immutable();
             lastHarvestTick = gameTime;
             nextTargetScanTick = 0;
@@ -622,6 +572,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         }
         villager.swing(villager.getDominantHand());
         townstead$markWorked(targetPos, gameTime);
+        HarvestWorkIndex.invalidate(level, targetPos);
         lastHarvestPos = targetPos.immutable();
         lastHarvestTick = gameTime;
         nextTargetScanTick = 0;
@@ -718,6 +669,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             seed.shrink(1);
             villager.swing(villager.getDominantHand());
             townstead$markWorked(pos, gameTime);
+            HarvestWorkIndex.invalidate(level, pos);
             townstead$awardFarmerXp(level, villager, gameTime, 2, "plant");
         }
     }
@@ -735,6 +687,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         if (level.setBlock(soilPos, Blocks.FARMLAND.defaultBlockState(), 3)) {
             villager.swing(villager.getDominantHand());
             townstead$markWorked(soilPos, gameTime);
+            HarvestWorkIndex.invalidate(level, soilPos);
             townstead$awardFarmerXp(level, villager, gameTime, 1, "till");
         }
     }
@@ -751,6 +704,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         }
         villager.swing(villager.getDominantHand());
         townstead$markWorked(topPos, gameTime);
+        HarvestWorkIndex.invalidate(level, topPos);
         townstead$awardFarmerXp(level, villager, gameTime, 1, "groom");
     }
 
@@ -776,6 +730,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
         villager.swing(villager.getDominantHand());
         townstead$recordWaterPlacement(gameTime);
         townstead$markWorked(pos, gameTime);
+        HarvestWorkIndex.invalidate(level, pos);
         townstead$awardFarmerXp(level, villager, gameTime, 4, "irrigate");
         cachedInventoryTick = -1;
     }
@@ -1173,20 +1128,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private BlockPos townstead$findNearestComposter(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos center = villager.blockPosition();
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-ANCHOR_SEARCH_RADIUS, -VERTICAL_RADIUS, -ANCHOR_SEARCH_RADIUS),
-                center.offset(ANCHOR_SEARCH_RADIUS, VERTICAL_RADIUS, ANCHOR_SEARCH_RADIUS))) {
-            if (!(level.getBlockState(pos).getBlock() instanceof ComposterBlock)) continue;
-            double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = pos.immutable();
-            }
-        }
-        return best;
+        return HarvestWorkIndex.nearestComposter(level, villager, ANCHOR_SEARCH_RADIUS, VERTICAL_RADIUS);
     }
 
     private Iterable<BlockPos> townstead$iterateSoilCells(ServerLevel level) {
@@ -1253,12 +1195,21 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> {
             boolean hasSeeds = townstead$findSeedSlot(inv, villager) >= 0;
             boolean hasHoe = townstead$hasHoe(inv);
             townstead$refreshBlueprintIfNeeded(level, villager, level.getGameTime(), true);
-            if (townstead$findNearestMatureCrop(level, villager, level.getGameTime()) != null) return true;
-            BlockPos plantSpot = townstead$findNearestPlantSpot(level, villager, level.getGameTime());
+            HarvestWorkIndex.FarmSnapshot snapshot = HarvestWorkIndex.snapshot(
+                    level,
+                    farmAnchor,
+                    farmBlueprint,
+                    townstead$farmRadius(),
+                    VERTICAL_RADIUS,
+                    townstead$groomRadius()
+            );
+            long gameTime = level.getGameTime();
+            if (townstead$findNearestMatureCrop(snapshot, villager, gameTime) != null) return true;
+            BlockPos plantSpot = townstead$findNearestPlantSpot(snapshot, villager, gameTime);
             if (hasSeeds && plantSpot != null) return true;
             if (!hasSeeds && TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && plantSpot != null) return true;
 
-            BlockPos tillSpot = townstead$findNearestTillSpot(level, villager, level.getGameTime());
+            BlockPos tillSpot = townstead$findNearestTillSpot(snapshot, villager, gameTime);
             if (hasHoe && tillSpot != null) return true;
             if (!hasHoe && TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && tillSpot != null) return true;
 

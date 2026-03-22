@@ -11,6 +11,9 @@ import com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelecto
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler.StationSlot;
 import com.aetherianartificer.townstead.hunger.CookProgressData;
+import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
+import com.aetherianartificer.townstead.storage.StorageSearchContext;
+import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -956,10 +959,17 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> {
         String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();
         String station = stationType == null ? "none" : stationType.name().toLowerCase();
         String idleInfo = gameTime < idleUntilTick ? " idle=" + (idleUntilTick - gameTime) : "";
+        StorageSearchContext.Snapshot storageSnapshot = StorageSearchContext.Profiler.snapshot();
+        VillageAiBudget.Snapshot budgetSnapshot = VillageAiBudget.snapshot();
+        ConsumableTargetClaims.Snapshot claimSnapshot = ConsumableTargetClaims.snapshot();
         player.sendSystemMessage(Component.literal("[CookDBG:" + cookName + "#" + cookId + "] state=" + state.name()
                 + " station=" + station + " anchor=" + anchor + " recipe=" + recipe
                 + " doneAt=" + cookDoneTick + " blocked=" + blocked.name()
-                + " used=" + usedStations.size() + idleInfo));
+                + " used=" + usedStations.size() + " storage=" + storageSnapshot.observedBlocks()
+                + "/" + storageSnapshot.handlerLookups()
+                + " budget=" + budgetSnapshot.granted() + "/" + budgetSnapshot.throttled()
+                + " claims=" + claimSnapshot.grants() + "/" + claimSnapshot.conflicts() + "/" + claimSnapshot.activeClaims()
+                + idleInfo));
         nextDebugTick = gameTime + 100L;
     }
 

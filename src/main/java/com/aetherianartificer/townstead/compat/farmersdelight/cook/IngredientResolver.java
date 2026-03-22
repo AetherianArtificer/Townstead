@@ -9,7 +9,9 @@ import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegi
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
+import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
+import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
@@ -36,6 +38,9 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 public final class IngredientResolver {
+    private static final String KITCHEN_SLOT_CLAIM_CATEGORY = "kitchen_supply";
+    private static final int KITCHEN_SLOT_CLAIM_TTL_TICKS = 40;
+
     private IngredientResolver() {}
 
     //? if >=1.21 {
@@ -55,6 +60,16 @@ public final class IngredientResolver {
             VillagerEntityMCA villager,
             Set<ResourceLocation> trackedIds,
             Set<Long> kitchenBounds
+    ) {
+        return buildSupplySnapshot(level, villager, trackedIds, kitchenBounds, KitchenStorageIndex.snapshot(level, villager, kitchenBounds));
+    }
+
+    public static Map<ResourceLocation, Integer> buildSupplySnapshot(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            Set<ResourceLocation> trackedIds,
+            Set<Long> kitchenBounds,
+            KitchenStorageIndex.Snapshot kitchenSnapshot
     ) {
         Map<ResourceLocation, Integer> supply = new HashMap<>();
         if (trackedIds.isEmpty()) return supply;
@@ -76,51 +91,9 @@ public final class IngredientResolver {
         }
 
         // Kitchen containers
-        Optional<Village> villageOpt = FarmersDelightCookAssignment.resolveVillage(villager);
-        if (villageOpt.isEmpty()) return supply;
-        Village village = villageOpt.get();
-
-        Set<Long> visited = new HashSet<>();
-        for (Building building : village.getBuildings().values()) {
-            for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
-                long key = pos.asLong();
-                if (!visited.add(key)) continue;
-                if (!StationHandler.isInKitchenWorkArea(kitchenBounds, pos)) continue;
-                if (!village.isWithinBorder(pos, 0)) continue;
-                if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
-                BlockEntity be = level.getBlockEntity(pos);
-                if (NearbyItemSources.isProcessingContainer(level, pos, be)) continue;
-                if (be == null) continue;
-
-                if (be instanceof Container container) {
-                    for (int i = 0; i < container.getContainerSize(); i++) {
-                        ItemStack stack = container.getItem(i);
-                        if (stack.isEmpty()) continue;
-                        if (trackImpureWater && thirstBridge != null
-                                && StationHandler.impureWaterScore(stack, thirstBridge) > 0) {
-                            supply.merge(TOWNSTEAD_IMPURE_WATER_INPUT, stack.getCount(), Integer::sum);
-                        }
-                        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-                        if (itemId == null || !trackedIds.contains(itemId)) continue;
-                        supply.merge(itemId, stack.getCount(), Integer::sum);
-                    }
-                    continue;
-                }
-
-                IItemHandler handler = StationHandler.getItemHandler(be, level, pos, null);
-                if (handler == null) continue;
-                for (int i = 0; i < handler.getSlots(); i++) {
-                    ItemStack stack = handler.getStackInSlot(i);
-                    if (stack.isEmpty()) continue;
-                    if (trackImpureWater && thirstBridge != null
-                            && StationHandler.impureWaterScore(stack, thirstBridge) > 0) {
-                        supply.merge(TOWNSTEAD_IMPURE_WATER_INPUT, stack.getCount(), Integer::sum);
-                    }
-                    ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-                    if (itemId == null || !trackedIds.contains(itemId)) continue;
-                    supply.merge(itemId, stack.getCount(), Integer::sum);
-                }
-            }
+        Map<ResourceLocation, Integer> kitchenSupply = kitchenSnapshot.supply(trackedIds, trackImpureWater, thirstBridge);
+        for (Map.Entry<ResourceLocation, Integer> entry : kitchenSupply.entrySet()) {
+            supply.merge(entry.getKey(), entry.getValue(), Integer::sum);
         }
         return supply;
     }
@@ -133,6 +106,17 @@ public final class IngredientResolver {
             DiscoveredRecipe recipe,
             @Nullable BlockPos stationPos,
             Set<Long> kitchenBounds
+    ) {
+        return canFulfill(level, villager, recipe, stationPos, kitchenBounds, KitchenStorageIndex.snapshot(level, villager, kitchenBounds));
+    }
+
+    public static boolean canFulfill(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            DiscoveredRecipe recipe,
+            @Nullable BlockPos stationPos,
+            Set<Long> kitchenBounds,
+            KitchenStorageIndex.Snapshot kitchenSnapshot
     ) {
         BlockPos center = stationPos != null ? stationPos : villager.blockPosition();
         if (recipe.purification()) {
@@ -176,7 +160,7 @@ public final class IngredientResolver {
         for (RecipeIngredient ingredient : recipe.inputs()) {
             neededIds.addAll(ingredient.itemIds());
         }
-        Map<ResourceLocation, Integer> totalSupply = buildSupplySnapshot(level, villager, neededIds, kitchenBounds);
+        Map<ResourceLocation, Integer> totalSupply = buildSupplySnapshot(level, villager, neededIds, kitchenBounds, kitchenSnapshot);
         // Add station contents for HOT_STATION (items already in the pot count toward supply)
         if (recipe.stationType() == StationType.HOT_STATION && stationPos != null) {
             for (ResourceLocation id : neededIds) {
@@ -502,10 +486,12 @@ public final class IngredientResolver {
             Set<Long> kitchenBounds
     ) {
         if (NearbyItemSources.pullSingleToInventory(level, villager, 16, 3, s -> s.is(item), ItemStack::getCount, center)) return true;
-        NearbyItemSources.ContainerSlot slot = findKitchenStorageSlot(level, villager, s -> s.is(item), kitchenBounds);
+        NearbyItemSources.ContainerSlot slot = findClaimedKitchenStorageSlot(level, villager, s -> s.is(item), kitchenBounds);
         if (slot == null) return false;
         ItemStack extracted = NearbyItemSources.extractOne(level, slot);
+        ConsumableTargetClaims.releaseSlot(level, villager.getUUID(), KITCHEN_SLOT_CLAIM_CATEGORY, slot);
         if (extracted.isEmpty()) return false;
+        KitchenStorageIndex.invalidate(level, slot.pos());
         return addToInventoryOrNearbyStorage(level, villager, extracted, center);
     }
 
@@ -532,10 +518,12 @@ public final class IngredientResolver {
             Set<Long> kitchenBounds
     ) {
         if (NearbyItemSources.pullSingleToInventory(level, villager, 16, 3, matcher, ItemStack::getCount, center)) return true;
-        NearbyItemSources.ContainerSlot slot = findKitchenStorageSlot(level, villager, matcher, kitchenBounds);
+        NearbyItemSources.ContainerSlot slot = findClaimedKitchenStorageSlot(level, villager, matcher, kitchenBounds);
         if (slot == null) return false;
         ItemStack extracted = NearbyItemSources.extractOne(level, slot);
+        ConsumableTargetClaims.releaseSlot(level, villager.getUUID(), KITCHEN_SLOT_CLAIM_CATEGORY, slot);
         if (extracted.isEmpty()) return false;
+        KitchenStorageIndex.invalidate(level, slot.pos());
         return addToInventoryOrNearbyStorage(level, villager, extracted, center);
     }
 
@@ -552,34 +540,36 @@ public final class IngredientResolver {
         if (kitchenBounds.isEmpty()) return 0;
         BlockPos origin = center != null ? center : villager.blockPosition();
         int totalInserted = 0;
+        StorageSearchContext searchContext = new StorageSearchContext(level);
 
         for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-16, -3, -16), origin.offset(16, 3, 16))) {
             if (stack.isEmpty()) break;
             if (!kitchenBounds.contains(pos.asLong())) continue;
-            BlockEntity be = level.getBlockEntity(pos);
+            StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
+            BlockEntity be = observed.blockEntity();
             if (!StationHandler.isCookStorageCandidate(level, pos, be)) continue;
 
             int before = stack.getCount();
+            boolean mutated = false;
             if (be instanceof Container container) {
                 insertIntoContainer(container, stack);
+                mutated |= stack.getCount() != before;
             }
             if (!stack.isEmpty()) {
-                IItemHandler handler = StationHandler.getItemHandler(be, level, pos, null);
-                if (handler != null) {
-                    ItemStack remainder = StationHandler.insertIntoHandler(handler, stack, false);
-                    int inserted = stack.getCount() - remainder.getCount();
-                    if (inserted > 0) stack.shrink(inserted);
-                }
-                for (Direction dir : Direction.values()) {
-                    if (stack.isEmpty()) break;
-                    handler = StationHandler.getItemHandler(be, level, pos, dir);
-                    if (handler == null) continue;
-                    ItemStack remainder = StationHandler.insertIntoHandler(handler, stack, false);
-                    int inserted = stack.getCount() - remainder.getCount();
-                    if (inserted > 0) stack.shrink(inserted);
-                }
+                final ItemStack[] remainingRef = new ItemStack[]{stack};
+                searchContext.forEachUniqueItemHandler(observed.pos(), (side, handler) -> {
+                    if (remainingRef[0].isEmpty()) return;
+                    ItemStack remainder = StationHandler.insertIntoHandler(handler, remainingRef[0], false);
+                    int inserted = remainingRef[0].getCount() - remainder.getCount();
+                    if (inserted > 0) remainingRef[0].shrink(inserted);
+                });
+                stack = remainingRef[0];
             }
             totalInserted += before - stack.getCount();
+            mutated |= stack.getCount() != before;
+            if (mutated) {
+                KitchenStorageIndex.invalidate(level, observed.pos());
+            }
         }
         return totalInserted;
     }
@@ -592,62 +582,25 @@ public final class IngredientResolver {
             java.util.function.Predicate<ItemStack> matcher,
             Set<Long> kitchenBounds
     ) {
-        Optional<Village> villageOpt = FarmersDelightCookAssignment.resolveVillage(villager);
-        if (villageOpt.isEmpty()) return null;
-        Village village = villageOpt.get();
+        return KitchenStorageIndex.snapshot(level, villager, kitchenBounds).findBestSlot(villager, matcher);
+    }
 
-        NearbyItemSources.ContainerSlot best = null;
-        Set<Long> visited = new HashSet<>();
-        for (Building building : village.getBuildings().values()) {
-            for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
-                long key = pos.asLong();
-                if (!visited.add(key)) continue;
-                if (!StationHandler.isInKitchenWorkArea(kitchenBounds, pos)) continue;
-                if (!village.isWithinBorder(pos, 0)) continue;
-                if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
-                BlockEntity be = level.getBlockEntity(pos);
-                if (NearbyItemSources.isProcessingContainer(level, pos, be)) continue;
-
-                if (be instanceof Container container) {
-                    for (int i = 0; i < container.getContainerSize(); i++) {
-                        ItemStack stack = container.getItem(i);
-                        if (!matcher.test(stack)) continue;
-                        int score = stack.getCount();
-                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                        if (isBetterSlot(best, dist, score)) {
-                            best = new NearbyItemSources.ContainerSlot(pos.immutable(), container, false, i, score, dist, null);
-                        }
-                    }
-                }
-
-                IItemHandler handler = StationHandler.getItemHandler(be, level, pos, null);
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.getStackInSlot(i);
-                        if (!matcher.test(stack)) continue;
-                        int score = stack.getCount();
-                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                        if (isBetterSlot(best, dist, score)) {
-                            best = new NearbyItemSources.ContainerSlot(pos.immutable(), null, true, i, score, dist, null);
-                        }
-                    }
-                }
-                for (Direction side : Direction.values()) {
-                    handler = StationHandler.getItemHandler(be, level, pos, side);
-                    if (handler == null) continue;
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.getStackInSlot(i);
-                        if (!matcher.test(stack)) continue;
-                        int score = stack.getCount();
-                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                        if (isBetterSlot(best, dist, score)) {
-                            best = new NearbyItemSources.ContainerSlot(pos.immutable(), null, true, i, score, dist, side);
-                        }
-                    }
-                }
-            }
+    private static @Nullable NearbyItemSources.ContainerSlot findClaimedKitchenStorageSlot(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            java.util.function.Predicate<ItemStack> matcher,
+            Set<Long> kitchenBounds
+    ) {
+        NearbyItemSources.ContainerSlot slot = findKitchenStorageSlot(level, villager, matcher, kitchenBounds);
+        if (slot == null) return null;
+        if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), KITCHEN_SLOT_CLAIM_CATEGORY, slot)) {
+            return null;
         }
-        return best;
+        long claimUntil = level.getGameTime() + KITCHEN_SLOT_CLAIM_TTL_TICKS;
+        if (!ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), KITCHEN_SLOT_CLAIM_CATEGORY, slot, claimUntil)) {
+            return null;
+        }
+        return slot;
     }
 
     // ── Knife / water availability ──

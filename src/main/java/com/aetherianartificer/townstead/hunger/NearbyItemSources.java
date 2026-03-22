@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
-import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -13,6 +13,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 //? if neoforge {
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -38,67 +39,8 @@ public final class NearbyItemSources {
 
     public static ContainerSlot findBestNearbySlot(ServerLevel level, VillagerEntityMCA villager, int horizontalRadius, int verticalRadius,
                                                    Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer, BlockPos center) {
-        ContainerSlot best = null;
-
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-horizontalRadius, -verticalRadius, -horizontalRadius),
-                center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
-
-            if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
-
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be == null) continue;
-            if (isProcessingContainer(level, pos, be)) continue;
-            if (be instanceof Container container) {
-                for (int i = 0; i < container.getContainerSize(); i++) {
-                    ItemStack stack = container.getItem(i);
-                    if (!matcher.test(stack)) continue;
-                    int score = scorer.applyAsInt(stack);
-                    double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                    if (isBetter(best, dist, score)) {
-                        best = new ContainerSlot(pos.immutable(), container, false, i, score, dist, null);
-                    }
-                }
-            }
-
-            if (be != null) {
-                //? if neoforge {
-                IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-                //?} else if forge {
-                /*IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
-                *///?}
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.getStackInSlot(i);
-                        if (!matcher.test(stack)) continue;
-                        int score = scorer.applyAsInt(stack);
-                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                        if (isBetter(best, dist, score)) {
-                            best = new ContainerSlot(pos.immutable(), null, true, i, score, dist, null);
-                        }
-                    }
-                }
-                for (Direction side : Direction.values()) {
-                    //? if neoforge {
-                    handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
-                    //?} else if forge {
-                    /*handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null);
-                    *///?}
-                    if (handler == null) continue;
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.getStackInSlot(i);
-                        if (!matcher.test(stack)) continue;
-                        int score = scorer.applyAsInt(stack);
-                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                        if (isBetter(best, dist, score)) {
-                            best = new ContainerSlot(pos.immutable(), null, true, i, score, dist, side);
-                        }
-                    }
-                }
-            }
-        }
-
-        return best;
+        return NearbyStorageIndex.snapshot(level, center, horizontalRadius, verticalRadius)
+                .findBestNearbySlot(villager, center, horizontalRadius, verticalRadius, matcher, scorer);
     }
 
     /**
@@ -108,33 +50,20 @@ public final class NearbyItemSources {
     public static void collectMatchingSlots(ServerLevel level, VillagerEntityMCA villager, int horizontalRadius, int verticalRadius,
                                              Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer, BlockPos center,
                                              Consumer<ContainerSlot> consumer) {
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-horizontalRadius, -verticalRadius, -horizontalRadius),
-                center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
+        NearbyStorageIndex.snapshot(level, center, horizontalRadius, verticalRadius)
+                .collectMatchingContainerSlots(villager, center, horizontalRadius, verticalRadius, matcher, scorer, consumer);
+    }
 
-            if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
+    public static void collectBestFoodSlots(ServerLevel level, VillagerEntityMCA villager, int horizontalRadius, int verticalRadius,
+                                            BlockPos center, Consumer<ContainerSlot> consumer) {
+        NearbyStorageIndex.snapshot(level, center, horizontalRadius, verticalRadius)
+                .collectBestFoodContainerSlots(villager, center, horizontalRadius, verticalRadius, consumer);
+    }
 
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be == null) continue;
-            if (isProcessingContainer(level, pos, be)) continue;
-
-            // Find the best slot in THIS container
-            ContainerSlot bestInContainer = null;
-            if (be instanceof Container container) {
-                for (int i = 0; i < container.getContainerSize(); i++) {
-                    ItemStack stack = container.getItem(i);
-                    if (!matcher.test(stack)) continue;
-                    int score = scorer.applyAsInt(stack);
-                    double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                    if (bestInContainer == null || score > bestInContainer.score()) {
-                        bestInContainer = new ContainerSlot(pos.immutable(), container, false, i, score, dist, null);
-                    }
-                }
-            }
-            if (bestInContainer != null) {
-                consumer.accept(bestInContainer);
-            }
-        }
+    public static ContainerSlot findBestNearbyDrinkSlot(ServerLevel level, VillagerEntityMCA villager, int horizontalRadius, int verticalRadius,
+                                                        BlockPos center, ToIntFunction<ItemStack> scorer) {
+        return NearbyStorageIndex.snapshot(level, center, horizontalRadius, verticalRadius)
+                .findBestDrinkNearbySlot(villager, center, horizontalRadius, verticalRadius, scorer);
     }
 
     public static ItemStack extractOne(ServerLevel level, ContainerSlot slotRef) {
@@ -150,7 +79,10 @@ public final class NearbyItemSources {
             /*IItemHandler handler = side != null ? be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null) : null;
             *///?}
             ItemStack extracted = extractOneFromHandler(handler, slotRef.slot());
-            if (!extracted.isEmpty()) return extracted;
+            if (!extracted.isEmpty()) {
+                NearbyStorageIndex.invalidate(level, slotRef.pos());
+                return extracted;
+            }
 
             //? if neoforge {
             handler = level.getCapability(Capabilities.ItemHandler.BLOCK, slotRef.pos(), null);
@@ -158,7 +90,10 @@ public final class NearbyItemSources {
             /*handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
             *///?}
             extracted = extractOneFromHandler(handler, slotRef.slot());
-            if (!extracted.isEmpty()) return extracted;
+            if (!extracted.isEmpty()) {
+                NearbyStorageIndex.invalidate(level, slotRef.pos());
+                return extracted;
+            }
 
             for (Direction dir : Direction.values()) {
                 if (side != null && dir == side) continue;
@@ -168,7 +103,10 @@ public final class NearbyItemSources {
                 /*handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER, dir).orElse(null);
                 *///?}
                 extracted = extractOneFromHandler(handler, slotRef.slot());
-                if (!extracted.isEmpty()) return extracted;
+                if (!extracted.isEmpty()) {
+                    NearbyStorageIndex.invalidate(level, slotRef.pos());
+                    return extracted;
+                }
             }
             return ItemStack.EMPTY;
         }
@@ -184,6 +122,7 @@ public final class NearbyItemSources {
         *///?}
         stack.shrink(1);
         container.setChanged();
+        NearbyStorageIndex.invalidate(level, slotRef.pos());
         return extracted;
     }
 
@@ -216,30 +155,35 @@ public final class NearbyItemSources {
 
     public static boolean insertIntoNearbyStorage(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, int horizontalRadius, int verticalRadius, BlockPos center) {
         if (stack.isEmpty()) return true;
+        StorageSearchContext searchContext = new StorageSearchContext(level);
         for (BlockPos pos : BlockPos.betweenClosed(
                 center.offset(-horizontalRadius, -verticalRadius, -horizontalRadius),
                 center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
 
-            if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
-
-            BlockEntity be = level.getBlockEntity(pos);
+            StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
+            if (observed.protectedStorage()) continue;
+            BlockEntity be = observed.blockEntity();
             // Exclude processing containers from generic storage insertion.
             // Production tasks (e.g. butcher smoker workflow) target these explicitly.
-            if (isProcessingContainer(level, pos, be)) continue;
+            if (isProcessingContainer(observed.state(), be)) continue;
             if (be instanceof Container container) {
+                int beforeCount = stack.getCount();
                 insertIntoContainer(container, stack);
+                if (stack.getCount() != beforeCount) {
+                    NearbyStorageIndex.invalidate(level, observed.pos());
+                }
                 if (stack.isEmpty()) return true;
             }
 
             if (be != null) {
-                //? if neoforge {
-                IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-                //?} else if forge {
-                /*IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
-                *///?}
+                IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
                 if (handler != null) {
                     for (int i = 0; i < handler.getSlots(); i++) {
+                        int beforeCount = stack.getCount();
                         stack = handler.insertItem(i, stack, false);
+                        if (stack.getCount() != beforeCount) {
+                            NearbyStorageIndex.invalidate(level, observed.pos());
+                        }
                         if (stack.isEmpty()) return true;
                     }
                 }
@@ -249,9 +193,13 @@ public final class NearbyItemSources {
     }
 
     public static boolean isProcessingContainer(ServerLevel level, BlockPos pos, BlockEntity be) {
+        return isProcessingContainer(level.getBlockState(pos), be);
+    }
+
+    public static boolean isProcessingContainer(BlockState state, BlockEntity be) {
         if (be instanceof AbstractFurnaceBlockEntity) return true;
-        if (level.getBlockState(pos).is(BlockTags.CAMPFIRES)) return true;
-        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        if (state.is(BlockTags.CAMPFIRES)) return true;
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (id == null) return false;
         String ns = id.getNamespace();
         String path = id.getPath();

@@ -4,7 +4,11 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
+import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
+import com.aetherianartificer.townstead.hunger.NearbyCropIndex;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
+import com.aetherianartificer.townstead.hunger.TargetReachabilityCache;
+import com.aetherianartificer.townstead.hunger.VillagerSearchCadence;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -28,12 +32,16 @@ import java.util.Comparator;
 import java.util.List;
 
 public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
+    private static final String SEARCH_CADENCE_KEY = "drink_search";
+    private static final String CLAIM_CATEGORY = "consumable";
 
     private static final int SEARCH_RADIUS = 48;
     private static final int VERTICAL_RADIUS = 8;
     private static final float WALK_SPEED = 0.6f;
     private static final int CLOSE_ENOUGH = 2;
     private static final int MAX_DURATION = 600;
+    private static final int UNREACHABLE_TARGET_TTL_TICKS = 40;
+    private static final int MAX_PATH_ATTEMPTS_PER_SEARCH = 5;
 
     private enum TargetType { NONE, GROUND_ITEM, CONTAINER, CROP }
 
@@ -74,6 +82,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
             cooldown--;
             return false;
         }
+        if (!VillagerSearchCadence.isDue(level, villager, SEARCH_CADENCE_KEY)) return false;
 
         //? if neoforge {
         CompoundTag thirst = villager.getData(Townstead.THIRST_DATA);
@@ -91,6 +100,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
 
         if (TownsteadConfig.isSelfInventoryDrinkingEnabled() && tryDrinkFromInventory(villager, bridge)) {
             cooldown = (drinkingMode || t < ThirstData.ADEQUATE_THRESHOLD) ? 5 : 200;
+            VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 20);
             return false;
         }
 
@@ -122,6 +132,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         }
 
         cooldown = 200;
+        VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 40);
     }
 
     @Override
@@ -184,12 +195,14 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         targetPos = null;
         targetItem = null;
         targetContainerSlot = null;
+        ConsumableTargetClaims.releaseAll(villager.getUUID());
         //? if neoforge {
         CompoundTag thirst = villager.getData(Townstead.THIRST_DATA);
         //?} else {
         /*CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
         *///?}
         cooldown = (ThirstData.isDrinkingMode(thirst) || ThirstData.getThirst(thirst) < ThirstData.ADEQUATE_THRESHOLD) ? 5 : 200;
+        VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 20);
     }
 
     private boolean tryDrinkFromInventory(VillagerEntityMCA villager, ThirstCompatBridge bridge) {
@@ -227,54 +240,72 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
                 .thenComparingDouble(villager::distanceToSqr));
 
         // Pick the best reachable item
+        int pathAttempts = 0;
         for (ItemEntity item : items) {
+            if (pathAttempts >= MAX_PATH_ATTEMPTS_PER_SEARCH) break;
+            if (ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item)) continue;
+            if (!TargetReachabilityCache.canAttempt(level, villager, item.blockPosition())) continue;
+            pathAttempts++;
             Path path = villager.getNavigation().createPath(item.blockPosition(), CLOSE_ENOUGH);
             if (path != null && path.canReach()) {
+                TargetReachabilityCache.clear(level, villager, item.blockPosition());
+                if (!ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, item, level.getGameTime() + MAX_DURATION + 20L)) {
+                    continue;
+                }
                 targetType = TargetType.GROUND_ITEM;
                 targetItem = item;
                 return true;
             }
+            TargetReachabilityCache.recordFailure(level, villager, item.blockPosition(), UNREACHABLE_TARGET_TTL_TICKS);
         }
 
         return false;
     }
 
     private boolean findContainerDrink(ServerLevel level, VillagerEntityMCA villager, ThirstCompatBridge bridge) {
-        targetContainerSlot = NearbyItemSources.findBestNearbySlot(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                stack -> thirstScore(stack, bridge) > 0,
-                stack -> thirstScore(stack, bridge));
+        targetContainerSlot = NearbyItemSources.findBestNearbyDrinkSlot(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                villager.blockPosition(),
+                stack -> thirstScore(stack, bridge)
+        );
         if (targetContainerSlot == null) return false;
+        if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, targetContainerSlot)) {
+            return false;
+        }
         // Check reachability
+        if (!TargetReachabilityCache.canAttempt(level, villager, targetContainerSlot.pos())) return false;
         Path path = villager.getNavigation().createPath(targetContainerSlot.pos(), CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) return false;
+        if (path == null || !path.canReach()) {
+            TargetReachabilityCache.recordFailure(level, villager, targetContainerSlot.pos(), UNREACHABLE_TARGET_TTL_TICKS);
+            return false;
+        }
+        TargetReachabilityCache.clear(level, villager, targetContainerSlot.pos());
+        if (!ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, targetContainerSlot, level.getGameTime() + MAX_DURATION + 20L)) {
+            return false;
+        }
         targetType = TargetType.CONTAINER;
         targetPos = targetContainerSlot.pos();
         return true;
     }
 
     private boolean findMatureCrop(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos center = villager.blockPosition();
-        BlockPos bestPos = null;
-        double bestDist = Double.MAX_VALUE;
-
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-SEARCH_RADIUS, -VERTICAL_RADIUS, -SEARCH_RADIUS),
-                center.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
-
-            BlockState state = level.getBlockState(pos);
-            if (state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state)) {
-                double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestPos = pos.immutable();
-                }
-            }
-        }
-
+        BlockPos bestPos = NearbyCropIndex.snapshot(level, villager.blockPosition(), SEARCH_RADIUS, VERTICAL_RADIUS)
+                .nearestTo(villager);
         if (bestPos == null) return false;
         // Check reachability
+        if (!TargetReachabilityCache.canAttempt(level, villager, bestPos)) return false;
         Path cropPath = villager.getNavigation().createPath(bestPos, CLOSE_ENOUGH);
-        if (cropPath == null || !cropPath.canReach()) return false;
+        if (cropPath == null || !cropPath.canReach()) {
+            TargetReachabilityCache.recordFailure(level, villager, bestPos, UNREACHABLE_TARGET_TTL_TICKS);
+            return false;
+        }
+        TargetReachabilityCache.clear(level, villager, bestPos);
+        if (!ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, bestPos, level.getGameTime() + MAX_DURATION + 20L)) {
+            return false;
+        }
         targetType = TargetType.CROP;
         targetPos = bestPos;
         return true;
@@ -320,6 +351,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
 
         List<ItemStack> drops = CropBlock.getDrops(state, level, targetPos, null);
         level.destroyBlock(targetPos, false, villager);
+        NearbyCropIndex.invalidate(level, targetPos);
 
         ItemStack bestDrink = ItemStack.EMPTY;
         int bestScore = Integer.MIN_VALUE;

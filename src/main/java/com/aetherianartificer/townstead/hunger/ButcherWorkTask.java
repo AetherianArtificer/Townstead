@@ -12,7 +12,6 @@ import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
@@ -581,43 +580,15 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private BlockPos townstead$findNearestSmoker(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        BlockPos center = villager.blockPosition();
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-ANCHOR_SEARCH_RADIUS, -VERTICAL_RADIUS, -ANCHOR_SEARCH_RADIUS),
-                center.offset(ANCHOR_SEARCH_RADIUS, VERTICAL_RADIUS, ANCHOR_SEARCH_RADIUS))) {
-            if (!level.getBlockState(pos).is(Blocks.SMOKER)) continue;
-            if (townstead$isBlacklisted(pos, gameTime)) continue;
-            double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = pos.immutable();
-            }
-        }
+        BlockPos best = ButcherWorkIndex.nearestSmoker(level, villager, ANCHOR_SEARCH_RADIUS, VERTICAL_RADIUS);
+        if (best == null || townstead$isBlacklisted(best, gameTime)) return null;
         return best;
     }
 
     private BlockPos townstead$findWorkStandPos(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (Direction dir : Direction.Plane.HORIZONTAL) {
-            BlockPos candidate = anchor.relative(dir);
-            if (!townstead$isStandable(level, candidate)) continue;
-            if (townstead$isBlacklisted(candidate, level.getGameTime())) continue;
-            double dist = villager.distanceToSqr(candidate.getX() + 0.5, candidate.getY() + 0.5, candidate.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = candidate.immutable();
-            }
-        }
+        BlockPos best = ButcherWorkIndex.nearestStandPos(level, villager, anchor);
+        if (best == null || townstead$isBlacklisted(best, level.getGameTime())) return null;
         return best;
-    }
-
-    private boolean townstead$isStandable(ServerLevel level, BlockPos pos) {
-        if (!level.getBlockState(pos).isAir()) return false;
-        if (!level.getBlockState(pos.above()).isAir()) return false;
-        return level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP);
     }
 
     private boolean townstead$ensureOffSmoker(ServerLevel level, VillagerEntityMCA villager, long gameTime) {

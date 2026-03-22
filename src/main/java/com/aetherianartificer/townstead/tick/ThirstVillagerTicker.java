@@ -10,6 +10,7 @@ import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
+import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.VillagerDrinkingManager;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -284,26 +285,24 @@ public final class ThirstVillagerTicker {
 
     private static boolean insertIntoTaggedStorage(ServerLevel level, VillagerEntityMCA villager, ItemStack stack) {
         BlockPos center = villager.blockPosition();
+        StorageSearchContext searchContext = new StorageSearchContext(level);
         for (BlockPos pos : BlockPos.betweenClosed(
                 center.offset(-16, -4, -16),
                 center.offset(16, 4, 16))) {
             if (stack.isEmpty()) return true;
-            if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
-            BlockState state = level.getBlockState(pos);
+            StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
+            if (observed.protectedStorage()) continue;
+            BlockState state = observed.state();
             if (!(state.is(FD_KITCHEN_STORAGE_TAG) || state.is(FD_KITCHEN_STORAGE_UPGRADED_TAG) || state.is(FD_KITCHEN_STORAGE_NETHER_TAG))) {
                 continue;
             }
-            BlockEntity be = level.getBlockEntity(pos);
+            BlockEntity be = observed.blockEntity();
             if (be instanceof Container container) {
                 insertIntoContainer(container, stack);
                 if (stack.isEmpty()) return true;
             }
             if (be != null) {
-                //? if neoforge {
-                IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-                //?} else if forge {
-                /*IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
-                *///?}
+                IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
                 if (handler != null) {
                     for (int slot = 0; slot < handler.getSlots(); slot++) {
                         stack = handler.insertItem(slot, stack, false);

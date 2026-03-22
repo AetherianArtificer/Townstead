@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.fatigue;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.hunger.TargetReachabilityCache;
+import com.aetherianartificer.townstead.hunger.VillagerSearchCadence;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -24,12 +26,14 @@ import java.util.Optional;
  * regardless of their current shift schedule. This fires before collapse.
  */
 public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
+    private static final String SEARCH_CADENCE_KEY = "fatigue_bed_search";
     private static final int MAX_DURATION = 600;
     private static final float WALK_SPEED = 0.5f;
     private static final int CLOSE_ENOUGH = 1;
     private static final int BED_INTERACT_DIST_SQ = 9;
     private static final int BED_SEARCH_RADIUS = 48;
     private static final long EMERGENCY_CLAIM_TTL = MAX_DURATION + 200L;
+    private static final int UNREACHABLE_BED_TTL_TICKS = 60;
 
     private BlockPos bedPos;
     private BlockPos emergencyClaimPos;
@@ -47,6 +51,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return false;
         if (villager.isSleeping()) return false;
         if (cooldown > 0) { cooldown--; return false; }
+        if (!VillagerSearchCadence.isDue(level, villager, SEARCH_CADENCE_KEY)) return false;
 
         //? if neoforge {
         CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
@@ -74,9 +79,9 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
                     BlockState state = level.getBlockState(pos);
                     if (state.getBlock() instanceof BedBlock) {
                         //? if >=1.21 {
-                        if (!state.getValue(BedBlock.OCCUPIED)) { bedPos = pos; return true; }
+                        if (!state.getValue(BedBlock.OCCUPIED) && TargetReachabilityCache.canAttempt(level, villager, pos)) { bedPos = pos; return true; }
                         //?} else {
-                        /*if (!state.getValue(BedBlock.OCCUPIED)) { bedPos = pos; return true; }
+                        /*if (!state.getValue(BedBlock.OCCUPIED) && TargetReachabilityCache.canAttempt(level, villager, pos)) { bedPos = pos; return true; }
                         *///?}
                     }
                 }
@@ -94,14 +99,25 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (bedPos == null) return;
+        if (!TargetReachabilityCache.canAttempt(level, villager, bedPos)) {
+            releaseEmergencyClaim(level, villager);
+            bedPos = null;
+            cooldown = 40;
+            VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 20);
+            return;
+        }
         // Verify reachability at start, not every tick in checkExtraStartConditions
         net.minecraft.world.level.pathfinder.Path path = villager.getNavigation().createPath(bedPos, CLOSE_ENOUGH);
         if (path == null || !path.canReach()) {
+            TargetReachabilityCache.recordFailure(level, villager, bedPos, UNREACHABLE_BED_TTL_TICKS);
             releaseEmergencyClaim(level, villager);
             bedPos = null;
+            cooldown = 40;
+            VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 20);
             doStop(level, villager, gameTime);
             return;
         }
+        TargetReachabilityCache.clear(level, villager, bedPos);
         if (emergencyClaimPos != null) {
             EmergencyBedClaims.renew(level, villager.getUUID(), emergencyClaimPos, gameTime + EMERGENCY_CLAIM_TTL);
         }
@@ -192,6 +208,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         }
         bedPos = null;
         cooldown = 100;
+        VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 20);
     }
 
     private static BlockPos findNearbyUnclaimedBed(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -235,6 +252,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
 
         BlockPos headPos = normalizeBedHead(level, found.get());
         if (headPos == null) return null;
+        if (!TargetReachabilityCache.canAttempt(level, villager, headPos)) return null;
         if (!EmergencyBedClaims.tryClaim(
                 level,
                 villager.getUUID(),
