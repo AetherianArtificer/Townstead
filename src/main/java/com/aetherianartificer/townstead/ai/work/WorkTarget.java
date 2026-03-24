@@ -33,6 +33,10 @@ public record WorkTarget(
         return new WorkTarget(Type.ZONE_POINT, pos.immutable(), anchor == null ? null : anchor.immutable(), label);
     }
 
+    public boolean isBuildingApproachLike() {
+        return type == Type.BUILDING_APPROACH || type == Type.BUILDING_ENTRY;
+    }
+
     public String describe() {
         String anchorDesc = anchor == null ? "none" : anchor.getX() + "," + anchor.getY() + "," + anchor.getZ();
         return type.name().toLowerCase() + ":" + label + "@" + pos.getX() + "," + pos.getY() + "," + pos.getZ() + "#" + anchorDesc;

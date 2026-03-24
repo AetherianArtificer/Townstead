@@ -23,4 +23,8 @@ public interface WorkTaskAdapter {
     default String navigationBlockedState(ServerLevel level, VillagerEntityMCA villager) {
         return "none";
     }
+
+    default boolean shouldAnnounceBlockedNavigation(ServerLevel level, VillagerEntityMCA villager, @Nullable WorkTarget target) {
+        return target == null || !target.isBuildingApproachLike();
+    }
 }

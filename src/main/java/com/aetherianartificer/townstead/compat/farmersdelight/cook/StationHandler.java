@@ -741,6 +741,33 @@ public final class StationHandler {
         return removed;
     }
 
+    public static boolean canExtractFromStation(ServerLevel level, BlockPos pos, Item item, int amount) {
+        if (amount <= 0 || pos == null || item == Items.AIR) return false;
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) return false;
+        int found = 0;
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        final int[] foundRef = new int[1];
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (foundRef[0] >= amount) return;
+            for (int i = 0; i < handler.getSlots() && foundRef[0] < amount; i++) {
+                ItemStack slot = handler.getStackInSlot(i);
+                if (!slot.is(item)) continue;
+                foundRef[0] += slot.getCount();
+            }
+        });
+        found = foundRef[0];
+        if (found >= amount) return true;
+        if (be instanceof Container container) {
+            for (int i = 0; i < container.getContainerSize() && found < amount; i++) {
+                ItemStack slot = container.getItem(i);
+                if (!slot.is(item)) continue;
+                found += slot.getCount();
+            }
+        }
+        return found >= amount;
+    }
+
     // ── Station insertion ──
 
     public static ItemStack insertIntoStation(ServerLevel level, BlockPos pos, ItemStack stack) {

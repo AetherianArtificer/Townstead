@@ -68,6 +68,23 @@ public final class WorkBuildingNav {
         return false;
     }
 
+    public static boolean isInsideOrNearEntry(Snapshot snapshot, @Nullable BlockPos pos, double maxDistanceSq) {
+        if (snapshot == null || pos == null) return false;
+        if (isInsideOrOnStationStand(snapshot, pos)) return true;
+        return isNearEntry(snapshot, pos, maxDistanceSq);
+    }
+
+    public static boolean isNearEntry(Snapshot snapshot, @Nullable BlockPos pos, double maxDistanceSq) {
+        if (snapshot == null || pos == null) return false;
+        Vec3iLike here = new Vec3iLike(pos.getX(), pos.getY(), pos.getZ());
+        for (BlockPos entry : snapshot.entryTargets()) {
+            if (here.distToCenterSqr(entry) <= maxDistanceSq) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static @Nullable BlockPos nearestStationStand(Snapshot snapshot, VillagerEntityMCA villager, BlockPos anchor) {
         if (snapshot == null || villager == null || anchor == null) return null;
         List<BlockPos> stands = snapshot.stationStandPositions().get(anchor.asLong());
@@ -510,6 +527,15 @@ public final class WorkBuildingNav {
 
         long volume() {
             return (long) (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
+        }
+    }
+
+    private record Vec3iLike(int x, int y, int z) {
+        double distToCenterSqr(BlockPos pos) {
+            double dx = x + 0.5d - (pos.getX() + 0.5d);
+            double dy = y + 0.5d - (pos.getY() + 0.5d);
+            double dz = z + 0.5d - (pos.getZ() + 0.5d);
+            return dx * dx + dy * dy + dz * dz;
         }
     }
 }
