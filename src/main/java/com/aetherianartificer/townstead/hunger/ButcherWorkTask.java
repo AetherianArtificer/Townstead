@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
 import com.aetherianartificer.townstead.ai.work.WorkMovement;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
@@ -39,6 +40,8 @@ import net.minecraft.world.level.block.state.BlockState;
 //? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
 //?}
+
+import javax.annotation.Nullable;
 
 public class ButcherWorkTask extends Behavior<VillagerEntityMCA> implements WorkTaskAdapter {
     private static final int ANCHOR_SEARCH_RADIUS = 24;
@@ -82,6 +85,9 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private final WorkTargetProgress targetProgress = new WorkTargetProgress();
     private final WorkTargetFailures targetFailures = new WorkTargetFailures();
+    private final WorkTargetProgress worksiteTargetProgress = new WorkTargetProgress();
+    private final WorkTargetFailures worksiteTargetFailures = new WorkTargetFailures();
+    private BlockPos currentWorksiteTarget;
 
     public ButcherWorkTask() {
         super(ImmutableMap.of(
@@ -110,6 +116,7 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (nextAcquireTick < gameTime) nextAcquireTick = 0;
         nextRequestTick = 0;
         townstead$resetPathTracking();
+        townstead$resetWorksiteTargeting();
         townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
         townstead$acquireTarget(level, villager, gameTime);
     }
@@ -117,6 +124,44 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> implements Work
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         debugTick(level, villager, gameTime);
+
+        // Approach zone if far from worksite
+        if (smokerAnchor != null && !villager.blockPosition().closerThan(smokerAnchor, WORK_RADIUS)) {
+            BlockPos worksiteTarget = townstead$currentOrNewWorksiteTarget(gameTime);
+            if (worksiteTarget == null) {
+                townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.UNREACHABLE);
+                nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+                townstead$maybeAnnounceRequest(level, villager, gameTime);
+                return;
+            }
+            WorkNavigationResult navResult = WorkMovement.tickMoveToTarget(
+                    villager,
+                    WorkTarget.zonePoint(worksiteTarget, smokerAnchor, "approach"),
+                    WALK_SPEED_NORMAL,
+                    CLOSE_ENOUGH,
+                    ARRIVAL_DISTANCE_SQ,
+                    worksiteTargetProgress,
+                    worksiteTargetFailures,
+                    gameTime,
+                    TARGET_STUCK_TICKS,
+                    2,
+                    TARGET_BLACKLIST_TICKS
+            );
+            if (navResult == WorkNavigationResult.MOVING) {
+                townstead$maybeAnnounceRequest(level, villager, gameTime);
+                return;
+            }
+            if (navResult == WorkNavigationResult.ARRIVED) {
+                currentWorksiteTarget = null;
+            } else if (navResult == WorkNavigationResult.BLOCKED) {
+                currentWorksiteTarget = null;
+                townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.UNREACHABLE);
+                nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+                townstead$maybeAnnounceRequest(level, villager, gameTime);
+                return;
+            }
+        }
+
         if (smokerAnchor == null || !level.getBlockState(smokerAnchor).is(Blocks.SMOKER)) {
             smokerAnchor = townstead$findNearestSmoker(level, villager, gameTime);
             if (smokerAnchor == null) {
@@ -259,6 +304,7 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> implements Work
         nextRequestTick = 0;
         unsupportedItemName = "";
         targetFailures.reset();
+        townstead$resetWorksiteTargeting();
         townstead$clearMovementIntent(villager);
         townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
         townstead$resetPathTracking();
@@ -271,6 +317,10 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     @Override
     public WorkTarget activeWorkTarget(ServerLevel level, VillagerEntityMCA villager) {
+        if (currentWorksiteTarget != null && smokerAnchor != null
+                && !villager.blockPosition().closerThan(smokerAnchor, WORK_RADIUS)) {
+            return WorkTarget.zonePoint(currentWorksiteTarget, smokerAnchor, "approach");
+        }
         if (targetPos == null) return null;
         if (smokerAnchor != null && !targetPos.equals(smokerAnchor)) {
             return WorkTarget.stationStand(targetPos, smokerAnchor, actionType.name().toLowerCase());
@@ -636,6 +686,23 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private void townstead$resetPathTracking() {
         targetProgress.reset();
+    }
+
+    private void townstead$resetWorksiteTargeting() {
+        currentWorksiteTarget = null;
+        worksiteTargetProgress.reset();
+        worksiteTargetFailures.reset();
+    }
+
+    @Nullable
+    private BlockPos townstead$currentOrNewWorksiteTarget(long gameTime) {
+        if (smokerAnchor == null) return null;
+        if (currentWorksiteTarget != null
+                && !worksiteTargetFailures.isBlacklisted(currentWorksiteTarget, gameTime)) {
+            return currentWorksiteTarget;
+        }
+        currentWorksiteTarget = worksiteTargetFailures.isBlacklisted(smokerAnchor, gameTime) ? null : smokerAnchor;
+        return currentWorksiteTarget;
     }
 
     private void townstead$setBlockedReason(ServerLevel level, VillagerEntityMCA villager, HungerData.ButcherBlockedReason reason) {

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
 import com.aetherianartificer.townstead.ai.work.WorkMovement;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
@@ -73,6 +74,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.annotation.Nullable;
+
 public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements WorkTaskAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/HarvestWorkTask");
     private static final int ANCHOR_SEARCH_RADIUS = 24;
@@ -119,6 +122,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private final Map<Long, Long> recentlyWorkedCells = new HashMap<>();
     private final WorkTargetProgress targetProgress = new WorkTargetProgress();
     private final WorkTargetFailures targetFailures = new WorkTargetFailures();
+    private final WorkTargetProgress worksiteTargetProgress = new WorkTargetProgress();
+    private final WorkTargetFailures worksiteTargetFailures = new WorkTargetFailures();
+    private BlockPos currentWorksiteTarget;
 
     private HungerData.FarmBlockedReason blockedReason = HungerData.FarmBlockedReason.NONE;
     private long nextRequestTick;
@@ -157,6 +163,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         nextGroomScanTick = 0;
         nextBlueprintPlanTick = 0;
         targetProgress.reset();
+        townstead$resetWorksiteTargeting();
         cachedInventoryTick = -1;
         nextRequestTick = 0;
         farmBlueprint = null;
@@ -170,6 +177,44 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         debugTick(level, villager, gameTime);
+
+        // Approach zone if far from worksite
+        if (farmAnchor != null && !villager.blockPosition().closerThan(farmAnchor, townstead$farmRadius())) {
+            BlockPos worksiteTarget = townstead$currentOrNewWorksiteTarget(gameTime);
+            if (worksiteTarget == null) {
+                townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.UNREACHABLE);
+                nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+                townstead$maybeAnnounceRequest(level, villager, gameTime);
+                return;
+            }
+            WorkNavigationResult navResult = WorkMovement.tickMoveToTarget(
+                    villager,
+                    WorkTarget.zonePoint(worksiteTarget, farmAnchor, "approach"),
+                    WALK_SPEED_NORMAL,
+                    CLOSE_ENOUGH,
+                    (CLOSE_ENOUGH + 1) * (CLOSE_ENOUGH + 1),
+                    worksiteTargetProgress,
+                    worksiteTargetFailures,
+                    gameTime,
+                    TARGET_STUCK_TICKS,
+                    2,
+                    TARGET_BLACKLIST_TICKS
+            );
+            if (navResult == WorkNavigationResult.MOVING) {
+                townstead$maybeAnnounceRequest(level, villager, gameTime);
+                return;
+            }
+            if (navResult == WorkNavigationResult.ARRIVED) {
+                currentWorksiteTarget = null;
+            } else if (navResult == WorkNavigationResult.BLOCKED) {
+                currentWorksiteTarget = null;
+                townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.UNREACHABLE);
+                nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+                townstead$maybeAnnounceRequest(level, villager, gameTime);
+                return;
+            }
+        }
+
         if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) {
             townstead$clearMovementIntent(villager);
             return;
@@ -294,6 +339,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         waterPlacementsToday = 0;
         recentlyWorkedCells.clear();
         targetFailures.reset();
+        townstead$resetWorksiteTargeting();
         townstead$clearMovementIntent(villager);
         townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
     }
@@ -305,6 +351,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     @Override
     public WorkTarget activeWorkTarget(ServerLevel level, VillagerEntityMCA villager) {
+        if (currentWorksiteTarget != null && farmAnchor != null
+                && !villager.blockPosition().closerThan(farmAnchor, townstead$farmRadius())) {
+            return WorkTarget.zonePoint(currentWorksiteTarget, farmAnchor, "approach");
+        }
         if (targetPos == null) return null;
         return WorkTarget.zonePoint(targetPos, farmAnchor, actionType.name().toLowerCase());
     }
@@ -497,6 +547,23 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private void townstead$resetPathTracking() {
         targetProgress.reset();
+    }
+
+    private void townstead$resetWorksiteTargeting() {
+        currentWorksiteTarget = null;
+        worksiteTargetProgress.reset();
+        worksiteTargetFailures.reset();
+    }
+
+    @Nullable
+    private BlockPos townstead$currentOrNewWorksiteTarget(long gameTime) {
+        if (farmAnchor == null) return null;
+        if (currentWorksiteTarget != null
+                && !worksiteTargetFailures.isBlacklisted(currentWorksiteTarget, gameTime)) {
+            return currentWorksiteTarget;
+        }
+        currentWorksiteTarget = worksiteTargetFailures.isBlacklisted(farmAnchor, gameTime) ? null : farmAnchor;
+        return currentWorksiteTarget;
     }
 
     private void townstead$clearTargetRetry(BlockPos pos) {
