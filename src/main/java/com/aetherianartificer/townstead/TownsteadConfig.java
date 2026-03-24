@@ -392,7 +392,7 @@ public final class TownsteadConfig {
         DEBUG_VILLAGER_AI = b
                 .translation("townstead.configuration.debug.debugVillagerAI")
                 .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
-                .define("debugVillagerAI", false);
+                .define("debugVillagerAI", true);
         b.pop();
 
         SERVER_SPEC = b.build();

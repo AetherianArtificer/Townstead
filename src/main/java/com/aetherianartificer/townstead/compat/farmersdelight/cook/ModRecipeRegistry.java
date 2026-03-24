@@ -40,7 +40,8 @@ public final class ModRecipeRegistry {
             int outputCount,
             int cookTimeTicks,
             boolean requiresTool,
-            int bowlsRequired,
+            @Nullable ResourceLocation containerItemId,
+            int containerCount,
             List<RecipeIngredient> inputs,
             boolean purification,
             boolean beverage,
@@ -140,7 +141,7 @@ public final class ModRecipeRegistry {
     public static Set<ResourceLocation> allInputIds(ServerLevel level) {
         Set<ResourceLocation> ids = new HashSet<>();
         for (DiscoveredRecipe r : getRecipes(level)) {
-            if (r.bowlsRequired() > 0) ids.add(MINECRAFT_BOWL);
+            if (r.containerItemId() != null && r.containerCount() > 0) ids.add(r.containerItemId());
             for (RecipeIngredient ing : r.inputs()) {
                 ids.addAll(ing.itemIds());
             }
@@ -214,6 +215,7 @@ public final class ModRecipeRegistry {
                     Math.max(1, result.getCount()),
                     cookTime,
                     false,
+                    null,
                     0,
                     inputs,
                     false,
@@ -270,7 +272,8 @@ public final class ModRecipeRegistry {
                     Math.max(1, result.getCount()),
                     cookTime,
                     false,
-                    container.bowlsRequired(),
+                    container.itemId(),
+                    container.count(),
                     inputs,
                     false,
                     container.beverage(),
@@ -326,6 +329,7 @@ public final class ModRecipeRegistry {
                     Math.max(1, result.getCount()),
                     cookTime,
                     requiresTool,
+                    null,
                     0,
                     inputs,
                     false,
@@ -366,7 +370,7 @@ public final class ModRecipeRegistry {
                     if (newTier != r.tier()) {
                         recipes.set(i, new DiscoveredRecipe(
                                 r.id(), r.stationType(), newTier, r.output(), r.outputCount(),
-                                r.cookTimeTicks(), r.requiresTool(), r.bowlsRequired(),
+                                r.cookTimeTicks(), r.requiresTool(), r.containerItemId(), r.containerCount(),
                                 r.inputs(), r.purification(), r.beverage(), r.source()
                         ));
                     }
@@ -391,6 +395,7 @@ public final class ModRecipeRegistry {
                 1,
                 100,
                 false,
+                null,
                 0,
                 List.of(new RecipeIngredient(List.of(TOWNSTEAD_IMPURE_WATER_INPUT), 1)),
                 true,
@@ -414,6 +419,7 @@ public final class ModRecipeRegistry {
                 1,
                 100,
                 false,
+                null,
                 0,
                 List.of(new RecipeIngredient(List.of(RUSTIC_COFFEE_BEANS), 1)),
                 false,
@@ -486,8 +492,8 @@ public final class ModRecipeRegistry {
         return fallback;
     }
 
-    private record ContainerInfo(int bowlsRequired, boolean beverage) {
-        static final ContainerInfo NONE = new ContainerInfo(0, false);
+    private record ContainerInfo(@Nullable ResourceLocation itemId, int count, boolean beverage) {
+        static final ContainerInfo NONE = new ContainerInfo(null, 0, false);
     }
 
     private static ContainerInfo reflectContainer(Recipe<?> recipe) {
@@ -498,10 +504,15 @@ public final class ModRecipeRegistry {
                 Object value = m.invoke(recipe);
                 if (value instanceof ItemStack stack && !stack.isEmpty()) {
                     if (stack.is(Items.BOWL)) {
-                        return new ContainerInfo(Math.max(1, stack.getCount()), false);
+                        return new ContainerInfo(MINECRAFT_BOWL, Math.max(1, stack.getCount()), false);
                     }
                     if (stack.is(Items.GLASS_BOTTLE)) {
-                        return new ContainerInfo(0, true);
+                        ResourceLocation bottleId = BuiltInRegistries.ITEM.getKey(Items.GLASS_BOTTLE);
+                        return new ContainerInfo(bottleId, Math.max(1, stack.getCount()), true);
+                    }
+                    ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    if (itemId != null && stack.getItem() != Items.AIR) {
+                        return new ContainerInfo(itemId, Math.max(1, stack.getCount()), false);
                     }
                 }
             } catch (Throwable ignored) {}

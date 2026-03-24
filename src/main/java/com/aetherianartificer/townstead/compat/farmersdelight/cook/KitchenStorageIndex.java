@@ -78,10 +78,14 @@ final class KitchenStorageIndex {
             if (!StationHandler.isInKitchenWorkArea(kitchenBounds, pos)) continue;
 
             List<SlotView> slots = new ArrayList<>();
+            boolean hasContainerSlots = villageEntry.slots().stream().anyMatch(slot -> !slot.itemHandler());
             for (VillageStorageIndex.SlotView villageSlot : villageEntry.slots()) {
+                if (hasContainerSlots && villageSlot.itemHandler()) continue;
                 ItemStack copy = villageSlot.stack().copy();
                 slots.add(new SlotView(pos, villageSlot.container(), villageSlot.itemHandler(), villageSlot.slot(), villageSlot.side(), copy));
-                accumulate(itemCounts, copy);
+            }
+            for (SlotView slot : slots) {
+                accumulate(itemCounts, slot.stack());
             }
             if (!slots.isEmpty()) {
                 entries.add(new Entry(pos, List.copyOf(slots)));
@@ -144,12 +148,57 @@ final class KitchenStorageIndex {
             }
             return best;
         }
+
+        List<SlotView> matchingSlots(Set<ResourceLocation> itemIds) {
+            if (itemIds == null || itemIds.isEmpty()) return List.of();
+            List<SlotView> matching = new ArrayList<>();
+            for (Entry entry : entries) {
+                for (SlotView slot : entry.slots()) {
+                    ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(slot.stack().getItem());
+                    if (itemId == null || !itemIds.contains(itemId)) continue;
+                    matching.add(slot);
+                }
+            }
+            return List.copyOf(matching);
+        }
+
+        ExtractionPlan planIngredientExtraction(ModRecipeRegistry.RecipeIngredient ingredient, int requestedCount) {
+            if (ingredient == null || requestedCount <= 0) return new ExtractionPlan(List.of(), 0);
+            return planExtraction(Set.copyOf(ingredient.itemIds()), requestedCount);
+        }
+
+        ExtractionPlan planItemExtraction(ResourceLocation itemId, int requestedCount) {
+            if (itemId == null || requestedCount <= 0) return new ExtractionPlan(List.of(), 0);
+            return planExtraction(Set.of(itemId), requestedCount);
+        }
+
+        private ExtractionPlan planExtraction(Set<ResourceLocation> itemIds, int requestedCount) {
+            List<PlannedExtraction> planned = new ArrayList<>();
+            int remaining = requestedCount;
+            int totalAvailable = 0;
+            for (SlotView slot : matchingSlots(itemIds)) {
+                ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(slot.stack().getItem());
+                if (itemId == null) continue;
+                int available = slot.stack().getCount();
+                if (available <= 0) continue;
+                totalAvailable += available;
+                if (remaining <= 0) continue;
+                int reserved = Math.min(available, remaining);
+                planned.add(new PlannedExtraction(toContainerSlot(slot), itemId, reserved));
+                remaining -= reserved;
+            }
+            return new ExtractionPlan(List.copyOf(planned), totalAvailable);
+        }
     }
 
     private record Entry(BlockPos pos, List<SlotView> slots) {}
 
-    private record SlotView(BlockPos pos, @Nullable Container container, boolean itemHandler, int slot,
+    record SlotView(BlockPos pos, @Nullable Container container, boolean itemHandler, int slot,
                             @Nullable Direction side, ItemStack stack) {}
+
+    record PlannedExtraction(NearbyItemSources.ContainerSlot slot, ResourceLocation itemId, int count) {}
+
+    record ExtractionPlan(List<PlannedExtraction> slots, int totalAvailable) {}
 
     private record SnapshotKey(String dimensionId, BoundsKey boundsKey) {
         static SnapshotKey create(ServerLevel level, VillagerEntityMCA villager, Set<Long> kitchenBounds) {
@@ -198,6 +247,19 @@ final class KitchenStorageIndex {
         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (itemId == null) return;
         itemCounts.merge(itemId, stack.getCount(), Integer::sum);
+    }
+
+    private static NearbyItemSources.ContainerSlot toContainerSlot(SlotView slot) {
+        int score = slot.stack().getCount();
+        return new NearbyItemSources.ContainerSlot(
+                slot.pos(),
+                slot.container(),
+                slot.itemHandler(),
+                slot.slot(),
+                score,
+                0.0d,
+                slot.side()
+        );
     }
 
     static final class TownsteadKitchenConstants {

@@ -1,9 +1,9 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.ai.work.WorkPathing;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 
@@ -61,20 +61,8 @@ final class ButcherWorkIndex {
     }
 
     private static StandSnapshot buildStandSnapshot(ServerLevel level, BlockPos anchor, long gameTime) {
-        List<BlockPos> standPositions = new ArrayList<>();
-        for (Direction dir : Direction.Plane.HORIZONTAL) {
-            BlockPos candidate = anchor.relative(dir);
-            if (isStandable(level, candidate)) {
-                standPositions.add(candidate.immutable());
-            }
-        }
+        List<BlockPos> standPositions = new ArrayList<>(WorkPathing.standCandidatesAround(level, anchor, null));
         return new StandSnapshot(List.copyOf(standPositions), gameTime + SNAPSHOT_TTL_TICKS);
-    }
-
-    private static boolean isStandable(ServerLevel level, BlockPos pos) {
-        if (!level.getBlockState(pos).isAir()) return false;
-        if (!level.getBlockState(pos.above()).isAir()) return false;
-        return level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP);
     }
 
     private record SmokerSearchKey(String dimensionId, long centerKey, int horizontalRadius, int verticalRadius) {}

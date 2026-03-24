@@ -2,11 +2,18 @@ package com.aetherianartificer.townstead.compat.farmersdelight;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
+import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.ai.work.WorkPathing;
+import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
+import com.aetherianartificer.townstead.ai.work.WorkTarget;
+import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.IngredientResolver;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
+import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelector;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
@@ -41,13 +48,18 @@ import net.minecraft.world.item.Items;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.ClipContext;
 
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
+public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements WorkTaskAdapter {
 
     // ── Constants ──
 
@@ -67,8 +79,8 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
     private static final int OPPORTUNISTIC_SWEEP_INTERVAL = 10;
     private static final int MAX_RECIPE_ATTEMPTS = 3;
     private static final long ROOM_BOUNDS_CACHE_TICKS = 80L;
-    private static final int ROOM_SEARCH_EXPAND_XZ = 24;
-    private static final int ROOM_SEARCH_EXPAND_Y = 6;
+    private static final long ENTRY_TARGET_RETRY_COOLDOWN_TICKS = 60L;
+    private static final long ENTRY_SEARCH_RETRY_TICKS = 40L;
     private static final int ROOM_FLOOD_MAX_NODES = 16384;
 
     // ── State machine ──
@@ -93,13 +105,19 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
     private final Map<ResourceLocation, Integer> stagedInputs = new HashMap<>();
     private final Set<Long> usedStations = new HashSet<>();
     private final Map<ResourceLocation, Long> recipeCooldownUntil = new HashMap<>();
+    private final Map<Long, Long> failedCafeEntryUntil = new HashMap<>();
     private int recipeAttempts;
     private long idleUntilTick;
+    private BlockPos currentCafeEntryTarget;
+    private long nextCafeEntrySearchTick = 0L;
+    private double lastCafeEntryDistanceSq = Double.MAX_VALUE;
+    private long lastCafeEntryProgressTick = 0L;
 
-    // Cafe bounds cache
-    private Set<Long> cachedCafeWorkArea = Set.of();
-    private BlockPos cachedCafeWorkAnchor = null;
-    private long cachedCafeWorkUntil = 0L;
+    // Cafe navigation area cache
+    private Set<Long> cachedCafeNavigationArea = Set.of();
+    private BlockPos cachedCafeNavigationAnchor = null;
+    private long cachedCafeNavigationUntil = 0L;
+    private WorkBuildingNav.Snapshot cachedCafeSnapshot = WorkBuildingNav.Snapshot.EMPTY;
 
     public BaristaWorkTask() {
         super(ImmutableMap.of(
@@ -155,11 +173,17 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         stagedInputs.clear();
         usedStations.clear();
         recipeCooldownUntil.clear();
+        failedCafeEntryUntil.clear();
         recipeAttempts = 0;
         idleUntilTick = 0L;
-        cachedCafeWorkArea = Set.of();
-        cachedCafeWorkAnchor = null;
-        cachedCafeWorkUntil = 0L;
+        currentCafeEntryTarget = null;
+        nextCafeEntrySearchTick = 0L;
+        lastCafeEntryDistanceSq = Double.MAX_VALUE;
+        lastCafeEntryProgressTick = 0L;
+        cachedCafeNavigationArea = Set.of();
+        cachedCafeNavigationAnchor = null;
+        cachedCafeNavigationUntil = 0L;
+        cachedCafeSnapshot = WorkBuildingNav.Snapshot.EMPTY;
         state = BaristaState.ACQUIRE_STATION;
     }
 
@@ -175,7 +199,10 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         debugTick(level, villager, gameTime);
 
         // State timeout
-        if (gameTime - stateEnteredTick > STATE_TIMEOUT_TICKS && state != BaristaState.BREW && state != BaristaState.COLLECT_WAIT) {
+        if (gameTime - stateEnteredTick > STATE_TIMEOUT_TICKS
+                && state != BaristaState.BREW
+                && state != BaristaState.COLLECT_WAIT
+                && !entryProgressActive(villager, gameTime)) {
             debugChat(level, villager, "STATE:timeout in " + state.name() + ", resetting");
             transition(BaristaState.ACQUIRE_STATION, gameTime);
             releaseStationClaim(villager, stationAnchor);
@@ -205,25 +232,72 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         releaseStationClaim(villager, stationAnchor);
         activeRecipe = null;
         stagedInputs.clear();
+        pruneFailedCafeEntryTargets(gameTime);
 
-        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
-        if (cafeBounds.isEmpty()) {
+        Set<Long> cafeStorageBounds = activeCafeStorageBounds(villager);
+        if (cafeStorageBounds.isEmpty()) {
             setBlocked(level, villager, gameTime, BlockedReason.NO_CAFE, "");
             idleUntilTick = gameTime + IDLE_BACKOFF;
             return;
         }
 
-        List<StationSlot> stations = StationHandler.discoverStations(level, villager, cafeBounds, SEARCH_RADIUS, VERTICAL_RADIUS);
+        WorkBuildingNav.Snapshot cafeSnapshot = activeCafeSnapshot(level, villager);
+        List<StationSlot> stations = cafeSnapshot.stations();
         // Filter to only HOT_STATION and FIRE_STATION (barista doesn't use cutting board)
         stations = stations.stream()
                 .filter(s -> s.type() == StationType.HOT_STATION || s.type() == StationType.FIRE_STATION)
                 .toList();
         if (stations.isEmpty()) {
-            debugChat(level, villager, "ACQUIRE:no stations found in cafe (" + cafeBounds.size() + " bounds)");
+            debugChat(level, villager, "ACQUIRE:no stations found in cafe (" + cafeStorageBounds.size() + " bounds)");
             setBlocked(level, villager, gameTime, BlockedReason.NO_CAFE, "");
             idleUntilTick = gameTime + IDLE_BACKOFF;
             return;
         }
+        Set<Long> cafeNavigationArea = cafeSnapshot.walkableInterior();
+        if (!isVillagerInCafeBounds(level, villager.blockPosition(), cafeNavigationArea)) {
+            if (currentCafeEntryTarget != null) {
+                double entryDistSq = villager.distanceToSqr(
+                        currentCafeEntryTarget.getX() + 0.5,
+                        currentCafeEntryTarget.getY() + 0.5,
+                        currentCafeEntryTarget.getZ() + 0.5
+                );
+                if (entryDistSq <= ARRIVAL_DISTANCE_SQ) {
+                    markFailedCafeEntryTarget(currentCafeEntryTarget, gameTime);
+                    currentCafeEntryTarget = null;
+                    nextCafeEntrySearchTick = 0L;
+                    lastCafeEntryDistanceSq = Double.MAX_VALUE;
+                }
+            }
+            BlockPos entryTarget = currentOrNewCafeEntryTarget(level, villager, gameTime, cafeSnapshot);
+            if (entryTarget == null) {
+                currentCafeEntryTarget = null;
+                lastCafeEntryDistanceSq = Double.MAX_VALUE;
+                debugCafeTargetFailure(level, villager, gameTime, cafeSnapshot);
+                debugChat(level, villager, "ENTER:no cafe entry from "
+                        + villager.blockPosition().getX() + "," + villager.blockPosition().getY() + "," + villager.blockPosition().getZ());
+                setBlocked(level, villager, gameTime, BlockedReason.UNREACHABLE, "");
+                idleUntilTick = gameTime + IDLE_BACKOFF;
+                return;
+            }
+            boolean targetChanged = currentCafeEntryTarget == null || !currentCafeEntryTarget.equals(entryTarget);
+            currentCafeEntryTarget = entryTarget;
+            nextCafeEntrySearchTick = gameTime + ENTRY_SEARCH_RETRY_TICKS;
+            blocked = BlockedReason.NONE;
+            trackCafeEntryProgress(villager, gameTime, entryTarget);
+            if (targetChanged) {
+                debugChat(level, villager, "ENTER:from "
+                        + villager.blockPosition().getX() + "," + villager.blockPosition().getY() + "," + villager.blockPosition().getZ()
+                        + " to "
+                        + entryTarget.getX() + "," + entryTarget.getY() + "," + entryTarget.getZ());
+            }
+            BehaviorUtils.setWalkAndLookTargetMemories(villager, entryTarget, WALK_SPEED, CLOSE_ENOUGH);
+            villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(entryTarget, WALK_SPEED, CLOSE_ENOUGH));
+            return;
+        }
+        currentCafeEntryTarget = null;
+        nextCafeEntrySearchTick = 0L;
+        lastCafeEntryDistanceSq = Double.MAX_VALUE;
+        blocked = BlockedReason.NONE;
 
         // Partition stations into: fresh (not tried, not claimed), tried, occupied
         List<StationSlot> fresh = new ArrayList<>();
@@ -254,7 +328,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
 
         StationSlot best = fresh.get(ThreadLocalRandom.current().nextInt(fresh.size()));
 
-        BlockPos stand = StationHandler.findStandingPosition(level, villager, best.pos());
+        BlockPos stand = findCafeStandingPosition(level, villager, best.pos(), cafeSnapshot);
         if (stand == null) {
             usedStations.add(best.pos().asLong());
             return;
@@ -283,7 +357,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
         int tier = Math.max(1, FarmersDelightBaristaAssignment.effectiveRecipeTier(level, villager));
         DiscoveredRecipe recipe = RecipeSelector.pickRecipe(
                 level, villager, stationType, stationAnchor, cafeBounds, recipeCooldownUntil,
@@ -302,6 +376,15 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         activeRecipe = recipe;
         recipeAttempts = 0;
         debugChat(level, villager, "SELECT:" + recipe.output() + " tier=" + recipe.tier());
+        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            String container = recipe.containerItemId() == null
+                    ? "none"
+                    : recipe.containerItemId() + " x" + recipe.containerCount();
+            debugChat(level, villager, "SELECT-DETAIL:id=" + recipe.id()
+                    + " inputs=" + recipe.inputs().size()
+                    + " container=" + container
+                    + " station=" + recipe.stationType());
+        }
         transition(BaristaState.GATHER, gameTime);
     }
 
@@ -314,15 +397,37 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
-        boolean success = IngredientResolver.pullAndConsume(
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
+        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            String missingBefore = IngredientResolver.describeMissingRequirements(level, villager, activeRecipe, stationAnchor, cafeBounds);
+            debugChat(level, villager, "GATHER:start recipe=" + activeRecipe.output()
+                    + " station=" + stationType
+                    + " missingBefore=" + (missingBefore == null || missingBefore.isBlank() ? "<none>" : missingBefore));
+        }
+        IngredientResolver.PullResult pullResult = IngredientResolver.pullAndConsumeDetailed(
                 level, villager, activeRecipe, stationAnchor, stationType, stagedInputs, cafeBounds);
+        boolean success = pullResult.success();
 
         if (!success) {
-            debugChat(level, villager, "GATHER:failed for " + activeRecipe.output());
+            debugChat(level, villager, "GATHER:failed for " + activeRecipe.output()
+                    + (pullResult.detail().isBlank() ? "" : " (" + pullResult.detail() + ")"));
+            for (String diagnostic : pullResult.diagnostics()) {
+                debugChat(level, villager, "GATHER:diag=" + diagnostic);
+            }
+            Set<ResourceLocation> soughtIds = new LinkedHashSet<>();
+            for (RecipeIngredient ingredient : activeRecipe.inputs()) {
+                soughtIds.addAll(ingredient.itemIds());
+            }
+            debugChat(level, villager, "GATHER:buildingStorage=" + IngredientResolver.describeKitchenStorage(level, cafeBounds, soughtIds));
+            if (stationAnchor != null && stationType == StationType.HOT_STATION) {
+                debugChat(level, villager, "GATHER:pot=" + StationHandler.describeCookingPotInputs(level, stationAnchor));
+            }
             IngredientResolver.rollbackStagedInputs(level, villager, stationAnchor, stagedInputs);
             String recipeName = townstead$itemDisplayName(level, activeRecipe.output());
-            setBlocked(level, villager, gameTime, BlockedReason.NO_INGREDIENTS, recipeName);
+            String missing = IngredientResolver.describeMissingRequirements(level, villager, activeRecipe, stationAnchor, cafeBounds);
+            if (missing == null || missing.isBlank()) missing = pullResult.detail();
+            setBlocked(level, villager, gameTime, BlockedReason.NO_INGREDIENTS,
+                    missing == null || missing.isBlank() ? recipeName : missing);
             recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
             activeRecipe = null;
             recipeAttempts++;
@@ -338,6 +443,9 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         }
 
         debugChat(level, villager, "GATHER:success for " + activeRecipe.output());
+        if (TownsteadConfig.DEBUG_VILLAGER_AI.get() && stationAnchor != null && stationType == StationType.HOT_STATION) {
+            debugChat(level, villager, "GATHER:pot=" + StationHandler.describeCookingPotInputs(level, stationAnchor));
+        }
         brewDoneTick = gameTime + activeRecipe.cookTimeTicks();
         playSound(level);
         transition(BaristaState.BREW, gameTime);
@@ -358,7 +466,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         if (stationType == StationType.FIRE_STATION && stationAnchor != null) {
             Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
             List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
-            Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
+            Set<Long> cafeBounds = activeCafeStorageBounds(villager);
             for (ItemStack drop : drops) {
                 IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, cafeBounds);
                 if (!drop.isEmpty()) {
@@ -373,6 +481,9 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         }
 
         if (gameTime < brewDoneTick) return;
+        if (stationType == StationType.HOT_STATION && !hotStationOutputReady(level)) {
+            return;
+        }
 
         debugChat(level, villager, "BREW:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
         transition(BaristaState.COLLECT, gameTime);
@@ -386,7 +497,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
         Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
         boolean collected = false;
 
@@ -438,7 +549,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(stationAnchor));
         }
 
-        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
         Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
         boolean collected = false;
 
@@ -467,16 +578,10 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         long elapsed = gameTime - stateEnteredTick;
         if (collected || elapsed >= COLLECT_WAIT_MAX_TICKS) {
             if (!collected && stationType == StationType.HOT_STATION && activeRecipe != null) {
-                // Timed out waiting — produce virtual output as fallback
-                Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-                if (outputItem != Items.AIR) {
-                    debugChat(level, villager, "COLLECT_WAIT:timeout, virtual output for " + activeRecipe.output());
-                    ItemStack output = new ItemStack(outputItem, activeRecipe.outputCount());
-                    IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, cafeBounds);
-                    if (!output.isEmpty()) {
-                        villager.getInventory().addItem(output);
-                    }
+                if (elapsed == COLLECT_WAIT_MAX_TICKS) {
+                    debugChat(level, villager, "COLLECT_WAIT:still waiting for real pot output " + activeRecipe.output());
                 }
+                return;
             }
             finishCollect(level, villager, cafeBounds, outputIds, gameTime);
         }
@@ -500,6 +605,13 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         return true;
+    }
+
+    private boolean hotStationOutputReady(ServerLevel level) {
+        if (stationType != StationType.HOT_STATION || stationAnchor == null || activeRecipe == null) return false;
+        Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
+        if (outputItem == Items.AIR) return false;
+        return StationHandler.countItemInStation(level, stationAnchor, outputItem) >= activeRecipe.outputCount();
     }
 
     private void finishCollect(ServerLevel level, VillagerEntityMCA villager,
@@ -559,7 +671,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             return id != null && outputIds.contains(id);
         });
         if (drops.isEmpty()) return;
-        Set<Long> cafeBounds = activeCafeBounds(villager, activeCafeReference(villager));
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
         BlockPos storageRef = stationAnchor != null ? stationAnchor : villager.blockPosition();
         for (ItemEntity drop : drops) {
             ItemStack stack = drop.getItem().copy();
@@ -585,17 +697,22 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             return false;
         }
 
+        if (!isVillagerInActiveCafe(villager)) {
+            transition(BaristaState.ACQUIRE_STATION, gameTime);
+            return false;
+        }
+
         BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
         villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(stationAnchor));
         double distSq = villager.distanceToSqr(standPos.getX() + 0.5, standPos.getY() + 0.5, standPos.getZ() + 0.5);
         double anchorDistSq = villager.distanceToSqr(
                 stationAnchor.getX() + 0.5, stationAnchor.getY() + 0.5, stationAnchor.getZ() + 0.5);
-        boolean inCafe = isVillagerInActiveCafe(villager);
 
-        if (distSq > ARRIVAL_DISTANCE_SQ && anchorDistSq > NEAR_STATION_DISTANCE_SQ && !inCafe) {
+        if (distSq > ARRIVAL_DISTANCE_SQ && anchorDistSq > NEAR_STATION_DISTANCE_SQ) {
             if (gameTime >= nextStandReacquireTick) {
                 nextStandReacquireTick = gameTime + STAND_REACQUIRE_INTERVAL_TICKS;
-                BlockPos refreshed = StationHandler.findStandingPosition(level, villager, stationAnchor);
+                BlockPos refreshed = findCafeStandingPosition(level, villager, stationAnchor,
+                        activeCafeSnapshot(level, villager));
                 if (refreshed != null) standPos = refreshed;
             }
             return false;
@@ -611,39 +728,75 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         stateEnteredTick = gameTime;
     }
 
+    private @Nullable BlockPos findCafeStandingPosition(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor,
+            WorkBuildingNav.Snapshot cafeSnapshot
+    ) {
+        BlockPos stand = WorkBuildingNav.nearestStationStand(cafeSnapshot, villager, anchor);
+        if (stand != null) return stand;
+        BlockPos fallback = StationHandler.findStandingPosition(level, villager, anchor);
+        if (fallback != null && cafeSnapshot.walkableInterior().contains(fallback.asLong())) {
+            return fallback.immutable();
+        }
+        return null;
+    }
+
+    private boolean isCafeStandCandidate(ServerLevel level, BlockPos anchor, BlockPos candidate, Set<Long> cafeBounds) {
+        if (candidate == null || anchor == null) return false;
+        if (cafeBounds == null || cafeBounds.isEmpty()) return false;
+        if (!isVillagerInCafeBounds(level, candidate, cafeBounds)) return false;
+        if (!isStandableInteriorAir(level, candidate, candidate.below(), candidate.above())) return false;
+        BlockPos belowPos = candidate.below();
+        BlockState belowState = level.getBlockState(belowPos);
+        if (StationHandler.isStation(belowState)) return false;
+
+        Vec3 from = Vec3.atCenterOf(candidate).add(0.0, 0.6, 0.0);
+        Vec3 to = Vec3.atCenterOf(anchor).add(0.0, 0.6, 0.0);
+        BlockHitResult hit = level.clip(townstead$clipContext(from, to));
+        return hit.getType() == HitResult.Type.MISS || anchor.equals(hit.getBlockPos());
+    }
+
     // ── Cafe bounds ──
 
-    private Set<Long> activeCafeBounds(VillagerEntityMCA villager, BlockPos anchor) {
-        long gameTime = villager.level().getGameTime();
-        if (anchor != null && cachedCafeWorkAnchor != null
-                && anchor.equals(cachedCafeWorkAnchor)
-                && gameTime <= cachedCafeWorkUntil
-                && !cachedCafeWorkArea.isEmpty()) {
-            return cachedCafeWorkArea;
-        }
-
-        if (villager.level() instanceof ServerLevel level) {
-            Set<Long> assigned = FarmersDelightBaristaAssignment.assignedCafeBounds(level, villager);
-            if (!assigned.isEmpty()) {
-                Set<Long> roomAware = roomExpandedCafeArea(level, assigned, anchor != null ? anchor : villager.blockPosition());
-                cacheCafeWorkArea(anchor, gameTime, roomAware);
-                return roomAware;
-            }
-        }
-
-        return Set.of();
+    private Set<Long> activeCafeStorageBounds(VillagerEntityMCA villager) {
+        if (!(villager.level() instanceof ServerLevel level)) return Set.of();
+        return FarmersDelightBaristaAssignment.assignedCafeBounds(level, villager);
     }
 
-    private void cacheCafeWorkArea(BlockPos anchor, long gameTime, Set<Long> bounds) {
-        cachedCafeWorkAnchor = anchor == null ? null : anchor.immutable();
-        cachedCafeWorkArea = bounds == null ? Set.of() : bounds;
-        cachedCafeWorkUntil = gameTime + ROOM_BOUNDS_CACHE_TICKS;
+    private Set<Long> activeCafeNavigationArea(VillagerEntityMCA villager, BlockPos anchor) {
+        if (!(villager.level() instanceof ServerLevel level)) return Set.of();
+        return activeCafeSnapshot(level, villager).walkableInterior();
     }
 
-    private Set<Long> roomExpandedCafeArea(ServerLevel level, Set<Long> baseBounds, BlockPos reference) {
+    private void cacheCafeNavigationArea(BlockPos anchor, long gameTime, Set<Long> bounds) {
+        cachedCafeNavigationAnchor = anchor == null ? null : anchor.immutable();
+        cachedCafeNavigationArea = bounds == null ? Set.of() : bounds;
+        cachedCafeNavigationUntil = gameTime + ROOM_BOUNDS_CACHE_TICKS;
+    }
+
+    private WorkBuildingNav.Snapshot activeCafeSnapshot(ServerLevel level, VillagerEntityMCA villager) {
+        BlockPos anchor = activeCafeReference(villager);
+        long gameTime = level.getGameTime();
+        if (anchor != null && cachedCafeNavigationAnchor != null
+                && anchor.equals(cachedCafeNavigationAnchor)
+                && gameTime <= cachedCafeNavigationUntil
+                && !cachedCafeSnapshot.walkableInterior().isEmpty()) {
+            return cachedCafeSnapshot;
+        }
+        Set<Long> assigned = activeCafeStorageBounds(villager);
+        WorkBuildingNav.Snapshot snapshot = WorkBuildingNav.snapshot(level, assigned, anchor);
+        cachedCafeSnapshot = snapshot;
+        cacheCafeNavigationArea(anchor, gameTime, snapshot.walkableInterior());
+        return snapshot;
+    }
+
+    private Set<Long> roomExpandedCafeArea(ServerLevel level, VillagerEntityMCA villager, Set<Long> baseBounds, BlockPos reference) {
         if (baseBounds == null || baseBounds.isEmpty() || reference == null) {
-            return baseBounds == null ? Set.of() : baseBounds;
+            return Set.of();
         }
+        // Use the MCA building's own AABB as the flood fill boundary
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
         for (long key : baseBounds) {
@@ -655,28 +808,28 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
             if (p.getY() > maxY) maxY = p.getY();
             if (p.getZ() > maxZ) maxZ = p.getZ();
         }
-        minX -= ROOM_SEARCH_EXPAND_XZ; maxX += ROOM_SEARCH_EXPAND_XZ;
-        minY -= ROOM_SEARCH_EXPAND_Y; maxY += ROOM_SEARCH_EXPAND_Y;
-        minZ -= ROOM_SEARCH_EXPAND_XZ; maxZ += ROOM_SEARCH_EXPAND_XZ;
 
-        BlockPos seed = findRoomSeed(level, reference, minX, minY, minZ, maxX, maxY, maxZ);
-        if (seed == null) return baseBounds;
-
-        Set<Long> room = new HashSet<>(baseBounds);
+        Set<Long> room = new HashSet<>();
         Set<Long> visitedAir = new HashSet<>();
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
-        queue.add(seed);
-        visitedAir.add(seed.asLong());
+        boolean seeded = enqueueStationSeeds(level, villager, baseBounds, minX, minY, minZ, maxX, maxY, maxZ, queue, visitedAir);
+        if (!seeded) {
+            BlockPos seed = findRoomSeed(level, reference, minX, minY, minZ, maxX, maxY, maxZ);
+            if (seed == null) return Set.of();
+            queue.add(seed);
+            visitedAir.add(seed.asLong());
+        }
 
         while (!queue.isEmpty() && visitedAir.size() < ROOM_FLOOD_MAX_NODES) {
             BlockPos cur = queue.removeFirst();
-            room.add(cur.asLong());
+            if (isStandableCafeTile(level, cur)) {
+                room.add(cur.asLong());
+            }
             for (Direction dir : Direction.values()) {
                 BlockPos nxt = cur.relative(dir);
                 if (nxt.getX() < minX || nxt.getX() > maxX
                         || nxt.getY() < minY || nxt.getY() > maxY
                         || nxt.getZ() < minZ || nxt.getZ() > maxZ) continue;
-                room.add(nxt.asLong());
                 if (!isRoomPassable(level, nxt)) continue;
                 if (visitedAir.add(nxt.asLong())) queue.addLast(nxt);
             }
@@ -684,30 +837,101 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         return room;
     }
 
+    private boolean enqueueStationSeeds(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            Set<Long> baseBounds,
+            int minX,
+            int minY,
+            int minZ,
+            int maxX,
+            int maxY,
+            int maxZ,
+            ArrayDeque<BlockPos> queue,
+            Set<Long> visitedAir
+    ) {
+        boolean seeded = false;
+        List<StationSlot> stations = StationHandler.discoverStations(level, villager, baseBounds, SEARCH_RADIUS, VERTICAL_RADIUS);
+        for (StationSlot slot : stations) {
+            if (slot.type() != StationType.HOT_STATION && slot.type() != StationType.FIRE_STATION) continue;
+            for (BlockPos seed : stationSeedCandidates(level, slot.pos(), minX, minY, minZ, maxX, maxY, maxZ)) {
+                if (visitedAir.add(seed.asLong())) {
+                    queue.add(seed);
+                    seeded = true;
+                }
+            }
+        }
+        return seeded;
+    }
+
+    private List<BlockPos> stationSeedCandidates(
+            ServerLevel level,
+            BlockPos anchor,
+            int minX,
+            int minY,
+            int minZ,
+            int maxX,
+            int maxY,
+            int maxZ
+    ) {
+        List<BlockPos> seeds = new ArrayList<>();
+        int[] verticalChoices = {-1, 0, 1};
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                int manhattan = Math.abs(dx) + Math.abs(dz);
+                if (manhattan > 3) continue;
+                for (int yOffset : verticalChoices) {
+                    BlockPos candidate = anchor.offset(dx, yOffset, dz).immutable();
+                    if (!isWithin(candidate, minX, minY, minZ, maxX, maxY, maxZ)) continue;
+                    if (!isStandableCafeTile(level, candidate)) continue;
+                    Vec3 from = Vec3.atCenterOf(candidate).add(0.0, 0.6, 0.0);
+                    Vec3 to = Vec3.atCenterOf(anchor).add(0.0, 0.6, 0.0);
+                    BlockHitResult hit = level.clip(townstead$clipContext(from, to));
+                    if (!(hit.getType() == HitResult.Type.MISS || anchor.equals(hit.getBlockPos()))) continue;
+                    seeds.add(candidate);
+                }
+            }
+        }
+        return seeds;
+    }
+
     private @Nullable BlockPos findRoomSeed(ServerLevel level, BlockPos reference,
                                             int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
         if (reference == null) return null;
-        if (isWithin(reference, minX, minY, minZ, maxX, maxY, maxZ) && isRoomPassable(level, reference)) {
+        if (isWithin(reference, minX, minY, minZ, maxX, maxY, maxZ) && isStandableCafeTile(level, reference)) {
             return reference.immutable();
         }
-        for (int r = 1; r <= 4; r++) {
-            for (int dx = -r; dx <= r; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dz = -r; dz <= r; dz++) {
-                        BlockPos p = reference.offset(dx, dy, dz);
-                        if (!isWithin(p, minX, minY, minZ, maxX, maxY, maxZ)) continue;
-                        if (isRoomPassable(level, p)) return p.immutable();
+        BlockPos best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    if (!isStandableCafeTile(level, p)) continue;
+                    double dist = reference.distSqr(p);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = p.immutable();
                     }
                 }
             }
         }
-        return null;
+        return best;
     }
 
     private static boolean isWithin(BlockPos p, int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
         return p.getX() >= minX && p.getX() <= maxX
                 && p.getY() >= minY && p.getY() <= maxY
                 && p.getZ() >= minZ && p.getZ() <= maxZ;
+    }
+
+    private static ClipContext townstead$clipContext(Vec3 from, Vec3 to) {
+        //? if >=1.21 {
+        return new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, net.minecraft.world.phys.shapes.CollisionContext.empty());
+        //?} else {
+        /*return new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, null);
+        *///?}
     }
 
     private static boolean isRoomPassable(ServerLevel level, BlockPos pos) {
@@ -735,9 +959,168 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean isVillagerInActiveCafe(VillagerEntityMCA villager) {
-        Set<Long> bounds = activeCafeBounds(villager, activeCafeReference(villager));
-        if (bounds.isEmpty()) return false;
-        return StationHandler.isInKitchenWorkArea(bounds, villager.blockPosition());
+        if (!(villager.level() instanceof ServerLevel level)) return false;
+        return WorkBuildingNav.isInsideOrOnStationStand(activeCafeSnapshot(level, villager), villager.blockPosition());
+    }
+
+    private boolean isVillagerInCafeBounds(ServerLevel level, @Nullable BlockPos pos, Set<Long> bounds) {
+        if (level == null || pos == null || bounds == null || bounds.isEmpty()) return false;
+        return bounds.contains(pos.asLong());
+    }
+
+    private @Nullable BlockPos findCafeEntryTarget(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            long gameTime,
+            WorkBuildingNav.Snapshot cafeSnapshot
+    ) {
+        List<BlockPos> candidates = cafeSnapshot.entryTargets().stream()
+                .filter(pos -> failedCafeEntryUntil.getOrDefault(pos.asLong(), 0L) <= gameTime)
+                .toList();
+        return WorkBuildingNav.chooseReachableTarget(level, villager, candidates, CLOSE_ENOUGH);
+    }
+
+    private @Nullable BlockPos findCafeApproachTarget(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            long gameTime,
+            WorkBuildingNav.Snapshot cafeSnapshot
+    ) {
+        List<BlockPos> directCandidates = cafeSnapshot.approachTargets().stream()
+                .filter(pos -> failedCafeEntryUntil.getOrDefault(pos.asLong(), 0L) <= gameTime)
+                .toList();
+        BlockPos direct = WorkBuildingNav.chooseReachableTarget(level, villager, directCandidates, CLOSE_ENOUGH, false);
+        if (direct != null) return direct;
+        List<BlockPos> waypointCandidates = WorkBuildingNav.intermediateApproachTargets(level, villager, cafeSnapshot).stream()
+                .filter(pos -> failedCafeEntryUntil.getOrDefault(pos.asLong(), 0L) <= gameTime)
+                .toList();
+        return WorkBuildingNav.chooseReachableTarget(level, villager, waypointCandidates, CLOSE_ENOUGH, false);
+    }
+
+    private boolean shouldUseCafeApproachStage(VillagerEntityMCA villager, WorkBuildingNav.Snapshot cafeSnapshot) {
+        return villager != null && cafeSnapshot != null && !isVillagerInActiveCafe(villager);
+    }
+
+    private @Nullable BlockPos currentOrNewCafeEntryTarget(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            long gameTime,
+            WorkBuildingNav.Snapshot cafeSnapshot
+    ) {
+        boolean useApproach = shouldUseCafeApproachStage(villager, cafeSnapshot);
+        if (currentCafeEntryTarget != null) {
+            boolean currentStillValid = useApproach
+                    ? WorkPathing.isSafeStandPosition(level, currentCafeEntryTarget)
+                    : cafeSnapshot.walkableInterior().contains(currentCafeEntryTarget.asLong());
+            if (!currentStillValid || !WorkPathing.isSafeStandPosition(level, currentCafeEntryTarget)) {
+                markFailedCafeEntryTarget(currentCafeEntryTarget, gameTime);
+                currentCafeEntryTarget = null;
+            } else {
+                Path currentPath = villager.getNavigation().createPath(currentCafeEntryTarget, CLOSE_ENOUGH);
+                if (currentPath != null && currentPath.canReach()) {
+                    return currentCafeEntryTarget;
+                }
+                markFailedCafeEntryTarget(currentCafeEntryTarget, gameTime);
+                currentCafeEntryTarget = null;
+            }
+        }
+        if (gameTime < nextCafeEntrySearchTick) return null;
+        return useApproach
+                ? findCafeApproachTarget(level, villager, gameTime, cafeSnapshot)
+                : findCafeEntryTarget(level, villager, gameTime, cafeSnapshot);
+    }
+
+    private void debugCafeTargetFailure(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            long gameTime,
+            WorkBuildingNav.Snapshot cafeSnapshot
+    ) {
+        boolean useApproach = shouldUseCafeApproachStage(villager, cafeSnapshot);
+        List<BlockPos> candidates = (useApproach ? cafeSnapshot.approachTargets() : cafeSnapshot.entryTargets()).stream()
+                .filter(pos -> failedCafeEntryUntil.getOrDefault(pos.asLong(), 0L) <= gameTime)
+                .toList();
+        WorkBuildingNav.ReachabilitySelection trace = WorkBuildingNav.traceReachableTargets(
+                level,
+                villager,
+                candidates,
+                CLOSE_ENOUGH,
+                4,
+                !useApproach
+        );
+        String probeDesc = trace.probes().stream()
+                .map(probe -> probe.pos().getX() + "," + probe.pos().getY() + "," + probe.pos().getZ()
+                        + "=" + probe.result()
+                        + "@d=" + (int) Math.round(Math.sqrt(probe.distanceSq())))
+                .reduce((a, b) -> a + "; " + b)
+                .orElse("<none>");
+        String waypointDesc = "";
+        if (useApproach && trace.target() == null) {
+            List<BlockPos> waypointCandidates = WorkBuildingNav.intermediateApproachTargets(level, villager, cafeSnapshot).stream()
+                    .filter(pos -> failedCafeEntryUntil.getOrDefault(pos.asLong(), 0L) <= gameTime)
+                    .toList();
+            WorkBuildingNav.ReachabilitySelection waypointTrace = WorkBuildingNav.traceReachableTargets(
+                    level,
+                    villager,
+                    waypointCandidates,
+                    CLOSE_ENOUGH,
+                    4,
+                    false
+            );
+            String waypointProbeDesc = waypointTrace.probes().stream()
+                    .map(probe -> probe.pos().getX() + "," + probe.pos().getY() + "," + probe.pos().getZ()
+                            + "=" + probe.result()
+                            + "@d=" + (int) Math.round(Math.sqrt(probe.distanceSq())))
+                    .reduce((a, b) -> a + "; " + b)
+                    .orElse("<none>");
+            waypointDesc = " waypointCandidates=" + waypointCandidates.size() + " waypointProbes=" + waypointProbeDesc;
+        }
+        debugChat(level, villager, "ENTER:diag stage=" + (useApproach ? "approach" : "entry")
+                + " candidates=" + candidates.size()
+                + " searchReady=" + (gameTime >= nextCafeEntrySearchTick)
+                + " nextSearchIn=" + Math.max(0L, nextCafeEntrySearchTick - gameTime)
+                + " probes=" + probeDesc
+                + waypointDesc);
+    }
+
+    private void markFailedCafeEntryTarget(@Nullable BlockPos pos, long gameTime) {
+        if (pos == null) return;
+        failedCafeEntryUntil.put(pos.asLong(), gameTime + ENTRY_TARGET_RETRY_COOLDOWN_TICKS);
+    }
+
+    private void pruneFailedCafeEntryTargets(long gameTime) {
+        failedCafeEntryUntil.entrySet().removeIf(entry -> entry.getValue() <= gameTime);
+    }
+
+    private boolean isStandableCafeTile(ServerLevel level, BlockPos feetPos) {
+        return WorkPathing.isSafeStandPosition(level, feetPos);
+    }
+
+    private void trackCafeEntryProgress(VillagerEntityMCA villager, long gameTime, BlockPos entryTarget) {
+        double distSq = villager.distanceToSqr(entryTarget.getX() + 0.5, entryTarget.getY() + 0.5, entryTarget.getZ() + 0.5);
+        if (distSq + 0.25d < lastCafeEntryDistanceSq) {
+            lastCafeEntryDistanceSq = distSq;
+            lastCafeEntryProgressTick = gameTime;
+        } else if (lastCafeEntryDistanceSq == Double.MAX_VALUE) {
+            lastCafeEntryDistanceSq = distSq;
+            lastCafeEntryProgressTick = gameTime;
+        }
+    }
+
+    private boolean entryProgressActive(VillagerEntityMCA villager, long gameTime) {
+        if (state != BaristaState.ACQUIRE_STATION || currentCafeEntryTarget == null) return false;
+        WalkTarget walkTarget = villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).orElse(null);
+        if (walkTarget == null) return false;
+        if (!(walkTarget.getTarget() instanceof BlockPosTracker tracker)) return false;
+        if (!tracker.currentBlockPosition().equals(currentCafeEntryTarget)) return false;
+        return gameTime - lastCafeEntryProgressTick <= STATE_TIMEOUT_TICKS;
+    }
+
+    private boolean isStandableInteriorAir(ServerLevel level, BlockPos feetPos, BlockPos floorPos, BlockPos headPos) {
+        if (level == null || feetPos == null || floorPos == null || headPos == null) return false;
+        if (!isRoomPassable(level, feetPos) || !level.getBlockState(headPos).isAir()) return false;
+        BlockState floor = level.getBlockState(floorPos);
+        return floor.isFaceSturdy(level, floorPos, Direction.UP);
     }
 
     // ── Station claims ──
@@ -777,6 +1160,12 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
 
     private void setBlocked(ServerLevel level, VillagerEntityMCA villager, long gameTime, BlockedReason reason, String itemName) {
         blocked = reason;
+        if (reason != BlockedReason.NONE) {
+            BlockPos pos = villager.blockPosition();
+            debugChat(level, villager, "BLOCKED:" + reason.name()
+                    + " pos=" + pos.getX() + "," + pos.getY() + "," + pos.getZ()
+                    + (itemName == null || itemName.isBlank() ? "" : " detail=" + itemName));
+        }
         if (reason == BlockedReason.NONE) return;
         if (!TownsteadConfig.isBaristaRequestChatEnabled()) return;
         if (gameTime < nextRequestTick) return;
@@ -810,13 +1199,18 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         stagedInputs.clear();
         usedStations.clear();
         recipeCooldownUntil.clear();
+        failedCafeEntryUntil.clear();
         recipeAttempts = 0;
         idleUntilTick = 0L;
+        currentCafeEntryTarget = null;
+        nextCafeEntrySearchTick = 0L;
+        lastCafeEntryDistanceSq = Double.MAX_VALUE;
+        lastCafeEntryProgressTick = 0L;
         state = BaristaState.ACQUIRE_STATION;
         stateEnteredTick = gameTime;
-        cachedCafeWorkArea = Set.of();
-        cachedCafeWorkAnchor = null;
-        cachedCafeWorkUntil = 0L;
+        cachedCafeNavigationArea = Set.of();
+        cachedCafeNavigationAnchor = null;
+        cachedCafeNavigationUntil = 0L;
     }
 
     // ── Activity ──
@@ -826,16 +1220,57 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         return villager.getBrain().getSchedule().getActivityAt((int) dayTime);
     }
 
+    @Override
+    public WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
+        Set<Long> bounds = activeCafeStorageBounds(villager);
+        BlockPos reference = activeCafeReference(villager);
+        return bounds.isEmpty() ? null : WorkSiteRef.building(reference, bounds);
+    }
+
+    @Override
+    public WorkTarget activeWorkTarget(ServerLevel level, VillagerEntityMCA villager) {
+        if (currentCafeEntryTarget != null) {
+            return isVillagerInActiveCafe(villager)
+                    ? WorkTarget.buildingEntry(currentCafeEntryTarget, activeCafeReference(villager), "enter")
+                    : WorkTarget.buildingApproach(currentCafeEntryTarget, activeCafeReference(villager), "approach");
+        }
+        if (standPos == null || stationAnchor == null) return null;
+        return WorkTarget.stationStand(standPos, stationAnchor, state.name().toLowerCase());
+    }
+
+    @Override
+    public float navigationWalkSpeed(ServerLevel level, VillagerEntityMCA villager) {
+        return WALK_SPEED;
+    }
+
+    @Override
+    public int navigationCloseEnough(ServerLevel level, VillagerEntityMCA villager) {
+        return CLOSE_ENOUGH;
+    }
+
+    @Override
+    public double navigationArrivalDistanceSq(ServerLevel level, VillagerEntityMCA villager) {
+        return ARRIVAL_DISTANCE_SQ;
+    }
+
+    @Override
+    public String navigationState(ServerLevel level, VillagerEntityMCA villager) {
+        return state.name();
+    }
+
+    @Override
+    public String navigationBlockedState(ServerLevel level, VillagerEntityMCA villager) {
+        return blocked.name();
+    }
+
     // ── Debug ──
 
     private void debugChat(ServerLevel level, VillagerEntityMCA villager, String msg) {
-        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
         if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
         player.sendSystemMessage(Component.literal("[Barista:" + villager.getName().getString() + "] " + msg));
     }
 
     private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
         if (gameTime < nextDebugTick) return;
         if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
         String name = villager.getName().getString();
@@ -847,16 +1282,43 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> {
         String idleInfo = gameTime < idleUntilTick ? " idle=" + (idleUntilTick - gameTime) : "";
         StorageSearchContext.Snapshot storageSnapshot = StorageSearchContext.Profiler.snapshot();
         VillageAiBudget.Snapshot budgetSnapshot = VillageAiBudget.snapshot();
+        WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         ConsumableTargetClaims.Snapshot claimSnapshot = ConsumableTargetClaims.snapshot();
+        WorkBuildingNav.Snapshot cafeSnapshot = activeCafeSnapshot(level, villager);
+        Optional<Building> assignedCafe = FarmersDelightBaristaAssignment.assignedCafe(level, villager);
+        String assignedCafeDesc = assignedCafe.map(this::townstead$describeAssignedBuilding).orElse("none");
+        String navMode = townstead$navigationMode(level, villager);
         player.sendSystemMessage(Component.literal("[BaristaDBG:" + name + "#" + id + "] state=" + state.name()
                 + " station=" + station + " anchor=" + anchor + " recipe=" + recipe
                 + " doneAt=" + brewDoneTick + " blocked=" + blocked.name()
+                + " mode=" + navMode + " site=" + assignedCafeDesc + " stations=" + cafeSnapshot.stations().size()
                 + " used=" + usedStations.size() + " storage=" + storageSnapshot.observedBlocks()
                 + "/" + storageSnapshot.handlerLookups()
                 + " budget=" + budgetSnapshot.granted() + "/" + budgetSnapshot.throttled()
+                + " nav=" + navSnapshot.snapshotRebuilds() + "/" + navSnapshot.pathAttempts()
+                + "/" + navSnapshot.pathSuccesses() + "/" + navSnapshot.pathFailures()
                 + " claims=" + claimSnapshot.grants() + "/" + claimSnapshot.conflicts() + "/" + claimSnapshot.activeClaims()
                 + idleInfo));
         nextDebugTick = gameTime + 100L;
+    }
+
+    private String townstead$navigationMode(ServerLevel level, VillagerEntityMCA villager) {
+        if (state != BaristaState.ACQUIRE_STATION) return "station";
+        if (!isVillagerInActiveCafe(villager)) {
+            return "approach";
+        }
+        return stationAnchor != null ? "station" : "search";
+    }
+
+    private String townstead$describeAssignedBuilding(Building building) {
+        if (building == null) return "none";
+        BlockPos center = building.getCenter();
+        int blockCount = 0;
+        for (BlockPos ignored : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
+            blockCount++;
+        }
+        String centerDesc = center == null ? "none" : center.getX() + "," + center.getY() + "," + center.getZ();
+        return building.getType() + "@" + centerDesc + "[" + blockCount + "]";
     }
 
     private static boolean townstead$isFatigueGated(VillagerEntityMCA villager) {

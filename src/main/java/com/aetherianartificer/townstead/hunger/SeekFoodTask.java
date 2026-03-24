@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.thirst.VillagerDrinkingManager;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -23,8 +24,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-
-import net.minecraft.world.level.pathfinder.Path;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -286,45 +285,43 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         candidates.sort(Comparator.comparingDouble(c -> -c.score()));
 
         // Pick the first reachable candidate
-        int pathAttempts = 0;
+        List<ReachableTargetSelector.Candidate<FoodCandidate>> reachableCandidates = new ArrayList<>();
         for (FoodCandidate c : candidates) {
-            if (pathAttempts >= MAX_PATH_ATTEMPTS_PER_SEARCH) break;
-            if (c.type == TargetType.GROUND_ITEM && ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, c.item)) {
-                continue;
+            if (c.type == TargetType.GROUND_ITEM && ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, c.item)) continue;
+            if (c.type == TargetType.CONTAINER && ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, c.slot)) continue;
+            if (c.type == TargetType.CROP && ConsumableTargetClaims.isClaimedByOtherPos(level, villager.getUUID(), CLAIM_CATEGORY, c.pos)) continue;
+            BlockPos pathTarget = c.type == TargetType.GROUND_ITEM ? c.item.blockPosition() : c.pos;
+            reachableCandidates.add(new ReachableTargetSelector.Candidate<>(c, pathTarget));
+        }
+
+        FoodCandidate chosen = ReachableTargetSelector.chooseReachable(
+                level,
+                villager,
+                reachableCandidates,
+                CLOSE_ENOUGH,
+                MAX_PATH_ATTEMPTS_PER_SEARCH,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> candidate.value().distSq()
+        );
+        if (chosen != null) {
+            long claimUntil = level.getGameTime() + MAX_DURATION + 20L;
+            boolean claimed = chosen.type == TargetType.GROUND_ITEM
+                    ? ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, chosen.item, claimUntil)
+                    : chosen.type == TargetType.CONTAINER
+                    ? ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, chosen.slot, claimUntil)
+                    : ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, chosen.pos, claimUntil);
+            if (!claimed) {
+                return false;
             }
-            if (c.type == TargetType.CONTAINER && ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, c.slot)) {
-                continue;
+            if (chosen.type == TargetType.GROUND_ITEM) {
+                targetType = TargetType.GROUND_ITEM;
+                targetItem = chosen.item;
+            } else {
+                targetType = TargetType.CONTAINER;
+                targetContainerSlot = chosen.slot;
+                targetPos = chosen.pos;
             }
-            if (c.type == TargetType.CROP && ConsumableTargetClaims.isClaimedByOtherPos(level, villager.getUUID(), CLAIM_CATEGORY, c.pos)) {
-                continue;
-            }
-            BlockPos pathTarget = c.type == TargetType.GROUND_ITEM
-                    ? c.item.blockPosition() : c.pos;
-            if (!TargetReachabilityCache.canAttempt(level, villager, pathTarget)) continue;
-            pathAttempts++;
-            Path path = villager.getNavigation().createPath(pathTarget, CLOSE_ENOUGH);
-            if (path != null && path.canReach()) {
-                TargetReachabilityCache.clear(level, villager, pathTarget);
-                long claimUntil = level.getGameTime() + MAX_DURATION + 20L;
-                boolean claimed = c.type == TargetType.GROUND_ITEM
-                        ? ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, c.item, claimUntil)
-                        : c.type == TargetType.CONTAINER
-                        ? ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, c.slot, claimUntil)
-                        : ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, c.pos, claimUntil);
-                if (!claimed) {
-                    continue;
-                }
-                if (c.type == TargetType.GROUND_ITEM) {
-                    targetType = TargetType.GROUND_ITEM;
-                    targetItem = c.item;
-                } else {
-                    targetType = TargetType.CONTAINER;
-                    targetContainerSlot = c.slot;
-                    targetPos = c.pos;
-                }
-                return true;
-            }
-            TargetReachabilityCache.recordFailure(level, villager, pathTarget, UNREACHABLE_TARGET_TTL_TICKS);
+            return true;
         }
 
         return false;
@@ -355,20 +352,24 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
                 .thenComparingDouble(villager::distanceToSqr));
 
         // Pick the best reachable item
-        for (ItemEntity item : items) {
-            Path path = villager.getNavigation().createPath(item.blockPosition(), CLOSE_ENOUGH);
-            if (path != null && path.canReach()) {
-                targetType = TargetType.GROUND_ITEM;
-                targetItem = item;
-                return true;
-            }
-        }
-
-        return false;
+        ItemEntity chosen = ReachableTargetSelector.chooseReachable(
+                level,
+                villager,
+                items.stream().map(item -> new ReachableTargetSelector.Candidate<>(item, item.blockPosition())).toList(),
+                CLOSE_ENOUGH,
+                MAX_PATH_ATTEMPTS_PER_SEARCH,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> villager.distanceToSqr(candidate.pos().getX() + 0.5, candidate.pos().getY() + 0.5, candidate.pos().getZ() + 0.5)
+        );
+        if (chosen == null) return false;
+        targetType = TargetType.GROUND_ITEM;
+        targetItem = chosen;
+        return true;
     }
 
     private boolean findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
-        targetContainerSlot = NearbyItemSources.findBestNearbySlot(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        List<ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>> candidates = new ArrayList<>();
+        NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
                 stack -> {
                     //? if >=1.21 {
                     FoodProperties food = stack.get(DataComponents.FOOD);
@@ -392,13 +393,18 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
                     //?} else {
                     /*return food != null ? food.getNutrition() : 0;
                     *///?}
-                });
-        if (targetContainerSlot == null) return false;
-        // Check reachability
-        Path path = villager.getNavigation().createPath(targetContainerSlot.pos(), CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) return false;
+                },
+                villager.blockPosition(),
+                slot -> candidates.add(new ReachableTargetSelector.Candidate<>(slot, slot.pos())));
+        NearbyItemSources.ContainerSlot chosen = ReachableTargetSelector.chooseReachable(
+                level, villager, candidates, CLOSE_ENOUGH, MAX_PATH_ATTEMPTS_PER_SEARCH,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> candidate.value().distanceSqr()
+        );
+        if (chosen == null) return false;
+        targetContainerSlot = chosen;
         targetType = TargetType.CONTAINER;
-        targetPos = targetContainerSlot.pos();
+        targetPos = chosen.pos();
         return true;
     }
 
@@ -407,18 +413,21 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
                 .nearestTo(villager);
         if (bestPos == null) return false;
         // Check reachability
-        if (!TargetReachabilityCache.canAttempt(level, villager, bestPos)) return false;
-        Path path = villager.getNavigation().createPath(bestPos, CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) {
-            TargetReachabilityCache.recordFailure(level, villager, bestPos, UNREACHABLE_TARGET_TTL_TICKS);
-            return false;
-        }
-        TargetReachabilityCache.clear(level, villager, bestPos);
-        if (!ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, bestPos, level.getGameTime() + MAX_DURATION + 20L)) {
+        BlockPos chosen = ReachableTargetSelector.chooseReachable(
+                level,
+                villager,
+                List.of(new ReachableTargetSelector.Candidate<>(bestPos, bestPos)),
+                CLOSE_ENOUGH,
+                1,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> villager.distanceToSqr(candidate.pos().getX() + 0.5, candidate.pos().getY() + 0.5, candidate.pos().getZ() + 0.5)
+        );
+        if (chosen == null) return false;
+        if (!ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, chosen, level.getGameTime() + MAX_DURATION + 20L)) {
             return false;
         }
         targetType = TargetType.CROP;
-        targetPos = bestPos;
+        targetPos = chosen;
         return true;
     }
 

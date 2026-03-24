@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.thirst;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
@@ -22,9 +23,9 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -220,54 +221,56 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
                 .thenComparingDouble(villager::distanceToSqr));
 
         // Pick the best reachable item
-        int pathAttempts = 0;
-        for (ItemEntity item : items) {
-            if (pathAttempts >= MAX_PATH_ATTEMPTS_PER_SEARCH) break;
-            if (ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item)) continue;
-            if (!TargetReachabilityCache.canAttempt(level, villager, item.blockPosition())) continue;
-            pathAttempts++;
-            Path path = villager.getNavigation().createPath(item.blockPosition(), CLOSE_ENOUGH);
-            if (path != null && path.canReach()) {
-                TargetReachabilityCache.clear(level, villager, item.blockPosition());
-                if (!ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, item, level.getGameTime() + MAX_DURATION + 20L)) {
-                    continue;
-                }
-                targetType = TargetType.GROUND_ITEM;
-                targetItem = item;
-                return true;
+        ItemEntity chosen = ReachableTargetSelector.chooseReachable(
+                level,
+                villager,
+                items.stream().filter(item -> !ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item))
+                        .map(item -> new ReachableTargetSelector.Candidate<>(item, item.blockPosition()))
+                        .toList(),
+                CLOSE_ENOUGH,
+                MAX_PATH_ATTEMPTS_PER_SEARCH,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> villager.distanceToSqr(candidate.pos().getX() + 0.5, candidate.pos().getY() + 0.5, candidate.pos().getZ() + 0.5)
+        );
+        if (chosen != null) {
+            if (!ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, chosen, level.getGameTime() + MAX_DURATION + 20L)) {
+                return false;
             }
-            TargetReachabilityCache.recordFailure(level, villager, item.blockPosition(), UNREACHABLE_TARGET_TTL_TICKS);
+            targetType = TargetType.GROUND_ITEM;
+            targetItem = chosen;
+            return true;
         }
-
         return false;
     }
 
     private boolean findContainerDrink(ServerLevel level, VillagerEntityMCA villager, ThirstCompatBridge bridge) {
-        targetContainerSlot = NearbyItemSources.findBestNearbyDrinkSlot(
+        List<ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>> candidates = new ArrayList<>();
+        NearbyItemSources.collectMatchingSlots(
                 level,
                 villager,
                 SEARCH_RADIUS,
                 VERTICAL_RADIUS,
+                stack -> thirstScore(stack, bridge) > 0,
+                stack -> thirstScore(stack, bridge),
                 villager.blockPosition(),
-                stack -> thirstScore(stack, bridge)
+                slot -> {
+                    if (!ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, slot)) {
+                        candidates.add(new ReachableTargetSelector.Candidate<>(slot, slot.pos()));
+                    }
+                }
         );
-        if (targetContainerSlot == null) return false;
-        if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, targetContainerSlot)) {
+        NearbyItemSources.ContainerSlot chosen = ReachableTargetSelector.chooseReachable(
+                level, villager, candidates, CLOSE_ENOUGH, MAX_PATH_ATTEMPTS_PER_SEARCH,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> candidate.value().distanceSqr()
+        );
+        if (chosen == null) return false;
+        if (!ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, chosen, level.getGameTime() + MAX_DURATION + 20L)) {
             return false;
         }
-        // Check reachability
-        if (!TargetReachabilityCache.canAttempt(level, villager, targetContainerSlot.pos())) return false;
-        Path path = villager.getNavigation().createPath(targetContainerSlot.pos(), CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) {
-            TargetReachabilityCache.recordFailure(level, villager, targetContainerSlot.pos(), UNREACHABLE_TARGET_TTL_TICKS);
-            return false;
-        }
-        TargetReachabilityCache.clear(level, villager, targetContainerSlot.pos());
-        if (!ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, targetContainerSlot, level.getGameTime() + MAX_DURATION + 20L)) {
-            return false;
-        }
+        targetContainerSlot = chosen;
         targetType = TargetType.CONTAINER;
-        targetPos = targetContainerSlot.pos();
+        targetPos = chosen.pos();
         return true;
     }
 

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -25,9 +26,9 @@ import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -411,29 +412,31 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
         // Sort by distance, pick first reachable
         items.sort(Comparator.comparingDouble(villager::distanceToSqr));
-        int pathAttempts = 0;
-        for (ItemEntity item : items) {
-            if (pathAttempts >= MAX_PATH_ATTEMPTS_PER_SEARCH) break;
-            if (!TargetReachabilityCache.canAttempt(level, villager, item.blockPosition())) continue;
-            if (ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item)) continue;
-            pathAttempts++;
-            Path path = villager.getNavigation().createPath(item.blockPosition(), CLOSE_ENOUGH);
-            if (path != null && path.canReach()) {
-                TargetReachabilityCache.clear(level, villager, item.blockPosition());
-                if (!ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, item, level.getGameTime() + MAX_DURATION + 20L)) {
-                    continue;
-                }
-                sourceItem = item;
-                sourceType = SourceType.GROUND_ITEM;
-                return true;
+        ItemEntity chosen = ReachableTargetSelector.chooseReachable(
+                level,
+                villager,
+                items.stream().filter(item -> !ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item))
+                        .map(item -> new ReachableTargetSelector.Candidate<>(item, item.blockPosition()))
+                        .toList(),
+                CLOSE_ENOUGH,
+                MAX_PATH_ATTEMPTS_PER_SEARCH,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> villager.distanceToSqr(candidate.pos().getX() + 0.5, candidate.pos().getY() + 0.5, candidate.pos().getZ() + 0.5)
+        );
+        if (chosen != null) {
+            if (!ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, chosen, level.getGameTime() + MAX_DURATION + 20L)) {
+                return false;
             }
-            TargetReachabilityCache.recordFailure(level, villager, item.blockPosition(), UNREACHABLE_TARGET_TTL_TICKS);
+            sourceItem = chosen;
+            sourceType = SourceType.GROUND_ITEM;
+            return true;
         }
         return false;
     }
 
     private boolean townstead$findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
-        sourceContainerSlot = NearbyItemSources.findBestNearbySlot(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        List<ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>> candidates = new ArrayList<>();
+        NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
                 stack -> {
                     //? if >=1.21 {
                     FoodProperties food = stack.get(DataComponents.FOOD);
@@ -457,24 +460,25 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
                     //?} else {
                     /*return food != null ? food.getNutrition() : 0;
                     *///?}
+                },
+                villager.blockPosition(),
+                slot -> {
+                    if (!ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, slot)) {
+                        candidates.add(new ReachableTargetSelector.Candidate<>(slot, slot.pos()));
+                    }
                 });
-        if (sourceContainerSlot == null) return false;
-        if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, sourceContainerSlot)) {
+        NearbyItemSources.ContainerSlot chosen = ReachableTargetSelector.chooseReachable(
+                level, villager, candidates, CLOSE_ENOUGH, MAX_PATH_ATTEMPTS_PER_SEARCH,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> candidate.value().distanceSqr()
+        );
+        if (chosen == null) return false;
+        if (!ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, chosen, level.getGameTime() + MAX_DURATION + 20L)) {
             return false;
         }
-        // Check reachability
-        if (!TargetReachabilityCache.canAttempt(level, villager, sourceContainerSlot.pos())) return false;
-        Path path = villager.getNavigation().createPath(sourceContainerSlot.pos(), CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) {
-            TargetReachabilityCache.recordFailure(level, villager, sourceContainerSlot.pos(), UNREACHABLE_TARGET_TTL_TICKS);
-            return false;
-        }
-        TargetReachabilityCache.clear(level, villager, sourceContainerSlot.pos());
-        if (!ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, sourceContainerSlot, level.getGameTime() + MAX_DURATION + 20L)) {
-            return false;
-        }
+        sourceContainerSlot = chosen;
         sourceType = SourceType.CONTAINER;
-        sourcePos = sourceContainerSlot.pos();
+        sourcePos = chosen.pos();
         return true;
     }
 
@@ -483,18 +487,21 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
                 .nearestTo(villager);
         if (bestPos == null) return false;
         // Check reachability
-        if (!TargetReachabilityCache.canAttempt(level, villager, bestPos)) return false;
-        Path path = villager.getNavigation().createPath(bestPos, CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) {
-            TargetReachabilityCache.recordFailure(level, villager, bestPos, UNREACHABLE_TARGET_TTL_TICKS);
-            return false;
-        }
-        TargetReachabilityCache.clear(level, villager, bestPos);
-        if (!ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, bestPos, level.getGameTime() + MAX_DURATION + 20L)) {
+        BlockPos chosen = ReachableTargetSelector.chooseReachable(
+                level,
+                villager,
+                List.of(new ReachableTargetSelector.Candidate<>(bestPos, bestPos)),
+                CLOSE_ENOUGH,
+                1,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> villager.distanceToSqr(candidate.pos().getX() + 0.5, candidate.pos().getY() + 0.5, candidate.pos().getZ() + 0.5)
+        );
+        if (chosen == null) return false;
+        if (!ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, chosen, level.getGameTime() + MAX_DURATION + 20L)) {
             return false;
         }
         sourceType = SourceType.CROP;
-        sourcePos = bestPos;
+        sourcePos = chosen;
         return true;
     }
 }

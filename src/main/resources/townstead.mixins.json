@@ -5,6 +5,8 @@
   "mixins": [
     "ChefsDelightProfessionGuardMixin",
     "FarmBlockMixin",
+    "compat.farmersdelight.FarmersDelightCookwarePathMixin",
+    "compat.farmersdelight.StoveVillagerDamageMixin",
     "ReportBuildingMessageMixin",
     "TombstoneRevivalMixin",
     "VillagerHungerMixin",

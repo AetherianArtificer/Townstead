@@ -2,6 +2,7 @@
 .gradle/
 .gradle-user/
 .gradle-local/
+.mise-cache/
 .cache/
 build/
 runs/
@@ -35,5 +36,6 @@ docs/
 .DS_Store
 Thumbs.db
 
+.tmp/
 *.jar
 libs/
