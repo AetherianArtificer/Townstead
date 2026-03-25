@@ -1,13 +1,12 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
 import com.aetherianartificer.townstead.Townstead;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
+import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import com.aetherianartificer.townstead.storage.VillageStorageIndex;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -15,12 +14,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -63,36 +63,65 @@ final class KitchenStorageIndex {
     }
 
     private static Snapshot buildSnapshot(ServerLevel level, VillagerEntityMCA villager, Set<Long> kitchenBounds, long gameTime) {
-        Optional<Village> villageOpt = FarmersDelightCookAssignment.resolveVillage(villager);
-        if (villageOpt.isEmpty() || kitchenBounds.isEmpty()) {
+        if (kitchenBounds.isEmpty()) {
             return new Snapshot(List.of(), Map.of(), gameTime + SNAPSHOT_TTL_TICKS);
         }
-
-        Village village = villageOpt.get();
-        VillageStorageIndex.Snapshot villageSnapshot = VillageStorageIndex.snapshot(level, village);
+        StorageSearchContext searchContext = new StorageSearchContext(level);
         List<Entry> entries = new ArrayList<>();
         Map<ResourceLocation, Integer> itemCounts = new HashMap<>();
+        Set<Long> visited = new HashSet<>();
 
-        for (VillageStorageIndex.Entry villageEntry : villageSnapshot.entries()) {
-            BlockPos pos = villageEntry.pos();
-            if (!StationHandler.isInKitchenWorkArea(kitchenBounds, pos)) continue;
-
+        for (BlockPos pos : candidateStoragePositions(kitchenBounds)) {
+            if (!visited.add(pos.asLong())) continue;
+            StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
+            BlockEntity be = observed.blockEntity();
+            if (be == null) continue;
+            if (!StationHandler.isCookStorageCandidate(level, observed.pos(), be)) continue;
             List<SlotView> slots = new ArrayList<>();
-            boolean hasContainerSlots = villageEntry.slots().stream().anyMatch(slot -> !slot.itemHandler());
-            for (VillageStorageIndex.SlotView villageSlot : villageEntry.slots()) {
-                if (hasContainerSlots && villageSlot.itemHandler()) continue;
-                ItemStack copy = villageSlot.stack().copy();
-                slots.add(new SlotView(pos, villageSlot.container(), villageSlot.itemHandler(), villageSlot.slot(), villageSlot.side(), copy));
+            if (be instanceof Container container) {
+                for (int i = 0; i < container.getContainerSize(); i++) {
+                    ItemStack stack = container.getItem(i);
+                    if (stack.isEmpty()) continue;
+                    slots.add(new SlotView(observed.pos(), container, false, i, null, stack.copy()));
+                }
             }
+            boolean hasContainerSlots = !slots.isEmpty();
+            searchContext.forEachUniqueItemHandler(observed.pos(), (side, handler) -> {
+                if (hasContainerSlots) return;
+                for (int i = 0; i < handler.getSlots(); i++) {
+                    ItemStack stack = handler.getStackInSlot(i);
+                    if (stack.isEmpty()) continue;
+                    slots.add(new SlotView(observed.pos(), null, true, i, side, stack.copy()));
+                }
+            });
             for (SlotView slot : slots) {
                 accumulate(itemCounts, slot.stack());
             }
             if (!slots.isEmpty()) {
-                entries.add(new Entry(pos, List.copyOf(slots)));
+                entries.add(new Entry(observed.pos(), List.copyOf(slots)));
             }
         }
 
         return new Snapshot(List.copyOf(entries), Map.copyOf(itemCounts), gameTime + SNAPSHOT_TTL_TICKS);
+    }
+
+    private static List<BlockPos> candidateStoragePositions(Set<Long> kitchenBounds) {
+        List<BlockPos> positions = new ArrayList<>();
+        Set<Long> seen = new HashSet<>();
+        for (long key : kitchenBounds) {
+            BlockPos base = BlockPos.of(key);
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -2; dz <= 2; dz++) {
+                        BlockPos pos = base.offset(dx, dy, dz);
+                        if (seen.add(pos.asLong())) {
+                            positions.add(pos.immutable());
+                        }
+                    }
+                }
+            }
+        }
+        return List.copyOf(positions);
     }
 
     record Snapshot(List<Entry> entries, Map<ResourceLocation, Integer> itemCounts, long expiresAt) {

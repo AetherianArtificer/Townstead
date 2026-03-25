@@ -153,7 +153,7 @@ public final class IngredientResolver {
             if (StationHandler.isSurfaceFireStation(level, center) && !StationHandler.surfaceHasFreeSlot(level, center)) return false;
         }
         if (stationPos != null && !StationHandler.stationSupportsRecipe(level, center, recipe)) return false;
-        if (recipe.requiresTool() && !knifeAvailable(level, villager, kitchenBounds)) return false;
+        if (recipe.requiresTool() && !recipeToolAvailable(level, villager, recipe, kitchenBounds)) return false;
         if (recipe.containerItemId() != null && recipe.containerCount() > 0) {
             Item containerItem = BuiltInRegistries.ITEM.get(recipe.containerItemId());
             if (containerItem == Items.AIR) return false;
@@ -166,6 +166,9 @@ public final class IngredientResolver {
             if (containers < containersNeeded) {
                 NearbyItemSources.ContainerSlot villageSlot = findKitchenStorageSlot(level, villager, s -> s.is(containerItem), kitchenBounds);
                 if (villageSlot != null) containers += Math.max(1, villageSlot.score());
+            }
+            if (containers < containersNeeded) {
+                containers += countKitchenStorageLive(level, villager, s -> s.is(containerItem), kitchenBounds, containersNeeded - containers);
             }
             if (containers < containersNeeded) return false;
         }
@@ -196,6 +199,12 @@ public final class IngredientResolver {
                     claimed.merge(id, ingredient.count(), Integer::sum);
                     foundAny = true;
                     break;
+                }
+            }
+            if (!foundAny) {
+                int liveAvailable = countIngredientLive(level, villager, ingredient, kitchenBounds, ingredient.count());
+                if (liveAvailable >= ingredient.count()) {
+                    foundAny = true;
                 }
             }
             if (!foundAny) return false;
@@ -242,7 +251,7 @@ public final class IngredientResolver {
             return "";
         }
 
-        if (recipe.requiresTool() && !knifeAvailable(level, villager, kitchenBounds)) {
+        if (recipe.requiresTool() && !recipeToolAvailable(level, villager, recipe, kitchenBounds)) {
             missing.merge("Knife", 1, Integer::sum);
         }
 
@@ -397,8 +406,8 @@ public final class IngredientResolver {
         }
 
         // Knife
-        if (recipe.requiresTool() && !StationHandler.hasKnife(villager.getInventory())) {
-            if (!pullSingleTool(level, villager, StationHandler::isKnifeStack, center, kitchenBounds)) {
+        if (recipe.requiresTool() && !villagerHasRecipeTool(villager, recipe)) {
+            if (!pullSingleTool(level, villager, stack -> ModRecipeRegistry.recipeToolMatches(recipe, stack), center, kitchenBounds)) {
                 return PullResult.failure("Knife");
             }
         }
@@ -414,11 +423,6 @@ public final class IngredientResolver {
                     return PullResult.failure(itemDisplayName(recipeContainerItem));
                 }
             }
-        }
-
-        // Clear cooking pot contents first
-        if (stationType == StationType.HOT_STATION) {
-            StationHandler.clearCookingPotContents(level, villager, stationAnchor);
         }
 
         // Aggregate total needs per item across all ingredient entries
@@ -447,6 +451,18 @@ public final class IngredientResolver {
                 && !recipe.inputs().isEmpty()) {
             RecipeIngredient input = recipe.inputs().get(0);
             Item item = resolveItem(input, inv);
+            if (item == Items.AIR) {
+                for (ResourceLocation id : input.itemIds()) {
+                    Item candidate = BuiltInRegistries.ITEM.get(id);
+                    if (candidate != Items.AIR) {
+                        item = candidate;
+                        break;
+                    }
+                }
+            }
+            if (item == Items.AIR) {
+                return PullResult.failure(ingredientDisplayName(input, null), diagnostics);
+            }
             int ingredientPerLoad = Math.max(1, input.count());
             int freeSlots = StationHandler.surfaceFreeSlotCount(level, stationAnchor);
             ResourceLocation stationId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(stationAnchor).getBlock());
@@ -462,6 +478,17 @@ public final class IngredientResolver {
                 if (!pullSingleIngredient(level, villager, item, center, kitchenBounds)) break;
             }
             if (StationHandler.loadSurfaceFireStation(level, villager, stationAnchor, recipe)) {
+                return PullResult.successResult();
+            }
+            while (StationHandler.surfaceHasFreeSlot(level, stationAnchor)) {
+                ItemStack extracted = extractSingleForStaging(level, villager, item, kitchenBounds);
+                if (extracted.isEmpty()) break;
+                if (!StationHandler.loadSurfaceFireStationItem(level, villager, stationAnchor, recipe, extracted)) {
+                    addToInventoryOrNearbyStorage(level, villager, extracted, center);
+                    break;
+                }
+            }
+            if (!StationHandler.surfaceHasFreeSlot(level, stationAnchor)) {
                 return PullResult.successResult();
             }
             return PullResult.failure(townsteadStationLoadDetail(recipe));
@@ -509,9 +536,11 @@ public final class IngredientResolver {
             }
         }
 
-        // Consume remaining from inventory for non-fire, non-hot stations
-        // For hot stations, ingredients are already staged — skip inventory consume
-        if (stationType != StationType.HOT_STATION) {
+        // Consume remaining from inventory for station types that do not need
+        // task-local handoff. Cutting-board recipes keep the input in inventory
+        // until CookWorkTask moves one item into heldCuttingInput for the actual
+        // board interaction in the COOK phase.
+        if (stationType != StationType.HOT_STATION && stationType != StationType.CUTTING_BOARD) {
             for (RecipeIngredient ingredient : recipe.inputs()) {
                 if (!consumeIngredient(inv, ingredient, ingredient.count())) {
                     return PullResult.failure(ingredientDisplayName(ingredient, null), diagnostics);
@@ -879,7 +908,10 @@ public final class IngredientResolver {
     ) {
         if (NearbyItemSources.pullSingleToInventory(level, villager, 16, 3, s -> s.is(item), ItemStack::getCount, center)) return true;
         NearbyItemSources.ContainerSlot slot = findClaimedKitchenStorageSlot(level, villager, s -> s.is(item), kitchenBounds);
-        if (slot == null) return false;
+        if (slot == null) {
+            slot = findKitchenStorageSlotLive(level, villager, s -> s.is(item), kitchenBounds);
+            if (slot == null) return false;
+        }
         ItemStack extracted = NearbyItemSources.extractOne(level, slot);
         ConsumableTargetClaims.releaseSlot(level, villager.getUUID(), KITCHEN_SLOT_CLAIM_CATEGORY, slot);
         if (extracted.isEmpty()) {
@@ -916,7 +948,10 @@ public final class IngredientResolver {
     ) {
         if (NearbyItemSources.pullSingleToInventory(level, villager, 16, 3, matcher, ItemStack::getCount, center)) return true;
         NearbyItemSources.ContainerSlot slot = findClaimedKitchenStorageSlot(level, villager, matcher, kitchenBounds);
-        if (slot == null) return false;
+        if (slot == null) {
+            slot = findKitchenStorageSlotLive(level, villager, matcher, kitchenBounds);
+            if (slot == null) return false;
+        }
         ItemStack extracted = NearbyItemSources.extractOne(level, slot);
         ConsumableTargetClaims.releaseSlot(level, villager.getUUID(), KITCHEN_SLOT_CLAIM_CATEGORY, slot);
         if (extracted.isEmpty()) {
@@ -1029,63 +1064,146 @@ public final class IngredientResolver {
             java.util.function.Predicate<ItemStack> matcher,
             Set<Long> kitchenBounds
     ) {
-        Optional<Village> villageOpt = FarmersDelightCookAssignment.resolveVillage(villager);
-        if (villageOpt.isEmpty()) return null;
-        Village village = villageOpt.get();
-
         NearbyItemSources.ContainerSlot best = null;
+        StorageSearchContext searchContext = new StorageSearchContext(level);
         Set<Long> visited = new HashSet<>();
-        for (Building building : village.getBuildings().values()) {
-            for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
-                long key = pos.asLong();
-                if (!visited.add(key)) continue;
-                if (!StationHandler.isInKitchenWorkArea(kitchenBounds, pos)) continue;
-                if (!village.isWithinBorder(pos, 0)) continue;
-                if (TownsteadConfig.isProtectedStorage(level.getBlockState(pos))) continue;
-                BlockEntity be = level.getBlockEntity(pos);
-                if (NearbyItemSources.isProcessingContainer(level, pos, be)) continue;
+        for (BlockPos pos : kitchenCandidateStoragePositions(kitchenBounds)) {
+            if (!visited.add(pos.asLong())) continue;
+            StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
+            BlockEntity be = observed.blockEntity();
+            if (be == null) continue;
+            if (!StationHandler.isCookStorageCandidate(level, observed.pos(), be)) continue;
 
-                if (be instanceof Container container) {
-                    for (int i = 0; i < container.getContainerSize(); i++) {
-                        ItemStack stack = container.getItem(i);
-                        if (!matcher.test(stack)) continue;
-                        int score = stack.getCount();
-                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                        if (isBetterSlot(best, dist, score)) {
-                            best = new NearbyItemSources.ContainerSlot(pos.immutable(), container, false, i, score, dist, null);
-                        }
-                    }
-                    continue;
-                }
-
-                IItemHandler handler = StationHandler.getItemHandler(be, level, pos, null);
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.getStackInSlot(i);
-                        if (!matcher.test(stack)) continue;
-                        int score = stack.getCount();
-                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                        if (isBetterSlot(best, dist, score)) {
-                            best = new NearbyItemSources.ContainerSlot(pos.immutable(), null, true, i, score, dist, null);
-                        }
+            if (be instanceof Container container) {
+                for (int i = 0; i < container.getContainerSize(); i++) {
+                    ItemStack stack = container.getItem(i);
+                    if (!matcher.test(stack)) continue;
+                    int score = stack.getCount();
+                    double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+                    if (isBetterSlot(best, dist, score)) {
+                        best = new NearbyItemSources.ContainerSlot(observed.pos().immutable(), container, false, i, score, dist, null);
                     }
                 }
-                for (Direction side : Direction.values()) {
-                    handler = StationHandler.getItemHandler(be, level, pos, side);
-                    if (handler == null) continue;
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.getStackInSlot(i);
-                        if (!matcher.test(stack)) continue;
-                        int score = stack.getCount();
-                        double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                        if (isBetterSlot(best, dist, score)) {
-                            best = new NearbyItemSources.ContainerSlot(pos.immutable(), null, true, i, score, dist, side);
-                        }
+                continue;
+            }
+
+            IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
+            if (handler != null) {
+                for (int i = 0; i < handler.getSlots(); i++) {
+                    ItemStack stack = handler.getStackInSlot(i);
+                    if (!matcher.test(stack)) continue;
+                    int score = stack.getCount();
+                    double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+                    if (isBetterSlot(best, dist, score)) {
+                        best = new NearbyItemSources.ContainerSlot(observed.pos().immutable(), null, true, i, score, dist, null);
+                    }
+                }
+            }
+            for (Direction side : Direction.values()) {
+                handler = searchContext.getItemHandler(observed.pos(), side);
+                if (handler == null) continue;
+                for (int i = 0; i < handler.getSlots(); i++) {
+                    ItemStack stack = handler.getStackInSlot(i);
+                    if (!matcher.test(stack)) continue;
+                    int score = stack.getCount();
+                    double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+                    if (isBetterSlot(best, dist, score)) {
+                        best = new NearbyItemSources.ContainerSlot(observed.pos().immutable(), null, true, i, score, dist, side);
                     }
                 }
             }
         }
         return best;
+    }
+
+    private static int countKitchenStorageLive(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            java.util.function.Predicate<ItemStack> matcher,
+            Set<Long> kitchenBounds,
+            int maxNeeded
+    ) {
+        if (level == null || villager == null || matcher == null || kitchenBounds == null || kitchenBounds.isEmpty() || maxNeeded <= 0) {
+            return 0;
+        }
+        int total = 0;
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        Set<Long> visited = new HashSet<>();
+        for (BlockPos pos : kitchenCandidateStoragePositions(kitchenBounds)) {
+            if (!visited.add(pos.asLong())) continue;
+            StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
+            BlockEntity be = observed.blockEntity();
+            if (be == null) continue;
+            if (!StationHandler.isCookStorageCandidate(level, observed.pos(), be)) continue;
+
+            if (be instanceof Container container) {
+                for (int i = 0; i < container.getContainerSize(); i++) {
+                    ItemStack stack = container.getItem(i);
+                    if (!matcher.test(stack)) continue;
+                    total += stack.getCount();
+                    if (total >= maxNeeded) return total;
+                }
+                continue;
+            }
+
+            IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
+            if (handler != null) {
+                for (int i = 0; i < handler.getSlots(); i++) {
+                    ItemStack stack = handler.getStackInSlot(i);
+                    if (!matcher.test(stack)) continue;
+                    total += stack.getCount();
+                    if (total >= maxNeeded) return total;
+                }
+            }
+            for (Direction side : Direction.values()) {
+                handler = searchContext.getItemHandler(observed.pos(), side);
+                if (handler == null) continue;
+                for (int i = 0; i < handler.getSlots(); i++) {
+                    ItemStack stack = handler.getStackInSlot(i);
+                    if (!matcher.test(stack)) continue;
+                    total += stack.getCount();
+                    if (total >= maxNeeded) return total;
+                }
+            }
+        }
+        return total;
+    }
+
+    private static List<BlockPos> kitchenCandidateStoragePositions(Set<Long> kitchenBounds) {
+        List<BlockPos> positions = new ArrayList<>();
+        Set<Long> seen = new HashSet<>();
+        for (long key : kitchenBounds) {
+            BlockPos base = BlockPos.of(key);
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -2; dz <= 2; dz++) {
+                        BlockPos pos = base.offset(dx, dy, dz);
+                        if (seen.add(pos.asLong())) {
+                            positions.add(pos.immutable());
+                        }
+                    }
+                }
+            }
+        }
+        return List.copyOf(positions);
+    }
+
+    private static int countIngredientLive(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            RecipeIngredient ingredient,
+            Set<Long> kitchenBounds,
+            int needed
+    ) {
+        if (ingredient == null || needed <= 0) return 0;
+        int total = 0;
+        for (ResourceLocation id : ingredient.itemIds()) {
+            Item item = BuiltInRegistries.ITEM.get(id);
+            if (item == Items.AIR) continue;
+            total += countKitchenStorageLive(level, villager, stack -> stack.is(item), kitchenBounds, needed - total);
+            if (total >= needed) return total;
+        }
+        return total;
     }
 
     private static @Nullable NearbyItemSources.ContainerSlot findClaimedKitchenStorageSlot(
@@ -1108,17 +1226,28 @@ public final class IngredientResolver {
 
     // ── Knife / water availability ──
 
-    public static boolean knifeAvailable(ServerLevel level, VillagerEntityMCA villager, Set<Long> kitchenBounds) {
-        if (StationHandler.hasKnife(villager.getInventory())) return true;
-        return findKitchenStorageSlot(level, villager, StationHandler::isKnifeStack, kitchenBounds) != null;
+    public static boolean recipeToolAvailable(ServerLevel level, VillagerEntityMCA villager, DiscoveredRecipe recipe, Set<Long> kitchenBounds) {
+        if (villagerHasRecipeTool(villager, recipe)) return true;
+        if (findKitchenStorageSlot(level, villager, stack -> ModRecipeRegistry.recipeToolMatches(recipe, stack), kitchenBounds) != null) return true;
+        return findKitchenStorageSlotLive(level, villager, stack -> ModRecipeRegistry.recipeToolMatches(recipe, stack), kitchenBounds) != null;
+    }
+
+    private static boolean villagerHasRecipeTool(VillagerEntityMCA villager, DiscoveredRecipe recipe) {
+        SimpleContainer inv = villager.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (ModRecipeRegistry.recipeToolMatches(recipe, inv.getItem(i))) return true;
+        }
+        return false;
     }
 
     public static boolean waterAvailable(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos center, Set<Long> kitchenBounds) {
         if (hasItem(villager.getInventory(), Items.WATER_BUCKET)) return true;
         BlockPos searchCenter = center != null ? center : villager.blockPosition();
         if (findKitchenStorageSlot(level, villager, s -> s.is(Items.WATER_BUCKET), kitchenBounds) != null) return true;
+        if (findKitchenStorageSlotLive(level, villager, s -> s.is(Items.WATER_BUCKET), kitchenBounds) != null) return true;
         boolean hasBucket = hasItem(villager.getInventory(), Items.BUCKET)
-                || findKitchenStorageSlot(level, villager, s -> s.is(Items.BUCKET), kitchenBounds) != null;
+                || findKitchenStorageSlot(level, villager, s -> s.is(Items.BUCKET), kitchenBounds) != null
+                || findKitchenStorageSlotLive(level, villager, s -> s.is(Items.BUCKET), kitchenBounds) != null;
         return hasBucket && hasNearbyWater(level, searchCenter, 24, 4);
     }
 
@@ -1225,7 +1354,11 @@ public final class IngredientResolver {
     }
 
     private static String townsteadStationLoadDetail(DiscoveredRecipe recipe) {
-        if (recipe.stationType() == StationType.FIRE_STATION) return "the station";
+        if (recipe == null) return "that recipe";
+        Item outputItem = BuiltInRegistries.ITEM.get(recipe.output());
+        if (outputItem != Items.AIR) {
+            return itemDisplayName(outputItem);
+        }
         return recipe.output().toString();
     }
 

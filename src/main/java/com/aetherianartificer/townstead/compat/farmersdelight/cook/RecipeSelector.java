@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
@@ -25,6 +24,8 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class RecipeSelector {
+    public record ScoredRecipe(DiscoveredRecipe recipe, double score) {}
+
     private RecipeSelector() {}
 
     public static @Nullable DiscoveredRecipe pickRecipe(
@@ -48,12 +49,95 @@ public final class RecipeSelector {
             boolean excludeBeverages,
             boolean beveragesOnly
     ) {
-        int tier = Math.max(1, FarmersDelightCookAssignment.effectiveRecipeTier(level, villager));
-        return pickRecipe(level, villager, targetStationType, stationPos, kitchenBounds,
-                recipeCooldownUntil, excludeBeverages, beveragesOnly, tier);
+        List<ScoredRecipe> viableRecipes = viableRecipes(
+                level, villager, targetStationType, stationPos, kitchenBounds, recipeCooldownUntil, excludeBeverages, beveragesOnly);
+        if (viableRecipes.isEmpty()) return null;
+        if (viableRecipes.size() == 1) return viableRecipes.get(0).recipe();
+        List<DiscoveredRecipe> viable = viableRecipes.stream().map(ScoredRecipe::recipe).toList();
+        List<Double> scores = viableRecipes.stream().map(ScoredRecipe::score).toList();
+        return weightedRandomPick(viable, scores);
     }
 
-    public static @Nullable DiscoveredRecipe pickRecipe(
+    public static List<ScoredRecipe> candidateRecipes(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            StationType targetStationType,
+            Set<Long> kitchenBounds,
+            Map<ResourceLocation, Long> recipeCooldownUntil,
+            boolean excludeBeverages,
+            boolean beveragesOnly
+    ) {
+        if (targetStationType == null) return List.of();
+        List<DiscoveredRecipe> recipes;
+        if (beveragesOnly) {
+            recipes = ModRecipeRegistry.getBeverageRecipesForStation(level, targetStationType);
+        } else if (excludeBeverages) {
+            recipes = ModRecipeRegistry.getFoodRecipesForStation(level, targetStationType);
+        } else {
+            recipes = ModRecipeRegistry.getRecipesForStation(level, targetStationType);
+        }
+        if (recipes.isEmpty()) return List.of();
+
+        List<DiscoveredRecipe> planningRecipes = ModRecipeRegistry.getRecipes(level).stream()
+                .filter(r -> beveragesOnly ? r.beverage() : (!excludeBeverages || !r.beverage()))
+                .toList();
+
+        Set<ResourceLocation> trackedIds = new HashSet<>();
+        Map<ResourceLocation, Integer> chainDemand = new HashMap<>();
+        for (DiscoveredRecipe recipe : planningRecipes) {
+            trackedIds.add(recipe.output());
+            if (recipe.containerItemId() != null) trackedIds.add(recipe.containerItemId());
+            for (RecipeIngredient ing : recipe.inputs()) {
+                for (ResourceLocation id : ing.itemIds()) {
+                    trackedIds.add(id);
+                    chainDemand.merge(id, 1, Integer::sum);
+                }
+            }
+        }
+
+        KitchenStorageIndex.Snapshot kitchenSnapshot = KitchenStorageIndex.snapshot(level, villager, kitchenBounds);
+        Map<ResourceLocation, Integer> outputStock = IngredientResolver.buildSupplySnapshot(level, villager, trackedIds, kitchenBounds, kitchenSnapshot);
+        boolean waterAvailable = IngredientResolver.waterAvailable(level, villager, null, kitchenBounds);
+        long cookSeed = villager.getUUID().getLeastSignificantBits();
+        long now = level.getGameTime();
+        List<ScoredRecipe> candidates = new ArrayList<>();
+        for (DiscoveredRecipe recipe : recipes) {
+            Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
+            if (cooldownUntil != null && cooldownUntil > now) continue;
+            Map<ResourceLocation, Integer> virtualSupply = new HashMap<>(outputStock);
+            boolean candidatePlanable = IngredientResolver.canPlanWithVirtual(
+                    recipe,
+                    virtualSupply,
+                    !recipe.requiresTool() || IngredientResolver.recipeToolAvailable(level, villager, recipe, kitchenBounds),
+                    waterAvailable
+            );
+            double chainOpportunity = 0.0d;
+            if (candidatePlanable) {
+                IngredientResolver.applyVirtual(recipe, virtualSupply);
+                chainOpportunity = computeChainOpportunity(
+                        planningRecipes,
+                        recipe,
+                        outputStock,
+                        virtualSupply,
+                        level,
+                        villager,
+                        kitchenBounds,
+                        waterAvailable
+                );
+            }
+            double score = scoreRecipe(
+                    recipe,
+                    outputStock.getOrDefault(recipe.output(), 0),
+                    chainDemand.getOrDefault(recipe.output(), 0),
+                    chainOpportunity,
+                    cookSeed
+            );
+            candidates.add(new ScoredRecipe(recipe, score));
+        }
+        return List.copyOf(candidates);
+    }
+
+    public static List<ScoredRecipe> viableRecipes(
             ServerLevel level,
             VillagerEntityMCA villager,
             StationType targetStationType,
@@ -61,67 +145,28 @@ public final class RecipeSelector {
             Set<Long> kitchenBounds,
             Map<ResourceLocation, Long> recipeCooldownUntil,
             boolean excludeBeverages,
-            boolean beveragesOnly,
-            int tier
+            boolean beveragesOnly
     ) {
-        if (targetStationType == null) return null;
-        List<DiscoveredRecipe> recipes;
-        if (beveragesOnly) {
-            recipes = ModRecipeRegistry.getBeverageRecipesForStation(level, targetStationType, tier);
-        } else if (excludeBeverages) {
-            recipes = ModRecipeRegistry.getFoodRecipesForStation(level, targetStationType, tier);
-        } else {
-            recipes = ModRecipeRegistry.getRecipesForStation(level, targetStationType, tier);
-        }
-        if (recipes.isEmpty()) return null;
-
-        // Build output stock snapshot for scarcity scoring
-        Set<ResourceLocation> trackedIds = new HashSet<>();
-        Map<ResourceLocation, Integer> chainDemand = new HashMap<>();
-        for (DiscoveredRecipe recipe : recipes) {
-            trackedIds.add(recipe.output());
-            for (RecipeIngredient ing : recipe.inputs()) {
-                for (ResourceLocation id : ing.itemIds()) {
-                    chainDemand.merge(id, 1, Integer::sum);
-                }
-            }
-        }
+        if (targetStationType == null) return List.of();
+        List<ScoredRecipe> candidates = candidateRecipes(
+                level, villager, targetStationType, kitchenBounds, recipeCooldownUntil, excludeBeverages, beveragesOnly);
+        if (candidates.isEmpty()) return List.of();
         KitchenStorageIndex.Snapshot kitchenSnapshot = KitchenStorageIndex.snapshot(level, villager, kitchenBounds);
-        Map<ResourceLocation, Integer> outputStock = IngredientResolver.buildSupplySnapshot(level, villager, trackedIds, kitchenBounds, kitchenSnapshot);
-
-        // Per-cook jitter seed
-        long cookSeed = villager.getUUID().getLeastSignificantBits();
-
-        // Collect all viable recipes with scores
-        long now = level.getGameTime();
-        List<DiscoveredRecipe> viable = new ArrayList<>();
-        List<Double> scores = new ArrayList<>();
-        for (DiscoveredRecipe recipe : recipes) {
-            Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
-            if (cooldownUntil != null && cooldownUntil > now) continue;
+        List<ScoredRecipe> viable = new ArrayList<>();
+        for (ScoredRecipe candidate : candidates) {
+            DiscoveredRecipe recipe = candidate.recipe();
             if (stationPos != null && !StationHandler.stationSupportsRecipe(level, stationPos, recipe)) continue;
             if (!IngredientResolver.canFulfill(level, villager, recipe, stationPos, kitchenBounds, kitchenSnapshot)) continue;
-            double score = scoreRecipe(
-                    recipe,
-                    outputStock.getOrDefault(recipe.output(), 0),
-                    chainDemand.getOrDefault(recipe.output(), 0),
-                    cookSeed
-            );
-            viable.add(recipe);
-            scores.add(score);
+            viable.add(candidate);
         }
-        if (viable.isEmpty()) return null;
-        if (viable.size() == 1) return viable.get(0);
-
-        // Weighted random: convert scores to probabilities via softmax-like weighting
-        // Higher scored recipes are much more likely but not guaranteed
-        return weightedRandomPick(viable, scores);
+        return List.copyOf(viable);
     }
 
     public static double scoreRecipe(
             DiscoveredRecipe recipe,
             int currentStock,
             int chainDemand,
+            double chainOpportunity,
             long cookSeed
     ) {
         if (recipe.purification()) {
@@ -133,16 +178,7 @@ public final class RecipeSelector {
             // so scarcity will be the primary driver, competing fairly with other beverages.
         }
 
-        // ── Primary factor: least-stocked items scored highest ──
-        // Items with 0 stock get maximum scarcity bonus (~30 points).
-        // Each existing item in stock reduces the bonus steeply.
-        // This ensures cooks prioritize variety over repeating the same dish.
-        double scarcityBonus = Math.max(0.0d, 30.0d - currentStock * 2.5d);
-
-        // Chain demand: if this output is an ingredient for other recipes, boost it
-        if (chainDemand > 0) scarcityBonus += Math.min(8.0d, chainDemand * 1.5d);
-
-        // ── Secondary factor: recipe quality (nutrition, complexity) ──
+        // ── Primary factor: recipe quality (nutrition, meal value, complexity) ──
         Item outputItem = BuiltInRegistries.ITEM.get(recipe.output());
         ItemStack outputStack = outputItem == Items.AIR ? ItemStack.EMPTY : new ItemStack(outputItem, recipe.outputCount());
         //? if >=1.21 {
@@ -158,21 +194,33 @@ public final class RecipeSelector {
         double saturation = food != null ? food.getSaturationModifier() : 0.0d;
         *///?}
 
-        // Quality score is secondary — kept small relative to scarcity
-        double qualityScore = nutrition * 0.5d + saturation * 1.0d;
-        qualityScore += recipe.outputCount() * 0.15d;
-        qualityScore += Math.max(0, recipe.tier() - 1) * 0.75d;
+        return scoreRecipeWithFoodStats(recipe, nutrition, saturation, currentStock, chainDemand, chainOpportunity, cookSeed);
+    }
 
-        // Small complexity cost
-        qualityScore -= recipe.inputs().size() * 0.1d;
-        if (recipe.requiresTool()) qualityScore -= 0.1d;
-
-        // ── Combine: scarcity dominates, quality is tiebreaker ──
-        double score = scarcityBonus + qualityScore;
-
-        // Per-cook jitter: uses villager UUID to differentiate cooks
-        score += perCookJitter(cookSeed, recipe.id()) * 3.0d;
-        return score;
+    static double scoreRecipeWithFoodStats(
+            DiscoveredRecipe recipe,
+            double nutrition,
+            double saturation,
+            int currentStock,
+            int chainDemand,
+            double chainOpportunity,
+            long cookSeed
+    ) {
+        return RecipeScoring.scoreRecipeModel(
+                recipe.beverage(),
+                recipe.inputs().size(),
+                recipe.cookTimeTicks(),
+                recipe.requiresTool(),
+                recipe.containerCount(),
+                recipe.tier(),
+                recipe.id().hashCode(),
+                nutrition,
+                saturation,
+                currentStock,
+                chainDemand,
+                chainOpportunity,
+                cookSeed
+        );
     }
 
     public static double recipeCooldownPenalty(
@@ -189,14 +237,15 @@ public final class RecipeSelector {
     }
 
     private static DiscoveredRecipe weightedRandomPick(List<DiscoveredRecipe> viable, List<Double> scores) {
-        // Shift scores so minimum is 0, then use exponential weighting
-        double minScore = Double.MAX_VALUE;
-        for (double s : scores) minScore = Math.min(minScore, s);
+        double maxScore = Double.NEGATIVE_INFINITY;
+        for (double s : scores) maxScore = Math.max(maxScore, s);
         double[] weights = new double[scores.size()];
         double totalWeight = 0;
         for (int i = 0; i < scores.size(); i++) {
-            // Temperature controls randomness: lower = more deterministic
-            weights[i] = Math.exp((scores.get(i) - minScore) * 0.25);
+            // Keep choices varied, but heavily bias toward the better-scored dishes.
+            double delta = scores.get(i) - maxScore;
+            weights[i] = Math.exp(delta * 0.20d);
+            weights[i] = Math.max(weights[i], 0.02d);
             totalWeight += weights[i];
         }
         double roll = ThreadLocalRandom.current().nextDouble() * totalWeight;
@@ -208,10 +257,48 @@ public final class RecipeSelector {
         return viable.get(viable.size() - 1);
     }
 
-    private static double perCookJitter(long cookSeed, ResourceLocation recipeId) {
-        long mix = cookSeed ^ recipeId.hashCode();
-        long bucket = Math.floorMod(mix, 1000L);
-        return bucket / 1000.0d;
+    private static double computeChainOpportunity(
+            List<DiscoveredRecipe> planningRecipes,
+            DiscoveredRecipe rootRecipe,
+            Map<ResourceLocation, Integer> baseSupply,
+            Map<ResourceLocation, Integer> afterSupply,
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            Set<Long> kitchenBounds,
+            boolean waterAvailable
+    ) {
+        double bonus = 0.0d;
+        for (DiscoveredRecipe followup : planningRecipes) {
+            if (followup.id().equals(rootRecipe.id())) continue;
+            boolean toolAvailable = !followup.requiresTool()
+                    || IngredientResolver.recipeToolAvailable(level, villager, followup, kitchenBounds);
+            boolean before = IngredientResolver.canPlanWithVirtual(followup, baseSupply, toolAvailable, waterAvailable);
+            boolean after = IngredientResolver.canPlanWithVirtual(followup, afterSupply, toolAvailable, waterAvailable);
+            if (!before && after) {
+                bonus += chainRecipeValue(followup);
+            }
+        }
+        return bonus;
+    }
+
+    private static double chainRecipeValue(DiscoveredRecipe recipe) {
+        Item outputItem = BuiltInRegistries.ITEM.get(recipe.output());
+        ItemStack outputStack = outputItem == Items.AIR ? ItemStack.EMPTY : new ItemStack(outputItem, recipe.outputCount());
+        //? if >=1.21 {
+        FoodProperties food = outputStack.isEmpty() ? null : outputStack.get(DataComponents.FOOD);
+        //?} else {
+        /*FoodProperties food = outputStack.isEmpty() ? null : outputStack.getFoodProperties(null);
+        *///?}
+        //? if >=1.21 {
+        double nutrition = food != null ? food.nutrition() : 0.0d;
+        double saturation = food != null ? food.saturation() : 0.0d;
+        //?} else {
+        /*double nutrition = food != null ? food.getNutrition() : 0.0d;
+        double saturation = food != null ? food.getSaturationModifier() : 0.0d;
+        *///?}
+        double value = nutrition * 1.5d + saturation * 3.0d + recipe.inputs().size() * 0.75d;
+        if (recipe.beverage()) value += 4.0d;
+        return Math.max(1.0d, value);
     }
 
 }

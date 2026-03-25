@@ -281,18 +281,25 @@ public final class WorkBuildingNav {
 
         List<StationSlot> stations = new ArrayList<>();
         Map<Long, List<BlockPos>> stationStands = new HashMap<>();
+        Set<Long> seenStationAnchors = new HashSet<>();
         for (long key : ownedBounds) {
-            BlockPos pos = BlockPos.of(key);
+            BlockPos rawPos = BlockPos.of(key);
+            BlockPos pos = StationHandler.canonicalStationAnchor(level, rawPos);
+            if (!seenStationAnchors.add(pos.asLong())) continue;
             ModRecipeRegistry.StationType type = StationHandler.stationType(level, pos);
             if (type == null) continue;
             int capacity = switch (type) {
-                case FIRE_STATION -> StationHandler.surfaceFreeSlotCount(level, pos);
+                case FIRE_STATION -> StationHandler.surfaceDiscoveryCapacity(level, pos);
                 case HOT_STATION -> 1;
                 case CUTTING_BOARD -> 1;
             };
-            if (capacity <= 0) continue;
+            if (capacity <= 0) {
+                continue;
+            }
             List<BlockPos> stands = WorkPathing.standCandidatesAround(level, pos, standableTiles);
-            if (stands.isEmpty()) continue;
+            if (stands.isEmpty()) {
+                continue;
+            }
             stations.add(new StationSlot(pos.immutable(), type,
                     net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()),
                     capacity));
@@ -305,7 +312,9 @@ public final class WorkBuildingNav {
             List<BlockPos> kept = entry.getValue().stream()
                     .filter(pos -> walkable.contains(pos.asLong()))
                     .toList();
-            if (!kept.isEmpty()) filteredStands.put(entry.getKey(), kept);
+            if (!kept.isEmpty()) {
+                filteredStands.put(entry.getKey(), kept);
+            }
         }
         List<BlockPos> entryTargets = computeEntryTargets(bounds, walkable);
         if (entryTargets.isEmpty()) {
@@ -313,6 +322,10 @@ public final class WorkBuildingNav {
         }
         List<BlockPos> approachTargets = computeApproachTargets(level, bounds, walkable);
         return new Snapshot(Set.copyOf(ownedBounds), Set.copyOf(walkable), List.copyOf(entryTargets), List.copyOf(approachTargets), Map.copyOf(filteredStands), List.copyOf(stations), gameTime + SNAPSHOT_TTL_TICKS);
+    }
+
+    private static String formatPos(BlockPos pos) {
+        return pos.getX() + "," + pos.getY() + "," + pos.getZ();
     }
 
     private static Set<Long> floodWalkable(

@@ -112,15 +112,33 @@ public final class ModRecipeRegistry {
         return cachedRecipes;
     }
 
+    public static List<DiscoveredRecipe> getRecipesForStation(ServerLevel level, StationType stationType) {
+        return getRecipes(level).stream()
+                .filter(r -> r.stationType() == stationType)
+                .toList();
+    }
+
     public static List<DiscoveredRecipe> getRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
         return getRecipes(level).stream()
                 .filter(r -> r.stationType() == stationType && r.tier() <= maxTier)
                 .toList();
     }
 
+    public static List<DiscoveredRecipe> getFoodRecipesForStation(ServerLevel level, StationType stationType) {
+        return getRecipes(level).stream()
+                .filter(r -> r.stationType() == stationType && !r.beverage())
+                .toList();
+    }
+
     public static List<DiscoveredRecipe> getFoodRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
         return getRecipes(level).stream()
                 .filter(r -> r.stationType() == stationType && r.tier() <= maxTier && !r.beverage())
+                .toList();
+    }
+
+    public static List<DiscoveredRecipe> getBeverageRecipesForStation(ServerLevel level, StationType stationType) {
+        return getRecipes(level).stream()
+                .filter(r -> r.stationType() == stationType && r.beverage())
                 .toList();
     }
 
@@ -529,6 +547,23 @@ public final class ModRecipeRegistry {
             }
         } catch (Throwable ignored) {}
         return true; // Default: assume cutting board recipes need a knife
+    }
+
+    public static boolean recipeToolMatches(DiscoveredRecipe recipe, ItemStack stack) {
+        if (recipe == null || !recipe.requiresTool() || stack == null || stack.isEmpty()) return false;
+        Object source = recipe.source();
+        //? if >=1.21 {
+        if (source instanceof RecipeHolder<?> holder) source = holder.value();
+        //?}
+        if (!(source instanceof Recipe<?> mcRecipe)) return false;
+        try {
+            Method m = mcRecipe.getClass().getMethod("getTool");
+            Object value = m.invoke(mcRecipe);
+            if (value instanceof net.minecraft.world.item.crafting.Ingredient toolIng) {
+                return !toolIng.isEmpty() && toolIng.test(stack);
+            }
+        } catch (Throwable ignored) {}
+        return StationHandler.isKnifeStack(stack);
     }
 
     private static List<RecipeIngredient> extractIngredients(Recipe<?> recipe) {

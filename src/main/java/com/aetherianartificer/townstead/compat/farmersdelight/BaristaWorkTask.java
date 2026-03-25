@@ -4,7 +4,6 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
 import com.aetherianartificer.townstead.ai.work.WorkMovement;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
 import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
 import com.aetherianartificer.townstead.ai.work.WorkTarget;
@@ -22,19 +21,14 @@ import com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelecto
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler.StationSlot;
 import com.aetherianartificer.townstead.hunger.CookProgressData;
-import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
-import com.aetherianartificer.townstead.storage.StorageSearchContext;
-import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
@@ -80,10 +74,11 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     // ── State machine ──
 
-    private enum BaristaState { PATH_TO_WORKSITE, PATH_TO_STATION, SELECT_RECIPE, GATHER, BREW, COLLECT, COLLECT_WAIT }
+    private enum BaristaState { PATH_TO_WORKSITE, PATH_TO_STATION, RECONCILE_STATION, SELECT_RECIPE, GATHER, BREW, COLLECT, COLLECT_WAIT }
     private enum BlockedReason { NONE, NO_CAFE, NO_INGREDIENTS, NO_RECIPE, NO_STORAGE, UNREACHABLE }
 
     private static final int COLLECT_WAIT_MAX_TICKS = 40;
+    private static final long STATION_SESSION_LEASE_TICKS = MAX_DURATION + 40L;
 
     private BaristaState state = BaristaState.PATH_TO_WORKSITE;
     private long stateEnteredTick;
@@ -160,6 +155,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         releaseStationClaim(villager, stationAnchor);
+        releaseStationSession(level, villager, stationAnchor);
         stationAnchor = null;
         standPos = null;
         stationType = null;
@@ -193,11 +189,13 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (gameTime - stateEnteredTick > STATE_TIMEOUT_TICKS
                 && state != BaristaState.PATH_TO_WORKSITE
                 && state != BaristaState.PATH_TO_STATION
+                && state != BaristaState.RECONCILE_STATION
                 && state != BaristaState.BREW
                 && state != BaristaState.COLLECT_WAIT) {
             debugChat(level, villager, "STATE:timeout in " + state.name() + ", resetting");
             transitionToNavigationState(villager, gameTime);
             releaseStationClaim(villager, stationAnchor);
+            releaseStationSession(level, villager, stationAnchor);
             stationAnchor = null;
             activeRecipe = null;
             recipeAttempts = 0;
@@ -211,6 +209,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         switch (state) {
             case PATH_TO_WORKSITE -> tickPathToWorksite(level, villager, gameTime);
             case PATH_TO_STATION -> tickPathToStation(level, villager, gameTime);
+            case RECONCILE_STATION -> tickReconcileStation(level, villager, gameTime);
             case SELECT_RECIPE -> tickSelectRecipe(level, villager, gameTime);
             case GATHER -> tickGather(level, villager, gameTime);
             case BREW -> tickBrew(level, villager, gameTime);
@@ -223,6 +222,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private void tickPathToWorksite(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         releaseStationClaim(villager, stationAnchor);
+        releaseStationSession(level, villager, stationAnchor);
         stationAnchor = null;
         standPos = null;
         stationType = null;
@@ -312,45 +312,22 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         stations = stations.stream()
                 .filter(s -> s.type() == StationType.HOT_STATION || s.type() == StationType.FIRE_STATION)
                 .toList();
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
 
-        // Partition stations into: fresh (not tried, not claimed), tried, occupied
-        List<StationSlot> fresh = new ArrayList<>();
-        boolean anyOccupied = false;
-        for (StationSlot slot : stations) {
-            if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) {
-                anyOccupied = true;
-                continue;
-            }
-            if (!usedStations.contains(slot.pos().asLong())) {
-                fresh.add(slot);
-            }
-        }
-
-        if (fresh.isEmpty()) {
-            if (anyOccupied && usedStations.isEmpty()) {
-                debugChat(level, villager, "ACQUIRE:all stations occupied, waiting");
-                idleUntilTick = gameTime + OCCUPIED_BACKOFF;
-                setBlocked(level, villager, gameTime, BlockedReason.UNREACHABLE, "");
-                return;
-            }
-            debugChat(level, villager, "ACQUIRE:all stations tried, resetting");
+        ProducerStationIndex.Selection best = ProducerStationIndex.chooseBaristaSelection(
+                level, villager, cafeSnapshot, cafeBounds, usedStations, recipeCooldownUntil);
+        if (best == null) {
+            debugChat(level, villager, "ACQUIRE:no usable station/recipe pair, resetting");
             usedStations.clear();
             recipeAttempts = 0;
             idleUntilTick = gameTime + IDLE_BACKOFF;
             return;
         }
 
-        StationSlot best = fresh.get(ThreadLocalRandom.current().nextInt(fresh.size()));
-
-        BlockPos stand = findCafeStandingPosition(level, villager, best.pos(), cafeSnapshot);
-        if (stand == null) {
-            usedStations.add(best.pos().asLong());
-            return;
-        }
-
-        stationAnchor = best.pos();
-        stationType = best.type();
-        standPos = stand;
+        stationAnchor = best.station().pos();
+        stationType = best.station().type();
+        standPos = best.standPos();
+        activeRecipe = best.recipe();
 
         long claimUntil = gameTime + MAX_DURATION + 20L;
         CookStationClaims.tryClaim(level, villager.getUUID(), stationAnchor, claimUntil);
@@ -358,7 +335,56 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
         debugChat(level, villager, "ACQUIRE:" + stationType.name()
                 + " at " + stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ());
-        transition(BaristaState.SELECT_RECIPE, gameTime);
+        transition(BaristaState.RECONCILE_STATION, gameTime);
+    }
+
+    private void tickReconcileStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (!ensureNearStation(level, villager, gameTime)) return;
+        if (stationAnchor == null || stationType == null) {
+            transition(BaristaState.PATH_TO_STATION, gameTime);
+            return;
+        }
+
+        ProducerStationSessions.SessionSnapshot session = ProducerStationSessions.snapshot(level, stationAnchor);
+        if (activeRecipe == null && session != null) {
+            activeRecipe = findSessionRecipe(level, villager, session, stationType);
+        }
+
+        ProducerStationState stationState = StationHandler.classifyProducerStation(
+                level, villager, stationAnchor, stationType, activeRecipe, session);
+
+        switch (stationState) {
+            case EMPTY_READY -> transition(activeRecipe != null ? BaristaState.GATHER : BaristaState.SELECT_RECIPE, gameTime);
+            case OWNED_STAGED, COMPATIBLE_PARTIAL -> {
+                if (activeRecipe != null) {
+                    brewDoneTick = Math.max(gameTime + 10L, brewDoneTick);
+                    refreshStationSession(level, villager, gameTime);
+                    transition(BaristaState.BREW, gameTime);
+                } else {
+                    transition(BaristaState.SELECT_RECIPE, gameTime);
+                }
+            }
+            case FINISHED_OUTPUT -> transition(BaristaState.COLLECT, gameTime);
+            case FOREIGN_CONTENTS -> {
+                Set<Long> cafeBounds = activeCafeStorageBounds(villager);
+                boolean cleaned = StationHandler.cleanupForeignProducerStation(level, villager, stationAnchor, stationType, cafeBounds);
+                if (cleaned && !StationHandler.stationHasAnyContents(level, stationAnchor, stationType)) {
+                    transition(BaristaState.SELECT_RECIPE, gameTime);
+                } else {
+                    usedStations.add(stationAnchor.asLong());
+                    releaseStationClaim(villager, stationAnchor);
+                    releaseStationSession(level, villager, stationAnchor);
+                    stationAnchor = null;
+                    standPos = null;
+                    stationType = null;
+                    activeRecipe = null;
+                    transition(BaristaState.PATH_TO_STATION, gameTime);
+                }
+            }
+            case BLOCKED -> {
+                abandonCurrentStation(level, villager, gameTime, true);
+            }
+        }
     }
 
     // ── State: SELECT_RECIPE ──
@@ -372,18 +398,16 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         }
 
         Set<Long> cafeBounds = activeCafeStorageBounds(villager);
-        int tier = Math.max(1, FarmersDelightBaristaAssignment.effectiveRecipeTier(level, villager));
         DiscoveredRecipe recipe = RecipeSelector.pickRecipe(
                 level, villager, stationType, stationAnchor, cafeBounds, recipeCooldownUntil,
-                false, true, tier);
+                false, true);
 
         if (recipe == null) {
-            int available = ModRecipeRegistry.getBeverageRecipesForStation(level, stationType, tier).size();
+            int available = ModRecipeRegistry.getBeverageRecipesForStation(level, stationType).size();
             debugChat(level, villager, "SELECT:no beverage recipe for " + stationType.name()
-                    + " (tier=" + tier + ", candidates=" + available + "), rotating");
-            usedStations.add(stationAnchor.asLong());
-            setBlocked(level, villager, gameTime, BlockedReason.NO_RECIPE, townstead$stationDisplayName(stationType));
-            transition(BaristaState.PATH_TO_STATION, gameTime);
+                    + " (candidates=" + available + "), rotating");
+            setBlocked(level, villager, gameTime, BlockedReason.NO_RECIPE, "");
+            abandonCurrentStation(level, villager, gameTime, true);
             return;
         }
 
@@ -447,9 +471,8 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
             recipeAttempts++;
             if (recipeAttempts >= MAX_RECIPE_ATTEMPTS) {
                 debugChat(level, villager, "GATHER:max attempts, rotating station");
-                usedStations.add(stationAnchor.asLong());
                 idleUntilTick = gameTime + IDLE_BACKOFF;
-                transitionToNavigationState(villager, gameTime);
+                abandonCurrentStation(level, villager, gameTime, true);
             } else {
                 transition(BaristaState.SELECT_RECIPE, gameTime);
             }
@@ -461,6 +484,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
             debugChat(level, villager, "GATHER:pot=" + StationHandler.describeCookingPotInputs(level, stationAnchor));
         }
         brewDoneTick = gameTime + activeRecipe.cookTimeTicks();
+        refreshStationSession(level, villager, gameTime);
         playSound(level);
         transition(BaristaState.BREW, gameTime);
     }
@@ -496,6 +520,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
         if (gameTime < brewDoneTick) return;
         if (stationType == StationType.HOT_STATION && !hotStationOutputCollectible(level)) {
+            refreshStationSession(level, villager, gameTime);
             return;
         }
 
@@ -506,11 +531,6 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
     // ── State: COLLECT ──
 
     private void tickCollect(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (activeRecipe == null) {
-            transition(BaristaState.SELECT_RECIPE, gameTime);
-            return;
-        }
-
         Set<Long> cafeBounds = activeCafeStorageBounds(villager);
         Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
         boolean collected = false;
@@ -521,7 +541,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         }
 
         // Extract output from hot station (cooking pot)
-        if (stationType == StationType.HOT_STATION && stationAnchor != null) {
+        if (stationType == StationType.HOT_STATION && stationAnchor != null && activeRecipe != null) {
             Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
             if (outputItem != Items.AIR) {
                 int extracted = StationHandler.extractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
@@ -540,6 +560,15 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
             }
         }
 
+        if (stationType == StationType.HOT_STATION && stationAnchor != null && activeRecipe == null) {
+            List<ItemStack> outputs = StationHandler.extractMatchingStationStacks(level, stationAnchor, outputIds);
+            for (ItemStack output : outputs) {
+                IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, cafeBounds);
+                if (!output.isEmpty()) villager.getInventory().addItem(output);
+                collected = true;
+            }
+        }
+
         // For fire station, if nothing was collected yet, wait for items to land
         if (stationType == StationType.FIRE_STATION && !collected) {
             transition(BaristaState.COLLECT_WAIT, gameTime);
@@ -553,7 +582,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private void tickCollectWait(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (activeRecipe == null) {
-            transition(BaristaState.SELECT_RECIPE, gameTime);
+            transition(BaristaState.RECONCILE_STATION, gameTime);
             return;
         }
 
@@ -668,14 +697,14 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         debugChat(level, villager, "COLLECT:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
         activeRecipe = null;
         stagedInputs.clear();
-
-        if (stationAnchor != null) usedStations.add(stationAnchor.asLong());
+        releaseStationClaim(villager, stationAnchor);
+        releaseStationSession(level, villager, stationAnchor);
 
         // Station rotation: 50% chance to rotate
         if (ThreadLocalRandom.current().nextDouble() < 0.5d) {
             transition(BaristaState.PATH_TO_STATION, gameTime);
         } else {
-            transition(BaristaState.SELECT_RECIPE, gameTime);
+            transition(BaristaState.RECONCILE_STATION, gameTime);
         }
     }
 
@@ -751,6 +780,20 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private void transitionToNavigationState(VillagerEntityMCA villager, long gameTime) {
         transition(isVillagerInActiveCafe(villager) ? BaristaState.PATH_TO_STATION : BaristaState.PATH_TO_WORKSITE, gameTime);
+    }
+
+    private void abandonCurrentStation(ServerLevel level, VillagerEntityMCA villager, long gameTime, boolean markUsed) {
+        if (markUsed && stationAnchor != null) {
+            usedStations.add(stationAnchor.asLong());
+        }
+        releaseStationClaim(villager, stationAnchor);
+        releaseStationSession(level, villager, stationAnchor);
+        stationAnchor = null;
+        standPos = null;
+        stationType = null;
+        activeRecipe = null;
+        stagedInputs.clear();
+        transitionToNavigationState(villager, gameTime);
     }
 
     private void resetWorksiteTargeting() {
@@ -869,6 +912,39 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         CookStationClaims.release(level, villager.getUUID(), pos);
     }
 
+    private void releaseStationSession(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos) {
+        if (level == null || villager == null || pos == null) return;
+        ProducerStationSessions.release(level, villager.getUUID(), pos);
+    }
+
+    private void refreshStationSession(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (level == null || villager == null || stationAnchor == null || activeRecipe == null) return;
+        ProducerStationSessions.beginOrRefresh(
+                level,
+                villager.getUUID(),
+                stationAnchor,
+                activeRecipe.id(),
+                activeRecipe.output(),
+                activeRecipe.outputCount(),
+                stagedInputs,
+                gameTime + STATION_SESSION_LEASE_TICKS
+        );
+    }
+
+    private @Nullable DiscoveredRecipe findSessionRecipe(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            @Nullable ProducerStationSessions.SessionSnapshot session,
+            @Nullable StationType type
+    ) {
+        if (level == null || session == null || type == null || session.recipeOutputId() == null) return null;
+        for (DiscoveredRecipe recipe : ModRecipeRegistry.getBeverageRecipesForStation(level, type)) {
+            if (session.recipeId() != null && session.recipeId().equals(recipe.id())) return recipe;
+            if (session.recipeOutputId().equals(recipe.output())) return recipe;
+        }
+        return null;
+    }
+
     // ── XP ──
 
     private void awardBaristaXP(ServerLevel level, VillagerEntityMCA villager) {
@@ -904,7 +980,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
                     + " pos=" + pos.getX() + "," + pos.getY() + "," + pos.getZ()
                     + (itemName == null || itemName.isBlank() ? "" : " detail=" + itemName));
         }
-        if (reason == BlockedReason.NONE) return;
+        if (reason == BlockedReason.NONE || reason == BlockedReason.NO_RECIPE) return;
         if (!TownsteadConfig.isBaristaRequestChatEnabled()) return;
         if (gameTime < nextRequestTick) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
@@ -923,8 +999,8 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
             }
             case NO_STORAGE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_storage/" + (1 + level.random.nextInt(4)));
             case UNREACHABLE -> villager.sendChatToAllAround("dialogue.chat.barista_request.unreachable/" + (1 + level.random.nextInt(4)));
-            case NO_RECIPE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_recipe_item", itemName.isBlank() ? "that station" : itemName);
             case NONE -> {}
+            case NO_RECIPE -> {}
         }
         nextRequestTick = gameTime + Math.max(200, TownsteadConfig.BARISTA_REQUEST_INTERVAL_TICKS.get());
     }
@@ -932,7 +1008,9 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
     // ── Reset ──
 
     private void clearAll(VillagerEntityMCA villager, long gameTime) {
+        ServerLevel level = (ServerLevel) villager.level();
         releaseStationClaim(villager, stationAnchor);
+        releaseStationSession(level, villager, stationAnchor);
         stationAnchor = null;
         standPos = null;
         stationType = null;
@@ -1002,61 +1080,11 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
     // ── Debug ──
 
     private void debugChat(ServerLevel level, VillagerEntityMCA villager, String msg) {
-        if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
-        player.sendSystemMessage(Component.literal("[Barista:" + villager.getName().getString() + "] " + msg));
+        // Production no-op.
     }
 
     private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (gameTime < nextDebugTick) return;
-        if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
-        String name = villager.getName().getString();
-        String id = villager.getUUID().toString();
-        if (id.length() > 8) id = id.substring(0, 8);
-        String recipe = activeRecipe == null ? "none" : activeRecipe.output().toString();
-        String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();
-        String station = stationType == null ? "none" : stationType.name().toLowerCase();
-        String idleInfo = gameTime < idleUntilTick ? " idle=" + (idleUntilTick - gameTime) : "";
-        StorageSearchContext.Snapshot storageSnapshot = StorageSearchContext.Profiler.snapshot();
-        VillageAiBudget.Snapshot budgetSnapshot = VillageAiBudget.snapshot();
-        WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
-        ConsumableTargetClaims.Snapshot claimSnapshot = ConsumableTargetClaims.snapshot();
-        WorkBuildingNav.Snapshot cafeSnapshot = activeCafeSnapshot(level, villager);
-        Optional<Building> assignedCafe = FarmersDelightBaristaAssignment.assignedCafe(level, villager);
-        String assignedCafeDesc = assignedCafe.map(this::townstead$describeAssignedBuilding).orElse("none");
-        String navMode = townstead$navigationMode(level, villager);
-        player.sendSystemMessage(Component.literal("[BaristaDBG:" + name + "#" + id + "] state=" + state.name()
-                + " station=" + station + " anchor=" + anchor + " recipe=" + recipe
-                + " doneAt=" + brewDoneTick + " blocked=" + blocked.name()
-                + " mode=" + navMode + " site=" + assignedCafeDesc + " stations=" + cafeSnapshot.stations().size()
-                + " used=" + usedStations.size() + " storage=" + storageSnapshot.observedBlocks()
-                + "/" + storageSnapshot.handlerLookups()
-                + " budget=" + budgetSnapshot.granted() + "/" + budgetSnapshot.throttled()
-                + " nav=" + navSnapshot.snapshotRebuilds() + "/" + navSnapshot.pathAttempts()
-                + "/" + navSnapshot.pathSuccesses() + "/" + navSnapshot.pathFailures()
-                + " claims=" + claimSnapshot.grants() + "/" + claimSnapshot.conflicts() + "/" + claimSnapshot.activeClaims()
-                + idleInfo));
-        nextDebugTick = gameTime + 100L;
-    }
-
-    private String townstead$navigationMode(ServerLevel level, VillagerEntityMCA villager) {
-        if (state == BaristaState.PATH_TO_WORKSITE) {
-            return "approach:" + currentWorksiteTargetKind;
-        }
-        if (state == BaristaState.PATH_TO_STATION) {
-            return stationAnchor != null ? "path_to_station" : "search";
-        }
-        return "station";
-    }
-
-    private String townstead$describeAssignedBuilding(Building building) {
-        if (building == null) return "none";
-        BlockPos center = building.getCenter();
-        int blockCount = 0;
-        for (BlockPos ignored : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
-            blockCount++;
-        }
-        String centerDesc = center == null ? "none" : center.getX() + "," + center.getY() + "," + center.getZ();
-        return building.getType() + "@" + centerDesc + "[" + blockCount + "]";
+        // Production no-op.
     }
 
     private static boolean townstead$isFatigueGated(VillagerEntityMCA villager) {
