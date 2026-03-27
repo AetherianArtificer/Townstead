@@ -22,9 +22,6 @@ public final class BaristaAutoAssignTicker {
 
         VillagerProfession current = villager.getVillagerData().getProfession();
         if (FarmersDelightBaristaAssignment.isBaristaProfession(current)) {
-            if (!FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager)) {
-                villager.setProfession(VillagerProfession.NONE);
-            }
             return;
         }
         if (current != VillagerProfession.NONE) return;

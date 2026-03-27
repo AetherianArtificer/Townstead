@@ -43,6 +43,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.util.RandomSource;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -65,6 +66,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private static final int OCCUPIED_BACKOFF = 200;
     private static final float WALK_SPEED = 0.52f;
     private static final long RECIPE_REPEAT_COOLDOWN_TICKS = 200L;
+    private static final long ABANDONED_STATION_COOLDOWN_TICKS = 100L;
     private static final int STATE_TIMEOUT_TICKS = 100;
     private static final int OPPORTUNISTIC_SWEEP_INTERVAL = 10;
     private static final int MAX_RECIPE_ATTEMPTS = 3;
@@ -93,8 +95,8 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private long nextRequestTick;
     private BlockedReason blocked = BlockedReason.NONE;
     private final Map<ResourceLocation, Integer> stagedInputs = new HashMap<>();
-    private final Set<Long> usedStations = new HashSet<>();
     private final Map<ResourceLocation, Long> recipeCooldownUntil = new HashMap<>();
+    private final Map<Long, Long> abandonedUntilByStation = new HashMap<>();
     private int recipeAttempts;
     private long idleUntilTick;
     private BlockPos currentWorksiteTarget;
@@ -133,12 +135,11 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (!FarmersDelightBaristaAssignment.isBaristaProfession(villager.getVillagerData().getProfession())) return;
-        if (!FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager)) return;
         blocked = BlockedReason.NONE;
         state = BaristaState.PATH_TO_WORKSITE;
         stateEnteredTick = gameTime;
         recipeAttempts = 0;
-        usedStations.clear();
+        abandonedUntilByStation.clear();
         resetWorksiteTargeting();
     }
 
@@ -162,7 +163,6 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         activeRecipe = null;
         pendingOutput = ItemStack.EMPTY;
         stagedInputs.clear();
-        usedStations.clear();
         recipeCooldownUntil.clear();
         recipeAttempts = 0;
         idleUntilTick = 0L;
@@ -203,7 +203,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
         // Opportunistic sweep: pick up any recipe outputs near the villager
         if (gameTime % OPPORTUNISTIC_SWEEP_INTERVAL == 0) {
-            sweepNearbyOutputs(level, villager);
+            ProducerOutputHelper.sweepNearbyOutputs(level, villager, stationAnchor, activeCafeStorageBounds(villager), ModRecipeRegistry.allOutputIds(level));
         }
 
         switch (state) {
@@ -315,10 +315,9 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         Set<Long> cafeBounds = activeCafeStorageBounds(villager);
 
         ProducerStationIndex.Selection best = ProducerStationIndex.chooseBaristaSelection(
-                level, villager, cafeSnapshot, cafeBounds, usedStations, recipeCooldownUntil);
+                level, villager, cafeSnapshot, cafeBounds, abandonedUntilByStation, gameTime, recipeCooldownUntil);
         if (best == null) {
             debugChat(level, villager, "ACQUIRE:no usable station/recipe pair, resetting");
-            usedStations.clear();
             recipeAttempts = 0;
             idleUntilTick = gameTime + IDLE_BACKOFF;
             return;
@@ -347,7 +346,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
         ProducerStationSessions.SessionSnapshot session = ProducerStationSessions.snapshot(level, stationAnchor);
         if (activeRecipe == null && session != null) {
-            activeRecipe = findSessionRecipe(level, villager, session, stationType);
+            activeRecipe = ProducerWorkSupport.findSessionRecipe(ProducerRole.BARISTA, level, session, stationType);
         }
 
         ProducerStationState stationState = StationHandler.classifyProducerStation(
@@ -371,7 +370,6 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
                 if (cleaned && !StationHandler.stationHasAnyContents(level, stationAnchor, stationType)) {
                     transition(BaristaState.SELECT_RECIPE, gameTime);
                 } else {
-                    usedStations.add(stationAnchor.asLong());
                     releaseStationClaim(villager, stationAnchor);
                     releaseStationSession(level, villager, stationAnchor);
                     stationAnchor = null;
@@ -398,9 +396,14 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         }
 
         Set<Long> cafeBounds = activeCafeStorageBounds(villager);
-        DiscoveredRecipe recipe = RecipeSelector.pickRecipe(
-                level, villager, stationType, stationAnchor, cafeBounds, recipeCooldownUntil,
-                false, true);
+        DiscoveredRecipe recipe = ProducerWorkSupport.pickRecipe(
+                ProducerRole.BARISTA,
+                level,
+                villager,
+                stationType,
+                stationAnchor,
+                cafeBounds,
+                recipeCooldownUntil);
 
         if (recipe == null) {
             int available = ModRecipeRegistry.getBeverageRecipesForStation(level, stationType).size();
@@ -519,7 +522,10 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         }
 
         if (gameTime < brewDoneTick) return;
-        if (stationType == StationType.HOT_STATION && !hotStationOutputCollectible(level)) {
+        if (stationType == StationType.HOT_STATION
+                && stationAnchor != null
+                && !ProducerOutputHelper.hotStationOutputCollectible(level, stationAnchor, activeRecipe)
+                && !StationHandler.stationHasCollectibleOutput(level, stationAnchor, ModRecipeRegistry.allOutputIds(level))) {
             refreshStationSession(level, villager, gameTime);
             return;
         }
@@ -536,37 +542,17 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         boolean collected = false;
 
         // Collect surface drops (campfire/fire station items that pop out)
-        if (stationAnchor != null) {
-            collected |= collectAndStoreSurfaceDrops(level, villager, cafeBounds, outputIds);
-        }
+        collected |= ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, cafeBounds, outputIds);
 
         // Extract output from hot station (cooking pot)
-        if (stationType == StationType.HOT_STATION && stationAnchor != null && activeRecipe != null) {
-            Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-            if (outputItem != Items.AIR) {
-                int extracted = StationHandler.extractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
-                if (extracted > 0) {
-                    ItemStack output = new ItemStack(outputItem, extracted);
-                    IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, cafeBounds);
-                    if (!output.isEmpty()) {
-                        villager.getInventory().addItem(output);
-                    }
-                    collected = true;
-                } else {
-                    // Output not ready yet — wait for the station to finish
-                    transition(BaristaState.COLLECT_WAIT, gameTime);
-                    return;
-                }
+        if (stationType == StationType.HOT_STATION) {
+            ProducerOutputHelper.CollectResult result = ProducerOutputHelper.collectHotStationOutputs(
+                    level, villager, stationAnchor, activeRecipe, cafeBounds, outputIds, true);
+            if (result.shouldWait()) {
+                transition(BaristaState.COLLECT_WAIT, gameTime);
+                return;
             }
-        }
-
-        if (stationType == StationType.HOT_STATION && stationAnchor != null && activeRecipe == null) {
-            List<ItemStack> outputs = StationHandler.extractMatchingStationStacks(level, stationAnchor, outputIds);
-            for (ItemStack output : outputs) {
-                IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, cafeBounds);
-                if (!output.isEmpty()) villager.getInventory().addItem(output);
-                collected = true;
-            }
+            collected |= result.collected();
         }
 
         // For fire station, if nothing was collected yet, wait for items to land
@@ -597,24 +583,13 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         boolean collected = false;
 
         // Try collecting surface drops
-        if (stationAnchor != null) {
-            collected |= collectAndStoreSurfaceDrops(level, villager, cafeBounds, outputIds);
-        }
+        collected |= ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, cafeBounds, outputIds);
 
         // Try extracting from hot station
-        if (stationType == StationType.HOT_STATION && stationAnchor != null) {
-            Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-            if (outputItem != Items.AIR) {
-                int extracted = StationHandler.extractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
-                if (extracted > 0) {
-                    ItemStack output = new ItemStack(outputItem, extracted);
-                    IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, cafeBounds);
-                    if (!output.isEmpty()) {
-                        villager.getInventory().addItem(output);
-                    }
-                    collected = true;
-                }
-            }
+        if (stationType == StationType.HOT_STATION) {
+            ProducerOutputHelper.CollectResult result = ProducerOutputHelper.collectHotStationOutputs(
+                    level, villager, stationAnchor, activeRecipe, cafeBounds, outputIds, false);
+            collected |= result.collected();
         }
 
         // If we collected something, or timed out, finish
@@ -630,61 +605,10 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         }
     }
 
-    // ── Shared collect helpers ──
-
-    private boolean collectAndStoreSurfaceDrops(ServerLevel level, VillagerEntityMCA villager,
-                                                 Set<Long> cafeBounds, Set<ResourceLocation> outputIds) {
-        List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
-        if (drops.isEmpty()) return false;
-        for (ItemStack drop : drops) {
-            IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, cafeBounds);
-            if (!drop.isEmpty()) {
-                ItemStack remainder = villager.getInventory().addItem(drop);
-                if (!remainder.isEmpty()) {
-                    ItemEntity entity = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder);
-                    entity.setPickUpDelay(0);
-                    level.addFreshEntity(entity);
-                }
-            }
-        }
-        return true;
-    }
-
-    private boolean hotStationOutputReady(ServerLevel level) {
-        if (stationType != StationType.HOT_STATION || stationAnchor == null || activeRecipe == null) return false;
-        Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-        if (outputItem == Items.AIR) return false;
-        return StationHandler.countItemInStation(level, stationAnchor, outputItem) >= activeRecipe.outputCount();
-    }
-
-    private boolean hotStationOutputCollectible(ServerLevel level) {
-        if (!hotStationOutputReady(level) || stationAnchor == null || activeRecipe == null) return false;
-        Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-        if (outputItem == Items.AIR) return false;
-        return StationHandler.canExtractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
-    }
-
     private void finishCollect(ServerLevel level, VillagerEntityMCA villager,
                                Set<Long> cafeBounds, Set<ResourceLocation> outputIds, long gameTime) {
-        // Store any pending output
-        if (!pendingOutput.isEmpty()) {
-            IngredientResolver.storeOutputInCookStorage(level, villager, pendingOutput, stationAnchor, cafeBounds);
-            if (!pendingOutput.isEmpty()) {
-                villager.getInventory().addItem(pendingOutput);
-            }
-            pendingOutput = ItemStack.EMPTY;
-        }
-
-        // Store any inventory items that are recipe outputs
-        net.minecraft.world.SimpleContainer inv = villager.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty()) continue;
-            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (itemId != null && outputIds.contains(itemId)) {
-                IngredientResolver.storeOutputInCookStorage(level, villager, stack, stationAnchor, cafeBounds);
-            }
-        }
+        ProducerOutputHelper.finishCollectInventoryOutputs(level, villager, pendingOutput, stationAnchor, cafeBounds, outputIds);
+        pendingOutput = ItemStack.EMPTY;
 
         // Award XP
         awardBaristaXP(level, villager);
@@ -705,37 +629,6 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
             transition(BaristaState.PATH_TO_STATION, gameTime);
         } else {
             transition(BaristaState.RECONCILE_STATION, gameTime);
-        }
-    }
-
-    // ── Opportunistic output sweep ──
-
-    private void sweepNearbyOutputs(ServerLevel level, VillagerEntityMCA villager) {
-        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
-        if (outputIds.isEmpty()) return;
-        AABB area = villager.getBoundingBox().inflate(3.0, 2.0, 3.0);
-        List<ItemEntity> drops = level.getEntitiesOfClass(ItemEntity.class, area, entity -> {
-            ItemStack stack = entity.getItem();
-            if (stack.isEmpty()) return false;
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            return id != null && outputIds.contains(id);
-        });
-        if (drops.isEmpty()) return;
-        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
-        BlockPos storageRef = stationAnchor != null ? stationAnchor : villager.blockPosition();
-        for (ItemEntity drop : drops) {
-            ItemStack stack = drop.getItem().copy();
-            if (stack.isEmpty()) continue;
-            drop.discard();
-            IngredientResolver.storeOutputInCookStorage(level, villager, stack, storageRef, cafeBounds);
-            if (!stack.isEmpty()) {
-                ItemStack remainder = villager.getInventory().addItem(stack);
-                if (!remainder.isEmpty()) {
-                    ItemEntity entity = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder);
-                    entity.setPickUpDelay(0);
-                    level.addFreshEntity(entity);
-                }
-            }
         }
     }
 
@@ -784,7 +677,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private void abandonCurrentStation(ServerLevel level, VillagerEntityMCA villager, long gameTime, boolean markUsed) {
         if (markUsed && stationAnchor != null) {
-            usedStations.add(stationAnchor.asLong());
+            abandonedUntilByStation.put(stationAnchor.asLong(), gameTime + ABANDONED_STATION_COOLDOWN_TICKS);
         }
         releaseStationClaim(villager, stationAnchor);
         releaseStationSession(level, villager, stationAnchor);
@@ -811,6 +704,18 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (currentWorksiteTarget != null
                 && !worksiteTargetFailures.isBlacklisted(currentWorksiteTarget, gameTime)) {
             return currentWorksiteTarget;
+        }
+
+        if (villager.level() instanceof ServerLevel level) {
+            Optional<Building> assigned = activeCafeBuilding(level, villager);
+            if (assigned.isPresent() && !buildingContainsVillager(assigned.get(), villager)) {
+                BlockPos buildingTarget = pickCafeBuildingEntryTarget(assigned.get(), level, villager, gameTime);
+                if (buildingTarget != null) {
+                    currentWorksiteTargetKind = "building";
+                    currentWorksiteTarget = buildingTarget.immutable();
+                    return currentWorksiteTarget;
+                }
+            }
         }
 
         List<BlockPos> standCandidates = cafeSnapshot.stationStandPositions().values().stream()
@@ -884,9 +789,13 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return snapshot;
     }
 
+    private Optional<Building> activeCafeBuilding(ServerLevel level, VillagerEntityMCA villager) {
+        return FarmersDelightBaristaAssignment.assignedCafe(level, villager);
+    }
+
     private BlockPos activeCafeReference(VillagerEntityMCA villager) {
         if (villager.level() instanceof ServerLevel level) {
-            Optional<Building> assigned = FarmersDelightBaristaAssignment.assignedCafe(level, villager);
+            Optional<Building> assigned = activeCafeBuilding(level, villager);
             if (assigned.isPresent()) {
                 BlockPos center = assigned.get().getCenter();
                 if (center != null) return center;
@@ -901,7 +810,50 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private boolean isVillagerInActiveCafe(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel level)) return false;
+        Optional<Building> assigned = activeCafeBuilding(level, villager);
+        if (assigned.isPresent() && buildingContainsVillager(assigned.get(), villager)) return true;
         return WorkBuildingNav.isInsideOrOnStationStand(activeCafeSnapshot(level, villager), villager.blockPosition());
+    }
+
+    private boolean buildingContainsVillager(Building building, VillagerEntityMCA villager) {
+        BlockPos pos = villager.blockPosition();
+        if (building.containsPos(pos)) return true;
+        if (building.containsPos(pos.below())) return true;
+        return building.containsPos(pos.above());
+    }
+
+    private @Nullable BlockPos pickCafeBuildingEntryTarget(Building building, ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        BlockPos center = building.getCenter();
+        if (center != null && !worksiteTargetFailures.isBlacklisted(center, gameTime)) {
+            return center.immutable();
+        }
+
+        if (building.getBuildingType().grouped()) {
+            return center != null ? center.immutable() : null;
+        }
+
+        RandomSource random = level.getRandom();
+        BlockPos pos0 = building.getPos0();
+        BlockPos pos1 = building.getPos1();
+        BlockPos diff = pos1.subtract(pos0);
+        int margin = 2;
+        BlockPos best = null;
+        double bestDistanceSq = Double.POSITIVE_INFINITY;
+        for (int attempt = 0; attempt < 16; attempt++) {
+            BlockPos candidate = pos0.offset(new BlockPos(
+                    random.nextInt(Math.max(1, diff.getX() - margin * 2)) + margin,
+                    random.nextInt(Math.max(1, diff.getY() - margin * 2)) + margin,
+                    random.nextInt(Math.max(1, diff.getZ() - margin * 2)) + margin
+            ));
+            if (level.canSeeSky(candidate)) continue;
+            if (worksiteTargetFailures.isBlacklisted(candidate, gameTime)) continue;
+            double distanceSq = villager.distanceToSqr(candidate.getX() + 0.5, candidate.getY() + 0.5, candidate.getZ() + 0.5);
+            if (distanceSq < bestDistanceSq) {
+                best = candidate.immutable();
+                bestDistanceSq = distanceSq;
+            }
+        }
+        return best;
     }
 
     // ── Station claims ──
@@ -929,20 +881,6 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
                 stagedInputs,
                 gameTime + STATION_SESSION_LEASE_TICKS
         );
-    }
-
-    private @Nullable DiscoveredRecipe findSessionRecipe(
-            ServerLevel level,
-            VillagerEntityMCA villager,
-            @Nullable ProducerStationSessions.SessionSnapshot session,
-            @Nullable StationType type
-    ) {
-        if (level == null || session == null || type == null || session.recipeOutputId() == null) return null;
-        for (DiscoveredRecipe recipe : ModRecipeRegistry.getBeverageRecipesForStation(level, type)) {
-            if (session.recipeId() != null && session.recipeId().equals(recipe.id())) return recipe;
-            if (session.recipeOutputId().equals(recipe.output())) return recipe;
-        }
-        return null;
     }
 
     // ── XP ──
@@ -1017,8 +955,8 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         activeRecipe = null;
         pendingOutput = ItemStack.EMPTY;
         stagedInputs.clear();
-        usedStations.clear();
         recipeCooldownUntil.clear();
+        abandonedUntilByStation.clear();
         recipeAttempts = 0;
         idleUntilTick = 0L;
         resetWorksiteTargeting();
@@ -1080,11 +1018,9 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
     // ── Debug ──
 
     private void debugChat(ServerLevel level, VillagerEntityMCA villager, String msg) {
-        // Production no-op.
     }
 
     private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        // Production no-op.
     }
 
     private static boolean townstead$isFatigueGated(VillagerEntityMCA villager) {

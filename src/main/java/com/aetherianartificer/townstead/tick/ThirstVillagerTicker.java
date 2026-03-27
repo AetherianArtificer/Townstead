@@ -154,12 +154,12 @@ public final class ThirstVillagerTicker {
                 } else if (currentActivity == Activity.REST && t < ThirstData.DINNER_THRESHOLD) {
                     shouldDrink = true;
                 }
-                if (shouldDrink) thirstChanged |= tryDrinkFromInventory(self, bridge);
+                if (shouldDrink && currentActivity != Activity.REST) thirstChanged |= tryDrinkFromInventory(self, bridge);
             }
         }
         state.lastActivity = currentActivity;
 
-        if (ThirstData.getThirst(thirst) < ThirstData.ADEQUATE_THRESHOLD) {
+        if (currentActivity != Activity.REST && ThirstData.getThirst(thirst) < ThirstData.ADEQUATE_THRESHOLD) {
             long lastDrank = ThirstData.getLastDrankTime(thirst);
             long minDrinkInterval = ThirstData.isDrinkingMode(thirst)
                     ? 20L

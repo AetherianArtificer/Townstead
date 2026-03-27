@@ -79,6 +79,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
+    public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     //?} else if forge {
     /*public static final ForgeConfigSpec SERVER_SPEC;
     public static final ForgeConfigSpec CLIENT_SPEC;
@@ -132,6 +133,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
+    public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     *///?}
 
     static {
@@ -393,6 +395,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.debug.debugVillagerAI")
                 .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
                 .define("debugVillagerAI", true);
+        DEBUG_VILLAGER_SLEEP = b
+                .translation("townstead.configuration.debug.debugVillagerSleep")
+                .comment("Enable sleep/rest debug logs and villager debug state updates.")
+                .define("debugVillagerSleep", false);
         b.pop();
 
         SERVER_SPEC = b.build();
@@ -474,6 +480,10 @@ public final class TownsteadConfig {
 
     public static boolean isVillagerFatigueEnabled() {
         return ENABLE_VILLAGER_FATIGUE.get();
+    }
+
+    public static boolean isVillagerSleepDebugEnabled() {
+        return DEBUG_VILLAGER_SLEEP.get();
     }
 
     public static boolean isProtectedStorage(BlockState state) {

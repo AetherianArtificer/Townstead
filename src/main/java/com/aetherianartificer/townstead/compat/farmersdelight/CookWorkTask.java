@@ -71,6 +71,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
     private static final int OCCUPIED_BACKOFF = 200;
     private static final float WALK_SPEED = 0.52f;
     private static final long RECIPE_REPEAT_COOLDOWN_TICKS = 200L;
+    private static final long ABANDONED_STATION_COOLDOWN_TICKS = 100L;
     private static final int DEFAULT_STATE_TIMEOUT_TICKS = 100;
     private static final int GATHER_STATE_TIMEOUT_TICKS = 140;
     private static final int COOK_STATE_TIMEOUT_TICKS = 160;
@@ -110,8 +111,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
     private @Nullable ResourceLocation stickyBoardRecipeId;
     private @Nullable ResourceLocation stickyBoardInputId;
     private final Map<ResourceLocation, Integer> stagedInputs = new HashMap<>();
-    private final Set<Long> usedStations = new HashSet<>();
     private final Map<ResourceLocation, Long> recipeCooldownUntil = new HashMap<>();
+    private final Map<Long, Long> abandonedUntilByStation = new HashMap<>();
     private int recipeAttempts;
     private long idleUntilTick;
     private BlockPos currentWorksiteTarget;
@@ -154,7 +155,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
         state = CookState.PATH_TO_WORKSITE;
         stateEnteredTick = gameTime;
         recipeAttempts = 0;
-        usedStations.clear();
+        abandonedUntilByStation.clear();
         resetWorksiteTargeting();
     }
 
@@ -181,8 +182,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
         clearStickyBoardVisuals();
         clearBoardHands(villager);
         stagedInputs.clear();
-        usedStations.clear();
         recipeCooldownUntil.clear();
+        abandonedUntilByStation.clear();
         recipeAttempts = 0;
         idleUntilTick = 0L;
         cachedKitchenWorkArea = Set.of();
@@ -228,7 +229,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
 
         // Opportunistic sweep: pick up any recipe outputs near the villager
         if (gameTime % OPPORTUNISTIC_SWEEP_INTERVAL == 0) {
-            sweepNearbyOutputs(level, villager);
+            ProducerOutputHelper.sweepNearbyOutputs(level, villager, stationAnchor, activeKitchenBounds(villager, activeKitchenReference(villager)), ModRecipeRegistry.allOutputIds(level));
         }
 
         switch (state) {
@@ -332,20 +333,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
             idleUntilTick = gameTime + IDLE_BACKOFF;
             return;
         }
-        // Log discovered station types on first acquire
-        if (usedStations.isEmpty()) {
-            Map<String, Integer> typeCounts = new LinkedHashMap<>();
-            for (StationSlot slot : stations) {
-                typeCounts.merge(slot.type().name(), 1, Integer::sum);
-            }
-            debugChat(level, villager, "ACQUIRE:found " + stations.size() + " stations " + typeCounts);
-        }
-
         ProducerStationIndex.Selection best = ProducerStationIndex.chooseCookSelection(
-                level, villager, kitchenSnapshot, kitchenBounds, usedStations, recipeCooldownUntil);
+                level, villager, kitchenSnapshot, kitchenBounds, abandonedUntilByStation, gameTime, recipeCooldownUntil);
         if (best == null) {
             debugChat(level, villager, "ACQUIRE:no usable station/recipe pair, resetting");
-            usedStations.clear();
             recipeAttempts = 0;
             idleUntilTick = gameTime + IDLE_BACKOFF;
             return;
@@ -374,7 +365,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
 
         ProducerStationSessions.SessionSnapshot session = ProducerStationSessions.snapshot(level, stationAnchor);
         if (activeRecipe == null && session != null) {
-            activeRecipe = findSessionRecipe(level, villager, session, stationType);
+            activeRecipe = ProducerWorkSupport.findSessionRecipe(ProducerRole.COOK, level, session, stationType);
         }
 
         ProducerStationState stationState = StationHandler.classifyProducerStation(
@@ -398,7 +389,6 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
                 if (cleaned && !StationHandler.stationHasAnyContents(level, stationAnchor, stationType)) {
                     transition(CookState.SELECT_RECIPE, gameTime);
                 } else {
-                    usedStations.add(stationAnchor.asLong());
                     releaseStationClaim(villager, stationAnchor);
                     releaseStationSession(level, villager, stationAnchor);
                     stationAnchor = null;
@@ -426,9 +416,14 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
         }
 
         Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
-        DiscoveredRecipe recipe = RecipeSelector.pickRecipe(
-                level, villager, stationType, stationAnchor, kitchenBounds, recipeCooldownUntil,
-                true, false);
+        DiscoveredRecipe recipe = ProducerWorkSupport.pickRecipe(
+                ProducerRole.COOK,
+                level,
+                villager,
+                stationType,
+                stationAnchor,
+                kitchenBounds,
+                recipeCooldownUntil);
 
         if (recipe == null) {
             int available = ModRecipeRegistry.getRecipesForStation(level, stationType).size();
@@ -585,7 +580,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
             }
         }
 
-        if (stationType == StationType.HOT_STATION && !hotStationOutputCollectible(level)) {
+        if (stationType == StationType.HOT_STATION
+                && stationAnchor != null
+                && !ProducerOutputHelper.hotStationOutputCollectible(level, stationAnchor, activeRecipe)
+                && !StationHandler.stationHasCollectibleOutput(level, stationAnchor, ModRecipeRegistry.allOutputIds(level))) {
             refreshStationSession(level, villager, gameTime);
             return;
         }
@@ -602,37 +600,17 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
         boolean collected = false;
 
         // Collect surface drops (campfire/fire station items that pop out)
-        if (stationAnchor != null) {
-            collected |= collectAndStoreSurfaceDrops(level, villager, kitchenBounds, outputIds);
-        }
+        collected |= ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, kitchenBounds, outputIds);
 
         // Extract output from hot station (cooking pot)
-        if (stationType == StationType.HOT_STATION && stationAnchor != null && activeRecipe != null) {
-            Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-            if (outputItem != Items.AIR) {
-                int extracted = StationHandler.extractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
-                if (extracted > 0) {
-                    ItemStack output = new ItemStack(outputItem, extracted);
-                    IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, kitchenBounds);
-                    if (!output.isEmpty()) {
-                        villager.getInventory().addItem(output);
-                    }
-                    collected = true;
-                } else {
-                    // Output not ready yet — wait for the station to finish
-                    transition(CookState.COLLECT_WAIT, gameTime);
-                    return;
-                }
+        if (stationType == StationType.HOT_STATION) {
+            ProducerOutputHelper.CollectResult result = ProducerOutputHelper.collectHotStationOutputs(
+                    level, villager, stationAnchor, activeRecipe, kitchenBounds, outputIds, true);
+            if (result.shouldWait()) {
+                transition(CookState.COLLECT_WAIT, gameTime);
+                return;
             }
-        }
-
-        if (stationType == StationType.HOT_STATION && stationAnchor != null && activeRecipe == null) {
-            List<ItemStack> outputs = StationHandler.extractMatchingStationStacks(level, stationAnchor, outputIds);
-            for (ItemStack output : outputs) {
-                IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, kitchenBounds);
-                if (!output.isEmpty()) villager.getInventory().addItem(output);
-                collected = true;
-            }
+            collected |= result.collected();
         }
 
         // For fire station, if nothing was collected yet, wait for items to land
@@ -667,24 +645,13 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
         boolean collected = false;
 
         // Try collecting surface drops
-        if (stationAnchor != null) {
-            collected |= collectAndStoreSurfaceDrops(level, villager, kitchenBounds, outputIds);
-        }
+        collected |= ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, kitchenBounds, outputIds);
 
         // Try extracting from hot station
-        if (stationType == StationType.HOT_STATION && stationAnchor != null) {
-            Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-            if (outputItem != Items.AIR) {
-                int extracted = StationHandler.extractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
-                if (extracted > 0) {
-                    ItemStack output = new ItemStack(outputItem, extracted);
-                    IngredientResolver.storeOutputInCookStorage(level, villager, output, stationAnchor, kitchenBounds);
-                    if (!output.isEmpty()) {
-                        villager.getInventory().addItem(output);
-                    }
-                    collected = true;
-                }
-            }
+        if (stationType == StationType.HOT_STATION) {
+            ProducerOutputHelper.CollectResult result = ProducerOutputHelper.collectHotStationOutputs(
+                    level, villager, stationAnchor, activeRecipe, kitchenBounds, outputIds, false);
+            collected |= result.collected();
         }
 
         // If we collected something, or timed out, finish
@@ -700,61 +667,10 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
         }
     }
 
-    // ── Shared collect helpers ──
-
-    private boolean collectAndStoreSurfaceDrops(ServerLevel level, VillagerEntityMCA villager,
-                                                 Set<Long> kitchenBounds, Set<ResourceLocation> outputIds) {
-        List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
-        if (drops.isEmpty()) return false;
-        for (ItemStack drop : drops) {
-            IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, kitchenBounds);
-            if (!drop.isEmpty()) {
-                ItemStack remainder = villager.getInventory().addItem(drop);
-                if (!remainder.isEmpty()) {
-                    ItemEntity entity = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder);
-                    entity.setPickUpDelay(0);
-                    level.addFreshEntity(entity);
-                }
-            }
-        }
-        return true;
-    }
-
-    private boolean hotStationOutputReady(ServerLevel level) {
-        if (stationType != StationType.HOT_STATION || stationAnchor == null || activeRecipe == null) return false;
-        Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-        if (outputItem == Items.AIR) return false;
-        return StationHandler.countItemInStation(level, stationAnchor, outputItem) >= activeRecipe.outputCount();
-    }
-
-    private boolean hotStationOutputCollectible(ServerLevel level) {
-        if (!hotStationOutputReady(level) || stationAnchor == null || activeRecipe == null) return false;
-        Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
-        if (outputItem == Items.AIR) return false;
-        return StationHandler.canExtractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
-    }
-
     private void finishCollect(ServerLevel level, VillagerEntityMCA villager,
                                Set<Long> kitchenBounds, Set<ResourceLocation> outputIds, long gameTime) {
-        // Store any pending output from cutting board / fire
-        if (!pendingOutput.isEmpty()) {
-            IngredientResolver.storeOutputInCookStorage(level, villager, pendingOutput, stationAnchor, kitchenBounds);
-            if (!pendingOutput.isEmpty()) {
-                villager.getInventory().addItem(pendingOutput);
-            }
-            pendingOutput = ItemStack.EMPTY;
-        }
-
-        // Also store anything in inventory that's a recipe output
-        SimpleContainer inv = villager.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty()) continue;
-            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (itemId != null && outputIds.contains(itemId)) {
-                IngredientResolver.storeOutputInCookStorage(level, villager, stack, stationAnchor, kitchenBounds);
-            }
-        }
+        ProducerOutputHelper.finishCollectInventoryOutputs(level, villager, pendingOutput, stationAnchor, kitchenBounds, outputIds);
+        pendingOutput = ItemStack.EMPTY;
 
         // Award XP
         awardCookXP(level, villager);
@@ -777,37 +693,6 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
             } else {
                 transition(CookState.RECONCILE_STATION, gameTime);
             }
-    }
-
-    // ── Opportunistic output sweep ──
-
-    private void sweepNearbyOutputs(ServerLevel level, VillagerEntityMCA villager) {
-        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
-        if (outputIds.isEmpty()) return;
-        AABB area = villager.getBoundingBox().inflate(3.0, 2.0, 3.0);
-        List<ItemEntity> drops = level.getEntitiesOfClass(ItemEntity.class, area, entity -> {
-            ItemStack stack = entity.getItem();
-            if (stack.isEmpty()) return false;
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            return id != null && outputIds.contains(id);
-        });
-        if (drops.isEmpty()) return;
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
-        BlockPos storageRef = stationAnchor != null ? stationAnchor : villager.blockPosition();
-        for (ItemEntity drop : drops) {
-            ItemStack stack = drop.getItem().copy();
-            if (stack.isEmpty()) continue;
-            drop.discard();
-            IngredientResolver.storeOutputInCookStorage(level, villager, stack, storageRef, kitchenBounds);
-            if (!stack.isEmpty()) {
-                ItemStack remainder = villager.getInventory().addItem(stack);
-                if (!remainder.isEmpty()) {
-                    ItemEntity entity = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder);
-                    entity.setPickUpDelay(0);
-                    level.addFreshEntity(entity);
-                }
-            }
-        }
     }
 
     // ── Navigation helper ──
@@ -854,6 +739,9 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
     }
 
     private void abandonCurrentStation(ServerLevel level, VillagerEntityMCA villager, long gameTime, boolean markUsed) {
+        if (markUsed && stationAnchor != null) {
+            abandonedUntilByStation.put(stationAnchor.asLong(), gameTime + ABANDONED_STATION_COOLDOWN_TICKS);
+        }
         releaseStationClaim(villager, stationAnchor);
         releaseStationSession(level, villager, stationAnchor);
         stationAnchor = null;
@@ -1031,20 +919,6 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
         );
     }
 
-    private @Nullable DiscoveredRecipe findSessionRecipe(
-            ServerLevel level,
-            VillagerEntityMCA villager,
-            @Nullable ProducerStationSessions.SessionSnapshot session,
-            @Nullable StationType type
-    ) {
-        if (level == null || session == null || type == null || session.recipeOutputId() == null) return null;
-        for (DiscoveredRecipe recipe : ModRecipeRegistry.getRecipesForStation(level, type)) {
-            if (session.recipeId() != null && session.recipeId().equals(recipe.id())) return recipe;
-            if (session.recipeOutputId().equals(recipe.output())) return recipe;
-        }
-        return null;
-    }
-
     // ── XP ──
 
     private void awardCookXP(ServerLevel level, VillagerEntityMCA villager) {
@@ -1116,8 +990,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
         pendingOutput = ItemStack.EMPTY;
         resetBoardSession(villager);
         stagedInputs.clear();
-        usedStations.clear();
         recipeCooldownUntil.clear();
+        abandonedUntilByStation.clear();
         resetWorksiteTargeting();
         recipeAttempts = 0;
         idleUntilTick = 0L;
@@ -1324,7 +1198,7 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
                 + " station=" + station + " anchor=" + anchor + " recipe=" + recipe
                 + " doneAt=" + cookDoneTick + " blocked=" + blocked.name()
                 + " mode=" + navMode + " site=" + assignedKitchenDesc + " stations=" + kitchenSnapshot.stations().size()
-                + " used=" + usedStations.size() + " storage=" + storageSnapshot.observedBlocks()
+                + " storage=" + storageSnapshot.observedBlocks()
                 + "/" + storageSnapshot.handlerLookups()
                 + " budget=" + budgetSnapshot.granted() + "/" + budgetSnapshot.throttled()
                 + " nav=" + navSnapshot.snapshotRebuilds() + "/" + navSnapshot.pathAttempts()

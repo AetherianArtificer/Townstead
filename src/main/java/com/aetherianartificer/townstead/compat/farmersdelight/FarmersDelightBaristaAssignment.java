@@ -40,14 +40,26 @@ public final class FarmersDelightBaristaAssignment {
     }
 
     public static boolean canVillagerWorkAsBarista(ServerLevel level, VillagerEntityMCA villager) {
-        return assignedCafe(level, villager).isPresent();
+        if (villager == null) return false;
+        return isBaristaProfession(villager.getVillagerData().getProfession());
+    }
+
+    public static boolean hasWorkingBarista(ServerLevel level, VillagerEntityMCA villager) {
+        Optional<Village> villageOpt = FarmersDelightCookAssignment.resolveVillage(villager);
+        if (villageOpt.isEmpty()) return false;
+        Village village = villageOpt.get();
+        for (VillagerEntityMCA resident : village.getResidents(level)) {
+            if (!isBaristaProfession(resident.getVillagerData().getProfession())) continue;
+            if (assignedCafe(level, resident).isPresent()) return true;
+        }
+        return false;
     }
 
     public static boolean hasAvailableBaristaSlot(ServerLevel level, VillagerEntityMCA villager) {
         Optional<Village> villageOpt = FarmersDelightCookAssignment.resolveVillage(villager);
         if (villageOpt.isEmpty()) return false;
         Village village = villageOpt.get();
-        if (!village.isWithinBorder(villager)) return false;
+        if (!isEligibleVillageMember(village, villager)) return false;
 
         List<CafeSlot> slots = buildCafeSlots(village);
         if (slots.isEmpty()) return false;
@@ -92,7 +104,7 @@ public final class FarmersDelightBaristaAssignment {
         Optional<Village> villageOpt = FarmersDelightCookAssignment.resolveVillage(villager);
         if (villageOpt.isEmpty()) return Optional.empty();
         Village village = villageOpt.get();
-        if (!village.isWithinBorder(villager)) return Optional.empty();
+        if (!isEligibleVillageMember(village, villager)) return Optional.empty();
 
         List<CafeSlot> slots = buildCafeSlots(village);
         if (slots.isEmpty()) return Optional.empty();
@@ -159,6 +171,16 @@ public final class FarmersDelightBaristaAssignment {
         }
         baristas.sort(Comparator.comparing(v -> v.getUUID().toString()));
         return baristas;
+    }
+
+    private static boolean isEligibleVillageMember(Village village, VillagerEntityMCA villager) {
+        if (!village.isWithinBorder(villager)) {
+            Optional<Village> home = villager.getResidency().getHomeVillage();
+            if (home.isPresent() && home.get().getId() == village.getId()) return true;
+            UUID id = villager.getUUID();
+            return village.getResidentsUUIDs().anyMatch(id::equals);
+        }
+        return true;
     }
 
     private static List<CafeSlot> buildCafeSlots(Village village) {

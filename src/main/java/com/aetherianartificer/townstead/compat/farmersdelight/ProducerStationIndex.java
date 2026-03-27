@@ -47,10 +47,19 @@ public final class ProducerStationIndex {
             VillagerEntityMCA villager,
             WorkBuildingNav.Snapshot snapshot,
             Set<Long> worksiteBounds,
-            Set<Long> usedStations,
+            Map<Long, Long> abandonedUntilByStation,
+            long gameTime,
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil
     ) {
-        return chooseSelection("cook", level, villager, snapshot, worksiteBounds, usedStations, recipeCooldownUntil, true, false);
+        return chooseSelection(
+                ProducerRole.COOK,
+                level,
+                villager,
+                snapshot,
+                worksiteBounds,
+                abandonedUntilByStation,
+                gameTime,
+                recipeCooldownUntil);
     }
 
     public static @Nullable Selection chooseBaristaSelection(
@@ -58,30 +67,30 @@ public final class ProducerStationIndex {
             VillagerEntityMCA villager,
             WorkBuildingNav.Snapshot snapshot,
             Set<Long> worksiteBounds,
-            Set<Long> usedStations,
+            Map<Long, Long> abandonedUntilByStation,
+            long gameTime,
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil
     ) {
-        return chooseSelection("barista", level, villager, snapshot, worksiteBounds, usedStations, recipeCooldownUntil, false, true);
+        return chooseSelection(ProducerRole.BARISTA, level, villager, snapshot, worksiteBounds, abandonedUntilByStation, gameTime, recipeCooldownUntil);
     }
 
     private static @Nullable Selection chooseSelection(
-            String role,
+            ProducerRole role,
             ServerLevel level,
             VillagerEntityMCA villager,
             WorkBuildingNav.Snapshot snapshot,
             Set<Long> worksiteBounds,
-            Set<Long> usedStations,
-            Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
-            boolean excludeBeverages,
-            boolean beveragesOnly
+            Map<Long, Long> abandonedUntilByStation,
+            long gameTime,
+            Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil
     ) {
         if (level == null || villager == null || snapshot == null || snapshot.stations().isEmpty()) return null;
 
         Map<StationType, List<ScoredRecipe>> candidateRecipesByType = new java.util.EnumMap<>(StationType.class);
         List<Candidate> candidates = new ArrayList<>();
         for (StationSlot slot : snapshot.stations()) {
-            if (usedStations.contains(slot.pos().asLong())) {
-                logSkip(role, villager, slot, "used");
+            if (abandonedUntilByStation != null && abandonedUntilByStation.getOrDefault(slot.pos().asLong(), 0L) > gameTime) {
+                logSkip(role, villager, slot, "recently_abandoned");
                 continue;
             }
             if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) {
@@ -112,13 +121,20 @@ public final class ProducerStationIndex {
             }
 
             List<ScoredRecipe> stationTypeCandidates = candidateRecipesByType.computeIfAbsent(slot.type(), type ->
-                    RecipeSelector.candidateRecipes(level, villager, type, worksiteBounds, recipeCooldownUntil, excludeBeverages, beveragesOnly));
+                    RecipeSelector.candidateRecipes(
+                            level,
+                            villager,
+                            type,
+                            worksiteBounds,
+                            recipeCooldownUntil,
+                            ProducerWorkSupport.excludeBeverages(role, level, villager),
+                            ProducerWorkSupport.beveragesOnly(role)));
             List<ScoredRecipe> viable = stationTypeCandidates.stream()
                     .filter(candidate -> StationHandler.stationSupportsRecipe(level, slot.pos(), candidate.recipe()))
                     .filter(candidate -> IngredientResolver.canFulfill(level, villager, candidate.recipe(), slot.pos(), worksiteBounds))
                     .toList();
             if (viable.isEmpty()) {
-                logNoRecipe(role, level, villager, slot, worksiteBounds, recipeCooldownUntil, excludeBeverages, beveragesOnly, stationTypeCandidates.size());
+                logNoRecipe(role, level, villager, slot, worksiteBounds, recipeCooldownUntil, stationTypeCandidates.size());
                 continue;
             }
 
@@ -163,22 +179,18 @@ public final class ProducerStationIndex {
         };
     }
 
-    private static void logSkip(String role, VillagerEntityMCA villager, StationSlot slot, String reason) {
-        // Production no-op.
+    private static void logSkip(ProducerRole role, VillagerEntityMCA villager, StationSlot slot, String reason) {
     }
 
     private static void logNoRecipe(
-            String role,
+            ProducerRole role,
             ServerLevel level,
             VillagerEntityMCA villager,
             StationSlot slot,
             Set<Long> worksiteBounds,
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
-            boolean excludeBeverages,
-            boolean beveragesOnly,
             int candidateCount
     ) {
-        // Production no-op.
     }
 
     private static String formatPos(BlockPos pos) {

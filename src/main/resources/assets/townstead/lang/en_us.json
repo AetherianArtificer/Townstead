@@ -116,6 +116,8 @@
   "townstead.configuration.debug": "Debug",
   "townstead.configuration.debug.tooltip": "Developer diagnostic settings.",
   "townstead.configuration.debug.debugVillagerAI": "Debug Villager AI",
+  "townstead.configuration.debug.debugVillagerSleep": "Debug Villager Sleep",
+  "townstead.configuration.debug.debugVillagerSleep.tooltip": "Enable sleep/rest debug logs and villager debug state updates.",
   "townstead.configuration.debug.debugVillagerAI.tooltip": "Show debug chat messages for villager AI (farmer, cook, etc.) to nearby players.",
 
   "townstead.configuration.mood_audio": "Mood Audio",

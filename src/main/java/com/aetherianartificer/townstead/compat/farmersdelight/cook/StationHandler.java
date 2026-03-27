@@ -325,11 +325,6 @@ public final class StationHandler {
                 if (slot != null && slot >= 0) return 1;
                 int reflectedFree = stoveReflectedFreeSlotCount(be);
                 if (reflectedFree > 0) return reflectedFree;
-                Townstead.LOGGER.info("[stove-debug] pos={} be={} blockedAbove={} handler=none nextEmptySlot={} reflectedFreeSlots=0 fallbackCapacity=6",
-                        pos.getX() + "," + pos.getY() + "," + pos.getZ(),
-                        be == null ? "<none>" : be.getClass().getName(),
-                        stoveBlockedAbove(be),
-                        slot == null ? "<null>" : slot);
                 // FD stove internals vary enough across versions that reflective slot discovery can fail
                 // even for an empty, usable stove. Discovery should still treat an unblocked stove as loadable.
                 return 6;
@@ -347,15 +342,6 @@ public final class StationHandler {
                     // Treat a usable unblocked stove as its real multi-slot capacity for loading.
                     return 6;
                 }
-            }
-            if (free <= 0) {
-                Townstead.LOGGER.info("[stove-debug] pos={} be={} blockedAbove={} handlerSlots={} nextEmptySlot={} reflectedFreeSlots={}",
-                        pos.getX() + "," + pos.getY() + "," + pos.getZ(),
-                        be == null ? "<none>" : be.getClass().getName(),
-                        stoveBlockedAbove(be),
-                        handler.getSlots(),
-                        String.valueOf(stoveNextEmptySlot(be)),
-                        stoveReflectedFreeSlotCount(be));
             }
             return free;
         }
@@ -1208,11 +1194,17 @@ public final class StationHandler {
                 return ProducerStationState.FINISHED_OUTPUT;
             }
         }
+        if (stationType == StationType.HOT_STATION && stationHasCollectibleOutput(level, pos, ModRecipeRegistry.allOutputIds(level))) {
+            return ProducerStationState.FINISHED_OUTPUT;
+        }
 
         if (stationType == StationType.FIRE_STATION && expectedRecipe != null) {
             if (surfaceHasCollectibleOutput(level, pos, Set.of(expectedRecipe.output()))) {
                 return ProducerStationState.FINISHED_OUTPUT;
             }
+        }
+        if (stationType == StationType.FIRE_STATION && surfaceHasCollectibleOutput(level, pos, ModRecipeRegistry.allOutputIds(level))) {
+            return ProducerStationState.FINISHED_OUTPUT;
         }
 
         if (stationType == StationType.FIRE_STATION) {
@@ -1270,6 +1262,18 @@ public final class StationHandler {
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
             return id != null && outputIds.contains(id);
         }).isEmpty();
+    }
+
+    public static boolean stationHasCollectibleOutput(ServerLevel level, BlockPos pos, Set<ResourceLocation> outputIds) {
+        if (pos == null || outputIds == null || outputIds.isEmpty()) return false;
+        pos = canonicalStationAnchor(level, pos);
+        for (ResourceLocation outputId : outputIds) {
+            Item item = BuiltInRegistries.ITEM.get(outputId);
+            if (item == Items.AIR) continue;
+            if (countItemInStation(level, pos, item) <= 0) continue;
+            if (canExtractFromStation(level, pos, item, 1)) return true;
+        }
+        return false;
     }
 
     public static ItemStack insertIntoCookingPotContainerSlot(ServerLevel level, BlockPos pos, ItemStack stack, boolean simulate) {
@@ -1365,28 +1369,25 @@ public final class StationHandler {
     public static int countItemInStation(ServerLevel level, BlockPos pos, Item item) {
         if (pos == null || item == Items.AIR) return 0;
         pos = canonicalStationAnchor(level, pos);
-        int total = 0;
-        IItemHandler handler = preferredIngredientHandler(level, pos);
-        if (handler != null) {
+        final int[] totalRef = new int[1];
+        final boolean[] sawHandlerRef = new boolean[1];
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            sawHandlerRef[0] = true;
             for (int i = 0; i < handler.getSlots(); i++) {
-                if (handler.getStackInSlot(i).is(item)) total += handler.getStackInSlot(i).getCount();
+                ItemStack stack = handler.getStackInSlot(i);
+                if (stack.is(item)) {
+                    totalRef[0] += stack.getCount();
+                }
             }
-            return total;
-        }
-        handler = getItemHandler(level, pos, null);
-        if (handler != null) {
-            for (int i = 0; i < handler.getSlots(); i++) {
-                if (handler.getStackInSlot(i).is(item)) total += handler.getStackInSlot(i).getCount();
-            }
-            return total;
-        }
+        });
         BlockEntity be = level.getBlockEntity(pos);
-        if (be instanceof Container container) {
+        if (!sawHandlerRef[0] && be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize(); i++) {
-                if (container.getItem(i).is(item)) total += container.getItem(i).getCount();
+                if (container.getItem(i).is(item)) totalRef[0] += container.getItem(i).getCount();
             }
         }
-        return total;
+        return totalRef[0];
     }
 
     public static List<ItemStack> extractMatchingStationStacks(ServerLevel level, BlockPos pos, Set<ResourceLocation> outputIds) {

@@ -22,6 +22,7 @@ import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 
@@ -61,6 +62,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
         if (bridge == null || !TownsteadConfig.isVillagerThirstEnabled()) return false;
         if (VillagerEatingManager.isEating(villager) || VillagerDrinkingManager.isDrinking(villager)) return false;
+        if (currentScheduleActivity(villager) == Activity.REST) return false;
 
         // Only block when fleeing from a mob — not during environmental panic
         // (thirst damage), otherwise villagers enter a death spiral.
@@ -167,6 +169,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         if (targetType == TargetType.NONE) return false;
         if (targetType == TargetType.GROUND_ITEM && (targetItem == null || targetItem.isRemoved())) return false;
         if (villager.getLastHurtByMob() != null) return false;
+        if (currentScheduleActivity(villager) == Activity.REST) return false;
         return true;
     }
 
@@ -311,5 +314,10 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         int hydration = Math.max(0, bridge.hydration(stack));
         int purity = bridge.isPurityWaterContainer(stack) ? Math.max(0, bridge.purity(stack)) : 0;
         return purity * 10_000 + quenched * 100 + hydration * 10 + (bridge.isDrink(stack) ? 1 : 0);
+    }
+
+    private static Activity currentScheduleActivity(VillagerEntityMCA villager) {
+        long dayTime = villager.level().getDayTime() % 24000L;
+        return villager.getBrain().getSchedule().getActivityAt((int) dayTime);
     }
 }

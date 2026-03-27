@@ -21,6 +21,7 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -59,6 +60,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (VillagerEatingManager.isEating(villager) || VillagerDrinkingManager.isDrinking(villager)) return false;
+        if (currentScheduleActivity(villager) == Activity.REST) return false;
 
         // Only block when fleeing from a mob — not during environmental panic
         // (thirst/hunger damage), otherwise villagers enter a death spiral.
@@ -184,6 +186,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         if (targetType == TargetType.GROUND_ITEM && (targetItem == null || targetItem.isRemoved())) return false;
         if (VillagerDrinkingManager.isDrinking(villager)) return false;
         if (villager.getLastHurtByMob() != null) return false;
+        if (currentScheduleActivity(villager) == Activity.REST) return false;
         return true;
     }
 
@@ -406,6 +409,11 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         targetType = TargetType.CONTAINER;
         targetPos = chosen.pos();
         return true;
+    }
+
+    private static Activity currentScheduleActivity(VillagerEntityMCA villager) {
+        long dayTime = villager.level().getDayTime() % 24000L;
+        return villager.getBrain().getSchedule().getActivityAt((int) dayTime);
     }
 
     private boolean findMatureCrop(ServerLevel level, VillagerEntityMCA villager) {

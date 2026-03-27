@@ -7,6 +7,10 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 *///?}
 import com.aetherianartificer.townstead.fatigue.EmergencyBedClaims;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.fatigue.RestCoordinator;
+import com.aetherianartificer.townstead.fatigue.RestDebugData;
+import com.aetherianartificer.townstead.fatigue.RestDecision;
+import com.aetherianartificer.townstead.fatigue.SleepReason;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.Personality;
@@ -74,52 +78,36 @@ public final class FatigueVillagerTicker {
             }
         }
 
-        // Sleeping villagers should not keep executing stale movement orders, and
-        // invalid bed links need to be cleared so they do not slide around prone.
-        if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
-            if (!hasValidSleepingBed(self)) {
-                self.stopSleeping();
-                EmergencyBedClaims.releaseAll(level, self.getUUID());
-                self.getNavigation().stop();
-                self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-                self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
-            } else {
-                self.getSleepingPos().ifPresent(pos ->
-                        EmergencyBedClaims.renew(level, self.getUUID(), pos, level.getGameTime() + 200L));
-                self.getNavigation().stop();
-                self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-                self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
-                self.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
-            }
-        }
+        RestDecision restDecision = RestCoordinator.decide(
+                RestCoordinator.capture(self, fatigue, hasValidSleepingBed(self), false)
+        );
+        RestCoordinator.recordDecision(self, fatigue, restDecision, null);
 
-        // --- Combat wake-up (every tick) ---
-        // If a sleeping villager has an attack target, wake them up immediately.
-        if (self.isSleeping()
-                && self.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) {
-            self.stopSleeping();
-            EmergencyBedClaims.releaseAll(level, self.getUUID());
+        // Sleeping villagers should not keep executing stale movement orders.
+        if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
+            self.getSleepingPos().ifPresent(pos ->
+                    EmergencyBedClaims.renew(level, self.getUUID(), pos, level.getGameTime() + 200L));
+            if (restDecision.shouldWake()) {
+                EmergencyBedClaims.releaseAll(level, self.getUUID());
+            }
+            self.getNavigation().stop();
+            self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+            self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+            self.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
         }
 
         // --- Fatigue schedule override (every tick) ---
-        // When a villager is drowsy+, temporarily override their schedule to REST
-        // so MCA's brain naturally switches to REST and SleepInBed works.
-        // When recovered, restore the original schedule.
-        int sleepCheckFatigue = FatigueData.getFatigue(fatigue);
-        if (!FatigueData.isCollapsed(fatigue)
-                && sleepCheckFatigue >= FatigueData.DROWSY_THRESHOLD
-                && currentScheduleActivity(self) != Activity.REST) {
+        if (restDecision.shouldOverrideScheduleToRest()) {
             if (!state.scheduleOverridden) {
-                // Override schedule to REST
                 com.aetherianartificer.townstead.shift.ShiftScheduleApplier.overrideToRest(self);
                 state.scheduleOverridden = true;
+                RestDebugData.setRestOverride(fatigue, true, restDecision.reason());
             }
-        } else if (sleepCheckFatigue < FatigueData.DROWSY_THRESHOLD) {
-            // Recovered below drowsy — restore original schedule if overridden
-            if (state.scheduleOverridden || currentScheduleActivity(self) == Activity.REST) {
-                com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(self);
-                state.scheduleOverridden = false;
-            }
+        } else if (FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD
+                && (state.scheduleOverridden || currentScheduleActivity(self) == Activity.REST)) {
+            com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(self);
+            state.scheduleOverridden = false;
+            RestDebugData.setRestOverride(fatigue, false, SleepReason.NONE);
         }
 
         // --- Accumulation / recovery on interval ---

@@ -92,16 +92,14 @@ public abstract class VillagerHungerMixin extends Villager {
         brain.addActivity(Activity.CORE, ImmutableList.copyOf(coreBehaviors));
         townstead$lastPatchedBrain = brain;
 
-        // Prevent villagers from ever pathfinding onto or through fire hazard blocks.
-        // Default malus is avoidable; set both hazard and damage fire types to impassable.
+        // Prevent villagers from pathfinding onto direct fire-damage blocks.
+        // Keep vanilla danger handling intact so normal home/interior navigation still works.
         // Guard: pathfindingMalus map is null during makeBrain (entity not fully constructed).
         try {
             //? if >=1.21 {
-            setPathfindingMalus(net.minecraft.world.level.pathfinder.PathType.DANGER_FIRE, -1.0f);
             setPathfindingMalus(net.minecraft.world.level.pathfinder.PathType.DAMAGE_FIRE, -1.0f);
             //?} else {
-            /*setPathfindingMalus(net.minecraft.world.level.pathfinder.BlockPathTypes.DANGER_FIRE, -1.0f);
-            setPathfindingMalus(net.minecraft.world.level.pathfinder.BlockPathTypes.DAMAGE_FIRE, -1.0f);
+            /*setPathfindingMalus(net.minecraft.world.level.pathfinder.BlockPathTypes.DAMAGE_FIRE, -1.0f);
             *///?}
         } catch (NullPointerException ignored) {
             // Entity still constructing — will be set on refreshBrain

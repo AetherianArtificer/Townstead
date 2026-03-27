@@ -22,6 +22,7 @@ import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
@@ -73,6 +74,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA caregiver) {
         if (!TownsteadConfig.ENABLE_FEEDING_YOUNG.get()) return false;
+        if (currentScheduleActivity(caregiver) == Activity.REST) return false;
         if (cooldown > 0) {
             cooldown--;
             return false;
@@ -141,6 +143,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA caregiver, long gameTime) {
         if (!townstead$isEligibleCaregiver(caregiver)) return false;
         if (childTarget == null || !childTarget.isAlive() || !townstead$isYoungHungry(childTarget)) return false;
+        if (currentScheduleActivity(caregiver) == Activity.REST) return false;
         return true;
     }
 
@@ -503,5 +506,10 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         sourceType = SourceType.CROP;
         sourcePos = chosen;
         return true;
+    }
+
+    private static Activity currentScheduleActivity(VillagerEntityMCA villager) {
+        long dayTime = villager.level().getDayTime() % 24000L;
+        return villager.getBrain().getSchedule().getActivityAt((int) dayTime);
     }
 }

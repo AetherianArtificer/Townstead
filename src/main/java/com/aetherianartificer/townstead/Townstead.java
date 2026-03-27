@@ -385,13 +385,10 @@ public class Townstead {
     *///?}
 
     private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
+        //? if neoforge {
         try {
             Class.forName("net.minecraft.client.Minecraft");
-            //? if neoforge {
             modContainer.registerConfig(ModConfig.Type.CLIENT, TownsteadConfig.CLIENT_SPEC);
-            //?} else if forge {
-            /*modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.CLIENT, TownsteadConfig.CLIENT_SPEC, modContainer));
-            *///?}
             // Load TownsteadClient via reflection to avoid pulling in client-only
             // imports (ConfigScreenHandler, etc.) on dedicated servers.
             Class<?> clientClass = Class.forName("com.aetherianartificer.townstead.TownsteadClient");
@@ -399,6 +396,12 @@ public class Townstead {
         } catch (Exception ignored) {
             // Dedicated server: no client config screen.
         }
+        //?} else if forge {
+        /*// Forge 1.20.1: do not probe client classes from common mod init.
+        // The previous reflective check still triggered RuntimeDistCleaner on
+        // dedicated servers, which is visible in server logs.
+        return;
+        *///?}
     }
 
     //? if neoforge {
