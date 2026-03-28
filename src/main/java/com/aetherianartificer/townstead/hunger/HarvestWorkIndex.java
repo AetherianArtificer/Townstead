@@ -48,6 +48,19 @@ final class HarvestWorkIndex {
         return snapshot == null ? null : snapshot.nearestTo(villager);
     }
 
+    static List<BlockPos> nearbyComposters(ServerLevel level, VillagerEntityMCA villager, int horizontalRadius, int verticalRadius) {
+        ComposterKey key = new ComposterKey(level.dimension().location().toString(), villager.blockPosition().asLong(), horizontalRadius, verticalRadius);
+        ComposterSnapshot snapshot = COMPOSTER_SNAPSHOTS.get(key);
+        long gameTime = level.getGameTime();
+        if (snapshot == null || !snapshot.validAt(gameTime)) {
+            if (snapshot == null || VillageAiBudget.tryConsume(level, "harvest-composter:" + key.centerKey() + ":" + horizontalRadius + ":" + verticalRadius, COMPOSTER_REFRESH_BUDGET_PER_TICK)) {
+                snapshot = buildComposterSnapshot(level, villager.blockPosition(), horizontalRadius, verticalRadius, gameTime);
+                COMPOSTER_SNAPSHOTS.put(key, snapshot);
+            }
+        }
+        return snapshot == null ? List.of() : snapshot.byDistanceTo(villager);
+    }
+
     static FarmSnapshot snapshot(ServerLevel level, BlockPos farmAnchor, @Nullable FarmBlueprint farmBlueprint, int farmRadius, int verticalRadius, int groomRadius) {
         FarmKey key = new FarmKey(
                 level.dimension().location().toString(),
@@ -302,6 +315,15 @@ final class HarvestWorkIndex {
 
         @Nullable BlockPos nearestTo(VillagerEntityMCA villager) {
             return HarvestWorkIndex.nearestTo(villager, composters, pos -> true);
+        }
+
+        List<BlockPos> byDistanceTo(VillagerEntityMCA villager) {
+            ArrayList<BlockPos> ordered = new ArrayList<>(composters);
+            ordered.sort((a, b) -> Double.compare(
+                    villager.distanceToSqr(a.getX() + 0.5, a.getY() + 0.5, a.getZ() + 0.5),
+                    villager.distanceToSqr(b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5)
+            ));
+            return List.copyOf(ordered);
         }
     }
 

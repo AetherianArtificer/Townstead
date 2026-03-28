@@ -147,7 +147,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
-        BlockPos anchor = townstead$findNearestComposter(level, villager);
+        BlockPos anchor = townstead$findWorkAnchor(level, villager);
         return anchor != null;
     }
 
@@ -156,7 +156,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return;
         actionType = ActionType.NONE;
         targetPos = null;
-        farmAnchor = townstead$findNearestComposter(level, villager);
+        farmAnchor = townstead$findWorkAnchor(level, villager);
         actionCooldown = 0;
         if (nextAcquireTick < gameTime) nextAcquireTick = 0;
         nextTargetScanTick = 0;
@@ -220,7 +220,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             return;
         }
         if (farmAnchor == null) {
-            farmAnchor = townstead$findNearestComposter(level, villager);
+            farmAnchor = townstead$findWorkAnchor(level, villager);
             if (farmAnchor == null) {
                 townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_VALID_TARGET);
                 return;
@@ -311,7 +311,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (farmAnchor != null && level.getBlockState(farmAnchor).getBlock() instanceof ComposterBlock) {
             return true;
         }
-        farmAnchor = townstead$findNearestComposter(level, villager);
+        farmAnchor = townstead$findWorkAnchor(level, villager);
         return farmAnchor != null;
     }
 
@@ -385,6 +385,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void townstead$acquireTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, boolean forceScan) {
+        if (farmAnchor == null) {
+            farmAnchor = townstead$findWorkAnchor(level, villager);
+        }
         if (farmAnchor == null) {
             actionType = ActionType.NONE;
             targetPos = null;
@@ -477,6 +480,43 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             targetPos = villager.blockPosition().immutable();
             townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
             return;
+        }
+
+        BlockPos nextAnchor = townstead$findAlternateWorkAnchor(level, villager, farmAnchor);
+        if (nextAnchor != null) {
+            farmAnchor = nextAnchor;
+            nextBlueprintPlanTick = 0;
+            nextTargetScanTick = 0;
+            nextGroomScanTick = 0;
+            targetProgress.reset();
+            townstead$resetWorksiteTargeting();
+            townstead$refreshBlueprintIfNeeded(level, villager, gameTime, true);
+            townstead$refreshTargetCache(level, villager, gameTime);
+
+            if (cachedHarvestTarget != null) {
+                actionType = ActionType.HARVEST;
+                targetPos = cachedHarvestTarget;
+                townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
+                return;
+            }
+            if (cachedHasSeed && cachedPlantTarget != null) {
+                actionType = ActionType.PLANT;
+                targetPos = cachedPlantTarget;
+                townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
+                return;
+            }
+            if (cachedSeedCount >= townstead$seedReserve(villager) && cachedTillTarget != null) {
+                actionType = ActionType.TILL;
+                targetPos = cachedTillTarget;
+                townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
+                return;
+            }
+            if (cachedGroomTarget != null) {
+                actionType = ActionType.GROOM;
+                targetPos = cachedGroomTarget;
+                townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
+                return;
+            }
         }
 
         actionType = ActionType.NONE;
@@ -1266,6 +1306,39 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private BlockPos townstead$findNearestComposter(ServerLevel level, VillagerEntityMCA villager) {
         return HarvestWorkIndex.nearestComposter(level, villager, ANCHOR_SEARCH_RADIUS, VERTICAL_RADIUS);
+    }
+
+    private BlockPos townstead$findWorkAnchor(ServerLevel level, VillagerEntityMCA villager) {
+        if (farmAnchor != null
+                && level.getBlockState(farmAnchor).getBlock() instanceof ComposterBlock
+                && townstead$hasPendingWork(level, villager, farmAnchor)) {
+            return farmAnchor;
+        }
+        return townstead$findAlternateWorkAnchor(level, villager, farmAnchor);
+    }
+
+    private BlockPos townstead$findAlternateWorkAnchor(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos excludeAnchor) {
+        List<BlockPos> composters = HarvestWorkIndex.nearbyComposters(level, villager, ANCHOR_SEARCH_RADIUS, VERTICAL_RADIUS);
+        BlockPos fallback = null;
+        for (BlockPos composter : composters) {
+            if (excludeAnchor != null && excludeAnchor.equals(composter)) {
+                continue;
+            }
+            if (!(level.getBlockState(composter).getBlock() instanceof ComposterBlock)) {
+                continue;
+            }
+            if (fallback == null) {
+                fallback = composter;
+            }
+            if (townstead$hasPendingWork(level, villager, composter)) {
+                return composter;
+            }
+        }
+        if (excludeAnchor != null
+                && level.getBlockState(excludeAnchor).getBlock() instanceof ComposterBlock) {
+            return excludeAnchor;
+        }
+        return fallback;
     }
 
     private Iterable<BlockPos> townstead$iterateSoilCells(ServerLevel level) {
