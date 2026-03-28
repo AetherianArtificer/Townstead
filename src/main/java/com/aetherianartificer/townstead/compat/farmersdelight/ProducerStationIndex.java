@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.compat.farmersdelight.ProducerStationSes
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.IngredientResolver;
+import com.aetherianartificer.townstead.compat.farmersdelight.cook.KitchenStorageIndex;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelector;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelector.ScoredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
@@ -87,6 +88,8 @@ public final class ProducerStationIndex {
         if (level == null || villager == null || snapshot == null || snapshot.stations().isEmpty()) return null;
 
         Map<StationType, List<ScoredRecipe>> candidateRecipesByType = new java.util.EnumMap<>(StationType.class);
+        Map<net.minecraft.resources.ResourceLocation, Boolean> toolAvailableByRecipe = new java.util.HashMap<>();
+        KitchenStorageIndex.Snapshot kitchenSnapshot = KitchenStorageIndex.snapshot(level, villager, worksiteBounds);
         List<Candidate> candidates = new ArrayList<>();
         for (StationSlot slot : snapshot.stations()) {
             if (abandonedUntilByStation != null && abandonedUntilByStation.getOrDefault(slot.pos().asLong(), 0L) > gameTime) {
@@ -129,19 +132,34 @@ public final class ProducerStationIndex {
                             recipeCooldownUntil,
                             ProducerWorkSupport.excludeBeverages(role, level, villager),
                             ProducerWorkSupport.beveragesOnly(role)));
-            List<ScoredRecipe> viable = stationTypeCandidates.stream()
-                    .filter(candidate -> StationHandler.stationSupportsRecipe(level, slot.pos(), candidate.recipe()))
-                    .filter(candidate -> IngredientResolver.canFulfill(level, villager, candidate.recipe(), slot.pos(), worksiteBounds))
-                    .toList();
+            List<ScoredRecipe> viable = new ArrayList<>();
+            for (ScoredRecipe candidate : stationTypeCandidates) {
+                if (!StationHandler.stationSupportsRecipe(level, slot.pos(), candidate.recipe())) continue;
+                if (!IngredientResolver.canFulfill(
+                        level,
+                        villager,
+                        candidate.recipe(),
+                        slot.pos(),
+                        worksiteBounds,
+                        kitchenSnapshot,
+                        toolAvailableByRecipe)) continue;
+                viable.add(candidate);
+            }
             if (viable.isEmpty()) {
                 logNoRecipe(role, level, villager, slot, worksiteBounds, recipeCooldownUntil, stationTypeCandidates.size());
                 continue;
             }
 
-            double bestScore = viable.stream().mapToDouble(ScoredRecipe::score).max().orElse(Double.NEGATIVE_INFINITY);
-            List<ScoredRecipe> bestRecipes = viable.stream()
-                    .filter(r -> r.score() >= bestScore - 0.5d)
-                    .toList();
+            double bestScore = Double.NEGATIVE_INFINITY;
+            for (ScoredRecipe viableRecipe : viable) {
+                bestScore = Math.max(bestScore, viableRecipe.score());
+            }
+            List<ScoredRecipe> bestRecipes = new ArrayList<>();
+            for (ScoredRecipe viableRecipe : viable) {
+                if (viableRecipe.score() >= bestScore - 0.5d) {
+                    bestRecipes.add(viableRecipe);
+                }
+            }
             ScoredRecipe chosenRecipe = bestRecipes.get(ThreadLocalRandom.current().nextInt(bestRecipes.size()));
             candidates.add(new Candidate(slot, stand, state, usableCapacity, distanceSq, chosenRecipe.recipe(), chosenRecipe.score()));
         }
@@ -155,11 +173,14 @@ public final class ProducerStationIndex {
                 .thenComparingDouble(Candidate::distanceSq));
 
         Candidate head = candidates.get(0);
-        List<Candidate> best = candidates.stream()
-                .filter(c -> stateRank(c.state()) == stateRank(head.state()))
-                .filter(c -> Double.compare(c.recipeScore(), head.recipeScore()) == 0 || Math.abs(c.recipeScore() - head.recipeScore()) <= 0.5d)
-                .filter(c -> c.usableCapacity() == head.usableCapacity())
-                .toList();
+        List<Candidate> best = new ArrayList<>();
+        for (Candidate candidate : candidates) {
+            if (stateRank(candidate.state()) != stateRank(head.state())) continue;
+            if (!(Double.compare(candidate.recipeScore(), head.recipeScore()) == 0
+                    || Math.abs(candidate.recipeScore() - head.recipeScore()) <= 0.5d)) continue;
+            if (candidate.usableCapacity() != head.usableCapacity()) continue;
+            best.add(candidate);
+        }
         Candidate choice = best.get(ThreadLocalRandom.current().nextInt(best.size()));
         return new Selection(choice.station(), choice.standPos(), choice.state(), choice.usableCapacity(), choice.recipe());
     }

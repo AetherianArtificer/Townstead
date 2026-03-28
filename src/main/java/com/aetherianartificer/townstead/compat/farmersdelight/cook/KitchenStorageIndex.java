@@ -25,14 +25,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
-final class KitchenStorageIndex {
+public final class KitchenStorageIndex {
     private static final long SNAPSHOT_TTL_TICKS = 20L;
     private static final int REFRESH_BUDGET_PER_TICK = 2;
     private static final Map<SnapshotKey, Snapshot> SNAPSHOTS = new ConcurrentHashMap<>();
 
     private KitchenStorageIndex() {}
 
-    static Snapshot snapshot(ServerLevel level, VillagerEntityMCA villager, Set<Long> kitchenBounds) {
+    public static Snapshot snapshot(ServerLevel level, VillagerEntityMCA villager, Set<Long> kitchenBounds) {
         SnapshotKey key = SnapshotKey.create(level, villager, kitchenBounds);
         Snapshot current = SNAPSHOTS.get(key);
         long gameTime = level.getGameTime();
@@ -50,16 +50,18 @@ final class KitchenStorageIndex {
     static void invalidate(ServerLevel level) {
         String dimensionId = level.dimension().location().toString();
         SNAPSHOTS.keySet().removeIf(key -> key.dimensionId.equals(dimensionId));
+        KitchenStorageCandidateIndex.invalidate(level);
         VillageStorageIndex.invalidate(level);
     }
 
     static void invalidate(ServerLevel level, BlockPos changedPos) {
         if (level == null || changedPos == null) return;
         VillageStorageIndex.invalidate(level, changedPos);
+        KitchenStorageCandidateIndex.invalidate(level, changedPos);
         String dimensionId = level.dimension().location().toString();
         long changedKey = changedPos.asLong();
         SNAPSHOTS.keySet().removeIf(key -> key.dimensionId.equals(dimensionId)
-                && key.boundsKey.positionsContain(changedKey));
+                && key.boundsKey.candidateSearchContains(changedKey));
     }
 
     private static Snapshot buildSnapshot(ServerLevel level, VillagerEntityMCA villager, Set<Long> kitchenBounds, long gameTime) {
@@ -71,7 +73,7 @@ final class KitchenStorageIndex {
         Map<ResourceLocation, Integer> itemCounts = new HashMap<>();
         Set<Long> visited = new HashSet<>();
 
-        for (BlockPos pos : candidateStoragePositions(kitchenBounds)) {
+        for (BlockPos pos : candidateStoragePositions(level, kitchenBounds)) {
             if (!visited.add(pos.asLong())) continue;
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
             BlockEntity be = observed.blockEntity();
@@ -105,26 +107,11 @@ final class KitchenStorageIndex {
         return new Snapshot(List.copyOf(entries), Map.copyOf(itemCounts), gameTime + SNAPSHOT_TTL_TICKS);
     }
 
-    private static List<BlockPos> candidateStoragePositions(Set<Long> kitchenBounds) {
-        List<BlockPos> positions = new ArrayList<>();
-        Set<Long> seen = new HashSet<>();
-        for (long key : kitchenBounds) {
-            BlockPos base = BlockPos.of(key);
-            for (int dx = -2; dx <= 2; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dz = -2; dz <= 2; dz++) {
-                        BlockPos pos = base.offset(dx, dy, dz);
-                        if (seen.add(pos.asLong())) {
-                            positions.add(pos.immutable());
-                        }
-                    }
-                }
-            }
-        }
-        return List.copyOf(positions);
+    static List<BlockPos> candidateStoragePositions(ServerLevel level, Set<Long> kitchenBounds) {
+        return KitchenStorageCandidateIndex.candidates(level, kitchenBounds);
     }
 
-    record Snapshot(List<Entry> entries, Map<ResourceLocation, Integer> itemCounts, long expiresAt) {
+    public record Snapshot(List<Entry> entries, Map<ResourceLocation, Integer> itemCounts, long expiresAt) {
         boolean validAt(long gameTime) {
             return gameTime <= expiresAt;
         }
@@ -263,6 +250,22 @@ final class KitchenStorageIndex {
 
         boolean positionsContain(long pos) {
             return java.util.Arrays.binarySearch(positions, pos) >= 0;
+        }
+
+        boolean candidateSearchContains(long pos) {
+            BlockPos changedPos = BlockPos.of(pos);
+            int changedX = changedPos.getX();
+            int changedY = changedPos.getY();
+            int changedZ = changedPos.getZ();
+            for (long boundKey : positions) {
+                BlockPos base = BlockPos.of(boundKey);
+                if (Math.abs(changedX - base.getX()) <= 2
+                        && Math.abs(changedY - base.getY()) <= 1
+                        && Math.abs(changedZ - base.getZ()) <= 2) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 

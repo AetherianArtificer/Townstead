@@ -24,6 +24,9 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class RecipeSelector {
+    private static final long PLANNING_CACHE_TTL_TICKS = 40L;
+    private static final Map<PlanningKey, PlanningData> PLANNING_CACHE = new HashMap<>();
+
     public record ScoredRecipe(DiscoveredRecipe recipe, double score) {}
 
     private RecipeSelector() {}
@@ -68,38 +71,18 @@ public final class RecipeSelector {
             boolean beveragesOnly
     ) {
         if (targetStationType == null) return List.of();
-        List<DiscoveredRecipe> recipes;
-        if (beveragesOnly) {
-            recipes = ModRecipeRegistry.getBeverageRecipesForStation(level, targetStationType);
-        } else if (excludeBeverages) {
-            recipes = ModRecipeRegistry.getFoodRecipesForStation(level, targetStationType);
-        } else {
-            recipes = ModRecipeRegistry.getRecipesForStation(level, targetStationType);
-        }
+        List<DiscoveredRecipe> recipes = stationRecipes(level, targetStationType, excludeBeverages, beveragesOnly);
         if (recipes.isEmpty()) return List.of();
 
-        List<DiscoveredRecipe> planningRecipes = ModRecipeRegistry.getRecipes(level).stream()
-                .filter(r -> beveragesOnly ? r.beverage() : (!excludeBeverages || !r.beverage()))
-                .toList();
-
-        Set<ResourceLocation> trackedIds = new HashSet<>();
-        Map<ResourceLocation, Integer> chainDemand = new HashMap<>();
-        for (DiscoveredRecipe recipe : planningRecipes) {
-            trackedIds.add(recipe.output());
-            if (recipe.containerItemId() != null) trackedIds.add(recipe.containerItemId());
-            for (RecipeIngredient ing : recipe.inputs()) {
-                for (ResourceLocation id : ing.itemIds()) {
-                    trackedIds.add(id);
-                    chainDemand.merge(id, 1, Integer::sum);
-                }
-            }
-        }
+        PlanningData planning = planningData(level, excludeBeverages, beveragesOnly);
 
         KitchenStorageIndex.Snapshot kitchenSnapshot = KitchenStorageIndex.snapshot(level, villager, kitchenBounds);
-        Map<ResourceLocation, Integer> outputStock = IngredientResolver.buildSupplySnapshot(level, villager, trackedIds, kitchenBounds, kitchenSnapshot);
+        Map<ResourceLocation, Integer> outputStock = IngredientResolver.buildSupplySnapshot(
+                level, villager, planning.trackedIds(), kitchenBounds, kitchenSnapshot);
         boolean waterAvailable = IngredientResolver.waterAvailable(level, villager, null, kitchenBounds);
         long cookSeed = villager.getUUID().getLeastSignificantBits();
         long now = level.getGameTime();
+        Map<ResourceLocation, Boolean> toolAvailableByRecipe = new HashMap<>();
         List<ScoredRecipe> candidates = new ArrayList<>();
         for (DiscoveredRecipe recipe : recipes) {
             Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
@@ -108,27 +91,28 @@ public final class RecipeSelector {
             boolean candidatePlanable = IngredientResolver.canPlanWithVirtual(
                     recipe,
                     virtualSupply,
-                    !recipe.requiresTool() || IngredientResolver.recipeToolAvailable(level, villager, recipe, kitchenBounds),
+                    toolAvailable(level, villager, recipe, kitchenBounds, toolAvailableByRecipe),
                     waterAvailable
             );
             double chainOpportunity = 0.0d;
             if (candidatePlanable) {
                 IngredientResolver.applyVirtual(recipe, virtualSupply);
                 chainOpportunity = computeChainOpportunity(
-                        planningRecipes,
+                        planning.recipes(),
                         recipe,
                         outputStock,
                         virtualSupply,
                         level,
                         villager,
                         kitchenBounds,
+                        toolAvailableByRecipe,
                         waterAvailable
                 );
             }
             double score = scoreRecipe(
                     recipe,
                     outputStock.getOrDefault(recipe.output(), 0),
-                    chainDemand.getOrDefault(recipe.output(), 0),
+                    planning.chainDemand().getOrDefault(recipe.output(), 0),
                     chainOpportunity,
                     cookSeed
             );
@@ -265,13 +249,13 @@ public final class RecipeSelector {
             ServerLevel level,
             VillagerEntityMCA villager,
             Set<Long> kitchenBounds,
+            Map<ResourceLocation, Boolean> toolAvailableByRecipe,
             boolean waterAvailable
     ) {
         double bonus = 0.0d;
         for (DiscoveredRecipe followup : planningRecipes) {
             if (followup.id().equals(rootRecipe.id())) continue;
-            boolean toolAvailable = !followup.requiresTool()
-                    || IngredientResolver.recipeToolAvailable(level, villager, followup, kitchenBounds);
+            boolean toolAvailable = toolAvailable(level, villager, followup, kitchenBounds, toolAvailableByRecipe);
             boolean before = IngredientResolver.canPlanWithVirtual(followup, baseSupply, toolAvailable, waterAvailable);
             boolean after = IngredientResolver.canPlanWithVirtual(followup, afterSupply, toolAvailable, waterAvailable);
             if (!before && after) {
@@ -300,5 +284,83 @@ public final class RecipeSelector {
         if (recipe.beverage()) value += 4.0d;
         return Math.max(1.0d, value);
     }
+
+    private static List<DiscoveredRecipe> stationRecipes(
+            ServerLevel level,
+            StationType targetStationType,
+            boolean excludeBeverages,
+            boolean beveragesOnly
+    ) {
+        if (beveragesOnly) {
+            return ModRecipeRegistry.getBeverageRecipesForStation(level, targetStationType);
+        }
+        if (excludeBeverages) {
+            return ModRecipeRegistry.getFoodRecipesForStation(level, targetStationType);
+        }
+        return ModRecipeRegistry.getRecipesForStation(level, targetStationType);
+    }
+
+    private static List<DiscoveredRecipe> planningRecipes(ServerLevel level, boolean excludeBeverages, boolean beveragesOnly) {
+        if (beveragesOnly) {
+            return ModRecipeRegistry.getBeverageRecipes(level);
+        }
+        if (excludeBeverages) {
+            return ModRecipeRegistry.getFoodRecipes(level);
+        }
+        return ModRecipeRegistry.getRecipes(level);
+    }
+
+    private static PlanningData planningData(ServerLevel level, boolean excludeBeverages, boolean beveragesOnly) {
+        PlanningKey key = new PlanningKey(level.dimension().location(), excludeBeverages, beveragesOnly);
+        long now = level.getGameTime();
+        PlanningData current = PLANNING_CACHE.get(key);
+        if (current != null && current.expiresAt() > now) {
+            return current;
+        }
+        List<DiscoveredRecipe> planningRecipes = planningRecipes(level, excludeBeverages, beveragesOnly);
+        Set<ResourceLocation> trackedIds = new HashSet<>();
+        Map<ResourceLocation, Integer> chainDemand = new HashMap<>();
+        for (DiscoveredRecipe recipe : planningRecipes) {
+            trackedIds.add(recipe.output());
+            if (recipe.containerItemId() != null) trackedIds.add(recipe.containerItemId());
+            for (RecipeIngredient ingredient : recipe.inputs()) {
+                for (ResourceLocation id : ingredient.itemIds()) {
+                    trackedIds.add(id);
+                    chainDemand.merge(id, 1, Integer::sum);
+                }
+            }
+        }
+        PlanningData rebuilt = new PlanningData(
+                List.copyOf(planningRecipes),
+                Set.copyOf(trackedIds),
+                Map.copyOf(chainDemand),
+                now + PLANNING_CACHE_TTL_TICKS
+        );
+        PLANNING_CACHE.put(key, rebuilt);
+        return rebuilt;
+    }
+
+    private static boolean toolAvailable(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            DiscoveredRecipe recipe,
+            Set<Long> kitchenBounds,
+            Map<ResourceLocation, Boolean> toolAvailableByRecipe
+    ) {
+        if (!recipe.requiresTool()) return true;
+        return toolAvailableByRecipe.computeIfAbsent(
+                recipe.id(),
+                unused -> IngredientResolver.recipeToolAvailable(level, villager, recipe, kitchenBounds)
+        );
+    }
+
+    private record PlanningKey(ResourceLocation dimension, boolean excludeBeverages, boolean beveragesOnly) {}
+
+    private record PlanningData(
+            List<DiscoveredRecipe> recipes,
+            Set<ResourceLocation> trackedIds,
+            Map<ResourceLocation, Integer> chainDemand,
+            long expiresAt
+    ) {}
 
 }

@@ -98,6 +98,11 @@ public final class ModRecipeRegistry {
     private static ResourceLocation cachedDimension = null;
     private static long cacheUntilTick = Long.MIN_VALUE;
     private static List<DiscoveredRecipe> cachedRecipes = List.of();
+    private static List<DiscoveredRecipe> cachedFoodRecipes = List.of();
+    private static List<DiscoveredRecipe> cachedBeverageRecipes = List.of();
+    private static Map<StationType, List<DiscoveredRecipe>> cachedStationRecipes = Map.of();
+    private static Map<StationType, List<DiscoveredRecipe>> cachedFoodStationRecipes = Map.of();
+    private static Map<StationType, List<DiscoveredRecipe>> cachedBeverageStationRecipes = Map.of();
 
     public static List<DiscoveredRecipe> getRecipes(ServerLevel level) {
         ResourceLocation dimension = level.dimension().location();
@@ -109,13 +114,13 @@ public final class ModRecipeRegistry {
         cachedDimension = dimension;
         cacheUntilTick = now + CACHE_TICKS;
         cachedRecipes = List.copyOf(discovered);
+        rebuildRecipeViews(cachedRecipes);
         return cachedRecipes;
     }
 
     public static List<DiscoveredRecipe> getRecipesForStation(ServerLevel level, StationType stationType) {
-        return getRecipes(level).stream()
-                .filter(r -> r.stationType() == stationType)
-                .toList();
+        getRecipes(level);
+        return cachedStationRecipes.getOrDefault(stationType, List.of());
     }
 
     public static List<DiscoveredRecipe> getRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
@@ -125,9 +130,8 @@ public final class ModRecipeRegistry {
     }
 
     public static List<DiscoveredRecipe> getFoodRecipesForStation(ServerLevel level, StationType stationType) {
-        return getRecipes(level).stream()
-                .filter(r -> r.stationType() == stationType && !r.beverage())
-                .toList();
+        getRecipes(level);
+        return cachedFoodStationRecipes.getOrDefault(stationType, List.of());
     }
 
     public static List<DiscoveredRecipe> getFoodRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
@@ -137,9 +141,8 @@ public final class ModRecipeRegistry {
     }
 
     public static List<DiscoveredRecipe> getBeverageRecipesForStation(ServerLevel level, StationType stationType) {
-        return getRecipes(level).stream()
-                .filter(r -> r.stationType() == stationType && r.beverage())
-                .toList();
+        getRecipes(level);
+        return cachedBeverageStationRecipes.getOrDefault(stationType, List.of());
     }
 
     public static List<DiscoveredRecipe> getBeverageRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
@@ -165,6 +168,55 @@ public final class ModRecipeRegistry {
             }
         }
         return ids;
+    }
+
+    public static List<DiscoveredRecipe> getFoodRecipes(ServerLevel level) {
+        getRecipes(level);
+        return cachedFoodRecipes;
+    }
+
+    public static List<DiscoveredRecipe> getBeverageRecipes(ServerLevel level) {
+        getRecipes(level);
+        return cachedBeverageRecipes;
+    }
+
+    private static void rebuildRecipeViews(List<DiscoveredRecipe> recipes) {
+        List<DiscoveredRecipe> foodRecipes = new ArrayList<>();
+        List<DiscoveredRecipe> beverageRecipes = new ArrayList<>();
+        EnumMap<StationType, List<DiscoveredRecipe>> stationRecipes = new EnumMap<>(StationType.class);
+        EnumMap<StationType, List<DiscoveredRecipe>> foodStationRecipes = new EnumMap<>(StationType.class);
+        EnumMap<StationType, List<DiscoveredRecipe>> beverageStationRecipes = new EnumMap<>(StationType.class);
+
+        for (StationType stationType : StationType.values()) {
+            stationRecipes.put(stationType, new ArrayList<>());
+            foodStationRecipes.put(stationType, new ArrayList<>());
+            beverageStationRecipes.put(stationType, new ArrayList<>());
+        }
+
+        for (DiscoveredRecipe recipe : recipes) {
+            stationRecipes.get(recipe.stationType()).add(recipe);
+            if (recipe.beverage()) {
+                beverageRecipes.add(recipe);
+                beverageStationRecipes.get(recipe.stationType()).add(recipe);
+            } else {
+                foodRecipes.add(recipe);
+                foodStationRecipes.get(recipe.stationType()).add(recipe);
+            }
+        }
+
+        cachedFoodRecipes = List.copyOf(foodRecipes);
+        cachedBeverageRecipes = List.copyOf(beverageRecipes);
+        cachedStationRecipes = freezeRecipeViewMap(stationRecipes);
+        cachedFoodStationRecipes = freezeRecipeViewMap(foodStationRecipes);
+        cachedBeverageStationRecipes = freezeRecipeViewMap(beverageStationRecipes);
+    }
+
+    private static Map<StationType, List<DiscoveredRecipe>> freezeRecipeViewMap(EnumMap<StationType, List<DiscoveredRecipe>> source) {
+        EnumMap<StationType, List<DiscoveredRecipe>> frozen = new EnumMap<>(StationType.class);
+        for (Map.Entry<StationType, List<DiscoveredRecipe>> entry : source.entrySet()) {
+            frozen.put(entry.getKey(), List.copyOf(entry.getValue()));
+        }
+        return Map.copyOf(frozen);
     }
 
     private static List<DiscoveredRecipe> discoverAllRecipes(ServerLevel level) {
