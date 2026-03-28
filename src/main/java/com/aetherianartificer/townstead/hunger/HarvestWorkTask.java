@@ -582,10 +582,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return switch (actionType) {
             case RETURN -> townstead$isInsideFarmRadius(targetPos);
             case HARVEST -> townstead$isHarvestTargetValid(level, targetPos, state);
-            case PLANT -> (townstead$isPlannedCropPos(targetPos)
-                    && state.isAir()
-                    && level.getBlockState(targetPos.below()).getBlock() instanceof FarmBlock)
-                    || FarmerCropCompatRegistry.isPlantableSpot(level, targetPos);
+            case PLANT -> townstead$isPlantTargetValid(level, targetPos, state);
             case TILL -> townstead$isPlannedSoil(targetPos) && townstead$isTillable(level, targetPos, gameTime);
             case GROOM -> townstead$isPlannedOrAdjacentSoil(targetPos.below()) && townstead$isRemovableWeed(state);
             case FETCH_WATER -> level.getFluidState(targetPos).is(FluidTags.WATER)
@@ -685,6 +682,29 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return false;
     }
 
+    private boolean townstead$isPlantTargetValid(ServerLevel level, BlockPos pos, BlockState state) {
+        if (!townstead$isInsideFarmRadius(pos)) return false;
+        if (FarmerCropCompatRegistry.isPlantableSpot(level, pos)) return true;
+        return townstead$isPlannedCropPos(pos)
+                && state.isAir()
+                && level.getFluidState(pos).isEmpty()
+                && level.getFluidState(pos.above()).isEmpty()
+                && level.getBlockState(pos.below()).getBlock() instanceof FarmBlock;
+    }
+
+    private boolean townstead$canPlantSeedAt(ServerLevel level, BlockPos pos, ItemStack stack) {
+        if (stack.isEmpty() || !townstead$isSeed(stack)) return false;
+        boolean waterPlanting = FarmerCropCompatRegistry.isPlantableSpot(level, pos);
+        String hint = FarmerCropCompatRegistry.patternHintForSeed(stack);
+        if (waterPlanting) {
+            return "rice_paddy".equals(hint);
+        }
+        if (!level.getFluidState(pos).isEmpty() || !level.getFluidState(pos.above()).isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
     private Iterable<BlockPos> townstead$harvestCandidatesNear(ServerLevel level, BlockPos cropPos) {
         java.util.ArrayList<BlockPos> candidates = new java.util.ArrayList<>(5);
         candidates.add(cropPos);
@@ -740,12 +760,34 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return bestPos;
     }
 
+    private void townstead$rejectCurrentTarget(BlockPos pos, long gameTime) {
+        if (pos == null) return;
+        targetFailures.recordFailure(pos, gameTime, 1, TARGET_BLACKLIST_TICKS);
+        nextTargetScanTick = 0;
+        if (pos.equals(targetPos)) {
+            targetPos = null;
+            actionType = ActionType.NONE;
+        }
+    }
+
     private void townstead$doPlant(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
+        if (!townstead$isPlantTargetValid(level, pos, level.getBlockState(pos))) {
+            townstead$rejectCurrentTarget(pos, gameTime);
+            return;
+        }
         int slot = townstead$findSeedSlot(villager.getInventory(), villager, level, pos);
-        if (slot < 0) return;
+        if (slot < 0) {
+            townstead$rejectCurrentTarget(pos, gameTime);
+            return;
+        }
         ItemStack seed = villager.getInventory().getItem(slot);
+        if (!townstead$canPlantSeedAt(level, pos, seed)) {
+            townstead$rejectCurrentTarget(pos, gameTime);
+            return;
+        }
         if (!(seed.getItem() instanceof BlockItem blockItem)) {
             townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.UNSUPPORTED_CROP);
+            townstead$rejectCurrentTarget(pos, gameTime);
             return;
         }
         BlockState place = blockItem.getBlock().defaultBlockState();
@@ -753,15 +795,23 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             net.minecraft.world.level.material.FluidState fluid = level.getFluidState(pos);
             place = place.setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED, fluid.is(FluidTags.WATER));
         }
-        if (!place.canSurvive(level, pos)) return;
-        boolean isWaterPlanting = level.getBlockState(pos).is(Blocks.WATER);
-        if (!isWaterPlanting && !level.getBlockState(pos).isAir()) return;
+        if (!place.canSurvive(level, pos)) {
+            townstead$rejectCurrentTarget(pos, gameTime);
+            return;
+        }
+        boolean isWaterPlanting = FarmerCropCompatRegistry.isPlantableSpot(level, pos);
+        if (!isWaterPlanting && !level.getBlockState(pos).isAir()) {
+            townstead$rejectCurrentTarget(pos, gameTime);
+            return;
+        }
         if (level.setBlock(pos, place, Block.UPDATE_ALL)) {
             seed.shrink(1);
             villager.swing(villager.getDominantHand());
             townstead$markWorked(pos, gameTime);
             HarvestWorkIndex.invalidate(level, pos);
             townstead$awardFarmerXp(level, villager, gameTime, 2, "plant");
+        } else {
+            townstead$rejectCurrentTarget(pos, gameTime);
         }
     }
 
@@ -879,12 +929,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private int townstead$findSeedSlot(SimpleContainer inv, VillagerEntityMCA villager, ServerLevel level, BlockPos plantPos) {
+        if (!townstead$isPlantTargetValid(level, plantPos, level.getBlockState(plantPos))) return -1;
         boolean hasWater = townstead$hasNearbyWater(level, plantPos.below());
         int bestSlot = -1;
         double bestScore = Double.NEGATIVE_INFINITY;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (!townstead$isSeed(stack)) continue;
+            if (!townstead$canPlantSeedAt(level, plantPos, stack)) continue;
             if (!(stack.getItem() instanceof BlockItem blockItem)) continue;
             BlockState place = blockItem.getBlock().defaultBlockState();
             if (!place.canSurvive(level, plantPos)) continue;

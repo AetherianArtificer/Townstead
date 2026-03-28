@@ -111,7 +111,12 @@ final class HarvestWorkIndex {
                 }
             }
 
-            if (soilState.getBlock() instanceof FarmBlock && level.getBlockState(cropPos).isAir()) {
+            if (soilState.getBlock() instanceof FarmBlock
+                    && level.getBlockState(cropPos).isAir()
+                    && level.getFluidState(cropPos).isEmpty()) {
+                if (!level.getFluidState(cropPos.above()).isEmpty()) {
+                    continue;
+                }
                 plantTargets.add(cropPos.immutable());
             }
 

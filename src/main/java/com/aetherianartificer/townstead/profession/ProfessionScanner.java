@@ -7,20 +7,30 @@ import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBari
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Village;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Server-side logic to determine which professions are available in a village.
@@ -49,7 +59,7 @@ public final class ProfessionScanner {
         ServerLevel level = player.serverLevel();
 
         // Scan for vanilla workstation POIs within the village
-        scanVanillaProfessions(level, village, result);
+        scanVanillaProfessions(level, village, result, slotInfo);
 
         // MCA professions: Guard and Archer are always available
         scanMcaProfessions(result);
@@ -98,7 +108,9 @@ public final class ProfessionScanner {
             Map.entry("weapon_smith", "minecraft:weaponsmith")
     );
 
-    private static void scanVanillaProfessions(ServerLevel level, Village village, Set<String> result) {
+    private static void scanVanillaProfessions(ServerLevel level, Village village, Set<String> result, Map<String, int[]> slotInfo) {
+        refreshVillagePoiData(level, village);
+
         // Map building types to professions — only intentional buildings count,
         // not incidental workstation blocks in unrelated buildings
         Set<String> buildingTypes = new HashSet<>();
@@ -107,21 +119,37 @@ public final class ProfessionScanner {
         }
 
         for (String buildingType : buildingTypes) {
-            String profId = BUILDING_TYPE_TO_PROFESSION.get(buildingType);
+            String profId = isFarmBuildingType(buildingType)
+                    ? "minecraft:farmer"
+                    : BUILDING_TYPE_TO_PROFESSION.get(buildingType);
             if (profId != null) {
                 result.add(profId);
             }
         }
 
+        releaseStaleJobSites(level, village, VillagerProfession.FARMER);
+
+        String farmerKey = professionKey(VillagerProfession.FARMER);
+        int farmerMaxSlots = countVillagePoiSlots(level, village, VillagerProfession.FARMER);
+        if (farmerMaxSlots > 0) {
+            result.add(farmerKey);
+            slotInfo.put(farmerKey, new int[]{countProfessionResidents(level, village, VillagerProfession.FARMER), farmerMaxSlots});
+        }
+
         // Also include professions that current village residents already hold
         // (covers edge cases and modded professions)
         for (var entity : level.getAllEntities()) {
-            if (entity instanceof VillagerEntityMCA villager && village.isWithinBorder(villager)) {
+            if (entity instanceof VillagerEntityMCA villager && villager.isAlive() && village.isWithinBorder(villager)) {
                 VillagerProfession prof = villager.getVillagerData().getProfession();
                 if (prof != VillagerProfession.NONE) {
                     result.add(professionKey(prof));
                 }
             }
+        }
+
+        int activeFarmers = countProfessionResidents(level, village, VillagerProfession.FARMER);
+        if (activeFarmers > 0) {
+            slotInfo.put(farmerKey, new int[]{activeFarmers, Math.max(farmerMaxSlots, 0)});
         }
     }
 
@@ -204,5 +232,97 @@ public final class ProfessionScanner {
         if (BuiltInRegistries.VILLAGER_PROFESSION.containsKey(id)) {
             result.add(id.toString());
         }
+    }
+
+    private static boolean isFarmBuildingType(String buildingType) {
+        if (buildingType == null || buildingType.isBlank()) return false;
+        String normalized = buildingType.toLowerCase(Locale.ROOT);
+        return normalized.equals("farm")
+                || normalized.startsWith("farm")
+                || normalized.contains("/farm")
+                || normalized.contains("_farm");
+    }
+
+    private static int countVillagePoiSlots(ServerLevel level, Village village, VillagerProfession profession) {
+        if (level == null || village == null || profession == null || profession == VillagerProfession.NONE) return 0;
+        BlockPos center = new BlockPos(village.getCenter());
+        PoiManager poiManager = level.getPoiManager();
+        return (int) poiManager.findAll(
+                profession.heldJobSite(),
+                pos -> village.isWithinBorder(pos, Village.BORDER_MARGIN),
+                center,
+                128,
+                PoiManager.Occupancy.ANY
+        ).count();
+    }
+
+    private static int countProfessionResidents(ServerLevel level, Village village, VillagerProfession profession) {
+        Set<UUID> seen = new HashSet<>();
+        int count = 0;
+        for (var entity : level.getAllEntities()) {
+            if (!(entity instanceof VillagerEntityMCA resident)) continue;
+            if (!resident.isAlive() || !village.isWithinBorder(resident)) continue;
+            if (!seen.add(resident.getUUID())) continue;
+            if (resident.getVillagerData().getProfession() == profession) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static void releaseStaleJobSites(ServerLevel level, Village village, VillagerProfession profession) {
+        if (profession == null || profession == VillagerProfession.NONE) return;
+
+        PoiManager poiManager = level.getPoiManager();
+        Set<BlockPos> liveClaims = new HashSet<>();
+        for (var entity : level.getAllEntities()) {
+            if (!(entity instanceof VillagerEntityMCA resident)) continue;
+            if (!resident.isAlive() || !village.isWithinBorder(resident)) continue;
+            if (!professionOwnsJobSite(resident.getVillagerData().getProfession(), profession)) continue;
+            resident.getBrain().getMemory(MemoryModuleType.JOB_SITE)
+                    .filter(globalPos -> globalPos.dimension().equals(level.dimension()))
+                    .map(GlobalPos::pos)
+                    .ifPresent(liveClaims::add);
+        }
+
+        poiManager.findAll(
+                profession.heldJobSite(),
+                pos -> village.isWithinBorder(pos, Village.BORDER_MARGIN),
+                new BlockPos(village.getCenter()),
+                128,
+                PoiManager.Occupancy.ANY
+        ).forEach(pos -> {
+            if (liveClaims.contains(pos)) return;
+            if (poiManager.getFreeTickets(pos) > 0) return;
+            poiManager.release(pos);
+        });
+    }
+
+    private static boolean professionOwnsJobSite(VillagerProfession holderProfession, VillagerProfession targetProfession) {
+        if (holderProfession == null || targetProfession == null) return false;
+        if (holderProfession == targetProfession) return true;
+        return holderProfession.heldJobSite().equals(targetProfession.heldJobSite());
+    }
+
+    private static void refreshVillagePoiData(ServerLevel level, Village village) {
+        if (level == null || village == null) return;
+
+        BlockPos center = new BlockPos(village.getCenter());
+        int chunkRadius = Math.floorDiv(128, 16) + 1;
+        SectionPos.aroundChunk(
+                new ChunkPos(center),
+                chunkRadius,
+                level.getMinSection(),
+                level.getMaxSection()
+        ).forEach(sectionPos -> {
+            LevelChunk chunk = level.getChunk(sectionPos.x(), sectionPos.z());
+            int sectionIndex = level.getSectionIndexFromSectionY(sectionPos.y());
+            if (sectionIndex < 0 || sectionIndex >= chunk.getSections().length) return;
+
+            LevelChunkSection chunkSection = chunk.getSection(sectionIndex);
+            if (chunkSection == null) return;
+
+            level.getPoiManager().checkConsistencyWithBlocks(sectionPos, chunkSection);
+        });
     }
 }

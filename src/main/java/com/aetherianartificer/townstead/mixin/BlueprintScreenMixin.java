@@ -15,6 +15,7 @@ import com.aetherianartificer.townstead.profession.ProfessionSetPayload;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
+import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.aetherianartificer.townstead.compat.ModCompat;
@@ -1718,7 +1719,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$shiftEdits.clear();
         townstead$shiftQueried = false;
         townstead$shiftPaintOrdinal = -1;
-        townstead$populateShiftVillagers();
+        townstead$refreshShiftVillagers();
 
         // Controls row at the top
         int topY = this.height / 2 - 74;
@@ -1754,48 +1755,36 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$populateShiftVillagers() {
+        townstead$refreshShiftVillagers();
+    }
+
+    @Unique
+    private void townstead$refreshShiftVillagers() {
         townstead$shiftVillagerUuids = new ArrayList<>();
         townstead$shiftVillagerNames.clear();
         townstead$shiftVillagerEntityIds.clear();
 
-        Village village = ((BlueprintScreenAccessor) this).townstead$getVillage();
-        if (village == null || this.minecraft == null) return;
-
-        ClientLevel level = this.minecraft.level;
-        if (level == null) return;
-
-        // Collect all loaded villager entities from the village.
-        // We scan all loaded entities since ClientLevel.getEntities() has version-
-        // dependent access. Build a UUID set from the village residents, then match.
-        Set<UUID> residentUuids = new HashSet<>();
-        village.getResidentsUUIDs().forEach(residentUuids::add);
-
-        for (net.minecraft.world.entity.Entity entity : level.entitiesForRendering()) {
-            if (entity instanceof VillagerEntityMCA villager && residentUuids.contains(entity.getUUID())) {
-                UUID uuid = entity.getUUID();
-                townstead$shiftVillagerUuids.add(uuid);
-                String name = villager.getDisplayName().getString();
-                townstead$shiftVillagerNames.put(uuid, name);
-                townstead$shiftVillagerEntityIds.put(uuid, entity.getId());
-            }
+        for (VillageResidentClientStore.Resident resident : VillageResidentClientStore.getResidents()) {
+            UUID uuid = resident.villagerUuid();
+            townstead$shiftVillagerUuids.add(uuid);
+            townstead$shiftVillagerNames.put(uuid, resident.name());
+            ShiftClientStore.set(uuid, resident.shifts());
         }
 
-        // Sort by name for consistent ordering
         townstead$shiftVillagerUuids.sort(Comparator.comparing(
                 uuid -> townstead$shiftVillagerNames.getOrDefault(uuid, uuid.toString())));
+        townstead$shiftPage = Math.max(0, Math.min(townstead$shiftPage, townstead$shiftTotalPages() - 1));
     }
 
     @Unique
     private void townstead$queryShiftData() {
         if (townstead$shiftQueried) return;
         townstead$shiftQueried = true;
-        for (UUID uuid : townstead$shiftVillagerUuids) {
-            //? if neoforge {
-            PacketDistributor.sendToServer(new ShiftSetPayload(uuid, new int[0]));
-            //?} else if forge {
-            /*TownsteadNetwork.sendToServer(new ShiftSetPayload(uuid, new int[0]));
-            *///?}
-        }
+        //? if neoforge {
+        PacketDistributor.sendToServer(new ProfessionQueryPayload());
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(new ProfessionQueryPayload());
+        *///?}
     }
 
     @Unique
@@ -1832,6 +1821,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             CallbackInfo ci) {
         if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page))
             return;
+        townstead$refreshShiftVillagers();
 
         int leftX = this.width / 2 - 80;
         int gridX = townstead$shiftGridLeft();
@@ -1930,19 +1920,15 @@ public abstract class BlueprintScreenMixin extends Screen {
             int rowY = gridY + row * (SHIFT_CELL_H + 2);
             if (mouseX >= leftX && mouseX < gridX && mouseY >= rowY && mouseY < rowY + SHIFT_CELL_H) {
                 UUID uuid = townstead$shiftVillagerUuids.get(startIdx + row);
-                Integer entityId = townstead$shiftVillagerEntityIds.get(uuid);
-                if (entityId != null && this.minecraft != null && this.minecraft.level != null) {
-                    net.minecraft.world.entity.Entity entity = this.minecraft.level.getEntity(entityId);
-                    if (entity instanceof VillagerEntityMCA mca) {
-                        VillagerProfession prof = mca.getVillagerData().getProfession();
-                        String profName = ((VillagerLike<?>) mca).getProfessionText().getString();
-                        int level = mca.getVillagerData().getLevel();
-                        String levelKey = "townstead.profession.level." + Math.min(Math.max(level, 1), 5);
-                        String levelName = Component.translatable(levelKey).getString();
-                        context.renderTooltip(this.font,
-                                Component.literal(profName + " - " + levelName),
-                                mouseX, mouseY);
-                    }
+                VillageResidentClientStore.Resident resident = VillageResidentClientStore.get(uuid);
+                if (resident != null) {
+                    String profName = townstead$profDisplayName(resident.professionId());
+                    int level = resident.professionLevel();
+                    String levelKey = "townstead.profession.level." + Math.min(Math.max(level, 1), 5);
+                    String levelName = Component.translatable(levelKey).getString();
+                    context.renderTooltip(this.font,
+                            Component.literal(profName + " - " + levelName),
+                            mouseX, mouseY);
                 }
                 break;
             }
@@ -2114,7 +2100,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$profPage = 0;
         townstead$profSelectedVillager = null;
         townstead$profScroll = 0;
-        townstead$populateProfVillagers();
+        townstead$refreshProfVillagers();
 
         int leftX = this.width / 2 - 80;
         int topY = this.height / 2 - 74;
@@ -2159,30 +2145,28 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$populateProfVillagers() {
+        townstead$refreshProfVillagers();
+    }
+
+    @Unique
+    private void townstead$refreshProfVillagers() {
         townstead$profVillagerUuids = new ArrayList<>();
         townstead$profVillagerNames.clear();
         townstead$profVillagerEntityIds.clear();
 
-        Village village = ((BlueprintScreenAccessor) this).townstead$getVillage();
-        if (village == null || this.minecraft == null) return;
-
-        ClientLevel level = this.minecraft.level;
-        if (level == null) return;
-
-        Set<UUID> residentUuids = new HashSet<>();
-        village.getResidentsUUIDs().forEach(residentUuids::add);
-
-        for (net.minecraft.world.entity.Entity entity : level.entitiesForRendering()) {
-            if (entity instanceof VillagerEntityMCA villager && residentUuids.contains(entity.getUUID())) {
-                UUID uuid = entity.getUUID();
-                townstead$profVillagerUuids.add(uuid);
-                townstead$profVillagerNames.put(uuid, villager.getDisplayName().getString());
-                townstead$profVillagerEntityIds.put(uuid, entity.getId());
-            }
+        for (VillageResidentClientStore.Resident resident : VillageResidentClientStore.getResidents()) {
+            UUID uuid = resident.villagerUuid();
+            townstead$profVillagerUuids.add(uuid);
+            townstead$profVillagerNames.put(uuid, resident.name());
         }
 
         townstead$profVillagerUuids.sort(Comparator.comparing(
                 uuid -> townstead$profVillagerNames.getOrDefault(uuid, uuid.toString())));
+        int totalPages = Math.max(1, (int) Math.ceil(townstead$profVillagerUuids.size() / (double) PROF_ROWS_PER_PAGE));
+        townstead$profPage = Math.max(0, Math.min(townstead$profPage, totalPages - 1));
+        if (townstead$profSelectedVillager != null && VillageResidentClientStore.get(townstead$profSelectedVillager) == null) {
+            townstead$profSelectedVillager = null;
+        }
     }
 
     @Unique
@@ -2220,6 +2204,12 @@ public abstract class BlueprintScreenMixin extends Screen {
         return key != null ? key.toString() : "minecraft:none";
     }
 
+    @Unique
+    private String townstead$currentProfessionId(UUID villagerUuid) {
+        VillageResidentClientStore.Resident resident = VillageResidentClientStore.get(villagerUuid);
+        return resident != null ? resident.professionId() : "minecraft:none";
+    }
+
     //? if neoforge {
     @Inject(method = "render", at = @At("TAIL"))
     //?} else {
@@ -2229,6 +2219,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             CallbackInfo ci) {
         if (!TOWNSTEAD_PROFESSION_PAGE.equals(this.page))
             return;
+        townstead$refreshProfVillagers();
 
         int leftX = this.width / 2 - 80;
         int topY = this.height / 2 - 74;
@@ -2280,14 +2271,7 @@ public abstract class BlueprintScreenMixin extends Screen {
                     leftX + 2, rowY + (rowH - this.font.lineHeight) / 2 + 1, 0xFFFFFF, false);
 
             // Current profession (right, smaller)
-            Integer entityId = townstead$profVillagerEntityIds.get(uuid);
-            String profText = "???";
-            if (entityId != null && this.minecraft != null && this.minecraft.level != null) {
-                net.minecraft.world.entity.Entity entity = this.minecraft.level.getEntity(entityId);
-                if (entity instanceof VillagerEntityMCA mca) {
-                    profText = ((VillagerLike<?>) mca).getProfessionText().getString();
-                }
-            }
+            String profText = townstead$profDisplayName(townstead$currentProfessionId(uuid));
             context.pose().pushPose();
             int profTextX = leftX + 58;
             context.pose().translate(profTextX, rowY + (rowH - this.font.lineHeight * 0.7f) / 2 + 1, 0);
@@ -2301,14 +2285,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             List<String> available = ProfessionClientStore.getProfessions();
 
             // Get the selected villager's current profession
-            String currentProfId = "minecraft:none";
-            Integer selEntityId = townstead$profVillagerEntityIds.get(townstead$profSelectedVillager);
-            if (selEntityId != null && this.minecraft != null && this.minecraft.level != null) {
-                net.minecraft.world.entity.Entity entity = this.minecraft.level.getEntity(selEntityId);
-                if (entity instanceof VillagerEntityMCA mca) {
-                    currentProfId = townstead$currentProfessionId(mca);
-                }
-            }
+            String currentProfId = townstead$currentProfessionId(townstead$profSelectedVillager);
 
             // Draw profession buttons with scroll support
             int btnH = 14;
@@ -2411,12 +2388,6 @@ public abstract class BlueprintScreenMixin extends Screen {
                 int by = listY + (i - townstead$profScroll) * (btnH + 1);
                 if (by + btnH < listY || by > this.height / 2 - 56 + 22 * 5 + 20 - 16) continue;
                 if (mouseY >= by && mouseY < by + btnH) {
-                    // Don't allow selecting full professions
-                    if (ProfessionClientStore.isFull(i)) {
-                        cir.setReturnValue(true);
-                        cir.cancel();
-                        return;
-                    }
                     String profId = available.get(i);
                     //? if neoforge {
                     PacketDistributor.sendToServer(new ProfessionSetPayload(townstead$profSelectedVillager, profId));
