@@ -17,30 +17,30 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Repairs beds that are stuck with occupied=true even though no villager is
- * currently sleeping there. This only runs during REST for villagers that
- * already belong to an MCA village.
+ * Clears stale bed occupancy flags for the villager's own MCA village during
+ * that villager's scheduled sleep window. A bed is only sanitized when the
+ * block is marked occupied but no actual sleeping villager is present there.
  */
-public final class BedOccupancyRepairTicker {
-    private static final long REPAIR_INTERVAL_TICKS = 200L;
+public final class BedOccupancySanitizer {
+    private static final long SANITIZE_INTERVAL_TICKS = 200L;
     private static final int BED_SCAN_RADIUS = 64;
-    private static final Map<Integer, Long> LAST_REPAIR_BY_VILLAGE = new ConcurrentHashMap<>();
+    private static final Map<Integer, Long> LAST_SANITIZE_BY_VILLAGE = new ConcurrentHashMap<>();
 
-    private BedOccupancyRepairTicker() {}
+    private BedOccupancySanitizer() {}
 
     public static void tick(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (villager.isBaby() || villager.isSleeping()) return;
-        if (villager.getBrain().getActiveNonCoreActivity().orElse(Activity.IDLE) != Activity.REST) return;
+        if (scheduledActivity(villager) != Activity.REST) return;
 
         Optional<Village> village = villager.getResidency().getHomeVillage();
         if (village.isEmpty()) return;
 
         Village homeVillage = village.get();
         long gameTime = level.getGameTime();
-        Long lastRepair = LAST_REPAIR_BY_VILLAGE.get(homeVillage.getId());
-        if (lastRepair != null && gameTime - lastRepair < REPAIR_INTERVAL_TICKS) return;
-        LAST_REPAIR_BY_VILLAGE.put(homeVillage.getId(), gameTime);
+        Long lastSanitize = LAST_SANITIZE_BY_VILLAGE.get(homeVillage.getId());
+        if (lastSanitize != null && gameTime - lastSanitize < SANITIZE_INTERVAL_TICKS) return;
+        LAST_SANITIZE_BY_VILLAGE.put(homeVillage.getId(), gameTime);
 
         BlockPos center = new BlockPos(homeVillage.getCenter());
         PoiManager poiManager = level.getPoiManager();
@@ -54,7 +54,12 @@ public final class BedOccupancyRepairTicker {
     }
 
     public static void forget(VillagerEntityMCA villager) {
-        villager.getResidency().getHomeVillage().ifPresent(village -> LAST_REPAIR_BY_VILLAGE.remove(village.getId()));
+        villager.getResidency().getHomeVillage().ifPresent(village -> LAST_SANITIZE_BY_VILLAGE.remove(village.getId()));
+    }
+
+    private static Activity scheduledActivity(VillagerEntityMCA villager) {
+        long dayTime = villager.level().getDayTime() % 24000L;
+        return villager.getBrain().getSchedule().getActivityAt((int) dayTime);
     }
 
     private static void clearIfStale(ServerLevel level, BlockPos pos) {
