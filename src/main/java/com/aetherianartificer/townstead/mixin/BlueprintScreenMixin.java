@@ -21,6 +21,7 @@ import com.aetherianartificer.townstead.compat.ModCompat;
 import net.conczin.mca.MCA;
 import net.conczin.mca.client.gui.BlueprintScreen;
 import net.conczin.mca.client.gui.widget.TooltipButtonWidget;
+import net.conczin.mca.client.gui.widget.WidgetUtils;
 //? if neoforge {
 import net.conczin.mca.network.Network;
 //?} else {
@@ -88,6 +89,9 @@ import java.util.Enumeration;
 public abstract class BlueprintScreenMixin extends Screen {
     @Shadow(remap = false)
     private String page;
+
+    @Shadow(remap = false)
+    private Village village;
 
     @Shadow(remap = false)
     private void setPage(String page) {
@@ -371,6 +375,41 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (!"map".equals(this.page) || townstead$upgradeBuildingButton == null)
             return;
         townstead$upgradeBuildingButton.active = townstead$upgradeTargetTypeAtPlayer() != null;
+    }
+
+    @Inject(method = "renderMap", remap = false, at = @At("TAIL"))
+    private void townstead$renderCustomIconBuildingBorders(GuiGraphics context, CallbackInfo ci) {
+        if (!"map".equals(this.page) || this.village == null) {
+            return;
+        }
+
+        int mapSize = 75;
+        int y = this.height / 2 + 8;
+        float sc = Math.min((float) mapSize / (this.village.getBox().getMaxBlockCount() + 3) * 2, 2.0f);
+
+        context.pose().pushPose();
+        context.pose().translate(this.width / 2.0, y, 0);
+        context.pose().scale(sc, sc, 0.0f);
+        context.pose().translate(-this.village.getCenter().getX(), -this.village.getCenter().getZ(), 0);
+
+        for (Building building : this.village.getBuildings().values()) {
+            if (!building.isComplete()) {
+                continue;
+            }
+            BuildingType bt = building.getBuildingType();
+            if (!bt.isIcon() || townstead$nodeItemForType(bt.name()).isEmpty()) {
+                continue;
+            }
+
+            BlockPos p0 = building.getPos0();
+            BlockPos p1 = building.getPos1();
+            WidgetUtils.drawRectangle(context, p0.getX(), p0.getZ(), p1.getX(), p1.getZ(), bt.getColor());
+
+            BlockPos c = building.getCenter();
+            drawBuildingIcon(context, MCA_BUILDING_ICONS, c.getX(), c.getZ(), bt.iconU(), bt.iconV());
+        }
+
+        context.pose().popPose();
     }
 
     //? if neoforge {
