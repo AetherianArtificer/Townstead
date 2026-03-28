@@ -370,13 +370,8 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
                 if (cleaned && !StationHandler.stationHasAnyContents(level, stationAnchor, stationType)) {
                     transition(BaristaState.SELECT_RECIPE, gameTime);
                 } else {
-                    releaseStationClaim(villager, stationAnchor);
-                    releaseStationSession(level, villager, stationAnchor);
-                    stationAnchor = null;
-                    standPos = null;
-                    stationType = null;
-                    activeRecipe = null;
-                    transition(BaristaState.PATH_TO_STATION, gameTime);
+                    debugChat(level, villager, "RECONCILE:foreign contents persisted, rotating station");
+                    abandonCurrentStation(level, villager, gameTime, true);
                 }
             }
             case BLOCKED -> {

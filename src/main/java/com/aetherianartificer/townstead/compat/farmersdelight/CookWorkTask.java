@@ -389,13 +389,8 @@ public class CookWorkTask extends Behavior<VillagerEntityMCA> implements WorkTas
                 if (cleaned && !StationHandler.stationHasAnyContents(level, stationAnchor, stationType)) {
                     transition(CookState.SELECT_RECIPE, gameTime);
                 } else {
-                    releaseStationClaim(villager, stationAnchor);
-                    releaseStationSession(level, villager, stationAnchor);
-                    stationAnchor = null;
-                    standPos = null;
-                    stationType = null;
-                    activeRecipe = null;
-                    transition(CookState.PATH_TO_STATION, gameTime);
+                    debugChat(level, villager, "RECONCILE:foreign contents persisted, rotating station");
+                    abandonCurrentStation(level, villager, gameTime, true);
                 }
             }
             case BLOCKED -> {
