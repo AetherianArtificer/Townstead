@@ -41,7 +41,11 @@ public final class VillageResidentRoster {
                     villager.getDisplayName().getString(),
                     professionKey(villager.getVillagerData().getProfession()),
                     villager.getVillagerData().getLevel(),
+                    //? if neoforge {
                     ShiftData.getShifts(villager.getData(Townstead.SHIFT_DATA))
+                    //?} else if forge {
+                    /*ShiftData.getShifts(villager.getPersistentData().getCompound("townstead_shift"))
+                    *///?}
             ));
         }
         residents.sort(Comparator.comparing(VillageResidentClientStore.Resident::name, String.CASE_INSENSITIVE_ORDER));

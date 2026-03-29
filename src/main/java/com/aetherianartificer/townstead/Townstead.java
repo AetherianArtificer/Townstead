@@ -91,9 +91,11 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 //?} else if forge {
 /*import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.common.MinecraftForge;
@@ -411,10 +413,15 @@ public class Townstead {
             // Dedicated server: no client config screen.
         }
         //?} else if forge {
-        /*// Forge 1.20.1: do not probe client classes from common mod init.
-        // The previous reflective check still triggered RuntimeDistCleaner on
-        // dedicated servers, which is visible in server logs.
-        return;
+        /*modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.CLIENT, TownsteadConfig.CLIENT_SPEC, modContainer));
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+            try {
+                Class<?> clientClass = Class.forName("com.aetherianartificer.townstead.TownsteadClient");
+                clientClass.getMethod("registerConfigScreen", ModContainer.class).invoke(null, modContainer);
+            } catch (Exception ignored) {
+                // Client-only bootstrap must not crash mod init.
+            }
+        });
         *///?}
     }
 

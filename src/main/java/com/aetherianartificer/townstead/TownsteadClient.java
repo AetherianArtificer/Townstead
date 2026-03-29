@@ -95,7 +95,7 @@ public final class TownsteadClient {
         String path = location.getPath();
         boolean villagerMoodPath = path.startsWith("villager.")
                 && (path.contains(".laugh") || path.contains(".cry") || path.contains(".celebrate"));
-        boolean directClipPath = path.contains("/laugh/") || path.contains("/cry/");
+        boolean directClipPath = path.contains("/laugh/") || path.contains("/cry/") || path.contains("/celebrate/");
         if (villagerMoodPath || directClipPath) {
             event.setSound(null);
         }

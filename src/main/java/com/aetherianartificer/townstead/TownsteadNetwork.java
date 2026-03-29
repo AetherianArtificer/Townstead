@@ -32,17 +32,27 @@ import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.ThirstSetPayload;
 import com.aetherianartificer.townstead.thirst.ThirstSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.server.world.data.Village;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 public final class TownsteadNetwork {
@@ -368,10 +378,152 @@ public final class TownsteadNetwork {
                 net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.get(profId);
         if (newProf == null) return;
 
-        Townstead.townstead$assignProfession(sp, villager, newProf);
+        townstead$assignProfession(sp, villager, newProf);
         ProfessionScanner.ScanResult scan = ProfessionScanner.scanAvailableProfessions(sp);
         sendToPlayer(sp, new ProfessionSyncPayload(scan.professionIds(), scan.usedSlots(), scan.maxSlots()));
         sendToPlayer(sp, new VillageResidentsSyncPayload(VillageResidentRoster.snapshot(sp)));
+    }
+
+    private static void townstead$assignProfession(ServerPlayer sp, VillagerEntityMCA villager, VillagerProfession newProf) {
+        if (!(villager.level() instanceof net.minecraft.server.level.ServerLevel level)) return;
+
+        VillagerProfession oldProf = villager.getVillagerData().getProfession();
+        townstead$clearProfessionState(villager);
+
+        BlockPos claimedJobSite = null;
+        if (townstead$requiresJobSite(newProf)) {
+            claimedJobSite = townstead$claimJobSite(sp, villager, newProf);
+            if (claimedJobSite == null) {
+                Townstead.LOGGER.debug(
+                        "Manual profession assignment skipped: villager={} uuid={} target={} has no claimable job site",
+                        villager.getName().getString(),
+                        villager.getUUID(),
+                        newProf
+                );
+                villager.refreshBrain(level);
+                return;
+            }
+        }
+
+        villager.setVillagerData(villager.getVillagerData().setProfession(newProf).setLevel(1));
+        villager.setVillagerXp(0);
+        MerchantOffers offers = villager.getOffers();
+        if (offers != null) {
+            offers.clear();
+        }
+
+        if (claimedJobSite != null) {
+            villager.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), claimedJobSite));
+        }
+
+        villager.refreshBrain(level);
+        Townstead.LOGGER.debug(
+                "Manual profession assignment: villager={} uuid={} {} -> {} jobSite={}",
+                villager.getName().getString(),
+                villager.getUUID(),
+                oldProf,
+                newProf,
+                claimedJobSite
+        );
+    }
+
+    private static void townstead$clearProfessionState(VillagerEntityMCA villager) {
+        villager.releasePoi(MemoryModuleType.JOB_SITE);
+        villager.releasePoi(MemoryModuleType.POTENTIAL_JOB_SITE);
+        villager.getBrain().eraseMemory(MemoryModuleType.JOB_SITE);
+        villager.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
+    }
+
+    private static boolean townstead$requiresJobSite(VillagerProfession profession) {
+        if (profession == null || profession == VillagerProfession.NONE || profession == VillagerProfession.NITWIT) {
+            return false;
+        }
+        String professionId = townstead$professionKey(profession);
+        if ("mca:guard".equals(professionId) || "mca:archer".equals(professionId)) {
+            return false;
+        }
+        if (profession == Townstead.COOK_PROFESSION.get()) {
+            return false;
+        }
+        return Townstead.BARISTA_PROFESSION.get() == null || profession != Townstead.BARISTA_PROFESSION.get();
+    }
+
+    private static BlockPos townstead$claimJobSite(ServerPlayer sp, VillagerEntityMCA villager, VillagerProfession profession) {
+        if (!(villager.level() instanceof net.minecraft.server.level.ServerLevel level)) return null;
+        if (!townstead$requiresJobSite(profession)) return null;
+
+        Optional<Village> villageOpt = Village.findNearest(sp);
+        if (villageOpt.isEmpty() || !villageOpt.get().isWithinBorder(villager)) return null;
+        Village village = villageOpt.get();
+
+        PoiManager poiManager = level.getPoiManager();
+        BlockPos center = new BlockPos(village.getCenter());
+        BlockPos closest = poiManager.findClosest(
+                profession.heldJobSite(),
+                pos -> village.isWithinBorder(pos, Village.BORDER_MARGIN),
+                center,
+                128,
+                PoiManager.Occupancy.HAS_SPACE
+        ).orElse(null);
+        if (closest == null) {
+            townstead$releaseStaleJobSites(level, village, profession);
+            closest = poiManager.findClosest(
+                    profession.heldJobSite(),
+                    pos -> village.isWithinBorder(pos, Village.BORDER_MARGIN),
+                    center,
+                    128,
+                    PoiManager.Occupancy.HAS_SPACE
+            ).orElse(null);
+        }
+        if (closest == null) return null;
+        BlockPos targetJobSite = closest;
+
+        return poiManager.take(
+                profession.heldJobSite(),
+                (holder, pos) -> pos.equals(targetJobSite),
+                targetJobSite,
+                1
+        ).orElse(null);
+    }
+
+    private static void townstead$releaseStaleJobSites(net.minecraft.server.level.ServerLevel level, Village village, VillagerProfession profession) {
+        PoiManager poiManager = level.getPoiManager();
+        Set<BlockPos> liveClaims = new HashSet<>();
+        for (VillagerEntityMCA resident : village.getResidents(level)) {
+            if (!resident.isAlive()) continue;
+            if (!townstead$professionOwnsJobSite(resident.getVillagerData().getProfession(), profession)) {
+                continue;
+            }
+            resident.getBrain().getMemory(MemoryModuleType.JOB_SITE)
+                    .filter(globalPos -> globalPos.dimension().equals(level.dimension()))
+                    .map(GlobalPos::pos)
+                    .ifPresent(liveClaims::add);
+        }
+
+        poiManager.findAll(
+                profession.heldJobSite(),
+                pos -> village.isWithinBorder(pos, Village.BORDER_MARGIN),
+                new BlockPos(village.getCenter()),
+                128,
+                PoiManager.Occupancy.ANY
+        ).forEach(pos -> {
+            if (liveClaims.contains(pos)) return;
+            if (poiManager.getFreeTickets(pos) > 0) return;
+            if (poiManager.release(pos)) {
+                Townstead.LOGGER.debug("Released stale job-site ticket for {} at {}", profession, pos);
+            }
+        });
+    }
+
+    private static boolean townstead$professionOwnsJobSite(VillagerProfession holderProfession, VillagerProfession targetProfession) {
+        if (holderProfession == null || targetProfession == null) return false;
+        if (holderProfession == targetProfession) return true;
+        return holderProfession.heldJobSite().equals(targetProfession.heldJobSite());
+    }
+
+    private static String townstead$professionKey(VillagerProfession profession) {
+        ResourceLocation key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+        return key != null ? key.toString() : "minecraft:none";
     }
 }
 *///?}
