@@ -92,8 +92,8 @@ public abstract class VillagerHungerMixin extends Villager {
         brain.addActivity(Activity.CORE, ImmutableList.copyOf(coreBehaviors));
         townstead$lastPatchedBrain = brain;
 
-        // Prevent villagers from ever pathfinding onto fire-damage blocks (stoves, campfires).
-        // Default malus is 8.0 (avoidable) — set to -1.0 (impassable).
+        // Prevent villagers from pathfinding onto direct fire-damage blocks.
+        // Keep vanilla danger handling intact so normal home/interior navigation still works.
         // Guard: pathfindingMalus map is null during makeBrain (entity not fully constructed).
         try {
             //? if >=1.21 {
@@ -109,6 +109,38 @@ public abstract class VillagerHungerMixin extends Villager {
         VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
         if (!self.level().isClientSide) {
             ShiftScheduleApplier.apply(self);
+        }
+    }
+
+    //? if neoforge {
+    @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_7380_", remap = false, at = @At("TAIL"))
+    *///?}
+    private void townstead$writeEditorVitals(CompoundTag nbt, CallbackInfo ci) {
+        VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
+
+        //? if neoforge {
+        CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
+        CompoundTag fatigue = self.getData(Townstead.FATIGUE_DATA);
+        //?} else {
+        /*CompoundTag hunger = self.getPersistentData().getCompound("townstead_hunger");
+        CompoundTag fatigue = self.getPersistentData().getCompound("townstead_fatigue");
+        *///?}
+        nbt.putInt(HungerData.EDITOR_KEY_HUNGER, HungerData.getHunger(hunger));
+        nbt.putFloat(HungerData.EDITOR_KEY_SATURATION, HungerData.getSaturation(hunger));
+        nbt.putFloat(HungerData.EDITOR_KEY_EXHAUSTION, HungerData.getExhaustion(hunger));
+        nbt.putInt(FatigueData.EDITOR_KEY_FATIGUE, FatigueData.getFatigue(fatigue));
+
+        if (ThirstBridgeResolver.isActive()) {
+            //? if neoforge {
+            CompoundTag thirst = self.getData(Townstead.THIRST_DATA);
+            //?} else {
+            /*CompoundTag thirst = self.getPersistentData().getCompound("townstead_thirst");
+            *///?}
+            nbt.putInt(ThirstData.EDITOR_KEY_THIRST, ThirstData.getThirst(thirst));
+            nbt.putInt(ThirstData.EDITOR_KEY_QUENCHED, ThirstData.getQuenched(thirst));
+            nbt.putFloat(ThirstData.EDITOR_KEY_EXHAUSTION, ThirstData.getExhaustion(thirst));
         }
     }
 

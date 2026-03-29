@@ -47,7 +47,6 @@ public final class HungerVillagerTicker {
     *///?}
 
     private static final Map<Integer, TickState> STATE = new ConcurrentHashMap<>();
-
     private HungerVillagerTicker() {}
 
     public static void tick(VillagerEntityMCA self) {
@@ -125,12 +124,12 @@ public final class HungerVillagerTicker {
                 } else if (currentActivity == Activity.REST && h < HungerData.DINNER_THRESHOLD) {
                     shouldEat = true;
                 }
-                if (shouldEat) hungerChanged |= tryEatFromInventory(self);
+                if (shouldEat && currentActivity != Activity.REST) hungerChanged |= tryEatFromInventory(self);
             }
         }
         state.lastActivity = currentActivity;
 
-        if (HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD) {
+        if (currentActivity != Activity.REST && HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD) {
             long gameTime = self.level().getGameTime();
             long lastAte = HungerData.getLastAteTime(hunger);
             long minEatInterval = HungerData.isEatingMode(hunger)

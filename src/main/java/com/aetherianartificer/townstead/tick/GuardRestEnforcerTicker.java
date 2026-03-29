@@ -38,10 +38,8 @@ public final class GuardRestEnforcerTicker {
         Activity current = brain.getSchedule().getActivityAt((int) dayTime);
         if (current != Activity.REST) return;
 
-        // Has an attack target — let them fight, don't touch anything
         if (brain.getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) return;
 
-        // Drowsy or worse — let them seek bed
         if (TownsteadConfig.isVillagerFatigueEnabled()) {
             //? if neoforge {
             CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
@@ -51,13 +49,9 @@ public final class GuardRestEnforcerTicker {
             if (FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD) return;
         }
 
-        // Already sleeping in a bed — don't disturb
         if (villager.isSleeping()) return;
-
-        // Has a HOME memory — let vanilla SleepInBed walk them to bed
         if (brain.getMemory(MemoryModuleType.HOME).isPresent()) return;
 
-        // No threat, not drowsy, not in bed, no home — prevent aimless patrol
         brain.eraseMemory(MemoryModuleType.WALK_TARGET);
         brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
         villager.getNavigation().stop();

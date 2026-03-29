@@ -1,13 +1,19 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
+import com.mojang.authlib.GameProfile;
+import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.WorkPathing;
 import com.aetherianartificer.townstead.compat.farmersdelight.CookStationClaims;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
+import com.aetherianartificer.townstead.compat.farmersdelight.ProducerStationSessions;
+import com.aetherianartificer.townstead.compat.farmersdelight.ProducerStationState;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
+import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
@@ -16,8 +22,11 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Container;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -33,13 +42,19 @@ import net.minecraft.world.level.block.entity.CampfireBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.item.ItemEntity;
 //? if neoforge {
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.wrapper.RecipeWrapper;
 //?} else if forge {
-/*import net.minecraftforge.common.capabilities.ForgeCapabilities;
+/*import net.minecraftforge.common.util.FakePlayerFactory;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.wrapper.RecipeWrapper;
 *///?}
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
@@ -51,6 +66,8 @@ import java.util.*;
 
 public final class StationHandler {
     private StationHandler() {}
+    private static final GameProfile TOWNSTEAD_COOK_PROFILE =
+            new GameProfile(UUID.fromString("7d0d7ac4-9d5a-4afc-bcaa-7e6bb86a7a4d"), "[TownsteadCook]");
 
     // ── Cross-version capability helpers ──
 
@@ -68,6 +85,17 @@ public final class StationHandler {
         if (side != null) return be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null);
         return be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
         *///?}
+    }
+
+    private static boolean handlerHasUnexpectedContents(IItemHandler handler, @Nullable Set<Item> allowedPrestage, @Nullable Item allowedContainerPrestage) {
+        for (int i = 0; i < handler.getSlots(); i++) {
+            ItemStack slot = handler.getStackInSlot(i);
+            if (slot.isEmpty()) continue;
+            if (allowedContainerPrestage != null && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(allowedContainerPrestage)) continue;
+            if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
+            return true;
+        }
+        return false;
     }
 
     //? if >=1.21 {
@@ -97,6 +125,9 @@ public final class StationHandler {
     static final int FD_COOKING_POT_INGREDIENT_SLOT_COUNT = 6;
     //? if >=1.21 {
     static final TagKey<Item> KNIFE_TAG = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:tools/knife"));
+    static final TagKey<Item> KNIFE_TAG_C = TagKey.create(Registries.ITEM, ResourceLocation.parse("c:tools/knives"));
+    static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(Registries.ITEM, ResourceLocation.parse("forge:tools/knives"));
+    static final TagKey<Item> KNIFE_TAG_FD = TagKey.create(Registries.ITEM, ResourceLocation.parse("farmersdelight:tools/knives"));
     static final TagKey<net.minecraft.world.level.block.Block> FD_KITCHEN_STORAGE_TAG =
             TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage"));
     static final TagKey<net.minecraft.world.level.block.Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
@@ -105,6 +136,9 @@ public final class StationHandler {
             TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_nether"));
     //?} else {
     /*static final TagKey<Item> KNIFE_TAG = TagKey.create(Registries.ITEM, new ResourceLocation("c", "tools/knife"));
+    static final TagKey<Item> KNIFE_TAG_C = TagKey.create(Registries.ITEM, new ResourceLocation("c", "tools/knives"));
+    static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(Registries.ITEM, new ResourceLocation("forge", "tools/knives"));
+    static final TagKey<Item> KNIFE_TAG_FD = TagKey.create(Registries.ITEM, new ResourceLocation("farmersdelight", "tools/knives"));
     static final TagKey<net.minecraft.world.level.block.Block> FD_KITCHEN_STORAGE_TAG =
             TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage"));
     static final TagKey<net.minecraft.world.level.block.Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
@@ -120,6 +154,7 @@ public final class StationHandler {
     private static Method FD_STOVE_GET_MATCHING_RECIPE;
     private static Method FD_STOVE_ADD_ITEM;
     private static Method FD_STOVE_IS_BLOCKED_ABOVE;
+    private static Method FD_STOVE_GET_INVENTORY;
     private static Class<?> FD_SKILLET_BE_CLASS;
     private static Method FD_SKILLET_HAS_STORED_STACK;
     private static Method FD_SKILLET_ADD_ITEM_TO_COOK;
@@ -168,28 +203,13 @@ public final class StationHandler {
             int searchRadius,
             int verticalRadius
     ) {
-        Map<Long, StationSlot> found = new LinkedHashMap<>();
-        // Scan building blocks from cook-assigned kitchen buildings
-        for (Building building : kitchenBuildings(villager)) {
-            for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
-                if (!isInKitchenWorkArea(kitchenBounds, pos)) continue;
-                tryAddStation(level, villager, pos, found);
-            }
+        List<StationSlot> discovered = new ArrayList<>();
+        for (StationSlot slot : KitchenStationIndex.snapshot(level, kitchenBounds).stations()) {
+            if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) continue;
+            if (findStandingPosition(level, villager, slot.pos()) == null) continue;
+            discovered.add(slot);
         }
-        // Scan around kitchen anchors
-        for (BlockPos anchor : kitchenAnchors(level, villager)) {
-            for (BlockPos pos : BlockPos.betweenClosed(
-                    anchor.offset(-searchRadius, -verticalRadius, -searchRadius),
-                    anchor.offset(searchRadius, verticalRadius, searchRadius))) {
-                if (!isInKitchenWorkArea(kitchenBounds, pos)) continue;
-                tryAddStation(level, villager, pos, found);
-            }
-        }
-        // Scan all positions within the provided bounds directly (covers cafe and other non-kitchen areas)
-        for (long key : kitchenBounds) {
-            tryAddStation(level, villager, BlockPos.of(key), found);
-        }
-        return new ArrayList<>(found.values());
+        return discovered;
     }
 
     private static void tryAddStation(
@@ -198,6 +218,7 @@ public final class StationHandler {
             BlockPos pos,
             Map<Long, StationSlot> found
     ) {
+        pos = canonicalStationAnchor(level, pos);
         long key = pos.asLong();
         if (found.containsKey(key)) return;
         StationType type = stationType(level, pos);
@@ -207,7 +228,7 @@ public final class StationHandler {
 
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         int capacity = switch (type) {
-            case FIRE_STATION -> surfaceFreeSlotCount(level, pos);
+            case FIRE_STATION -> surfaceDiscoveryCapacity(level, pos);
             case HOT_STATION -> 1;
             case CUTTING_BOARD -> 1;
         };
@@ -218,39 +239,13 @@ public final class StationHandler {
     // ── Standing position ──
 
     public static @Nullable BlockPos findStandingPosition(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        int[] verticalChoices = {-1, 0, 1};
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                if (dx == 0 && dz == 0) continue;
-                int manhattan = Math.abs(dx) + Math.abs(dz);
-                if (manhattan > 3) continue;
-                for (int yOffset : verticalChoices) {
-                    BlockPos c = anchor.offset(dx, yOffset, dz);
-                    if (!level.getBlockState(c).isAir() || !level.getBlockState(c.above()).isAir()) continue;
-                    BlockPos belowPos = c.below();
-                    BlockState belowState = level.getBlockState(belowPos);
-                    if (!belowState.isFaceSturdy(level, belowPos, Direction.UP)) continue;
-                    if (avoidStandingSurface(belowState)) continue;
-                    double dist = villager.distanceToSqr(c.getX() + 0.5, c.getY() + 0.5, c.getZ() + 0.5);
-                    if (yOffset == -1) dist -= 2.0d;
-                    if (manhattan > 1) dist += (manhattan - 1) * 1.5d;
-                    if (dist < bestDist) {
-                        bestDist = dist;
-                        best = c.immutable();
-                    }
-                }
-            }
-        }
+        BlockPos best = WorkPathing.nearestStandCandidate(level, villager, anchor, null);
         if (best == null) {
             BlockPos current = villager.blockPosition();
             double stationDist = villager.distanceToSqr(anchor.getX() + 0.5, anchor.getY() + 0.5, anchor.getZ() + 0.5);
             if (stationDist <= 9.0d) {
-                BlockState self = level.getBlockState(current);
-                BlockState above = level.getBlockState(current.above());
                 BlockState below = level.getBlockState(current.below());
-                if (self.isAir() && above.isAir()
+                if (WorkPathing.isSafeStandPosition(level, current)
                         && below.isFaceSturdy(level, current.below(), Direction.UP)
                         && !avoidStandingSurface(below)) {
                     best = current.immutable();
@@ -280,12 +275,37 @@ public final class StationHandler {
         return FD_STOVE.equals(id) || FD_SKILLET.equals(id);
     }
 
+    public static BlockPos canonicalStationAnchor(ServerLevel level, BlockPos pos) {
+        if (level == null || pos == null) return pos;
+        BlockState state = level.getBlockState(pos);
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (!FD_STOVE.equals(id)) return pos;
+        return canonicalStoveAnchor(level, pos);
+    }
+
     public static boolean surfaceHasFreeSlot(ServerLevel level, BlockPos pos) {
         return surfaceFreeSlotCount(level, pos) > 0;
     }
 
+    public static int surfaceDiscoveryCapacity(ServerLevel level, BlockPos pos) {
+        if (pos == null) return 0;
+        pos = canonicalStationAnchor(level, pos);
+        BlockState state = level.getBlockState(pos);
+        if (surfaceBlockedForCooking(level, pos, state)) return 0;
+        if (state.is(BlockTags.CAMPFIRES)) return surfaceFreeSlotCount(level, pos);
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (FD_STOVE.equals(id)) {
+            return surfaceFreeSlotCount(level, pos);
+        }
+        if (FD_SKILLET.equals(id)) {
+            return surfaceFreeSlotCount(level, pos);
+        }
+        return 0;
+    }
+
     public static int surfaceFreeSlotCount(ServerLevel level, BlockPos pos) {
         if (pos == null) return 0;
+        pos = canonicalStationAnchor(level, pos);
         BlockState state = level.getBlockState(pos);
         if (surfaceBlockedForCooking(level, pos, state)) return 0;
         BlockEntity be = level.getBlockEntity(pos);
@@ -302,11 +322,26 @@ public final class StationHandler {
             IItemHandler handler = getItemHandler(level, pos, null);
             if (handler == null) {
                 Integer slot = stoveNextEmptySlot(be);
-                return (slot != null && slot >= 0) ? 1 : 0;
+                if (slot != null && slot >= 0) return 1;
+                int reflectedFree = stoveReflectedFreeSlotCount(be);
+                if (reflectedFree > 0) return reflectedFree;
+                // FD stove internals vary enough across versions that reflective slot discovery can fail
+                // even for an empty, usable stove. Discovery should still treat an unblocked stove as loadable.
+                return 6;
             }
             int free = 0;
             for (int i = 0; i < handler.getSlots(); i++) {
                 if (handler.getStackInSlot(i).isEmpty()) free++;
+            }
+            if (handler.getSlots() <= 1) {
+                int reflectedFree = stoveReflectedFreeSlotCount(be);
+                if (reflectedFree > 0) return reflectedFree;
+                Integer nextEmpty = stoveNextEmptySlot(be);
+                if ((nextEmpty != null && nextEmpty >= 0) || free > 0) {
+                    // Some FD builds expose the stove through a single aggregate handler slot.
+                    // Treat a usable unblocked stove as its real multi-slot capacity for loading.
+                    return 6;
+                }
             }
             return free;
         }
@@ -319,6 +354,7 @@ public final class StationHandler {
 
     public static boolean surfaceCanCookRecipeInput(ServerLevel level, BlockPos pos, DiscoveredRecipe recipe) {
         if (recipe == null || recipe.inputs().isEmpty()) return false;
+        pos = canonicalStationAnchor(level, pos);
         BlockState state = level.getBlockState(pos);
         if (surfaceBlockedForCooking(level, pos, state)) return false;
         RecipeIngredient input = recipe.inputs().get(0);
@@ -349,6 +385,7 @@ public final class StationHandler {
 
     public static boolean surfaceCanCookInputStack(ServerLevel level, BlockPos pos, ItemStack probe) {
         if (level == null || pos == null || probe == null || probe.isEmpty()) return false;
+        pos = canonicalStationAnchor(level, pos);
         BlockState state = level.getBlockState(pos);
         if (surfaceBlockedForCooking(level, pos, state)) return false;
         BlockEntity be = level.getBlockEntity(pos);
@@ -379,6 +416,7 @@ public final class StationHandler {
             DiscoveredRecipe recipe
     ) {
         if (recipe == null || stationAnchor == null || recipe.inputs().isEmpty()) return false;
+        stationAnchor = canonicalStationAnchor(level, stationAnchor);
         RecipeIngredient input = recipe.inputs().get(0);
         Item inputItem = BuiltInRegistries.ITEM.get(input.primaryId());
         if (inputItem == Items.AIR) return false;
@@ -421,9 +459,7 @@ public final class StationHandler {
                         match = campfireRecipeForInput(level, one);
                     }
                     if (match.isEmpty()) break;
-                    Integer slot = stoveNextEmptySlot(be);
-                    if (slot == null || slot < 0) break;
-                    loaded = stoveAddItem(be, one.copy(), match.get(), slot);
+                    loaded = stoveAddItemAnySlot(be, one.copy(), match.get());
                 } else if (FD_SKILLET.equals(id)) {
                     if (!skilletIsHeated(be)) break;
                     if (state.hasProperty(BlockStateProperties.WATERLOGGED)
@@ -450,6 +486,56 @@ public final class StationHandler {
         return loadedCount > 0;
     }
 
+    public static boolean loadSurfaceFireStationItem(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos stationAnchor,
+            DiscoveredRecipe recipe,
+            ItemStack stack
+    ) {
+        if (recipe == null || stationAnchor == null || stack == null || stack.isEmpty() || recipe.inputs().isEmpty()) return false;
+        stationAnchor = canonicalStationAnchor(level, stationAnchor);
+        RecipeIngredient input = recipe.inputs().get(0);
+        int ingredientPerLoad = Math.max(1, input.count());
+        if (stack.getCount() < ingredientPerLoad) return false;
+
+        ItemStack one = copyWithCount(stack, ingredientPerLoad);
+        BlockState state = level.getBlockState(stationAnchor);
+        BlockEntity be = level.getBlockEntity(stationAnchor);
+        if (surfaceBlockedForCooking(level, stationAnchor, state)) return false;
+
+        if (state.is(BlockTags.CAMPFIRES) && be instanceof CampfireBlockEntity campfire) {
+            //? if >=1.21 {
+            Optional<RecipeHolder<CampfireCookingRecipe>> match = campfire.getCookableRecipe(one);
+            if (match.isEmpty()) return false;
+            return campfire.placeFood(villager, one, match.get().value().getCookingTime());
+            //?} else {
+            /*Optional<CampfireCookingRecipe> match = campfire.getCookableRecipe(one);
+            if (match.isEmpty()) return false;
+            return campfire.placeFood(villager, one, match.get().getCookingTime());
+            *///?}
+        }
+
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (FD_STOVE.equals(id)) {
+            if (stoveBlockedAbove(be)) return false;
+            Optional<?> match = stoveMatchingRecipe(be, one);
+            if (match.isEmpty()) {
+                match = campfireRecipeForInput(level, one);
+            }
+            return match.isPresent() && stoveAddItemAnySlot(be, one, match.get());
+        }
+        if (FD_SKILLET.equals(id)) {
+            if (!skilletIsHeated(be)) return false;
+            if (state.hasProperty(BlockStateProperties.WATERLOGGED)
+                    && Boolean.TRUE.equals(state.getValue(BlockStateProperties.WATERLOGGED))) return false;
+            if (skilletHasStoredStack(be)) return false;
+            if (campfireRecipeForInput(level, one).isEmpty()) return false;
+            return skilletAddItem(level, villager, be, one, stationAnchor) >= ingredientPerLoad;
+        }
+        return false;
+    }
+
     // ── Purification loading ──
 
     public static boolean loadPurificationFireStation(
@@ -459,6 +545,7 @@ public final class StationHandler {
             ThirstCompatBridge bridge
     ) {
         if (pos == null) return false;
+        pos = canonicalStationAnchor(level, pos);
         if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return false;
         if (!isSurfaceFireStation(level, pos)) return false;
 
@@ -500,8 +587,6 @@ public final class StationHandler {
         } else if (FD_STOVE.equals(stationId)) {
             if (stoveBlockedAbove(be)) return false;
             while (true) {
-                Integer slotIndex = stoveNextEmptySlot(be);
-                if (slotIndex == null || slotIndex < 0) break;
                 int slot = bestImpureWaterSlot(inv, bridge, impureFilter);
                 if (slot < 0) break;
                 ItemStack source = inv.getItem(slot);
@@ -514,7 +599,7 @@ public final class StationHandler {
                     // No recipe at all — stoveAddItem requires one, so skip stove for purification
                     break;
                 }
-                if (!stoveAddItem(be, oneItem, match.get(), slotIndex)) break;
+                if (!stoveAddItemAnySlot(be, oneItem, match.get())) break;
                 source.shrink(1);
                 loaded++;
             }
@@ -604,18 +689,43 @@ public final class StationHandler {
             ItemStack knifeStack
     ) {
         if (stationAnchor == null || inputStack.isEmpty()) return false;
+        if (knifeStack.isEmpty()) return false;
+
+        BlockState state = level.getBlockState(stationAnchor);
+        ServerPlayer actor = cuttingBoardActor(level);
+        if (actor != null) {
+            ItemStack previousMain = actor.getMainHandItem().copy();
+            ItemStack previousOff = actor.getOffhandItem().copy();
+            try {
+                actor.setItemInHand(InteractionHand.MAIN_HAND, knifeStack.copy());
+                actor.setItemInHand(InteractionHand.OFF_HAND, inputStack.copy());
+                BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(stationAnchor), Direction.UP, stationAnchor, false);
+                InteractionResult placed = invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.OFF_HAND, hit);
+                if (!placed.consumesAction()) {
+                    return false;
+                }
+                InteractionResult processed = invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.MAIN_HAND, hit);
+                if (processed == InteractionResult.SUCCESS) {
+                    return true;
+                }
+            } catch (Throwable ignored) {
+                // Fall through to the direct block-entity path below.
+            } finally {
+                actor.setItemInHand(InteractionHand.MAIN_HAND, previousMain);
+                actor.setItemInHand(InteractionHand.OFF_HAND, previousOff);
+            }
+        }
+
         if (!ensureCuttingBoardReflection()) return false;
         BlockEntity be = level.getBlockEntity(stationAnchor);
         if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
-        if (knifeStack.isEmpty()) return false;
-
         try {
             Object placed = FD_CUTTING_BOARD_ADD_ITEM.invoke(be, inputStack);
             if (!(placed instanceof Boolean b && b)) {
                 villager.getInventory().addItem(inputStack);
                 return false;
             }
-            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, (Object) null);
+            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, cuttingBoardActor(level));
             if (processed instanceof Boolean ok && ok) {
                 return true;
             }
@@ -627,13 +737,138 @@ public final class StationHandler {
         return false;
     }
 
+    public static boolean placeCuttingBoardInput(
+            ServerLevel level,
+            BlockPos stationAnchor,
+            ItemStack inputStack
+    ) {
+        if (stationAnchor == null || inputStack.isEmpty()) return false;
+        BlockState state = level.getBlockState(stationAnchor);
+        ServerPlayer actor = cuttingBoardActor(level);
+        if (actor != null) {
+            ItemStack previousMain = actor.getMainHandItem().copy();
+            ItemStack previousOff = actor.getOffhandItem().copy();
+            try {
+                actor.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+                actor.setItemInHand(InteractionHand.OFF_HAND, inputStack.copy());
+                BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(stationAnchor), Direction.UP, stationAnchor, false);
+                InteractionResult placed = invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.OFF_HAND, hit);
+                return placed.consumesAction();
+            } catch (Throwable ignored) {
+                // Fall through to BE path.
+            } finally {
+                actor.setItemInHand(InteractionHand.MAIN_HAND, previousMain);
+                actor.setItemInHand(InteractionHand.OFF_HAND, previousOff);
+            }
+        }
+
+        if (!ensureCuttingBoardReflection()) return false;
+        BlockEntity be = level.getBlockEntity(stationAnchor);
+        if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
+        try {
+            Object placed = FD_CUTTING_BOARD_ADD_ITEM.invoke(be, inputStack);
+            return placed instanceof Boolean b && b;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    public static boolean processCuttingBoardStoredItem(
+            ServerLevel level,
+            BlockPos stationAnchor,
+            ItemStack knifeStack
+    ) {
+        if (stationAnchor == null || knifeStack.isEmpty()) return false;
+
+        BlockState state = level.getBlockState(stationAnchor);
+        ServerPlayer actor = cuttingBoardActor(level);
+        if (actor != null) {
+            ItemStack previousMain = actor.getMainHandItem().copy();
+            ItemStack previousOff = actor.getOffhandItem().copy();
+            try {
+                actor.setItemInHand(InteractionHand.MAIN_HAND, knifeStack.copy());
+                actor.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+                BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(stationAnchor), Direction.UP, stationAnchor, false);
+                InteractionResult processed = invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.MAIN_HAND, hit);
+                return processed == InteractionResult.SUCCESS;
+            } catch (Throwable ignored) {
+                // Fall through to BE path.
+            } finally {
+                actor.setItemInHand(InteractionHand.MAIN_HAND, previousMain);
+                actor.setItemInHand(InteractionHand.OFF_HAND, previousOff);
+            }
+        }
+
+        if (!ensureCuttingBoardReflection()) return false;
+        BlockEntity be = level.getBlockEntity(stationAnchor);
+        if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
+        try {
+            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, cuttingBoardActor(level));
+            return processed instanceof Boolean ok && ok;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static InteractionResult invokeCuttingBoardBlockUse(
+            BlockState state,
+            ServerLevel level,
+            BlockPos pos,
+            ServerPlayer actor,
+            InteractionHand hand,
+            BlockHitResult hit
+    ) throws ReflectiveOperationException {
+        Object block = state.getBlock();
+        ItemStack held = actor.getItemInHand(hand);
+        for (Method method : block.getClass().getMethods()) {
+            String name = method.getName();
+            Class<?>[] params = method.getParameterTypes();
+            if ("use".equals(name) && params.length == 6) {
+                Object result = method.invoke(block, state, level, pos, actor, hand, hit);
+                if (result instanceof InteractionResult interactionResult) {
+                    return interactionResult;
+                }
+            }
+            if ("useItemOn".equals(name) && params.length == 7) {
+                Object result = method.invoke(block, held, state, level, pos, actor, hand, hit);
+                if (result instanceof InteractionResult interactionResult) {
+                    return interactionResult;
+                }
+            }
+        }
+        return InteractionResult.PASS;
+    }
+
+    public static ItemStack collectCuttingBoardOutput(ServerLevel level, BlockPos stationAnchor) {
+        if (stationAnchor == null) return ItemStack.EMPTY;
+        if (!ensureCuttingBoardReflection()) return ItemStack.EMPTY;
+        BlockEntity be = level.getBlockEntity(stationAnchor);
+        if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return ItemStack.EMPTY;
+        try {
+            Object removed = FD_CUTTING_BOARD_REMOVE_ITEM.invoke(be);
+            if (removed instanceof ItemStack stack && !stack.isEmpty()) {
+                return stack;
+            }
+        } catch (Throwable ignored) {}
+        return ItemStack.EMPTY;
+    }
+
+    private static @Nullable ServerPlayer cuttingBoardActor(ServerLevel level) {
+        if (level == null) return null;
+        try {
+            return FakePlayerFactory.get(level, TOWNSTEAD_COOK_PROFILE);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     // ── Station recipe support checks ──
 
     public static boolean stationSupportsRecipe(ServerLevel level, BlockPos pos, DiscoveredRecipe recipe) {
         if (recipe == null) return true;
         if (pos == null) return false;
         if (recipe.purification()) {
-            return recipe.stationType() == StationType.FIRE_STATION && isSurfaceFireStation(level, pos);
+            return recipe.stationType() == StationType.FIRE_STATION && supportsPurificationAt(level, pos);
         }
         if (recipe.stationType() == StationType.FIRE_STATION) {
             if (isSurfaceFireStation(level, pos)) {
@@ -651,19 +886,47 @@ public final class StationHandler {
         return true;
     }
 
+    public static boolean supportsPurificationAt(ServerLevel level, BlockPos pos) {
+        if (pos == null) return false;
+        pos = canonicalStationAnchor(level, pos);
+        if (!isSurfaceFireStation(level, pos)) return false;
+        BlockState state = level.getBlockState(pos);
+        if (surfaceBlockedForCooking(level, pos, state)) return false;
+        ResourceLocation stationId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (state.is(BlockTags.CAMPFIRES)) {
+            return surfaceHasFreeSlot(level, pos);
+        }
+        if (FD_SKILLET.equals(stationId)) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be == null) return false;
+            if (!skilletIsHeated(be) || skilletHasStoredStack(be)) return false;
+            return !(state.hasProperty(BlockStateProperties.WATERLOGGED)
+                    && Boolean.TRUE.equals(state.getValue(BlockStateProperties.WATERLOGGED)));
+        }
+        if (FD_STOVE.equals(stationId)) {
+            return false;
+        }
+        return false;
+    }
+
     // ── Station content checks ──
 
     public static boolean stationHasContents(ServerLevel level, BlockPos pos, @Nullable DiscoveredRecipe recipe) {
         if (pos == null) return false;
+        pos = canonicalStationAnchor(level, pos);
         ResourceLocation stationId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         if (recipe != null && recipe.stationType() == StationType.FIRE_STATION && isSurfaceFireStation(level, pos)) {
             return !surfaceHasFreeSlot(level, pos);
         }
-        boolean allowPotBowlPrestage =
-                FD_COOKING_POT.equals(stationId)
-                        && recipe != null
-                        && recipe.stationType() == StationType.HOT_STATION
-                        && recipe.bowlsRequired() > 0;
+        Item allowedContainerPrestage = Items.AIR;
+        if (FD_COOKING_POT.equals(stationId)
+                && recipe != null
+                && recipe.stationType() == StationType.HOT_STATION
+                && recipe.containerItemId() != null
+                && recipe.containerCount() > 0) {
+            Item containerItem = BuiltInRegistries.ITEM.get(recipe.containerItemId());
+            if (containerItem != Items.AIR) allowedContainerPrestage = containerItem;
+        }
         Set<Item> allowedPrestage = null;
         if (recipe != null && recipe.stationType() == StationType.HOT_STATION) {
             allowedPrestage = new HashSet<>();
@@ -677,47 +940,30 @@ public final class StationHandler {
 
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return false;
+        StorageSearchContext searchContext = new StorageSearchContext(level);
 
         IItemHandler handler = preferredIngredientHandler(level, pos);
         if (handler != null) {
-            for (int i = 0; i < handler.getSlots(); i++) {
-                ItemStack slot = handler.getStackInSlot(i);
-                if (slot.isEmpty()) continue;
-                if (allowPotBowlPrestage && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(Items.BOWL)) continue;
-                if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
-                return true;
-            }
+            if (handlerHasUnexpectedContents(handler, allowedPrestage, allowedContainerPrestage == Items.AIR ? null : allowedContainerPrestage)) return true;
             return false;
         }
 
-        handler = getItemHandler(level, pos, null);
-        if (handler != null) {
-            for (int i = 0; i < handler.getSlots(); i++) {
-                ItemStack slot = handler.getStackInSlot(i);
-                if (slot.isEmpty()) continue;
-                if (allowPotBowlPrestage && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(Items.BOWL)) continue;
-                if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
-                return true;
+        final Set<Item> allowedPrestageFinal = allowedPrestage;
+        final Item allowedContainerPrestageFinal = allowedContainerPrestage;
+        final boolean[] found = new boolean[1];
+        searchContext.forEachUniqueItemHandler(pos, (side, uniqueHandler) -> {
+            if (found[0]) return;
+            if (handlerHasUnexpectedContents(uniqueHandler, allowedPrestageFinal, allowedContainerPrestageFinal == Items.AIR ? null : allowedContainerPrestageFinal)) {
+                found[0] = true;
             }
-        }
-
-        for (Direction dir : Direction.values()) {
-            handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            for (int i = 0; i < handler.getSlots(); i++) {
-                ItemStack slot = handler.getStackInSlot(i);
-                if (slot.isEmpty()) continue;
-                if (allowPotBowlPrestage && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(Items.BOWL)) continue;
-                if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
-                return true;
-            }
-        }
+        });
+        if (found[0]) return true;
 
         if (be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize(); i++) {
                 ItemStack slot = container.getItem(i);
                 if (slot.isEmpty()) continue;
-                if (allowPotBowlPrestage && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(Items.BOWL)) continue;
+                if (allowedContainerPrestage != Items.AIR && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(allowedContainerPrestage)) continue;
                 if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
                 return true;
             }
@@ -729,28 +975,21 @@ public final class StationHandler {
 
     public static int extractFromStation(ServerLevel level, BlockPos pos, Item item, int amount) {
         if (amount <= 0 || pos == null) return 0;
+        pos = canonicalStationAnchor(level, pos);
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return 0;
-        int removed = 0;
-        IItemHandler handler = getItemHandler(level, pos, null);
-        if (handler != null) {
-            for (int i = 0; i < handler.getSlots() && removed < amount; i++) {
+        final int[] removedRef = new int[1];
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (removedRef[0] >= amount) return;
+            for (int i = 0; i < handler.getSlots() && removedRef[0] < amount; i++) {
                 if (!handler.getStackInSlot(i).is(item)) continue;
-                ItemStack extracted = handler.extractItem(i, amount - removed, false);
-                removed += extracted.getCount();
+                ItemStack extracted = handler.extractItem(i, amount - removedRef[0], false);
+                removedRef[0] += extracted.getCount();
             }
-            if (removed >= amount) return removed;
-        }
-        for (Direction dir : Direction.values()) {
-            handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            for (int i = 0; i < handler.getSlots() && removed < amount; i++) {
-                if (!handler.getStackInSlot(i).is(item)) continue;
-                ItemStack extracted = handler.extractItem(i, amount - removed, false);
-                removed += extracted.getCount();
-            }
-            if (removed >= amount) return removed;
-        }
+        });
+        int removed = removedRef[0];
+        if (removed >= amount) return removed;
         if (be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize() && removed < amount; i++) {
                 ItemStack slot = container.getItem(i);
@@ -761,13 +1000,45 @@ public final class StationHandler {
                 container.setChanged();
             }
         }
+        if (removed > 0) {
+            KitchenStationIndex.invalidate(level, pos);
+        }
         return removed;
+    }
+
+    public static boolean canExtractFromStation(ServerLevel level, BlockPos pos, Item item, int amount) {
+        if (amount <= 0 || pos == null || item == Items.AIR) return false;
+        pos = canonicalStationAnchor(level, pos);
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) return false;
+        int found = 0;
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        final int[] foundRef = new int[1];
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (foundRef[0] >= amount) return;
+            for (int i = 0; i < handler.getSlots() && foundRef[0] < amount; i++) {
+                ItemStack slot = handler.getStackInSlot(i);
+                if (!slot.is(item)) continue;
+                foundRef[0] += slot.getCount();
+            }
+        });
+        found = foundRef[0];
+        if (found >= amount) return true;
+        if (be instanceof Container container) {
+            for (int i = 0; i < container.getContainerSize() && found < amount; i++) {
+                ItemStack slot = container.getItem(i);
+                if (!slot.is(item)) continue;
+                found += slot.getCount();
+            }
+        }
+        return found >= amount;
     }
 
     // ── Station insertion ──
 
     public static ItemStack insertIntoStation(ServerLevel level, BlockPos pos, ItemStack stack) {
         if (stack.isEmpty() || pos == null) return stack;
+        pos = canonicalStationAnchor(level, pos);
         if (stack.is(Items.BOWL)) {
             ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
             if (FD_COOKING_POT.equals(blockId)) {
@@ -778,22 +1049,19 @@ public final class StationHandler {
         if (be == null) return stack;
 
         ItemStack remainder = stack.copy();
+        StorageSearchContext searchContext = new StorageSearchContext(level);
         IItemHandler handler = preferredIngredientHandler(level, pos);
         if (handler != null) {
             remainder = insertIntoHandler(handler, remainder, false);
             if (remainder.isEmpty()) return ItemStack.EMPTY;
         } else {
-            handler = getItemHandler(level, pos, null);
-            if (handler != null) {
-                remainder = insertIntoHandler(handler, remainder, false);
-                if (remainder.isEmpty()) return ItemStack.EMPTY;
-            }
-            for (Direction dir : Direction.values()) {
-                if (remainder.isEmpty()) return ItemStack.EMPTY;
-                handler = getItemHandler(level, pos, dir);
-                if (handler == null) continue;
-                remainder = insertIntoHandler(handler, remainder, false);
-            }
+            final ItemStack[] remainderRef = new ItemStack[]{remainder};
+            searchContext.forEachUniqueItemHandler(pos, (dir, uniqueHandler) -> {
+                if (remainderRef[0].isEmpty()) return;
+                remainderRef[0] = insertIntoHandler(uniqueHandler, remainderRef[0], false);
+            });
+            remainder = remainderRef[0];
+            if (remainder.isEmpty()) return ItemStack.EMPTY;
         }
 
         if (!remainder.isEmpty() && be instanceof Container container) {
@@ -813,11 +1081,15 @@ public final class StationHandler {
                 container.setChanged();
             }
         }
+        if (remainder.getCount() != stack.getCount()) {
+            KitchenStationIndex.invalidate(level, pos);
+        }
         return remainder;
     }
 
     public static ItemStack insertIntoCookingPotIngredients(ServerLevel level, BlockPos pos, ItemStack stack) {
         if (stack.isEmpty() || pos == null) return stack;
+        pos = canonicalStationAnchor(level, pos);
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         if (!FD_COOKING_POT.equals(blockId)) return insertIntoStation(level, pos, stack);
 
@@ -833,80 +1105,325 @@ public final class StationHandler {
         return remainder;
     }
 
+    public static boolean insertIntoCookingPotNextIngredientSlot(ServerLevel level, BlockPos pos, ItemStack stack) {
+        if (stack.isEmpty() || pos == null) return false;
+        pos = canonicalStationAnchor(level, pos);
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        if (!FD_COOKING_POT.equals(blockId)) return false;
+
+        final ItemStack stackCopy = stack.copy();
+        IItemHandler preferred = preferredIngredientHandler(level, pos);
+        if (preferred != null && insertIntoFirstEmptyPotIngredientSlot(preferred, stackCopy)) {
+            KitchenStationIndex.invalidate(level, pos);
+            return true;
+        }
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        final boolean[] inserted = new boolean[1];
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (inserted[0]) return;
+            inserted[0] = insertIntoFirstEmptyPotIngredientSlot(handler, stackCopy);
+        });
+        if (inserted[0]) {
+            KitchenStationIndex.invalidate(level, pos);
+        }
+        return inserted[0];
+    }
+
     private static boolean insertSingleIntoCookingPotIngredientSlot(ServerLevel level, BlockPos pos, ItemStack single) {
         if (single.isEmpty()) return true;
         if (single.getCount() != 1) single = copyOne(single);
-        for (Direction dir : Direction.values()) {
-            IItemHandler handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            int slots = Math.min(FD_COOKING_POT_INGREDIENT_SLOT_COUNT, handler.getSlots());
-            for (int slot = 0; slot < slots; slot++) {
-                if (!handler.getStackInSlot(slot).isEmpty()) continue;
-                ItemStack rem = handler.insertItem(slot, single.copy(), false);
-                if (rem.isEmpty()) return true;
+        final ItemStack singleCopy = single;
+        IItemHandler preferred = preferredIngredientHandler(level, pos);
+        if (preferred != null && insertIntoFirstEmptyPotIngredientSlot(preferred, singleCopy)) {
+            KitchenStationIndex.invalidate(level, pos);
+            return true;
+        }
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        final boolean[] inserted = new boolean[1];
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (inserted[0]) return;
+            inserted[0] = insertIntoFirstEmptyPotIngredientSlot(handler, singleCopy);
+        });
+        if (inserted[0]) {
+            KitchenStationIndex.invalidate(level, pos);
+        }
+        return inserted[0];
+    }
+
+    private static boolean insertIntoFirstEmptyPotIngredientSlot(IItemHandler handler, ItemStack stack) {
+        if (handler == null || stack.isEmpty()) return false;
+        int slots = Math.min(FD_COOKING_POT_INGREDIENT_SLOT_COUNT, handler.getSlots());
+        for (int slot = 0; slot < slots; slot++) {
+            if (!handler.getStackInSlot(slot).isEmpty()) continue;
+            ItemStack rem = handler.insertItem(slot, stack.copy(), false);
+            if (rem.isEmpty()) {
+                return true;
             }
+        }
+        return false;
+    }
+
+    public static boolean stationHasAnyContents(ServerLevel level, BlockPos pos, @Nullable StationType stationType) {
+        if (pos == null || stationType == null) return false;
+        pos = canonicalStationAnchor(level, pos);
+        if (stationType == StationType.FIRE_STATION) {
+            return !surfaceHasFreeSlot(level, pos);
+        }
+        return stationHasContents(level, pos, null);
+    }
+
+    public static ProducerStationState classifyProducerStation(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos pos,
+            @Nullable StationType stationType,
+            @Nullable DiscoveredRecipe expectedRecipe,
+            @Nullable ProducerStationSessions.SessionSnapshot session
+    ) {
+        if (level == null || villager == null || pos == null || stationType == null) return ProducerStationState.BLOCKED;
+        if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return ProducerStationState.BLOCKED;
+
+        boolean hasContents = stationHasAnyContents(level, pos, stationType);
+        boolean ownsSession = session != null && session.isOwner(villager.getUUID());
+
+        if (stationType == StationType.HOT_STATION && expectedRecipe != null) {
+            Item outputItem = BuiltInRegistries.ITEM.get(expectedRecipe.output());
+            if (outputItem != Items.AIR
+                    && countItemInStation(level, pos, outputItem) >= expectedRecipe.outputCount()
+                    && canExtractFromStation(level, pos, outputItem, expectedRecipe.outputCount())) {
+                return ProducerStationState.FINISHED_OUTPUT;
+            }
+        }
+        if (stationType == StationType.HOT_STATION && stationHasCollectibleOutput(level, pos, ModRecipeRegistry.allOutputIds(level))) {
+            return ProducerStationState.FINISHED_OUTPUT;
+        }
+
+        if (stationType == StationType.FIRE_STATION && expectedRecipe != null) {
+            if (surfaceHasCollectibleOutput(level, pos, Set.of(expectedRecipe.output()))) {
+                return ProducerStationState.FINISHED_OUTPUT;
+            }
+        }
+        if (stationType == StationType.FIRE_STATION && surfaceHasCollectibleOutput(level, pos, ModRecipeRegistry.allOutputIds(level))) {
+            return ProducerStationState.FINISHED_OUTPUT;
+        }
+
+        if (stationType == StationType.FIRE_STATION) {
+            int freeSurfaceSlots = surfaceFreeSlotCount(level, pos);
+            if (freeSurfaceSlots > 0) {
+                if (ownsSession) return ProducerStationState.OWNED_STAGED;
+                return ProducerStationState.EMPTY_READY;
+            }
+        }
+
+        if (!hasContents) return ProducerStationState.EMPTY_READY;
+        if (ownsSession) return ProducerStationState.OWNED_STAGED;
+        if (expectedRecipe != null && stationType == StationType.HOT_STATION && cookingPotMatchesRecipe(level, pos, expectedRecipe)) {
+            return ProducerStationState.COMPATIBLE_PARTIAL;
+        }
+        return ProducerStationState.FOREIGN_CONTENTS;
+    }
+
+    public static boolean cleanupForeignProducerStation(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos pos,
+            @Nullable StationType stationType,
+            Set<Long> storageBounds
+    ) {
+        if (level == null || villager == null || pos == null || stationType == null) return false;
+        boolean movedAny = false;
+
+        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
+        List<ItemStack> drops = collectSurfaceCookDrops(level, pos, outputIds);
+        for (ItemStack drop : drops) {
+            IngredientResolver.storeOutputInCookStorage(level, villager, drop, pos, storageBounds);
+            if (!drop.isEmpty()) {
+                ItemStack remainder = villager.getInventory().addItem(drop);
+                if (!remainder.isEmpty()) {
+                    villager.spawnAtLocation(remainder);
+                }
+            }
+            movedAny = true;
+        }
+
+        if (stationType == StationType.HOT_STATION) {
+            movedAny |= clearCookingPotContents(level, villager, pos);
+        }
+        return movedAny || !stationHasAnyContents(level, pos, stationType);
+    }
+
+    public static boolean surfaceHasCollectibleOutput(ServerLevel level, BlockPos pos, Set<ResourceLocation> outputIds) {
+        if (pos == null || outputIds == null || outputIds.isEmpty()) return false;
+        pos = canonicalStationAnchor(level, pos);
+        AABB area = new AABB(pos).inflate(3.0, 2.0, 3.0);
+        return !level.getEntitiesOfClass(ItemEntity.class, area, entity -> {
+            ItemStack stack = entity.getItem();
+            if (stack.isEmpty()) return false;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            return id != null && outputIds.contains(id);
+        }).isEmpty();
+    }
+
+    public static boolean stationHasCollectibleOutput(ServerLevel level, BlockPos pos, Set<ResourceLocation> outputIds) {
+        if (pos == null || outputIds == null || outputIds.isEmpty()) return false;
+        pos = canonicalStationAnchor(level, pos);
+        for (ResourceLocation outputId : outputIds) {
+            Item item = BuiltInRegistries.ITEM.get(outputId);
+            if (item == Items.AIR) continue;
+            if (countItemInStation(level, pos, item) <= 0) continue;
+            if (canExtractFromStation(level, pos, item, 1)) return true;
         }
         return false;
     }
 
     public static ItemStack insertIntoCookingPotContainerSlot(ServerLevel level, BlockPos pos, ItemStack stack, boolean simulate) {
         if (stack.isEmpty() || pos == null) return stack;
-        if (!stack.is(Items.BOWL)) return stack;
+        pos = canonicalStationAnchor(level, pos);
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         if (!FD_COOKING_POT.equals(blockId)) return stack;
 
-        ItemStack remainder = stack.copy();
-        for (Direction dir : Direction.values()) {
-            if (dir == Direction.UP) continue;
-            IItemHandler handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) continue;
-            remainder = handler.insertItem(FD_COOKING_POT_CONTAINER_SLOT, remainder, simulate);
-            if (remainder.isEmpty()) return ItemStack.EMPTY;
+        final ItemStack[] remainderRef = new ItemStack[]{stack.copy()};
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (remainderRef[0].isEmpty()) return;
+            if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) return;
+            remainderRef[0] = handler.insertItem(FD_COOKING_POT_CONTAINER_SLOT, remainderRef[0], simulate);
+        });
+        ItemStack remainder = remainderRef[0];
+        if (!simulate && remainder.getCount() != stack.getCount()) {
+            KitchenStationIndex.invalidate(level, pos);
         }
+        if (remainder.isEmpty()) return ItemStack.EMPTY;
         return remainder;
     }
 
-    public static int cookingPotContainerBowlCount(ServerLevel level, BlockPos pos) {
-        if (pos == null) return 0;
+    public static int cookingPotContainerItemCount(ServerLevel level, BlockPos pos, Item item) {
+        if (pos == null || item == Items.AIR) return 0;
+        pos = canonicalStationAnchor(level, pos);
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         if (!FD_COOKING_POT.equals(blockId)) return 0;
-        int best = 0;
-        for (Direction dir : Direction.values()) {
-            if (dir == Direction.UP) continue;
-            IItemHandler handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) continue;
+        final int[] bestRef = new int[1];
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) return;
             ItemStack slot = handler.getStackInSlot(FD_COOKING_POT_CONTAINER_SLOT);
-            if (slot.is(Items.BOWL)) best = Math.max(best, slot.getCount());
+            if (slot.is(item)) bestRef[0] = Math.max(bestRef[0], slot.getCount());
+        });
+        return bestRef[0];
+    }
+
+    public static boolean cookingPotMatchesRecipe(ServerLevel level, BlockPos pos, DiscoveredRecipe recipe) {
+        if (level == null || pos == null || recipe == null || recipe.stationType() != StationType.HOT_STATION) return false;
+        pos = canonicalStationAnchor(level, pos);
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        if (!FD_COOKING_POT.equals(blockId)) return false;
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) return false;
+        Object source = recipe.source();
+        if (source == null) return false;
+        //? if >=1.21 {
+        if (source instanceof RecipeHolder<?> holder) source = holder.value();
+        //?}
+        try {
+            Method inventoryMethod = be.getClass().getMethod("getInventory");
+            Object inventory = inventoryMethod.invoke(be);
+            if (inventory == null) return false;
+            Object wrapper = RecipeWrapper.class.getConstructors()[0].newInstance(inventory);
+            for (Method method : source.getClass().getMethods()) {
+                if (!method.getName().equals("matches") || method.getParameterCount() != 2) continue;
+                try {
+                    Object result = method.invoke(source, wrapper, level);
+                    if (result instanceof Boolean bool) return bool;
+                } catch (IllegalArgumentException ignored) {}
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    public static String describeCookingPotInputs(ServerLevel level, BlockPos pos) {
+        if (level == null || pos == null) return "";
+        pos = canonicalStationAnchor(level, pos);
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        if (!FD_COOKING_POT.equals(blockId)) return "";
+        IItemHandler input = preferredIngredientHandler(level, pos);
+        if (input == null) return "";
+        List<String> parts = new ArrayList<>();
+        for (int slot = 0; slot < FD_COOKING_POT_INGREDIENT_SLOT_COUNT; slot++) {
+            ItemStack stack = input.getStackInSlot(slot);
+            if (stack.isEmpty()) continue;
+            parts.add(stack.getHoverName().getString() + " x" + stack.getCount());
         }
-        return best;
+        final String[] containerRef = new String[1];
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            if (containerRef[0] != null) return;
+            if (FD_COOKING_POT_CONTAINER_SLOT >= handler.getSlots()) return;
+            ItemStack stack = handler.getStackInSlot(FD_COOKING_POT_CONTAINER_SLOT);
+            if (stack.isEmpty()) return;
+            containerRef[0] = "container: " + stack.getHoverName().getString() + " x" + stack.getCount();
+        });
+        if (containerRef[0] != null) parts.add(containerRef[0]);
+        return String.join(", ", parts);
     }
 
     public static int countItemInStation(ServerLevel level, BlockPos pos, Item item) {
         if (pos == null || item == Items.AIR) return 0;
-        int total = 0;
-        IItemHandler handler = preferredIngredientHandler(level, pos);
-        if (handler != null) {
+        pos = canonicalStationAnchor(level, pos);
+        final int[] totalRef = new int[1];
+        final boolean[] sawHandlerRef = new boolean[1];
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            sawHandlerRef[0] = true;
             for (int i = 0; i < handler.getSlots(); i++) {
-                if (handler.getStackInSlot(i).is(item)) total += handler.getStackInSlot(i).getCount();
+                ItemStack stack = handler.getStackInSlot(i);
+                if (stack.is(item)) {
+                    totalRef[0] += stack.getCount();
+                }
             }
-            return total;
-        }
-        handler = getItemHandler(level, pos, null);
-        if (handler != null) {
-            for (int i = 0; i < handler.getSlots(); i++) {
-                if (handler.getStackInSlot(i).is(item)) total += handler.getStackInSlot(i).getCount();
-            }
-            return total;
-        }
+        });
         BlockEntity be = level.getBlockEntity(pos);
+        if (!sawHandlerRef[0] && be instanceof Container container) {
+            for (int i = 0; i < container.getContainerSize(); i++) {
+                if (container.getItem(i).is(item)) totalRef[0] += container.getItem(i).getCount();
+            }
+        }
+        return totalRef[0];
+    }
+
+    public static List<ItemStack> extractMatchingStationStacks(ServerLevel level, BlockPos pos, Set<ResourceLocation> outputIds) {
+        if (level == null || pos == null || outputIds == null || outputIds.isEmpty()) return List.of();
+        pos = canonicalStationAnchor(level, pos);
+        List<ItemStack> extracted = new ArrayList<>();
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) return extracted;
+
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
+            for (int i = 0; i < handler.getSlots(); i++) {
+                ItemStack slot = handler.getStackInSlot(i);
+                if (slot.isEmpty()) continue;
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(slot.getItem());
+                if (id == null || !outputIds.contains(id)) continue;
+                ItemStack taken = handler.extractItem(i, slot.getCount(), false);
+                if (!taken.isEmpty()) extracted.add(taken);
+            }
+        });
+
         if (be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize(); i++) {
-                if (container.getItem(i).is(item)) total += container.getItem(i).getCount();
+                ItemStack slot = container.getItem(i);
+                if (slot.isEmpty()) continue;
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(slot.getItem());
+                if (id == null || !outputIds.contains(id)) continue;
+                extracted.add(slot.copy());
+                container.setItem(i, ItemStack.EMPTY);
+                container.setChanged();
             }
         }
-        return total;
+        if (!extracted.isEmpty()) {
+            KitchenStationIndex.invalidate(level, pos);
+        }
+        return extracted;
     }
 
     // ── Collect surface cook drops ──
@@ -941,21 +1458,15 @@ public final class StationHandler {
 
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return false;
-        boolean clearedAny = false;
+        final boolean[] clearedAnyRef = new boolean[1];
+        StorageSearchContext searchContext = new StorageSearchContext(level);
 
-        Direction[] directions = new Direction[Direction.values().length + 1];
-        directions[0] = null;
-        System.arraycopy(Direction.values(), 0, directions, 1, Direction.values().length);
-        Set<Integer> handlerIds = new HashSet<>();
-        for (Direction dir : directions) {
-            IItemHandler handler = getItemHandler(level, pos, dir);
-            if (handler == null) continue;
-            if (!handlerIds.add(System.identityHashCode(handler))) continue;
+        searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
             for (int i = 0; i < handler.getSlots(); i++) {
                 if (handler.getStackInSlot(i).isEmpty()) continue;
                 ItemStack extracted = handler.extractItem(i, handler.getStackInSlot(i).getCount(), false);
                 if (extracted.isEmpty()) continue;
-                clearedAny = true;
+                clearedAnyRef[0] = true;
                 ItemStack remainder = villager.getInventory().addItem(extracted);
                 if (!remainder.isEmpty()) {
                     ItemEntity drop = new ItemEntity(
@@ -964,7 +1475,7 @@ public final class StationHandler {
                     level.addFreshEntity(drop);
                 }
             }
-        }
+        });
         if (be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize(); i++) {
                 ItemStack slot = container.getItem(i);
@@ -972,7 +1483,7 @@ public final class StationHandler {
                 ItemStack taken = slot.copy();
                 container.setItem(i, ItemStack.EMPTY);
                 container.setChanged();
-                clearedAny = true;
+                clearedAnyRef[0] = true;
                 ItemStack remainder = villager.getInventory().addItem(taken);
                 if (!remainder.isEmpty()) {
                     ItemEntity drop = new ItemEntity(
@@ -985,9 +1496,12 @@ public final class StationHandler {
 
         // Reflection fallback: clear remaining items (e.g. bowl in container slot)
         // that IItemHandler and Container couldn't extract
-        if (clearRemainingViaReflection(be, villager, level)) clearedAny = true;
+        if (clearRemainingViaReflection(be, villager, level)) clearedAnyRef[0] = true;
 
-        return clearedAny;
+        if (clearedAnyRef[0]) {
+            KitchenStationIndex.invalidate(level, pos);
+        }
+        return clearedAnyRef[0];
     }
 
     private static boolean clearRemainingViaReflection(BlockEntity be, VillagerEntityMCA villager, ServerLevel level) {
@@ -1071,22 +1585,37 @@ public final class StationHandler {
         BlockState state = level.getBlockState(pos);
         if (TownsteadConfig.isProtectedStorage(state)) return false;
         if (NearbyItemSources.isProcessingContainer(level, pos, be)) return false;
-        return state.is(FD_KITCHEN_STORAGE_TAG)
+        if (state.is(FD_KITCHEN_STORAGE_TAG)
                 || state.is(FD_KITCHEN_STORAGE_UPGRADED_TAG)
                 || state.is(FD_KITCHEN_STORAGE_NETHER_TAG)
                 || state.is(Blocks.CHEST)
                 || state.is(Blocks.TRAPPED_CHEST)
-                || state.is(Blocks.BARREL);
+                || state.is(Blocks.BARREL)) {
+            return true;
+        }
+        if (be instanceof Container container) {
+            return container.getContainerSize() > 0;
+        }
+        if (getItemHandler(be, level, pos, null) != null) {
+            return true;
+        }
+        for (Direction dir : Direction.values()) {
+            if (getItemHandler(be, level, pos, dir) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ── Knife helpers ──
 
     public static boolean isKnifeStack(ItemStack stack) {
         if (stack.isEmpty()) return false;
-        if (stack.is(KNIFE_TAG)) return true;
+        if (stack.is(KNIFE_TAG) || stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE) || stack.is(KNIFE_TAG_FD)) return true;
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (id == null) return false;
-        return id.getPath().contains("knife");
+        String path = id.getPath();
+        return path.endsWith("_knife") || path.contains("/knife") || path.contains("knife");
     }
 
     public static boolean hasKnife(SimpleContainer inv) {
@@ -1094,6 +1623,21 @@ public final class StationHandler {
             if (isKnifeStack(inv.getItem(i))) return true;
         }
         return false;
+    }
+
+    public static String describeKnifeLikeInventory(SimpleContainer inv) {
+        List<String> parts = new ArrayList<>();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty()) continue;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            String itemId = id == null ? stack.getItem().toString() : id.toString();
+            String path = id == null ? "" : id.getPath();
+            if (isKnifeStack(stack) || path.contains("knife") || path.contains("blade") || path.contains("cleaver")) {
+                parts.add(itemId + " x" + stack.getCount() + " match=" + isKnifeStack(stack));
+            }
+        }
+        return parts.isEmpty() ? "<none>" : String.join(", ", parts);
     }
 
     // ── Inventory helpers ──
@@ -1191,30 +1735,62 @@ public final class StationHandler {
         return false;
     }
 
+    private static BlockPos canonicalStoveAnchor(ServerLevel level, BlockPos origin) {
+        BlockPos best = origin;
+        if (isStoveBlockEntity(level.getBlockEntity(origin))) {
+            best = origin;
+        }
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            BlockPos cursor = origin.relative(direction);
+            while (cursor.distManhattan(origin) <= 6) {
+                BlockState state = level.getBlockState(cursor);
+                ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+                if (!FD_STOVE.equals(id)) break;
+                if (isStoveBlockEntity(level.getBlockEntity(cursor)) && comparePos(cursor, best) < 0) {
+                    best = cursor.immutable();
+                }
+                cursor = cursor.relative(direction);
+            }
+        }
+        return best.immutable();
+    }
+
+    private static boolean isStoveBlockEntity(@Nullable BlockEntity be) {
+        return be != null && ensureStoveReflection() && FD_STOVE_BE_CLASS != null && FD_STOVE_BE_CLASS.isInstance(be);
+    }
+
+    private static int comparePos(BlockPos a, BlockPos b) {
+        if (a.getY() != b.getY()) return Integer.compare(a.getY(), b.getY());
+        if (a.getZ() != b.getZ()) return Integer.compare(a.getZ(), b.getZ());
+        return Integer.compare(a.getX(), b.getX());
+    }
+
     // ── Stove reflection ──
 
     private static boolean ensureStoveReflection() {
         if (FD_STOVE_BE_CLASS != null && FD_STOVE_GET_NEXT_EMPTY_SLOT != null
                 && FD_STOVE_GET_MATCHING_RECIPE != null && FD_STOVE_ADD_ITEM != null
-                && FD_STOVE_IS_BLOCKED_ABOVE != null) {
+                && FD_STOVE_IS_BLOCKED_ABOVE != null && FD_STOVE_GET_INVENTORY != null) {
             return true;
         }
         try {
             FD_STOVE_BE_CLASS = Class.forName("vectorwing.farmersdelight.common.block.entity.StoveBlockEntity");
             FD_STOVE_GET_NEXT_EMPTY_SLOT = FD_STOVE_BE_CLASS.getMethod("getNextEmptySlot");
-            FD_STOVE_GET_MATCHING_RECIPE = FD_STOVE_BE_CLASS.getMethod("getMatchingRecipe", ItemStack.class);
+            FD_STOVE_GET_INVENTORY = FD_STOVE_BE_CLASS.getMethod("getInventory");
             //? if >=1.21 {
+            FD_STOVE_GET_MATCHING_RECIPE = FD_STOVE_BE_CLASS.getMethod("getMatchingRecipe", ItemStack.class);
             Class<?> recipeHolderClass = Class.forName("net.minecraft.world.item.crafting.RecipeHolder");
             FD_STOVE_ADD_ITEM = FD_STOVE_BE_CLASS.getMethod("addItem", ItemStack.class, recipeHolderClass, int.class);
             //?} else {
-            /*FD_STOVE_ADD_ITEM = FD_STOVE_BE_CLASS.getMethod("addItem", ItemStack.class, CampfireCookingRecipe.class, int.class);
+            /*FD_STOVE_GET_MATCHING_RECIPE = FD_STOVE_BE_CLASS.getMethod("getMatchingRecipe", net.minecraft.world.Container.class, int.class);
+            FD_STOVE_ADD_ITEM = FD_STOVE_BE_CLASS.getMethod("addItem", ItemStack.class, CampfireCookingRecipe.class, int.class);
             *///?}
             FD_STOVE_IS_BLOCKED_ABOVE = FD_STOVE_BE_CLASS.getMethod("isStoveBlockedAbove");
             return true;
         } catch (Throwable ignored) {
             FD_STOVE_BE_CLASS = null; FD_STOVE_GET_NEXT_EMPTY_SLOT = null;
             FD_STOVE_GET_MATCHING_RECIPE = null; FD_STOVE_ADD_ITEM = null;
-            FD_STOVE_IS_BLOCKED_ABOVE = null;
+            FD_STOVE_IS_BLOCKED_ABOVE = null; FD_STOVE_GET_INVENTORY = null;
             return false;
         }
     }
@@ -1225,9 +1801,81 @@ public final class StationHandler {
         catch (Throwable ignored) { return null; }
     }
 
+    private static Integer stoveReflectedNextEmptySlot(BlockEntity be) {
+        List<ItemStack> slots = stoveReflectedSlots(be);
+        if (slots.isEmpty()) return null;
+        for (int i = 0; i < slots.size(); i++) {
+            if (slots.get(i).isEmpty()) return i;
+        }
+        return null;
+    }
+
+    private static int stoveReflectedFreeSlotCount(BlockEntity be) {
+        List<ItemStack> slots = stoveReflectedSlots(be);
+        if (slots.isEmpty()) return 0;
+        int free = 0;
+        for (ItemStack slot : slots) {
+            if (slot.isEmpty()) free++;
+        }
+        return free;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<ItemStack> stoveReflectedSlots(@Nullable BlockEntity be) {
+        if (be == null) return List.of();
+        Class<?> type = be.getClass();
+        while (type != null && type != Object.class) {
+            for (Field field : type.getDeclaredFields()) {
+                try {
+                    field.setAccessible(true);
+                    Object value = field.get(be);
+                    if (value instanceof Container container) {
+                        List<ItemStack> slots = new ArrayList<>();
+                        for (int i = 0; i < container.getContainerSize(); i++) {
+                            slots.add(container.getItem(i));
+                        }
+                        if (!slots.isEmpty() && slots.size() <= 6) return slots;
+                    }
+                    if (value instanceof List<?> list && !list.isEmpty()) {
+                        boolean itemStackList = true;
+                        List<ItemStack> slots = new ArrayList<>();
+                        for (Object entry : list) {
+                            if (!(entry instanceof ItemStack stack)) {
+                                itemStackList = false;
+                                break;
+                            }
+                            slots.add(stack);
+                        }
+                        if (itemStackList && !slots.isEmpty() && slots.size() <= 6) {
+                            return slots;
+                        }
+                    }
+                } catch (Throwable ignored) {}
+            }
+            type = type.getSuperclass();
+        }
+        return List.of();
+    }
+
     static Optional<?> stoveMatchingRecipe(BlockEntity be, ItemStack stack) {
         if (be == null || stack.isEmpty() || !ensureStoveReflection() || !FD_STOVE_BE_CLASS.isInstance(be)) return Optional.empty();
-        try { Object v = FD_STOVE_GET_MATCHING_RECIPE.invoke(be, stack.copy()); if (v instanceof Optional<?> o) return o; }
+        try {
+            //? if >=1.21 {
+            Object v = FD_STOVE_GET_MATCHING_RECIPE.invoke(be, stack.copy());
+            //?} else {
+            /*Object inventory = FD_STOVE_GET_INVENTORY.invoke(be);
+            Integer slot = stoveNextEmptySlot(be);
+            if (!(inventory instanceof net.minecraft.world.Container container) || slot == null || slot < 0) return Optional.empty();
+            container.setItem(slot, stack.copy());
+            Object v;
+            try {
+                v = FD_STOVE_GET_MATCHING_RECIPE.invoke(be, container, slot);
+            } finally {
+                container.setItem(slot, ItemStack.EMPTY);
+            }
+            *///?}
+            if (v instanceof Optional<?> o) return o;
+        }
         catch (Throwable ignored) {}
         return Optional.empty();
     }
@@ -1237,6 +1885,37 @@ public final class StationHandler {
         if (!ensureStoveReflection() || !FD_STOVE_BE_CLASS.isInstance(be)) return false;
         try { Object v = FD_STOVE_ADD_ITEM.invoke(be, stack, recipeHolder, slot); return v instanceof Boolean b && b; }
         catch (Throwable ignored) { return false; }
+    }
+
+    private static boolean stoveAddItemAnySlot(BlockEntity be, ItemStack stack, Object recipeHolder) {
+        if (be == null || stack.isEmpty() || recipeHolder == null) return false;
+        LinkedHashSet<Integer> candidates = new LinkedHashSet<>();
+        Integer reported = stoveNextEmptySlot(be);
+        if (reported != null && reported >= 0) {
+            candidates.add(reported);
+        }
+        Integer reflected = stoveReflectedNextEmptySlot(be);
+        if (reflected != null && reflected >= 0) {
+            candidates.add(reflected);
+        }
+        List<ItemStack> reflectedSlots = stoveReflectedSlots(be);
+        for (int i = 0; i < reflectedSlots.size(); i++) {
+            if (reflectedSlots.get(i).isEmpty()) {
+                candidates.add(i);
+            }
+        }
+        if (candidates.isEmpty()) {
+            for (int i = 0; i < 6; i++) {
+                candidates.add(i);
+            }
+        }
+        for (Integer slot : candidates) {
+            if (slot == null || slot < 0) continue;
+            if (stoveAddItem(be, stack, recipeHolder, slot)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static boolean stoveBlockedAbove(BlockEntity be) {

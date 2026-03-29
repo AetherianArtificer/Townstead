@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -21,13 +22,14 @@ import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -38,12 +40,16 @@ import java.util.stream.Stream;
  * Parents have priority. Non-crabby villagers help if no parent is nearby.
  */
 public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
+    private static final String SEARCH_CADENCE_KEY = "care_food_search";
+    private static final String CLAIM_CATEGORY = "consumable";
     private static final int SEARCH_RADIUS = 48;
     private static final int VERTICAL_RADIUS = 8;
     private static final float WALK_SPEED = 0.75f;
     private static final int CLOSE_ENOUGH = 2;
     private static final int MAX_DURATION = 1200;
     private static final int FEED_INTERVAL = 30;
+    private static final int UNREACHABLE_TARGET_TTL_TICKS = 40;
+    private static final int MAX_PATH_ATTEMPTS_PER_SEARCH = 5;
 
     private enum Phase { NONE, ACQUIRE, FEED }
     private enum SourceType { NONE, GROUND_ITEM, CONTAINER, CROP }
@@ -68,10 +74,12 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA caregiver) {
         if (!TownsteadConfig.ENABLE_FEEDING_YOUNG.get()) return false;
+        if (currentScheduleActivity(caregiver) == Activity.REST) return false;
         if (cooldown > 0) {
             cooldown--;
             return false;
         }
+        if (!VillagerSearchCadence.isDue(level, caregiver, SEARCH_CADENCE_KEY)) return false;
 
         if (!townstead$isEligibleCaregiver(caregiver)) return false;
 
@@ -111,6 +119,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
             return;
         }
         cooldown = 100;
+        VillagerSearchCadence.schedule(level, caregiver, SEARCH_CADENCE_KEY, cooldown, 30);
     }
 
     @Override
@@ -134,6 +143,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA caregiver, long gameTime) {
         if (!townstead$isEligibleCaregiver(caregiver)) return false;
         if (childTarget == null || !childTarget.isAlive() || !townstead$isYoungHungry(childTarget)) return false;
+        if (currentScheduleActivity(caregiver) == Activity.REST) return false;
         return true;
     }
 
@@ -147,6 +157,8 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         sourceContainerSlot = null;
         nextFeedTick = 0L;
         cooldown = 80;
+        ConsumableTargetClaims.releaseAll(caregiver.getUUID());
+        VillagerSearchCadence.schedule(level, caregiver, SEARCH_CADENCE_KEY, cooldown, 20);
     }
 
     private void townstead$tickAcquire(ServerLevel level, VillagerEntityMCA caregiver, long gameTime) {
@@ -205,6 +217,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
                 if (state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state)) {
                     List<ItemStack> drops = CropBlock.getDrops(state, level, sourcePos, null);
                     level.destroyBlock(sourcePos, false, caregiver);
+                    NearbyCropIndex.invalidate(level, sourcePos);
                     for (ItemStack drop : drops) {
                         caregiver.getInventory().addItem(drop);
                     }
@@ -402,19 +415,31 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
         // Sort by distance, pick first reachable
         items.sort(Comparator.comparingDouble(villager::distanceToSqr));
-        for (ItemEntity item : items) {
-            Path path = villager.getNavigation().createPath(item.blockPosition(), CLOSE_ENOUGH);
-            if (path != null && path.canReach()) {
-                sourceItem = item;
-                sourceType = SourceType.GROUND_ITEM;
-                return true;
+        ItemEntity chosen = ReachableTargetSelector.chooseReachable(
+                level,
+                villager,
+                items.stream().filter(item -> !ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item))
+                        .map(item -> new ReachableTargetSelector.Candidate<>(item, item.blockPosition()))
+                        .toList(),
+                CLOSE_ENOUGH,
+                MAX_PATH_ATTEMPTS_PER_SEARCH,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> villager.distanceToSqr(candidate.pos().getX() + 0.5, candidate.pos().getY() + 0.5, candidate.pos().getZ() + 0.5)
+        );
+        if (chosen != null) {
+            if (!ConsumableTargetClaims.tryClaimItem(level, villager.getUUID(), CLAIM_CATEGORY, chosen, level.getGameTime() + MAX_DURATION + 20L)) {
+                return false;
             }
+            sourceItem = chosen;
+            sourceType = SourceType.GROUND_ITEM;
+            return true;
         }
         return false;
     }
 
     private boolean townstead$findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
-        sourceContainerSlot = NearbyItemSources.findBestNearbySlot(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        List<ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>> candidates = new ArrayList<>();
+        NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
                 stack -> {
                     //? if >=1.21 {
                     FoodProperties food = stack.get(DataComponents.FOOD);
@@ -438,40 +463,53 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
                     //?} else {
                     /*return food != null ? food.getNutrition() : 0;
                     *///?}
+                },
+                villager.blockPosition(),
+                slot -> {
+                    if (!ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, slot)) {
+                        candidates.add(new ReachableTargetSelector.Candidate<>(slot, slot.pos()));
+                    }
                 });
-        if (sourceContainerSlot == null) return false;
-        // Check reachability
-        Path path = villager.getNavigation().createPath(sourceContainerSlot.pos(), CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) return false;
+        NearbyItemSources.ContainerSlot chosen = ReachableTargetSelector.chooseReachable(
+                level, villager, candidates, CLOSE_ENOUGH, MAX_PATH_ATTEMPTS_PER_SEARCH,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> candidate.value().distanceSqr()
+        );
+        if (chosen == null) return false;
+        if (!ConsumableTargetClaims.tryClaimSlot(level, villager.getUUID(), CLAIM_CATEGORY, chosen, level.getGameTime() + MAX_DURATION + 20L)) {
+            return false;
+        }
+        sourceContainerSlot = chosen;
         sourceType = SourceType.CONTAINER;
-        sourcePos = sourceContainerSlot.pos();
+        sourcePos = chosen.pos();
         return true;
     }
 
     private boolean townstead$findMatureCrop(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos center = villager.blockPosition();
-        BlockPos bestPos = null;
-        double bestDist = Double.MAX_VALUE;
-
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-SEARCH_RADIUS, -VERTICAL_RADIUS, -SEARCH_RADIUS),
-                center.offset(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS))) {
-            BlockState state = level.getBlockState(pos);
-            if (!(state.getBlock() instanceof CropBlock crop) || !crop.isMaxAge(state)) continue;
-
-            double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                bestPos = pos.immutable();
-            }
-        }
-
+        BlockPos bestPos = NearbyCropIndex.snapshot(level, villager.blockPosition(), SEARCH_RADIUS, VERTICAL_RADIUS)
+                .nearestTo(villager);
         if (bestPos == null) return false;
         // Check reachability
-        Path path = villager.getNavigation().createPath(bestPos, CLOSE_ENOUGH);
-        if (path == null || !path.canReach()) return false;
+        BlockPos chosen = ReachableTargetSelector.chooseReachable(
+                level,
+                villager,
+                List.of(new ReachableTargetSelector.Candidate<>(bestPos, bestPos)),
+                CLOSE_ENOUGH,
+                1,
+                UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> villager.distanceToSqr(candidate.pos().getX() + 0.5, candidate.pos().getY() + 0.5, candidate.pos().getZ() + 0.5)
+        );
+        if (chosen == null) return false;
+        if (!ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(), CLAIM_CATEGORY, chosen, level.getGameTime() + MAX_DURATION + 20L)) {
+            return false;
+        }
         sourceType = SourceType.CROP;
-        sourcePos = bestPos;
+        sourcePos = chosen;
         return true;
+    }
+
+    private static Activity currentScheduleActivity(VillagerEntityMCA villager) {
+        long dayTime = villager.level().getDayTime() % 24000L;
+        return villager.getBrain().getSchedule().getActivityAt((int) dayTime);
     }
 }

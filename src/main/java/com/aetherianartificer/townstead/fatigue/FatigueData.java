@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.fatigue;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -67,6 +68,11 @@ public final class FatigueData {
     private static final String KEY_COLLAPSED = "fatigueCollapsed";
     private static final String KEY_GATED = "fatigueGated";
     private static final String KEY_MOOD_DRIFT = "fatigueMoodDrift";
+    private static final String KEY_REST_OVERRIDE_ACTIVE = "restOverrideActive";
+    private static final String KEY_REST_OVERRIDE_REASON = "restOverrideReason";
+    private static final String KEY_REST_DEBUG_REASON = "restDebugReason";
+    private static final String KEY_REST_DEBUG_BLOCK = "restDebugBlock";
+    private static final String KEY_REST_DEBUG_TARGET = "restDebugTarget";
 
     // --- NBT keys for editor sync ---
     public static final String EDITOR_KEY_FATIGUE = "townstead_fatigue";
@@ -105,6 +111,41 @@ public final class FatigueData {
 
     public static void setMoodDrift(CompoundTag tag, float value) {
         tag.putFloat(KEY_MOOD_DRIFT, Math.max(-4f, Math.min(value, 4f)));
+    }
+
+    public static boolean isRestOverrideActive(CompoundTag tag) {
+        return tag.getBoolean(KEY_REST_OVERRIDE_ACTIVE);
+    }
+
+    public static void setRestOverride(CompoundTag tag, boolean active, SleepReason reason) {
+        tag.putBoolean(KEY_REST_OVERRIDE_ACTIVE, active);
+        tag.putString(KEY_REST_OVERRIDE_REASON, active ? reason.id() : SleepReason.NONE.id());
+    }
+
+    public static SleepReason getRestOverrideReason(CompoundTag tag) {
+        return SleepReason.fromId(tag.getString(KEY_REST_OVERRIDE_REASON));
+    }
+
+    public static void setRestDebugDecision(CompoundTag tag, SleepReason reason, SleepBlockReason blockReason, BlockPos targetBed) {
+        tag.putString(KEY_REST_DEBUG_REASON, reason.id());
+        tag.putString(KEY_REST_DEBUG_BLOCK, blockReason.id());
+        if (targetBed != null) {
+            tag.putLong(KEY_REST_DEBUG_TARGET, targetBed.asLong());
+        }
+    }
+
+    public static String getRestDebugReasonId(CompoundTag tag) {
+        String value = tag.getString(KEY_REST_DEBUG_REASON);
+        return value.isEmpty() ? SleepReason.NONE.id() : value;
+    }
+
+    public static String getRestDebugBlockId(CompoundTag tag) {
+        String value = tag.getString(KEY_REST_DEBUG_BLOCK);
+        return value.isEmpty() ? SleepBlockReason.NONE.id() : value;
+    }
+
+    public static long getRestDebugTargetBed(CompoundTag tag) {
+        return tag.contains(KEY_REST_DEBUG_TARGET) ? tag.getLong(KEY_REST_DEBUG_TARGET) : Long.MIN_VALUE;
     }
 
     /**

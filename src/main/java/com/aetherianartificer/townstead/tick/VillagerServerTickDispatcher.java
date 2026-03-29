@@ -28,10 +28,12 @@ public final class VillagerServerTickDispatcher {
             if (villager.level() instanceof ServerLevel level) {
                 EmergencyBedClaims.releaseAll(level, villager.getUUID());
             }
+            BedOccupancySanitizer.forget(villager);
             LAST_TICK.remove(villager.getId());
             return;
         }
 
+        BedOccupancySanitizer.tick(villager);
         CookAutoAssignTicker.tick(villager);
         BaristaAutoAssignTicker.tick(villager);
         CookTradeBackfillTicker.tick(villager);

@@ -2,6 +2,8 @@
 .gradle/
 .gradle-user/
 .gradle-local/
+.mise-cache/
+.mise-state/
 .cache/
 build/
 runs/
@@ -35,5 +37,7 @@ docs/
 .DS_Store
 Thumbs.db
 
+.tmp/
 *.jar
 libs/
+assets/mca/

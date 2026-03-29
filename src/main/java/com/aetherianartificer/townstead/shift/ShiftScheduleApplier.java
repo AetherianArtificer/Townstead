@@ -15,7 +15,7 @@ public final class ShiftScheduleApplier {
 
     /**
      * Read the villager's shift attachment and set a custom schedule on their brain.
-     * If no custom shifts are stored, does nothing (the vanilla schedule remains).
+     * If no custom shifts are stored, leave MCA's existing schedule untouched.
      */
     public static void apply(VillagerEntityMCA villager) {
         if (villager.getBrain() == null) return;
@@ -26,8 +26,7 @@ public final class ShiftScheduleApplier {
         /*CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
         *///?}
         if (!ShiftData.hasCustomShifts(shiftTag)) {
-            // No custom shifts — restore vanilla schedule
-            villager.getBrain().setSchedule(Schedule.VILLAGER_DEFAULT);
+            // No Townstead override — preserve the schedule MCA selected for this villager.
             return;
         }
 

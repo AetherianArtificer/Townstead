@@ -28,6 +28,10 @@ public final class ThirstClientStore {
         return THIRST_MAP.getOrDefault(entityId, ThirstData.DEFAULT_THIRST);
     }
 
+    public static boolean hasThirst(int entityId) {
+        return THIRST_MAP.containsKey(entityId);
+    }
+
     public static int getQuenched(int entityId) {
         return QUENCHED_MAP.getOrDefault(entityId, ThirstData.DEFAULT_QUENCHED);
     }

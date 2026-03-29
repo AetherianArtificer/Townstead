@@ -15,10 +15,16 @@ import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class TownsteadConfig {
     private TownsteadConfig() {}
+
+    private static volatile ProtectedStorageRules protectedStorageRules = ProtectedStorageRules.empty();
 
     //? if neoforge {
     public static final ModConfigSpec SERVER_SPEC;
@@ -73,6 +79,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
+    public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     //?} else if forge {
     /*public static final ForgeConfigSpec SERVER_SPEC;
     public static final ForgeConfigSpec CLIENT_SPEC;
@@ -126,6 +133,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
+    public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     *///?}
 
     static {
@@ -386,7 +394,11 @@ public final class TownsteadConfig {
         DEBUG_VILLAGER_AI = b
                 .translation("townstead.configuration.debug.debugVillagerAI")
                 .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
-                .define("debugVillagerAI", false);
+                .define("debugVillagerAI", true);
+        DEBUG_VILLAGER_SLEEP = b
+                .translation("townstead.configuration.debug.debugVillagerSleep")
+                .comment("Enable sleep/rest debug logs and villager debug state updates.")
+                .define("debugVillagerSleep", false);
         b.pop();
 
         SERVER_SPEC = b.build();
@@ -470,18 +482,84 @@ public final class TownsteadConfig {
         return ENABLE_VILLAGER_FATIGUE.get();
     }
 
+    public static boolean isVillagerSleepDebugEnabled() {
+        return DEBUG_VILLAGER_SLEEP.get();
+    }
+
     public static boolean isProtectedStorage(BlockState state) {
         if (!RESPECT_PROTECTED_STORAGE.get()) return false;
+        return protectedStorageRules().matches(state);
+    }
 
-        for (String id : PROTECTED_STORAGE_BLOCKS.get()) {
-            ResourceLocation rl = ResourceLocation.tryParse(id);
-            if (rl != null && rl.equals(BuiltInRegistries.BLOCK.getKey(state.getBlock()))) return true;
+    private static ProtectedStorageRules protectedStorageRules() {
+        List<? extends String> blockIds = PROTECTED_STORAGE_BLOCKS.get();
+        List<? extends String> tagIds = PROTECTED_STORAGE_TAGS.get();
+        ProtectedStorageRules current = protectedStorageRules;
+        if (current.matchesInputs(blockIds, tagIds)) return current;
+        synchronized (TownsteadConfig.class) {
+            current = protectedStorageRules;
+            if (current.matchesInputs(blockIds, tagIds)) return current;
+            current = ProtectedStorageRules.compile(blockIds, tagIds);
+            protectedStorageRules = current;
+            return current;
         }
-        for (String id : PROTECTED_STORAGE_TAGS.get()) {
-            ResourceLocation rl = ResourceLocation.tryParse(id);
-            if (rl == null) continue;
-            if (state.is(TagKey.create(Registries.BLOCK, rl))) return true;
+    }
+
+    private static final class ProtectedStorageRules {
+        private final List<String> blockIds;
+        private final List<String> tagIds;
+        private final Set<ResourceLocation> blocks;
+        private final TagKey<Block>[] tags;
+
+        private ProtectedStorageRules(List<String> blockIds, List<String> tagIds,
+                                      Set<ResourceLocation> blocks, TagKey<Block>[] tags) {
+            this.blockIds = blockIds;
+            this.tagIds = tagIds;
+            this.blocks = blocks;
+            this.tags = tags;
         }
-        return false;
+
+        static ProtectedStorageRules empty() {
+            return new ProtectedStorageRules(List.of(), List.of(), Set.of(), emptyTags());
+        }
+
+        static ProtectedStorageRules compile(List<? extends String> rawBlockIds, List<? extends String> rawTagIds) {
+            List<String> blockIds = List.copyOf(rawBlockIds);
+            List<String> tagIds = List.copyOf(rawTagIds);
+            Set<ResourceLocation> blocks = new HashSet<>();
+            for (String id : blockIds) {
+                ResourceLocation rl = ResourceLocation.tryParse(id);
+                if (rl != null) blocks.add(rl);
+            }
+            List<TagKey<Block>> tags = new ArrayList<>();
+            for (String id : tagIds) {
+                ResourceLocation rl = ResourceLocation.tryParse(id);
+                if (rl != null) tags.add(TagKey.create(Registries.BLOCK, rl));
+            }
+            return new ProtectedStorageRules(
+                    blockIds,
+                    tagIds,
+                    blocks,
+                    tags.toArray(emptyTags())
+            );
+        }
+
+        boolean matchesInputs(List<? extends String> rawBlockIds, List<? extends String> rawTagIds) {
+            return blockIds.equals(rawBlockIds) && tagIds.equals(rawTagIds);
+        }
+
+        boolean matches(BlockState state) {
+            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+            if (blockId != null && blocks.contains(blockId)) return true;
+            for (TagKey<Block> tag : tags) {
+                if (state.is(tag)) return true;
+            }
+            return false;
+        }
+
+        @SuppressWarnings("unchecked")
+        private static TagKey<Block>[] emptyTags() {
+            return (TagKey<Block>[]) new TagKey<?>[0];
+        }
     }
 }

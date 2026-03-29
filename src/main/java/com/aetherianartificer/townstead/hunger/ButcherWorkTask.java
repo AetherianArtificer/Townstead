@@ -2,6 +2,16 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
+import com.aetherianartificer.townstead.ai.work.WorkMovement;
+import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
+import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
+import com.aetherianartificer.townstead.ai.work.WorkTarget;
+import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
+import com.aetherianartificer.townstead.ai.work.WorkTargetFailures;
+import com.aetherianartificer.townstead.ai.work.WorkPathing;
+import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
@@ -12,9 +22,10 @@ import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
@@ -30,10 +41,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.network.PacketDistributor;
 //?}
 
-import java.util.HashMap;
-import java.util.Map;
+import javax.annotation.Nullable;
 
-public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
+public class ButcherWorkTask extends Behavior<VillagerEntityMCA> implements WorkTaskAdapter {
     private static final int ANCHOR_SEARCH_RADIUS = 24;
     private static final int VERTICAL_RADIUS = 3;
     private static final int WORK_RADIUS = 12;
@@ -69,15 +79,15 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     private long nextAcquireTick;
     private long lastStockTick = Long.MIN_VALUE;
     private long nextRequestTick;
+    private long nextDebugTick;
     private HungerData.ButcherBlockedReason blockedReason = HungerData.ButcherBlockedReason.NONE;
     private String unsupportedItemName = "";
 
-    private long currentTargetKey = Long.MIN_VALUE;
-    private double lastTargetDistSq = Double.MAX_VALUE;
-    private int targetStuckTicks;
-
-    private final Map<Long, Integer> targetRetries = new HashMap<>();
-    private final Map<Long, Long> targetBlacklistUntil = new HashMap<>();
+    private final WorkTargetProgress targetProgress = new WorkTargetProgress();
+    private final WorkTargetFailures targetFailures = new WorkTargetFailures();
+    private final WorkTargetProgress worksiteTargetProgress = new WorkTargetProgress();
+    private final WorkTargetFailures worksiteTargetFailures = new WorkTargetFailures();
+    private BlockPos currentWorksiteTarget;
 
     public ButcherWorkTask() {
         super(ImmutableMap.of(
@@ -106,12 +116,52 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         if (nextAcquireTick < gameTime) nextAcquireTick = 0;
         nextRequestTick = 0;
         townstead$resetPathTracking();
+        townstead$resetWorksiteTargeting();
         townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
         townstead$acquireTarget(level, villager, gameTime);
     }
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        debugTick(level, villager, gameTime);
+
+        // Approach zone if far from worksite
+        if (smokerAnchor != null && !villager.blockPosition().closerThan(smokerAnchor, WORK_RADIUS)) {
+            BlockPos worksiteTarget = townstead$currentOrNewWorksiteTarget(gameTime);
+            if (worksiteTarget == null) {
+                townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.UNREACHABLE);
+                nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+                townstead$maybeAnnounceRequest(level, villager, gameTime);
+                return;
+            }
+            WorkNavigationResult navResult = WorkMovement.tickMoveToTarget(
+                    villager,
+                    WorkTarget.zonePoint(worksiteTarget, smokerAnchor, "approach"),
+                    WALK_SPEED_NORMAL,
+                    CLOSE_ENOUGH,
+                    ARRIVAL_DISTANCE_SQ,
+                    worksiteTargetProgress,
+                    worksiteTargetFailures,
+                    gameTime,
+                    TARGET_STUCK_TICKS,
+                    2,
+                    TARGET_BLACKLIST_TICKS
+            );
+            if (navResult == WorkNavigationResult.MOVING) {
+                townstead$maybeAnnounceRequest(level, villager, gameTime);
+                return;
+            }
+            if (navResult == WorkNavigationResult.ARRIVED) {
+                currentWorksiteTarget = null;
+            } else if (navResult == WorkNavigationResult.BLOCKED) {
+                currentWorksiteTarget = null;
+                townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.UNREACHABLE);
+                nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+                townstead$maybeAnnounceRequest(level, villager, gameTime);
+                return;
+            }
+        }
+
         if (smokerAnchor == null || !level.getBlockState(smokerAnchor).is(Blocks.SMOKER)) {
             smokerAnchor = townstead$findNearestSmoker(level, villager, gameTime);
             if (smokerAnchor == null) {
@@ -158,15 +208,34 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
             targetPos = safeTarget;
         }
 
-        BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED_NORMAL, CLOSE_ENOUGH);
-        double distSq = villager.distanceToSqr(targetPos.getX() + 0.5, targetPos.getY() + 0.5, targetPos.getZ() + 0.5);
-        if (distSq > ARRIVAL_DISTANCE_SQ) {
-            townstead$trackPathProgress(level, villager, gameTime, distSq);
+        WorkNavigationResult moveResult = WorkMovement.tickMoveToTarget(
+                villager,
+                activeWorkTarget(level, villager),
+                navigationWalkSpeed(level, villager),
+                navigationCloseEnough(level, villager),
+                navigationArrivalDistanceSq(level, villager),
+                targetProgress,
+                targetFailures,
+                gameTime,
+                TARGET_STUCK_TICKS,
+                PATHFAIL_MAX_RETRIES,
+                TARGET_BLACKLIST_TICKS
+        );
+        if (moveResult == WorkNavigationResult.MOVING) {
             townstead$maybeAnnounceRequest(level, villager, gameTime);
             return;
         }
-
-        townstead$resetPathTracking();
+        if (moveResult == WorkNavigationResult.BLOCKED) {
+            if (targetPos != null && targetFailures.isBlacklisted(targetPos, gameTime)) {
+                townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.UNREACHABLE);
+            }
+            actionType = ActionType.NONE;
+            targetPos = null;
+            nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+            townstead$resetPathTracking();
+            townstead$maybeAnnounceRequest(level, villager, gameTime);
+            return;
+        }
         ActionType executed = actionType;
         ButcherRuntimeContext runtime = townstead$runtime(level, villager);
         int tier = runtime.effectiveTier();
@@ -234,11 +303,54 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         lastStockTick = Long.MIN_VALUE;
         nextRequestTick = 0;
         unsupportedItemName = "";
-        targetRetries.clear();
-        targetBlacklistUntil.clear();
+        targetFailures.reset();
+        townstead$resetWorksiteTargeting();
         townstead$clearMovementIntent(villager);
         townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.NONE);
         townstead$resetPathTracking();
+    }
+
+    @Override
+    public WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
+        return smokerAnchor == null ? null : WorkSiteRef.zone(smokerAnchor, WORK_RADIUS, VERTICAL_RADIUS);
+    }
+
+    @Override
+    public WorkTarget activeWorkTarget(ServerLevel level, VillagerEntityMCA villager) {
+        if (currentWorksiteTarget != null && smokerAnchor != null
+                && !villager.blockPosition().closerThan(smokerAnchor, WORK_RADIUS)) {
+            return WorkTarget.zonePoint(currentWorksiteTarget, smokerAnchor, "approach");
+        }
+        if (targetPos == null) return null;
+        if (smokerAnchor != null && !targetPos.equals(smokerAnchor)) {
+            return WorkTarget.stationStand(targetPos, smokerAnchor, actionType.name().toLowerCase());
+        }
+        return WorkTarget.zonePoint(targetPos, smokerAnchor, actionType.name().toLowerCase());
+    }
+
+    @Override
+    public float navigationWalkSpeed(ServerLevel level, VillagerEntityMCA villager) {
+        return WALK_SPEED_NORMAL;
+    }
+
+    @Override
+    public int navigationCloseEnough(ServerLevel level, VillagerEntityMCA villager) {
+        return CLOSE_ENOUGH;
+    }
+
+    @Override
+    public double navigationArrivalDistanceSq(ServerLevel level, VillagerEntityMCA villager) {
+        return ARRIVAL_DISTANCE_SQ;
+    }
+
+    @Override
+    public String navigationState(ServerLevel level, VillagerEntityMCA villager) {
+        return actionType.name();
+    }
+
+    @Override
+    public String navigationBlockedState(ServerLevel level, VillagerEntityMCA villager) {
+        return blockedReason.name();
     }
 
     private void townstead$acquireTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -524,40 +636,6 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
         return false;
     }
 
-    private void townstead$trackPathProgress(ServerLevel level, VillagerEntityMCA villager, long gameTime, double distSq) {
-        if (targetPos == null) return;
-        long key = targetPos.asLong();
-        if (currentTargetKey != key) {
-            currentTargetKey = key;
-            lastTargetDistSq = distSq;
-            targetStuckTicks = 0;
-            return;
-        }
-
-        if (distSq >= (lastTargetDistSq - 0.05d)) {
-            targetStuckTicks++;
-        } else {
-            targetStuckTicks = 0;
-            lastTargetDistSq = distSq;
-        }
-
-        if (targetStuckTicks < TARGET_STUCK_TICKS) return;
-
-        int retry = targetRetries.getOrDefault(key, 0) + 1;
-        if (retry >= PATHFAIL_MAX_RETRIES) {
-            targetRetries.remove(key);
-            targetBlacklistUntil.put(key, gameTime + TARGET_BLACKLIST_TICKS);
-            townstead$setBlockedReason(level, villager, HungerData.ButcherBlockedReason.UNREACHABLE);
-        } else {
-            targetRetries.put(key, retry);
-        }
-
-        actionType = ActionType.NONE;
-        targetPos = null;
-        nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
-        townstead$resetPathTracking();
-    }
-
     private boolean townstead$isTargetStillValid(ServerLevel level, long gameTime) {
         if (targetPos == null || smokerAnchor == null) return false;
         if (townstead$isBlacklisted(targetPos, gameTime)) return false;
@@ -571,53 +649,19 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean townstead$isBlacklisted(BlockPos pos, long gameTime) {
-        Long until = targetBlacklistUntil.get(pos.asLong());
-        if (until == null) return false;
-        if (until <= gameTime) {
-            targetBlacklistUntil.remove(pos.asLong());
-            return false;
-        }
-        return true;
+        return targetFailures.isBlacklisted(pos, gameTime);
     }
 
     private BlockPos townstead$findNearestSmoker(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        BlockPos center = villager.blockPosition();
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-ANCHOR_SEARCH_RADIUS, -VERTICAL_RADIUS, -ANCHOR_SEARCH_RADIUS),
-                center.offset(ANCHOR_SEARCH_RADIUS, VERTICAL_RADIUS, ANCHOR_SEARCH_RADIUS))) {
-            if (!level.getBlockState(pos).is(Blocks.SMOKER)) continue;
-            if (townstead$isBlacklisted(pos, gameTime)) continue;
-            double dist = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = pos.immutable();
-            }
-        }
+        BlockPos best = ButcherWorkIndex.nearestSmoker(level, villager, ANCHOR_SEARCH_RADIUS, VERTICAL_RADIUS);
+        if (best == null || townstead$isBlacklisted(best, gameTime)) return null;
         return best;
     }
 
     private BlockPos townstead$findWorkStandPos(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (Direction dir : Direction.Plane.HORIZONTAL) {
-            BlockPos candidate = anchor.relative(dir);
-            if (!townstead$isStandable(level, candidate)) continue;
-            if (townstead$isBlacklisted(candidate, level.getGameTime())) continue;
-            double dist = villager.distanceToSqr(candidate.getX() + 0.5, candidate.getY() + 0.5, candidate.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = candidate.immutable();
-            }
-        }
+        BlockPos best = ButcherWorkIndex.nearestStandPos(level, villager, anchor);
+        if (best == null || townstead$isBlacklisted(best, level.getGameTime())) return null;
         return best;
-    }
-
-    private boolean townstead$isStandable(ServerLevel level, BlockPos pos) {
-        if (!level.getBlockState(pos).isAir()) return false;
-        if (!level.getBlockState(pos.above()).isAir()) return false;
-        return level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP);
     }
 
     private boolean townstead$ensureOffSmoker(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -637,14 +681,28 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private void townstead$clearMovementIntent(VillagerEntityMCA villager) {
-        villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-        villager.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+        WorkPathing.clearMovementIntent(villager);
     }
 
     private void townstead$resetPathTracking() {
-        currentTargetKey = Long.MIN_VALUE;
-        lastTargetDistSq = Double.MAX_VALUE;
-        targetStuckTicks = 0;
+        targetProgress.reset();
+    }
+
+    private void townstead$resetWorksiteTargeting() {
+        currentWorksiteTarget = null;
+        worksiteTargetProgress.reset();
+        worksiteTargetFailures.reset();
+    }
+
+    @Nullable
+    private BlockPos townstead$currentOrNewWorksiteTarget(long gameTime) {
+        if (smokerAnchor == null) return null;
+        if (currentWorksiteTarget != null
+                && !worksiteTargetFailures.isBlacklisted(currentWorksiteTarget, gameTime)) {
+            return currentWorksiteTarget;
+        }
+        currentWorksiteTarget = worksiteTargetFailures.isBlacklisted(smokerAnchor, gameTime) ? null : smokerAnchor;
+        return currentWorksiteTarget;
     }
 
     private void townstead$setBlockedReason(ServerLevel level, VillagerEntityMCA villager, HungerData.ButcherBlockedReason reason) {
@@ -765,6 +823,28 @@ public class ButcherWorkTask extends Behavior<VillagerEntityMCA> {
     private int townstead$scaleInt(int base, double scale, int min, int max) {
         int scaled = (int) Math.round(base * scale);
         return Math.max(min, Math.min(max, scaled));
+    }
+
+    private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (gameTime < nextDebugTick) return;
+        if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
+        String name = villager.getName().getString();
+        String id = villager.getUUID().toString();
+        if (id.length() > 8) id = id.substring(0, 8);
+        WorkSiteRef site = activeWorkSite(level, villager);
+        WorkTarget target = activeWorkTarget(level, villager);
+        WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
+        String anchor = smokerAnchor == null ? "none" : smokerAnchor.getX() + "," + smokerAnchor.getY() + "," + smokerAnchor.getZ();
+        String navMode = smokerAnchor == null ? "search" : (target == null ? "search" : "station");
+        player.sendSystemMessage(Component.literal("[ButcherDBG:" + name + "#" + id + "] action=" + actionType.name()
+                + " anchor=" + anchor
+                + " target=" + (target == null ? "none" : target.describe())
+                + " blocked=" + blockedReason.name()
+                + " mode=" + navMode + " site=" + (site == null ? "none" : site.describe())
+                + " nav=" + navSnapshot.snapshotRebuilds() + "/" + navSnapshot.pathAttempts()
+                + "/" + navSnapshot.pathSuccesses() + "/" + navSnapshot.pathFailures()));
+        nextDebugTick = gameTime + 100L;
     }
 
     private void townstead$awardButcherXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {

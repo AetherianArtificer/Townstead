@@ -23,13 +23,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.CommonComponents;
 *///?}
-import com.aetherianartificer.townstead.hunger.HungerClientStore;
-import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
-import com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore;
-import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
-import com.aetherianartificer.townstead.thirst.ThirstClientStore;
-import com.aetherianartificer.townstead.shift.ShiftClientStore;
-import com.aetherianartificer.townstead.profession.ProfessionClientStore;
+import java.lang.reflect.Method;
 
 public final class TownsteadClient {
     private static boolean hooksRegistered;
@@ -63,13 +57,24 @@ public final class TownsteadClient {
     //?} else if forge {
     /*private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
     *///?}
-        HungerClientStore.clear();
-        ThirstClientStore.clear();
-        FatigueClientStore.clear();
-        FarmingPolicyClientStore.clear();
-        ButcherPolicyClientStore.clear();
-        ShiftClientStore.clear();
-        ProfessionClientStore.clear();
+        clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
+        clearClientStore("com.aetherianartificer.townstead.thirst.ThirstClientStore");
+        clearClientStore("com.aetherianartificer.townstead.fatigue.FatigueClientStore");
+        clearClientStore("com.aetherianartificer.townstead.farming.FarmingPolicyClientStore");
+        clearClientStore("com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore");
+        clearClientStore("com.aetherianartificer.townstead.shift.ShiftClientStore");
+        clearClientStore("com.aetherianartificer.townstead.profession.ProfessionClientStore");
+        clearClientStore("com.aetherianartificer.townstead.village.VillageResidentClientStore");
+    }
+
+    private static void clearClientStore(String className) {
+        try {
+            Class<?> storeClass = Class.forName(className);
+            Method clearMethod = storeClass.getDeclaredMethod("clear");
+            clearMethod.invoke(null);
+        } catch (Throwable ignored) {
+            // Disconnect cleanup must never crash the client.
+        }
     }
 
     //? if neoforge {
@@ -90,7 +95,7 @@ public final class TownsteadClient {
         String path = location.getPath();
         boolean villagerMoodPath = path.startsWith("villager.")
                 && (path.contains(".laugh") || path.contains(".cry") || path.contains(".celebrate"));
-        boolean directClipPath = path.contains("/laugh/") || path.contains("/cry/");
+        boolean directClipPath = path.contains("/laugh/") || path.contains("/cry/") || path.contains("/celebrate/");
         if (villagerMoodPath || directClipPath) {
             event.setSound(null);
         }

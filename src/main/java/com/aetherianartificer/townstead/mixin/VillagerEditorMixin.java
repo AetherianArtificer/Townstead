@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
+import com.aetherianartificer.townstead.Townstead;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
@@ -66,13 +67,20 @@ public abstract class VillagerEditorMixin extends Screen {
 
         if (!"debug".equals(page)) return;
 
-        // Read current hunger from client store (synced from server)
+        // Seed the editor from the villager's current data so first open does not
+        // show client-store defaults before the refresh packet comes back.
         boolean thirstAvailable = ThirstBridgeResolver.isActive();
-        townstead$editorHunger = HungerClientStore.get(villager.getId());
+        townstead$editorHunger = villagerData.contains(HungerData.EDITOR_KEY_HUNGER)
+                ? villagerData.getInt(HungerData.EDITOR_KEY_HUNGER)
+                : HungerClientStore.get(villager.getId());
         townstead$editorThirst = thirstAvailable
-                ? ThirstClientStore.getThirst(villager.getId())
+                ? (villagerData.contains(ThirstData.EDITOR_KEY_THIRST)
+                    ? villagerData.getInt(ThirstData.EDITOR_KEY_THIRST)
+                    : townstead$getCurrentThirst())
                 : ThirstData.DEFAULT_THIRST;
-        townstead$editorFatigue = FatigueClientStore.getFatigue(villager.getId());
+        townstead$editorFatigue = villagerData.contains(FatigueData.EDITOR_KEY_FATIGUE)
+                ? villagerData.getInt(FatigueData.EDITOR_KEY_FATIGUE)
+                : townstead$getCurrentFatigue();
 
         // Position below the mood control (last widget on debug page)
         int hungerY = height / 2 - 80 + 130;
@@ -194,7 +202,7 @@ public abstract class VillagerEditorMixin extends Screen {
         if (thirstAvailable) {
             ThirstClientStore.setOnChange(() -> {
                 if (!townstead$thirstDirty && townstead$thirstDisplay != null && "debug".equals(this.page)) {
-                    townstead$editorThirst = ThirstClientStore.getThirst(villager.getId());
+                    townstead$editorThirst = townstead$getCurrentThirst();
                     townstead$thirstDisplay.setMessage(townstead$thirstLabel());
                 }
             });
@@ -202,7 +210,7 @@ public abstract class VillagerEditorMixin extends Screen {
 
         FatigueClientStore.setOnChange(() -> {
             if (!townstead$fatigueDirty && townstead$fatigueDisplay != null && "debug".equals(this.page)) {
-                townstead$editorFatigue = FatigueClientStore.getFatigue(villager.getId());
+                townstead$editorFatigue = townstead$getCurrentFatigue();
                 townstead$fatigueDisplay.setMessage(townstead$fatigueLabel());
             }
         });
@@ -252,14 +260,14 @@ public abstract class VillagerEditorMixin extends Screen {
             }
         }
         if (!townstead$thirstDirty && townstead$thirstDisplay != null) {
-            int syncedThirst = ThirstClientStore.getThirst(villager.getId());
+            int syncedThirst = townstead$getCurrentThirst();
             if (syncedThirst != townstead$editorThirst) {
                 townstead$editorThirst = syncedThirst;
                 townstead$thirstDisplay.setMessage(townstead$thirstLabel());
             }
         }
         if (!townstead$fatigueDirty && townstead$fatigueDisplay != null) {
-            int syncedFatigue = FatigueClientStore.getFatigue(villager.getId());
+            int syncedFatigue = townstead$getCurrentFatigue();
             if (syncedFatigue != townstead$editorFatigue) {
                 townstead$editorFatigue = syncedFatigue;
                 townstead$fatigueDisplay.setMessage(townstead$fatigueLabel());
@@ -302,6 +310,18 @@ public abstract class VillagerEditorMixin extends Screen {
     }
 
     @Unique
+    private int townstead$getCurrentThirst() {
+        if (ThirstClientStore.hasThirst(villager.getId())) {
+            return ThirstClientStore.getThirst(villager.getId());
+        }
+        //? if neoforge {
+        return ThirstData.getThirst(villager.getData(Townstead.THIRST_DATA));
+        //?} else if forge {
+        /*return ThirstData.getThirst(villager.getPersistentData().getCompound("townstead_thirst"));
+        *///?}
+    }
+
+    @Unique
     private void townstead$modFatigue(int delta) {
         townstead$fatigueDirty = true;
         // delta is in energy terms (positive = more energy = less fatigue)
@@ -314,5 +334,17 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique
     private Component townstead$fatigueLabel() {
         return Component.translatable("townstead.energy.editor", FatigueData.toEnergy(townstead$editorFatigue));
+    }
+
+    @Unique
+    private int townstead$getCurrentFatigue() {
+        if (FatigueClientStore.hasFatigue(villager.getId())) {
+            return FatigueClientStore.getFatigue(villager.getId());
+        }
+        //? if neoforge {
+        return FatigueData.getFatigue(villager.getData(Townstead.FATIGUE_DATA));
+        //?} else if forge {
+        /*return FatigueData.getFatigue(villager.getPersistentData().getCompound("townstead_fatigue"));
+        *///?}
     }
 }

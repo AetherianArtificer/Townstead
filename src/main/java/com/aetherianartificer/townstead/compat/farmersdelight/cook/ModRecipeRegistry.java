@@ -40,7 +40,8 @@ public final class ModRecipeRegistry {
             int outputCount,
             int cookTimeTicks,
             boolean requiresTool,
-            int bowlsRequired,
+            @Nullable ResourceLocation containerItemId,
+            int containerCount,
             List<RecipeIngredient> inputs,
             boolean purification,
             boolean beverage,
@@ -97,6 +98,11 @@ public final class ModRecipeRegistry {
     private static ResourceLocation cachedDimension = null;
     private static long cacheUntilTick = Long.MIN_VALUE;
     private static List<DiscoveredRecipe> cachedRecipes = List.of();
+    private static List<DiscoveredRecipe> cachedFoodRecipes = List.of();
+    private static List<DiscoveredRecipe> cachedBeverageRecipes = List.of();
+    private static Map<StationType, List<DiscoveredRecipe>> cachedStationRecipes = Map.of();
+    private static Map<StationType, List<DiscoveredRecipe>> cachedFoodStationRecipes = Map.of();
+    private static Map<StationType, List<DiscoveredRecipe>> cachedBeverageStationRecipes = Map.of();
 
     public static List<DiscoveredRecipe> getRecipes(ServerLevel level) {
         ResourceLocation dimension = level.dimension().location();
@@ -108,7 +114,13 @@ public final class ModRecipeRegistry {
         cachedDimension = dimension;
         cacheUntilTick = now + CACHE_TICKS;
         cachedRecipes = List.copyOf(discovered);
+        rebuildRecipeViews(cachedRecipes);
         return cachedRecipes;
+    }
+
+    public static List<DiscoveredRecipe> getRecipesForStation(ServerLevel level, StationType stationType) {
+        getRecipes(level);
+        return cachedStationRecipes.getOrDefault(stationType, List.of());
     }
 
     public static List<DiscoveredRecipe> getRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
@@ -117,10 +129,20 @@ public final class ModRecipeRegistry {
                 .toList();
     }
 
+    public static List<DiscoveredRecipe> getFoodRecipesForStation(ServerLevel level, StationType stationType) {
+        getRecipes(level);
+        return cachedFoodStationRecipes.getOrDefault(stationType, List.of());
+    }
+
     public static List<DiscoveredRecipe> getFoodRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
         return getRecipes(level).stream()
                 .filter(r -> r.stationType() == stationType && r.tier() <= maxTier && !r.beverage())
                 .toList();
+    }
+
+    public static List<DiscoveredRecipe> getBeverageRecipesForStation(ServerLevel level, StationType stationType) {
+        getRecipes(level);
+        return cachedBeverageStationRecipes.getOrDefault(stationType, List.of());
     }
 
     public static List<DiscoveredRecipe> getBeverageRecipesForStation(ServerLevel level, StationType stationType, int maxTier) {
@@ -140,12 +162,61 @@ public final class ModRecipeRegistry {
     public static Set<ResourceLocation> allInputIds(ServerLevel level) {
         Set<ResourceLocation> ids = new HashSet<>();
         for (DiscoveredRecipe r : getRecipes(level)) {
-            if (r.bowlsRequired() > 0) ids.add(MINECRAFT_BOWL);
+            if (r.containerItemId() != null && r.containerCount() > 0) ids.add(r.containerItemId());
             for (RecipeIngredient ing : r.inputs()) {
                 ids.addAll(ing.itemIds());
             }
         }
         return ids;
+    }
+
+    public static List<DiscoveredRecipe> getFoodRecipes(ServerLevel level) {
+        getRecipes(level);
+        return cachedFoodRecipes;
+    }
+
+    public static List<DiscoveredRecipe> getBeverageRecipes(ServerLevel level) {
+        getRecipes(level);
+        return cachedBeverageRecipes;
+    }
+
+    private static void rebuildRecipeViews(List<DiscoveredRecipe> recipes) {
+        List<DiscoveredRecipe> foodRecipes = new ArrayList<>();
+        List<DiscoveredRecipe> beverageRecipes = new ArrayList<>();
+        EnumMap<StationType, List<DiscoveredRecipe>> stationRecipes = new EnumMap<>(StationType.class);
+        EnumMap<StationType, List<DiscoveredRecipe>> foodStationRecipes = new EnumMap<>(StationType.class);
+        EnumMap<StationType, List<DiscoveredRecipe>> beverageStationRecipes = new EnumMap<>(StationType.class);
+
+        for (StationType stationType : StationType.values()) {
+            stationRecipes.put(stationType, new ArrayList<>());
+            foodStationRecipes.put(stationType, new ArrayList<>());
+            beverageStationRecipes.put(stationType, new ArrayList<>());
+        }
+
+        for (DiscoveredRecipe recipe : recipes) {
+            stationRecipes.get(recipe.stationType()).add(recipe);
+            if (recipe.beverage()) {
+                beverageRecipes.add(recipe);
+                beverageStationRecipes.get(recipe.stationType()).add(recipe);
+            } else {
+                foodRecipes.add(recipe);
+                foodStationRecipes.get(recipe.stationType()).add(recipe);
+            }
+        }
+
+        cachedFoodRecipes = List.copyOf(foodRecipes);
+        cachedBeverageRecipes = List.copyOf(beverageRecipes);
+        cachedStationRecipes = freezeRecipeViewMap(stationRecipes);
+        cachedFoodStationRecipes = freezeRecipeViewMap(foodStationRecipes);
+        cachedBeverageStationRecipes = freezeRecipeViewMap(beverageStationRecipes);
+    }
+
+    private static Map<StationType, List<DiscoveredRecipe>> freezeRecipeViewMap(EnumMap<StationType, List<DiscoveredRecipe>> source) {
+        EnumMap<StationType, List<DiscoveredRecipe>> frozen = new EnumMap<>(StationType.class);
+        for (Map.Entry<StationType, List<DiscoveredRecipe>> entry : source.entrySet()) {
+            frozen.put(entry.getKey(), List.copyOf(entry.getValue()));
+        }
+        return Map.copyOf(frozen);
     }
 
     private static List<DiscoveredRecipe> discoverAllRecipes(ServerLevel level) {
@@ -214,6 +285,7 @@ public final class ModRecipeRegistry {
                     Math.max(1, result.getCount()),
                     cookTime,
                     false,
+                    null,
                     0,
                     inputs,
                     false,
@@ -270,7 +342,8 @@ public final class ModRecipeRegistry {
                     Math.max(1, result.getCount()),
                     cookTime,
                     false,
-                    container.bowlsRequired(),
+                    container.itemId(),
+                    container.count(),
                     inputs,
                     false,
                     container.beverage(),
@@ -326,6 +399,7 @@ public final class ModRecipeRegistry {
                     Math.max(1, result.getCount()),
                     cookTime,
                     requiresTool,
+                    null,
                     0,
                     inputs,
                     false,
@@ -366,7 +440,7 @@ public final class ModRecipeRegistry {
                     if (newTier != r.tier()) {
                         recipes.set(i, new DiscoveredRecipe(
                                 r.id(), r.stationType(), newTier, r.output(), r.outputCount(),
-                                r.cookTimeTicks(), r.requiresTool(), r.bowlsRequired(),
+                                r.cookTimeTicks(), r.requiresTool(), r.containerItemId(), r.containerCount(),
                                 r.inputs(), r.purification(), r.beverage(), r.source()
                         ));
                     }
@@ -391,6 +465,7 @@ public final class ModRecipeRegistry {
                 1,
                 100,
                 false,
+                null,
                 0,
                 List.of(new RecipeIngredient(List.of(TOWNSTEAD_IMPURE_WATER_INPUT), 1)),
                 true,
@@ -414,6 +489,7 @@ public final class ModRecipeRegistry {
                 1,
                 100,
                 false,
+                null,
                 0,
                 List.of(new RecipeIngredient(List.of(RUSTIC_COFFEE_BEANS), 1)),
                 false,
@@ -486,8 +562,8 @@ public final class ModRecipeRegistry {
         return fallback;
     }
 
-    private record ContainerInfo(int bowlsRequired, boolean beverage) {
-        static final ContainerInfo NONE = new ContainerInfo(0, false);
+    private record ContainerInfo(@Nullable ResourceLocation itemId, int count, boolean beverage) {
+        static final ContainerInfo NONE = new ContainerInfo(null, 0, false);
     }
 
     private static ContainerInfo reflectContainer(Recipe<?> recipe) {
@@ -498,10 +574,15 @@ public final class ModRecipeRegistry {
                 Object value = m.invoke(recipe);
                 if (value instanceof ItemStack stack && !stack.isEmpty()) {
                     if (stack.is(Items.BOWL)) {
-                        return new ContainerInfo(Math.max(1, stack.getCount()), false);
+                        return new ContainerInfo(MINECRAFT_BOWL, Math.max(1, stack.getCount()), false);
                     }
                     if (stack.is(Items.GLASS_BOTTLE)) {
-                        return new ContainerInfo(0, true);
+                        ResourceLocation bottleId = BuiltInRegistries.ITEM.getKey(Items.GLASS_BOTTLE);
+                        return new ContainerInfo(bottleId, Math.max(1, stack.getCount()), true);
+                    }
+                    ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    if (itemId != null && stack.getItem() != Items.AIR) {
+                        return new ContainerInfo(itemId, Math.max(1, stack.getCount()), false);
                     }
                 }
             } catch (Throwable ignored) {}
@@ -518,6 +599,23 @@ public final class ModRecipeRegistry {
             }
         } catch (Throwable ignored) {}
         return true; // Default: assume cutting board recipes need a knife
+    }
+
+    public static boolean recipeToolMatches(DiscoveredRecipe recipe, ItemStack stack) {
+        if (recipe == null || !recipe.requiresTool() || stack == null || stack.isEmpty()) return false;
+        Object source = recipe.source();
+        //? if >=1.21 {
+        if (source instanceof RecipeHolder<?> holder) source = holder.value();
+        //?}
+        if (!(source instanceof Recipe<?> mcRecipe)) return false;
+        try {
+            Method m = mcRecipe.getClass().getMethod("getTool");
+            Object value = m.invoke(mcRecipe);
+            if (value instanceof net.minecraft.world.item.crafting.Ingredient toolIng) {
+                return !toolIng.isEmpty() && toolIng.test(stack);
+            }
+        } catch (Throwable ignored) {}
+        return StationHandler.isKnifeStack(stack);
     }
 
     private static List<RecipeIngredient> extractIngredients(Recipe<?> recipe) {
