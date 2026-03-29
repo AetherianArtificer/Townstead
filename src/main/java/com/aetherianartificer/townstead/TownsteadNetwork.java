@@ -17,6 +17,7 @@ import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
 import com.aetherianartificer.townstead.profession.ProfessionScanner;
+import com.aetherianartificer.townstead.profession.ProfessionSlotRules;
 import com.aetherianartificer.townstead.profession.ProfessionSetPayload;
 import com.aetherianartificer.townstead.profession.ProfessionSyncPayload;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
@@ -435,17 +436,7 @@ public final class TownsteadNetwork {
     }
 
     private static boolean townstead$requiresJobSite(VillagerProfession profession) {
-        if (profession == null || profession == VillagerProfession.NONE || profession == VillagerProfession.NITWIT) {
-            return false;
-        }
-        String professionId = townstead$professionKey(profession);
-        if ("mca:guard".equals(professionId) || "mca:archer".equals(professionId)) {
-            return false;
-        }
-        if (profession == Townstead.COOK_PROFESSION.get()) {
-            return false;
-        }
-        return Townstead.BARISTA_PROFESSION.get() == null || profession != Townstead.BARISTA_PROFESSION.get();
+        return ProfessionSlotRules.requiresJobSite(profession);
     }
 
     private static BlockPos townstead$claimJobSite(ServerPlayer sp, VillagerEntityMCA villager, VillagerProfession profession) {

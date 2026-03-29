@@ -1,17 +1,16 @@
 package com.aetherianartificer.townstead.profession;
 
-import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
+import com.aetherianartificer.townstead.profession.ProfessionSlotRules.SlotPolicy;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -26,7 +25,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -61,14 +59,9 @@ public final class ProfessionScanner {
         // Scan for vanilla workstation POIs within the village
         scanVanillaProfessions(level, village, result, slotInfo);
 
-        // MCA professions: Guard and Archer are always available
-        scanMcaProfessions(result);
-
-        // Townstead professions: Cook and Barista based on building slots
-        scanTownsteadProfessions(level, village, result, slotInfo);
-
         // Remove professions suppressed by Townstead (e.g. Chef's Delight when Townstead cook is active)
         filterSuppressedProfessions(result);
+        filterSuppressedProfessions(slotInfo.keySet());
 
         return buildResult(result, slotInfo);
     }
@@ -90,115 +83,38 @@ public final class ProfessionScanner {
         return new ScanResult(sorted, used, max);
     }
 
-    private static final Map<String, String> BUILDING_TYPE_TO_PROFESSION = Map.ofEntries(
-            Map.entry("butcher", "minecraft:butcher"),
-            Map.entry("library", "minecraft:librarian"),
-            Map.entry("blacksmith", "minecraft:armorer"),
-            Map.entry("forge", "minecraft:armorer"),
-            Map.entry("fisher", "minecraft:fisherman"),
-            Map.entry("farm", "minecraft:farmer"),
-            Map.entry("fletcher", "minecraft:fletcher"),
-            Map.entry("cartographer", "minecraft:cartographer"),
-            Map.entry("mason", "minecraft:mason"),
-            Map.entry("shepherd", "minecraft:shepherd"),
-            Map.entry("tannery", "minecraft:leatherworker"),
-            Map.entry("temple", "minecraft:cleric"),
-            Map.entry("church", "minecraft:cleric"),
-            Map.entry("tool_smith", "minecraft:toolsmith"),
-            Map.entry("weapon_smith", "minecraft:weaponsmith")
-    );
-
     private static void scanVanillaProfessions(ServerLevel level, Village village, Set<String> result, Map<String, int[]> slotInfo) {
         refreshVillagePoiData(level, village);
+        Map<String, Integer> activeCounts = countResidentProfessions(level, village);
 
-        // Map building types to professions — only intentional buildings count,
-        // not incidental workstation blocks in unrelated buildings
-        Set<String> buildingTypes = new HashSet<>();
-        for (var building : village.getBuildings().values()) {
-            buildingTypes.add(building.getType());
-        }
+        for (VillagerProfession profession : BuiltInRegistries.VILLAGER_PROFESSION) {
+            if (profession == null || profession == VillagerProfession.NONE) continue;
 
-        for (String buildingType : buildingTypes) {
-            String profId = isFarmBuildingType(buildingType)
-                    ? "minecraft:farmer"
-                    : BUILDING_TYPE_TO_PROFESSION.get(buildingType);
-            if (profId != null) {
-                result.add(profId);
-            }
-        }
+            String professionId = professionKey(profession);
+            int activeResidents = activeCounts.getOrDefault(professionId, 0);
 
-        releaseStaleJobSites(level, village, VillagerProfession.FARMER);
-
-        String farmerKey = professionKey(VillagerProfession.FARMER);
-        int farmerMaxSlots = countVillagePoiSlots(level, village, VillagerProfession.FARMER);
-        if (farmerMaxSlots > 0) {
-            result.add(farmerKey);
-            slotInfo.put(farmerKey, new int[]{countProfessionResidents(level, village, VillagerProfession.FARMER), farmerMaxSlots});
-        }
-
-        // Also include professions that current village residents already hold
-        // (covers edge cases and modded professions)
-        for (var entity : level.getAllEntities()) {
-            if (entity instanceof VillagerEntityMCA villager && villager.isAlive() && village.isWithinBorder(villager)) {
-                VillagerProfession prof = villager.getVillagerData().getProfession();
-                if (prof != VillagerProfession.NONE) {
-                    result.add(professionKey(prof));
-                }
-            }
-        }
-
-        int activeFarmers = countProfessionResidents(level, village, VillagerProfession.FARMER);
-        if (activeFarmers > 0) {
-            slotInfo.put(farmerKey, new int[]{activeFarmers, Math.max(farmerMaxSlots, 0)});
-        }
-    }
-
-    private static void scanMcaProfessions(Set<String> result) {
-        // Guard and Archer are always available (no workstation needed)
-        //? if neoforge {
-        addIfRegistered(result, "mca", "guard");
-        addIfRegistered(result, "mca", "archer");
-        //?} else {
-        /*addIfRegistered(result, "mca", "guard");
-        addIfRegistered(result, "mca", "archer");
-        *///?}
-    }
-
-    private static void scanTownsteadProfessions(ServerLevel level, Village village, Set<String> result,
-            Map<String, int[]> slotInfo) {
-        if (!ModCompat.isLoaded("farmersdelight")) return;
-
-        // Cook: available if any kitchen building exists in the village
-        boolean hasKitchen = village.getBuildings().values().stream()
-                .anyMatch(b -> b.getType().startsWith("compat/farmersdelight/kitchen_l"));
-        if (hasKitchen) {
-            String cookKey = professionKey(Townstead.COOK_PROFESSION.get());
-            result.add(cookKey);
-            int maxCookSlots = FarmersDelightCookAssignment.totalCookSlots(village);
-            int activeCooks = 0;
-            for (VillagerEntityMCA resident : village.getResidents(level)) {
-                if (FarmersDelightCookAssignment.isExternalCookProfession(resident.getVillagerData().getProfession())) {
-                    activeCooks++;
-                }
-            }
-            slotInfo.put(cookKey, new int[]{activeCooks, maxCookSlots});
-        }
-
-        // Barista: available if any cafe building exists and rusticdelight is loaded
-        if (ModCompat.isLoaded("rusticdelight")) {
-            boolean hasCafe = village.getBuildings().values().stream()
-                    .anyMatch(b -> b.getType().startsWith("compat/rusticdelight/cafe_l"));
-            if (hasCafe) {
-                String baristaKey = professionKey(Townstead.BARISTA_PROFESSION.get());
-                result.add(baristaKey);
-                int maxBaristaSlots = FarmersDelightBaristaAssignment.totalCafeSlots(village);
-                int activeBaristas = 0;
-                for (VillagerEntityMCA resident : village.getResidents(level)) {
-                    if (FarmersDelightBaristaAssignment.isBaristaProfession(resident.getVillagerData().getProfession())) {
-                        activeBaristas++;
+            switch (ProfessionSlotRules.classify(profession)) {
+                case POI_LIMITED -> {
+                    releaseStaleJobSites(level, village, profession);
+                    int maxSlots = countVillagePoiSlots(level, village, profession);
+                    if (maxSlots > 0 || activeResidents > 0) {
+                        result.add(professionId);
+                        slotInfo.put(professionId, new int[]{activeResidents, maxSlots});
                     }
                 }
-                slotInfo.put(baristaKey, new int[]{activeBaristas, maxBaristaSlots});
+                case CUSTOM_BUILDING_SLOTS -> {
+                    int[] info = customSlotInfo(level, village, profession);
+                    if (info[1] > 0 || info[0] > 0) {
+                        result.add(professionId);
+                        slotInfo.put(professionId, info);
+                    }
+                }
+                case UNLIMITED -> {
+                    if (ProfessionSlotRules.isAlwaysVisible(profession) || activeResidents > 0) {
+                        result.add(professionId);
+                        slotInfo.put(professionId, new int[]{activeResidents, -1});
+                    }
+                }
             }
         }
     }
@@ -209,11 +125,6 @@ public final class ProfessionScanner {
         return Optional.empty();
     }
 
-    private static String professionKey(VillagerProfession profession) {
-        ResourceLocation key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
-        return key != null ? key.toString() : "minecraft:none";
-    }
-
     private static void filterSuppressedProfessions(Set<String> result) {
         // When Townstead cook mode is active, suppress Chef's Delight professions
         // (Townstead provides its own cook/barista that integrate with the kitchen system)
@@ -221,26 +132,6 @@ public final class ProfessionScanner {
             result.remove("chefsdelight:chef");
             result.remove("chefsdelight:cook");
         }
-    }
-
-    private static void addIfRegistered(Set<String> result, String namespace, String path) {
-        //? if >=1.21 {
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(namespace, path);
-        //?} else {
-        /*ResourceLocation id = new ResourceLocation(namespace, path);
-        *///?}
-        if (BuiltInRegistries.VILLAGER_PROFESSION.containsKey(id)) {
-            result.add(id.toString());
-        }
-    }
-
-    private static boolean isFarmBuildingType(String buildingType) {
-        if (buildingType == null || buildingType.isBlank()) return false;
-        String normalized = buildingType.toLowerCase(Locale.ROOT);
-        return normalized.equals("farm")
-                || normalized.startsWith("farm")
-                || normalized.contains("/farm")
-                || normalized.contains("_farm");
     }
 
     private static int countVillagePoiSlots(ServerLevel level, Village village, VillagerProfession profession) {
@@ -256,18 +147,42 @@ public final class ProfessionScanner {
         ).count();
     }
 
-    private static int countProfessionResidents(ServerLevel level, Village village, VillagerProfession profession) {
+    private static Map<String, Integer> countResidentProfessions(ServerLevel level, Village village) {
+        Map<String, Integer> counts = new HashMap<>();
         Set<UUID> seen = new HashSet<>();
-        int count = 0;
         for (var entity : level.getAllEntities()) {
             if (!(entity instanceof VillagerEntityMCA resident)) continue;
             if (!resident.isAlive() || !village.isWithinBorder(resident)) continue;
             if (!seen.add(resident.getUUID())) continue;
-            if (resident.getVillagerData().getProfession() == profession) {
-                count++;
-            }
+            String professionId = professionKey(resident.getVillagerData().getProfession());
+            counts.merge(professionId, 1, Integer::sum);
         }
-        return count;
+        return counts;
+    }
+
+    private static int[] customSlotInfo(ServerLevel level, Village village, VillagerProfession profession) {
+        String professionId = professionKey(profession);
+        if ("townstead:cook".equals(professionId)) {
+            if (!ModCompat.isLoaded("farmersdelight")) return new int[]{0, 0};
+            int activeCooks = 0;
+            for (VillagerEntityMCA resident : village.getResidents(level)) {
+                if (FarmersDelightCookAssignment.isExternalCookProfession(resident.getVillagerData().getProfession())) {
+                    activeCooks++;
+                }
+            }
+            return new int[]{activeCooks, FarmersDelightCookAssignment.totalCookSlots(village)};
+        }
+        if ("townstead:barista".equals(professionId)) {
+            if (!ModCompat.isLoaded("rusticdelight")) return new int[]{0, 0};
+            int activeBaristas = 0;
+            for (VillagerEntityMCA resident : village.getResidents(level)) {
+                if (FarmersDelightBaristaAssignment.isBaristaProfession(resident.getVillagerData().getProfession())) {
+                    activeBaristas++;
+                }
+            }
+            return new int[]{activeBaristas, FarmersDelightBaristaAssignment.totalCafeSlots(village)};
+        }
+        return new int[]{0, 0};
     }
 
     private static void releaseStaleJobSites(ServerLevel level, Village village, VillagerProfession profession) {
@@ -302,6 +217,10 @@ public final class ProfessionScanner {
         if (holderProfession == null || targetProfession == null) return false;
         if (holderProfession == targetProfession) return true;
         return holderProfession.heldJobSite().equals(targetProfession.heldJobSite());
+    }
+
+    private static String professionKey(VillagerProfession profession) {
+        return ProfessionSlotRules.professionKey(profession);
     }
 
     private static void refreshVillagePoiData(ServerLevel level, Village village) {
