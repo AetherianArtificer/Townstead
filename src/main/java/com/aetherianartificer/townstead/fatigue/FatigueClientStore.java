@@ -28,6 +28,10 @@ public final class FatigueClientStore {
         return FATIGUE_MAP.getOrDefault(entityId, FatigueData.DEFAULT_FATIGUE);
     }
 
+    public static boolean hasFatigue(int entityId) {
+        return FATIGUE_MAP.containsKey(entityId);
+    }
+
     public static boolean isCollapsed(int entityId) {
         return COLLAPSED_MAP.getOrDefault(entityId, false);
     }

@@ -637,9 +637,15 @@ public abstract class BlueprintScreenMixin extends Screen {
         ItemStack stack = new ItemStack(item);
         if (stack.isEmpty())
             return;
-        // Match MCA map icon visual weight (smaller than full 16x16 item render).
+        // Forge 1.20.1 can leave the replacement item render competing with the
+        // map border quad at the same depth. Push only the Forge render forward
+        // so it matches the 1.21.1 layering, with the icon clearly above its frame.
         context.pose().pushPose();
-        context.pose().translate(x - 6.0, y - 6.0, 0.0);
+        //? if forge {
+        context.pose().translate(x - 6.0, y - 6.0, 200.0);
+        //?} else {
+        /*context.pose().translate(x - 6.0, y - 6.0, 0.0);
+        *///?}
         context.pose().scale(0.75f, 0.75f, 1.0f);
         context.renderItem(stack, 0, 0);
         context.pose().popPose();
