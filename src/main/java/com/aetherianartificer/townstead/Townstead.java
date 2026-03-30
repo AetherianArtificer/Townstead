@@ -5,6 +5,9 @@ import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
 import com.aetherianartificer.townstead.compat.ConditionalCompatPack;
 import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.animation.VillagerResponseAnimation;
+import com.aetherianartificer.townstead.animation.VillagerResponseAnimationClientStore;
+import com.aetherianartificer.townstead.animation.VillagerResponseAnimationPayload;
 import com.aetherianartificer.townstead.emote.ActivePlayerEmote;
 import com.aetherianartificer.townstead.emote.EmoteReactionDataLoader;
 import com.aetherianartificer.townstead.emote.EmoteReactionDispatcher;
@@ -112,6 +115,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Method;
 import java.util.function.Supplier;
 
 @Mod(Townstead.MOD_ID)
@@ -193,6 +197,7 @@ public class Townstead {
         modBus.addListener(this::registerPayloads);
         modBus.addListener(this::addPackFinders);
         townstead$registerClientTooltipFactory(modBus);
+        townstead$registerClientAnimationHooks(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -215,6 +220,7 @@ public class Townstead {
         townstead$registerClientConfigScreen(modContainer);
         TownsteadNetwork.register();
         townstead$registerClientTooltipFactory(modBus);
+        townstead$registerClientAnimationHooks(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -408,6 +414,22 @@ public class Townstead {
     }
     *///?}
 
+    //? if neoforge {
+    private static void townstead$registerClientAnimationHooks(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            Class<?> hookClass = Class.forName("com.aetherianartificer.townstead.animation.gecko.TownsteadGeckoClient");
+            Method registerMethod = hookClass.getDeclaredMethod("register", IEventBus.class);
+            registerMethod.invoke(null, modBus);
+        } catch (Exception ignored) {
+            // Dedicated server and data generation should not care about client renderer hooks.
+        }
+    }
+    //?} else {
+    /*private static void townstead$registerClientAnimationHooks(Object modBus) {
+    }
+    *///?}
+
     private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
         //? if neoforge {
         try {
@@ -535,6 +557,11 @@ public class Townstead {
                 PlayerEmoteRelayPayload.TYPE,
                 PlayerEmoteRelayPayload.STREAM_CODEC,
                 this::handlePlayerEmoteRelay
+        );
+        registrar.playToClient(
+                VillagerResponseAnimationPayload.TYPE,
+                VillagerResponseAnimationPayload.STREAM_CODEC,
+                this::handleVillagerResponseAnimation
         );
     }
 
@@ -985,6 +1012,36 @@ public class Townstead {
             ActivePlayerEmote activeEmote = new ActivePlayerEmote(payload.emoteId(), Set.copyOf(payload.aliases()));
             EmoteReactionDispatcher.dispatchPlayerEmote(payload.providerId(), sp, activeEmote);
         });
+    }
+
+    private void handleVillagerResponseAnimation(VillagerResponseAnimationPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            VillagerResponseAnimation animation = VillagerResponseAnimation.fromId(payload.animationId());
+            VillagerResponseAnimationClientStore.set(
+                    payload.entityId(),
+                    animation,
+                    payload.startedAtGameTime(),
+                    payload.durationTicks()
+            );
+            townstead$triggerClientVillagerResponseAnimation(payload.entityId(), animation);
+        });
+    }
+
+    private static void townstead$triggerClientVillagerResponseAnimation(
+            int entityId,
+            VillagerResponseAnimation animation
+    ) {
+        try {
+            Class<?> hookClass = Class.forName("com.aetherianartificer.townstead.animation.gecko.TownsteadGeckoClient");
+            Method triggerMethod = hookClass.getDeclaredMethod(
+                    "triggerResponseAnimation",
+                    int.class,
+                    VillagerResponseAnimation.class
+            );
+            triggerMethod.invoke(null, entityId, animation);
+        } catch (Exception ignored) {
+            // The fallback pose system should still function if GeckoLib is unavailable.
+        }
     }
 
     //?}

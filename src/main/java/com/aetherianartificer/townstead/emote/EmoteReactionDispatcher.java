@@ -2,11 +2,18 @@ package com.aetherianartificer.townstead.emote;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.animation.VillagerResponseAnimation;
+import com.aetherianartificer.townstead.animation.VillagerResponseAnimationPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.schedule.Activity;
+//? if neoforge {
+import net.neoforged.neoforge.network.PacketDistributor;
+//?} else if forge {
+/*import com.aetherianartificer.townstead.TownsteadNetwork;*/
+//?}
 
 import java.util.HashMap;
 import java.util.Map;
@@ -63,6 +70,21 @@ public final class EmoteReactionDispatcher {
             debugLog(level.getGameTime(),
                     "matched:" + providerId + ":" + villager.getUUID() + ":" + player.getUUID() + ":" + activeEmote.uuid(),
                     "Villager " + villager.getName().getString() + " matched reaction '" + reaction.id() + "' from " + providerId + " aliases=" + activeEmote.aliases());
+
+            VillagerResponseAnimation responseAnimation = VillagerResponseAnimation.fromId(candidate.villagerEmote());
+            if (responseAnimation != null) {
+                VillagerResponseAnimationPayload payload = new VillagerResponseAnimationPayload(
+                        villager.getId(),
+                        responseAnimation.id(),
+                        level.getGameTime(),
+                        responseAnimation.durationTicks()
+                );
+                //? if neoforge {
+                PacketDistributor.sendToPlayersTrackingEntity(villager, payload);
+                //?} else if forge {
+                /*TownsteadNetwork.sendToTrackingEntity(villager, payload);*/
+                //?}
+            }
 
             if (!candidate.villagerEmote().isBlank()) {
                 PLAYBACK_BACKEND.tryPlayVillagerEmote(villager, candidate.villagerEmote());

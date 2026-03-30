@@ -62,6 +62,7 @@ public final class TownsteadClient {
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
         clearClientStore("com.aetherianartificer.townstead.thirst.ThirstClientStore");
         clearClientStore("com.aetherianartificer.townstead.fatigue.FatigueClientStore");
+        clearClientStore("com.aetherianartificer.townstead.animation.VillagerResponseAnimationClientStore");
         clearClientStore("com.aetherianartificer.townstead.farming.FarmingPolicyClientStore");
         clearClientStore("com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore");
         clearClientStore("com.aetherianartificer.townstead.shift.ShiftClientStore");

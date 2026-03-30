@@ -55,7 +55,10 @@ repositories {
 dependencies {
     "minecraft"("net.minecraftforge:forge:1.20.1-47.3.0")
     compileOnly(files("${rootProject.projectDir}/libs/mca-forge-7.6.15+1.20.1-universal.jar"))
+    compileOnly(files("${rootProject.projectDir}/libs/geckolib-forge-1.20.1-4.7.1.2.jar"))
+    runtimeOnly(files("${rootProject.projectDir}/libs/geckolib-forge-1.20.1-4.7.1.2.jar"))
     testImplementation(files("${rootProject.projectDir}/libs/mca-forge-7.6.15+1.20.1-universal.jar"))
+    testImplementation(files("${rootProject.projectDir}/libs/geckolib-forge-1.20.1-4.7.1.2.jar"))
     testImplementation("com.google.code.gson:gson:2.10.1")
     compileOnly("dev.architectury:architectury-forge:9.2.14")
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")

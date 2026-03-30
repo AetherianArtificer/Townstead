@@ -4,6 +4,8 @@ import com.aetherianartificer.townstead.Townstead;
 import net.minecraft.client.Minecraft;
 //? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
+//?} else if forge {
+/*import com.aetherianartificer.townstead.TownsteadNetwork;*/
 //?}
 
 import java.lang.reflect.Field;
@@ -51,7 +53,11 @@ public final class EmotecraftClientRelay {
                 ActivePlayerEmote emote = createActiveEmote(args[0], uuidMethod, nameMethod, extraDataField);
                 if (emote == null) return null;
                 Townstead.LOGGER.info("[EmoteDebug] Emotecraft client event relayed for user {} aliases={}", userId, emote.aliases());
+                //? if neoforge {
                 PacketDistributor.sendToServer(new PlayerEmoteRelayPayload("emotecraft", emote.uuid(), emote.aliases().stream().toList()));
+                //?} else if forge {
+                /*TownsteadNetwork.sendToServer(new PlayerEmoteRelayPayload("emotecraft", emote.uuid(), emote.aliases().stream().toList()));*/
+                //?}
                 return null;
             });
             register.invoke(playEvent, listener);
@@ -78,7 +84,11 @@ public final class EmotecraftClientRelay {
             if (emote == null) return;
 
             Townstead.LOGGER.info("[EmoteDebug] Emotecraft mixin relay for user {} aliases={}", minecraft.player.getUUID(), emote.aliases());
+            //? if neoforge {
             PacketDistributor.sendToServer(new PlayerEmoteRelayPayload("emotecraft", emote.uuid(), emote.aliases().stream().toList()));
+            //?} else if forge {
+            /*TownsteadNetwork.sendToServer(new PlayerEmoteRelayPayload("emotecraft", emote.uuid(), emote.aliases().stream().toList()));*/
+            //?}
         } catch (Throwable ex) {
             Townstead.LOGGER.warn("[EmoteDebug] Emotecraft mixin relay failed: {}", ex.toString());
         }
