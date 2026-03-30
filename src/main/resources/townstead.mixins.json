@@ -16,6 +16,7 @@
     "LegacyImageButtonMixin",
     "accessor.AbstractDynamicScreenAccessor",
     "accessor.BlueprintScreenAccessor",
+    "compat.emotecraft.ClientEmotePlayMixin",
     "accessor.InteractScreenAccessor",
     "InteractScreenMixin",
     "VillagerEditorMixin"

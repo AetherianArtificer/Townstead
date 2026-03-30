@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead;
 
+import com.aetherianartificer.townstead.emote.EmotecraftClientRelay;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
@@ -38,6 +39,7 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
+            EmotecraftClientRelay.initialize();
             hooksRegistered = true;
         }
         //?} else if forge {

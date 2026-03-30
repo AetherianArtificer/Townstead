@@ -1,0 +1,37 @@
+{
+  "id": "point_notice",
+  "required_mod": "emotecraft",
+  "trigger_emotes": [
+    "point",
+    "here",
+    "palm"
+  ],
+  "radius": 10,
+  "cooldown_ticks": 160,
+  "candidates": [
+    {
+      "villager_emote": "acknowledge",
+      "chat_key_prefix": "dialogue.chat.emote_reaction.acknowledge",
+      "chat_variants": 4,
+      "chat_chance": 0.45,
+      "weight": 4,
+      "personality_weights": {
+        "friendly": 6,
+        "extroverted": 7,
+        "upbeat": 6
+      }
+    },
+    {
+      "villager_emote": "puzzled",
+      "chat_key_prefix": "dialogue.chat.emote_reaction.puzzled",
+      "chat_variants": 3,
+      "chat_chance": 0.35,
+      "weight": 2,
+      "personality_weights": {
+        "odd": 8,
+        "anxious": 6,
+        "gloomy": 5
+      }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "clap_approval",
+  "required_mod": "emotecraft",
+  "trigger_emote": "clap",
+  "radius": 8,
+  "cooldown_ticks": 180,
+  "candidates": [
+    {
+      "villager_emote": "applaud",
+      "chat_key_prefix": "dialogue.chat.emote_reaction.applause",
+      "chat_variants": 4,
+      "chat_chance": 0.5,
+      "weight": 4,
+      "personality_weights": {
+        "friendly": 8,
+        "upbeat": 10,
+        "extroverted": 9
+      }
+    },
+    {
+      "villager_emote": "bashful",
+      "chat_key_prefix": "dialogue.chat.emote_reaction.bashful",
+      "chat_variants": 3,
+      "chat_chance": 0.35,
+      "weight": 2,
+      "personality_weights": {
+        "introverted": 8,
+        "flirty": 6,
+        "sensitive": 6
+      }
+    }
+  ]
+}

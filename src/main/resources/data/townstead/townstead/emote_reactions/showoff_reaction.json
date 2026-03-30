@@ -1,0 +1,38 @@
+{
+  "id": "showoff_reaction",
+  "required_mod": "emotecraft",
+  "trigger_emotes": [
+    "backflip",
+    "club_penguin_dance",
+    "kazotsky_kick",
+    "roblox_potion_dance"
+  ],
+  "radius": 10,
+  "cooldown_ticks": 220,
+  "candidates": [
+    {
+      "villager_emote": "amused",
+      "chat_key_prefix": "dialogue.chat.emote_reaction.amused",
+      "chat_variants": 4,
+      "chat_chance": 0.5,
+      "weight": 4,
+      "personality_weights": {
+        "playful": 11,
+        "upbeat": 10,
+        "friendly": 6
+      }
+    },
+    {
+      "villager_emote": "startled",
+      "chat_key_prefix": "dialogue.chat.emote_reaction.startled",
+      "chat_variants": 3,
+      "chat_chance": 0.35,
+      "weight": 2,
+      "personality_weights": {
+        "anxious": 9,
+        "crabby": 7,
+        "gloomy": 5
+      }
+    }
+  ]
+}

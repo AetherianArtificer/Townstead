@@ -79,6 +79,10 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
+    public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_EMOTE_REACTIONS;
+    public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_EMOTE_REACTION_CHAT;
+    public static final ModConfigSpec.IntValue VILLAGER_EMOTE_REACTION_RADIUS;
+    public static final ModConfigSpec.IntValue VILLAGER_EMOTE_REACTION_COOLDOWN_TICKS;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     //?} else if forge {
     /*public static final ForgeConfigSpec SERVER_SPEC;
@@ -133,6 +137,10 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_EMOTE_REACTIONS;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_EMOTE_REACTION_CHAT;
+    public static final ForgeConfigSpec.IntValue VILLAGER_EMOTE_REACTION_RADIUS;
+    public static final ForgeConfigSpec.IntValue VILLAGER_EMOTE_REACTION_COOLDOWN_TICKS;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     *///?}
 
@@ -226,6 +234,24 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.needs.fatigue.fatigueMisalignedMultiplier")
                 .comment("Fatigue accumulation multiplier when working during misaligned cycle hours.")
                 .define("fatigueMisalignedMultiplier", 1.25);
+        b.pop();
+        b.translation("townstead.configuration.needs.emotes").push("emotes");
+        ENABLE_VILLAGER_EMOTE_REACTIONS = b
+                .translation("townstead.configuration.needs.emotes.enableVillagerEmoteReactions")
+                .comment("Allow MCA villagers to react to nearby player Emotecraft emotes when mapped by Townstead datapacks.")
+                .define("enableVillagerEmoteReactions", true);
+        ENABLE_VILLAGER_EMOTE_REACTION_CHAT = b
+                .translation("townstead.configuration.needs.emotes.enableVillagerEmoteReactionChat")
+                .comment("Allow emote reactions to include local villager dialogue lines.")
+                .define("enableVillagerEmoteReactionChat", true);
+        VILLAGER_EMOTE_REACTION_RADIUS = b
+                .translation("townstead.configuration.needs.emotes.villagerEmoteReactionRadius")
+                .comment("Maximum scan radius for villager reactions to player emotes.")
+                .defineInRange("villagerEmoteReactionRadius", 8, 2, 32);
+        VILLAGER_EMOTE_REACTION_COOLDOWN_TICKS = b
+                .translation("townstead.configuration.needs.emotes.villagerEmoteReactionCooldownTicks")
+                .comment("Minimum cooldown between repeated villager emote reactions.")
+                .defineInRange("villagerEmoteReactionCooldownTicks", 160, 0, 24000);
         b.pop();
         b.pop();
 
@@ -480,6 +506,22 @@ public final class TownsteadConfig {
 
     public static boolean isVillagerFatigueEnabled() {
         return ENABLE_VILLAGER_FATIGUE.get();
+    }
+
+    public static boolean isVillagerEmoteReactionsEnabled() {
+        return ENABLE_VILLAGER_EMOTE_REACTIONS.get();
+    }
+
+    public static boolean isVillagerEmoteReactionChatEnabled() {
+        return ENABLE_VILLAGER_EMOTE_REACTION_CHAT.get();
+    }
+
+    public static int getVillagerEmoteReactionRadius() {
+        return VILLAGER_EMOTE_REACTION_RADIUS.get();
+    }
+
+    public static int getVillagerEmoteReactionCooldownTicks() {
+        return VILLAGER_EMOTE_REACTION_COOLDOWN_TICKS.get();
     }
 
     public static boolean isVillagerSleepDebugEnabled() {

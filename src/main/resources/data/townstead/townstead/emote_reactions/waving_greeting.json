@@ -1,0 +1,35 @@
+{
+  "id": "waving_greeting",
+  "required_mod": "emotecraft",
+  "trigger_emote": "waving",
+  "radius": 8,
+  "cooldown_ticks": 160,
+  "candidates": [
+    {
+      "villager_emote": "wave_back",
+      "chat_key_prefix": "dialogue.chat.emote_reaction.greeting",
+      "chat_variants": 4,
+      "chat_chance": 0.55,
+      "weight": 4,
+      "personality_weights": {
+        "friendly": 10,
+        "upbeat": 9,
+        "extroverted": 9,
+        "introverted": 2,
+        "crabby": 1
+      }
+    },
+    {
+      "villager_emote": "cautious_ack",
+      "chat_key_prefix": "dialogue.chat.emote_reaction.cautious",
+      "chat_variants": 3,
+      "chat_chance": 0.4,
+      "weight": 2,
+      "personality_weights": {
+        "gloomy": 8,
+        "introverted": 7,
+        "crabby": 8
+      }
+    }
+  ]
+}

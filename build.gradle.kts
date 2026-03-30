@@ -31,6 +31,8 @@ neoForge {
 
 dependencies {
     compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.5+1.21.1.jar"))
+    testImplementation(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.5+1.21.1.jar"))
+    testImplementation("com.google.code.gson:gson:2.10.1")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }

@@ -5,6 +5,11 @@ import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
 import com.aetherianartificer.townstead.compat.ConditionalCompatPack;
 import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.emote.ActivePlayerEmote;
+import com.aetherianartificer.townstead.emote.EmoteReactionDataLoader;
+import com.aetherianartificer.townstead.emote.EmoteReactionDispatcher;
+import com.aetherianartificer.townstead.emote.PlayerEmoteRelayPayload;
+import com.aetherianartificer.townstead.emote.PlayerEmoteProviders;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
@@ -269,11 +274,13 @@ public class Townstead {
             }
         });
         event.enqueueWork(RusticDelightThirstCompat::register);
+        event.enqueueWork(PlayerEmoteProviders::initialize);
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new FarmPatternDataLoader());
         event.addListener(new ButcherProfileDataLoader());
+        event.addListener(new EmoteReactionDataLoader());
     }
 
     private void registerDialogueConditions() {
@@ -523,6 +530,11 @@ public class Townstead {
                 FatigueSetPayload.TYPE,
                 FatigueSetPayload.STREAM_CODEC,
                 this::handleFatigueSet
+        );
+        registrar.playToServer(
+                PlayerEmoteRelayPayload.TYPE,
+                PlayerEmoteRelayPayload.STREAM_CODEC,
+                this::handlePlayerEmoteRelay
         );
     }
 
@@ -964,6 +976,14 @@ public class Townstead {
             FatigueSyncPayload sync = townstead$fatigueSync(villager, fatigue);
             PacketDistributor.sendToPlayer(sp, sync);
             PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+        });
+    }
+
+    private void handlePlayerEmoteRelay(PlayerEmoteRelayPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            ActivePlayerEmote activeEmote = new ActivePlayerEmote(payload.emoteId(), Set.copyOf(payload.aliases()));
+            EmoteReactionDispatcher.dispatchPlayerEmote(payload.providerId(), sp, activeEmote);
         });
     }
 
