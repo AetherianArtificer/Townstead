@@ -37,3 +37,10 @@ mandatory = true
 versionRange = "[7.6.0,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies.townstead]]
+modId = "configured"
+mandatory = false
+versionRange = "[2.2.0,)"
+ordering = "NONE"
+side = "CLIENT"

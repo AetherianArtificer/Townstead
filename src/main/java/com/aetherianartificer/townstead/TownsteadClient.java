@@ -41,9 +41,11 @@ public final class TownsteadClient {
             hooksRegistered = true;
         }
         //?} else if forge {
-        /*modContainer.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
-                () -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) ->
-                        new ConfigInfoScreen(parent)));
+        /*if (!net.minecraftforge.fml.ModList.get().isLoaded("configured")) {
+            modContainer.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
+                    () -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) ->
+                            new ConfigInfoScreen(parent)));
+        }
         if (!hooksRegistered) {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
