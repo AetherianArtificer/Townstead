@@ -394,7 +394,7 @@ public final class TownsteadConfig {
         DEBUG_VILLAGER_AI = b
                 .translation("townstead.configuration.debug.debugVillagerAI")
                 .comment("Enable debug chat messages for villager AI (farmer, cook, etc.).")
-                .define("debugVillagerAI", true);
+                .define("debugVillagerAI", false);
         DEBUG_VILLAGER_SLEEP = b
                 .translation("townstead.configuration.debug.debugVillagerSleep")
                 .comment("Enable sleep/rest debug logs and villager debug state updates.")
