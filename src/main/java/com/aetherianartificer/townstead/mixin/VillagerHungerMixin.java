@@ -120,6 +120,11 @@ public abstract class VillagerHungerMixin extends Villager {
     private void townstead$writeEditorVitals(CompoundTag nbt, CallbackInfo ci) {
         VillagerEntityMCA self = (VillagerEntityMCA)(Object)this;
 
+        // Skip on client: MCA's syncVillagerData() calls villager.save(tag) on the
+        // client entity, whose data attachments have defaults (not real values).
+        // Writing here would overwrite any editor changes the player made.
+        if (self.level().isClientSide) return;
+
         //? if neoforge {
         CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
         CompoundTag fatigue = self.getData(Townstead.FATIGUE_DATA);
