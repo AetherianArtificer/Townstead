@@ -94,8 +94,10 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         }
 
         // No assigned bed or it's unavailable — find any nearby unclaimed bed
+        if (!VillagerSearchCadence.isDue(level, villager, SEARCH_CADENCE_KEY)) return false;
         BlockPos found = findNearbyUnclaimedBed(level, villager, level.getGameTime());
         if (found == null) {
+            VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, 60, 20);
             RestCoordinator.recordBlockedDecision(villager, fatigue, decision.reason(), SleepBlockReason.NO_BED_FOUND, null);
             return false;
         }
@@ -185,9 +187,27 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
                 return;
             }
 
-            // Do not directly toggle sleeping state here. MCA owns the normal
-            // sleep transition, and direct startSleeping calls can leave bed
-            // occupancy stale on dedicated worlds if the wake path is interrupted.
+            // Temporarily point HOME at the emergency bed so MCA's SleepInBed
+            // behaviour handles occupancy, positioning, and wake-up normally.
+            // The original HOME is saved in fatigue NBT and restored on wake.
+            //? if neoforge {
+            CompoundTag ft = villager.getData(Townstead.FATIGUE_DATA);
+            //?} else {
+            /*CompoundTag ft = villager.getPersistentData().getCompound("townstead_fatigue");
+            *///?}
+            Optional<GlobalPos> prevHome = villager.getBrain().getMemory(MemoryModuleType.HOME);
+            if (prevHome.isPresent()) {
+                FatigueData.saveHome(ft, prevHome.get());
+            } else {
+                FatigueData.saveNoHome(ft);
+            }
+            FatigueData.setEmergencyBed(ft, headPos);
+            //? if neoforge {
+            villager.setData(Townstead.FATIGUE_DATA, ft);
+            //?} else {
+            /*villager.getPersistentData().put("townstead_fatigue", ft);
+            *///?}
+            villager.getBrain().setMemory(MemoryModuleType.HOME, GlobalPos.of(level.dimension(), headPos));
             villager.getBrain().setActiveActivityIfPossible(Activity.REST);
             doStop(level, villager, gameTime);
         }

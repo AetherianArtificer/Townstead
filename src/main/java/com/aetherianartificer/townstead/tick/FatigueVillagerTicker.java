@@ -222,11 +222,19 @@ public final class FatigueVillagerTicker {
             if (restDecision.shouldWake()) {
                 EmergencyBedClaims.releaseAll(level, self.getUUID());
                 self.stopSleeping();
+                restoreHomeAfterEmergencySleep(self, fatigue);
             }
             self.getNavigation().stop();
             self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
             self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
             self.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        }
+
+        // If the villager is NOT sleeping but has a persisted emergency bed,
+        // the sleep was interrupted (death, chunk unload, etc.). Restore the
+        // original HOME memory so MCA's village assignment isn't corrupted.
+        if (!self.isSleeping() && FatigueData.hasEmergencyBed(fatigue)) {
+            restoreHomeAfterEmergencySleep(self, fatigue);
         }
 
         // --- Mood drift (dayTime-based) ---
@@ -273,6 +281,7 @@ public final class FatigueVillagerTicker {
 
         // --- Cleanup ---
         if (!self.isAlive() || self.isRemoved()) {
+            restoreHomeAfterEmergencySleep(self, fatigue);
             EmergencyBedClaims.releaseAll(level, self.getUUID());
             STATE.remove(self.getId());
         }
@@ -347,6 +356,28 @@ public final class FatigueVillagerTicker {
 
     private static boolean isBedBlock(BlockState state) {
         return state.getBlock() instanceof BedBlock;
+    }
+
+    /**
+     * Restores the villager's original HOME memory after an emergency bed
+     * sleep and clears the emergency bed tracking from fatigue NBT.
+     * MCA owns bed occupancy — stopSleeping() already handles clearing
+     * BedBlock.OCCUPIED, so we only need to fix the HOME pointer.
+     */
+    private static void restoreHomeAfterEmergencySleep(VillagerEntityMCA self, CompoundTag fatigue) {
+        if (!FatigueData.hasEmergencyBed(fatigue)) return;
+        if (FatigueData.hasSavedHome(fatigue)) {
+            if (FatigueData.wasPreviouslyHomeless(fatigue)) {
+                self.getBrain().eraseMemory(MemoryModuleType.HOME);
+            } else {
+                net.minecraft.core.GlobalPos savedHome = FatigueData.getSavedHome(fatigue);
+                if (savedHome != null) {
+                    self.getBrain().setMemory(MemoryModuleType.HOME, savedHome);
+                }
+            }
+            FatigueData.clearSavedHome(fatigue);
+        }
+        FatigueData.clearEmergencyBed(fatigue);
     }
 
     private static void updateSpeedModifier(VillagerEntityMCA self, int currentFatigue, TickState state) {
