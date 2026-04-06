@@ -78,88 +78,34 @@ public final class FatigueVillagerTicker {
             }
         }
 
-        RestDecision restDecision = RestCoordinator.decide(
-                RestCoordinator.capture(self, fatigue, hasValidSleepingBed(self), false)
-        );
-        RestCoordinator.recordDecision(self, fatigue, restDecision, null);
-
-        // Sleeping villagers should not keep executing stale movement orders.
-        if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
-            self.getSleepingPos().ifPresent(pos ->
-                    EmergencyBedClaims.renew(level, self.getUUID(), pos, level.getGameTime() + 200L));
-            if (restDecision.shouldWake()) {
-                EmergencyBedClaims.releaseAll(level, self.getUUID());
-            }
-            self.getNavigation().stop();
-            self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-            self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
-            self.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
-        }
-
-        // --- Fatigue schedule override (every tick) ---
-        if (restDecision.shouldOverrideScheduleToRest()) {
-            if (!state.scheduleOverridden) {
-                com.aetherianartificer.townstead.shift.ShiftScheduleApplier.overrideToRest(self);
-                state.scheduleOverridden = true;
-                RestDebugData.setRestOverride(fatigue, true, restDecision.reason());
-            }
-        } else if (FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD
-                && (state.scheduleOverridden || currentScheduleActivity(self) == Activity.REST)) {
-            com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(self);
-            state.scheduleOverridden = false;
-            RestDebugData.setRestOverride(fatigue, false, SleepReason.NONE);
-        }
-
         // --- Accumulation / recovery on interval (dayTime-based) ---
         long dayTime = level.getDayTime();
         if (state.lastFatigueDayTime < 0) state.lastFatigueDayTime = dayTime;
-        long fatigueElapsed = dayTime - state.lastFatigueDayTime;
 
-        if (fatigueElapsed > 1000) {
-            // --- Sleep skip: simulate the full skipped duration ---
-            state.lastFatigueDayTime = dayTime;
-            boolean hadBed = self.isSleeping()
-                    || self.getBrain().getMemory(MemoryModuleType.HOME).isPresent();
-            if (hadBed) {
-                // Full recovery — villager slept through the skip
-                FatigueData.setFatigue(fatigue, 0);
-                FatigueData.setCollapsed(fatigue, false);
-                FatigueData.setGated(fatigue, false);
-                state.fatigueResidue = 0f;
-            } else {
-                // No bed — accumulate idle fatigue for the skipped duration
-                int intervals = (int) (fatigueElapsed / FatigueData.ACCUMULATION_INTERVAL);
-                for (int i = 0; i < intervals; i++) {
-                    applyFatigueDelta(fatigue, state, FatigueData.RATE_IDLE);
-                }
-            }
-            changed = FatigueData.getFatigue(fatigue) != oldFatigue;
-        } else if (fatigueElapsed >= FatigueData.ACCUMULATION_INTERVAL) {
-            state.lastFatigueDayTime = dayTime;
-            boolean isNocturnal = isNocturnal(self);
-            boolean inBed = self.isSleeping();
-            Activity activity = currentScheduleActivity(self);
-            boolean inCombat = self.getVillagerBrain().isPanicking()
-                    || self.getLastHurtByMob() != null;
-            long timeOfDay = dayTime % 24000L;
-            boolean isCycleAligned = isCycleAligned(isNocturnal, timeOfDay);
+        boolean isNocturnal = isNocturnal(self);
+        boolean inBed = self.isSleeping();
+        Activity activity = currentScheduleActivity(self);
+        boolean inCombat = self.getVillagerBrain().isPanicking()
+                || self.getLastHurtByMob() != null;
+        long timeOfDay = dayTime % 24000L;
+        boolean isCycleAligned = isCycleAligned(isNocturnal, timeOfDay);
+
+        int fatigueIterations = 0;
+        while (dayTime - state.lastFatigueDayTime >= FatigueData.ACCUMULATION_INTERVAL && fatigueIterations < 100) {
+            state.lastFatigueDayTime += FatigueData.ACCUMULATION_INTERVAL;
+            fatigueIterations++;
 
             if (FatigueData.isCollapsed(fatigue)) {
-                // Collapsed: slow passive recovery + try auto-drinking coffee
                 applyFatigueDelta(fatigue, state, FatigueData.RECOVERY_COLLAPSED);
                 FatigueData.tryAutoDrinkCoffee(self);
             } else if (inBed) {
-                // In bed: recovery based on cycle alignment
                 float recovery = isCycleAligned
                         ? FatigueData.RECOVERY_BED_ALIGNED
                         : FatigueData.RECOVERY_BED_MISALIGNED;
                 applyFatigueDelta(fatigue, state, recovery);
             } else if (activity == Activity.REST && !state.scheduleOverridden) {
-                // Genuine scheduled REST without bed: tiny recovery
-                // (Not from fatigue override — that only counts if actually in bed)
                 applyFatigueDelta(fatigue, state, FatigueData.RECOVERY_REST_NO_BED);
             } else {
-                // Accumulation based on activity
                 float rate;
                 if (activity == Activity.WORK) {
                     rate = FatigueData.RATE_WORK;
@@ -168,13 +114,9 @@ public final class FatigueVillagerTicker {
                 } else {
                     rate = FatigueData.RATE_IDLE;
                 }
-
-                // Combat multiplier
                 if (inCombat) {
                     rate *= FatigueData.COMBAT_MULTIPLIER;
                 }
-
-                // Cycle alignment multiplier (from config)
                 float alignedMult = TownsteadConfig.FATIGUE_NOCTURNAL_MULTIPLIER.get().floatValue();
                 float misalignedMult = TownsteadConfig.FATIGUE_MISALIGNED_MULTIPLIER.get().floatValue();
                 if (isCycleAligned) {
@@ -182,14 +124,15 @@ public final class FatigueVillagerTicker {
                 } else {
                     rate *= misalignedMult;
                 }
-
                 applyFatigueDelta(fatigue, state, rate);
             }
+        }
+        if (fatigueIterations > 0) {
             changed = FatigueData.getFatigue(fatigue) != oldFatigue;
         }
 
-        // --- Collapse / gate / auto-coffee (runs after both skip and normal interval) ---
-        if (changed || fatigueElapsed >= FatigueData.ACCUMULATION_INTERVAL) {
+        // --- Collapse / gate / auto-coffee (runs after interval processing) ---
+        if (changed || fatigueIterations > 0) {
             int currentFatigue = FatigueData.getFatigue(fatigue);
             int collapseThreshold = FatigueData.COLLAPSE_THRESHOLD;
             int recoveryGate = FatigueData.RECOVERY_GATE;
@@ -235,6 +178,40 @@ public final class FatigueVillagerTicker {
                     changed = true;
                 }
             }
+        }
+
+        // --- Rest decisions (after fatigue processing so wake checks see updated values) ---
+        RestDecision restDecision = RestCoordinator.decide(
+                RestCoordinator.capture(self, fatigue, hasValidSleepingBed(self), false)
+        );
+        RestCoordinator.recordDecision(self, fatigue, restDecision, null);
+
+        if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
+            if (restDecision.shouldWake()) {
+                EmergencyBedClaims.releaseAll(level, self.getUUID());
+                self.stopSleeping();
+            } else {
+                self.getSleepingPos().ifPresent(pos ->
+                        EmergencyBedClaims.renew(level, self.getUUID(), pos, level.getGameTime() + 200L));
+                self.getNavigation().stop();
+                self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+                self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+                self.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+            }
+        }
+
+        // --- Fatigue schedule override ---
+        if (restDecision.shouldOverrideScheduleToRest()) {
+            if (!state.scheduleOverridden) {
+                com.aetherianartificer.townstead.shift.ShiftScheduleApplier.overrideToRest(self);
+                state.scheduleOverridden = true;
+                RestDebugData.setRestOverride(fatigue, true, restDecision.reason());
+            }
+        } else if (FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD
+                && (state.scheduleOverridden || currentScheduleActivity(self) == Activity.REST)) {
+            com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(self);
+            state.scheduleOverridden = false;
+            RestDebugData.setRestOverride(fatigue, false, SleepReason.NONE);
         }
 
         // --- Mood drift (dayTime-based) ---
