@@ -183,16 +183,17 @@ public final class FatigueVillagerTicker {
 
         // --- Fatigue schedule override (before rest decision so wake check sees correct schedule) ---
         boolean overrideActive = FatigueData.isRestOverrideActive(fatigue);
-        if (FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD
-                && !self.isSleeping()
-                && currentScheduleActivity(self) != Activity.REST) {
+        Activity naturalScheduleActivity = currentScheduleActivity(self, overrideActive ? state.preOverrideSchedule : null);
+        RestDecision naturalRestDecision = RestCoordinator.decide(
+                RestCoordinator.capture(self, fatigue, hasValidSleepingBed(self), false, naturalScheduleActivity, false)
+        );
+        if (naturalRestDecision.shouldOverrideScheduleToRest()) {
             if (!overrideActive) {
                 state.preOverrideSchedule = self.getBrain().getSchedule();
                 com.aetherianartificer.townstead.shift.ShiftScheduleApplier.overrideToRest(self);
                 FatigueData.setRestOverride(fatigue, true, SleepReason.FATIGUE_REST);
             }
-        } else if (overrideActive
-                && FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD) {
+        } else if (overrideActive && !self.isSleeping()) {
             // Restore the pre-override schedule first, then let apply() overwrite
             // if the villager has custom shifts. This prevents the schedule from
             // staying stuck on all-REST for villagers without custom shifts,
@@ -206,8 +207,11 @@ public final class FatigueVillagerTicker {
         }
 
         // --- Rest decisions (after schedule restore so wake check sees correct schedule) ---
+        Activity decisionScheduleActivity = overrideActive && state.preOverrideSchedule != null
+                ? currentScheduleActivity(self, state.preOverrideSchedule)
+                : currentScheduleActivity(self);
         RestDecision restDecision = RestCoordinator.decide(
-                RestCoordinator.capture(self, fatigue, hasValidSleepingBed(self), false)
+                RestCoordinator.capture(self, fatigue, hasValidSleepingBed(self), false, decisionScheduleActivity, overrideActive)
         );
         RestCoordinator.recordDecision(self, fatigue, restDecision, null);
 
@@ -323,8 +327,13 @@ public final class FatigueVillagerTicker {
     }
 
     private static Activity currentScheduleActivity(VillagerEntityMCA self) {
+        return currentScheduleActivity(self, null);
+    }
+
+    private static Activity currentScheduleActivity(VillagerEntityMCA self, Schedule scheduleOverride) {
         long dayTime = self.level().getDayTime() % 24000L;
-        return self.getBrain().getSchedule().getActivityAt((int) dayTime);
+        Schedule schedule = scheduleOverride != null ? scheduleOverride : self.getBrain().getSchedule();
+        return schedule.getActivityAt((int) dayTime);
     }
 
     private static boolean hasValidSleepingBed(VillagerEntityMCA self) {

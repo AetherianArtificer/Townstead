@@ -224,18 +224,24 @@ public final class ThirstVillagerTicker {
 
     private static boolean tryDrinkFromInventory(VillagerEntityMCA self, ThirstCompatBridge bridge) {
         if (!TownsteadConfig.isSelfInventoryDrinkingEnabled()) return false;
-        ItemStack drink = findBestDrink(self.getInventory(), bridge);
+        SimpleContainer inventory = self.getInventory();
+        int drinkSlot = findBestDrinkSlot(inventory, bridge);
+        if (drinkSlot < 0) return false;
+        ItemStack drink = inventory.getItem(drinkSlot);
         if (drink.isEmpty()) return false;
         if (!VillagerDrinkingManager.startDrinking(self, drink)) return false;
         ItemStack remainder = bridge.onDrinkConsumed(drink);
         if (remainder.isEmpty()) {
             drink.shrink(1);
+        } else if (remainder != drink) {
+            drink.shrink(1);
+            inventory.addItem(remainder);
         }
         return true;
     }
 
-    private static ItemStack findBestDrink(SimpleContainer inventory, ThirstCompatBridge bridge) {
-        ItemStack best = ItemStack.EMPTY;
+    private static int findBestDrinkSlot(SimpleContainer inventory, ThirstCompatBridge bridge) {
+        int bestSlot = -1;
         int bestScore = Integer.MIN_VALUE;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
@@ -247,10 +253,10 @@ public final class ThirstVillagerTicker {
                     + (bridge.isDrink(stack) ? 1 : 0);
             if (score > bestScore) {
                 bestScore = score;
-                best = stack;
+                bestSlot = i;
             }
         }
-        return best;
+        return bestSlot;
     }
 
     private static boolean shouldApplyDehydrationDamage(ServerLevel level) {
