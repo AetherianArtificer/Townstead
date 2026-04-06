@@ -16,6 +16,7 @@ import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.SeekFoodTask;
+import com.aetherianartificer.townstead.thirst.HydrateYoungTask;
 import com.aetherianartificer.townstead.thirst.SeekDrinkTask;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.google.common.collect.ImmutableList;
@@ -89,6 +90,9 @@ public abstract class VillagerHungerMixin extends Villager {
         coreBehaviors.add(Pair.of(65, new SeekBedWhenFatiguedTask()));
         coreBehaviors.add(Pair.of(99, new SeekFoodTask()));
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
+        if (ThirstBridgeResolver.isActive()) {
+            coreBehaviors.add(Pair.of(111, new HydrateYoungTask()));
+        }
         brain.addActivity(Activity.CORE, ImmutableList.copyOf(coreBehaviors));
         townstead$lastPatchedBrain = brain;
 

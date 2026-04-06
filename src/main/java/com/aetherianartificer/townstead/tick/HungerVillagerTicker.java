@@ -159,7 +159,9 @@ public final class HungerVillagerTicker {
             HungerData.setMoodDrift(hunger, drift);
         }
 
-        updateSpeedModifier(self, HungerData.getHunger(hunger));
+        if (!self.isBaby()) {
+            updateSpeedModifier(self, HungerData.getHunger(hunger));
+        }
         //? if neoforge {
         self.setData(Townstead.HUNGER_DATA, hunger);
         //?} else {

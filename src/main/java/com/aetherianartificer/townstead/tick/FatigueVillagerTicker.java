@@ -53,6 +53,7 @@ public final class FatigueVillagerTicker {
     public static void tick(VillagerEntityMCA self) {
         if (!(self.level() instanceof ServerLevel level)) return;
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return;
+        if (self.isBaby()) return;
 
         //? if neoforge {
         CompoundTag fatigue = self.getData(Townstead.FATIGUE_DATA);

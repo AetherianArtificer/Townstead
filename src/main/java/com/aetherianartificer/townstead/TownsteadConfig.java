@@ -68,6 +68,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_BARISTA_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue BARISTA_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
+    public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
     public static final ModConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_BLOCKS;
@@ -122,6 +123,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_BARISTA_REQUEST_CHAT;
     public static final ForgeConfigSpec.IntValue BARISTA_REQUEST_INTERVAL_TICKS;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
     public static final ForgeConfigSpec.BooleanValue RESPECT_PROTECTED_STORAGE;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_BLOCKS;
@@ -345,6 +347,14 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.caregiving.enableFeedingYoung")
                 .comment("Allow adults to feed hungry babies/toddlers/children.")
                 .define("enableFeedingYoung", true);
+        if (ThirstBridgeResolver.anyThirstModLoaded()) {
+            ENABLE_HYDRATING_YOUNG = b
+                    .translation("townstead.configuration.caregiving.enableHydratingYoung")
+                    .comment("Allow adults to bring drinks to thirsty babies/toddlers/children.")
+                    .define("enableHydratingYoung", true);
+        } else {
+            ENABLE_HYDRATING_YOUNG = null;
+        }
         ENABLE_NON_PARENT_CAREGIVERS = b
                 .translation("townstead.configuration.caregiving.enableNonParentCaregivers")
                 .comment("Allow non-parent villagers to help feed children when parents are absent.")
@@ -476,6 +486,10 @@ public final class TownsteadConfig {
 
     private static boolean isValidResourceLocationString(final @NotNull Object o) {
         return o instanceof String s && ResourceLocation.tryParse(s) != null;
+    }
+
+    public static boolean isHydratingYoungEnabled() {
+        return ENABLE_HYDRATING_YOUNG != null && ENABLE_HYDRATING_YOUNG.get();
     }
 
     public static boolean isVillagerFatigueEnabled() {

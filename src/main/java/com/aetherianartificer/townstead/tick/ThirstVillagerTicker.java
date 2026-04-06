@@ -198,7 +198,9 @@ public final class ThirstVillagerTicker {
             storeEmptyBottles(level, self);
         }
 
-        updateSpeedModifier(self, ThirstData.getThirst(thirst));
+        if (!self.isBaby()) {
+            updateSpeedModifier(self, ThirstData.getThirst(thirst));
+        }
         //? if neoforge {
         self.setData(Townstead.THIRST_DATA, thirst);
         //?} else {
