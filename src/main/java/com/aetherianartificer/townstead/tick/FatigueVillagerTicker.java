@@ -110,15 +110,39 @@ public final class FatigueVillagerTicker {
             RestDebugData.setRestOverride(fatigue, false, SleepReason.NONE);
         }
 
-        // --- Accumulation / recovery on interval ---
-        if (self.tickCount % FatigueData.ACCUMULATION_INTERVAL == 0) {
+        // --- Accumulation / recovery on interval (dayTime-based) ---
+        long dayTime = level.getDayTime();
+        if (state.lastFatigueDayTime < 0) state.lastFatigueDayTime = dayTime;
+        long fatigueElapsed = dayTime - state.lastFatigueDayTime;
+
+        if (fatigueElapsed > 1000) {
+            // --- Sleep skip: simulate the full skipped duration ---
+            state.lastFatigueDayTime = dayTime;
+            boolean hadBed = self.isSleeping()
+                    || self.getBrain().getMemory(MemoryModuleType.HOME).isPresent();
+            if (hadBed) {
+                // Full recovery — villager slept through the skip
+                FatigueData.setFatigue(fatigue, 0);
+                FatigueData.setCollapsed(fatigue, false);
+                FatigueData.setGated(fatigue, false);
+                state.fatigueResidue = 0f;
+            } else {
+                // No bed — accumulate idle fatigue for the skipped duration
+                int intervals = (int) (fatigueElapsed / FatigueData.ACCUMULATION_INTERVAL);
+                for (int i = 0; i < intervals; i++) {
+                    applyFatigueDelta(fatigue, state, FatigueData.RATE_IDLE);
+                }
+            }
+            changed = FatigueData.getFatigue(fatigue) != oldFatigue;
+        } else if (fatigueElapsed >= FatigueData.ACCUMULATION_INTERVAL) {
+            state.lastFatigueDayTime = dayTime;
             boolean isNocturnal = isNocturnal(self);
             boolean inBed = self.isSleeping();
             Activity activity = currentScheduleActivity(self);
             boolean inCombat = self.getVillagerBrain().isPanicking()
                     || self.getLastHurtByMob() != null;
-            long dayTime = level.getDayTime() % 24000L;
-            boolean isCycleAligned = isCycleAligned(isNocturnal, dayTime);
+            long timeOfDay = dayTime % 24000L;
+            boolean isCycleAligned = isCycleAligned(isNocturnal, timeOfDay);
 
             if (FatigueData.isCollapsed(fatigue)) {
                 // Collapsed: slow passive recovery + try auto-drinking coffee
@@ -161,15 +185,16 @@ public final class FatigueVillagerTicker {
 
                 applyFatigueDelta(fatigue, state, rate);
             }
-
             changed = FatigueData.getFatigue(fatigue) != oldFatigue;
+        }
 
+        // --- Collapse / gate / auto-coffee (runs after both skip and normal interval) ---
+        if (changed || fatigueElapsed >= FatigueData.ACCUMULATION_INTERVAL) {
             int currentFatigue = FatigueData.getFatigue(fatigue);
             int collapseThreshold = FatigueData.COLLAPSE_THRESHOLD;
             int recoveryGate = FatigueData.RECOVERY_GATE;
 
             // --- Safety: clear stale collapse if fatigue is below threshold ---
-            // Handles config changes or editor resets that leave the flag set
             if (FatigueData.isCollapsed(fatigue) && currentFatigue < collapseThreshold) {
                 FatigueData.setCollapsed(fatigue, false);
                 FatigueData.setGated(fatigue, false);
@@ -181,11 +206,10 @@ public final class FatigueVillagerTicker {
             }
 
             // --- Collapse check ---
-            if (currentFatigue >= collapseThreshold && !inBed && !FatigueData.isCollapsed(fatigue)) {
+            if (currentFatigue >= collapseThreshold && !self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
                 FatigueData.setCollapsed(fatigue, true);
                 FatigueData.setGated(fatigue, true);
                 changed = true;
-                // Alert nearby players
                 if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
                     self.sendChatToAllAround("dialogue.chat.energy.collapsed/"
                             + (1 + level.random.nextInt(4)));
@@ -198,7 +222,6 @@ public final class FatigueVillagerTicker {
                 FatigueData.setGated(fatigue, false);
                 FatigueData.setCollapsed(fatigue, false);
                 changed = true;
-                // Alert nearby players on wake from collapse
                 if (wasCollapsedHere && TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
                     self.sendChatToAllAround("dialogue.chat.energy.recovered/"
                             + (1 + level.random.nextInt(4)));
@@ -214,8 +237,10 @@ public final class FatigueVillagerTicker {
             }
         }
 
-        // --- Mood drift (every 2400 ticks) ---
-        if (self.tickCount % FatigueData.MOOD_CHECK_INTERVAL == 0) {
+        // --- Mood drift (dayTime-based) ---
+        if (state.lastMoodDayTime < 0) state.lastMoodDayTime = dayTime;
+        if (dayTime - state.lastMoodDayTime >= FatigueData.MOOD_CHECK_INTERVAL) {
+            state.lastMoodDayTime = dayTime;
             int f = FatigueData.getFatigue(fatigue);
             FatigueData.FatigueState fatigueState = FatigueData.getState(f);
             float pressure = FatigueData.getMoodPressure(fatigueState);
@@ -365,5 +390,7 @@ public final class FatigueVillagerTicker {
         private double lastPenalty = 0.0;
         private float fatigueResidue = 0f;
         private boolean scheduleOverridden = false;
+        private long lastFatigueDayTime = -1;
+        private long lastMoodDayTime = -1;
     }
 }

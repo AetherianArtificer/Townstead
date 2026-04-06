@@ -102,6 +102,11 @@ public final class ThirstVillagerTicker {
         }
         float biomeModifier = state.biomeModifier;
 
+        long dayTime = level.getDayTime();
+        if (state.lastDayTime < 0) state.lastDayTime = dayTime;
+        long dayTimeDelta = Math.max(0, dayTime - state.lastDayTime);
+        state.lastDayTime = dayTime;
+
         boolean thirstChanged = VillagerDrinkingManager.tickAndFinalize(self, thirst);
 
         int currentThirstLevel = ThirstData.getThirst(thirst);
@@ -118,60 +123,58 @@ public final class ThirstVillagerTicker {
         state.prevZ = self.getZ();
         if (distSq > 0.0025) {
             float dist = (float) Math.sqrt(distSq);
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (dist * ThirstData.EXHAUSTION_MOVEMENT_PER_BLOCK * biomeModifier));
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (dist * ThirstData.EXHAUSTION_MOVEMENT_PER_BLOCK * biomeModifier * dayTimeDelta));
         }
 
         VillagerBrain<?> brain = self.getVillagerBrain();
         Chore currentJob = brain.getCurrentJob();
         if (brain.isPanicking() || self.getLastHurtByMob() != null) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_COMBAT * biomeModifier));
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_COMBAT * biomeModifier * dayTimeDelta));
         } else if (currentJob != Chore.NONE) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_CHORE * biomeModifier));
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_CHORE * biomeModifier * dayTimeDelta));
         } else if (isGuardPatrolling(self)) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_GUARD_PATROL * biomeModifier));
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_GUARD_PATROL * biomeModifier * dayTimeDelta));
         } else if (!isResting(self)) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier));
+            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier * dayTimeDelta));
         }
 
         thirstChanged |= ThirstData.processExhaustion(thirst);
-        if (!isResting(self) && self.tickCount % ThirstData.PASSIVE_DRAIN_INTERVAL == 0) {
-            thirstChanged |= ThirstData.passiveDrain(thirst);
-        }
-
+        if (state.lastPassiveDrainDayTime < 0) state.lastPassiveDrainDayTime = dayTime;
         Activity currentActivity = currentScheduleActivity(self);
-        if (state.lastActivity != null && currentActivity != state.lastActivity) {
-            int t = ThirstData.getThirst(thirst);
-            long lastDrank = ThirstData.getLastDrankTime(thirst);
-            boolean canDrink = (gameTime - lastDrank) >= ThirstData.MIN_DRINK_INTERVAL
-                    && !VillagerDrinkingManager.isDrinking(self)
-                    && !VillagerEatingManager.isEating(self);
-            if (canDrink) {
-                boolean shouldDrink = false;
-                if (state.lastActivity == Activity.REST && t < ThirstData.BREAKFAST_THRESHOLD) {
-                    shouldDrink = true;
-                } else if (state.lastActivity == Activity.WORK && t < ThirstData.LUNCH_THRESHOLD) {
-                    shouldDrink = true;
-                } else if (currentActivity == Activity.REST && t < ThirstData.DINNER_THRESHOLD) {
-                    shouldDrink = true;
+        boolean resting = currentActivity == Activity.REST;
+        if (resting) {
+            // Keep tracking current while resting so wake-up doesn't cause burst drain
+            state.lastPassiveDrainDayTime = dayTime;
+        } else {
+            boolean drained = false;
+            int drainIterations = 0;
+            while (dayTime - state.lastPassiveDrainDayTime >= ThirstData.PASSIVE_DRAIN_INTERVAL && drainIterations < 100) {
+                state.lastPassiveDrainDayTime += ThirstData.PASSIVE_DRAIN_INTERVAL;
+                thirstChanged |= ThirstData.passiveDrain(thirst);
+                drained = true;
+                drainIterations++;
+            }
+
+            // Activity-gated drinking: check on passive drain interval, guarded by MIN_DRINK_INTERVAL
+            if (drained) {
+                int t = ThirstData.getThirst(thirst);
+                int threshold = (currentActivity == Activity.IDLE || currentActivity == Activity.MEET)
+                        ? ThirstData.LUNCH_THRESHOLD
+                        : ThirstData.EMERGENCY_THRESHOLD;
+                if (t < threshold) {
+                    long lastDrank = ThirstData.getLastDrankTime(thirst);
+                    if ((gameTime - lastDrank) >= ThirstData.MIN_DRINK_INTERVAL
+                            && !VillagerDrinkingManager.isDrinking(self)
+                            && !VillagerEatingManager.isEating(self)) {
+                        thirstChanged |= tryDrinkFromInventory(self, bridge);
+                    }
                 }
-                if (shouldDrink && currentActivity != Activity.REST) thirstChanged |= tryDrinkFromInventory(self, bridge);
-            }
-        }
-        state.lastActivity = currentActivity;
-
-        if (currentActivity != Activity.REST && ThirstData.getThirst(thirst) < ThirstData.ADEQUATE_THRESHOLD) {
-            long lastDrank = ThirstData.getLastDrankTime(thirst);
-            long minDrinkInterval = ThirstData.isDrinkingMode(thirst)
-                    ? 20L
-                    : (ThirstData.getThirst(thirst) <= ThirstData.EMERGENCY_THRESHOLD ? 20L : ThirstData.MIN_DRINK_INTERVAL);
-            if ((gameTime - lastDrank) >= minDrinkInterval
-                    && !VillagerDrinkingManager.isDrinking(self)
-                    && !VillagerEatingManager.isEating(self)) {
-                thirstChanged |= tryDrinkFromInventory(self, bridge);
             }
         }
 
-        if (self.tickCount % ThirstData.MOOD_CHECK_INTERVAL == 0) {
+        if (state.lastMoodDayTime < 0) state.lastMoodDayTime = dayTime;
+        if (dayTime - state.lastMoodDayTime >= ThirstData.MOOD_CHECK_INTERVAL) {
+            state.lastMoodDayTime = dayTime;
             int t = ThirstData.getThirst(thirst);
             ThirstData.ThirstState moodState = ThirstData.getState(t);
             float pressure = ThirstData.getMoodPressure(moodState);
@@ -418,8 +421,10 @@ public final class ThirstVillagerTicker {
         private double prevZ;
         private float biomeModifier = 1.0f;
         private long nextBiomeModifierSampleTick;
-        private Activity lastActivity;
         private int lastSyncedThirst = -1;
         private int lastSyncedQuenched = -1;
+        private long lastDayTime = -1;
+        private long lastPassiveDrainDayTime = -1;
+        private long lastMoodDayTime = -1;
     }
 }
