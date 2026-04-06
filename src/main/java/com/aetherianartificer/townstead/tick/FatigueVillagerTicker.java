@@ -23,6 +23,7 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.schedule.Activity;
+import net.minecraft.world.entity.schedule.Schedule;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.BlockState;
 //? if neoforge {
@@ -103,7 +104,7 @@ public final class FatigueVillagerTicker {
                         ? FatigueData.RECOVERY_BED_ALIGNED
                         : FatigueData.RECOVERY_BED_MISALIGNED;
                 applyFatigueDelta(fatigue, state, recovery);
-            } else if (activity == Activity.REST && !state.scheduleOverridden) {
+            } else if (activity == Activity.REST && !FatigueData.isRestOverrideActive(fatigue)) {
                 applyFatigueDelta(fatigue, state, FatigueData.RECOVERY_REST_NO_BED);
             } else {
                 float rate;
@@ -180,38 +181,48 @@ public final class FatigueVillagerTicker {
             }
         }
 
-        // --- Rest decisions (after fatigue processing so wake checks see updated values) ---
+        // --- Fatigue schedule override (before rest decision so wake check sees correct schedule) ---
+        boolean overrideActive = FatigueData.isRestOverrideActive(fatigue);
+        if (FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD
+                && !self.isSleeping()
+                && currentScheduleActivity(self) != Activity.REST) {
+            if (!overrideActive) {
+                state.preOverrideSchedule = self.getBrain().getSchedule();
+                com.aetherianartificer.townstead.shift.ShiftScheduleApplier.overrideToRest(self);
+                FatigueData.setRestOverride(fatigue, true, SleepReason.FATIGUE_REST);
+            }
+        } else if (overrideActive
+                && FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD) {
+            // Restore the pre-override schedule first, then let apply() overwrite
+            // if the villager has custom shifts. This prevents the schedule from
+            // staying stuck on all-REST for villagers without custom shifts,
+            // since apply() is a no-op for them.
+            if (state.preOverrideSchedule != null) {
+                self.getBrain().setSchedule(state.preOverrideSchedule);
+                state.preOverrideSchedule = null;
+            }
+            com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(self);
+            FatigueData.setRestOverride(fatigue, false, SleepReason.NONE);
+        }
+
+        // --- Rest decisions (after schedule restore so wake check sees correct schedule) ---
         RestDecision restDecision = RestCoordinator.decide(
                 RestCoordinator.capture(self, fatigue, hasValidSleepingBed(self), false)
         );
         RestCoordinator.recordDecision(self, fatigue, restDecision, null);
 
+        // Sleeping villagers should not keep executing stale movement orders.
         if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
+            self.getSleepingPos().ifPresent(pos ->
+                    EmergencyBedClaims.renew(level, self.getUUID(), pos, level.getGameTime() + 200L));
             if (restDecision.shouldWake()) {
                 EmergencyBedClaims.releaseAll(level, self.getUUID());
                 self.stopSleeping();
-            } else {
-                self.getSleepingPos().ifPresent(pos ->
-                        EmergencyBedClaims.renew(level, self.getUUID(), pos, level.getGameTime() + 200L));
-                self.getNavigation().stop();
-                self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-                self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
-                self.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
             }
-        }
-
-        // --- Fatigue schedule override ---
-        if (restDecision.shouldOverrideScheduleToRest()) {
-            if (!state.scheduleOverridden) {
-                com.aetherianartificer.townstead.shift.ShiftScheduleApplier.overrideToRest(self);
-                state.scheduleOverridden = true;
-                RestDebugData.setRestOverride(fatigue, true, restDecision.reason());
-            }
-        } else if (FatigueData.getFatigue(fatigue) < FatigueData.DROWSY_THRESHOLD
-                && (state.scheduleOverridden || currentScheduleActivity(self) == Activity.REST)) {
-            com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(self);
-            state.scheduleOverridden = false;
-            RestDebugData.setRestOverride(fatigue, false, SleepReason.NONE);
+            self.getNavigation().stop();
+            self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+            self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+            self.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
         }
 
         // --- Mood drift (dayTime-based) ---
@@ -366,8 +377,8 @@ public final class FatigueVillagerTicker {
         private boolean lastSyncedCollapsed = false;
         private double lastPenalty = 0.0;
         private float fatigueResidue = 0f;
-        private boolean scheduleOverridden = false;
         private long lastFatigueDayTime = -1;
         private long lastMoodDayTime = -1;
+        private Schedule preOverrideSchedule = null;
     }
 }

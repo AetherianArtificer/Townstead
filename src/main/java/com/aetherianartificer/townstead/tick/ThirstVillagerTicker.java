@@ -227,7 +227,10 @@ public final class ThirstVillagerTicker {
         ItemStack drink = findBestDrink(self.getInventory(), bridge);
         if (drink.isEmpty()) return false;
         if (!VillagerDrinkingManager.startDrinking(self, drink)) return false;
-        drink.shrink(1);
+        ItemStack remainder = bridge.onDrinkConsumed(drink);
+        if (remainder.isEmpty()) {
+            drink.shrink(1);
+        }
         return true;
     }
 

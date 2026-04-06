@@ -31,7 +31,8 @@ public final class RestCoordinator {
         SleepBlockReason blockReason = determineBlockReason(context, reason);
 
         boolean shouldWake = context.sleeping()
-                && (blockReason == SleepBlockReason.INVALID_SLEEPING_BED
+                && (blockReason == SleepBlockReason.ATTACK_TARGET
+                || blockReason == SleepBlockReason.INVALID_SLEEPING_BED
                 || (!context.isScheduledRest() && !context.isDrowsyOrWorse()));
         boolean shouldSeekBed = !context.sleeping()
                 && reason == SleepReason.FATIGUE_REST
