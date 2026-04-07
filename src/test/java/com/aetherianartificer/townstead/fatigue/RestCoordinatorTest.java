@@ -21,6 +21,7 @@ class RestCoordinatorTest {
                 false,
                 true,
                 true,
+                false,
                 false
         ));
 
@@ -42,6 +43,7 @@ class RestCoordinatorTest {
                 false,
                 true,
                 true,
+                false,
                 false
         ));
 
@@ -62,6 +64,7 @@ class RestCoordinatorTest {
                 true,
                 true,
                 true,
+                false,
                 false
         ));
 
@@ -82,6 +85,7 @@ class RestCoordinatorTest {
                 false,
                 true,
                 false,
+                false,
                 false
         ));
 
@@ -100,6 +104,7 @@ class RestCoordinatorTest {
                 false,
                 false,
                 true,
+                false,
                 false,
                 false
         ));
@@ -120,10 +125,65 @@ class RestCoordinatorTest {
                 false,
                 false,
                 false,
-                true
+                true,
+                false
         ));
 
         assertEquals(SleepReason.SCHEDULED_REST, decision.reason());
         assertTrue(decision.shouldHoldGuardAtRest());
+    }
+
+    @Test
+    void fatigueOverrideSleepingStaysInBedUntilFullyRecovered() {
+        // Fatigue at 1 — should NOT wake during override (not fully recovered)
+        RestDecision stillFatigued = RestCoordinator.decide(new RestContext(
+                true,
+                Activity.WORK,
+                1,
+                false,
+                true,
+                false,
+                false,
+                true,
+                true,
+                false,
+                true  // restOverrideActive
+        ));
+        assertFalse(stillFatigued.shouldWake(), "should stay in bed until fully recovered during fatigue override");
+
+        // Fatigue at 0 — should wake during override
+        RestDecision rested = RestCoordinator.decide(new RestContext(
+                true,
+                Activity.WORK,
+                0,
+                false,
+                true,
+                false,
+                false,
+                true,
+                true,
+                false,
+                true  // restOverrideActive
+        ));
+        assertTrue(rested.shouldWake(), "should wake once fully recovered during fatigue override");
+    }
+
+    @Test
+    void normalScheduledSleepWakesAtDrowsyThreshold() {
+        // Fatigue just below DROWSY (11) during normal scheduled rest on WORK schedule — should wake
+        RestDecision decision = RestCoordinator.decide(new RestContext(
+                true,
+                Activity.WORK,
+                FatigueData.DROWSY_THRESHOLD - 1,
+                false,
+                true,
+                false,
+                false,
+                true,
+                true,
+                false,
+                false  // NOT override
+        ));
+        assertTrue(decision.shouldWake(), "should wake once below drowsy during normal sleep");
     }
 }

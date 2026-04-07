@@ -12,9 +12,13 @@ public final class RestCoordinator {
     private RestCoordinator() {}
 
     public static RestContext capture(VillagerEntityMCA villager, CompoundTag fatigue, boolean hasValidSleepingBed, boolean guardRole) {
+        return capture(villager, fatigue, hasValidSleepingBed, guardRole, currentScheduleActivity(villager), false);
+    }
+
+    public static RestContext capture(VillagerEntityMCA villager, CompoundTag fatigue, boolean hasValidSleepingBed, boolean guardRole, Activity scheduleActivity, boolean restOverrideActive) {
         return new RestContext(
                 TownsteadConfig.isVillagerFatigueEnabled(),
-                currentScheduleActivity(villager),
+                scheduleActivity,
                 FatigueData.getFatigue(fatigue),
                 FatigueData.isCollapsed(fatigue),
                 villager.isSleeping(),
@@ -22,7 +26,8 @@ public final class RestCoordinator {
                 villager.getLastHurtByMob() != null,
                 villager.getBrain().getMemory(MemoryModuleType.HOME).isPresent(),
                 hasValidSleepingBed,
-                guardRole
+                guardRole,
+                restOverrideActive
         );
     }
 
@@ -32,7 +37,8 @@ public final class RestCoordinator {
 
         boolean shouldWake = context.sleeping()
                 && (blockReason == SleepBlockReason.ATTACK_TARGET
-                || blockReason == SleepBlockReason.INVALID_SLEEPING_BED);
+                || blockReason == SleepBlockReason.INVALID_SLEEPING_BED
+                || (!context.isScheduledRest() && !context.needsMoreRest()));
         boolean shouldSeekBed = !context.sleeping()
                 && reason == SleepReason.FATIGUE_REST
                 && blockReason == SleepBlockReason.NONE;

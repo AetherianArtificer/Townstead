@@ -11,7 +11,11 @@ version = "${version}"
 displayName = "Townstead"
 authors = "AetherianArtificer"
 description = '''An unofficial expansion for MCA Reborn with additional villager needs, buildings, jobs, and mod integrations.'''
-logoFile = "townstead_logo.png"
+logoFile = "townstead-title-hd.png"
+displayURL = "https://www.curseforge.com/minecraft/mc-mods/townstead"
+
+[modproperties.townstead]
+catalogueImageIcon = "townstead-title-square-hd.png"
 
 [[dependencies.townstead]]
 modId = "neoforge"

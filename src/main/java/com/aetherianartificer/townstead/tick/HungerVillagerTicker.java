@@ -60,6 +60,10 @@ public final class HungerVillagerTicker {
         *///?}
         boolean hungerChanged = VillagerEatingManager.tickAndFinalize(self, hunger);
 
+        long dayTime = level.getDayTime();
+        if (state.lastDayTime < 0) state.lastDayTime = dayTime;
+        long dayTimeDelta = Math.max(0, dayTime - state.lastDayTime);
+        state.lastDayTime = dayTime;
         int currentHungerLevel = HungerData.getHunger(hunger);
         if (HungerData.isEatingMode(hunger)) {
             if (currentHungerLevel >= HungerData.ADEQUATE_THRESHOLD) HungerData.setEatingMode(hunger, false);
@@ -74,19 +78,19 @@ public final class HungerVillagerTicker {
         state.prevZ = self.getZ();
         if (distSq > 0.0025) {
             float dist = (float) Math.sqrt(distSq);
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + dist * HungerData.EXHAUSTION_MOVEMENT_PER_BLOCK);
+            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + dist * HungerData.EXHAUSTION_MOVEMENT_PER_BLOCK * dayTimeDelta);
         }
 
         VillagerBrain<?> brain = self.getVillagerBrain();
         Chore currentJob = brain.getCurrentJob();
         if (brain.isPanicking() || self.getLastHurtByMob() != null) {
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_COMBAT);
+            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_COMBAT * dayTimeDelta);
         } else if (currentJob != Chore.NONE) {
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_CHORE);
+            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_CHORE * dayTimeDelta);
         } else if (isGuardPatrolling(self)) {
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_GUARD_PATROL);
+            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_GUARD_PATROL * dayTimeDelta);
         } else if (!isResting(self)) {
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_AWAKE_BASELINE);
+            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_AWAKE_BASELINE * dayTimeDelta);
         }
 
         hungerChanged |= HungerData.processExhaustion(hunger);
@@ -103,46 +107,43 @@ public final class HungerVillagerTicker {
                 passiveInterval = (int)(passiveInterval / FatigueData.DROWSY_HUNGER_MULTIPLIER);
             }
         }
-        if (!isResting(self) && self.tickCount % passiveInterval == 0) {
-            hungerChanged |= HungerData.passiveDrain(hunger);
-        }
-
+        if (state.lastPassiveDrainDayTime < 0) state.lastPassiveDrainDayTime = dayTime;
         Activity currentActivity = currentScheduleActivity(self);
-        if (state.lastActivity != null && currentActivity != state.lastActivity) {
-            int h = HungerData.getHunger(hunger);
-            long gameTime = self.level().getGameTime();
-            long lastAte = HungerData.getLastAteTime(hunger);
-            boolean canEat = (gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL
-                    && !VillagerEatingManager.isEating(self)
-                    && !VillagerDrinkingManager.isDrinking(self);
-            if (canEat) {
-                boolean shouldEat = false;
-                if (state.lastActivity == Activity.REST && h < HungerData.BREAKFAST_THRESHOLD) {
-                    shouldEat = true;
-                } else if (state.lastActivity == Activity.WORK && h < HungerData.LUNCH_THRESHOLD) {
-                    shouldEat = true;
-                } else if (currentActivity == Activity.REST && h < HungerData.DINNER_THRESHOLD) {
-                    shouldEat = true;
+        boolean resting = currentActivity == Activity.REST;
+        if (resting) {
+            // Keep tracking current while resting so wake-up doesn't cause burst drain
+            state.lastPassiveDrainDayTime = dayTime;
+        } else {
+            boolean drained = false;
+            int drainIterations = 0;
+            while (dayTime - state.lastPassiveDrainDayTime >= passiveInterval && drainIterations < 100) {
+                state.lastPassiveDrainDayTime += passiveInterval;
+                hungerChanged |= HungerData.passiveDrain(hunger);
+                drained = true;
+                drainIterations++;
+            }
+
+            // Activity-gated eating: check on passive drain interval, guarded by MIN_EAT_INTERVAL
+            if (drained) {
+                int h = HungerData.getHunger(hunger);
+                int threshold = (currentActivity == Activity.IDLE || currentActivity == Activity.MEET)
+                        ? HungerData.LUNCH_THRESHOLD
+                        : HungerData.EMERGENCY_THRESHOLD;
+                if (h < threshold) {
+                    long gameTime = level.getGameTime();
+                    long lastAte = HungerData.getLastAteTime(hunger);
+                    if ((gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL
+                            && !VillagerEatingManager.isEating(self)
+                            && !VillagerDrinkingManager.isDrinking(self)) {
+                        hungerChanged |= tryEatFromInventory(self);
+                    }
                 }
-                if (shouldEat && currentActivity != Activity.REST) hungerChanged |= tryEatFromInventory(self);
-            }
-        }
-        state.lastActivity = currentActivity;
-
-        if (currentActivity != Activity.REST && HungerData.getHunger(hunger) < HungerData.ADEQUATE_THRESHOLD) {
-            long gameTime = self.level().getGameTime();
-            long lastAte = HungerData.getLastAteTime(hunger);
-            long minEatInterval = HungerData.isEatingMode(hunger)
-                    ? 20L
-                    : (HungerData.getHunger(hunger) < HungerData.EMERGENCY_THRESHOLD ? 20L : HungerData.MIN_EAT_INTERVAL);
-            if ((gameTime - lastAte) >= minEatInterval
-                    && !VillagerEatingManager.isEating(self)
-                    && !VillagerDrinkingManager.isDrinking(self)) {
-                hungerChanged |= tryEatFromInventory(self);
             }
         }
 
-        if (self.tickCount % HungerData.MOOD_CHECK_INTERVAL == 0) {
+        if (state.lastMoodDayTime < 0) state.lastMoodDayTime = dayTime;
+        if (dayTime - state.lastMoodDayTime >= HungerData.MOOD_CHECK_INTERVAL) {
+            state.lastMoodDayTime = dayTime;
             int h = HungerData.getHunger(hunger);
             HungerData.HungerState moodState = HungerData.getState(h);
             float pressure = HungerData.getMoodPressure(moodState);
@@ -158,7 +159,9 @@ public final class HungerVillagerTicker {
             HungerData.setMoodDrift(hunger, drift);
         }
 
-        updateSpeedModifier(self, HungerData.getHunger(hunger));
+        if (!self.isBaby()) {
+            updateSpeedModifier(self, HungerData.getHunger(hunger));
+        }
         //? if neoforge {
         self.setData(Townstead.HUNGER_DATA, hunger);
         //?} else {
@@ -278,7 +281,9 @@ public final class HungerVillagerTicker {
     private static final class TickState {
         private double prevX;
         private double prevZ;
-        private Activity lastActivity;
         private int lastSyncedHunger = -1;
+        private long lastDayTime = -1;
+        private long lastPassiveDrainDayTime = -1;
+        private long lastMoodDayTime = -1;
     }
 }

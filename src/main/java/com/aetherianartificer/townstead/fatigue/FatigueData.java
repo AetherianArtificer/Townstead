@@ -73,6 +73,9 @@ public final class FatigueData {
     private static final String KEY_REST_DEBUG_REASON = "restDebugReason";
     private static final String KEY_REST_DEBUG_BLOCK = "restDebugBlock";
     private static final String KEY_REST_DEBUG_TARGET = "restDebugTarget";
+    private static final String KEY_EMERGENCY_BED = "emergencyBedPos";
+    private static final String KEY_SAVED_HOME_POS = "savedHomePos";
+    private static final String KEY_SAVED_HOME_DIM = "savedHomeDim";
 
     // --- NBT keys for editor sync ---
     public static final String EDITOR_KEY_FATIGUE = "townstead_fatigue";
@@ -124,6 +127,66 @@ public final class FatigueData {
 
     public static SleepReason getRestOverrideReason(CompoundTag tag) {
         return SleepReason.fromId(tag.getString(KEY_REST_OVERRIDE_REASON));
+    }
+
+    public static boolean hasEmergencyBed(CompoundTag tag) {
+        return tag.contains(KEY_EMERGENCY_BED);
+    }
+
+    public static BlockPos getEmergencyBed(CompoundTag tag) {
+        return tag.contains(KEY_EMERGENCY_BED) ? BlockPos.of(tag.getLong(KEY_EMERGENCY_BED)) : null;
+    }
+
+    public static void setEmergencyBed(CompoundTag tag, BlockPos pos) {
+        tag.putLong(KEY_EMERGENCY_BED, pos.asLong());
+    }
+
+    public static void clearEmergencyBed(CompoundTag tag) {
+        tag.remove(KEY_EMERGENCY_BED);
+    }
+
+    public static boolean hasSavedHome(CompoundTag tag) {
+        return tag.contains(KEY_SAVED_HOME_DIM);
+    }
+
+    public static void saveHome(CompoundTag tag, net.minecraft.core.GlobalPos home) {
+        tag.putLong(KEY_SAVED_HOME_POS, home.pos().asLong());
+        tag.putString(KEY_SAVED_HOME_DIM, home.dimension().location().toString());
+    }
+
+    /**
+     * Mark that the villager had no HOME before the emergency bed override.
+     * Uses a sentinel dimension value to distinguish from "no saved home data".
+     */
+    public static void saveNoHome(CompoundTag tag) {
+        tag.putLong(KEY_SAVED_HOME_POS, Long.MIN_VALUE);
+        tag.putString(KEY_SAVED_HOME_DIM, "");
+    }
+
+    public static net.minecraft.core.GlobalPos getSavedHome(CompoundTag tag) {
+        if (!hasSavedHome(tag)) return null;
+        String dim = tag.getString(KEY_SAVED_HOME_DIM);
+        if (dim.isEmpty()) return null; // was homeless
+        long pos = tag.getLong(KEY_SAVED_HOME_POS);
+        //? if >=1.21 {
+        net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> key =
+                net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+                        net.minecraft.resources.ResourceLocation.parse(dim));
+        //?} else {
+        /*net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> key =
+                net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+                        new net.minecraft.resources.ResourceLocation(dim));
+        *///?}
+        return net.minecraft.core.GlobalPos.of(key, BlockPos.of(pos));
+    }
+
+    public static boolean wasPreviouslyHomeless(CompoundTag tag) {
+        return hasSavedHome(tag) && tag.getString(KEY_SAVED_HOME_DIM).isEmpty();
+    }
+
+    public static void clearSavedHome(CompoundTag tag) {
+        tag.remove(KEY_SAVED_HOME_POS);
+        tag.remove(KEY_SAVED_HOME_DIM);
     }
 
     public static void setRestDebugDecision(CompoundTag tag, SleepReason reason, SleepBlockReason blockReason, BlockPos targetBed) {
