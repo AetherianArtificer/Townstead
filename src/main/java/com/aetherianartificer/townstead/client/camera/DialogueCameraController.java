@@ -6,8 +6,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 
 /**
- * Smoothly rotates the player's camera to face a target entity during dialogue,
- * and smoothly restores the original orientation on close.
+ * Smoothly rotates the player's camera to face a target entity during dialogue.
+ * Uses frame-rate independent interpolation for buttery smooth movement.
  */
 public class DialogueCameraController {
     private final float originalYaw;
@@ -17,8 +17,9 @@ public class DialogueCameraController {
     private float currentPitch;
     private boolean restoring;
     private int restoreTicks;
-    private static final float LERP_SPEED = 0.1f;
-    private static final float RESTORE_SPEED = 0.15f;
+    private long lastTickTime;
+    private static final float APPROACH_SPEED = 3.0f; // per second
+    private static final float RESTORE_SPEED = 4.0f;
     private static final int MAX_RESTORE_TICKS = 15;
 
     public DialogueCameraController(Entity target) {
@@ -28,14 +29,24 @@ public class DialogueCameraController {
         this.originalPitch = player != null ? player.getXRot() : 0;
         this.currentYaw = originalYaw;
         this.currentPitch = originalPitch;
+        this.lastTickTime = System.nanoTime();
     }
 
-    public void tick() {
+    /**
+     * Call every frame (from render), not every tick.
+     * Uses real elapsed time for frame-rate independent smoothing.
+     */
+    public void update() {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) return;
 
+        long now = System.nanoTime();
+        float dt = (now - lastTickTime) / 1_000_000_000f; // seconds
+        dt = Math.min(dt, 0.1f); // cap to avoid jumps on lag spikes
+        lastTickTime = now;
+
         if (restoring) {
-            tickRestore(player);
+            updateRestore(player, dt);
             return;
         }
 
@@ -44,54 +55,48 @@ public class DialogueCameraController {
         float targetYaw = computeTargetYaw(player);
         float targetPitch = computeTargetPitch(player);
 
-        currentYaw = lerpAngle(LERP_SPEED, currentYaw, targetYaw);
-        currentPitch = Mth.lerp(LERP_SPEED, currentPitch, targetPitch);
+        float lerpFactor = 1.0f - (float) Math.exp(-APPROACH_SPEED * dt);
+        currentYaw = lerpAngle(lerpFactor, currentYaw, targetYaw);
+        currentPitch = Mth.lerp(lerpFactor, currentPitch, targetPitch);
 
-        player.setYRot(currentYaw);
-        player.setXRot(currentPitch);
-        player.yRotO = currentYaw;
-        player.xRotO = currentPitch;
+        applyToPlayer(player);
     }
 
     /**
-     * Begin smoothly restoring the camera to the original orientation.
-     * Call this when closing the dialogue. The controller will continue
-     * ticking via {@link #tickRestore} until restoration is complete.
+     * Still called from tick() for restore completion detection.
      */
+    public void tick() {
+        if (restoring) restoreTicks++;
+    }
+
     public void beginRestore() {
         restoring = true;
         restoreTicks = 0;
-        LocalPlayer player = Minecraft.getInstance().player;
-        if (player != null) {
-            currentYaw = player.getYRot();
-            currentPitch = player.getXRot();
-        }
+        lastTickTime = System.nanoTime();
     }
 
-    /**
-     * @return true if the camera has finished restoring
-     */
     public boolean isRestoreComplete() {
         return restoring && restoreTicks >= MAX_RESTORE_TICKS;
     }
 
-    private void tickRestore(LocalPlayer player) {
-        restoreTicks++;
-        currentYaw = lerpAngle(RESTORE_SPEED, currentYaw, originalYaw);
-        currentPitch = Mth.lerp(RESTORE_SPEED, currentPitch, originalPitch);
-
-        player.setYRot(currentYaw);
-        player.setXRot(currentPitch);
-        player.yRotO = currentYaw;
-        player.xRotO = currentPitch;
+    private void updateRestore(LocalPlayer player, float dt) {
+        float lerpFactor = 1.0f - (float) Math.exp(-RESTORE_SPEED * dt);
+        currentYaw = lerpAngle(lerpFactor, currentYaw, originalYaw);
+        currentPitch = Mth.lerp(lerpFactor, currentPitch, originalPitch);
 
         if (restoreTicks >= MAX_RESTORE_TICKS) {
-            // Snap to exact original to avoid floating point drift
-            player.setYRot(originalYaw);
-            player.setXRot(originalPitch);
-            player.yRotO = originalYaw;
-            player.xRotO = originalPitch;
+            currentYaw = originalYaw;
+            currentPitch = originalPitch;
         }
+
+        applyToPlayer(player);
+    }
+
+    private void applyToPlayer(LocalPlayer player) {
+        player.yRotO = player.getYRot();
+        player.xRotO = player.getXRot();
+        player.setYRot(currentYaw);
+        player.setXRot(currentPitch);
     }
 
     private float computeTargetYaw(LocalPlayer player) {

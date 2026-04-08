@@ -93,7 +93,7 @@ public class RpgDialogueScreen extends Screen {
     public void tick() {
         dialogueBox.tick();
         choicePanel.tick();
-        if (cameraController != null) cameraController.tick();
+        if (cameraController != null) cameraController.tick(); // for restore completion tracking
         tickParticles();
 
         switch (state) {
@@ -132,6 +132,9 @@ public class RpgDialogueScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         // Hide the HUD (crosshair, hotbar, etc.) during dialogue
         Objects.requireNonNull(minecraft).options.hideGui = true;
+
+        // Update camera every frame for smooth interpolation
+        if (cameraController != null) cameraController.update();
 
         if (state == DialogueState.CLOSING) return;
         dialogueBox.render(graphics, font);
