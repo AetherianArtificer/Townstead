@@ -200,8 +200,9 @@ public class DialogueBox {
         int clipRight = x + width - FRAME_THICKNESS;
         int clipBottom = y + height - FRAME_THICKNESS - PADDING;
 
-        // Scissor clips any scaled text (e.g. yell) that overflows the box edge
-        g.enableScissor(textX, textY, clipRight, clipBottom);
+        // Scissor clips only horizontal overflow (scaled text like yell)
+        // Top/bottom use full screen range so animations aren't cut off
+        g.enableScissor(textX, 0, clipRight, y + height + 100);
         List<FormattedCharSequence> lines = typewriter.getRevealedLines();
         EffectRenderer.renderLines(g, font, lines,
                 textX, textY, LINE_HEIGHT, aa(TEXT_COLOR, a),
