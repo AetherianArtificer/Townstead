@@ -403,7 +403,7 @@
   "townstead.key.category": "Townstead",
   "townstead.key.talk": "Talk to Villager",
 
-  "townstead.dialogue.back": "\u2190 Back",
+  "townstead.dialogue.back": "Actually, never mind...",
   "townstead.dialogue.main.chat": "Let's chat for a bit...",
   "townstead.dialogue.main.joke": "I've got a joke for you!",
   "townstead.dialogue.main.story": "Let me tell you a story...",
@@ -421,5 +421,34 @@
   "townstead.dialogue.main.divorceInitiate": "We need to talk about us...",
   "townstead.dialogue.main.divorcePapers": "I need divorce papers.",
   "townstead.dialogue.main.hire": "I could use your help...",
-  "townstead.dialogue.main.stay": "Why not settle down here?"
+  "townstead.dialogue.main.stay": "Why not settle down here?",
+
+  "townstead.dialogue.greet.short": "I'm doing fine.",
+  "townstead.dialogue.greet.kind": "I'm well, how about you?",
+  "townstead.dialogue.greet.shake_hand": "*Extend your hand*",
+
+  "townstead.dialogue.joke.creative": "Here's a classic one...",
+  "townstead.dialogue.joke.animal": "So, this animal walks into a bar...",
+  "townstead.dialogue.joke.monster": "You won't believe what a creeper told me...",
+
+  "townstead.dialogue.story.generic": "Let me tell you about something...",
+  "townstead.dialogue.story.exploring": "I've been exploring the wilds...",
+  "townstead.dialogue.story.nether": "I ventured into the Nether...",
+  "townstead.dialogue.story.enderdragon": "I faced the Ender Dragon...",
+  "townstead.dialogue.story.wither": "I summoned the Wither...",
+
+  "townstead.dialogue.hire.short": "Just for a few days. (5 emeralds)",
+  "townstead.dialogue.hire.long": "For a full week. (10 emeralds)",
+  "townstead.dialogue.hire.cancel": "Actually, never mind.",
+
+  "townstead.dialogue.confirm.yes": "Yes.",
+  "townstead.dialogue.confirm.no": "No, forget it.",
+
+  "townstead.dialogue.rps.rock": "Rock!",
+  "townstead.dialogue.rps.paper": "Paper!",
+  "townstead.dialogue.rps.scissor": "Scissors!",
+
+  "townstead.dialogue.first.exploring": "Just passing through.",
+  "townstead.dialogue.first.settling": "I'm looking for a place to settle.",
+  "townstead.dialogue.first.spent_night": "I stayed at the inn last night."
 }

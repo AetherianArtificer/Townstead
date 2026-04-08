@@ -28,11 +28,7 @@ public final class DialogueMenuOrganizer {
         boolean isLeaf() { return mcaAnswer != null; }
 
         Component displayText() {
-            Component text = Component.translatable(displayKey);
-            if (isHub()) {
-                return Component.literal("").append(text).append(Component.literal(" \u2192"));
-            }
-            return text;
+            return Component.translatable(displayKey);
         }
     }
 
@@ -130,6 +126,67 @@ public final class DialogueMenuOrganizer {
     /** Whether this is the "main" question that should use hub mode. */
     public static boolean isMainQuestion(String questionId) {
         return "main".equals(questionId);
+    }
+
+    /**
+     * RPG phrasing overrides for sub-dialogue answers.
+     * Key: "questionId.answerId" → Townstead translation key.
+     */
+    private static final Map<String, String> RPG_PHRASING = new HashMap<>();
+    static {
+        // Greetings
+        rpg("greet", "short", "townstead.dialogue.greet.short");
+        rpg("greet", "kind", "townstead.dialogue.greet.kind");
+        rpg("greet", "shake_hand", "townstead.dialogue.greet.shake_hand");
+
+        // Jokes
+        rpg("joke", "creative", "townstead.dialogue.joke.creative");
+        rpg("joke", "animal", "townstead.dialogue.joke.animal");
+        rpg("joke", "monster", "townstead.dialogue.joke.monster");
+
+        // Stories
+        rpg("story", "generic", "townstead.dialogue.story.generic");
+        rpg("story", "exploring", "townstead.dialogue.story.exploring");
+        rpg("story", "nether", "townstead.dialogue.story.nether");
+        rpg("story", "enderdragon", "townstead.dialogue.story.enderdragon");
+        rpg("story", "wither", "townstead.dialogue.story.wither");
+
+        // Hire
+        rpg("hire", "short", "townstead.dialogue.hire.short");
+        rpg("hire", "long", "townstead.dialogue.hire.long");
+        rpg("hire", "cancel", "townstead.dialogue.hire.cancel");
+
+        // Confirmations
+        rpg("procreate", "confirm", "townstead.dialogue.confirm.yes");
+        rpg("procreate", "cancel", "townstead.dialogue.confirm.no");
+        rpg("procreate_engaged", "confirm", "townstead.dialogue.confirm.yes");
+        rpg("procreate_engaged", "cancel", "townstead.dialogue.confirm.no");
+        rpg("divorce", "confirm", "townstead.dialogue.confirm.yes");
+        rpg("divorce", "cancel", "townstead.dialogue.confirm.no");
+        rpg("adopt", "confirm", "townstead.dialogue.confirm.yes");
+        rpg("adopt", "cancel", "townstead.dialogue.confirm.no");
+
+        // Rock Paper Scissors
+        rpg("rock_paper_scissor", "rock", "townstead.dialogue.rps.rock");
+        rpg("rock_paper_scissor", "paper", "townstead.dialogue.rps.paper");
+        rpg("rock_paper_scissor", "scissor", "townstead.dialogue.rps.scissor");
+
+        // First meeting
+        rpg("first.question", "exploring", "townstead.dialogue.first.exploring");
+        rpg("first.question", "settling", "townstead.dialogue.first.settling");
+        rpg("first.question", "spent_night", "townstead.dialogue.first.spent_night");
+    }
+
+    private static void rpg(String question, String answer, String langKey) {
+        RPG_PHRASING.put(question + "." + answer, langKey);
+    }
+
+    /**
+     * Get the RPG-phrased translation key for a dialogue answer.
+     * Returns null if no override exists (caller should fall back to MCA's default).
+     */
+    public static String getRpgPhrasing(String questionId, String answerId) {
+        return RPG_PHRASING.get(questionId + "." + answerId);
     }
 
     private static boolean isKnownAnswer(String answer) {

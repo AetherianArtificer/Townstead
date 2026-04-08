@@ -67,7 +67,8 @@ public class ChoicePanel {
             return new DisplayEntry(Component.translatable("townstead.dialogue.back"), null, null, true);
         }
         static DisplayEntry raw(String questionId, String answer) {
-            String key = Question.getTranslationKey(questionId, answer);
+            String rpgKey = DialogueMenuOrganizer.getRpgPhrasing(questionId, answer);
+            String key = rpgKey != null ? rpgKey : Question.getTranslationKey(questionId, answer);
             return new DisplayEntry(Component.translatable(key), answer, null, false);
         }
         boolean isHub() { return subMenuId != null; }
@@ -151,7 +152,7 @@ public class ChoicePanel {
 
                 if (highlighted) {
                     int indicatorY = entryY + (entryH - LINE_HEIGHT) / 2;
-                    String indicator = entry.isBack() ? "\u25C2" : "\u25B8";
+                    String indicator = "\u25B8";
                     graphics.drawString(font, indicator, x + PADDING, indicatorY, HOVER_COLOR);
                 }
 
