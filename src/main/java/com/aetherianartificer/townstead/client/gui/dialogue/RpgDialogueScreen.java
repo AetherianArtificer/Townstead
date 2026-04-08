@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.gui.dialogue;
 
 import com.aetherianartificer.townstead.client.camera.DialogueCameraController;
+import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffects;
 import net.conczin.mca.entity.VillagerLike;
 import net.conczin.mca.entity.ai.Memories;
 //? if neoforge {
@@ -14,7 +15,9 @@ import net.conczin.mca.network.c2s.InteractionDialogueMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
@@ -46,6 +49,8 @@ public class RpgDialogueScreen extends Screen {
     private int awaitingResponseTimer;
     private boolean userInitiatedClose;
     private boolean initialized;
+    private boolean debugEffects;
+    private int debugEffectIndex;
 
     private enum DialogueState {
         AWAITING_DIALOGUE,
@@ -79,10 +84,13 @@ public class RpgDialogueScreen extends Screen {
         }
     }
 
+    private int particleTimer;
+
     @Override
     public void tick() {
         dialogueBox.tick();
         cameraController.tick();
+        tickParticles();
 
         switch (state) {
             case TYPEWRITER_PLAYING -> {
@@ -125,6 +133,12 @@ public class RpgDialogueScreen extends Screen {
         dialogueBox.render(graphics, font);
         choicePanel.render(graphics, font, mouseX, mouseY);
         renderHearts(graphics);
+
+        if (debugEffects) {
+            DialogueEffects[] all = DialogueEffects.all();
+            String label = "[Debug] Effect: " + all[debugEffectIndex].getDisplayName() + " (PgUp/PgDn to cycle, F8 to exit)";
+            graphics.drawString(font, label, 4, 4, 0xFFFF8800);
+        }
     }
 
 
@@ -220,7 +234,47 @@ public class RpgDialogueScreen extends Screen {
                 return true;
             }
         }
+        // Debug: F8 toggles effect debug, PageUp/PageDown cycles effects
+        if (keyCode == GLFW.GLFW_KEY_F8) {
+            debugEffects = !debugEffects;
+            if (!debugEffects) {
+                dialogueBox.setEffect(DialogueEffects.NORMAL);
+                debugEffectIndex = 0;
+            }
+            return true;
+        }
+        if (debugEffects) {
+            DialogueEffects[] all = DialogueEffects.all();
+            if (keyCode == GLFW.GLFW_KEY_PAGE_UP) {
+                debugEffectIndex = Math.floorMod(debugEffectIndex - 1, all.length);
+                dialogueBox.setEffect(all[debugEffectIndex]);
+                return true;
+            }
+            if (keyCode == GLFW.GLFW_KEY_PAGE_DOWN) {
+                debugEffectIndex = Math.floorMod(debugEffectIndex + 1, all.length);
+                dialogueBox.setEffect(all[debugEffectIndex]);
+                return true;
+            }
+        }
+
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    private void tickParticles() {
+        if (state == DialogueState.CLOSING || state == DialogueState.AWAITING_DIALOGUE) return;
+        if (!(dialogueBox.getEffect() instanceof DialogueEffects effect)) return;
+        SimpleParticleType particle = effect.getParticleType();
+        if (particle == null) return;
+
+        particleTimer++;
+        if (particleTimer % 10 != 0) return; // Spawn every half second
+
+        Entity entity = villager.asEntity();
+        if (entity.level() == null) return;
+        double px = entity.getX() + (entity.level().random.nextDouble() - 0.5) * 1.2;
+        double py = entity.getEyeY() + (entity.level().random.nextDouble() - 0.3) * 0.8;
+        double pz = entity.getZ() + (entity.level().random.nextDouble() - 0.5) * 1.2;
+        entity.level().addParticle(particle, px, py, pz, 0, 0.02, 0);
     }
 
     private void closeByUser() {

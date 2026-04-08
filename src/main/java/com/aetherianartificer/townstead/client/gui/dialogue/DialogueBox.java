@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.client.gui.dialogue;
 
+import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffect;
+import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffects;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -25,6 +27,7 @@ public class DialogueBox {
 
     private final TypewriterText typewriter = new TypewriterText();
     private Component villagerName = Component.empty();
+    private DialogueEffect activeEffect = DialogueEffects.NORMAL;
 
     private int x, y, width, height;
 
@@ -71,19 +74,26 @@ public class DialogueBox {
         int sepY = y + PADDING + NAME_HEIGHT;
         graphics.fill(x + PADDING, sepY, x + width - PADDING, sepY + 1, BORDER_COLOR);
 
-        // Dialogue text (typewriter)
+        // Dialogue text (typewriter + effect)
         int textY = sepY + 4;
         List<FormattedCharSequence> lines = typewriter.getRevealedLines();
-        for (FormattedCharSequence line : lines) {
-            graphics.drawString(font, line, x + PADDING, textY, TEXT_COLOR);
-            textY += LINE_HEIGHT;
-        }
+        EffectRenderer.renderLines(graphics, font, lines,
+                x + PADDING, textY, LINE_HEIGHT, TEXT_COLOR,
+                activeEffect, 0, typewriter.getTotalChars());
 
         // Blinking indicator when text is complete
         if (typewriter.shouldShowIndicator()) {
             String indicator = "\u25B6"; // right-pointing triangle
             graphics.drawString(font, indicator, x + width - PADDING - font.width(indicator), y + height - PADDING - 9, INDICATOR_COLOR);
         }
+    }
+
+    public void setEffect(DialogueEffect effect) {
+        this.activeEffect = effect != null ? effect : DialogueEffects.NORMAL;
+    }
+
+    public DialogueEffect getEffect() {
+        return activeEffect;
     }
 
     public TypewriterText getTypewriter() {

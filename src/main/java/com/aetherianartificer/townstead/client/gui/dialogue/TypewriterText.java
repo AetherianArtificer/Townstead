@@ -85,6 +85,10 @@ public class TypewriterText {
         return totalChars > 0;
     }
 
+    public int getTotalChars() {
+        return totalChars;
+    }
+
     public void setSpeed(int charsPerTick, int ticksPerChar) {
         this.charsPerTick = Math.max(1, charsPerTick);
         this.ticksPerChar = Math.max(1, ticksPerChar);
