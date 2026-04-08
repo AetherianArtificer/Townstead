@@ -71,9 +71,11 @@ public class DialogueBox {
     public void setText(Component text, Font font) {
         int textWidth = width - (FRAME_THICKNESS + PADDING) * 2;
         typewriter.setText(text, font, textWidth);
-        // Calculate how many lines fit in the text area
-        int textAreaHeight = height - FRAME_THICKNESS * 2 - PADDING * 2 - TEXT_TOP_GAP - 12; // 12 for indicator
-        typewriter.setMaxVisibleLines(Math.max(1, textAreaHeight / LINE_HEIGHT));
+        // Calculate how many lines fit: from text start to indicator area
+        int textStartY = FRAME_THICKNESS + PADDING + TEXT_TOP_GAP;
+        int textEndY = height - FRAME_THICKNESS - 14; // 14 for indicator row
+        int textAreaHeight = textEndY - textStartY;
+        typewriter.setMaxVisibleLines(Math.max(2, textAreaHeight / LINE_HEIGHT));
         particles.clear();
 
         // Start fade-in
