@@ -12,19 +12,39 @@ import java.util.List;
 
 /**
  * Bordered RPG-style panel at the bottom of the screen.
- * Displays the villager's name, typewriter-animated dialogue text,
- * and a blinking indicator when text is fully revealed.
+ * Features a decorative frame, name plate tab, typewriter-animated text
+ * with effects, screen-space particles, and smooth fade-in/out.
  */
 public class DialogueBox {
-    private static final int BG_COLOR = 0xCC000000;
-    private static final int BORDER_COLOR = 0xFF555555;
-    private static final int BORDER_HIGHLIGHT = 0xFF888888;
+    // Frame colors — layered for a bevel/depth effect
+    private static final int BG_FILL = 0xCC0A0A14;        // dark blue-black
+    private static final int BORDER_OUTER_LIGHT = 0xFF8888AA; // top/left highlight
+    private static final int BORDER_OUTER_DARK = 0xFF333355;  // bottom/right shadow
+    private static final int BORDER_INNER_LIGHT = 0xFF555577;
+    private static final int BORDER_INNER_DARK = 0xFF222244;
+    private static final int BORDER_ACCENT = 0xFF6666AA;      // accent line
+    private static final int CORNER_ACCENT = 0xFFAAAADD;       // corner decoration
+
+    // Name tab
+    private static final int NAME_TAB_BG = 0xDD0A0A14;
     private static final int NAME_COLOR = 0xFFFFD700;
+
+    // Text
     private static final int TEXT_COLOR = 0xFFFFFFFF;
     private static final int INDICATOR_COLOR = 0xFFFFFFFF;
-    private static final int PADDING = 8;
-    private static final int NAME_HEIGHT = 12;
-    private static final int LINE_HEIGHT = 11;
+
+    // Layout
+    private static final int MARGIN = 20;
+    private static final int FRAME_THICKNESS = 3;
+    private static final int PADDING = 10;
+    private static final int NAME_TAB_HPAD = 10;
+    private static final int NAME_TAB_VPAD = 4;
+    private static final int NAME_TAB_HEIGHT = 16;
+    private static final int TEXT_TOP_GAP = 8;
+    private static final int LINE_HEIGHT = 12;
+
+    // Animation
+    private static final int FADE_TICKS = 6;
 
     private final TypewriterText typewriter = new TypewriterText();
     private final ScreenParticles particles = new ScreenParticles();
@@ -32,8 +52,10 @@ public class DialogueBox {
     private DialogueEffect activeEffect = DialogueEffects.NORMAL;
 
     private int x, y, width, height;
-
-    private static final int MARGIN = 20;
+    private float fadeAlpha = 0f;
+    private boolean fadeIn;
+    private boolean fadeOut;
+    private int fadeTick;
 
     public void layout(int screenWidth, int screenHeight) {
         this.x = MARGIN;
@@ -47,11 +69,16 @@ public class DialogueBox {
     }
 
     public void setText(Component text, Font font) {
-        int textWidth = width - PADDING * 2;
+        int textWidth = width - (FRAME_THICKNESS + PADDING) * 2;
         typewriter.setText(text, font, textWidth);
         particles.clear();
 
-        // Determine the particle effect from the last character's effect tag
+        // Start fade-in
+        fadeIn = true;
+        fadeOut = false;
+        fadeTick = 0;
+
+        // Determine particle effect from last character's tag
         int total = typewriter.getTotalChars();
         if (total > 0) {
             DialogueEffects lastCharEffect = typewriter.getEffectAt(total - 1);
@@ -64,50 +91,133 @@ public class DialogueBox {
         }
     }
 
+    public void beginFadeOut() {
+        fadeOut = true;
+        fadeIn = false;
+        fadeTick = 0;
+    }
+
+    public boolean isFadeOutComplete() {
+        return fadeOut && fadeTick >= FADE_TICKS;
+    }
+
     public void tick() {
         typewriter.tick();
         particles.tick();
+
+        fadeTick++;
+        if (fadeIn) {
+            fadeAlpha = Math.min(1f, (float) fadeTick / FADE_TICKS);
+            if (fadeTick >= FADE_TICKS) fadeIn = false;
+        } else if (fadeOut) {
+            fadeAlpha = Math.max(0f, 1f - (float) fadeTick / FADE_TICKS);
+        } else if (fadeAlpha < 1f) {
+            // Initial appearance
+            fadeAlpha = Math.min(1f, fadeAlpha + 1f / FADE_TICKS);
+        }
     }
 
-    public void render(GuiGraphics graphics, Font font) {
-        // Background
-        graphics.fill(x, y, x + width, y + height, BG_COLOR);
+    public void render(GuiGraphics g, Font font) {
+        if (fadeAlpha <= 0.01f) return;
+        float a = fadeAlpha;
 
-        // Border - outer highlight then inner
-        graphics.fill(x, y, x + width, y + 1, BORDER_HIGHLIGHT);
-        graphics.fill(x, y + height - 1, x + width, y + height, BORDER_COLOR);
-        graphics.fill(x, y, x + 1, y + height, BORDER_HIGHLIGHT);
-        graphics.fill(x + width - 1, y, x + width, y + height, BORDER_COLOR);
+        renderFrame(g, a);
+        renderNameTab(g, font, a);
+        renderText(g, font, a);
+        renderParticles(g);
+        renderIndicator(g, font, a);
+    }
 
-        // Inner border for depth
-        graphics.fill(x + 1, y + 1, x + width - 1, y + 2, BORDER_COLOR);
-        graphics.fill(x + 1, y + 1, x + 2, y + height - 1, BORDER_COLOR);
+    private void renderFrame(GuiGraphics g, float a) {
+        // Background fill
+        g.fill(x, y, x + width, y + height, aa(BG_FILL, a));
 
-        // Villager name
-        graphics.drawString(font, villagerName, x + PADDING, y + PADDING, NAME_COLOR);
+        // Outer border — bevel effect (light top/left, dark bottom/right)
+        // Top
+        g.fill(x, y, x + width, y + 1, aa(BORDER_OUTER_LIGHT, a));
+        g.fill(x, y + 1, x + width, y + 2, aa(BORDER_INNER_LIGHT, a));
+        // Left
+        g.fill(x, y, x + 1, y + height, aa(BORDER_OUTER_LIGHT, a));
+        g.fill(x + 1, y, x + 2, y + height, aa(BORDER_INNER_LIGHT, a));
+        // Bottom
+        g.fill(x, y + height - 1, x + width, y + height, aa(BORDER_OUTER_DARK, a));
+        g.fill(x, y + height - 2, x + width, y + height - 1, aa(BORDER_INNER_DARK, a));
+        // Right
+        g.fill(x + width - 1, y, x + width, y + height, aa(BORDER_OUTER_DARK, a));
+        g.fill(x + width - 2, y, x + width - 1, y + height, aa(BORDER_INNER_DARK, a));
 
-        // Separator line below name
-        int sepY = y + PADDING + NAME_HEIGHT;
-        graphics.fill(x + PADDING, sepY, x + width - PADDING, sepY + 1, BORDER_COLOR);
+        // Inner accent line (inset by FRAME_THICKNESS)
+        int ix = x + FRAME_THICKNESS;
+        int iy = y + FRAME_THICKNESS;
+        int iw = width - FRAME_THICKNESS * 2;
+        int ih = height - FRAME_THICKNESS * 2;
+        g.fill(ix, iy, ix + iw, iy + 1, aa(BORDER_ACCENT, a));
+        g.fill(ix, iy, ix + 1, iy + ih, aa(BORDER_ACCENT, a));
+        g.fill(ix, iy + ih - 1, ix + iw, iy + ih, aa(BORDER_INNER_DARK, a));
+        g.fill(ix + iw - 1, iy, ix + iw, iy + ih, aa(BORDER_INNER_DARK, a));
 
-        // Dialogue text (typewriter + effect)
-        int textY = sepY + 4;
+        // Corner accents — small L-shaped decorations
+        int cs = 6; // corner size
+        // Top-left
+        g.fill(x + 1, y + 1, x + 1 + cs, y + 2, aa(CORNER_ACCENT, a));
+        g.fill(x + 1, y + 1, x + 2, y + 1 + cs, aa(CORNER_ACCENT, a));
+        // Top-right
+        g.fill(x + width - 1 - cs, y + 1, x + width - 1, y + 2, aa(CORNER_ACCENT, a));
+        g.fill(x + width - 2, y + 1, x + width - 1, y + 1 + cs, aa(CORNER_ACCENT, a));
+        // Bottom-left
+        g.fill(x + 1, y + height - 2, x + 1 + cs, y + height - 1, aa(CORNER_ACCENT, a));
+        g.fill(x + 1, y + height - 1 - cs, x + 2, y + height - 1, aa(CORNER_ACCENT, a));
+        // Bottom-right
+        g.fill(x + width - 1 - cs, y + height - 2, x + width - 1, y + height - 1, aa(CORNER_ACCENT, a));
+        g.fill(x + width - 2, y + height - 1 - cs, x + width - 1, y + height - 1, aa(CORNER_ACCENT, a));
+    }
+
+    private void renderNameTab(GuiGraphics g, Font font, float a) {
+        int nameW = font.width(villagerName) + NAME_TAB_HPAD * 2;
+        int tabX = x + FRAME_THICKNESS + PADDING;
+        int tabY = y - NAME_TAB_HEIGHT + 2; // overlaps the top border slightly
+
+        // Tab background
+        g.fill(tabX, tabY, tabX + nameW, y + 1, aa(NAME_TAB_BG, a));
+
+        // Tab border (top and sides only, bottom merges with box)
+        g.fill(tabX, tabY, tabX + nameW, tabY + 1, aa(BORDER_OUTER_LIGHT, a));
+        g.fill(tabX, tabY, tabX + 1, y, aa(BORDER_OUTER_LIGHT, a));
+        g.fill(tabX + nameW - 1, tabY, tabX + nameW, y, aa(BORDER_OUTER_DARK, a));
+        // Accent on tab
+        g.fill(tabX + 1, tabY + 1, tabX + nameW - 1, tabY + 2, aa(BORDER_ACCENT, a));
+
+        // Name text
+        g.drawString(font, villagerName, tabX + NAME_TAB_HPAD, tabY + NAME_TAB_VPAD, aa(NAME_COLOR, a));
+    }
+
+    private void renderText(GuiGraphics g, Font font, float a) {
+        int textX = x + FRAME_THICKNESS + PADDING;
+        int textY = y + FRAME_THICKNESS + PADDING + TEXT_TOP_GAP;
         List<FormattedCharSequence> lines = typewriter.getRevealedLines();
-        EffectRenderer.renderLines(graphics, font, lines,
-                x + PADDING, textY, LINE_HEIGHT, TEXT_COLOR,
+        EffectRenderer.renderLines(g, font, lines,
+                textX, textY, LINE_HEIGHT, aa(TEXT_COLOR, a),
                 activeEffect, typewriter);
+    }
 
-        // Update particle emitter to the last typed character position
+    private void renderParticles(GuiGraphics g) {
         particles.setEmitPosition(EffectRenderer.getLastCharX(), EffectRenderer.getLastCharY());
+        particles.render(g);
+    }
 
-        // Render particles (on top of text, clipped to box area)
-        particles.render(graphics);
-
-        // Blinking indicator when text is complete
+    private void renderIndicator(GuiGraphics g, Font font, float a) {
         if (typewriter.shouldShowIndicator()) {
             String indicator = "\u25B6";
-            graphics.drawString(font, indicator, x + width - PADDING - font.width(indicator), y + height - PADDING - 9, INDICATOR_COLOR);
+            int ix = x + width - FRAME_THICKNESS - PADDING - font.width(indicator);
+            int iy = y + height - FRAME_THICKNESS - PADDING - 2;
+            g.drawString(font, indicator, ix, iy, aa(INDICATOR_COLOR, a));
         }
+    }
+
+    /** Apply alpha multiplier to a packed ARGB color. */
+    private static int aa(int argb, float alpha) {
+        int origA = (argb >> 24) & 0xFF;
+        return ((int) (origA * alpha) << 24) | (argb & 0x00FFFFFF);
     }
 
     public void setEffect(DialogueEffect effect) {
@@ -120,6 +230,10 @@ public class DialogueBox {
 
     public TypewriterText getTypewriter() {
         return typewriter;
+    }
+
+    public float getFadeAlpha() {
+        return fadeAlpha;
     }
 
     public int getX() { return x; }

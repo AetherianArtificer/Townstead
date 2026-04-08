@@ -102,12 +102,25 @@ public class ChoicePanel {
         recomputeBounds();
     }
 
+    private float fadeAlpha = 0f;
+    private int fadeTick = 0;
+    private static final int FADE_TICKS = 5;
+
     public void setVisible(boolean visible) {
         this.visible = visible;
         if (visible) {
             selectedIndex = 0;
             hoveredIndex = -1;
             scrollOffset = 0;
+            fadeTick = 0;
+            fadeAlpha = 0f;
+        }
+    }
+
+    public void tick() {
+        if (visible && fadeAlpha < 1f) {
+            fadeTick++;
+            fadeAlpha = Math.min(1f, (float) fadeTick / FADE_TICKS);
         }
     }
 
@@ -115,11 +128,17 @@ public class ChoicePanel {
         return visible && !displayEntries.isEmpty();
     }
 
+    private static int aa(int argb, float alpha) {
+        int origA = (argb >> 24) & 0xFF;
+        return ((int) (origA * alpha) << 24) | (argb & 0x00FFFFFF);
+    }
+
     public void render(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
-        if (!isVisible()) return;
+        if (!isVisible() || fadeAlpha <= 0.01f) return;
+        float a = fadeAlpha;
 
         graphics.enableScissor(x, y, x + width, y + height);
-        graphics.fill(x, y, x + width, y + height, BG_COLOR);
+        graphics.fill(x, y, x + width, y + height, aa(BG_COLOR, a));
 
         int entryY = y + PADDING - scrollOffset;
         hoveredIndex = -1;
@@ -170,10 +189,10 @@ public class ChoicePanel {
         graphics.disableScissor();
 
         // Border
-        graphics.fill(x, y, x + width, y + 1, BORDER_HIGHLIGHT);
-        graphics.fill(x, y + height - 1, x + width, y + height, BORDER_COLOR);
-        graphics.fill(x, y, x + 1, y + height, BORDER_HIGHLIGHT);
-        graphics.fill(x + width - 1, y, x + width, y + height, BORDER_COLOR);
+        graphics.fill(x, y, x + width, y + 1, aa(BORDER_HIGHLIGHT, a));
+        graphics.fill(x, y + height - 1, x + width, y + height, aa(BORDER_COLOR, a));
+        graphics.fill(x, y, x + 1, y + height, aa(BORDER_HIGHLIGHT, a));
+        graphics.fill(x + width - 1, y, x + width, y + height, aa(BORDER_COLOR, a));
 
         if (needsScroll) {
             if (scrollOffset > 0) {

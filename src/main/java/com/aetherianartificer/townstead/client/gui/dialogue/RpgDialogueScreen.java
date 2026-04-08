@@ -89,6 +89,7 @@ public class RpgDialogueScreen extends Screen {
     @Override
     public void tick() {
         dialogueBox.tick();
+        choicePanel.tick();
         cameraController.tick();
         tickParticles();
 
