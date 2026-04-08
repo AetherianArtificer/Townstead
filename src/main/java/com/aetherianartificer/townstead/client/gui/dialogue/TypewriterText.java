@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.client.gui.dialogue;
 
+import com.aetherianartificer.townstead.client.gui.dialogue.DialogueAccessibility;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffects;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser;
 import net.minecraft.client.Minecraft;
@@ -84,7 +85,7 @@ public class TypewriterText {
                 paused = true;
             }
         }
-        if (revealed > 0 && revealedChars % 3 == 0) {
+        if (revealed > 0 && revealedChars % 3 == 0 && DialogueAccessibility.typewriterSoundEnabled()) {
             float pitch = 1.5f + (revealedChars % 7) * 0.05f;
             Minecraft.getInstance().getSoundManager().play(
                     SimpleSoundInstance.forUI(SoundEvents.WOODEN_BUTTON_CLICK_ON, pitch, 0.15f));

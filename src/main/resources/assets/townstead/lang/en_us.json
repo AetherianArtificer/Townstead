@@ -125,6 +125,17 @@
   "townstead.configuration.mood_audio.muteMoodVocalizations": "Mute Mood Laughter/Crying",
   "townstead.configuration.mood_audio.muteMoodVocalizations.tooltip": "If enabled, MCA villager laugh/celebrate/cry sounds are muted on this client.",
 
+  "townstead.configuration.dialogue_accessibility": "Dialogue Accessibility",
+  "townstead.configuration.dialogue_accessibility.tooltip": "Accessibility options for the RPG dialogue system.",
+  "townstead.configuration.dialogue_accessibility.reduceMotion": "Reduce Motion",
+  "townstead.configuration.dialogue_accessibility.reduceMotion.tooltip": "Disables text animation effects (wave, shake, bounce, scale). Emotion colors still apply.",
+  "townstead.configuration.dialogue_accessibility.disableParticles": "Disable Particles",
+  "townstead.configuration.dialogue_accessibility.disableParticles.tooltip": "Disables screen-space and world-space particles during dialogue.",
+  "townstead.configuration.dialogue_accessibility.disableTypewriterSound": "Disable Typewriter Sound",
+  "townstead.configuration.dialogue_accessibility.disableTypewriterSound.tooltip": "Silences the per-character typewriter tick sound.",
+  "townstead.configuration.dialogue_accessibility.disableCameraMovement": "Disable Camera Movement",
+  "townstead.configuration.dialogue_accessibility.disableCameraMovement.tooltip": "Prevents the camera from rotating to face the villager during dialogue.",
+
   "townstead.configuration.catalog": "Catalog",
   "townstead.configuration.catalog.tooltip": "Village catalog display settings.",
   "townstead.configuration.catalog.useTownsteadCatalog": "Use Townstead Catalog",

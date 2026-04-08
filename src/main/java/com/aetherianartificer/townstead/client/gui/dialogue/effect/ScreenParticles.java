@@ -87,7 +87,8 @@ public class ScreenParticles {
             particles.set(i, particles.get(i).aged());
         }
 
-        if (emitting && particles.size() < MAX_PARTICLES) {
+        if (emitting && com.aetherianartificer.townstead.client.gui.dialogue.DialogueAccessibility.particlesEnabled()
+                && particles.size() < MAX_PARTICLES) {
             int count = spreadMode ? 3 : 2;
             for (int i = 0; i < count; i++) {
                 particles.add(createParticle());

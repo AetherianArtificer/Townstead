@@ -41,13 +41,16 @@ public final class EffectRenderer {
     public static void renderLines(GuiGraphics graphics, Font font, List<FormattedCharSequence> lines,
                                    int baseX, int baseY, int lineHeight, int baseColor,
                                    DialogueEffect globalEffect, TypewriterText typewriter) {
+        float effectIntensity = DialogueAccessibility.effectIntensity();
+        boolean colorsEnabled = DialogueAccessibility.emotionColorsEnabled();
         boolean hasGlobal = globalEffect != null && globalEffect != DialogueEffects.NORMAL;
         boolean hasInline = typewriter != null && typewriter.hasEffectTags();
 
         // Reset tag region tracking
         tagRegionX = -1;
 
-        if (!hasGlobal && !hasInline) {
+        // If effects are fully disabled and colors are off, fast path
+        if ((!hasGlobal && !hasInline) || (effectIntensity <= 0 && !colorsEnabled)) {
             // Fast path
             int y = baseY;
             for (FormattedCharSequence line : lines) {
@@ -88,6 +91,19 @@ public final class EffectRenderer {
                     }
                 } else if (hasGlobal) {
                     globalEffect.apply(STATE, ci, totalChars, time);
+                }
+
+                // Scale motion effects by accessibility intensity
+                if (effectIntensity < 1.0f) {
+                    STATE.x *= effectIntensity;
+                    STATE.y *= effectIntensity;
+                    STATE.scale = 1.0f + (STATE.scale - 1.0f) * effectIntensity;
+                }
+                // Strip emotion colors if colors disabled
+                if (!colorsEnabled) {
+                    STATE.r = baseR;
+                    STATE.g = baseG;
+                    STATE.b = baseB;
                 }
 
                 String ch = new String(Character.toChars(codePoint));

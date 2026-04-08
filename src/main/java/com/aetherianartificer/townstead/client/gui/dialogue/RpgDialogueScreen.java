@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.gui.dialogue;
 
 import com.aetherianartificer.townstead.client.camera.DialogueCameraController;
+import com.aetherianartificer.townstead.client.gui.dialogue.DialogueAccessibility;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffects;
 import net.conczin.mca.entity.VillagerLike;
 import net.conczin.mca.entity.ai.Memories;
@@ -75,7 +76,9 @@ public class RpgDialogueScreen extends Screen {
 
         if (!initialized) {
             initialized = true;
-            cameraController = new DialogueCameraController(villager.asEntity());
+            if (DialogueAccessibility.cameraEnabled()) {
+                cameraController = new DialogueCameraController(villager.asEntity());
+            }
             //? if neoforge {
             Network.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
             //?} else {
@@ -90,7 +93,7 @@ public class RpgDialogueScreen extends Screen {
     public void tick() {
         dialogueBox.tick();
         choicePanel.tick();
-        cameraController.tick();
+        if (cameraController != null) cameraController.tick();
         tickParticles();
 
         switch (state) {
@@ -116,7 +119,7 @@ public class RpgDialogueScreen extends Screen {
                 // Wait for player to dismiss
             }
             case CLOSING -> {
-                if (cameraController.isRestoreComplete()) {
+                if (cameraController == null || cameraController.isRestoreComplete()) {
                     userInitiatedClose = true;
                     onClose();
                 }
@@ -274,6 +277,7 @@ public class RpgDialogueScreen extends Screen {
 
     private void tickParticles() {
         if (state == DialogueState.CLOSING || state == DialogueState.AWAITING_DIALOGUE) return;
+        if (!DialogueAccessibility.particlesEnabled()) return;
         if (!(dialogueBox.getEffect() instanceof DialogueEffects effect)) return;
         SimpleParticleType particle = effect.getParticleType();
         if (particle == null) return;
@@ -292,7 +296,7 @@ public class RpgDialogueScreen extends Screen {
     private void closeByUser() {
         if (state == DialogueState.CLOSING) return;
         state = DialogueState.CLOSING;
-        cameraController.beginRestore();
+        if (cameraController != null) cameraController.beginRestore();
         choicePanel.setVisible(false);
     }
 
@@ -358,6 +362,7 @@ public class RpgDialogueScreen extends Screen {
         choicePanel.setVisible(false);
         state = DialogueState.TYPEWRITER_PLAYING;
         awaitingResponseTimer = 0;
+        narrateText(text);
     }
 
     public boolean isVillager(UUID uuid) {
@@ -372,6 +377,20 @@ public class RpgDialogueScreen extends Screen {
         dialogAnswers = null;
         state = DialogueState.TYPEWRITER_PLAYING;
         awaitingResponseTimer = 0;
+        narrateText(message);
+    }
+
+    private void narrateText(Component text) {
+        if (DialogueAccessibility.narratorEnabled()) {
+            String clean = com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser
+                    .stripTags(text.getString());
+            String name = villager.asEntity().getDisplayName().getString();
+            try {
+                com.mojang.text2speech.Narrator.getNarrator().say(name + ": " + clean, true);
+            } catch (Exception ignored) {
+                // Narrator not available on this platform
+            }
+        }
     }
 
     private void handleChoiceSelection() {
