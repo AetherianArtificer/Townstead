@@ -187,6 +187,7 @@ public class Townstead {
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::registerPayloads);
         modBus.addListener(this::addPackFinders);
+        townstead$registerKeybinds(modBus);
         townstead$registerClientTooltipFactory(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
@@ -379,6 +380,24 @@ public class Townstead {
 
         return currentSeverity >= requiredSeverity;
     }
+
+    //? if neoforge {
+    private static void townstead$registerKeybinds(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) ->
+                            event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.TALK)
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no keybinds.
+        }
+    }
+    //?} else {
+    /*private static void townstead$registerKeybinds(Object modBus) {
+        // Forge 1.20.1: keybinds not yet supported for RPG dialogue
+    }
+    *///?}
 
     //? if neoforge {
     private static void townstead$registerClientTooltipFactory(IEventBus modBus) {

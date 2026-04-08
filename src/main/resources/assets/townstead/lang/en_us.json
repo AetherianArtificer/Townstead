@@ -125,6 +125,15 @@
   "townstead.configuration.mood_audio.muteMoodVocalizations": "Mute Mood Laughter/Crying",
   "townstead.configuration.mood_audio.muteMoodVocalizations.tooltip": "If enabled, MCA villager laugh/celebrate/cry sounds are muted on this client.",
 
+  "townstead.configuration.accessibility": "Accessibility",
+  "townstead.configuration.accessibility.tooltip": "Accessibility options for Townstead.",
+  "townstead.configuration.accessibility.reduceMotion": "Reduce Motion",
+  "townstead.configuration.accessibility.reduceMotion.tooltip": "Disables text animation effects (wave, shake, bounce, scale) in dialogue. Emotion colors still apply.",
+  "townstead.configuration.accessibility.disableParticles": "Disable Dialogue Particles",
+  "townstead.configuration.accessibility.disableParticles.tooltip": "Disables screen-space and world-space particles during dialogue.",
+  "townstead.configuration.accessibility.disableCameraMovement": "Disable Dialogue Camera",
+  "townstead.configuration.accessibility.disableCameraMovement.tooltip": "Prevents the camera from rotating to face the villager during dialogue.",
+
   "townstead.configuration.catalog": "Catalog",
   "townstead.configuration.catalog.tooltip": "Village catalog display settings.",
   "townstead.configuration.catalog.useTownsteadCatalog": "Use Townstead Catalog",
@@ -398,5 +407,57 @@
   "dialogue.chat.energy.recovered/1": "*gets up slowly* ...I think I can manage now.",
   "dialogue.chat.energy.recovered/2": "Ugh... that was awful. I'm back on my feet, at least.",
   "dialogue.chat.energy.recovered/3": "I feel a little better. Let me try to get going again.",
-  "dialogue.chat.energy.recovered/4": "*stretches* ...alright, I'm okay. I think."
+  "dialogue.chat.energy.recovered/4": "*stretches* ...alright, I'm okay. I think.",
+
+  "townstead.key.category": "Townstead",
+  "townstead.key.talk": "Talk to Villager",
+
+  "townstead.dialogue.back": "Actually, never mind...",
+  "townstead.dialogue.main.chat": "Let's chat for a bit...",
+  "townstead.dialogue.main.joke": "I've got a joke for you!",
+  "townstead.dialogue.main.story": "Let me tell you a story...",
+  "townstead.dialogue.main.hug": "Come here...",
+  "townstead.dialogue.main.romance": "I want to get closer...",
+  "townstead.dialogue.main.adventurer": "About your travels...",
+  "townstead.dialogue.main.apologize": "I'm sorry about earlier...",
+  "townstead.dialogue.main.rumors": "Heard any rumors lately?",
+  "townstead.dialogue.main.rock_paper_scissor": "Want to play a game?",
+  "townstead.dialogue.main.adopt": "Would you like to come with me?",
+  "townstead.dialogue.main.flirt": "You're looking nice today...",
+  "townstead.dialogue.main.kiss": "Close your eyes...",
+  "townstead.dialogue.main.procreate": "Shall we try for a baby?",
+  "townstead.dialogue.main.procreate_engaged": "We could start a family...",
+  "townstead.dialogue.main.divorceInitiate": "We need to talk about us...",
+  "townstead.dialogue.main.divorcePapers": "I need divorce papers.",
+  "townstead.dialogue.main.hire": "I could use your help...",
+  "townstead.dialogue.main.stay": "Why not settle down here?",
+
+  "townstead.dialogue.greet.short": "I'm doing fine.",
+  "townstead.dialogue.greet.kind": "I'm well, how about you?",
+  "townstead.dialogue.greet.shake_hand": "*Extend your hand*",
+
+  "townstead.dialogue.joke.creative": "Here's a classic one...",
+  "townstead.dialogue.joke.animal": "So, this animal walks into a bar...",
+  "townstead.dialogue.joke.monster": "You won't believe what a creeper told me...",
+
+  "townstead.dialogue.story.generic": "Let me tell you about something...",
+  "townstead.dialogue.story.exploring": "I've been exploring the wilds...",
+  "townstead.dialogue.story.nether": "I ventured into the Nether...",
+  "townstead.dialogue.story.enderdragon": "I faced the Ender Dragon...",
+  "townstead.dialogue.story.wither": "I summoned the Wither...",
+
+  "townstead.dialogue.hire.short": "Just for a few days. (5 emeralds)",
+  "townstead.dialogue.hire.long": "For a full week. (10 emeralds)",
+  "townstead.dialogue.hire.cancel": "Actually, never mind.",
+
+  "townstead.dialogue.confirm.yes": "Yes.",
+  "townstead.dialogue.confirm.no": "No, forget it.",
+
+  "townstead.dialogue.rps.rock": "Rock!",
+  "townstead.dialogue.rps.paper": "Paper!",
+  "townstead.dialogue.rps.scissor": "Scissors!",
+
+  "townstead.dialogue.first.exploring": "Just passing through.",
+  "townstead.dialogue.first.settling": "I'm looking for a place to settle.",
+  "townstead.dialogue.first.spent_night": "I stayed at the inn last night."
 }
