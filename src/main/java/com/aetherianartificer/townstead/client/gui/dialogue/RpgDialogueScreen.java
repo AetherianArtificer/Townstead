@@ -189,7 +189,12 @@ public class RpgDialogueScreen extends Screen {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
 
         if (state == DialogueState.TYPEWRITER_PLAYING) {
+            // If paused on a page boundary, advance to next page; otherwise skip typewriter
             dialogueBox.getTypewriter().skipToEnd();
+            return true;
+        }
+        if (state == DialogueState.ENDING && dialogueBox.getTypewriter().hasMorePages()) {
+            dialogueBox.getTypewriter().advancePage();
             return true;
         }
         if (state == DialogueState.CHOICES_VISIBLE && choicePanel.mouseClicked(mouseX, mouseY)) {
@@ -212,6 +217,12 @@ public class RpgDialogueScreen extends Screen {
         if (state == DialogueState.TYPEWRITER_PLAYING) {
             if (keyCode == GLFW.GLFW_KEY_SPACE || keyCode == GLFW.GLFW_KEY_ENTER) {
                 dialogueBox.getTypewriter().skipToEnd();
+                return true;
+            }
+        }
+        if (state == DialogueState.ENDING && dialogueBox.getTypewriter().hasMorePages()) {
+            if (keyCode == GLFW.GLFW_KEY_SPACE || keyCode == GLFW.GLFW_KEY_ENTER) {
+                dialogueBox.getTypewriter().advancePage();
                 return true;
             }
         }

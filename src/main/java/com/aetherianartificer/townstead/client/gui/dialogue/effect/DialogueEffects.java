@@ -73,7 +73,7 @@ public enum DialogueEffects implements DialogueEffect {
         }
     },
 
-    YELL("Yell", null, 3.0f) {
+    YELL("Yell", null, 3.0f, 1.35f) {
         @Override
         public void apply(CharRenderState s, int i, int total, float t) {
             s.scale *= 1.35f;
@@ -160,7 +160,7 @@ public enum DialogueEffects implements DialogueEffect {
         }
     },
 
-    EXCITED("Excited", ParticleTypes.NOTE, 2.5f) {
+    EXCITED("Excited", ParticleTypes.NOTE, 2.5f, 1.08f) {
         @Override
         public void apply(CharRenderState s, int i, int total, float t) {
             s.y -= Math.abs(Mth.sin(t * 0.5f + i * 0.7f)) * 2.0f;
@@ -176,15 +176,21 @@ public enum DialogueEffects implements DialogueEffect {
     private final String displayName;
     private final @Nullable SimpleParticleType particleType;
     private final float typewriterSpeed;
+    private final float maxScale;
 
     DialogueEffects(String displayName, @Nullable SimpleParticleType particleType) {
-        this(displayName, particleType, 1.0f);
+        this(displayName, particleType, 1.0f, 1.0f);
     }
 
     DialogueEffects(String displayName, @Nullable SimpleParticleType particleType, float typewriterSpeed) {
+        this(displayName, particleType, typewriterSpeed, 1.0f);
+    }
+
+    DialogueEffects(String displayName, @Nullable SimpleParticleType particleType, float typewriterSpeed, float maxScale) {
         this.displayName = displayName;
         this.particleType = particleType;
         this.typewriterSpeed = typewriterSpeed;
+        this.maxScale = maxScale;
     }
 
     public String getDisplayName() {
@@ -200,6 +206,11 @@ public enum DialogueEffects implements DialogueEffect {
     /** Typewriter speed multiplier. >1 = faster reveal, <1 = slower. */
     public float getTypewriterSpeed() {
         return typewriterSpeed;
+    }
+
+    /** Maximum scale factor this effect applies (for wrap width calculation). */
+    public float getMaxScale() {
+        return maxScale;
     }
 
     public static DialogueEffects[] all() {

@@ -71,6 +71,9 @@ public class DialogueBox {
     public void setText(Component text, Font font) {
         int textWidth = width - (FRAME_THICKNESS + PADDING) * 2;
         typewriter.setText(text, font, textWidth);
+        // Calculate how many lines fit in the text area
+        int textAreaHeight = height - FRAME_THICKNESS * 2 - PADDING * 2 - TEXT_TOP_GAP - 12; // 12 for indicator
+        typewriter.setMaxVisibleLines(Math.max(1, textAreaHeight / LINE_HEIGHT));
         particles.clear();
 
         // Start fade-in
@@ -194,11 +197,11 @@ public class DialogueBox {
     private void renderText(GuiGraphics g, Font font, float a) {
         int textX = x + FRAME_THICKNESS + PADDING;
         int textY = y + FRAME_THICKNESS + PADDING + TEXT_TOP_GAP;
-        int textMaxX = x + width - FRAME_THICKNESS - PADDING;
-        int textMaxY = y + height - FRAME_THICKNESS - PADDING;
+        int clipRight = x + width - FRAME_THICKNESS;
+        int clipBottom = y + height - FRAME_THICKNESS - PADDING;
 
-        // Scissor clip so scaled text (e.g. yell) doesn't escape the box
-        g.enableScissor(textX, textY, textMaxX, textMaxY);
+        // Scissor clips any scaled text (e.g. yell) that overflows the box edge
+        g.enableScissor(textX, textY, clipRight, clipBottom);
         List<FormattedCharSequence> lines = typewriter.getRevealedLines();
         EffectRenderer.renderLines(g, font, lines,
                 textX, textY, LINE_HEIGHT, aa(TEXT_COLOR, a),
@@ -222,7 +225,16 @@ public class DialogueBox {
     }
 
     private void renderIndicator(GuiGraphics g, Font font, float a) {
-        if (typewriter.shouldShowIndicator()) {
+        if (typewriter.shouldShowPageIndicator()) {
+            // Page advance indicator — blinking down arrow
+            if ((typewriter.isPaused() || typewriter.hasMorePages()) && (fadeTick / 8) % 2 == 0) {
+                String indicator = "\u25BC"; // down arrow
+                int ix = x + width / 2 - font.width(indicator) / 2;
+                int iy = y + height - FRAME_THICKNESS - PADDING - 2;
+                g.drawString(font, indicator, ix, iy, aa(INDICATOR_COLOR, a));
+            }
+        } else if (typewriter.shouldShowIndicator()) {
+            // Final done indicator — right arrow
             String indicator = "\u25B6";
             int ix = x + width - FRAME_THICKNESS - PADDING - font.width(indicator);
             int iy = y + height - FRAME_THICKNESS - PADDING - 2;
