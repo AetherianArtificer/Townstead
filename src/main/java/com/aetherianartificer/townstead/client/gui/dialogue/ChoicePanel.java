@@ -138,7 +138,10 @@ public class ChoicePanel {
         float a = fadeAlpha;
 
         graphics.enableScissor(x, y, x + width, y + height);
-        graphics.fill(x, y, x + width, y + height, aa(BG_COLOR, a));
+        float bgOpacity = DialogueAccessibility.backgroundAlpha();
+        int bgAlphaInt = Math.min((int)(bgOpacity * 2f * 0xAA), 0xFF);
+        int bgColor = (bgAlphaInt << 24) | (BG_COLOR & 0x00FFFFFF);
+        graphics.fill(x, y, x + width, y + height, aa(bgColor, a));
 
         int entryY = y + PADDING - scrollOffset;
         hoveredIndex = -1;
