@@ -201,7 +201,17 @@ public class DialogueBox {
     }
 
     private void renderParticles(GuiGraphics g) {
+        // Trail mode: follow the typewriter cursor
         particles.setEmitPosition(EffectRenderer.getLastCharX(), EffectRenderer.getLastCharY());
+
+        // Switch to spread mode when typewriter finishes and we have a tagged region
+        if (typewriter.isComplete() && !particles.isSpreadMode()) {
+            int[] region = EffectRenderer.getTagRegion();
+            if (region != null) {
+                particles.setSpreadRegion(region[0], region[1], region[2], region[3]);
+            }
+        }
+
         particles.render(g);
     }
 

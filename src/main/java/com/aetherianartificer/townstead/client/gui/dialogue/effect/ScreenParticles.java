@@ -10,15 +10,23 @@ import java.util.Random;
 
 /**
  * Lightweight screen-space particle system for dialogue text effects.
- * Particles spawn near the typewriter cursor and drift outward.
+ * Two modes: trail (follows typewriter cursor) and spread (covers a region).
+ * Transitions from trail → spread when the typewriter completes.
  */
 public class ScreenParticles {
-    private static final int MAX_PARTICLES = 60;
+    private static final int MAX_PARTICLES = 80;
     private static final Random RANDOM = new Random();
 
     private final List<Particle> particles = new ArrayList<>();
     private DialogueEffects activeEffect;
+
+    // Trail mode: single emit point following the typewriter cursor
     private int emitX, emitY;
+
+    // Spread mode: emit across the tagged region
+    private boolean spreadMode;
+    private int regionX, regionY, regionWidth, regionHeight;
+
     private boolean emitting;
 
     private record Particle(float x, float y, float vx, float vy,
@@ -46,6 +54,7 @@ public class ScreenParticles {
         }
     }
 
+    /** Trail mode: set the typewriter cursor position as the single emit point. */
     public void setEmitPosition(int x, int y) {
         this.emitX = x;
         this.emitY = y;
@@ -53,23 +62,34 @@ public class ScreenParticles {
                 && activeEffect.getParticleType() != null;
     }
 
+    /**
+     * Switch to spread mode: particles emit across the tagged text region.
+     * Call this when the typewriter finishes.
+     */
+    public void setSpreadRegion(int x, int y, int width, int height) {
+        this.regionX = x;
+        this.regionY = y;
+        this.regionWidth = Math.max(1, width);
+        this.regionHeight = Math.max(1, height);
+        this.spreadMode = true;
+    }
+
+    public boolean isSpreadMode() {
+        return spreadMode;
+    }
+
     public void tick() {
-        // Age existing particles
         Iterator<Particle> it = particles.iterator();
         while (it.hasNext()) {
-            Particle p = it.next();
-            if (p.isDead()) {
-                it.remove();
-            }
+            if (it.next().isDead()) it.remove();
         }
-        // Replace with aged versions
         for (int i = 0; i < particles.size(); i++) {
             particles.set(i, particles.get(i).aged());
         }
 
-        // Emit new particles
         if (emitting && particles.size() < MAX_PARTICLES) {
-            for (int i = 0; i < 2; i++) {
+            int count = spreadMode ? 3 : 2;
+            for (int i = 0; i < count; i++) {
                 particles.add(createParticle());
             }
         }
@@ -94,6 +114,7 @@ public class ScreenParticles {
         particles.clear();
         emitting = false;
         activeEffect = null;
+        spreadMode = false;
     }
 
     private Particle createParticle() {
@@ -103,19 +124,33 @@ public class ScreenParticles {
         int life = 20 + RANDOM.nextInt(30);
         float size = 1.0f + RANDOM.nextFloat() * 1.5f;
         float alpha = 0.6f + RANDOM.nextFloat() * 0.4f;
-        float ox = (RANDOM.nextFloat() - 0.5f) * 8;
-        float oy = (RANDOM.nextFloat() - 0.5f) * 4;
-        return new Particle(emitX + ox, emitY + oy, vx, vy,
+
+        float spawnX, spawnY;
+        if (spreadMode) {
+            // Emit from random position within the tagged region
+            spawnX = regionX + RANDOM.nextFloat() * regionWidth;
+            spawnY = regionY + RANDOM.nextFloat() * regionHeight;
+            // Gentler velocity in spread mode
+            vx *= 0.6f;
+            life += 10;
+            alpha *= 0.8f;
+        } else {
+            // Trail mode: emit near the cursor
+            spawnX = emitX + (RANDOM.nextFloat() - 0.5f) * 8;
+            spawnY = emitY + (RANDOM.nextFloat() - 0.5f) * 4;
+        }
+
+        return new Particle(spawnX, spawnY, vx, vy,
                 rgb[0], rgb[1], rgb[2], alpha, life, 0, size);
     }
 
     private float getParticleVelocityY() {
         if (activeEffect == null) return -0.3f;
         return switch (activeEffect) {
-            case BURNING -> -(0.4f + RANDOM.nextFloat() * 0.6f); // flames rise
-            case FROZEN -> 0.1f + RANDOM.nextFloat() * 0.2f;     // snow falls
-            case SAD -> 0.2f + RANDOM.nextFloat() * 0.3f;         // tears fall
-            default -> -(0.2f + RANDOM.nextFloat() * 0.3f);       // drift up
+            case BURNING -> -(0.4f + RANDOM.nextFloat() * 0.6f);
+            case FROZEN -> 0.1f + RANDOM.nextFloat() * 0.2f;
+            case SAD -> 0.2f + RANDOM.nextFloat() * 0.3f;
+            default -> -(0.2f + RANDOM.nextFloat() * 0.3f);
         };
     }
 

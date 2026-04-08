@@ -17,13 +17,23 @@ import java.util.List;
 public final class EffectRenderer {
     private static final CharRenderState STATE = new CharRenderState();
 
-    /** Position of the last rendered character (for particle emitter). */
+    /** Position of the last rendered character (for particle trail). */
     private static int lastCharX, lastCharY;
+
+    /** Bounding box of the last tagged region rendered (for particle spread). */
+    private static int tagRegionX = -1, tagRegionY = -1, tagRegionMaxX, tagRegionMaxY;
 
     private EffectRenderer() {}
 
     public static int getLastCharX() { return lastCharX; }
     public static int getLastCharY() { return lastCharY; }
+
+    /** Returns the tagged region bounds, or null if no tagged chars were rendered. */
+    public static int[] getTagRegion() {
+        if (tagRegionX < 0) return null;
+        return new int[]{tagRegionX, tagRegionY,
+                tagRegionMaxX - tagRegionX, tagRegionMaxY - tagRegionY + 10};
+    }
 
     /**
      * Render lines with per-character effects from both a global effect and inline tags.
@@ -33,6 +43,9 @@ public final class EffectRenderer {
                                    DialogueEffect globalEffect, TypewriterText typewriter) {
         boolean hasGlobal = globalEffect != null && globalEffect != DialogueEffects.NORMAL;
         boolean hasInline = typewriter != null && typewriter.hasEffectTags();
+
+        // Reset tag region tracking
+        tagRegionX = -1;
 
         if (!hasGlobal && !hasInline) {
             // Fast path
@@ -64,10 +77,12 @@ public final class EffectRenderer {
                 STATE.reset(baseR, baseG, baseB, baseA);
 
                 // Apply inline tag effect first (if any)
+                boolean hasTag = false;
                 if (hasInline) {
                     DialogueEffects inlineEffect = typewriter.getEffectAt(ci);
                     if (inlineEffect != null && inlineEffect != DialogueEffects.NORMAL) {
                         inlineEffect.apply(STATE, ci, totalChars, time);
+                        hasTag = true;
                     } else if (hasGlobal) {
                         globalEffect.apply(STATE, ci, totalChars, time);
                     }
@@ -94,6 +109,22 @@ public final class EffectRenderer {
                 }
                 lastCharX = lineX[0] + charW;
                 lastCharY = finalLineY;
+
+                // Track tagged region bounds
+                if (hasTag) {
+                    if (tagRegionX < 0) {
+                        tagRegionX = lineX[0];
+                        tagRegionY = finalLineY;
+                        tagRegionMaxX = lineX[0] + charW;
+                        tagRegionMaxY = finalLineY;
+                    } else {
+                        tagRegionX = Math.min(tagRegionX, lineX[0]);
+                        tagRegionY = Math.min(tagRegionY, finalLineY);
+                        tagRegionMaxX = Math.max(tagRegionMaxX, lineX[0] + charW);
+                        tagRegionMaxY = Math.max(tagRegionMaxY, finalLineY);
+                    }
+                }
+
                 lineX[0] += charW;
                 return true;
             });
