@@ -13,6 +13,7 @@
   ],
   "client": [
     "BlueprintScreenMixin",
+    "ClientHandlerImplMixin",
     "LegacyImageButtonMixin",
     "accessor.AbstractDynamicScreenAccessor",
     "accessor.BlueprintScreenAccessor",

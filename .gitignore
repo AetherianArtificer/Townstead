@@ -41,5 +41,6 @@ Thumbs.db
 *.jar
 libs/
 assets/mca/
+.mca-extract/
 roadmap/
 tools/

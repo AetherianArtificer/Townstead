@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
+import com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
@@ -15,8 +16,14 @@ import com.aetherianartificer.townstead.mixin.accessor.InteractScreenAccessor;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import net.conczin.mca.client.gui.InteractScreen;
+//? if >=1.21 {
+import net.conczin.mca.client.gui.MCAButton;
+//?} else {
+/*import net.conczin.mca.client.gui.Button;
+*///?}
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerLike;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.MutableComponent;
@@ -29,6 +36,7 @@ import net.minecraft.world.entity.schedule.Activity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -73,9 +81,41 @@ public abstract class InteractScreenMixin extends Screen {
     *///?}
 
     @Shadow(remap = false) @Final private VillagerLike<?> villager;
+    @Shadow(remap = false) private int timeSinceLastClick;
+
+    @Unique
+    private boolean townstead$transitioning;
 
     private InteractScreenMixin() {
         super(null);
+    }
+
+    //? if >=1.21 {
+    @Inject(method = "buttonPressed", remap = false, at = @At("HEAD"), cancellable = true)
+    private void townstead$interceptTalkButton(MCAButton button, CallbackInfo ci) {
+        if (!"gui.button.talk".equals(button.identifier())) return;
+        if (timeSinceLastClick <= 2) return;
+        ci.cancel();
+        townstead$transitioning = true;
+        Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
+    }
+    //?} else {
+    /*@Inject(method = "buttonPressed", remap = false, at = @At("HEAD"), cancellable = true)
+    private void townstead$interceptTalkButton(Button button, CallbackInfo ci) {
+        if (!"gui.button.talk".equals(button.identifier())) return;
+        if (timeSinceLastClick <= 2) return;
+        ci.cancel();
+        townstead$transitioning = true;
+        Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
+    }
+    *///?}
+
+    @Inject(method = "onClose", at = @At("HEAD"), cancellable = true)
+    private void townstead$suppressCloseOnTransition(CallbackInfo ci) {
+        if (townstead$transitioning) {
+            townstead$transitioning = false;
+            ci.cancel();
+        }
     }
 
     @Redirect(
