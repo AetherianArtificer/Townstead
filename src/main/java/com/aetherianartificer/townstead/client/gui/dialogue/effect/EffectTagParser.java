@@ -34,6 +34,20 @@ public final class EffectTagParser {
     }
 
     private static final Pattern TAG_PATTERN = Pattern.compile("<(\\w+)>(.*?)</\\1>", Pattern.DOTALL);
+    private static final Pattern STRIP_PATTERN = Pattern.compile("<\\w+>(.*?)</\\w+>", Pattern.DOTALL);
+
+    /**
+     * Strip all effect tags from a string, returning just the plain text.
+     * Used for chat messages where tags should not be visible.
+     */
+    public static String stripTags(String input) {
+        String result = input;
+        // Repeatedly strip until no more tags (handles nesting)
+        while (STRIP_PATTERN.matcher(result).find()) {
+            result = STRIP_PATTERN.matcher(result).replaceAll("$1");
+        }
+        return result;
+    }
 
     /**
      * Parse effect tags from the input string. Tags can be nested conceptually

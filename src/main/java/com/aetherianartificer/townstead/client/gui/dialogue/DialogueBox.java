@@ -194,10 +194,16 @@ public class DialogueBox {
     private void renderText(GuiGraphics g, Font font, float a) {
         int textX = x + FRAME_THICKNESS + PADDING;
         int textY = y + FRAME_THICKNESS + PADDING + TEXT_TOP_GAP;
+        int textMaxX = x + width - FRAME_THICKNESS - PADDING;
+        int textMaxY = y + height - FRAME_THICKNESS - PADDING;
+
+        // Scissor clip so scaled text (e.g. yell) doesn't escape the box
+        g.enableScissor(textX, textY, textMaxX, textMaxY);
         List<FormattedCharSequence> lines = typewriter.getRevealedLines();
         EffectRenderer.renderLines(g, font, lines,
                 textX, textY, LINE_HEIGHT, aa(TEXT_COLOR, a),
                 activeEffect, typewriter);
+        g.disableScissor();
     }
 
     private void renderParticles(GuiGraphics g) {
