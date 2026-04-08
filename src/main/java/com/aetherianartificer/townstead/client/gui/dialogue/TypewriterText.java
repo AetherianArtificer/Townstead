@@ -38,6 +38,15 @@ public class TypewriterText {
     public void setText(Component text, Font font, int maxWidth) {
         String rawText = text.getString();
 
+        // If the resolved text has no tags, check our emotion tag overrides
+        // (handles Forge 1.20.1 where lang merging across mods doesn't work)
+        if (!rawText.contains("<")) {
+            String tagged = EmotionTagOverrides.applyTagsToResolvedText(rawText);
+            if (tagged != null) {
+                rawText = tagged;
+            }
+        }
+
         if (rawText.contains("<") && rawText.contains(">")) {
             effectParseResult = EffectTagParser.parse(rawText);
             this.fullText = Component.literal(effectParseResult.cleanText());
