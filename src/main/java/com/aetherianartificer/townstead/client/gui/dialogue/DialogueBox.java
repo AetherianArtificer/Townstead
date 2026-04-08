@@ -134,9 +134,13 @@ public class DialogueBox {
     }
 
     private void renderFrame(GuiGraphics g, float a) {
-        // Background fill — respect text background opacity setting
-        float bgAlpha = a * DialogueAccessibility.backgroundAlpha() * 2f; // *2 because MC default is 0.5
-        g.fill(x, y, x + width, y + height, aa(BG_FILL, Math.min(bgAlpha, a)));
+        // Background fill — scale by MC's Text Background Opacity (default 0.5)
+        float bgOpacity = DialogueAccessibility.backgroundAlpha();
+        // Map MC's 0.0-1.0 range: at 0 = transparent, at 0.5 (default) = normal, at 1.0 = fully opaque
+        int bgAlphaInt = (int)(bgOpacity * 2f * 0xCC); // 0xCC is the base alpha in BG_FILL
+        bgAlphaInt = Math.min(bgAlphaInt, 0xFF);
+        int bgColor = (bgAlphaInt << 24) | (BG_FILL & 0x00FFFFFF);
+        g.fill(x, y, x + width, y + height, aa(bgColor, a));
 
         // Outer border — bevel effect (light top/left, dark bottom/right)
         // Top

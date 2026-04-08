@@ -27,11 +27,6 @@ public final class DialogueAccessibility {
         return !options().hideLightningFlash().get();
     }
 
-    /** Whether the per-character typewriter tick sound is enabled. */
-    public static boolean typewriterSoundEnabled() {
-        return !safeGet(TownsteadConfig.DIALOGUE_DISABLE_TYPEWRITER_SOUND);
-    }
-
     /** Whether the camera should rotate to face the villager. */
     public static boolean cameraEnabled() {
         return !safeGet(TownsteadConfig.DIALOGUE_DISABLE_CAMERA);

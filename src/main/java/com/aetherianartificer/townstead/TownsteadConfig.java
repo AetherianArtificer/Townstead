@@ -77,7 +77,6 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ModConfigSpec.BooleanValue DIALOGUE_REDUCE_MOTION;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
-    public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_TYPEWRITER_SOUND;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ModConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
@@ -136,7 +135,6 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_REDUCE_MOTION;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
-    public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_TYPEWRITER_SOUND;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ForgeConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
@@ -443,21 +441,17 @@ public final class TownsteadConfig {
                 .define("useTownsteadCatalog", true);
         clientBuilder.pop();
 
-        clientBuilder.translation("townstead.configuration.dialogue_accessibility").push("dialogue_accessibility");
+        clientBuilder.translation("townstead.configuration.accessibility").push("accessibility");
         DIALOGUE_REDUCE_MOTION = clientBuilder
-                .translation("townstead.configuration.dialogue_accessibility.reduceMotion")
+                .translation("townstead.configuration.accessibility.reduceMotion")
                 .comment("Disable text animation effects (wave, shake, bounce, scale) in dialogue. Emotion colors still apply.")
                 .define("reduceMotion", false);
         DIALOGUE_DISABLE_PARTICLES = clientBuilder
-                .translation("townstead.configuration.dialogue_accessibility.disableParticles")
+                .translation("townstead.configuration.accessibility.disableParticles")
                 .comment("Disable screen-space and world-space particles during dialogue.")
                 .define("disableParticles", false);
-        DIALOGUE_DISABLE_TYPEWRITER_SOUND = clientBuilder
-                .translation("townstead.configuration.dialogue_accessibility.disableTypewriterSound")
-                .comment("Silence the per-character typewriter tick sound in dialogue.")
-                .define("disableTypewriterSound", false);
         DIALOGUE_DISABLE_CAMERA = clientBuilder
-                .translation("townstead.configuration.dialogue_accessibility.disableCameraMovement")
+                .translation("townstead.configuration.accessibility.disableCameraMovement")
                 .comment("Prevent the camera from rotating to face the villager during dialogue.")
                 .define("disableCameraMovement", false);
         clientBuilder.pop();

@@ -85,7 +85,7 @@ public class TypewriterText {
                 paused = true;
             }
         }
-        if (revealed > 0 && revealedChars % 3 == 0 && DialogueAccessibility.typewriterSoundEnabled()) {
+        if (revealed > 0 && revealedChars % 3 == 0) {
             float pitch = 1.5f + (revealedChars % 7) * 0.05f;
             Minecraft.getInstance().getSoundManager().play(
                     SimpleSoundInstance.forUI(SoundEvents.WOODEN_BUTTON_CLICK_ON, pitch, 0.15f));
