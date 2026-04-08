@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.client.gui.dialogue;
 
+import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffects;
+import com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -9,24 +11,37 @@ import java.util.List;
 
 /**
  * Manages character-by-character reveal of a {@link Component}, preserving formatting.
+ * Supports inline effect tags and per-effect typewriter speed.
  */
 public class TypewriterText {
     private Component fullText = Component.empty();
     private List<FormattedCharSequence> fullLines = List.of();
     private int totalChars;
     private int revealedChars;
-    private int tickCounter;
-    private int charsPerTick = 1;
-    private int ticksPerChar = 1;
+    private float revealAccumulator;
     private boolean complete;
     private int blinkTimer;
+    private float baseSpeed = 1.0f;
+
+    // Parsed effect spans from inline tags
+    private EffectTagParser.ParseResult effectParseResult;
 
     public void setText(Component text, Font font, int maxWidth) {
-        this.fullText = text;
-        this.fullLines = font.split(text, maxWidth);
+        // Check if the text contains effect tags
+        String rawText = text.getString();
+        if (rawText.contains("<") && rawText.contains(">")) {
+            effectParseResult = EffectTagParser.parse(rawText);
+            // Re-create the component with clean text (tags stripped)
+            this.fullText = Component.literal(effectParseResult.cleanText());
+        } else {
+            effectParseResult = null;
+            this.fullText = text;
+        }
+
+        this.fullLines = font.split(this.fullText, maxWidth);
         this.totalChars = countChars(fullLines);
         this.revealedChars = 0;
-        this.tickCounter = 0;
+        this.revealAccumulator = 0;
         this.complete = false;
         this.blinkTimer = 0;
     }
@@ -36,10 +51,18 @@ public class TypewriterText {
             blinkTimer++;
             return;
         }
-        tickCounter++;
-        if (tickCounter >= ticksPerChar) {
-            tickCounter = 0;
-            revealedChars = Math.min(revealedChars + charsPerTick, totalChars);
+
+        // Determine speed for current character
+        float speed = baseSpeed;
+        DialogueEffects charEffect = getEffectAt(revealedChars);
+        if (charEffect != null) {
+            speed *= charEffect.getTypewriterSpeed();
+        }
+
+        revealAccumulator += speed;
+        while (revealAccumulator >= 1.0f && !complete) {
+            revealAccumulator -= 1.0f;
+            revealedChars++;
             if (revealedChars >= totalChars) {
                 complete = true;
             }
@@ -89,9 +112,19 @@ public class TypewriterText {
         return totalChars;
     }
 
-    public void setSpeed(int charsPerTick, int ticksPerChar) {
-        this.charsPerTick = Math.max(1, charsPerTick);
-        this.ticksPerChar = Math.max(1, ticksPerChar);
+    public void setSpeed(float baseSpeed) {
+        this.baseSpeed = baseSpeed;
+    }
+
+    /** Get the inline effect at a given character index, or null. */
+    public DialogueEffects getEffectAt(int charIndex) {
+        if (effectParseResult == null) return null;
+        return effectParseResult.getEffectAt(charIndex);
+    }
+
+    /** Whether this text has any inline effect tags. */
+    public boolean hasEffectTags() {
+        return effectParseResult != null && !effectParseResult.spans().isEmpty();
     }
 
     private static int countChars(List<FormattedCharSequence> lines) {

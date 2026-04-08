@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.client.gui.dialogue;
 
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffect;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffects;
+import com.aetherianartificer.townstead.client.gui.dialogue.effect.ScreenParticles;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -26,6 +27,7 @@ public class DialogueBox {
     private static final int LINE_HEIGHT = 11;
 
     private final TypewriterText typewriter = new TypewriterText();
+    private final ScreenParticles particles = new ScreenParticles();
     private Component villagerName = Component.empty();
     private DialogueEffect activeEffect = DialogueEffects.NORMAL;
 
@@ -47,10 +49,24 @@ public class DialogueBox {
     public void setText(Component text, Font font) {
         int textWidth = width - PADDING * 2;
         typewriter.setText(text, font, textWidth);
+        particles.clear();
+
+        // Determine the particle effect from the last character's effect tag
+        int total = typewriter.getTotalChars();
+        if (total > 0) {
+            DialogueEffects lastCharEffect = typewriter.getEffectAt(total - 1);
+            if (lastCharEffect != null && lastCharEffect != DialogueEffects.NORMAL) {
+                particles.setEffect(lastCharEffect);
+            } else if (activeEffect instanceof DialogueEffects globalEffect
+                    && globalEffect != DialogueEffects.NORMAL) {
+                particles.setEffect(globalEffect);
+            }
+        }
     }
 
     public void tick() {
         typewriter.tick();
+        particles.tick();
     }
 
     public void render(GuiGraphics graphics, Font font) {
@@ -79,11 +95,17 @@ public class DialogueBox {
         List<FormattedCharSequence> lines = typewriter.getRevealedLines();
         EffectRenderer.renderLines(graphics, font, lines,
                 x + PADDING, textY, LINE_HEIGHT, TEXT_COLOR,
-                activeEffect, 0, typewriter.getTotalChars());
+                activeEffect, typewriter);
+
+        // Update particle emitter to the last typed character position
+        particles.setEmitPosition(EffectRenderer.getLastCharX(), EffectRenderer.getLastCharY());
+
+        // Render particles (on top of text, clipped to box area)
+        particles.render(graphics);
 
         // Blinking indicator when text is complete
         if (typewriter.shouldShowIndicator()) {
-            String indicator = "\u25B6"; // right-pointing triangle
+            String indicator = "\u25B6";
             graphics.drawString(font, indicator, x + width - PADDING - font.width(indicator), y + height - PADDING - 9, INDICATOR_COLOR);
         }
     }
@@ -100,19 +122,8 @@ public class DialogueBox {
         return typewriter;
     }
 
-    public int getX() {
-        return x;
-    }
-
-    public int getY() {
-        return y;
-    }
-
-    public int getWidth() {
-        return width;
-    }
-
-    public int getHeight() {
-        return height;
-    }
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public int getWidth() { return width; }
+    public int getHeight() { return height; }
 }

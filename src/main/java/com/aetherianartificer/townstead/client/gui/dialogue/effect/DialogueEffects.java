@@ -49,7 +49,7 @@ public enum DialogueEffects implements DialogueEffect {
         }
     },
 
-    SCARED("Scared", null) {
+    SCARED("Scared", null, 2.0f) {
         @Override
         public void apply(CharRenderState s, int i, int total, float t) {
             s.x += Mth.sin(t * 2.5f + i * 7.1f) * 1.5f;
@@ -61,7 +61,7 @@ public enum DialogueEffects implements DialogueEffect {
         }
     },
 
-    WHISPER("Whisper", null) {
+    WHISPER("Whisper", null, 0.5f) {
         @Override
         public void apply(CharRenderState s, int i, int total, float t) {
             s.scale *= 0.65f;
@@ -73,7 +73,7 @@ public enum DialogueEffects implements DialogueEffect {
         }
     },
 
-    YELL("Yell", null) {
+    YELL("Yell", null, 3.0f) {
         @Override
         public void apply(CharRenderState s, int i, int total, float t) {
             s.scale *= 1.35f;
@@ -108,7 +108,7 @@ public enum DialogueEffects implements DialogueEffect {
         }
     },
 
-    NERVOUS("Nervous", null) {
+    NERVOUS("Nervous", null, 1.5f) {
         @Override
         public void apply(CharRenderState s, int i, int total, float t) {
             s.x += Mth.sin(t * 1.2f + i * 4.1f) * 0.4f;
@@ -149,7 +149,7 @@ public enum DialogueEffects implements DialogueEffect {
         }
     },
 
-    SLEEPY("Sleepy", null) {
+    SLEEPY("Sleepy", null, 0.4f) {
         @Override
         public void apply(CharRenderState s, int i, int total, float t) {
             s.y += 0.6f + Mth.sin(t * 0.06f) * 0.4f;
@@ -160,7 +160,7 @@ public enum DialogueEffects implements DialogueEffect {
         }
     },
 
-    EXCITED("Excited", ParticleTypes.NOTE) {
+    EXCITED("Excited", ParticleTypes.NOTE, 2.5f) {
         @Override
         public void apply(CharRenderState s, int i, int total, float t) {
             s.y -= Math.abs(Mth.sin(t * 0.5f + i * 0.7f)) * 2.0f;
@@ -175,10 +175,16 @@ public enum DialogueEffects implements DialogueEffect {
 
     private final String displayName;
     private final @Nullable SimpleParticleType particleType;
+    private final float typewriterSpeed;
 
     DialogueEffects(String displayName, @Nullable SimpleParticleType particleType) {
+        this(displayName, particleType, 1.0f);
+    }
+
+    DialogueEffects(String displayName, @Nullable SimpleParticleType particleType, float typewriterSpeed) {
         this.displayName = displayName;
         this.particleType = particleType;
+        this.typewriterSpeed = typewriterSpeed;
     }
 
     public String getDisplayName() {
@@ -189,6 +195,11 @@ public enum DialogueEffects implements DialogueEffect {
     @Nullable
     public SimpleParticleType getParticleType() {
         return particleType;
+    }
+
+    /** Typewriter speed multiplier. >1 = faster reveal, <1 = slower. */
+    public float getTypewriterSpeed() {
+        return typewriterSpeed;
     }
 
     public static DialogueEffects[] all() {
