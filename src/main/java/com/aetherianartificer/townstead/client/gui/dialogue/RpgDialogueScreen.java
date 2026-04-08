@@ -52,7 +52,8 @@ public class RpgDialogueScreen extends Screen {
         TYPEWRITER_PLAYING,
         CHOICES_VISIBLE,
         AWAITING_RESPONSE,
-        ENDING
+        ENDING,
+        CLOSING
     }
 
     public RpgDialogueScreen(VillagerLike<?> villager) {
@@ -105,16 +106,27 @@ public class RpgDialogueScreen extends Screen {
             case ENDING -> {
                 // Wait for player to dismiss
             }
+            case CLOSING -> {
+                if (cameraController.isRestoreComplete()) {
+                    userInitiatedClose = true;
+                    onClose();
+                }
+            }
             default -> {}
         }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Hide the HUD (crosshair, hotbar, etc.) during dialogue
+        Objects.requireNonNull(minecraft).options.hideGui = true;
+
+        if (state == DialogueState.CLOSING) return;
         dialogueBox.render(graphics, font);
         choicePanel.render(graphics, font, mouseX, mouseY);
         renderHearts(graphics);
     }
+
 
     private void renderHearts(GuiGraphics graphics) {
         Memories memory = villager.getVillagerBrain().getMemoriesForPlayer(
@@ -142,6 +154,20 @@ public class RpgDialogueScreen extends Screen {
     public boolean isPauseScreen() {
         return false;
     }
+
+    //? if >=1.21 {
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (choicePanel.mouseScrolled(scrollY)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+    //?} else {
+    /*@Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+        if (choicePanel.mouseScrolled(scrollY)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollY);
+    }
+    *///?}
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -198,8 +224,10 @@ public class RpgDialogueScreen extends Screen {
     }
 
     private void closeByUser() {
-        userInitiatedClose = true;
-        onClose();
+        if (state == DialogueState.CLOSING) return;
+        state = DialogueState.CLOSING;
+        cameraController.beginRestore();
+        choicePanel.setVisible(false);
     }
 
     @Override
@@ -210,9 +238,7 @@ public class RpgDialogueScreen extends Screen {
             // Re-open so the final dialogue line can display.
             Minecraft mc = Minecraft.getInstance();
             mc.tell(() -> mc.setScreen(this));
-            return;
         }
-        cameraController.restore();
     }
 
     @Override
@@ -220,7 +246,8 @@ public class RpgDialogueScreen extends Screen {
         if (!userInitiatedClose) {
             return;
         }
-        Objects.requireNonNull(this.minecraft).setScreen(null);
+        Objects.requireNonNull(this.minecraft).options.hideGui = false;
+        this.minecraft.setScreen(null);
         //? if neoforge {
         Network.sendToServer(new InteractionCloseRequest(villagerUUID));
         //?} else {
@@ -233,7 +260,7 @@ public class RpgDialogueScreen extends Screen {
     public void setDialogue(String questionId, List<String> answers) {
         this.dialogQuestionId = questionId;
         this.dialogAnswers = answers;
-        choicePanel.setChoices(questionId, answers);
+        choicePanel.setChoices(questionId, answers, font);
         choicePanel.layout(width, height, dialogueBox.getY());
         choicePanel.setVisible(false);
 
