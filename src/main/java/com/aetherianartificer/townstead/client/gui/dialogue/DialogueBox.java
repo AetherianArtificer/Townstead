@@ -33,7 +33,7 @@ public class DialogueBox {
     public void layout(int screenWidth, int screenHeight) {
         this.x = MARGIN;
         this.width = screenWidth - MARGIN * 2;
-        this.height = (int) (screenHeight * 0.20);
+        this.height = (int) (screenHeight * 0.25);
         this.y = screenHeight - this.height - 10;
     }
 

@@ -25,6 +25,7 @@ public class ChoicePanel {
     private static final int PADDING = 8;
     private static final int LINE_HEIGHT = 11;
     private static final int ENTRY_SPACING = 6;
+    private static final int HIGHLIGHT_PAD = 3;
     private static final int INDICATOR_WIDTH = 10;
     private static final int GAP_ABOVE_DIALOGUE = 8;
     private static final int MIN_TOP_MARGIN = 10;
@@ -110,7 +111,7 @@ public class ChoicePanel {
                 }
 
                 if (highlighted) {
-                    graphics.fill(x + 2, entryY - 1, x + width - 2, entryY + entryH + 1, SELECTED_BG);
+                    graphics.fill(x + 2, entryY - HIGHLIGHT_PAD, x + width - 2, entryY + entryH + HIGHLIGHT_PAD, SELECTED_BG);
                 }
 
                 int textColor = highlighted ? HOVER_COLOR : NORMAL_COLOR;
