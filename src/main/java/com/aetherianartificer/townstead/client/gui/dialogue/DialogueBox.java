@@ -16,17 +16,17 @@ import java.util.List;
  * with effects, screen-space particles, and smooth fade-in/out.
  */
 public class DialogueBox {
-    // Frame colors — layered for a bevel/depth effect
-    private static final int BG_FILL = 0xCC0A0A14;        // dark blue-black
-    private static final int BORDER_OUTER_LIGHT = 0xFF8888AA; // top/left highlight
-    private static final int BORDER_OUTER_DARK = 0xFF333355;  // bottom/right shadow
-    private static final int BORDER_INNER_LIGHT = 0xFF555577;
-    private static final int BORDER_INNER_DARK = 0xFF222244;
-    private static final int BORDER_ACCENT = 0xFF6666AA;      // accent line
-    private static final int CORNER_ACCENT = 0xFFAAAADD;       // corner decoration
+    // Frame colors — Minecraft stone/button style bevel
+    private static final int BG_FILL = 0xCC0E0E0E;            // near-black
+    private static final int BORDER_OUTER_LIGHT = 0xFFA0A0A0; // top/left highlight (like MC button)
+    private static final int BORDER_OUTER_DARK = 0xFF373737;   // bottom/right shadow
+    private static final int BORDER_INNER_LIGHT = 0xFF606060;
+    private static final int BORDER_INNER_DARK = 0xFF252525;
+    private static final int BORDER_ACCENT = 0xFF707070;       // inner accent line
+    private static final int CORNER_ACCENT = 0xFFB0B0B0;       // corner decoration
 
     // Name tab
-    private static final int NAME_TAB_BG = 0xDD0A0A14;
+    private static final int NAME_TAB_BG = 0xDD0E0E0E;
     private static final int NAME_COLOR = 0xFFFFD700;
 
     // Text
