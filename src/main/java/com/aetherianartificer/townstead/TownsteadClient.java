@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead;
 
+import com.aetherianartificer.townstead.client.TownsteadKeybinds;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
@@ -38,6 +39,7 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
+            NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             hooksRegistered = true;
         }
         //?} else if forge {
@@ -80,6 +82,10 @@ public final class TownsteadClient {
     }
 
     //? if neoforge {
+    private static void onClientTick(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
+        TownsteadKeybinds.onClientTick();
+    }
+
     private static void onGatherTooltipComponents(RenderTooltipEvent.GatherComponents event) {
         if (event.getItemStack().is(FatigueData.ENERGY_RESTORING_TAG)) {
             event.getTooltipElements().add(Either.right(

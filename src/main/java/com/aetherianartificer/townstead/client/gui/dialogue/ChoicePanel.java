@@ -13,7 +13,7 @@ import java.util.List;
  * Right-side panel showing dialogue choices.
  * Bottom-aligned above the dialogue box, grows upward.
  * Scrollable if choices exceed available screen height.
- * Supports mouse hover and keyboard navigation.
+ * Supports hub mode for the organized main menu.
  */
 public class ChoicePanel {
     private static final int BG_COLOR = 0xAA000000;
@@ -29,28 +29,50 @@ public class ChoicePanel {
     private static final int INDICATOR_WIDTH = 10;
     private static final int GAP_ABOVE_DIALOGUE = 8;
     private static final int MIN_TOP_MARGIN = 10;
+    private static final int BACK_COLOR = 0xFF8888AA;
 
-    private List<String> choices = List.of();
+    // Raw MCA data (kept for sending packets)
+    private List<String> rawAnswers = List.of();
     private String questionId = "";
+
+    // Display entries — either from hub mode or raw mode
+    private List<DisplayEntry> displayEntries = List.of();
+
     private boolean visible;
     private int hoveredIndex = -1;
     private int selectedIndex = 0;
     private int scrollOffset = 0;
 
-    // Layout anchors (set by layout())
-    private int panelWidth;
-    private int panelX;
-    private int bottomY; // bottom edge of the panel (fixed)
-    private int maxHeight; // maximum height before scrolling kicks in
+    // Hub mode state
+    private boolean hubMode;
+    private String currentSubMenu; // null = top level
+    private List<DialogueMenuOrganizer.HubEntry> hubEntries = List.of();
 
-    // Computed per-choice data
-    private final List<List<FormattedCharSequence>> wrappedChoices = new ArrayList<>();
+    // Layout anchors
+    private int panelWidth, panelX, bottomY, maxHeight;
+
+    // Computed per-entry data
+    private final List<List<FormattedCharSequence>> wrappedEntries = new ArrayList<>();
     private final List<Integer> entryHeights = new ArrayList<>();
-    private int contentHeight; // total height of all entries + spacing
+    private int contentHeight;
     private boolean needsScroll;
-
-    // Actual render bounds
     private int x, y, width, height;
+
+    /** What a display entry represents. */
+    record DisplayEntry(Component text, String mcaAnswer, String subMenuId, boolean isBack) {
+        static DisplayEntry fromHub(DialogueMenuOrganizer.HubEntry hub) {
+            return new DisplayEntry(hub.displayText(), hub.mcaAnswer(), hub.subMenuId(), false);
+        }
+        static DisplayEntry back() {
+            return new DisplayEntry(Component.translatable("townstead.dialogue.back"), null, null, true);
+        }
+        static DisplayEntry raw(String questionId, String answer) {
+            String key = Question.getTranslationKey(questionId, answer);
+            return new DisplayEntry(Component.translatable(key), answer, null, false);
+        }
+        boolean isHub() { return subMenuId != null; }
+        boolean isLeaf() { return mcaAnswer != null; }
+    }
 
     public void layout(int screenWidth, int screenHeight, int dialogueBoxY) {
         this.panelWidth = (int) (screenWidth * 0.30);
@@ -62,11 +84,20 @@ public class ChoicePanel {
 
     public void setChoices(String questionId, List<String> choices, Font font) {
         this.questionId = questionId;
-        this.choices = choices;
+        this.rawAnswers = choices;
         this.hoveredIndex = -1;
         this.selectedIndex = 0;
         this.scrollOffset = 0;
-        wrapChoices(font);
+        this.currentSubMenu = null;
+
+        if (DialogueMenuOrganizer.isMainQuestion(questionId)) {
+            this.hubMode = true;
+            this.hubEntries = DialogueMenuOrganizer.buildTopLevel(choices);
+            buildDisplayFromHub(font);
+        } else {
+            this.hubMode = false;
+            buildDisplayFromRaw(font);
+        }
         recomputeBounds();
     }
 
@@ -80,26 +111,21 @@ public class ChoicePanel {
     }
 
     public boolean isVisible() {
-        return visible && !choices.isEmpty();
+        return visible && !displayEntries.isEmpty();
     }
 
     public void render(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
         if (!isVisible()) return;
 
-        // Enable scissor to clip scrolled content
         graphics.enableScissor(x, y, x + width, y + height);
-
-        // Background
         graphics.fill(x, y, x + width, y + height, BG_COLOR);
 
-        // Choices
         int entryY = y + PADDING - scrollOffset;
         hoveredIndex = -1;
-        for (int i = 0; i < choices.size(); i++) {
+        for (int i = 0; i < displayEntries.size(); i++) {
             int entryH = entryHeights.get(i);
             int entryBottom = entryY + entryH;
 
-            // Only process visible entries
             if (entryBottom > y && entryY < y + height) {
                 boolean mouseHover = mouseX >= x && mouseX <= x + width
                         && mouseY >= Math.max(entryY, y) && mouseY < Math.min(entryBottom, y + height);
@@ -110,18 +136,26 @@ public class ChoicePanel {
                     selectedIndex = i;
                 }
 
+                DisplayEntry entry = displayEntries.get(i);
+
                 if (highlighted) {
                     graphics.fill(x + 2, entryY - HIGHLIGHT_PAD, x + width - 2, entryY + entryH + HIGHLIGHT_PAD, SELECTED_BG);
                 }
 
-                int textColor = highlighted ? HOVER_COLOR : NORMAL_COLOR;
+                int textColor;
+                if (entry.isBack()) {
+                    textColor = highlighted ? HOVER_COLOR : BACK_COLOR;
+                } else {
+                    textColor = highlighted ? HOVER_COLOR : NORMAL_COLOR;
+                }
 
                 if (highlighted) {
                     int indicatorY = entryY + (entryH - LINE_HEIGHT) / 2;
-                    graphics.drawString(font, "\u25B8", x + PADDING, indicatorY, HOVER_COLOR);
+                    String indicator = entry.isBack() ? "\u25C2" : "\u25B8";
+                    graphics.drawString(font, indicator, x + PADDING, indicatorY, HOVER_COLOR);
                 }
 
-                List<FormattedCharSequence> lines = wrappedChoices.get(i);
+                List<FormattedCharSequence> lines = wrappedEntries.get(i);
                 int lineY = entryY;
                 for (FormattedCharSequence line : lines) {
                     graphics.drawString(font, line, x + PADDING + INDICATOR_WIDTH, lineY, textColor);
@@ -134,13 +168,12 @@ public class ChoicePanel {
 
         graphics.disableScissor();
 
-        // Border (drawn after scissor so it's always fully visible)
+        // Border
         graphics.fill(x, y, x + width, y + 1, BORDER_HIGHLIGHT);
         graphics.fill(x, y + height - 1, x + width, y + height, BORDER_COLOR);
         graphics.fill(x, y, x + 1, y + height, BORDER_HIGHLIGHT);
         graphics.fill(x + width - 1, y, x + width, y + height, BORDER_COLOR);
 
-        // Scroll indicators
         if (needsScroll) {
             if (scrollOffset > 0) {
                 graphics.drawCenteredString(font, "\u25B2", x + width / 2, y + 2, 0x88FFFFFF);
@@ -151,6 +184,53 @@ public class ChoicePanel {
         }
     }
 
+    /**
+     * Handle a selection (click or Enter). Returns the result.
+     */
+    public SelectionResult select() {
+        if (selectedIndex < 0 || selectedIndex >= displayEntries.size()) {
+            return SelectionResult.NONE;
+        }
+        DisplayEntry entry = displayEntries.get(selectedIndex);
+        if (entry.isBack()) {
+            return SelectionResult.BACK;
+        }
+        if (entry.isHub()) {
+            return new SelectionResult(SelectionResult.Type.SUB_MENU, entry.subMenuId(), null);
+        }
+        return new SelectionResult(SelectionResult.Type.ANSWER, null, entry.mcaAnswer());
+    }
+
+    /**
+     * Navigate into a sub-menu. Call this from the screen when a hub entry is selected.
+     */
+    public void openSubMenu(String subMenuId, Font font) {
+        this.currentSubMenu = subMenuId;
+        this.selectedIndex = 0;
+        this.hoveredIndex = -1;
+        this.scrollOffset = 0;
+
+        List<DialogueMenuOrganizer.HubEntry> subEntries =
+                DialogueMenuOrganizer.buildSubMenu(subMenuId, rawAnswers);
+        this.hubEntries = subEntries;
+        buildDisplayFromHub(font);
+        recomputeBounds();
+    }
+
+    /**
+     * Navigate back to the top-level hub.
+     */
+    public void goBack(Font font) {
+        this.currentSubMenu = null;
+        this.selectedIndex = 0;
+        this.hoveredIndex = -1;
+        this.scrollOffset = 0;
+
+        this.hubEntries = DialogueMenuOrganizer.buildTopLevel(rawAnswers);
+        buildDisplayFromHub(font);
+        recomputeBounds();
+    }
+
     public boolean mouseScrolled(double delta) {
         if (!isVisible() || !needsScroll) return false;
         int maxScroll = contentHeight - (height - PADDING * 2);
@@ -159,23 +239,9 @@ public class ChoicePanel {
     }
 
     public void moveSelection(int delta) {
-        if (choices.isEmpty()) return;
-        selectedIndex = Math.floorMod(selectedIndex + delta, choices.size());
+        if (displayEntries.isEmpty()) return;
+        selectedIndex = Math.floorMod(selectedIndex + delta, displayEntries.size());
         ensureSelectedVisible();
-    }
-
-    public String getSelectedChoice() {
-        if (choices.isEmpty() || selectedIndex < 0 || selectedIndex >= choices.size()) {
-            return null;
-        }
-        return choices.get(selectedIndex);
-    }
-
-    public String getHoveredChoice() {
-        if (hoveredIndex < 0 || hoveredIndex >= choices.size()) {
-            return null;
-        }
-        return choices.get(hoveredIndex);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY) {
@@ -185,62 +251,76 @@ public class ChoicePanel {
     }
 
     public boolean isEmpty() {
-        return choices.isEmpty();
+        return displayEntries.isEmpty();
     }
 
-    private void wrapChoices(Font font) {
-        wrappedChoices.clear();
+    // --- Internal ---
+
+    private void buildDisplayFromHub(Font font) {
+        displayEntries = new ArrayList<>();
+        for (DialogueMenuOrganizer.HubEntry entry : hubEntries) {
+            displayEntries.add(DisplayEntry.fromHub(entry));
+        }
+        if (currentSubMenu != null) {
+            displayEntries.add(DisplayEntry.back());
+        }
+        wrapEntries(font);
+    }
+
+    private void buildDisplayFromRaw(Font font) {
+        displayEntries = new ArrayList<>();
+        for (String answer : rawAnswers) {
+            displayEntries.add(DisplayEntry.raw(questionId, answer));
+        }
+        wrapEntries(font);
+    }
+
+    private void wrapEntries(Font font) {
+        wrappedEntries.clear();
         entryHeights.clear();
         int maxTextWidth = panelWidth - PADDING * 2 - INDICATOR_WIDTH;
-        for (String choice : choices) {
-            String translationKey = Question.getTranslationKey(questionId, choice);
-            Component text = Component.translatable(translationKey);
-            List<FormattedCharSequence> lines = font.split(text, maxTextWidth);
-            wrappedChoices.add(lines);
+        for (DisplayEntry entry : displayEntries) {
+            List<FormattedCharSequence> lines = font.split(entry.text(), maxTextWidth);
+            wrappedEntries.add(lines);
             entryHeights.add(Math.max(1, lines.size()) * LINE_HEIGHT);
         }
-
         contentHeight = 0;
         for (int i = 0; i < entryHeights.size(); i++) {
             contentHeight += entryHeights.get(i);
-            if (i < entryHeights.size() - 1) {
-                contentHeight += ENTRY_SPACING;
-            }
+            if (i < entryHeights.size() - 1) contentHeight += ENTRY_SPACING;
         }
     }
 
     private void recomputeBounds() {
         this.width = panelWidth;
         this.x = panelX;
-
         int desiredHeight = contentHeight + PADDING * 2;
         if (desiredHeight > maxHeight) {
             this.height = maxHeight;
             this.needsScroll = true;
         } else {
-            this.height = desiredHeight;
+            this.height = Math.max(desiredHeight, PADDING * 2);
             this.needsScroll = false;
         }
-
-        // Bottom-aligned: panel bottom sits at bottomY
         this.y = bottomY - this.height;
     }
 
     private void ensureSelectedVisible() {
         if (!needsScroll || entryHeights.isEmpty()) return;
-
-        // Calculate the top of the selected entry relative to content
         int entryTop = 0;
         for (int i = 0; i < selectedIndex; i++) {
             entryTop += entryHeights.get(i) + ENTRY_SPACING;
         }
         int entryBottom = entryTop + entryHeights.get(selectedIndex);
         int visibleHeight = height - PADDING * 2;
+        if (entryTop < scrollOffset) scrollOffset = entryTop;
+        else if (entryBottom > scrollOffset + visibleHeight) scrollOffset = entryBottom - visibleHeight;
+    }
 
-        if (entryTop < scrollOffset) {
-            scrollOffset = entryTop;
-        } else if (entryBottom > scrollOffset + visibleHeight) {
-            scrollOffset = entryBottom - visibleHeight;
-        }
+    /** Result of selecting an entry. */
+    public record SelectionResult(Type type, String subMenuId, String mcaAnswer) {
+        public enum Type { NONE, ANSWER, SUB_MENU, BACK }
+        static final SelectionResult NONE = new SelectionResult(Type.NONE, null, null);
+        static final SelectionResult BACK = new SelectionResult(Type.BACK, null, null);
     }
 }

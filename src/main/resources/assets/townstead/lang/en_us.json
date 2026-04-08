@@ -398,5 +398,28 @@
   "dialogue.chat.energy.recovered/1": "*gets up slowly* ...I think I can manage now.",
   "dialogue.chat.energy.recovered/2": "Ugh... that was awful. I'm back on my feet, at least.",
   "dialogue.chat.energy.recovered/3": "I feel a little better. Let me try to get going again.",
-  "dialogue.chat.energy.recovered/4": "*stretches* ...alright, I'm okay. I think."
+  "dialogue.chat.energy.recovered/4": "*stretches* ...alright, I'm okay. I think.",
+
+  "townstead.key.category": "Townstead",
+  "townstead.key.talk": "Talk to Villager",
+
+  "townstead.dialogue.back": "\u2190 Back",
+  "townstead.dialogue.main.chat": "Let's chat for a bit...",
+  "townstead.dialogue.main.joke": "I've got a joke for you!",
+  "townstead.dialogue.main.story": "Let me tell you a story...",
+  "townstead.dialogue.main.hug": "Come here...",
+  "townstead.dialogue.main.romance": "I want to get closer...",
+  "townstead.dialogue.main.adventurer": "About your travels...",
+  "townstead.dialogue.main.apologize": "I'm sorry about earlier...",
+  "townstead.dialogue.main.rumors": "Heard any rumors lately?",
+  "townstead.dialogue.main.rock_paper_scissor": "Want to play a game?",
+  "townstead.dialogue.main.adopt": "Would you like to come with me?",
+  "townstead.dialogue.main.flirt": "You're looking nice today...",
+  "townstead.dialogue.main.kiss": "Close your eyes...",
+  "townstead.dialogue.main.procreate": "Shall we try for a baby?",
+  "townstead.dialogue.main.procreate_engaged": "We could start a family...",
+  "townstead.dialogue.main.divorceInitiate": "We need to talk about us...",
+  "townstead.dialogue.main.divorcePapers": "I need divorce papers.",
+  "townstead.dialogue.main.hire": "I could use your help...",
+  "townstead.dialogue.main.stay": "Why not settle down here?"
 }

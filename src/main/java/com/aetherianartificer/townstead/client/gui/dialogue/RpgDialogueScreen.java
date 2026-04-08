@@ -178,7 +178,7 @@ public class RpgDialogueScreen extends Screen {
             return true;
         }
         if (state == DialogueState.CHOICES_VISIBLE && choicePanel.mouseClicked(mouseX, mouseY)) {
-            selectChoice(choicePanel.getHoveredChoice());
+            handleChoiceSelection();
             return true;
         }
         if (state == DialogueState.ENDING) {
@@ -210,7 +210,7 @@ public class RpgDialogueScreen extends Screen {
                 return true;
             }
             if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_SPACE) {
-                selectChoice(choicePanel.getSelectedChoice());
+                handleChoiceSelection();
                 return true;
             }
         }
@@ -306,6 +306,16 @@ public class RpgDialogueScreen extends Screen {
         dialogAnswers = null;
         state = DialogueState.TYPEWRITER_PLAYING;
         awaitingResponseTimer = 0;
+    }
+
+    private void handleChoiceSelection() {
+        ChoicePanel.SelectionResult result = choicePanel.select();
+        switch (result.type()) {
+            case ANSWER -> selectChoice(result.mcaAnswer());
+            case SUB_MENU -> choicePanel.openSubMenu(result.subMenuId(), font);
+            case BACK -> choicePanel.goBack(font);
+            case NONE -> {}
+        }
     }
 
     private void selectChoice(String choice) {
