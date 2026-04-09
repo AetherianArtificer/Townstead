@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "townstead:block/field_post"
+    }
+  }
+}

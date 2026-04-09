@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead;
 
 //? if forge {
 /*
+import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
+import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
@@ -118,6 +120,12 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleVillageResidentsSync);
         registerC2S(ProfessionSetPayload.class, ProfessionSetPayload::write, ProfessionSetPayload::read,
                 TownsteadNetwork::handleProfessionSet);
+
+        // Field Post
+        registerC2S(FieldPostConfigSetPayload.class, FieldPostConfigSetPayload::write, FieldPostConfigSetPayload::read,
+                TownsteadNetwork::handleFieldPostConfigSet);
+        registerS2C(FieldPostConfigSyncPayload.class, FieldPostConfigSyncPayload::write, FieldPostConfigSyncPayload::read,
+                TownsteadNetwork::handleFieldPostConfigSync);
     }
 
     // ── Send helpers ──
@@ -504,6 +512,41 @@ public final class TownsteadNetwork {
                 Townstead.LOGGER.debug("Released stale job-site ticket for {} at {}", profession, pos);
             }
         });
+    }
+
+    // ── Field Post handlers ──
+
+    private static void handleFieldPostConfigSet(FieldPostConfigSetPayload payload, ServerPlayer sp) {
+        net.minecraft.world.level.block.entity.BlockEntity be =
+                sp.serverLevel().getBlockEntity(payload.pos());
+        if (!(be instanceof com.aetherianartificer.townstead.block.FieldPostBlockEntity fieldPost)) return;
+        if (sp.distanceToSqr(payload.pos().getX() + 0.5, payload.pos().getY() + 0.5, payload.pos().getZ() + 0.5) > 64.0) return;
+
+        fieldPost.applyConfig(
+                payload.patternId(), payload.tierCap(), payload.radius(), payload.priority(),
+                payload.autoSeedMode(), payload.seedFilter(),
+                payload.waterEnabled(), payload.maxWaterCells(),
+                payload.groomEnabled(), payload.groomRadius(),
+                payload.rotationEnabled(), payload.rotationPatterns(),
+                payload.cellPlan()
+        );
+        Townstead.LOGGER.debug("Field Post config set at {} with {} cell assignments by {}",
+                payload.pos(), payload.cellPlan().size(), sp.getName().getString());
+
+        sendToPlayer(sp, new FieldPostConfigSyncPayload(
+                payload.pos(), fieldPost.getPatternId(), fieldPost.getTierCap(),
+                fieldPost.getRadius(), fieldPost.getPriority(),
+                fieldPost.isAutoSeedMode(), fieldPost.getSeedFilter(),
+                fieldPost.isWaterEnabled(), fieldPost.getMaxWaterCells(),
+                fieldPost.isGroomEnabled(), fieldPost.getGroomRadius(),
+                fieldPost.isRotationEnabled(), fieldPost.getRotationPatterns(),
+                fieldPost.getCellPlan(),
+                fieldPost.getEffectivePatternId(), 0, 0, 0, 0
+        ));
+    }
+
+    private static void handleFieldPostConfigSync(FieldPostConfigSyncPayload payload) {
+        // Client-side: currently a no-op, screen reads from block entity directly.
     }
 
     private static boolean townstead$professionOwnsJobSite(VillagerProfession holderProfession, VillagerProfession targetProfession) {

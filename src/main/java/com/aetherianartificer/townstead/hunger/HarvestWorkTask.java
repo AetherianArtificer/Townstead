@@ -99,6 +99,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private ActionType actionType = ActionType.NONE;
     private BlockPos targetPos;
     private BlockPos farmAnchor;
+    private com.aetherianartificer.townstead.block.FieldPostBlockEntity cachedFieldPost;
     private FarmBlueprint farmBlueprint;
     private int actionCooldown;
     private long nextAcquireTick;
@@ -1114,6 +1115,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private boolean townstead$canAttemptWaterPlacement(ServerLevel level, long gameTime) {
         if (!TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get()) return false;
+        if (cachedFieldPost != null && !cachedFieldPost.isWaterEnabled()) return false;
         return townstead$hasWaterPlacementBudget(gameTime);
     }
 
@@ -1440,7 +1442,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         boolean anchorChanged = farmBlueprint == null || !farmAnchor.equals(farmBlueprint.anchor());
         if (!force && !anchorChanged && gameTime < nextBlueprintPlanTick) return;
 
-        FarmingPolicyData.ResolvedFarmingPolicy policy = FarmingPolicyData.get(level).resolveForAnchor(farmAnchor);
+        FarmingPolicyData.ResolvedFarmingPolicy policy = FarmingPolicyData.get(level).resolveForAnchor(level, farmAnchor);
+        cachedFieldPost = com.aetherianartificer.townstead.block.FieldPostIndex.findBestForAnchor(level, farmAnchor);
         //? if neoforge {
         CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
         //?} else {
@@ -1726,6 +1729,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private int townstead$groomRadius() {
+        if (cachedFieldPost != null) {
+            if (!cachedFieldPost.isGroomEnabled()) return 0;
+            return cachedFieldPost.getGroomRadius();
+        }
         return Math.max(0, TownsteadConfig.FARMER_GROOM_RADIUS.get());
     }
 

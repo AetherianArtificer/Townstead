@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.farming;
 
+import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
+import com.aetherianartificer.townstead.block.FieldPostIndex;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import net.minecraft.core.BlockPos;
 //? if >=1.21 {
@@ -36,6 +38,21 @@ public final class FarmingPolicyData extends SavedData {
         //?} else {
         /*return storage.computeIfAbsent(FarmingPolicyData::load, FarmingPolicyData::new, DATA_NAME);
         *///?}
+    }
+
+    /**
+     * Resolves farming policy for an anchor, checking Field Posts first.
+     */
+    public ResolvedFarmingPolicy resolveForAnchor(ServerLevel level, BlockPos anchor) {
+        FieldPostBlockEntity post = FieldPostIndex.findBestForAnchor(level, anchor);
+        if (post != null) {
+            return new ResolvedFarmingPolicy(
+                    normalizePatternId(post.getEffectivePatternId()),
+                    normalizeTier(post.getTierCap()),
+                    "field_post"
+            );
+        }
+        return resolveForAnchor(anchor);
     }
 
     public ResolvedFarmingPolicy resolveForAnchor(BlockPos anchor) {

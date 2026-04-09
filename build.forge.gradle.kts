@@ -81,7 +81,7 @@ tasks.withType<ProcessResources> {
     filesMatching("pack.mcmeta") {
         filter { it.replace("\"pack_format\": 34", "\"pack_format\": 15") }
     }
-    // 1.20.1 uses plural tag directories (tags/blocks/, tags/items/) instead of singular
+    // 1.20.1 uses plural tag/recipe/loot_table directories
     // Move compat building types to a non-loading location for conditional runtime loading
     eachFile {
         if (path.contains("/tags/block/")) {
@@ -90,9 +90,19 @@ tasks.withType<ProcessResources> {
         if (path.contains("/tags/item/")) {
             path = path.replace("/tags/item/", "/tags/items/")
         }
+        if (path.contains("/recipe/")) {
+            path = path.replace("/recipe/", "/recipes/")
+        }
+        if (path.contains("/loot_table/")) {
+            path = path.replace("/loot_table/", "/loot_tables/")
+        }
         if (path.startsWith("data/mca/building_types/compat/")) {
             path = path.replace("data/mca/", "townstead_compat/")
         }
+    }
+    // 1.20.1 recipe format uses "item" instead of "id" in results
+    filesMatching("data/*/recipe/*.json") {
+        filter { it.replace("\"id\":", "\"item\":") }
     }
 }
 
