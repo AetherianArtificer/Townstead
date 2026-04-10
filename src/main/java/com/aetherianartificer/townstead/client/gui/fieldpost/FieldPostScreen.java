@@ -39,6 +39,7 @@ public class FieldPostScreen extends Screen {
     private int stride() { return cellSize() + 1; }
 
     // ── Layout ──
+    private static final int SPACING = 10;       // consistent gap between edges, panels, sections
     private static final int FRAME_THICK = 6;
     private static final int PALETTE_W = 136;
     private static final int TITLE_H = 18;
@@ -138,17 +139,22 @@ public class FieldPostScreen extends Screen {
 
         gridSize = radius * 2 + 1;
 
-        // Layout: frame surrounds everything
-        int outerMargin = 10;
-        int palLeft = outerMargin + FRAME_THICK;
-        int palTop = outerMargin + FRAME_THICK + TITLE_H;
+        // Layout — consistent SPACING gutters everywhere (screen edges + between panels)
+        int palLeft = SPACING + FRAME_THICK;
+        int palTop = SPACING + FRAME_THICK + TITLE_H;
 
-        vpLeft = palLeft + PALETTE_W + FRAME_THICK * 2;
-        vpTop = palTop + TOOLBAR_H;
-        vpW = width - vpLeft - outerMargin - FRAME_THICK;
-        vpH = height - vpTop - outerMargin - FRAME_THICK - STATUS_H;
+        // Viewport frame wraps both toolbar AND grid (shared frame)
+        // Gap between palette frame and viewport frame = SPACING of empty space
+        vpLeft = palLeft + PALETTE_W + FRAME_THICK + SPACING + FRAME_THICK;
+        // Viewport content area starts at palTop (same as palette) and includes toolbar row at top
+        int vpFrameTop = palTop;
+        vpTop = vpFrameTop + TOOLBAR_H;  // grid cells start below toolbar row
+        vpW = width - vpLeft - SPACING - FRAME_THICK;
+        // Full frame height = toolbar + grid + room for status bar below frame
+        int vpFrameH = height - vpFrameTop - SPACING - FRAME_THICK - STATUS_H - SPACING;
+        vpH = vpFrameH - TOOLBAR_H;
         toolbarLeft = vpLeft;
-        toolbarTop = palTop;
+        toolbarTop = vpFrameTop;
 
         recomputeViewport();
 
@@ -167,7 +173,7 @@ public class FieldPostScreen extends Screen {
 
         // Tool list
         int listTop = palTop + SEARCH_H + 6;
-        int listH = height - listTop - outerMargin - FRAME_THICK;
+        int listH = height - listTop - SPACING - FRAME_THICK;
         paletteList = new ToolPaletteList(minecraft, palLeft, PALETTE_W, listH, listTop, entry -> {});
         paletteList.setOnHeaderClick(category -> {
             paletteList.toggleCategory(category);
@@ -362,6 +368,15 @@ public class FieldPostScreen extends Screen {
         }
     }
 
+    /**
+     * Chat-style panel background color using the player's textBackgroundOpacity accessibility setting.
+     */
+    private int chatPanelColor() {
+        double opacity = minecraft.options.textBackgroundOpacity().get();
+        int alpha = (int) (opacity * 255.0) & 0xFF;
+        return (alpha << 24);
+    }
+
     private ItemStack cropIcon(Block block) {
         if (block == Blocks.WHEAT) return new ItemStack(Items.WHEAT);
         if (block == Blocks.CARROTS) return new ItemStack(Items.CARROT);
@@ -411,19 +426,23 @@ public class FieldPostScreen extends Screen {
         g.drawCenteredString(font, "\u2717", cancelX + btnSize / 2, 7, 0xFFFFFFFF);
 
         // ── Palette panel ──
-        int palLeft = 10 + FRAME_THICK;
-        int palTop = 10 + FRAME_THICK + TITLE_H;
-        int palH = height - palTop - 10 - FRAME_THICK;
+        int palLeft = SPACING + FRAME_THICK;
+        int palTop = SPACING + FRAME_THICK + TITLE_H;
+        int palH = height - palTop - SPACING - FRAME_THICK;
         FrameRenderer.drawWoodenFrame(g, palLeft, palTop, PALETTE_W, palH, FRAME_THICK);
         // Solid dark panel (no parchment - more readable)
-        g.fill(palLeft, palTop, palLeft + PALETTE_W, palTop + palH, 0xE8000000);
+        g.fill(palLeft, palTop, palLeft + PALETTE_W, palTop + palH, chatPanelColor());
         g.fill(palLeft, palTop + SEARCH_H + 5, palLeft + PALETTE_W, palTop + SEARCH_H + 6, 0x40FFDEA0);
 
-        // ── Toolbar ──
+        // ── Grid viewport frame (wraps toolbar + grid) ──
+        int vpFrameTop = toolbarTop;
+        int vpFrameH = TOOLBAR_H + vpH;
+        FrameRenderer.drawWoodenFrame(g, vpLeft, vpFrameTop, vpW, vpFrameH, FRAME_THICK);
+
+        // ── Toolbar (inside the frame, at the top) ──
         renderToolbar(g, mouseX, mouseY);
 
-        // ── Grid viewport frame & content ──
-        FrameRenderer.drawWoodenFrame(g, vpLeft, vpTop, vpW, vpH, FRAME_THICK);
+        // ── Grid content (below toolbar, inside same frame) ──
         renderGrid(g, mouseX, mouseY);
         renderCardinalLabels(g);
 
@@ -442,7 +461,7 @@ public class FieldPostScreen extends Screen {
         int y = toolbarTop;
 
         // Toolbar background strip — solid dark
-        g.fill(x, y, x + vpW, y + TOOLBAR_H - 2, 0xE8000000);
+        g.fill(x, y, x + vpW, y + TOOLBAR_H - 2, chatPanelColor());
         g.fill(x, y + TOOLBAR_H - 3, x + vpW, y + TOOLBAR_H - 2, 0x40FFDEA0);
 
         // Mode buttons
@@ -598,19 +617,20 @@ public class FieldPostScreen extends Screen {
     }
 
     private void renderCardinalLabels(GuiGraphics g) {
+        // Labels drawn just inside the viewport rectangle so they sit on the grid, not the frame
         int midX = vpLeft + vpW / 2;
         int midY = vpTop + vpH / 2;
-        g.drawCenteredString(font, "N", midX, vpTop - 9, TEXT_LIGHT);
-        g.drawCenteredString(font, "S", midX, vpTop + vpH + 1, TEXT_LIGHT);
-        g.drawString(font, "W", vpLeft - 7, midY - 4, TEXT_LIGHT, true);
-        g.drawString(font, "E", vpLeft + vpW + 1, midY - 4, TEXT_LIGHT, true);
+        g.drawCenteredString(font, "N", midX, vpTop + 2, TEXT_LIGHT);
+        g.drawCenteredString(font, "S", midX, vpTop + vpH - 10, TEXT_LIGHT);
+        g.drawString(font, "W", vpLeft + 2, midY - 4, TEXT_LIGHT, true);
+        g.drawString(font, "E", vpLeft + vpW - 8, midY - 4, TEXT_LIGHT, true);
     }
 
     private void renderStatusBar(GuiGraphics g, int mouseX, int mouseY) {
-        int y = vpTop + vpH + 2;
+        // Sits below the viewport frame with SPACING of gap
+        int y = vpTop + vpH + FRAME_THICK + SPACING;
         int w = vpW;
-        // Solid dark status bar with accent top edge
-        g.fill(vpLeft, y, vpLeft + w, y + STATUS_H - 2, 0xE8000000);
+        g.fill(vpLeft, y, vpLeft + w, y + STATUS_H - 2, chatPanelColor());
         g.fill(vpLeft, y, vpLeft + w, y + 1, 0x40FFDEA0);
 
         // Selected tool

@@ -70,6 +70,14 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
         return mouseX >= this.getX() && mouseX < this.getX() + this.width
                 && mouseY >= this.getY() && mouseY < this.getY() + this.getHeight();
     }
+
+    // Suppress the default dirt/menu background so our transparent panel shows through
+    @Override
+    protected void renderListBackground(GuiGraphics g) {}
+
+    // Suppress the default list separators (horizontal bars at top/bottom)
+    @Override
+    protected void renderListSeparators(GuiGraphics g) {}
     //?}
 
     public static class ToolEntry extends ObjectSelectionList.Entry<ToolEntry> {
@@ -123,24 +131,38 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
         }
 
         private void renderHeader(GuiGraphics g, Minecraft mc, int top, int left, int width, int height, boolean hovered) {
-            // Header background strip
-            g.fill(left - 1, top, left + width - 1, top + height - 2,
-                    hovered ? 0xFF2A2518 : 0xFF1A1610);
-            // Bottom accent line
-            g.fill(left - 1, top + height - 3, left + width - 1, top + height - 2, 0x40FFDEA0);
+            // Draw a vanilla-Minecraft-style button
+            int btnTop = top + 1;
+            int btnBottom = top + height - 3;
+            int btnLeft = left;
+            int btnRight = left + width - 1;
 
-            // Expand/collapse arrow
+            // Base fill (gray)
+            int bodyColor = hovered ? 0xFF6F6F6F : 0xFF545454;
+            g.fill(btnLeft + 1, btnTop + 1, btnRight - 1, btnBottom - 1, bodyColor);
+
+            // Top highlight strip (lighter)
+            g.fill(btnLeft + 1, btnTop + 1, btnRight - 1, btnTop + 2,
+                    hovered ? 0xFF909090 : 0xFF737373);
+            // Bottom shadow strip (darker)
+            g.fill(btnLeft + 1, btnBottom - 2, btnRight - 1, btnBottom - 1, 0xFF3A3A3A);
+
+            // Dark outer border (1px all around)
+            g.fill(btnLeft, btnTop, btnRight, btnTop + 1, 0xFF000000);
+            g.fill(btnLeft, btnBottom - 1, btnRight, btnBottom, 0xFF000000);
+            g.fill(btnLeft, btnTop, btnLeft + 1, btnBottom, 0xFF000000);
+            g.fill(btnRight - 1, btnTop, btnRight, btnBottom, 0xFF000000);
+
+            // Collapse arrow + label (vanilla button text has drop shadow)
+            int textY = btnTop + (btnBottom - btnTop - 8) / 2 + 1;
             String arrow = isCollapsed() ? "\u25B6" : "\u25BC";
-            g.drawString(mc.font, arrow, left + 3, top + 7, 0xFFFFDEA0, false);
-
-            // Category label
-            String title = label.toUpperCase();
-            g.drawString(mc.font, title, left + 14, top + 7, hovered ? 0xFFFFDEA0 : 0xFFDDCC99, false);
+            g.drawString(mc.font, arrow, btnLeft + 5, textY, 0xFFFFFFFF, true);
+            g.drawString(mc.font, label, btnLeft + 16, textY, hovered ? 0xFFFFFFA0 : 0xFFFFFFFF, true);
 
             // Member count on the right
-            String count = String.valueOf(memberCount);
+            String count = "(" + memberCount + ")";
             int countW = mc.font.width(count);
-            g.drawString(mc.font, count, left + width - countW - 8, top + 7, 0xFF888066, false);
+            g.drawString(mc.font, count, btnRight - countW - 5, textY, 0xFFA0A0A0, true);
         }
 
         private void renderTool(GuiGraphics g, Minecraft mc, int top, int left, int width, int height, boolean hovered) {
