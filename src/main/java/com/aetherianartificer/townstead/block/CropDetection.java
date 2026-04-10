@@ -10,6 +10,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.BushBlock;
 import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.DoublePlantBlock;
+import net.minecraft.world.level.block.FlowerBlock;
+import net.minecraft.world.level.block.MushroomBlock;
+import net.minecraft.world.level.block.SaplingBlock;
+import net.minecraft.world.level.block.TallGrassBlock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +39,14 @@ public final class CropDetection {
         // Generic detection: does this item place a crop/bush block?
         Block placedBlock = getPlacedBlock(item);
         if (placedBlock == null) return false;
+
+        // Exclude non-crop bush subclasses: saplings (trees), flowers, tall grass, mushrooms
+        if (placedBlock instanceof SaplingBlock) return false;
+        if (placedBlock instanceof FlowerBlock) return false;
+        if (placedBlock instanceof TallGrassBlock) return false;
+        if (placedBlock instanceof DoublePlantBlock) return false;
+        if (placedBlock instanceof MushroomBlock) return false;
+
         return placedBlock instanceof CropBlock || placedBlock instanceof BushBlock;
     }
 
