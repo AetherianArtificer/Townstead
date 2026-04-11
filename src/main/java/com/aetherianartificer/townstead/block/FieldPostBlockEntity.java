@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.block;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.farming.cellplan.CellPlan;
+import com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig;
 import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import net.minecraft.core.BlockPos;
 //? if >=1.21 {
@@ -48,7 +50,7 @@ public class FieldPostBlockEntity extends BlockEntity implements MenuProvider {
     private boolean rotationEnabled = false;
     private final List<String> rotationPatterns = new ArrayList<>();
     private int rotationIndex = 0;
-    private final java.util.Map<Long, String> cellPlan = new java.util.HashMap<>(); // packed pos -> seed/water id
+    private CellPlan cellPlan = CellPlan.EMPTY;
     @Nullable private UUID ownerUuid;
     private String ownerName = "";
 
@@ -71,13 +73,10 @@ public class FieldPostBlockEntity extends BlockEntity implements MenuProvider {
     public boolean isRotationEnabled() { return rotationEnabled; }
     public List<String> getRotationPatterns() { return List.copyOf(rotationPatterns); }
     public int getRotationIndex() { return rotationIndex; }
-    public java.util.Map<Long, String> getCellPlan() { return java.util.Map.copyOf(cellPlan); }
+    public CellPlan getCellPlan() { return cellPlan; }
     @Nullable public UUID getOwnerUuid() { return ownerUuid; }
     public String getOwnerName() { return ownerName; }
 
-    /**
-     * Returns the effective pattern ID, accounting for crop rotation.
-     */
     public String getEffectivePatternId() {
         if (rotationEnabled && !rotationPatterns.isEmpty()) {
             int idx = Math.floorMod(rotationIndex, rotationPatterns.size());
@@ -86,42 +85,47 @@ public class FieldPostBlockEntity extends BlockEntity implements MenuProvider {
         return patternId;
     }
 
-    /**
-     * Advances crop rotation to the next pattern. Called when a full harvest cycle completes.
-     */
     public void advanceRotation() {
         if (!rotationEnabled || rotationPatterns.isEmpty()) return;
         rotationIndex = (rotationIndex + 1) % rotationPatterns.size();
         setChanged();
     }
 
-    // ── Setters (bulk update from network) ──
+    /**
+     * Builds a snapshot of the current config for use in payloads and the screen.
+     */
+    public FieldPostConfig toConfig() {
+        return new FieldPostConfig(
+                patternId, tierCap, radius, priority,
+                autoSeedMode, List.copyOf(seedFilter),
+                waterEnabled, maxWaterCells,
+                groomEnabled, groomRadius,
+                rotationEnabled, List.copyOf(rotationPatterns),
+                cellPlan
+        );
+    }
 
-    public void applyConfig(String patternId, int tierCap, int radius, int priority,
-                            boolean autoSeedMode, List<String> seedFilter,
-                            boolean waterEnabled, int maxWaterCells,
-                            boolean groomEnabled, int groomRadius,
-                            boolean rotationEnabled, List<String> rotationPatterns,
-                            java.util.Map<Long, String> cellPlan) {
-        this.patternId = patternId == null || patternId.isBlank() ? DEFAULT_PATTERN : patternId;
-        this.tierCap = Math.max(1, Math.min(tierCap, 5));
-        this.radius = Math.max(8, Math.min(radius, 32));
-        this.priority = Math.max(0, Math.min(priority, 10));
-        this.autoSeedMode = autoSeedMode;
+    // ── Setters ──
+
+    public void applyConfig(FieldPostConfig config) {
+        this.patternId = config.patternId() == null || config.patternId().isBlank() ? DEFAULT_PATTERN : config.patternId();
+        this.tierCap = Math.max(1, Math.min(config.tierCap(), 5));
+        this.radius = Math.max(8, Math.min(config.radius(), 32));
+        this.priority = Math.max(0, Math.min(config.priority(), 10));
+        this.autoSeedMode = config.autoSeedMode();
         this.seedFilter.clear();
-        if (seedFilter != null) this.seedFilter.addAll(seedFilter);
-        this.waterEnabled = waterEnabled;
-        this.maxWaterCells = Math.max(0, Math.min(maxWaterCells, 32));
-        this.groomEnabled = groomEnabled;
-        this.groomRadius = Math.max(1, Math.min(groomRadius, 8));
-        this.rotationEnabled = rotationEnabled;
+        if (config.seedFilter() != null) this.seedFilter.addAll(config.seedFilter());
+        this.waterEnabled = config.waterEnabled();
+        this.maxWaterCells = Math.max(0, Math.min(config.maxWaterCells(), 32));
+        this.groomEnabled = config.groomEnabled();
+        this.groomRadius = Math.max(1, Math.min(config.groomRadius(), 8));
+        this.rotationEnabled = config.rotationEnabled();
         this.rotationPatterns.clear();
-        if (rotationPatterns != null) this.rotationPatterns.addAll(rotationPatterns);
+        if (config.rotationPatterns() != null) this.rotationPatterns.addAll(config.rotationPatterns());
         if (this.rotationIndex >= this.rotationPatterns.size() && !this.rotationPatterns.isEmpty()) {
             this.rotationIndex = 0;
         }
-        this.cellPlan.clear();
-        if (cellPlan != null) this.cellPlan.putAll(cellPlan);
+        this.cellPlan = config.cellPlan() != null ? config.cellPlan() : CellPlan.EMPTY;
         setChanged();
         if (level != null) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
@@ -157,15 +161,7 @@ public class FieldPostBlockEntity extends BlockEntity implements MenuProvider {
         tag.putBoolean("rotationEnabled", rotationEnabled);
         tag.put("rotationPatterns", toStringList(rotationPatterns));
         tag.putInt("rotationIndex", rotationIndex);
-        // Cell plan
-        ListTag planList = new ListTag();
-        cellPlan.forEach((posLong, seedId) -> {
-            CompoundTag entry = new CompoundTag();
-            entry.putLong("pos", posLong);
-            entry.putString("seed", seedId);
-            planList.add(entry);
-        });
-        tag.put("cellPlan", planList);
+        CellPlan.save(tag, cellPlan);
         if (ownerUuid != null) tag.putUUID("ownerUuid", ownerUuid);
         tag.putString("ownerName", ownerName);
     }
@@ -194,13 +190,7 @@ public class FieldPostBlockEntity extends BlockEntity implements MenuProvider {
         rotationPatterns.clear();
         rotationPatterns.addAll(fromStringList(tag.getList("rotationPatterns", Tag.TAG_STRING)));
         rotationIndex = tag.getInt("rotationIndex");
-        // Cell plan
-        cellPlan.clear();
-        ListTag planList = tag.getList("cellPlan", Tag.TAG_COMPOUND);
-        for (int i = 0; i < planList.size(); i++) {
-            CompoundTag entry = planList.getCompound(i);
-            cellPlan.put(entry.getLong("pos"), entry.getString("seed"));
-        }
+        cellPlan = CellPlan.load(tag);
         ownerUuid = tag.hasUUID("ownerUuid") ? tag.getUUID("ownerUuid") : null;
         ownerName = tag.getString("ownerName");
     }
@@ -235,14 +225,6 @@ public class FieldPostBlockEntity extends BlockEntity implements MenuProvider {
         saveAdditional(tag);
     *///?}
         return tag;
-    }
-
-    /**
-     * Apply data from a sync packet (used by client-side handler).
-     */
-    public void applySyncData(java.util.Map<Long, String> newPlan) {
-        cellPlan.clear();
-        if (newPlan != null) cellPlan.putAll(newPlan);
     }
 
     // ── MenuProvider ──

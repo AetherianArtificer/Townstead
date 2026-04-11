@@ -4,7 +4,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -56,7 +58,7 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
 
     @Override
     public int getRowWidth() {
-        return this.width - 12;
+        return this.width - 16;
     }
 
     @Override
@@ -84,16 +86,29 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
         public final String toolId;
         public final String label;
         public final ItemStack icon;
+        @Nullable public final ResourceLocation customIcon; // custom texture instead of item icon
         public final boolean isHeader;
-        public final String categoryKey;  // for headers: the category; for tools: the category they belong to
-        public final int memberCount;     // only meaningful for headers
-        public ToolPaletteList parentList; // set when added, used for header-click routing
+        public final String categoryKey;
+        public final int memberCount;
+        public ToolPaletteList parentList;
 
-        /** Constructor for tool entries. */
+        /** Constructor for tool entries with an item icon. */
         public ToolEntry(String toolId, String label, ItemStack icon, String categoryKey) {
             this.toolId = toolId;
             this.label = label;
             this.icon = icon;
+            this.customIcon = null;
+            this.isHeader = false;
+            this.categoryKey = categoryKey;
+            this.memberCount = 0;
+        }
+
+        /** Constructor for tool entries with a custom texture icon. */
+        public ToolEntry(String toolId, String label, ResourceLocation customIcon, String categoryKey) {
+            this.toolId = toolId;
+            this.label = label;
+            this.icon = ItemStack.EMPTY;
+            this.customIcon = customIcon;
             this.isHeader = false;
             this.categoryKey = categoryKey;
             this.memberCount = 0;
@@ -108,6 +123,7 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
             this.toolId = "__header__" + categoryKey;
             this.label = categoryKey;
             this.icon = ItemStack.EMPTY;
+            this.customIcon = null;
             this.isHeader = true;
             this.categoryKey = categoryKey;
             this.memberCount = memberCount;
@@ -131,46 +147,57 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
         }
 
         private void renderHeader(GuiGraphics g, Minecraft mc, int top, int left, int width, int height, boolean hovered) {
-            // Draw a vanilla-Minecraft-style button
+            // Stretch to full list width (ignore the row inset)
+            int fullLeft = parentList != null ? parentList.xPos : left;
+            int fullWidth = parentList != null ? parentList.width - 6 : width; // leave room for scrollbar
             int btnTop = top + 1;
-            int btnBottom = top + height - 3;
-            int btnLeft = left;
-            int btnRight = left + width - 1;
+            int btnBottom = top + height - 1;
+            int btnRight = fullLeft + fullWidth;
 
             // Base fill (gray)
             int bodyColor = hovered ? 0xFF6F6F6F : 0xFF545454;
-            g.fill(btnLeft + 1, btnTop + 1, btnRight - 1, btnBottom - 1, bodyColor);
+            g.fill(fullLeft + 1, btnTop + 1, btnRight - 1, btnBottom - 1, bodyColor);
 
             // Top highlight strip (lighter)
-            g.fill(btnLeft + 1, btnTop + 1, btnRight - 1, btnTop + 2,
+            g.fill(fullLeft + 1, btnTop + 1, btnRight - 1, btnTop + 2,
                     hovered ? 0xFF909090 : 0xFF737373);
             // Bottom shadow strip (darker)
-            g.fill(btnLeft + 1, btnBottom - 2, btnRight - 1, btnBottom - 1, 0xFF3A3A3A);
+            g.fill(fullLeft + 1, btnBottom - 2, btnRight - 1, btnBottom - 1, 0xFF3A3A3A);
 
             // Dark outer border (1px all around)
-            g.fill(btnLeft, btnTop, btnRight, btnTop + 1, 0xFF000000);
-            g.fill(btnLeft, btnBottom - 1, btnRight, btnBottom, 0xFF000000);
-            g.fill(btnLeft, btnTop, btnLeft + 1, btnBottom, 0xFF000000);
+            g.fill(fullLeft, btnTop, btnRight, btnTop + 1, 0xFF000000);
+            g.fill(fullLeft, btnBottom - 1, btnRight, btnBottom, 0xFF000000);
+            g.fill(fullLeft, btnTop, fullLeft + 1, btnBottom, 0xFF000000);
             g.fill(btnRight - 1, btnTop, btnRight, btnBottom, 0xFF000000);
 
-            // Collapse arrow + label (vanilla button text has drop shadow)
+            // Arrow and label — symmetric padding from edges
+            int pad = 5;
             int textY = btnTop + (btnBottom - btnTop - 8) / 2 + 1;
             String arrow = isCollapsed() ? "\u25B6" : "\u25BC";
-            g.drawString(mc.font, arrow, btnLeft + 5, textY, 0xFFFFFFFF, true);
-            g.drawString(mc.font, label, btnLeft + 16, textY, hovered ? 0xFFFFFFA0 : 0xFFFFFFFF, true);
+            g.drawString(mc.font, arrow, fullLeft + pad, textY, 0xFFFFFFFF, true);
+            g.drawString(mc.font, label, fullLeft + pad + 10, textY, hovered ? 0xFFFFFFA0 : 0xFFFFFFFF, true);
 
-            // Member count on the right
+            // Member count — same padding from the right as arrow from the left
             String count = "(" + memberCount + ")";
             int countW = mc.font.width(count);
-            g.drawString(mc.font, count, btnRight - countW - 5, textY, 0xFFA0A0A0, true);
+            g.drawString(mc.font, count, btnRight - countW - pad, textY, 0xFFA0A0A0, true);
         }
 
         private void renderTool(GuiGraphics g, Minecraft mc, int top, int left, int width, int height, boolean hovered) {
             // Indent tools slightly so categories stand out
             int indent = 6;
 
-            // Icon
-            g.renderItem(icon, left + indent, top + 2);
+            // Icon — custom texture or item stack
+            if (customIcon != null) {
+                //? if >=1.21 {
+                g.blit(customIcon, left + indent, top + 3, 0, 0, 16, 16, 16, 16);
+                //?} else {
+                /*com.mojang.blaze3d.systems.RenderSystem.setShaderTexture(0, customIcon);
+                g.blit(customIcon, left + indent, top + 3, 0, 0, 16, 16, 16, 16);
+                *///?}
+            } else {
+                g.renderItem(icon, left + indent, top + 2);
+            }
 
             // Label
             int textColor = hovered ? 0xFFFFFFFF : 0xFFCCCCCC;

@@ -522,31 +522,17 @@ public final class TownsteadNetwork {
         if (!(be instanceof com.aetherianartificer.townstead.block.FieldPostBlockEntity fieldPost)) return;
         if (sp.distanceToSqr(payload.pos().getX() + 0.5, payload.pos().getY() + 0.5, payload.pos().getZ() + 0.5) > 64.0) return;
 
-        fieldPost.applyConfig(
-                payload.patternId(), payload.tierCap(), payload.radius(), payload.priority(),
-                payload.autoSeedMode(), payload.seedFilter(),
-                payload.waterEnabled(), payload.maxWaterCells(),
-                payload.groomEnabled(), payload.groomRadius(),
-                payload.rotationEnabled(), payload.rotationPatterns(),
-                payload.cellPlan()
-        );
-        Townstead.LOGGER.debug("Field Post config set at {} with {} cell assignments by {}",
-                payload.pos(), payload.cellPlan().size(), sp.getName().getString());
+        fieldPost.applyConfig(payload.config());
+        Townstead.LOGGER.debug("Field Post config set at {} by {}", payload.pos(), sp.getName().getString());
 
         sendToPlayer(sp, new FieldPostConfigSyncPayload(
-                payload.pos(), fieldPost.getPatternId(), fieldPost.getTierCap(),
-                fieldPost.getRadius(), fieldPost.getPriority(),
-                fieldPost.isAutoSeedMode(), fieldPost.getSeedFilter(),
-                fieldPost.isWaterEnabled(), fieldPost.getMaxWaterCells(),
-                fieldPost.isGroomEnabled(), fieldPost.getGroomRadius(),
-                fieldPost.isRotationEnabled(), fieldPost.getRotationPatterns(),
-                fieldPost.getCellPlan(),
+                payload.pos(), fieldPost.toConfig(),
                 fieldPost.getEffectivePatternId(), 0, 0, 0, 0
         ));
     }
 
     private static void handleFieldPostConfigSync(FieldPostConfigSyncPayload payload) {
-        // Client-side: currently a no-op, screen reads from block entity directly.
+        // Client-side: no-op, screen reads from block entity directly.
     }
 
     private static boolean townstead$professionOwnsJobSite(VillagerProfession holderProfession, VillagerProfession targetProfession) {

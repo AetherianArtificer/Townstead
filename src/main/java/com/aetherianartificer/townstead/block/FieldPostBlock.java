@@ -85,13 +85,7 @@ public class FieldPostBlock extends Block implements EntityBlock, SimpleWaterlog
         BlockEntity be = level.getBlockEntity(pos);
         if (be instanceof FieldPostBlockEntity fieldPost) {
             FieldPostConfigSyncPayload payload = new FieldPostConfigSyncPayload(
-                    pos, fieldPost.getPatternId(), fieldPost.getTierCap(),
-                    fieldPost.getRadius(), fieldPost.getPriority(),
-                    fieldPost.isAutoSeedMode(), fieldPost.getSeedFilter(),
-                    fieldPost.isWaterEnabled(), fieldPost.getMaxWaterCells(),
-                    fieldPost.isGroomEnabled(), fieldPost.getGroomRadius(),
-                    fieldPost.isRotationEnabled(), fieldPost.getRotationPatterns(),
-                    fieldPost.getCellPlan(),
+                    pos, fieldPost.toConfig(),
                     fieldPost.getEffectivePatternId(), 0, 0, 0, 0
             );
             //? if neoforge {

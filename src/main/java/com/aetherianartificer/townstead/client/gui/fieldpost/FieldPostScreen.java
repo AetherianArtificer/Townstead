@@ -3,6 +3,10 @@ package com.aetherianartificer.townstead.client.gui.fieldpost;
 import com.aetherianartificer.townstead.block.CropDetection;
 import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
+import com.aetherianartificer.townstead.farming.cellplan.CellPlan;
+import com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig;
+import com.aetherianartificer.townstead.farming.cellplan.SeedAssignment;
+import com.aetherianartificer.townstead.farming.cellplan.SoilType;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -14,11 +18,13 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.BushBlock;
+import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
 //? if neoforge {
@@ -26,6 +32,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 //?}
 
 import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /**
  * Field Post Plot Planner — wooden frame editor with textured cells, toolbar modes, and native palette.
@@ -45,7 +53,7 @@ public class FieldPostScreen extends Screen {
     private static final int TITLE_H = 18;
     private static final int SEARCH_H = 16;
     private static final int TOOLBAR_H = 22;
-    private static final int STATUS_H = 16;
+    // STATUS_H removed — status bar was dropped per user request
 
     // ── Colors ──
     private static final int TEXT_LIGHT = 0xFFF0E6CF;
@@ -57,12 +65,14 @@ public class FieldPostScreen extends Screen {
 
     // ── Modes ──
     private enum Mode {
-        PAINT("Paint", Items.WOODEN_HOE),
-        PAN("Pan", Items.COMPASS),
-        ERASE("Erase", Items.BARRIER);
-        final String label;
+        PAINT("townstead.field_post.mode.paint", "B", Items.WOODEN_HOE),
+        PAN("townstead.field_post.mode.pan", "H", Items.COMPASS),
+        ERASE("townstead.field_post.mode.erase", "E", Items.BARRIER);
+        final String translationKey;
+        final String shortcut;
         final Item icon;
-        Mode(String l, Item i) { this.label = l; this.icon = i; }
+        Mode(String k, String s, Item i) { this.translationKey = k; this.shortcut = s; this.icon = i; }
+        String label() { return Component.translatable(translationKey).getString(); }
     }
     private Mode mode = Mode.PAINT;
 
@@ -72,20 +82,35 @@ public class FieldPostScreen extends Screen {
     private static final byte CELL_CROP_MATURE = 2;
     private static final byte CELL_AIR = 3;
 
+    // ── Palette tabs ──
+    private enum PaletteTab { SEEDS, SOIL }
+    private PaletteTab activeTab = PaletteTab.SEEDS;
+    private ToolPaletteList.ToolEntry lastSeedSelection;
+    private ToolPaletteList.ToolEntry lastSoilSelection;
+
     // ── State ──
     private final BlockPos postPos;
     private final Level level;
     private int gridSize;
-    private BlockState[][] renderStates;     // block state to render per cell (top-down)
-    private BlockPos[][] renderPositions;    // world position for tint sampling
-    private byte[][] cellFlags;              // special cell markers
+    private BlockState[][] renderStates;
+    private BlockPos[][] renderPositions;
+    private byte[][] cellFlags;
     private ItemStack[][] cropIcons;
-    private final Map<Long, String> plan = new HashMap<>();
+    // Two-layer plan: soil type and seed assignment
+    private final Map<Integer, SoilType> soilPlan = new HashMap<>();
+    private final Map<Integer, String> seedPlan = new HashMap<>();
+
+    // Undo/redo stacks
+    private record UndoEntry(int key, PaletteTab tab, SoilType prevSoil, String prevSeed) {}
+    private final Deque<UndoEntry> undoStack = new ArrayDeque<>();
+    private final Deque<UndoEntry> redoStack = new ArrayDeque<>();
+    private static final int MAX_UNDO = 500;
 
     // Widgets
     private EditBox searchBox;
     private ToolPaletteList paletteList;
-    private final List<ToolPaletteList.ToolEntry> allEntries = new ArrayList<>();
+    private final List<ToolPaletteList.ToolEntry> allSeedEntries = new ArrayList<>();
+    private final List<ToolPaletteList.ToolEntry> allSoilEntries = new ArrayList<>();
 
     // Viewport
     private int viewCols, viewRows;
@@ -99,17 +124,8 @@ public class FieldPostScreen extends Screen {
     private double panStartX, panStartY;
     private float panStartScrollX, panStartScrollY;
 
-    // Config
-    private String patternId = FieldPostBlockEntity.DEFAULT_PATTERN;
-    private int tierCap = FieldPostBlockEntity.DEFAULT_TIER_CAP;
-    private int radius = FieldPostBlockEntity.DEFAULT_RADIUS;
-    private int priority = FieldPostBlockEntity.DEFAULT_PRIORITY;
-    private boolean waterEnabled = true;
-    private int maxWaterCells = FieldPostBlockEntity.DEFAULT_MAX_WATER_CELLS;
-    private boolean groomEnabled = true;
-    private int groomRadius = FieldPostBlockEntity.DEFAULT_GROOM_RADIUS;
-    private boolean rotationEnabled = false;
-    private final List<String> rotationPatterns = new ArrayList<>();
+    // Config (loaded from block entity, sent back on apply)
+    private FieldPostConfig loadedConfig = FieldPostConfig.defaults();
 
     public FieldPostScreen(BlockPos pos, Level level) {
         super(Component.translatable("container.townstead.field_post"));
@@ -122,36 +138,28 @@ public class FieldPostScreen extends Screen {
         super.init();
 
         if (level.getBlockEntity(postPos) instanceof FieldPostBlockEntity be) {
-            patternId = be.getPatternId();
-            tierCap = be.getTierCap();
-            radius = be.getRadius();
-            priority = be.getPriority();
-            waterEnabled = be.isWaterEnabled();
-            maxWaterCells = be.getMaxWaterCells();
-            groomEnabled = be.isGroomEnabled();
-            groomRadius = be.getGroomRadius();
-            rotationEnabled = be.isRotationEnabled();
-            rotationPatterns.clear();
-            rotationPatterns.addAll(be.getRotationPatterns());
-            plan.clear();
-            plan.putAll(be.getCellPlan());
+            loadedConfig = be.toConfig();
+            CellPlan plan = loadedConfig.cellPlan();
+            soilPlan.clear();
+            soilPlan.putAll(plan.soilPlan());
+            seedPlan.clear();
+            seedPlan.putAll(plan.seedPlan());
         }
 
-        gridSize = radius * 2 + 1;
+        gridSize = loadedConfig.radius() * 2 + 1;
 
         // Layout — consistent SPACING gutters everywhere (screen edges + between panels)
         int palLeft = SPACING + FRAME_THICK;
         int palTop = SPACING + FRAME_THICK + TITLE_H;
 
-        // Viewport frame wraps both toolbar AND grid (shared frame)
-        // Gap between palette frame and viewport frame = SPACING of empty space
+        // Viewport frame wraps toolbar + grid + status bar (shared full-height frame, matches palette)
         vpLeft = palLeft + PALETTE_W + FRAME_THICK + SPACING + FRAME_THICK;
-        // Viewport content area starts at palTop (same as palette) and includes toolbar row at top
-        int vpFrameTop = palTop;
-        vpTop = vpFrameTop + TOOLBAR_H;  // grid cells start below toolbar row
         vpW = width - vpLeft - SPACING - FRAME_THICK;
-        // Full frame height = toolbar + grid + room for status bar below frame
-        int vpFrameH = height - vpFrameTop - SPACING - FRAME_THICK - STATUS_H - SPACING;
+        // Full frame matches the palette frame height exactly
+        int vpFrameTop = palTop;
+        int vpFrameH = height - vpFrameTop - SPACING - FRAME_THICK;
+        // Grid sits below the toolbar, inside the frame
+        vpTop = vpFrameTop + TOOLBAR_H;
         vpH = vpFrameH - TOOLBAR_H;
         toolbarLeft = vpLeft;
         toolbarTop = vpFrameTop;
@@ -165,14 +173,15 @@ public class FieldPostScreen extends Screen {
                 Component.literal("Search"));
         searchBox.setMaxLength(64);
         searchBox.setBordered(true);
-        searchBox.setHint(Component.literal("Search seeds..."));
+        searchBox.setHint(Component.translatable("townstead.field_post.search.hint"));
         searchBox.setResponder(text -> filterPalette());
         addRenderableWidget(searchBox);
 
         buildToolEntries();
 
-        // Tool list
-        int listTop = palTop + SEARCH_H + 6;
+        // Tool list (below search box + tab buttons)
+        int tabsHeight = SEARCH_H + 4 + 16 + 2; // search + gap + tabs + separator
+        int listTop = palTop + tabsHeight;
         int listH = height - listTop - SPACING - FRAME_THICK;
         paletteList = new ToolPaletteList(minecraft, palLeft, PALETTE_W, listH, listTop, entry -> {});
         paletteList.setOnHeaderClick(category -> {
@@ -195,20 +204,25 @@ public class FieldPostScreen extends Screen {
         viewRows = vpH / stride();
     }
 
-    // Entries grouped by category key
+    // Entries grouped by category key (per active tab)
     private final LinkedHashMap<String, List<ToolPaletteList.ToolEntry>> entriesByCategory = new LinkedHashMap<>();
-    private static final String CAT_TOOLS = "Tools";
-    private static final String CAT_VANILLA = "Vanilla";
+    private final String CAT_TOOLS = Component.translatable("townstead.field_post.category.tools").getString();
+    private final String CAT_VANILLA = Component.translatable("townstead.field_post.category.vanilla").getString();
 
     private void buildToolEntries() {
-        allEntries.clear();
-        entriesByCategory.clear();
+        allSeedEntries.clear();
+        allSoilEntries.clear();
 
-        // Built-in tools
-        addCategoryEntry(CAT_TOOLS, new ToolPaletteList.ToolEntry("auto", "Auto", new ItemStack(Items.BONE_MEAL), CAT_TOOLS));
-        addCategoryEntry(CAT_TOOLS, new ToolPaletteList.ToolEntry("water", "Water", new ItemStack(Items.WATER_BUCKET), CAT_TOOLS));
+        // ── Seed tab entries ──
+        //? if >=1.21 {
+        ResourceLocation autoIcon = ResourceLocation.fromNamespaceAndPath("townstead", "textures/gui/icon_auto.png");
+        //?} else {
+        /*ResourceLocation autoIcon = new ResourceLocation("townstead", "textures/gui/icon_auto.png");
+        *///?}
+        allSeedEntries.add(new ToolPaletteList.ToolEntry(SeedAssignment.AUTO, Component.translatable("townstead.field_post.seed.auto").getString(), autoIcon, CAT_TOOLS));
+        allSeedEntries.add(new ToolPaletteList.ToolEntry(SeedAssignment.NONE, Component.translatable("townstead.field_post.seed.none").getString(), new ItemStack(Items.BARRIER), CAT_TOOLS));
+        allSeedEntries.add(new ToolPaletteList.ToolEntry(SeedAssignment.PROTECTED, Component.translatable("townstead.field_post.seed.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
 
-        // Crops discovered from registry — group by mod namespace
         for (String seedId : CropDetection.getAllPlantableSeeds()) {
             //? if >=1.21 {
             ResourceLocation rl = ResourceLocation.parse(seedId);
@@ -219,18 +233,32 @@ public class FieldPostScreen extends Screen {
             if (item == Items.AIR) continue;
             String name = new ItemStack(item).getHoverName().getString();
             String category = categoryFor(rl.getNamespace());
-            addCategoryEntry(category, new ToolPaletteList.ToolEntry(seedId, name, new ItemStack(item), category));
+            allSeedEntries.add(new ToolPaletteList.ToolEntry(seedId, name, new ItemStack(item), category));
         }
 
-        // Sort entries within each category alphabetically
-        for (List<ToolPaletteList.ToolEntry> entries : entriesByCategory.values()) {
-            entries.sort((a, b) -> a.label.compareToIgnoreCase(b.label));
+        // ── Soil tab entries ──
+        allSoilEntries.add(new ToolPaletteList.ToolEntry("FARMLAND", Component.translatable("townstead.field_post.soil.farmland").getString(), new ItemStack(Items.FARMLAND), CAT_TOOLS));
+        allSoilEntries.add(new ToolPaletteList.ToolEntry("WATER", Component.translatable("townstead.field_post.soil.water").getString(), new ItemStack(Items.WATER_BUCKET), CAT_TOOLS));
+        allSoilEntries.add(new ToolPaletteList.ToolEntry("NONE", Component.translatable("townstead.field_post.soil.none").getString(), new ItemStack(Items.BARRIER), CAT_TOOLS));
+        allSoilEntries.add(new ToolPaletteList.ToolEntry("PROTECTED", Component.translatable("townstead.field_post.soil.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
+        // Rich soil (only if FD is loaded)
+        if (com.aetherianartificer.townstead.compat.ModCompat.isLoaded("farmersdelight")) {
+            //? if >=1.21 {
+            ResourceLocation richSoilId = ResourceLocation.fromNamespaceAndPath("farmersdelight", "rich_soil");
+            //?} else {
+            /*ResourceLocation richSoilId = new ResourceLocation("farmersdelight", "rich_soil");
+            *///?}
+            Item richSoilItem = BuiltInRegistries.ITEM.get(richSoilId);
+            if (richSoilItem != Items.AIR) {
+                allSoilEntries.add(new ToolPaletteList.ToolEntry("RICH_SOIL",
+                        Component.translatable("townstead.field_post.soil.rich_soil").getString(),
+                        new ItemStack(richSoilItem), categoryFor("farmersdelight")));
+            }
         }
     }
 
-    private void addCategoryEntry(String category, ToolPaletteList.ToolEntry entry) {
-        entriesByCategory.computeIfAbsent(category, k -> new ArrayList<>()).add(entry);
-        allEntries.add(entry);
+    private List<ToolPaletteList.ToolEntry> activeEntries() {
+        return activeTab == PaletteTab.SEEDS ? allSeedEntries : allSoilEntries;
     }
 
     private String categoryFor(String namespace) {
@@ -268,6 +296,16 @@ public class FieldPostScreen extends Screen {
         if (paletteList == null) return;
         String query = searchBox != null ? searchBox.getValue().toLowerCase(Locale.ROOT) : "";
 
+        // Rebuild category groupings from the active tab's entries
+        entriesByCategory.clear();
+        for (ToolPaletteList.ToolEntry e : activeEntries()) {
+            entriesByCategory.computeIfAbsent(e.categoryKey, k -> new ArrayList<>()).add(e);
+        }
+        // Sort within categories
+        for (List<ToolPaletteList.ToolEntry> entries : entriesByCategory.values()) {
+            entries.sort((a, b) -> a.label.compareToIgnoreCase(b.label));
+        }
+
         List<ToolPaletteList.ToolEntry> filtered = new ArrayList<>();
         // Fixed category order: Tools, Vanilla, then alphabetical mod names
         List<String> categoryOrder = new ArrayList<>();
@@ -282,7 +320,6 @@ public class FieldPostScreen extends Screen {
 
         for (String category : categoryOrder) {
             List<ToolPaletteList.ToolEntry> items = entriesByCategory.get(category);
-            // Apply search filter to this category's items
             List<ToolPaletteList.ToolEntry> matching = new ArrayList<>();
             for (ToolPaletteList.ToolEntry e : items) {
                 if (query.isEmpty()
@@ -293,22 +330,35 @@ public class FieldPostScreen extends Screen {
             }
             if (matching.isEmpty()) continue;
 
-            // Add header
             ToolPaletteList.ToolEntry header = ToolPaletteList.ToolEntry.header(category, matching.size());
             filtered.add(header);
 
-            // Add items unless collapsed (but during search, always show matching)
             boolean forceExpand = !query.isEmpty();
             if (forceExpand || !paletteList.isCategoryCollapsed(category)) {
                 filtered.addAll(matching);
             }
         }
 
+        // Restore previous selection for this tab
         ToolPaletteList.ToolEntry prev = paletteList.getSelected();
+        if (prev == null) {
+            prev = activeTab == PaletteTab.SEEDS ? lastSeedSelection : lastSoilSelection;
+        }
         paletteList.replaceEntries(filtered);
         if (prev != null && !prev.isHeader && filtered.contains(prev)) {
             paletteList.setSelected(prev);
         }
+        paletteList.setScrollAmount(paletteList.getScrollAmount());
+    }
+
+    private void switchTab(PaletteTab tab) {
+        if (tab == activeTab) return;
+        // Save current selection
+        ToolPaletteList.ToolEntry current = paletteList != null ? paletteList.getSelected() : null;
+        if (activeTab == PaletteTab.SEEDS) lastSeedSelection = current;
+        else lastSoilSelection = current;
+        activeTab = tab;
+        filterPalette();
     }
 
     private void scanWorld() {
@@ -317,53 +367,81 @@ public class FieldPostScreen extends Screen {
         cellFlags = new byte[gridSize][gridSize];
         cropIcons = new ItemStack[gridSize][gridSize];
         int half = gridSize / 2;
+        int baseY = postPos.getY();
 
         for (int gz = 0; gz < gridSize; gz++) {
             for (int gx = 0; gx < gridSize; gx++) {
                 int wx = postPos.getX() + (gx - half);
                 int wz = postPos.getZ() + (gz - half);
 
-                // Walk upward from post.Y-1 to post.Y+3 looking for the topmost visible block
-                // (handles snow layers, crops on farmland, etc.)
-                BlockPos chosen = null;
-                BlockState chosenState = null;
-                // Prefer the block AT post.y (crops/water) if non-air; fall back to below (terrain)
-                BlockPos atPos = new BlockPos(wx, postPos.getY(), wz);
-                BlockPos belowPos = atPos.below();
-                BlockState stateAt = level.getBlockState(atPos);
-                BlockState stateBelow = level.getBlockState(belowPos);
-
+                // Field post marker
                 if (gx == half && gz == half) {
                     cellFlags[gz][gx] = CELL_POST;
-                    chosen = atPos;
-                    chosenState = level.getBlockState(atPos);
-                    // Use planks as post marker if the block entity state isn't useful
-                } else if (stateAt.getFluidState().is(Fluids.WATER) || stateAt.getFluidState().is(Fluids.LAVA)) {
-                    chosen = atPos;
-                    chosenState = stateAt;
-                } else if (stateAt.getBlock() instanceof CropBlock crop) {
-                    chosen = atPos;
-                    chosenState = stateAt;
-                    if (crop.isMaxAge(stateAt)) cellFlags[gz][gx] = CELL_CROP_MATURE;
-                    cropIcons[gz][gx] = cropIcon(stateAt.getBlock());
-                } else if (stateAt.getBlock() instanceof BushBlock) {
-                    chosen = atPos;
-                    chosenState = stateAt;
-                    cropIcons[gz][gx] = new ItemStack(stateAt.getBlock().asItem());
-                } else if (!stateBelow.isAir()) {
-                    chosen = belowPos;
-                    chosenState = stateBelow;
-                } else if (!stateAt.isAir()) {
-                    chosen = atPos;
-                    chosenState = stateAt;
-                } else {
-                    cellFlags[gz][gx] = CELL_AIR;
-                    chosen = belowPos;
-                    chosenState = stateBelow;
+                    BlockPos below = new BlockPos(wx, baseY - 1, wz);
+                    renderStates[gz][gx] = level.getBlockState(below);
+                    renderPositions[gz][gx] = below;
+                    continue;
                 }
 
-                renderStates[gz][gx] = chosenState;
-                renderPositions[gz][gx] = chosen;
+                // Smart per-column scan: find the farm surface
+                // Pass 1: farmland (always wins — this is a farm planner)
+                // Pass 2: any solid block (barrels, composters show as context landmarks)
+                //         but skip trees, crops, fluids
+                BlockPos groundPos = null;
+                BlockState groundState = null;
+
+                for (int dy = 3; dy >= -3; dy--) {
+                    BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
+                    BlockState state = level.getBlockState(candidate);
+                    if (state.getBlock() instanceof FarmBlock) {
+                        groundPos = candidate; groundState = state; break;
+                    }
+                }
+                if (groundPos == null) {
+                    for (int dy = 3; dy >= -3; dy--) {
+                        BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
+                        BlockState state = level.getBlockState(candidate);
+                        if (state.isAir()) continue;
+                        if (state.getBlock() instanceof CropBlock) continue;
+                        if (state.getBlock() instanceof BushBlock) continue;
+                        if (state.getBlock() instanceof LeavesBlock) continue;
+                        if (state.is(BlockTags.LOGS)) continue;
+                        if (state.getFluidState().is(Fluids.WATER) || state.getFluidState().is(Fluids.LAVA)) continue;
+                        groundPos = candidate; groundState = state; break;
+                    }
+                }
+                if (groundPos == null) {
+                    for (int dy = 3; dy >= -3; dy--) {
+                        BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
+                        BlockState state = level.getBlockState(candidate);
+                        if (state.getFluidState().is(Fluids.WATER)) {
+                            groundPos = candidate; groundState = state; break;
+                        }
+                    }
+                }
+
+                if (groundPos == null) {
+                    cellFlags[gz][gx] = CELL_AIR;
+                    renderStates[gz][gx] = null;
+                    renderPositions[gz][gx] = new BlockPos(wx, baseY - 1, wz);
+                    continue;
+                }
+
+                renderStates[gz][gx] = groundState;
+                renderPositions[gz][gx] = groundPos;
+
+                // Check one block above the ground for crops/water/plants
+                BlockPos abovePos = groundPos.above();
+                BlockState aboveState = level.getBlockState(abovePos);
+
+                if (aboveState.getBlock() instanceof CropBlock crop) {
+                    if (crop.isMaxAge(aboveState)) cellFlags[gz][gx] = CELL_CROP_MATURE;
+                    cropIcons[gz][gx] = cropIcon(aboveState.getBlock());
+                } else if (aboveState.getBlock() instanceof BushBlock) {
+                    cropIcons[gz][gx] = cropIcon(aboveState.getBlock());
+                } else if (aboveState.getFluidState().is(Fluids.WATER)) {
+                    cropIcons[gz][gx] = new ItemStack(Items.WATER_BUCKET);
+                }
             }
         }
     }
@@ -377,30 +455,89 @@ public class FieldPostScreen extends Screen {
         return (alpha << 24);
     }
 
+    private boolean isNaturalGround(BlockState state) {
+        if (state.isAir()) return false;
+        // Dirt family
+        if (state.is(BlockTags.DIRT)) return true;
+        // Sand, gravel
+        Block block = state.getBlock();
+        if (block == Blocks.SAND || block == Blocks.RED_SAND || block == Blocks.GRAVEL) return true;
+        // Clay, mud
+        if (block == Blocks.CLAY || block == Blocks.MUD || block == Blocks.MUDDY_MANGROVE_ROOTS) return true;
+        // Stone variants
+        if (state.is(BlockTags.BASE_STONE_OVERWORLD)) return true;
+        if (block == Blocks.STONE || block == Blocks.COBBLESTONE || block == Blocks.MOSSY_COBBLESTONE) return true;
+        if (block == Blocks.DEEPSLATE || block == Blocks.COBBLED_DEEPSLATE) return true;
+        // Nether terrain
+        if (block == Blocks.SOUL_SAND || block == Blocks.SOUL_SOIL || block == Blocks.NETHERRACK) return true;
+        if (block == Blocks.BASALT || block == Blocks.SMOOTH_BASALT || block == Blocks.BLACKSTONE) return true;
+        // End terrain
+        if (block == Blocks.END_STONE) return true;
+        // Path
+        if (block == Blocks.DIRT_PATH) return true;
+        // Moss
+        if (block == Blocks.MOSS_BLOCK) return true;
+        // Snow
+        if (block == Blocks.SNOW_BLOCK) return true;
+        return false;
+    }
+
     private ItemStack cropIcon(Block block) {
+        // Show the harvested product, not the seed
         if (block == Blocks.WHEAT) return new ItemStack(Items.WHEAT);
         if (block == Blocks.CARROTS) return new ItemStack(Items.CARROT);
         if (block == Blocks.POTATOES) return new ItemStack(Items.POTATO);
         if (block == Blocks.BEETROOTS) return new ItemStack(Items.BEETROOT);
-        if (block == Blocks.MELON_STEM) return new ItemStack(Items.MELON_SEEDS);
-        if (block == Blocks.PUMPKIN_STEM) return new ItemStack(Items.PUMPKIN_SEEDS);
-        return new ItemStack(block.asItem());
+        if (block == Blocks.MELON_STEM) return new ItemStack(Items.MELON);
+        if (block == Blocks.PUMPKIN_STEM) return new ItemStack(Items.PUMPKIN);
+        if (block == Blocks.SWEET_BERRY_BUSH) return new ItemStack(Items.SWEET_BERRIES);
+
+        // For modded crops: try to find the crop item by registry key
+        net.minecraft.resources.ResourceLocation blockKey = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block);
+        if (blockKey != null) {
+            String ns = blockKey.getNamespace();
+            String blockPath = blockKey.getPath();
+            // Try several common naming patterns that mods use
+            String[] candidates = {
+                    blockPath,                                              // exact match
+                    blockPath.endsWith("s") ? blockPath.substring(0, blockPath.length() - 1) : null,  // cabbages→cabbage
+                    blockPath.endsWith("es") ? blockPath.substring(0, blockPath.length() - 2) : null, // tomatoes→tomato (if 's' strip didn't work)
+                    blockPath.endsWith("_crop") ? blockPath.substring(0, blockPath.length() - 5) : null, // X_crop→X
+                    blockPath.startsWith("budding_") ? blockPath.substring(8) : null,                 // budding_X→X
+                    blockPath.startsWith("budding_") && blockPath.endsWith("s")
+                            ? blockPath.substring(8, blockPath.length() - 1) : null,                  // budding_tomatoes→tomato
+            };
+            for (String candidate : candidates) {
+                if (candidate == null || candidate.isEmpty()) continue;
+                //? if >=1.21 {
+                net.minecraft.resources.ResourceLocation cropId = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(ns, candidate);
+                //?} else {
+                /*net.minecraft.resources.ResourceLocation cropId = new net.minecraft.resources.ResourceLocation(ns, candidate);
+                *///?}
+                Item cropItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(cropId);
+                if (cropItem != Items.AIR && cropItem != block.asItem()) return new ItemStack(cropItem);
+            }
+        }
+
+        // Fallback: the block's own item (may be a seed for some mods)
+        Item item = block.asItem();
+        if (item != Items.AIR) return new ItemStack(item);
+        return ItemStack.EMPTY;
     }
 
-    // ── Tick: smooth pan lerp ──
-    @Override
-    public void tick() {
-        super.tick();
-        // Lerp toward target scroll (smooth panning)
-        float lerp = 0.35f;
-        scrollX += (targetScrollX - scrollX) * lerp;
-        scrollY += (targetScrollY - scrollY) * lerp;
-    }
+    // No tick-based lerp — smooth panning runs at full render framerate in render()
 
     // ── Render ──
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
+        // Smooth pan lerp at full render framerate
+        if (!panning) {
+            float lerp = 1.0f - (float) Math.pow(0.001, partial / 20.0f); // frame-independent smoothing
+            scrollX += (targetScrollX - scrollX) * lerp;
+            scrollY += (targetScrollY - scrollY) * lerp;
+        }
+
         // Semi-transparent background so the game world shows through
         double opacity = minecraft.options.textBackgroundOpacity().get();
         // Map 0.0..1.0 -> 0x40..0xC0 alpha (never fully opaque, never fully transparent)
@@ -430,11 +567,29 @@ public class FieldPostScreen extends Screen {
         int palTop = SPACING + FRAME_THICK + TITLE_H;
         int palH = height - palTop - SPACING - FRAME_THICK;
         FrameRenderer.drawWoodenFrame(g, palLeft, palTop, PALETTE_W, palH, FRAME_THICK);
-        // Solid dark panel (no parchment - more readable)
         g.fill(palLeft, palTop, palLeft + PALETTE_W, palTop + palH, chatPanelColor());
-        g.fill(palLeft, palTop + SEARCH_H + 5, palLeft + PALETTE_W, palTop + SEARCH_H + 6, 0x40FFDEA0);
 
-        // ── Grid viewport frame (wraps toolbar + grid) ──
+        // ── Palette tabs (Seeds | Soil) — below search box ──
+        int tabY = palTop + SEARCH_H + 4;
+        int tabW = (PALETTE_W - 4) / 2;
+        for (int t = 0; t < 2; t++) {
+            PaletteTab tab = t == 0 ? PaletteTab.SEEDS : PaletteTab.SOIL;
+            int tx = palLeft + 2 + t * tabW;
+            boolean active = tab == activeTab;
+            boolean hoverTab = mouseX >= tx && mouseX < tx + tabW && mouseY >= tabY && mouseY < tabY + 14;
+            // Vanilla button style
+            int bodyColor = active ? 0xFF5A8A2A : (hoverTab ? 0xFF5A5A5A : 0xFF3A3A3A);
+            g.fill(tx, tabY, tx + tabW, tabY + 14, bodyColor);
+            g.fill(tx, tabY, tx + tabW, tabY + 1, active ? ACCENT : 0xFF555555);
+            g.fill(tx, tabY + 13, tx + tabW, tabY + 14, 0xFF222222);
+            String tabLabel = Component.translatable(t == 0 ? "townstead.field_post.tab.seeds" : "townstead.field_post.tab.soil").getString();
+            g.drawCenteredString(font, tabLabel, tx + tabW / 2, tabY + 3,
+                    active ? 0xFFFFFFFF : (hoverTab ? 0xFFDDDDDD : 0xFFAAAAAA));
+        }
+        // Separator below tabs
+        g.fill(palLeft, tabY + 15, palLeft + PALETTE_W, tabY + 16, 0x40FFDEA0);
+
+        // ── Grid viewport frame (wraps toolbar + grid + status bar) ──
         int vpFrameTop = toolbarTop;
         int vpFrameH = TOOLBAR_H + vpH;
         FrameRenderer.drawWoodenFrame(g, vpLeft, vpFrameTop, vpW, vpFrameH, FRAME_THICK);
@@ -442,12 +597,9 @@ public class FieldPostScreen extends Screen {
         // ── Toolbar (inside the frame, at the top) ──
         renderToolbar(g, mouseX, mouseY);
 
-        // ── Grid content (below toolbar, inside same frame) ──
+        // ── Grid content (middle section) ──
         renderGrid(g, mouseX, mouseY);
         renderCardinalLabels(g);
-
-        // ── Status bar ──
-        renderStatusBar(g, mouseX, mouseY);
 
         // Widgets (search box + palette list)
         super.render(g, mouseX, mouseY, partial);
@@ -460,51 +612,66 @@ public class FieldPostScreen extends Screen {
         int x = toolbarLeft;
         int y = toolbarTop;
 
-        // Toolbar background strip — solid dark
-        g.fill(x, y, x + vpW, y + TOOLBAR_H - 2, chatPanelColor());
-        g.fill(x, y + TOOLBAR_H - 3, x + vpW, y + TOOLBAR_H - 2, 0x40FFDEA0);
+        // Toolbar background strip — fills full height
+        g.fill(x, y, x + vpW, y + TOOLBAR_H, chatPanelColor());
 
-        // Mode buttons
+        // Mode buttons — flush left, centered vertically within full toolbar height
         Mode[] modes = Mode.values();
-        int btnSize = 18;
-        int btnGap = 4;
+        int btnSize = 16;
+        int btnGap = 2;
+        int btnY = y + (TOOLBAR_H - btnSize) / 2;
+        String hoveredLabel = null;
+        int buttonsEndX = x + 2;
         for (int i = 0; i < modes.length; i++) {
-            int bx = x + 4 + i * (btnSize + btnGap);
-            int by = y + 1;
+            int bx = x + 2 + i * (btnSize + btnGap);
             Mode m = modes[i];
             boolean selected = m == mode;
-            boolean hovered = mouseX >= bx && mouseX < bx + btnSize && mouseY >= by && mouseY < by + btnSize;
+            boolean hovered = mouseX >= bx && mouseX < bx + btnSize && mouseY >= btnY && mouseY < btnY + btnSize;
 
-            // Slot background
-            g.fill(bx - 1, by - 1, bx + btnSize + 1, by + btnSize + 1, FrameRenderer.FRAME_SHADOW);
-            g.fill(bx, by, bx + btnSize, by + btnSize, selected ? 0xFF5A8A2A : (hovered ? 0xFF3A3225 : 0xFF24201A));
+            g.fill(bx - 1, btnY - 1, bx + btnSize + 1, btnY + btnSize + 1, FrameRenderer.FRAME_SHADOW);
+            g.fill(bx, btnY, bx + btnSize, btnY + btnSize, selected ? 0xFF5A8A2A : (hovered ? 0xFF3A3225 : 0xFF24201A));
             if (selected) {
-                g.fill(bx, by, bx + btnSize, by + 1, ACCENT);
-                g.fill(bx, by + btnSize - 1, bx + btnSize, by + btnSize, ACCENT);
-                g.fill(bx, by, bx + 1, by + btnSize, ACCENT);
-                g.fill(bx + btnSize - 1, by, bx + btnSize, by + btnSize, ACCENT);
+                drawCellBorder(g, bx, btnY, btnSize, ACCENT);
             }
 
-            // Icon
-            g.renderItem(new ItemStack(m.icon), bx + 1, by + 1);
+            // Scale item icon to fit within the button
+            g.pose().pushPose();
+            float iconScale = (btnSize - 2) / 16.0f;
+            g.pose().translate(bx + 1, btnY + 1, 0);
+            g.pose().scale(iconScale, iconScale, 1.0f);
+            g.renderItem(new ItemStack(m.icon), 0, 0);
+            g.pose().popPose();
 
-            // Tooltip
             if (hovered) {
-                g.renderTooltip(font, Component.literal(m.label), mouseX, mouseY);
+                hoveredLabel = m.label() + " (" + m.shortcut + ")";
             }
+            buttonsEndX = bx + btnSize + btnGap;
         }
 
-        // Zoom controls on the right
-        int zoomBtnSize = 14;
-        int zoomY = y + 3;
-        int plusX = x + vpW - zoomBtnSize - 4;
-        int minusX = plusX - zoomBtnSize - 4;
-        drawSmallButton(g, minusX, zoomY, zoomBtnSize, "-", mouseX, mouseY);
-        drawSmallButton(g, plusX, zoomY, zoomBtnSize, "+", mouseX, mouseY);
+        // Separator
+        g.fill(buttonsEndX + 2, y + 4, buttonsEndX + 3, y + TOOLBAR_H - 4, 0x40FFDEA0);
 
-        // Zoom label
-        String zoomLbl = (zoomIndex + 1) + "/" + ZOOM_LEVELS.length;
-        g.drawString(font, zoomLbl, minusX - font.width(zoomLbl) - 6, zoomY + 3, TEXT_DIM, false);
+        // All text vertically centered at the same baseline
+        int textY = y + (TOOLBAR_H - font.lineHeight) / 2 + 2;
+
+        // Hover / active label
+        int labelX = buttonsEndX + 8;
+        if (hoveredLabel != null) {
+            g.drawString(font, hoveredLabel, labelX, textY, TEXT_LIGHT, false);
+        } else {
+            g.drawString(font, mode.label() + " (" + mode.shortcut + ")", labelX, textY, TEXT_DIM, false);
+        }
+
+        // ── Right side: Zoom ──
+        int smallBtn = 14;
+        int rightBtnY = y + (TOOLBAR_H - smallBtn) / 2;
+
+        int zoomPlusX = x + vpW - smallBtn - 4;
+        int zoomMinusX = zoomPlusX - smallBtn - 2;
+        drawSmallButton(g, zoomMinusX, rightBtnY, smallBtn, "-", mouseX, mouseY);
+        drawSmallButton(g, zoomPlusX, rightBtnY, smallBtn, "+", mouseX, mouseY);
+        String zoomLbl = Component.translatable("townstead.field_post.zoom").getString();
+        g.drawString(font, zoomLbl, zoomMinusX - font.width(zoomLbl) - 4, textY, TEXT_DIM, false);
     }
 
     private void drawSmallButton(GuiGraphics g, int x, int y, int size, String label, int mouseX, int mouseY) {
@@ -519,13 +686,14 @@ public class FieldPostScreen extends Screen {
         int st = stride();
 
         g.enableScissor(vpLeft, vpTop, vpLeft + vpW, vpTop + vpH);
-        g.fill(vpLeft, vpTop, vpLeft + vpW, vpTop + vpH, 0xFF0D0A05);
+        g.fill(vpLeft, vpTop, vpLeft + vpW, vpTop + vpH, 0xFF141210);
 
         int half = gridSize / 2;
         int startGX = (int) Math.floor(scrollX);
         int startGZ = (int) Math.floor(scrollY);
-        float offsetX = -(scrollX - startGX) * st;
-        float offsetY = -(scrollY - startGZ) * st;
+        // Round offset to integer pixels to prevent sub-pixel jitter
+        int offsetX = Math.round(-(scrollX - startGX) * st);
+        int offsetY = Math.round(-(scrollY - startGZ) * st);
 
         for (int vy = -1; vy <= viewRows + 1; vy++) {
             for (int vx = -1; vx <= viewCols + 1; vx++) {
@@ -533,8 +701,8 @@ public class FieldPostScreen extends Screen {
                 int gz = startGZ + vy;
                 if (gx < 0 || gz < 0 || gx >= gridSize || gz >= gridSize) continue;
 
-                int cx = vpLeft + (int) (vx * st + offsetX);
-                int cy = vpTop + (int) (vy * st + offsetY);
+                int cx = vpLeft + vx * st + offsetX;
+                int cy = vpTop + vy * st + offsetY;
                 if (cx + cs < vpLeft || cy + cs < vpTop || cx > vpLeft + vpW || cy > vpTop + vpH) continue;
 
                 BlockState state = renderStates[gz][gx];
@@ -545,49 +713,129 @@ public class FieldPostScreen extends Screen {
                 g.fill(cx, cy, cx + cs, cy + cs, 0xFF1E1E1E);
 
                 if (state != null && !state.isAir()) {
-                    net.minecraft.client.renderer.texture.TextureAtlasSprite sprite =
-                            BlockSpriteResolver.getTopSprite(state);
-                    if (sprite != null) {
-                        int tint = BlockSpriteResolver.getTint(state, level, worldPos);
-                        float r = ((tint >> 16) & 0xFF) / 255f;
-                        float gg = ((tint >> 8) & 0xFF) / 255f;
-                        float b = (tint & 0xFF) / 255f;
-                        g.setColor(r, gg, b, 1.0f);
-                        g.blit(cx, cy, 0, cs, cs, sprite);
-                        g.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+                    // Farmland: use known atlas texture directly (model lookup returns dirt particle)
+                    if (state.getBlock() instanceof FarmBlock) {
+                        boolean wet = state.getValue(FarmBlock.MOISTURE) > 0;
+                        CellTextures.blit(g, wet ? "minecraft:block/farmland_moist" : "minecraft:block/farmland", cx, cy, cs);
+                    } else if (state.getFluidState().is(Fluids.WATER)) {
+                        // Water cell: use water texture with tint
+                        CellTextures.blit(g, "minecraft:block/water_still", cx, cy, cs);
+                        g.fill(cx, cy, cx + cs, cy + cs, 0x603F76E4);
+                    } else {
+                        net.minecraft.client.renderer.texture.TextureAtlasSprite sprite =
+                                BlockSpriteResolver.getTopSprite(state);
+                        if (sprite != null) {
+                            int tint = BlockSpriteResolver.getTint(state, level, worldPos);
+                            float r = ((tint >> 16) & 0xFF) / 255f;
+                            float gg = ((tint >> 8) & 0xFF) / 255f;
+                            float b = (tint & 0xFF) / 255f;
+                            g.setColor(r, gg, b, 1.0f);
+                            g.blit(cx, cy, 0, cs, cs, sprite);
+                            g.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+                        }
                     }
                 }
 
-                // Existing crop icon (small, bottom-left)
+                // Existing crop icon (centered in cell)
                 ItemStack icon = cropIcons[gz][gx];
                 if (icon != null && !icon.isEmpty()) {
                     g.pose().pushPose();
-                    float scale = cs / 16.0f * 0.6f;
-                    g.pose().translate(cx + 2, cy + cs - cs * 0.6f - 2, 100);
+                    float scale = cs / 16.0f * 0.7f;
+                    float iconSize = 16 * scale;
+                    float iconOff = (cs - iconSize) / 2.0f;
+                    g.pose().translate(cx + iconOff, cy + iconOff, 100);
                     g.pose().scale(scale, scale, 1.0f);
                     g.renderItem(icon, 0, 0);
                     g.pose().popPose();
                 }
 
-                // Plan overlay
-                int wx = postPos.getX() + (gx - half);
-                int wz = postPos.getZ() + (gz - half);
-                long posKey = BlockPos.asLong(wx, postPos.getY(), wz);
-                String assignment = plan.get(posKey);
-                if (assignment != null) {
-                    ToolPaletteList.ToolEntry tool = findToolEntry(assignment);
+                // Plan overlays — both layers
+                int xOff = gx - half;
+                int zOff = gz - half;
+                int planKey = CellPlan.packXZ(xOff, zOff);
+
+                // Soil plan: show as texture overlay so you can see what it'll become
+                SoilType soilAssignment = soilPlan.get(planKey);
+                if (soilAssignment != null) {
+                    String soilTexture = switch (soilAssignment) {
+                        case FARMLAND -> "minecraft:block/farmland";
+                        case RICH_SOIL -> "minecraft:block/farmland_moist"; // visual approximation
+                        case WATER -> "minecraft:block/water_still";
+                        case NONE -> null;
+                        case PROTECTED -> null;
+                    };
+                    if (soilTexture != null) {
+                        // Render the planned soil texture as a semi-transparent overlay
+                        g.setColor(1.0f, 1.0f, 1.0f, 0.6f);
+                        CellTextures.blit(g, soilTexture, cx, cy, cs);
+                        g.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+                        if (soilAssignment == SoilType.WATER) {
+                            g.fill(cx, cy, cx + cs, cy + cs, 0x403F76E4);
+                        }
+                    }
+                    int borderColor = switch (soilAssignment) {
+                        case FARMLAND -> 0xFF8B6914;
+                        case RICH_SOIL -> 0xFF4A2D0A;
+                        case WATER -> 0xFF3366CC;
+                        case NONE -> 0xFF666666;
+                        case PROTECTED -> 0xFFFF4444;
+                    };
+                    drawCellBorder(g, cx, cy, cs, borderColor);
+                }
+
+                // Seed plan: show as a smaller centered icon
+                String seedAssignment = seedPlan.get(planKey);
+                if (seedAssignment != null) {
+                    ToolPaletteList.ToolEntry tool = findToolEntry(seedAssignment);
                     if (tool != null) {
-                        drawCellBorder(g, cx, cy, cs, PLAN_BORDER);
-                        // Smaller centered icon so terrain is still visible
-                        g.pose().pushPose();
+                        if (soilAssignment == null) drawCellBorder(g, cx, cy, cs, PLAN_BORDER);
                         float scale = cs / 16.0f * 0.65f;
                         float iconSize = 16 * scale;
-                        float offX = (cs - iconSize) / 2.0f;
-                        float offY = (cs - iconSize) / 2.0f;
-                        g.pose().translate(cx + offX, cy + offY, 200);
+                        float offXi = (cs - iconSize) / 2.0f;
+                        float offYi = (cs - iconSize) / 2.0f;
+                        g.pose().pushPose();
+                        g.pose().translate(cx + offXi, cy + offYi, 200);
                         g.pose().scale(scale, scale, 1.0f);
-                        g.renderItem(tool.icon, 0, 0);
+                        if (tool.customIcon != null) {
+                            //? if >=1.21 {
+                            g.blit(tool.customIcon, 0, 0, 0, 0, 16, 16, 16, 16);
+                            //?} else {
+                            /*com.mojang.blaze3d.systems.RenderSystem.setShaderTexture(0, tool.customIcon);
+                            g.blit(tool.customIcon, 0, 0, 0, 0, 16, 16, 16, 16);
+                            *///?}
+                        } else {
+                            g.renderItem(tool.icon, 0, 0);
+                        }
                         g.pose().popPose();
+                    }
+                }
+
+                // Growth stage dot (top-left corner of cell)
+                if (cropIcons[gz][gx] != null && !cropIcons[gz][gx].isEmpty()) {
+                    BlockPos gp = renderPositions[gz][gx];
+                    BlockState cs2 = gp != null ? level.getBlockState(gp.above()) : null;
+                    if (cs2 != null && cs2.getBlock() instanceof CropBlock crop2) {
+                        int age = crop2.getAge(cs2);
+                        int maxAge = crop2.getMaxAge();
+                        int dotColor = age >= maxAge ? 0xFFFFDD44  // gold = mature
+                                : (age * 100 / Math.max(1, maxAge) > 50 ? 0xFF55CC33 : 0xFFCC6622); // green or orange
+                        int dotSize = Math.max(2, cs / 6);
+                        g.fill(cx + 1, cy + 1, cx + 1 + dotSize, cy + 1 + dotSize, dotColor);
+                    }
+                }
+
+                // Protected: red X across the cell
+                boolean isProtected = soilPlan.get(planKey) == SoilType.PROTECTED
+                        || SeedAssignment.PROTECTED.equals(seedPlan.get(planKey));
+                if (isProtected) {
+                    // Draw diagonal X lines
+                    for (int d = 0; d < cs; d++) {
+                        int px1 = cx + d, py1 = cy + d;
+                        int px2 = cx + cs - 1 - d, py2 = cy + d;
+                        if (px1 >= cx && px1 < cx + cs && py1 >= cy && py1 < cy + cs)
+                            g.fill(px1, py1, px1 + 1, py1 + 1, 0xCCFF3333);
+                        if (px2 >= cx && px2 < cx + cs && py2 >= cy && py2 < cy + cs)
+                            g.fill(px2, py2, px2 + 1, py2 + 1, 0xCCFF3333);
                     }
                 }
 
@@ -617,75 +865,244 @@ public class FieldPostScreen extends Screen {
     }
 
     private void renderCardinalLabels(GuiGraphics g) {
-        // Labels drawn just inside the viewport rectangle so they sit on the grid, not the frame
+        // Rendered above all grid content with a Z push
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 300);
+        g.enableScissor(vpLeft, vpTop, vpLeft + vpW, vpTop + vpH);
         int midX = vpLeft + vpW / 2;
         int midY = vpTop + vpH / 2;
-        g.drawCenteredString(font, "N", midX, vpTop + 2, TEXT_LIGHT);
-        g.drawCenteredString(font, "S", midX, vpTop + vpH - 10, TEXT_LIGHT);
-        g.drawString(font, "W", vpLeft + 2, midY - 4, TEXT_LIGHT, true);
-        g.drawString(font, "E", vpLeft + vpW - 8, midY - 4, TEXT_LIGHT, true);
-    }
-
-    private void renderStatusBar(GuiGraphics g, int mouseX, int mouseY) {
-        // Sits below the viewport frame with SPACING of gap
-        int y = vpTop + vpH + FRAME_THICK + SPACING;
-        int w = vpW;
-        g.fill(vpLeft, y, vpLeft + w, y + STATUS_H - 2, chatPanelColor());
-        g.fill(vpLeft, y, vpLeft + w, y + 1, 0x40FFDEA0);
-
-        // Selected tool
-        ToolPaletteList.ToolEntry selected = paletteList != null ? paletteList.getSelected() : null;
-        String toolStr;
-        if (mode == Mode.ERASE) {
-            toolStr = "Tool: Erase";
-        } else if (mode == Mode.PAN) {
-            toolStr = "Tool: Pan (drag)";
-        } else if (selected != null && !selected.isHeader) {
-            toolStr = "Tool: " + selected.label;
-        } else {
-            toolStr = "Tool: (select from palette)";
-        }
-        g.drawString(font, toolStr, vpLeft + 4, y + 3, TEXT_LIGHT, false);
-
-        // Plan count
-        String planStr = plan.size() + " assigned";
-        int coverage = gridSize * gridSize == 0 ? 0 : (plan.size() * 100) / (gridSize * gridSize);
-        String covStr = "Coverage: " + coverage + "%";
-        g.drawString(font, covStr, vpLeft + w - font.width(covStr) - 4, y + 3, TEXT_DIM, false);
-        g.drawString(font, planStr, vpLeft + w - font.width(covStr) - 12 - font.width(planStr), y + 3, TEXT_DIM, false);
+        g.drawCenteredString(font, Component.translatable("townstead.field_post.direction.n").getString(), midX, vpTop + 2, TEXT_LIGHT);
+        g.drawCenteredString(font, Component.translatable("townstead.field_post.direction.s").getString(), midX, vpTop + vpH - 10, TEXT_LIGHT);
+        g.drawString(font, Component.translatable("townstead.field_post.direction.w").getString(), vpLeft + 2, midY - 4, TEXT_LIGHT, true);
+        g.drawString(font, Component.translatable("townstead.field_post.direction.e").getString(), vpLeft + vpW - 8, midY - 4, TEXT_LIGHT, true);
+        g.disableScissor();
+        g.pose().popPose();
     }
 
     private void renderGridTooltip(GuiGraphics g, int mouseX, int mouseY) {
         if (panning || mouseX < vpLeft || mouseX >= vpLeft + vpW || mouseY < vpTop || mouseY >= vpTop + vpH) return;
 
-        int cs = cellSize();
-        int st = stride();
-        int startGX = (int) Math.floor(scrollX);
-        int startGZ = (int) Math.floor(scrollY);
-        float offsetX = -(scrollX - startGX) * st;
-        float offsetY = -(scrollY - startGZ) * st;
-        int vx = (int) Math.floor((mouseX - vpLeft - offsetX) / st);
-        int vy = (int) Math.floor((mouseY - vpTop - offsetY) / st);
-        int gx = startGX + vx;
-        int gz = startGZ + vy;
-        if (gx < 0 || gz < 0 || gx >= gridSize || gz >= gridSize) return;
+        int[] cell = gridCellAt(mouseX, mouseY);
+        if (cell == null) return;
+        int gx = cell[0], gz = cell[1];
+        BlockState state = renderStates[gz][gx];
+        if (state == null || state.isAir()) return;
 
         int half = gridSize / 2;
-        int wx = postPos.getX() + (gx - half);
-        int wz = postPos.getZ() + (gz - half);
-        BlockState state = renderStates[gz][gx];
+        BlockPos groundPos = renderPositions[gz][gx];
+        BlockPos cropPos = groundPos != null ? groundPos.above() : null;
+        BlockState cropState = cropPos != null ? level.getBlockState(cropPos) : null;
 
-        List<Component> tips = new ArrayList<>();
-        tips.add(Component.literal(String.format("(%d, %d)", wx, wz)));
-        String blockName = state != null ? new ItemStack(state.getBlock()).getHoverName().getString() : "Unknown";
-        tips.add(Component.literal(blockName).withStyle(s -> s.withColor(0xAACCCC)));
-        long posKey = BlockPos.asLong(wx, postPos.getY(), wz);
-        String a = plan.get(posKey);
-        if (a != null) {
-            ToolPaletteList.ToolEntry t = findToolEntry(a);
-            tips.add(Component.literal("Plan: " + (t != null ? t.label : a)).withStyle(s -> s.withColor(0x55FF55)));
+        // ── Gather tooltip data ──
+        String cropName = null;
+        int cropAge = -1, cropMaxAge = -1;
+        int nameColor = 0x77CC44;
+        ItemStack cropItemIcon = null;
+
+        if (cropState != null && cropState.getBlock() instanceof CropBlock crop) {
+            cropItemIcon = cropIcon(crop);
+            cropName = cropItemIcon.getHoverName().getString();
+            cropAge = crop.getAge(cropState);
+            cropMaxAge = crop.getMaxAge();
+            int pct = cropMaxAge > 0 ? (cropAge * 100) / cropMaxAge : 0;
+            nameColor = cropAge >= cropMaxAge ? 0xFFDD44 : (pct > 50 ? 0x77CC44 : 0xCCCC44);
+        } else if (cropState != null && cropState.getBlock() instanceof BushBlock) {
+            cropItemIcon = cropIcon(cropState.getBlock());
+            cropName = cropItemIcon.getHoverName().getString();
+        } else if (cropState != null && cropState.getFluidState().is(Fluids.WATER)) {
+            cropName = Component.translatable("townstead.field_post.tooltip.water").getString();
+            nameColor = 0x5599FF;
         }
-        g.renderTooltip(font, tips, Optional.empty(), mouseX, mouseY);
+
+        // Ground info
+        String soilLabel = null;
+        int soilColor = 0xAA9977;
+        String hydrationLabel = null;
+        int hydrationColor = 0;
+
+        if (state.getFluidState().is(Fluids.WATER)) {
+            soilLabel = Component.translatable("townstead.field_post.tooltip.water").getString();
+            soilColor = 0x5599FF;
+        } else if (state.getBlock() instanceof FarmBlock) {
+            boolean wet = state.getValue(FarmBlock.MOISTURE) > 0;
+            soilLabel = Component.translatable("townstead.field_post.tooltip.soil.farmland").getString();
+            hydrationLabel = Component.translatable(wet ? "townstead.field_post.tooltip.hydrated" : "townstead.field_post.tooltip.dry").getString();
+            hydrationColor = wet ? 0x55AAFF : 0xCC8844;
+        } else if (isNaturalGround(state)) {
+            soilLabel = Component.translatable("townstead.field_post.tooltip.soil", new ItemStack(state.getBlock()).getHoverName()).getString();
+        } else {
+            soilLabel = new ItemStack(state.getBlock()).getHoverName().getString();
+            soilColor = 0x888888;
+        }
+
+        // Plan
+        int planKey = CellPlan.packXZ(gx - half, gz - half);
+        SoilType soilPlanEntry = soilPlan.get(planKey);
+        String seedPlanEntry = seedPlan.get(planKey);
+
+        // Mod origin
+        String modName = null;
+        net.minecraft.resources.ResourceLocation blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (blockId != null && !"minecraft".equals(blockId.getNamespace())) {
+            modName = categoryFor(blockId.getNamespace());
+        }
+
+        // ── Compute tooltip dimensions — measure every line precisely ──
+        int lineH = 11;
+        int pad = 5;
+        int barH = 6;
+
+        // Pre-render all text strings so we can measure them
+        String readyText = cropAge >= 0 && cropAge >= cropMaxAge
+                ? Component.translatable("townstead.field_post.tooltip.ready").getString() : null;
+        String pctText = (cropAge >= 0 && cropAge < cropMaxAge && cropMaxAge > 0)
+                ? ((cropAge * 100) / cropMaxAge) + "%" : null;
+        String soilPlanText = soilPlanEntry != null
+                ? Component.translatable("townstead.field_post.tooltip.plan.soil", titleCase(soilPlanEntry.name().toLowerCase())).getString() : null;
+        String seedPlanText = null;
+        if (seedPlanEntry != null) {
+            ToolPaletteList.ToolEntry t = findToolEntry(seedPlanEntry);
+            seedPlanText = Component.translatable("townstead.field_post.tooltip.plan.seed", t != null ? t.label : seedPlanEntry).getString();
+        }
+
+        // Measure max text width across all lines
+        int maxTextW = 0;
+        int cropIconW = cropItemIcon != null ? (int)(16 * (lineH / 16.0f)) + 2 : 0;
+        if (cropName != null) maxTextW = Math.max(maxTextW, font.width(cropName) + cropIconW);
+        if (readyText != null) maxTextW = Math.max(maxTextW, font.width(readyText));
+        // Progress bar: reserve space for bar + gap + "99%" label on the right
+        int pctReservedW = font.width("99%");
+        int barGap = 4;
+        if (pctText != null) maxTextW = Math.max(maxTextW, 40 + barGap + pctReservedW);
+        if (soilLabel != null) maxTextW = Math.max(maxTextW, font.width(soilLabel));
+        if (hydrationLabel != null) maxTextW = Math.max(maxTextW, font.width("  " + hydrationLabel));
+        if (soilPlanText != null) maxTextW = Math.max(maxTextW, font.width(soilPlanText));
+        if (seedPlanText != null) maxTextW = Math.max(maxTextW, font.width(seedPlanText));
+        if (modName != null) maxTextW = Math.max(maxTextW, (int)(font.width(modName) * 0.85f));
+        int tooltipW = maxTextW + pad * 2;
+        int barW = tooltipW - pad * 2;
+
+        // Measure content height — only count lines that exist
+        int contentH = pad;
+        if (cropName != null) contentH += lineH;
+        if (readyText != null) contentH += lineH;
+        else if (pctText != null) contentH += barH + 4;
+        if (soilLabel != null) contentH += lineH;
+        if (hydrationLabel != null) contentH += lineH;
+        boolean hasPlan = soilPlanText != null || seedPlanText != null;
+        if (hasPlan) {
+            contentH += 6; // divider gap
+            if (soilPlanText != null) contentH += lineH;
+            if (seedPlanText != null) contentH += lineH;
+        }
+        if (modName != null) contentH += lineH;
+        contentH += pad;
+
+        // Position tooltip (avoid going off-screen)
+        int tx = mouseX + 12;
+        int ty = mouseY - 4;
+        if (tx + tooltipW > width) tx = mouseX - tooltipW - 4;
+        if (ty + contentH > height) ty = height - contentH - 2;
+        if (ty < 2) ty = 2;
+
+        // ── Draw tooltip box (above everything, Z=400) ──
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 400);
+
+        int borderInner = 0xFF5000AA;
+        int borderGrad = 0xFF28007F;
+        int bgColor = 0xF0100010;
+        // Background with rounded corners (1px inset)
+        g.fill(tx + 1, ty, tx + tooltipW - 1, ty + contentH, bgColor);
+        g.fill(tx, ty + 1, tx + tooltipW, ty + contentH - 1, bgColor);
+        // Gradient border (top=lighter, bottom=darker)
+        g.fill(tx + 1, ty, tx + tooltipW - 1, ty + 1, borderInner);
+        g.fill(tx + 1, ty + contentH - 1, tx + tooltipW - 1, ty + contentH, borderGrad);
+        g.fill(tx, ty + 1, tx + 1, ty + contentH - 1, borderInner);
+        g.fill(tx + tooltipW - 1, ty + 1, tx + tooltipW, ty + contentH - 1, borderGrad);
+
+        // ── Draw content ──
+        int cy = ty + pad;
+        int cx = tx + pad;
+
+        // Crop name + icon (icon scaled to fit within line height)
+        if (cropName != null) {
+            if (cropItemIcon != null && !cropItemIcon.isEmpty()) {
+                float iconScale = lineH / 16.0f; // scale 16px icon to fit line height
+                g.pose().pushPose();
+                g.pose().translate(cx, cy - 1, 300);
+                g.pose().scale(iconScale, iconScale, 1);
+                g.renderItem(cropItemIcon, 0, 0);
+                g.pose().popPose();
+                int iconW = (int)(16 * iconScale) + 2;
+                g.drawString(font, cropName, cx + iconW, cy, nameColor, true);
+            } else {
+                g.drawString(font, cropName, cx, cy, nameColor, true);
+            }
+            cy += lineH;
+        }
+
+        // Progress bar
+        if (readyText != null) {
+            g.drawString(font, readyText, cx, cy, 0x55FF55, true);
+            cy += lineH;
+        } else if (pctText != null) {
+            int pct = (cropAge * 100) / Math.max(1, cropMaxAge);
+            // Bar is shorter — leaves room for % on the right
+            int actualBarW = barW - pctReservedW - barGap;
+            // Bar track
+            g.fill(cx, cy, cx + actualBarW, cy + barH, 0xFF1A1A1A);
+            // Bar fill
+            int fillW = Math.max(1, (pct * actualBarW) / 100);
+            int barColor = pct > 60 ? 0xFF44BB33 : (pct > 30 ? 0xFFBB9922 : 0xFFBB5522);
+            g.fill(cx, cy, cx + fillW, cy + barH, barColor);
+            g.fill(cx, cy, cx + fillW, cy + 1, 0x40FFFFFF); // top highlight
+            // Border
+            g.fill(cx - 1, cy - 1, cx + actualBarW + 1, cy, 0xFF333333);
+            g.fill(cx - 1, cy + barH, cx + actualBarW + 1, cy + barH + 1, 0xFF333333);
+            g.fill(cx - 1, cy, cx, cy + barH, 0xFF333333);
+            g.fill(cx + actualBarW, cy, cx + actualBarW + 1, cy + barH, 0xFF333333);
+            // Percentage to the right of the bar, right-aligned to reserved space
+            int pctX = cx + actualBarW + barGap + pctReservedW - font.width(pctText);
+            g.drawString(font, pctText, pctX, cy - 1, 0xCCCCCC, false);
+            cy += barH + 3;
+        }
+
+        // Soil / ground
+        if (soilLabel != null) {
+            g.drawString(font, soilLabel, cx, cy, soilColor, false);
+            cy += lineH;
+        }
+        if (hydrationLabel != null) {
+            g.drawString(font, "  " + hydrationLabel, cx, cy, hydrationColor, false);
+            cy += lineH;
+        }
+
+        // Plan section with divider
+        if (hasPlan) {
+            cy += 1;
+            g.fill(cx, cy, cx + barW, cy + 1, 0x50FFCC00);
+            cy += 4;
+            if (soilPlanText != null) {
+                g.drawString(font, soilPlanText, cx, cy, 0x88BBFF, false);
+                cy += lineH;
+            }
+            if (seedPlanText != null) {
+                g.drawString(font, seedPlanText, cx, cy, 0x55FF55, false);
+                cy += lineH;
+            }
+        }
+
+        // Mod origin (small, dim)
+        if (modName != null) {
+            g.pose().pushPose();
+            g.pose().translate(cx, cy + 1, 0);
+            g.pose().scale(0.85f, 0.85f, 1);
+            g.drawString(font, modName, 0, 0, 0x555577, false);
+            g.pose().popPose();
+        }
+
+        g.pose().popPose(); // pop Z=400 translation
     }
 
     private void drawCellBorder(GuiGraphics g, int cx, int cy, int cs, int color) {
@@ -696,7 +1113,8 @@ public class FieldPostScreen extends Screen {
     }
 
     private ToolPaletteList.ToolEntry findToolEntry(String id) {
-        for (ToolPaletteList.ToolEntry e : allEntries) { if (e.toolId.equals(id)) return e; }
+        for (ToolPaletteList.ToolEntry e : allSeedEntries) { if (e.toolId.equals(id)) return e; }
+        for (ToolPaletteList.ToolEntry e : allSoilEntries) { if (e.toolId.equals(id)) return e; }
         return null;
     }
 
@@ -709,6 +1127,18 @@ public class FieldPostScreen extends Screen {
         if (my >= 4 && my < 4 + btnSize) {
             if (mx >= width - 36 && mx < width - 22) { applyAndClose(); return true; }
             if (mx >= width - 18 && mx < width - 4) { onClose(); return true; }
+        }
+
+        // Tab clicks (Seeds | Soil)
+        if (button == 0) {
+            int palLeft = SPACING + FRAME_THICK;
+            int palTop = SPACING + FRAME_THICK + TITLE_H;
+            int tabY = palTop + SEARCH_H + 4;
+            int tabW = (PALETTE_W - 4) / 2;
+            if (my >= tabY && my < tabY + 14) {
+                if (mx >= palLeft + 2 && mx < palLeft + 2 + tabW) { switchTab(PaletteTab.SEEDS); return true; }
+                if (mx >= palLeft + 2 + tabW && mx < palLeft + 2 + tabW * 2) { switchTab(PaletteTab.SOIL); return true; }
+            }
         }
 
         // Toolbar clicks
@@ -737,26 +1167,27 @@ public class FieldPostScreen extends Screen {
         if (button != 0) return false;
         if (my < toolbarTop || my >= toolbarTop + TOOLBAR_H) return false;
 
+        // Mode buttons
         Mode[] modes = Mode.values();
-        int btnSize = 18;
-        int btnGap = 4;
+        int btnSize = 16;
+        int btnGap = 2;
+        int btnY = toolbarTop + (TOOLBAR_H - btnSize) / 2;
         for (int i = 0; i < modes.length; i++) {
-            int bx = toolbarLeft + 4 + i * (btnSize + btnGap);
-            int by = toolbarTop + 1;
-            if (mx >= bx && mx < bx + btnSize && my >= by && my < by + btnSize) {
+            int bx = toolbarLeft + 2 + i * (btnSize + btnGap);
+            if (mx >= bx && mx < bx + btnSize && my >= btnY && my < btnY + btnSize) {
                 mode = modes[i];
                 return true;
             }
         }
 
         // Zoom buttons
-        int zoomBtnSize = 14;
-        int plusX = toolbarLeft + vpW - zoomBtnSize - 4;
-        int minusX = plusX - zoomBtnSize - 4;
-        int zoomY = toolbarTop + 3;
-        if (my >= zoomY && my < zoomY + zoomBtnSize) {
-            if (mx >= minusX && mx < minusX + zoomBtnSize) { adjustZoom(-1); return true; }
-            if (mx >= plusX && mx < plusX + zoomBtnSize) { adjustZoom(1); return true; }
+        int smallBtn = 14;
+        int rightY = toolbarTop + (TOOLBAR_H - smallBtn) / 2;
+        if (my >= rightY && my < rightY + smallBtn) {
+            int zoomPlusX = toolbarLeft + vpW - smallBtn - 4;
+            int zoomMinusX = zoomPlusX - smallBtn - 2;
+            if (mx >= zoomMinusX && mx < zoomMinusX + smallBtn) { adjustZoom(-1); return true; }
+            if (mx >= zoomPlusX && mx < zoomPlusX + smallBtn) { adjustZoom(1); return true; }
         }
         return false;
     }
@@ -837,10 +1268,16 @@ public class FieldPostScreen extends Screen {
             return super.keyPressed(key, scan, mods);
         }
         if (key == 256) { onClose(); return true; }
+        // Ctrl+Z = undo, Ctrl+Y = redo
+        if (key == 90 && hasControlDown()) { undo(); return true; }  // Z
+        if (key == 89 && hasControlDown()) { redo(); return true; }  // Y
         // Mode shortcuts
         if (key == 66) { mode = Mode.PAINT; return true; }  // B
         if (key == 72) { mode = Mode.PAN; return true; }    // H
         if (key == 69) { mode = Mode.ERASE; return true; }  // E
+        // Tab shortcuts
+        if (key == 49) { switchTab(PaletteTab.SEEDS); return true; }  // 1
+        if (key == 50) { switchTab(PaletteTab.SOIL); return true; }   // 2
         // Pan with arrow keys
         if (key == 263) { targetScrollX -= 2; clampScroll(); return true; }
         if (key == 262) { targetScrollX += 2; clampScroll(); return true; }
@@ -853,34 +1290,87 @@ public class FieldPostScreen extends Screen {
         return mx >= vpLeft && mx < vpLeft + vpW && my >= vpTop && my < vpTop + vpH;
     }
 
-    private void paintAt(double mx, double my) {
-        int cs = cellSize();
+    private int[] gridCellAt(double mx, double my) {
         int st = stride();
         int startGX = (int) Math.floor(scrollX);
         int startGZ = (int) Math.floor(scrollY);
-        float offsetX = -(scrollX - startGX) * st;
-        float offsetY = -(scrollY - startGZ) * st;
+        int offsetX = Math.round(-(scrollX - startGX) * st);
+        int offsetY = Math.round(-(scrollY - startGZ) * st);
         int vx = (int) Math.floor((mx - vpLeft - offsetX) / st);
         int vy = (int) Math.floor((my - vpTop - offsetY) / st);
         int gx = startGX + vx;
         int gz = startGZ + vy;
-        if (gx < 0 || gz < 0 || gx >= gridSize || gz >= gridSize) return;
+        if (gx < 0 || gz < 0 || gx >= gridSize || gz >= gridSize) return null;
+        if (cellFlags[gz][gx] == CELL_POST) return null;
+        return new int[]{gx, gz};
+    }
 
-        // Don't allow painting on the field post itself
-        if (cellFlags[gz][gx] == CELL_POST) return;
-
+    private void paintAt(double mx, double my) {
+        int[] cell = gridCellAt(mx, my);
+        if (cell == null) return;
         int half = gridSize / 2;
-        int wx = postPos.getX() + (gx - half);
-        int wz = postPos.getZ() + (gz - half);
-        long posKey = BlockPos.asLong(wx, postPos.getY(), wz);
+        int key = CellPlan.packXZ(cell[0] - half, cell[1] - half);
 
         if (mode == Mode.ERASE) {
-            plan.remove(posKey);
+            eraseAt(key);
             return;
         }
         ToolPaletteList.ToolEntry tool = paletteList.getSelected();
         if (tool == null || tool.isHeader) return;
-        plan.put(posKey, tool.toolId);
+
+        // Push undo
+        pushUndo(key);
+
+        if (activeTab == PaletteTab.SOIL) {
+            SoilType type = SoilType.fromName(tool.toolId);
+            if (type != null) soilPlan.put(key, type);
+        } else {
+            seedPlan.put(key, tool.toolId);
+        }
+    }
+
+    private void eraseAt(int key) {
+        pushUndo(key);
+        if (activeTab == PaletteTab.SOIL) soilPlan.remove(key);
+        else seedPlan.remove(key);
+    }
+
+    private void eraseAtMouse(double mx, double my) {
+        int[] cell = gridCellAt(mx, my);
+        if (cell == null) return;
+        int half = gridSize / 2;
+        int key = CellPlan.packXZ(cell[0] - half, cell[1] - half);
+        eraseAt(key);
+    }
+
+    private void pushUndo(int key) {
+        undoStack.push(new UndoEntry(key, activeTab, soilPlan.get(key), seedPlan.get(key)));
+        if (undoStack.size() > MAX_UNDO) ((ArrayDeque<UndoEntry>) undoStack).removeLast();
+        redoStack.clear(); // new action invalidates redo history
+    }
+
+    private void undo() {
+        if (undoStack.isEmpty()) return;
+        UndoEntry entry = undoStack.pop();
+        // Save current state for redo before restoring
+        redoStack.push(new UndoEntry(entry.key, entry.tab, soilPlan.get(entry.key), seedPlan.get(entry.key)));
+        // Restore previous state
+        if (entry.prevSoil != null) soilPlan.put(entry.key, entry.prevSoil);
+        else soilPlan.remove(entry.key);
+        if (entry.prevSeed != null) seedPlan.put(entry.key, entry.prevSeed);
+        else seedPlan.remove(entry.key);
+    }
+
+    private void redo() {
+        if (redoStack.isEmpty()) return;
+        UndoEntry entry = redoStack.pop();
+        // Save current state for undo
+        undoStack.push(new UndoEntry(entry.key, entry.tab, soilPlan.get(entry.key), seedPlan.get(entry.key)));
+        // Apply the redo state
+        if (entry.prevSoil != null) soilPlan.put(entry.key, entry.prevSoil);
+        else soilPlan.remove(entry.key);
+        if (entry.prevSeed != null) seedPlan.put(entry.key, entry.prevSeed);
+        else seedPlan.remove(entry.key);
     }
 
     private void clampScroll() {
@@ -891,16 +1381,23 @@ public class FieldPostScreen extends Screen {
     }
 
     private void applyAndClose() {
+        CellPlan.Builder planBuilder = CellPlan.builder();
+        soilPlan.forEach(planBuilder::rawSoil);
+        seedPlan.forEach(planBuilder::rawSeed);
+        CellPlan plan = planBuilder.build();
+        // Build seeds list for the seed filter from explicit seed assignments
         List<String> seeds = new ArrayList<>();
-        for (String val : plan.values()) {
-            if (!"water".equals(val) && !"auto".equals(val) && !seeds.contains(val))
-                seeds.add(val);
+        for (String val : seedPlan.values()) {
+            if (SeedAssignment.isExplicitSeed(val) && !seeds.contains(val)) seeds.add(val);
         }
-        FieldPostConfigSetPayload payload = new FieldPostConfigSetPayload(
-                postPos, patternId, tierCap, radius, priority,
-                seeds.isEmpty(), seeds, waterEnabled, maxWaterCells,
-                groomEnabled, groomRadius, rotationEnabled, rotationPatterns,
-                new HashMap<>(plan));
+        FieldPostConfig config = new FieldPostConfig(
+                loadedConfig.patternId(), loadedConfig.tierCap(), loadedConfig.radius(),
+                loadedConfig.priority(), seeds.isEmpty(), seeds,
+                loadedConfig.waterEnabled(), loadedConfig.maxWaterCells(),
+                loadedConfig.groomEnabled(), loadedConfig.groomRadius(),
+                loadedConfig.rotationEnabled(), loadedConfig.rotationPatterns(),
+                plan);
+        FieldPostConfigSetPayload payload = new FieldPostConfigSetPayload(postPos, config);
         //? if neoforge {
         PacketDistributor.sendToServer(payload);
         //?} else if forge {

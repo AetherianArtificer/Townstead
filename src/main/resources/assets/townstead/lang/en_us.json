@@ -463,30 +463,42 @@
 
   "block.townstead.field_post": "Field Post",
   "container.townstead.field_post": "Plot Planner",
-  "townstead.field_post.tab.layout": "Farm Layout",
-  "townstead.field_post.tab.policies": "Policies",
-  "townstead.field_post.tab.status": "Status",
-  "townstead.field_post.pattern": "Farm Pattern",
-  "townstead.field_post.pattern.auto": "Auto",
-  "townstead.field_post.tier_cap": "Tier Cap",
-  "townstead.field_post.radius": "Radius",
-  "townstead.field_post.priority": "Priority",
-  "townstead.field_post.rotation": "Crop Rotation",
-  "townstead.field_post.rotation.enabled": "Enable Rotation",
-  "townstead.field_post.seed_policy": "Seed Policy",
-  "townstead.field_post.seed_policy.auto": "Auto",
-  "townstead.field_post.seed_policy.manual": "Manual",
-  "townstead.field_post.water_policy": "Water Policy",
-  "townstead.field_post.water_enabled": "Allow Water Placement",
-  "townstead.field_post.max_water_cells": "Max Water Cells",
-  "townstead.field_post.groom_policy": "Grooming Policy",
-  "townstead.field_post.groom_enabled": "Enable Weed Removal",
-  "townstead.field_post.groom_radius": "Groom Radius",
-  "townstead.field_post.status.farmers": "Assigned Farmers",
-  "townstead.field_post.status.no_farmers": "No farmers nearby",
-  "townstead.field_post.status.plots": "Plots",
-  "townstead.field_post.status.hydration": "Hydration",
-  "townstead.field_post.status.pattern": "Active Pattern",
-  "townstead.field_post.apply": "Apply",
-  "townstead.field_post.cancel": "Cancel"
+
+  "townstead.field_post.mode.paint": "Paint",
+  "townstead.field_post.mode.pan": "Pan",
+  "townstead.field_post.mode.erase": "Erase",
+
+  "townstead.field_post.tab.seeds": "Seeds",
+  "townstead.field_post.tab.soil": "Soil",
+
+  "townstead.field_post.search.hint": "Search seeds...",
+
+  "townstead.field_post.seed.auto": "Auto",
+  "townstead.field_post.seed.none": "None (empty)",
+  "townstead.field_post.seed.protected": "Protected",
+
+  "townstead.field_post.soil.farmland": "Farmland",
+  "townstead.field_post.soil.water": "Water",
+  "townstead.field_post.soil.none": "None (revert)",
+  "townstead.field_post.soil.protected": "Protected",
+  "townstead.field_post.soil.rich_soil": "Rich Soil",
+
+  "townstead.field_post.zoom": "Zoom",
+
+  "townstead.field_post.direction.n": "N",
+  "townstead.field_post.direction.s": "S",
+  "townstead.field_post.direction.w": "W",
+  "townstead.field_post.direction.e": "E",
+
+  "townstead.field_post.tooltip.water": "Water",
+  "townstead.field_post.tooltip.soil": "%s",
+  "townstead.field_post.tooltip.soil.farmland": "Farmland",
+  "townstead.field_post.tooltip.hydrated": "Hydrated",
+  "townstead.field_post.tooltip.dry": "Dry",
+  "townstead.field_post.tooltip.ready": "\u2714 Ready to harvest",
+  "townstead.field_post.tooltip.plan.soil": "Soil \u2192 %s",
+  "townstead.field_post.tooltip.plan.seed": "Seed \u2192 %s",
+
+  "townstead.field_post.category.tools": "Tools",
+  "townstead.field_post.category.vanilla": "Vanilla"
 }
