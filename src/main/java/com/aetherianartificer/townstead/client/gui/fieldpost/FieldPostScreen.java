@@ -50,7 +50,7 @@ public class FieldPostScreen extends Screen {
     private static final int SPACING = 10;       // consistent gap between edges, panels, sections
     private static final int FRAME_THICK = 6;
     private static final int PALETTE_W = 136;
-    private static final int TITLE_H = 18;
+    private static final int TITLE_H = 16; // space above the frames for the confirm/cancel buttons
     private static final int SEARCH_H = 16;
     private static final int TOOLBAR_H = 22;
     // STATUS_H removed — status bar was dropped per user request
@@ -229,11 +229,14 @@ public class FieldPostScreen extends Screen {
             //?} else {
             /*ResourceLocation rl = new ResourceLocation(seedId);
             *///?}
-            Item item = BuiltInRegistries.ITEM.get(rl);
-            if (item == Items.AIR) continue;
-            String name = new ItemStack(item).getHoverName().getString();
+            Item seedItem = BuiltInRegistries.ITEM.get(rl);
+            if (seedItem == Items.AIR) continue;
+            // Show the crop product (wheat, carrot) not the seed (wheat_seeds)
+            // The toolId stays as the seed ID for the farmer to use
+            ItemStack cropProduct = seedToCropIcon(seedItem);
+            String name = cropProduct.getHoverName().getString();
             String category = categoryFor(rl.getNamespace());
-            allSeedEntries.add(new ToolPaletteList.ToolEntry(seedId, name, new ItemStack(item), category));
+            allSeedEntries.add(new ToolPaletteList.ToolEntry(seedId, name, cropProduct, category));
         }
 
         // ── Soil tab entries ──
@@ -270,6 +273,7 @@ public class FieldPostScreen extends Screen {
             case "twilightforest" -> "Twilight Forest";
             case "byg" -> "Oh The Biomes You'll Go";
             case "biomesoplenty" -> "Biomes O' Plenty";
+            case "rusticdelight" -> "Rustic Delight";
             default -> titleCase(namespace);
         };
     }
@@ -349,6 +353,20 @@ public class FieldPostScreen extends Screen {
             paletteList.setSelected(prev);
         }
         paletteList.setScrollAmount(paletteList.getScrollAmount());
+
+        // Update assignment counts for the active layer
+        Map<String, Integer> counts = new HashMap<>();
+        Map<Integer, String> activePlan = activeTab == PaletteTab.SEEDS ? new HashMap<>() : null;
+        if (activeTab == PaletteTab.SEEDS) {
+            for (String val : seedPlan.values()) {
+                counts.merge(val, 1, Integer::sum);
+            }
+        } else {
+            for (SoilType val : soilPlan.values()) {
+                counts.merge(val.name(), 1, Integer::sum);
+            }
+        }
+        paletteList.setAssignmentCounts(counts);
     }
 
     private void switchTab(PaletteTab tab) {
@@ -427,20 +445,24 @@ public class FieldPostScreen extends Screen {
                     continue;
                 }
 
-                renderStates[gz][gx] = groundState;
-                renderPositions[gz][gx] = groundPos;
-
                 // Check one block above the ground for crops/water/plants
                 BlockPos abovePos = groundPos.above();
                 BlockState aboveState = level.getBlockState(abovePos);
 
-                if (aboveState.getBlock() instanceof CropBlock crop) {
-                    if (crop.isMaxAge(aboveState)) cellFlags[gz][gx] = CELL_CROP_MATURE;
-                    cropIcons[gz][gx] = cropIcon(aboveState.getBlock());
-                } else if (aboveState.getBlock() instanceof BushBlock) {
-                    cropIcons[gz][gx] = cropIcon(aboveState.getBlock());
-                } else if (aboveState.getFluidState().is(Fluids.WATER)) {
-                    cropIcons[gz][gx] = new ItemStack(Items.WATER_BUCKET);
+                if (aboveState.getFluidState().is(Fluids.WATER)) {
+                    // Water above ground — the cell IS water (not "dirt with water overlay")
+                    renderStates[gz][gx] = aboveState;
+                    renderPositions[gz][gx] = abovePos;
+                } else {
+                    renderStates[gz][gx] = groundState;
+                    renderPositions[gz][gx] = groundPos;
+
+                    if (aboveState.getBlock() instanceof CropBlock crop) {
+                        if (crop.isMaxAge(aboveState)) cellFlags[gz][gx] = CELL_CROP_MATURE;
+                        cropIcons[gz][gx] = cropIcon(aboveState.getBlock());
+                    } else if (aboveState.getBlock() instanceof BushBlock) {
+                        cropIcons[gz][gx] = cropIcon(aboveState.getBlock());
+                    }
                 }
             }
         }
@@ -480,6 +502,29 @@ public class FieldPostScreen extends Screen {
         // Snow
         if (block == Blocks.SNOW_BLOCK) return true;
         return false;
+    }
+
+    /**
+     * Maps a seed item to its crop product for display in the palette.
+     * e.g., wheat_seeds → wheat, beetroot_seeds → beetroot, melon_seeds → melon
+     */
+    private ItemStack seedToCropIcon(Item seedItem) {
+        // Direct vanilla seed → crop mappings
+        if (seedItem == Items.WHEAT_SEEDS) return new ItemStack(Items.WHEAT);
+        if (seedItem == Items.BEETROOT_SEEDS) return new ItemStack(Items.BEETROOT);
+        if (seedItem == Items.MELON_SEEDS) return new ItemStack(Items.MELON);
+        if (seedItem == Items.PUMPKIN_SEEDS) return new ItemStack(Items.PUMPKIN);
+        // Items that are both seed and crop (carrot, potato)
+        if (seedItem == Items.CARROT || seedItem == Items.POTATO) return new ItemStack(seedItem);
+        // Sweet berries
+        if (seedItem == Items.SWEET_BERRIES) return new ItemStack(Items.SWEET_BERRIES);
+        // For modded seeds: try to find the crop product by name pattern
+        if (seedItem instanceof net.minecraft.world.item.BlockItem blockItem) {
+            ItemStack cropResult = cropIcon(blockItem.getBlock());
+            if (!cropResult.isEmpty() && cropResult.getItem() != seedItem) return cropResult;
+        }
+        // Fallback: just show the seed itself
+        return new ItemStack(seedItem);
     }
 
     private ItemStack cropIcon(Block block) {
@@ -545,22 +590,20 @@ public class FieldPostScreen extends Screen {
         int bgColor = (alpha << 24) | 0x0A0705;
         g.fill(0, 0, width, height, bgColor);
 
-        // Title bar
-        String titleStr = title.getString();
-        g.drawString(font, titleStr, 12, 6, TEXT_LIGHT, true);
-
-        // Top-right confirm / cancel icons
+        // Confirm / cancel icons — right side aligned with the map frame's right edge
         int btnSize = 14;
-        int checkX = width - 36;
-        int cancelX = width - 18;
-        boolean hCheck = mouseX >= checkX && mouseX < checkX + btnSize && mouseY >= 4 && mouseY < 4 + btnSize;
-        boolean hCancel = mouseX >= cancelX && mouseX < cancelX + btnSize && mouseY >= 4 && mouseY < 4 + btnSize;
-        g.fill(checkX - 1, 3, checkX + btnSize + 1, 4 + btnSize + 1, FrameRenderer.FRAME_SHADOW);
-        g.fill(checkX, 4, checkX + btnSize, 4 + btnSize, hCheck ? 0xFF66CC44 : 0xFF3D7A22);
-        g.drawCenteredString(font, "\u2713", checkX + btnSize / 2, 7, 0xFFFFFFFF);
-        g.fill(cancelX - 1, 3, cancelX + btnSize + 1, 4 + btnSize + 1, FrameRenderer.FRAME_SHADOW);
-        g.fill(cancelX, 4, cancelX + btnSize, 4 + btnSize, hCancel ? 0xFFCC4444 : 0xFF7A2222);
-        g.drawCenteredString(font, "\u2717", cancelX + btnSize / 2, 7, 0xFFFFFFFF);
+        int frameRight = vpLeft + vpW + FRAME_THICK;
+        int cancelX = frameRight - btnSize;
+        int checkX = cancelX - btnSize - 4;
+        int btnY = SPACING - 2;
+        boolean hCheck = mouseX >= checkX && mouseX < checkX + btnSize && mouseY >= btnY && mouseY < btnY + btnSize;
+        boolean hCancel = mouseX >= cancelX && mouseX < cancelX + btnSize && mouseY >= btnY && mouseY < btnY + btnSize;
+        g.fill(checkX - 1, btnY - 1, checkX + btnSize + 1, btnY + btnSize + 1, FrameRenderer.FRAME_SHADOW);
+        g.fill(checkX, btnY, checkX + btnSize, btnY + btnSize, hCheck ? 0xFF66CC44 : 0xFF3D7A22);
+        g.drawCenteredString(font, "\u2713", checkX + btnSize / 2, btnY + 3, 0xFFFFFFFF);
+        g.fill(cancelX - 1, btnY - 1, cancelX + btnSize + 1, btnY + btnSize + 1, FrameRenderer.FRAME_SHADOW);
+        g.fill(cancelX, btnY, cancelX + btnSize, btnY + btnSize, hCancel ? 0xFFCC4444 : 0xFF7A2222);
+        g.drawCenteredString(font, "\u2717", cancelX + btnSize / 2, btnY + 3, 0xFFFFFFFF);
 
         // ── Palette panel ──
         int palLeft = SPACING + FRAME_THICK;
@@ -569,12 +612,12 @@ public class FieldPostScreen extends Screen {
         FrameRenderer.drawWoodenFrame(g, palLeft, palTop, PALETTE_W, palH, FRAME_THICK);
         g.fill(palLeft, palTop, palLeft + PALETTE_W, palTop + palH, chatPanelColor());
 
-        // ── Palette tabs (Seeds | Soil) — below search box ──
+        // ── Palette tabs (Crops | Soil) — full width, below search box ──
         int tabY = palTop + SEARCH_H + 4;
-        int tabW = (PALETTE_W - 4) / 2;
+        int tabW = PALETTE_W / 2;
         for (int t = 0; t < 2; t++) {
             PaletteTab tab = t == 0 ? PaletteTab.SEEDS : PaletteTab.SOIL;
-            int tx = palLeft + 2 + t * tabW;
+            int tx = palLeft + t * tabW;
             boolean active = tab == activeTab;
             boolean hoverTab = mouseX >= tx && mouseX < tx + tabW && mouseY >= tabY && mouseY < tabY + 14;
             // Vanilla button style
@@ -1122,11 +1165,15 @@ public class FieldPostScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        // Confirm / cancel
+        // Confirm / cancel — aligned with map frame right edge
         int btnSize = 14;
-        if (my >= 4 && my < 4 + btnSize) {
-            if (mx >= width - 36 && mx < width - 22) { applyAndClose(); return true; }
-            if (mx >= width - 18 && mx < width - 4) { onClose(); return true; }
+        int frameRight = vpLeft + vpW + FRAME_THICK;
+        int cancelBtnX = frameRight - btnSize;
+        int checkBtnX = cancelBtnX - btnSize - 4;
+        int btnClickY = SPACING - 2;
+        if (my >= btnClickY && my < btnClickY + btnSize) {
+            if (mx >= checkBtnX && mx < checkBtnX + btnSize) { applyAndClose(); return true; }
+            if (mx >= cancelBtnX && mx < cancelBtnX + btnSize) { onClose(); return true; }
         }
 
         // Tab clicks (Seeds | Soil)
@@ -1134,10 +1181,10 @@ public class FieldPostScreen extends Screen {
             int palLeft = SPACING + FRAME_THICK;
             int palTop = SPACING + FRAME_THICK + TITLE_H;
             int tabY = palTop + SEARCH_H + 4;
-            int tabW = (PALETTE_W - 4) / 2;
+            int tabW = PALETTE_W / 2;
             if (my >= tabY && my < tabY + 14) {
-                if (mx >= palLeft + 2 && mx < palLeft + 2 + tabW) { switchTab(PaletteTab.SEEDS); return true; }
-                if (mx >= palLeft + 2 + tabW && mx < palLeft + 2 + tabW * 2) { switchTab(PaletteTab.SOIL); return true; }
+                if (mx >= palLeft && mx < palLeft + tabW) { switchTab(PaletteTab.SEEDS); return true; }
+                if (mx >= palLeft + tabW && mx < palLeft + tabW * 2) { switchTab(PaletteTab.SOIL); return true; }
             }
         }
 
@@ -1327,12 +1374,14 @@ public class FieldPostScreen extends Screen {
         } else {
             seedPlan.put(key, tool.toolId);
         }
+        refreshCounts();
     }
 
     private void eraseAt(int key) {
         pushUndo(key);
         if (activeTab == PaletteTab.SOIL) soilPlan.remove(key);
         else seedPlan.remove(key);
+        refreshCounts();
     }
 
     private void eraseAtMouse(double mx, double my) {
@@ -1352,25 +1401,34 @@ public class FieldPostScreen extends Screen {
     private void undo() {
         if (undoStack.isEmpty()) return;
         UndoEntry entry = undoStack.pop();
-        // Save current state for redo before restoring
         redoStack.push(new UndoEntry(entry.key, entry.tab, soilPlan.get(entry.key), seedPlan.get(entry.key)));
-        // Restore previous state
         if (entry.prevSoil != null) soilPlan.put(entry.key, entry.prevSoil);
         else soilPlan.remove(entry.key);
         if (entry.prevSeed != null) seedPlan.put(entry.key, entry.prevSeed);
         else seedPlan.remove(entry.key);
+        refreshCounts();
     }
 
     private void redo() {
         if (redoStack.isEmpty()) return;
         UndoEntry entry = redoStack.pop();
-        // Save current state for undo
         undoStack.push(new UndoEntry(entry.key, entry.tab, soilPlan.get(entry.key), seedPlan.get(entry.key)));
-        // Apply the redo state
         if (entry.prevSoil != null) soilPlan.put(entry.key, entry.prevSoil);
         else soilPlan.remove(entry.key);
         if (entry.prevSeed != null) seedPlan.put(entry.key, entry.prevSeed);
         else seedPlan.remove(entry.key);
+        refreshCounts();
+    }
+
+    private void refreshCounts() {
+        if (paletteList == null) return;
+        Map<String, Integer> counts = new HashMap<>();
+        if (activeTab == PaletteTab.SEEDS) {
+            for (String val : seedPlan.values()) counts.merge(val, 1, Integer::sum);
+        } else {
+            for (SoilType val : soilPlan.values()) counts.merge(val.name(), 1, Integer::sum);
+        }
+        paletteList.setAssignmentCounts(counts);
     }
 
     private void clampScroll() {

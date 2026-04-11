@@ -151,7 +151,7 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
             int fullLeft = parentList != null ? parentList.xPos : left;
             int fullWidth = parentList != null ? parentList.width - 6 : width; // leave room for scrollbar
             int btnTop = top + 1;
-            int btnBottom = top + height - 1;
+            int btnBottom = top + height + 1;
             int btnRight = fullLeft + fullWidth;
 
             // Base fill (gray)
@@ -184,8 +184,7 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
         }
 
         private void renderTool(GuiGraphics g, Minecraft mc, int top, int left, int width, int height, boolean hovered) {
-            // Indent tools slightly so categories stand out
-            int indent = 6;
+            int indent = 2;
 
             // Icon — custom texture or item stack
             if (customIcon != null) {
@@ -199,16 +198,23 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
                 g.renderItem(icon, left + indent, top + 2);
             }
 
-            // Label
+            // Label + assignment count
             int textColor = hovered ? 0xFFFFFFFF : 0xFFCCCCCC;
+            int count = parentList != null ? parentList.getAssignmentCount(toolId) : 0;
+            String countStr = count > 0 ? " (" + count + ")" : "";
+            int countW = count > 0 ? mc.font.width(countStr) : 0;
             String displayLabel = label;
-            int maxW = width - indent - 24;
+            int maxW = width - indent - 24 - countW;
             if (mc.font.width(displayLabel) > maxW) {
                 while (mc.font.width(displayLabel + "..") > maxW && displayLabel.length() > 1)
                     displayLabel = displayLabel.substring(0, displayLabel.length() - 1);
                 displayLabel += "..";
             }
-            g.drawString(mc.font, displayLabel, left + indent + 20, top + 6, textColor, false);
+            int labelX = left + indent + 20;
+            g.drawString(mc.font, displayLabel, labelX, top + 6, textColor, false);
+            if (count > 0) {
+                g.drawString(mc.font, countStr, labelX + mc.font.width(displayLabel), top + 6, 0xFF88AA66, false);
+            }
         }
 
         @Override
@@ -231,6 +237,16 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
     }
 
     private final java.util.Set<String> collapsedCategories = new java.util.HashSet<>();
+    private java.util.Map<String, Integer> assignmentCounts = java.util.Map.of();
+
+    /** Updates the count of how many cells are assigned to each tool ID. */
+    public void setAssignmentCounts(java.util.Map<String, Integer> counts) {
+        this.assignmentCounts = counts != null ? counts : java.util.Map.of();
+    }
+
+    public int getAssignmentCount(String toolId) {
+        return assignmentCounts.getOrDefault(toolId, 0);
+    }
 
     public void toggleCategory(String key) {
         if (collapsedCategories.contains(key)) collapsedCategories.remove(key);
