@@ -157,6 +157,7 @@
   "townstead.thirst.icon.tooltip": "Thirst: %s/20",
   "townstead.farm.blocked.label": "Farm: %s",
   "townstead.farm.blocked.none": "Working",
+  "townstead.farm.blocked.no_field_post": "Awaiting Plot Plan",
   "townstead.farm.blocked.no_seeds": "Needs Seeds",
   "townstead.farm.blocked.no_tool": "Needs Hoe",
   "townstead.farm.blocked.no_water_plan": "Needs Irrigation",
@@ -500,5 +501,82 @@
   "townstead.field_post.tooltip.plan.seed": "Seed \u2192 %s",
 
   "townstead.field_post.category.tools": "Tools",
-  "townstead.field_post.category.vanilla": "Vanilla"
+  "townstead.field_post.category.vanilla": "Vanilla",
+
+  "townstead.field_post.toast.mismatch.title": "Crop won't grow here",
+  "townstead.field_post.toast.mismatch.body": "%1$s can't be planted on %2$s. The farmer will skip this cell.",
+
+  "townstead.guide.name": "Townstead Guide",
+  "townstead.guide.subtitle": "Living Villages, Done Right",
+  "townstead.guide.landing": "Welcome to Townstead. This guide covers how to set your villagers up for a good life: feeding them, keeping them rested, and giving them something useful to do. Start with [Farming](entry://townstead:guide/farming/getting_started) if you're new here.",
+
+  "townstead.guide.category.farming": "Farming",
+  "townstead.guide.category.farming.desc": "Set up plots with a Field Post so your farmers know what to plant where.",
+  "townstead.guide.category.needs": "Villager Needs",
+  "townstead.guide.category.needs.desc": "Hunger, thirst, and energy. More info to come.",
+  "townstead.guide.category.professions": "Professions & Shifts",
+  "townstead.guide.category.professions.desc": "Assigning jobs and scheduling work. More info to come.",
+  "townstead.guide.category.integrations": "Mod Integrations",
+  "townstead.guide.category.integrations.desc": "How Townstead plays with Farmer's Delight, Thirst Was Taken, and others. More info to come.",
+
+  "townstead.guide.entry.farming.getting_started": "Getting Started",
+  "townstead.guide.entry.farming.getting_started.title": "How Farming Works",
+  "townstead.guide.entry.farming.getting_started.p1": "In Townstead, farmers don't wander around guessing at what to plant. You decide exactly which patches of ground are the farm, and they handle the rest: tilling, planting, watering, and harvesting.\n\nThe tool you use to tell them is the **Field Post**.",
+  "townstead.guide.entry.farming.getting_started.p2": "The workflow is simple:\n\n- Craft a Field Post\n- Place it near your farm area\n- Right-click it to open the Plot Planner\n- Paint the cells you want farmed\n- Close the UI and let the villagers work",
+  "townstead.guide.entry.farming.getting_started.p3": "Each farmer needs to be assigned the farmer profession and have a composter nearby for their home base. The Field Post covers an area around itself; any farmer whose composter sits inside that area will use the plan.",
+
+  "townstead.guide.entry.farming.field_post": "The Field Post",
+  "townstead.guide.entry.farming.field_post.title": "Crafting & Placing",
+  "townstead.guide.entry.farming.field_post.p1": "The **Field Post** is the centerpiece of any Townstead farm. It stores a plan for the cells around it, which your farmers read every tick.",
+  "townstead.guide.entry.farming.field_post.craft": "Craft one Field Post.",
+  "townstead.guide.entry.farming.field_post.p2": "Place the Field Post roughly in the center of where you want the farm to be. Its reach extends out 16 blocks by default (you can adjust this in the planner). Only one Field Post covers any given farmer; if two overlap, the nearest one with the highest priority wins.\n\nBreaking the Field Post cancels the plan. Farmers under its coverage will go idle until you place another one."
+,
+
+    "townstead.guide.entry.farming.plot_planner": "The Plot Planner",
+    "townstead.guide.entry.farming.plot_planner.title": "Painting Your Farm",
+    "townstead.guide.entry.farming.plot_planner.p1": "Right-click the Field Post to open the Plot Planner. You'll see a top-down grid of the area around the post, showing the current terrain and any crops already growing.\n\nOn the left is the toolbar. On the right is the grid. Click a tool, then click-and-drag on the grid to paint cells.",
+    "townstead.guide.entry.farming.plot_planner.p2": "There are two layers to the plan:\n\n- **Soil** - what kind of ground you want here (farmland, rich soil, etc.)\n- **Seed** - what crop should go here\n\nYou can paint both at once with a combined tool, or switch layers if you only want to tweak one.",
+    "townstead.guide.entry.farming.plot_planner.p3": "When you're done, click the checkmark to save. The plan is sent to the Field Post and takes effect on the next farmer tick (usually within a second). Click the X to discard changes.\n\nYou can come back and edit any time. Painting over a cell overwrites the old assignment."
+,
+
+    "townstead.guide.entry.farming.soil_and_seeds": "Soil & Seed Options",
+    "townstead.guide.entry.farming.soil_and_seeds.soil_title": "Soil Choices",
+    "townstead.guide.entry.farming.soil_and_seeds.soil_body": "**Farmland** - standard tilled dirt. The farmer will till with a hoe if needed.\n\n**Rich Soil** - upgraded farmland (requires Farmer's Delight). The farmer tills as normal, then upgrades the block.\n\n**None** - soil is left alone. Farmer won't till here, but can still plant or harvest if the ground is already tilled.",
+    "townstead.guide.entry.farming.soil_and_seeds.seed_title": "Seed Choices",
+    "townstead.guide.entry.farming.soil_and_seeds.seed_body": "**Auto** - farmer picks a sensible seed from their inventory based on personality.\n\n**Specific seed** - only that seed gets planted here (wheat, carrot, whatever you picked).\n\n**None** - cell is tilled but left unplanted. Good for a fallow row or a crop you'll plant yourself.",
+    "townstead.guide.entry.farming.soil_and_seeds.protected": "**Protected** is a special option for both layers. A protected cell is completely off-limits to the farmer. They won't till, plant, water, harvest, or groom it. Use this for decorative crops, your personal wheat patch, or anything you want to manage yourself.\n\nProtected cells still show up in the grid so you can see them, but they're treated as invisible to the AI."
+,
+
+    "townstead.guide.entry.farming.how_farmers_work": "How Farmers Read the Plan",
+    "townstead.guide.entry.farming.how_farmers_work.title": "One Cell, One Decision",
+    "townstead.guide.entry.farming.how_farmers_work.p1": "For each painted cell, the farmer checks what that cell currently needs and picks the most pressing task. The order is:\n\n- **Harvest** if there's a ripe crop\n- **Till** if the soil isn't farmland yet\n- **Plant** if the soil is ready but empty\n- **Water** if farmland is drying out\n- **Groom** weeds next to cells",
+    "townstead.guide.entry.farming.how_farmers_work.p2": "The farmer picks the nearest cell with a pending task and walks to it. Once that's done, they pick the next nearest task. This keeps them moving in a tight loop rather than running back and forth across the whole field.",
+    "townstead.guide.entry.farming.how_farmers_work.p3": "The farmer's behavior is driven entirely by the plan. They don't notice farmland you placed outside the painted area, and they won't invent new rows on their own. If you want them to work a patch, paint it.",
+    "townstead.guide.entry.farming.how_farmers_work.player_work": "**Player work is respected.** If you till a cell yourself, the farmer sees it's already tilled and moves on to planting. Same if you plant a crop yourself, they'll water and harvest it when ready. You can prep as much of the farm as you like; the plan tells them what's in scope."
+,
+
+    "townstead.guide.entry.farming.water_and_grooming": "Water & Grooming",
+    "townstead.guide.entry.farming.water_and_grooming.water_title": "Irrigation",
+    "townstead.guide.entry.farming.water_and_grooming.water_body": "If a farmer has a water bucket and a planted cell is drying out, they'll place water on a nearby cell to hydrate the farmland. They only do this inside the painted area; they won't randomly place water wherever.\n\nIf the cells already have nearby water (a river, a placed source block), the farmer won't bother with buckets. The hydration check looks within 4 blocks, same as vanilla farmland.",
+    "townstead.guide.entry.farming.water_and_grooming.groom_title": "Grooming",
+    "townstead.guide.entry.farming.water_and_grooming.groom_body": "Grass, ferns, and similar weeds next to your painted cells will get pulled. This is mostly cosmetic, but with **Farmer's Delight** installed and a knife in the farmer's inventory, grooming tall grass drops rope too.\n\nGrooming is bounded to within 1 block of painted cells, so the farmer won't wander off to weed your lawn."
+,
+
+    "townstead.guide.entry.farming.troubleshooting": "Troubleshooting",
+    "townstead.guide.entry.farming.troubleshooting.title": "My Farmer Isn't Working",
+    "townstead.guide.entry.farming.troubleshooting.no_plan": "**\"Awaiting Plot Plan\"** - the farmer can't find a Field Post covering their composter. Place one nearby and paint some cells.",
+    "townstead.guide.entry.farming.troubleshooting.no_seeds": "**\"Needs Seeds\"** - the farmer has no seeds in their inventory. Drop some in a chest near their composter, or hand them some directly.",
+    "townstead.guide.entry.farming.troubleshooting.no_tool": "**\"Needs Hoe\"** - they need a hoe to till. A wooden one is enough. You can leave one in a nearby chest.",
+    "townstead.guide.entry.farming.troubleshooting.unreachable": "**\"Target Unreachable\"** - pathfinding can't get them to a cell. Check for obstructions, fences, or soil cells placed too high up. Try removing any barriers between the composter and the farm."
+,
+
+    "townstead.guide.entry.needs.coming_soon": "More Info to Come",
+    "townstead.guide.entry.needs.coming_soon.title": "More Info to Come",
+    "townstead.guide.entry.needs.coming_soon.body": "Hunger, thirst, and energy documentation is still being written. Check back in a future update.",
+    "townstead.guide.entry.professions.coming_soon": "More Info to Come",
+    "townstead.guide.entry.professions.coming_soon.title": "More Info to Come",
+    "townstead.guide.entry.professions.coming_soon.body": "Profession assignment and shift scheduling documentation is still being written. Check back in a future update.",
+    "townstead.guide.entry.integrations.coming_soon": "More Info to Come",
+    "townstead.guide.entry.integrations.coming_soon.title": "More Info to Come",
+    "townstead.guide.entry.integrations.coming_soon.body": "Farmer's Delight, Thirst Was Taken, Legendary Survival Overhaul, and Rustic Delight integration documentation is still being written. Check back in a future update."
 }

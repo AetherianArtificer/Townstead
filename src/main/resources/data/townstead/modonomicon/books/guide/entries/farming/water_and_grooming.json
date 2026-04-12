@@ -1,0 +1,20 @@
+{
+  "name": "townstead.guide.entry.farming.water_and_grooming",
+  "icon": { "item": "minecraft:water_bucket" },
+  "category": "townstead:farming",
+  "x": -1,
+  "y": 0,
+  "sort_number": 5,
+  "pages": [
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.farming.water_and_grooming.water_title",
+      "text": "townstead.guide.entry.farming.water_and_grooming.water_body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.farming.water_and_grooming.groom_title",
+      "text": "townstead.guide.entry.farming.water_and_grooming.groom_body"
+    }
+  ]
+}

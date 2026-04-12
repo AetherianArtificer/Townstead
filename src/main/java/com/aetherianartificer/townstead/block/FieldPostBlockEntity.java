@@ -3,7 +3,6 @@ package com.aetherianartificer.townstead.block;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.farming.cellplan.CellPlan;
 import com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig;
-import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import net.minecraft.core.BlockPos;
 //? if >=1.21 {
 import net.minecraft.core.HolderLookup;
@@ -129,6 +128,8 @@ public class FieldPostBlockEntity extends BlockEntity implements MenuProvider {
         setChanged();
         if (level != null) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            // Flush farmer snapshot caches so the new plan is picked up on next tick
+            FieldPostIndex.notifyConfigChanged(level, worldPosition);
         }
     }
 

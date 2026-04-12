@@ -3,8 +3,6 @@ package com.aetherianartificer.townstead;
 import com.aetherianartificer.townstead.block.FieldPostBlock;
 import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
 import com.aetherianartificer.townstead.block.FieldPostMenu;
-import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
-import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
 import com.aetherianartificer.townstead.compat.ConditionalCompatPack;
 import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
@@ -16,15 +14,11 @@ import com.aetherianartificer.townstead.compat.thirst.RusticDelightThirstCompat;
 import com.aetherianartificer.townstead.compat.cooking.BaristaTradesCompat;
 import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
 import com.google.common.collect.ImmutableSet;
-import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
 import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
 import com.aetherianartificer.townstead.farming.GridScanner;
 import com.aetherianartificer.townstead.farming.CropProductResolver;
-import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
-import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
-import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
 import com.aetherianartificer.townstead.profession.ProfessionScanner;
@@ -248,7 +242,6 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         modBus.addListener(this::onBuildCreativeTab);
         registerDialogueConditions();
-        FarmPatternRegistry.bootstrap();
         ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
     }
@@ -284,7 +277,6 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         registerDialogueConditions();
-        FarmPatternRegistry.bootstrap();
         ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
     }
@@ -345,8 +337,8 @@ public class Townstead {
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {
-        event.addListener(new FarmPatternDataLoader());
         event.addListener(new ButcherProfileDataLoader());
+        com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
     private void registerDialogueConditions() {
@@ -547,11 +539,6 @@ public class Townstead {
                 this::handleButcherStatusSync
         );
         registrar.playToClient(
-                FarmingPolicySyncPayload.TYPE,
-                FarmingPolicySyncPayload.STREAM_CODEC,
-                this::handleFarmingPolicySync
-        );
-        registrar.playToClient(
                 ButcherPolicySyncPayload.TYPE,
                 ButcherPolicySyncPayload.STREAM_CODEC,
                 this::handleButcherPolicySync
@@ -568,11 +555,6 @@ public class Townstead {
                     this::handleThirstSet
             );
         }
-        registrar.playToServer(
-                FarmingPolicySetPayload.TYPE,
-                FarmingPolicySetPayload.STREAM_CODEC,
-                this::handleFarmingPolicySet
-        );
         registrar.playToServer(
                 ButcherPolicySetPayload.TYPE,
                 ButcherPolicySetPayload.STREAM_CODEC,
@@ -669,10 +651,6 @@ public class Townstead {
         context.enqueueWork(() -> HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId()));
     }
 
-    private void handleFarmingPolicySync(FarmingPolicySyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> FarmingPolicyClientStore.set(payload.patternId(), payload.tier(), payload.areaCount()));
-    }
-
     private void handleButcherPolicySync(ButcherPolicySyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> ButcherPolicyClientStore.set(payload.profileId(), payload.tier(), payload.areaCount()));
     }
@@ -735,30 +713,6 @@ public class Townstead {
             ThirstSyncPayload sync = townstead$thirstSync(villager, thirst);
             PacketDistributor.sendToPlayer(sp, sync);
             PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
-        });
-    }
-
-    private void handleFarmingPolicySet(FarmingPolicySetPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer sp)) return;
-            FarmingPolicyData data = FarmingPolicyData.get(sp.serverLevel());
-            if (payload.tier() == -1) {
-                PacketDistributor.sendToPlayer(sp, new FarmingPolicySyncPayload(
-                        data.getDefaultPatternId(),
-                        data.getDefaultTier(),
-                        data.getAreas().size()
-                ));
-                return;
-            }
-
-
-
-            data.setDefaultPolicy(payload.patternId(), payload.tier());
-            PacketDistributor.sendToPlayer(sp, new FarmingPolicySyncPayload(
-                    data.getDefaultPatternId(),
-                    data.getDefaultTier(),
-                    data.getAreas().size()
-            ));
         });
     }
 
@@ -1112,6 +1066,7 @@ public class Townstead {
             if (mc.screen instanceof com.aetherianartificer.townstead.client.gui.fieldpost.FieldPostScreen screen
                     && screen.getPostPos().equals(payload.pos())) {
                 screen.applyServerSnapshot(payload.snapshot(), payload.cropPalette(), payload.villageSeedCounts(),
+                        payload.seedSoilCompat(),
                         payload.farmerCount(), payload.totalPlots(), payload.tilledPlots(), payload.hydrationPercent());
             }
         });

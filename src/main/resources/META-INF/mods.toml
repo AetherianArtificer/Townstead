@@ -44,3 +44,10 @@ mandatory = false
 versionRange = "[2.2.0,)"
 ordering = "NONE"
 side = "CLIENT"
+
+[[dependencies.townstead]]
+modId = "modonomicon"
+mandatory = true
+versionRange = "[1.79,)"
+ordering = "AFTER"
+side = "BOTH"

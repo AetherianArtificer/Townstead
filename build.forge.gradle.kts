@@ -50,12 +50,17 @@ minecraft {
 
 repositories {
     maven("https://maven.architectury.dev/")
+    maven {
+        url = uri("https://dl.cloudsmith.io/public/klikli-dev/mods/maven/")
+        content { includeGroup("com.klikli_dev") }
+    }
 }
 
 dependencies {
     "minecraft"("net.minecraftforge:forge:1.20.1-47.3.0")
     compileOnly(files("${rootProject.projectDir}/libs/mca-forge-7.6.15+1.20.1-universal.jar"))
     compileOnly("dev.architectury:architectury-forge:9.2.14")
+    compileOnly(fg.deobf("com.klikli_dev:modonomicon-1.20.1-forge:1.79.3"))
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -103,6 +108,15 @@ tasks.withType<ProcessResources> {
     // 1.20.1 recipe format uses "item" instead of "id" in results
     filesMatching("data/*/recipe/*.json") {
         filter { it.replace("\"id\":", "\"item\":") }
+    }
+    // 1.20.1 modonomicon: book id is stored as NBT on the result item, not a 1.21 data component
+    filesMatching("data/townstead/recipe/townstead_guide.json") {
+        filter {
+            it.replace(
+                Regex("""\"components\"\s*:\s*\{\s*\"modonomicon:book_id\"\s*:\s*\"([^\"]+)\"\s*\}"""),
+                "\"nbt\": \"{\\\\\"modonomicon:book_id\\\\\":\\\\\"$1\\\\\"}\""
+            )
+        }
     }
 }
 

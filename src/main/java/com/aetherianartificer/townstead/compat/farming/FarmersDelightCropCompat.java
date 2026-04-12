@@ -104,6 +104,27 @@ public final class FarmersDelightCropCompat implements FarmerCropCompat {
                 || below.is(Blocks.CLAY);
     }
 
+    @Override
+    public boolean isCompatibleSoil(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        ResourceLocation key = state.getBlock().builtInRegistryHolder().key().location();
+        return ModCompat.matchesLoadedModPath(key, MOD_ID, "rich_soil")
+                || ModCompat.matchesLoadedModPath(key, MOD_ID, "rich_soil_farmland");
+    }
+
+    @Override
+    public boolean doCompatTill(ServerLevel level, BlockPos pos) {
+        if (!ModCompat.isLoaded(MOD_ID)) return false;
+        //? if >=1.21 {
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(MOD_ID, "rich_soil_farmland");
+        //?} else {
+        /*ResourceLocation id = new ResourceLocation(MOD_ID, "rich_soil_farmland");
+        *///?}
+        Block richFarmland = BuiltInRegistries.BLOCK.getOptional(id).orElse(null);
+        if (richFarmland == null) return false;
+        return level.setBlock(pos, richFarmland.defaultBlockState(), Block.UPDATE_ALL);
+    }
+
     private static boolean isMatureAge(BlockState state) {
         IntegerProperty ageProp = findAgeProperty(state);
         if (ageProp == null) return false;

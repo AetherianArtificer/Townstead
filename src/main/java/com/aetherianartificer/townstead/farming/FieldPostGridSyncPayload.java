@@ -22,6 +22,7 @@ public record FieldPostGridSyncPayload(
         GridSnapshot snapshot,
         Map<String, String> cropPalette,
         Map<String, Integer> villageSeedCounts,
+        Map<String, Integer> seedSoilCompat,
         int farmerCount,
         int totalPlots,
         int tilledPlots,
@@ -42,6 +43,7 @@ public record FieldPostGridSyncPayload(
         GridSnapshot snapshot,
         Map<String, String> cropPalette,
         Map<String, Integer> villageSeedCounts,
+        Map<String, Integer> seedSoilCompat,
         int farmerCount,
         int totalPlots,
         int tilledPlots,
@@ -73,6 +75,12 @@ public record FieldPostGridSyncPayload(
             buf.writeUtf(seedId);
             buf.writeVarInt(count);
         });
+        // Seed → compatible soil bitmask (bit N = SoilType.values()[N])
+        buf.writeVarInt(seedSoilCompat.size());
+        seedSoilCompat.forEach((seedId, bits) -> {
+            buf.writeUtf(seedId);
+            buf.writeVarInt(bits);
+        });
         // Status
         buf.writeVarInt(farmerCount);
         buf.writeVarInt(totalPlots);
@@ -89,11 +97,14 @@ public record FieldPostGridSyncPayload(
         int seedCountsSize = buf.readVarInt();
         Map<String, Integer> seedCounts = new HashMap<>();
         for (int i = 0; i < seedCountsSize; i++) seedCounts.put(buf.readUtf(), buf.readVarInt());
+        int compatSize = buf.readVarInt();
+        Map<String, Integer> compat = new HashMap<>();
+        for (int i = 0; i < compatSize; i++) compat.put(buf.readUtf(), buf.readVarInt());
         int farmerCount = buf.readVarInt();
         int totalPlots = buf.readVarInt();
         int tilledPlots = buf.readVarInt();
         int hydrationPercent = buf.readVarInt();
-        return new FieldPostGridSyncPayload(pos, snapshot, palette, seedCounts,
+        return new FieldPostGridSyncPayload(pos, snapshot, palette, seedCounts, compat,
                 farmerCount, totalPlots, tilledPlots, hydrationPercent);
     }
 }

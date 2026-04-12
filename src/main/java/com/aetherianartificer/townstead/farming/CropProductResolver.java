@@ -1,44 +1,63 @@
 package com.aetherianartificer.townstead.farming;
 
 import com.aetherianartificer.townstead.block.CropDetection;
+import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
+import com.aetherianartificer.townstead.farming.cellplan.SoilType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemNameBlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.AttachedStemBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.BushBlock;
 import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Server-side resolver that maps seed items to their crop products using loot tables.
- * Cached per-world, invalidated on datapack reload.
+ * Cached per MinecraftServer, invalidated on datapack reload.
  */
 public final class CropProductResolver {
-    private static CropProductResolver instance;
+    private static final Map<MinecraftServer, CropProductResolver> BY_SERVER = new WeakHashMap<>();
 
     private final Map<String, String> seedToProduct = new HashMap<>();  // seed registry ID → product registry ID
     private final Map<Block, Item> blockProductCache = new HashMap<>(); // crop block → primary product
-    private boolean initialized = false;
+    private final Map<String, Set<SoilType>> seedSoilCompat = new HashMap<>(); // seed registry ID → compatible soil types
 
-    private CropProductResolver() {}
-
-    public static CropProductResolver get(ServerLevel level) {
-        if (instance == null) instance = new CropProductResolver();
-        if (!instance.initialized) instance.initialize(level);
-        return instance;
+    private CropProductResolver(ServerLevel level) {
+        initialize(level);
     }
 
+    public static CropProductResolver get(ServerLevel level) {
+        MinecraftServer server = level.getServer();
+        synchronized (BY_SERVER) {
+            CropProductResolver existing = BY_SERVER.get(server);
+            if (existing != null) return existing;
+            CropProductResolver built = new CropProductResolver(level);
+            BY_SERVER.put(server, built);
+            return built;
+        }
+    }
+
+    /** Invalidates all per-server caches. Called on datapack reload. */
     public static void invalidate() {
-        instance = null;
+        synchronized (BY_SERVER) {
+            BY_SERVER.clear();
+        }
     }
 
     /**
@@ -46,6 +65,26 @@ public final class CropProductResolver {
      */
     public Map<String, String> getPalette() {
         return Map.copyOf(seedToProduct);
+    }
+
+    /**
+     * Returns the soil types this seed can be planted on. Derived once at init from the
+     * crop's block class and any mod-compat pattern hint.
+     * <p>Empty set means "unknown, plant anywhere"; never null.</p>
+     */
+    public Set<SoilType> getCompatibleSoils(String seedId) {
+        Set<SoilType> out = seedSoilCompat.get(seedId);
+        return out != null ? out : EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL);
+    }
+
+    public Set<SoilType> getCompatibleSoils(Item seedItem) {
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(seedItem);
+        return key == null ? EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL) : getCompatibleSoils(key.toString());
+    }
+
+    /** Returns the whole seed→compatible-soils map (for client sync). */
+    public Map<String, Set<SoilType>> getSoilCompatMap() {
+        return Map.copyOf(seedSoilCompat);
     }
 
     /**
@@ -94,6 +133,7 @@ public final class CropProductResolver {
     private void initialize(ServerLevel level) {
         seedToProduct.clear();
         blockProductCache.clear();
+        seedSoilCompat.clear();
 
         for (String seedId : CropDetection.getAllPlantableSeeds()) {
             //? if >=1.21 {
@@ -145,9 +185,32 @@ public final class CropProductResolver {
                     blockProductCache.put(placedBlock, product);
                 }
             }
-        }
 
-        initialized = true;
+            seedSoilCompat.put(seedId, deriveCompatibleSoils(seedItem, placedBlock));
+        }
+    }
+
+    /**
+     * Determines which soil types this seed can be planted on, derived automatically from:
+     * <ol>
+     *   <li>A mod-compat provider's pattern hint (e.g., FD rice → "rice_paddy" → WATER)</li>
+     *   <li>The placed block's class hierarchy (CropBlock/StemBlock → FARMLAND+RICH_SOIL)</li>
+     *   <li>Safe default (FARMLAND+RICH_SOIL) for unknown crop types</li>
+     * </ol>
+     */
+    private static Set<SoilType> deriveCompatibleSoils(Item seedItem, Block placedBlock) {
+        ItemStack stack = new ItemStack(seedItem);
+        String hint = FarmerCropCompatRegistry.patternHintForSeed(stack);
+        if ("rice_paddy".equals(hint)) {
+            return EnumSet.of(SoilType.WATER);
+        }
+        if (placedBlock instanceof CropBlock
+                || placedBlock instanceof StemBlock
+                || placedBlock instanceof AttachedStemBlock
+                || placedBlock instanceof BushBlock) {
+            return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL);
+        }
+        return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL);
     }
 
     private static Block getPlacedBlock(Item item) {

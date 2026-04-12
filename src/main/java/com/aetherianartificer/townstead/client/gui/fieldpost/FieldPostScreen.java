@@ -884,6 +884,27 @@ public class FieldPostScreen extends Screen {
                     }
                 }
 
+                // Mismatch warning: seed assigned on an incompatible soil type.
+                // Renders a small yellow triangle with an exclamation mark in the top-right corner.
+                if (soilAssignment != null && seedAssignment != null
+                        && soilAssignment != SoilType.PROTECTED
+                        && soilAssignment != SoilType.NONE
+                        && !SeedAssignment.AUTO.equals(seedAssignment)
+                        && !SeedAssignment.NONE.equals(seedAssignment)
+                        && !SeedAssignment.PROTECTED.equals(seedAssignment)
+                        && !isSoilCompatible(seedAssignment, soilAssignment)) {
+                    int badge = Math.max(5, cs / 4);
+                    int bx = cx + cs - badge - 1;
+                    int by = cy + 1;
+                    g.fill(bx, by, bx + badge, by + badge, 0xFFFFCC00);
+                    g.fill(bx + 1, by + 1, bx + badge - 1, by + badge - 1, 0xFF884400);
+                    // exclamation dot
+                    int dot = Math.max(1, badge / 4);
+                    int dcx = bx + badge / 2 - dot / 2;
+                    g.fill(dcx, by + 2, dcx + dot, by + badge - dot - 1, 0xFFFFCC00);
+                    g.fill(dcx, by + badge - dot - 1, dcx + dot, by + badge - 1, 0xFFFFCC00);
+                }
+
                 // Growth stage dot (top-left corner of cell)
                 if (cropIcons[gz][gx] != null && !cropIcons[gz][gx].isEmpty()) {
                     BlockPos gp = renderPositions[gz][gx];
@@ -939,9 +960,9 @@ public class FieldPostScreen extends Screen {
     }
 
     private void renderCardinalLabels(GuiGraphics g) {
-        // Rendered above all grid content with a Z push
+        // Rendered above all grid content (including 3D item icons which render at higher Z)
         g.pose().pushPose();
-        g.pose().translate(0, 0, 300);
+        g.pose().translate(0, 0, 500);
         g.enableScissor(vpLeft, vpTop, vpLeft + vpW, vpTop + vpH);
         int midX = vpLeft + vpW / 2;
         int midY = vpTop + vpH / 2;
@@ -991,17 +1012,16 @@ public class FieldPostScreen extends Screen {
         // Ground info
         String soilLabel = null;
         int soilColor = 0xAA9977;
-        String hydrationLabel = null;
-        int hydrationColor = 0;
 
         if (state.getFluidState().is(Fluids.WATER)) {
             soilLabel = Component.translatable("townstead.field_post.tooltip.water").getString();
             soilColor = 0x5599FF;
         } else if (state.getBlock() instanceof FarmBlock) {
             boolean wet = state.getValue(FarmBlock.MOISTURE) > 0;
-            soilLabel = Component.translatable("townstead.field_post.tooltip.soil.farmland").getString();
-            hydrationLabel = Component.translatable(wet ? "townstead.field_post.tooltip.hydrated" : "townstead.field_post.tooltip.dry").getString();
-            hydrationColor = wet ? 0x55AAFF : 0xCC8844;
+            String farmland = Component.translatable("townstead.field_post.tooltip.soil.farmland").getString();
+            String hydration = Component.translatable(wet ? "townstead.field_post.tooltip.hydrated" : "townstead.field_post.tooltip.dry").getString();
+            soilLabel = farmland + " · " + hydration;
+            soilColor = wet ? 0x77AACC : 0xBB9977;
         } else if (isNaturalGround(state)) {
             soilLabel = Component.translatable("townstead.field_post.tooltip.soil", new ItemStack(state.getBlock()).getHoverName()).getString();
         } else {
@@ -1049,7 +1069,6 @@ public class FieldPostScreen extends Screen {
         int barGap = 4;
         if (pctText != null) maxTextW = Math.max(maxTextW, 40 + barGap + pctReservedW);
         if (soilLabel != null) maxTextW = Math.max(maxTextW, font.width(soilLabel));
-        if (hydrationLabel != null) maxTextW = Math.max(maxTextW, font.width("  " + hydrationLabel));
         if (soilPlanText != null) maxTextW = Math.max(maxTextW, font.width(soilPlanText));
         if (seedPlanText != null) maxTextW = Math.max(maxTextW, font.width(seedPlanText));
         if (modName != null) maxTextW = Math.max(maxTextW, (int)(font.width(modName) * 0.85f));
@@ -1058,18 +1077,17 @@ public class FieldPostScreen extends Screen {
 
         // Measure content height — only count lines that exist
         int contentH = pad;
-        if (cropName != null) contentH += lineH;
+        if (cropName != null) contentH += lineH + 2; // +2 gap before progress bar
         if (readyText != null) contentH += lineH;
-        else if (pctText != null) contentH += barH + 4;
+        else if (pctText != null) contentH += barH + 3;
         if (soilLabel != null) contentH += lineH;
-        if (hydrationLabel != null) contentH += lineH;
         boolean hasPlan = soilPlanText != null || seedPlanText != null;
         if (hasPlan) {
-            contentH += 6; // divider gap
+            contentH += 5; // divider gap
             if (soilPlanText != null) contentH += lineH;
             if (seedPlanText != null) contentH += lineH;
         }
-        if (modName != null) contentH += lineH;
+        if (modName != null) contentH += 9; // mod origin is rendered at 0.85x scale, ~9px
         contentH += pad;
 
         // Position tooltip (avoid going off-screen)
@@ -1113,7 +1131,7 @@ public class FieldPostScreen extends Screen {
             } else {
                 g.drawString(font, cropName, cx, cy, nameColor, true);
             }
-            cy += lineH;
+            cy += lineH + 2; // 2px gap between crop label and progress bar
         }
 
         // Progress bar
@@ -1145,10 +1163,6 @@ public class FieldPostScreen extends Screen {
         // Soil / ground
         if (soilLabel != null) {
             g.drawString(font, soilLabel, cx, cy, soilColor, false);
-            cy += lineH;
-        }
-        if (hydrationLabel != null) {
-            g.drawString(font, "  " + hydrationLabel, cx, cy, hydrationColor, false);
             cy += lineH;
         }
 
@@ -1405,7 +1419,42 @@ public class FieldPostScreen extends Screen {
         } else {
             seedPlan.put(key, tool.toolId);
         }
+        maybeShowMismatchToast(key);
         refreshCounts();
+    }
+
+    private long lastMismatchToastTick = 0L;
+
+    /**
+     * If the painted cell now has an incompatible soil/seed combo, briefly flash a toast
+     * so the user sees the problem before saving. Throttled to avoid spamming.
+     */
+    private void maybeShowMismatchToast(int key) {
+        SoilType soil = soilPlan.get(key);
+        String seed = seedPlan.get(key);
+        if (soil == null || seed == null) return;
+        if (soil == SoilType.PROTECTED || soil == SoilType.NONE) return;
+        if (SeedAssignment.AUTO.equals(seed) || SeedAssignment.NONE.equals(seed)
+                || SeedAssignment.PROTECTED.equals(seed)) return;
+        if (isSoilCompatible(seed, soil)) return;
+
+        long now = net.minecraft.Util.getMillis();
+        if (now - lastMismatchToastTick < 1500) return; // throttle to 1 every 1.5s
+        lastMismatchToastTick = now;
+
+        String seedName = Component.translatable("item." + seed.replace(':', '.')).getString();
+        String soilName = Component.translatable("townstead.field_post.soil." + soil.name().toLowerCase(java.util.Locale.ROOT)).getString();
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        mc.getToasts().addToast(net.minecraft.client.gui.components.toasts.SystemToast.multiline(
+                mc,
+                //? if >=1.21 {
+                net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+                //?} else {
+                /*net.minecraft.client.gui.components.toasts.SystemToast.SystemToastIds.PERIODIC_NOTIFICATION,
+                *///?}
+                Component.translatable("townstead.field_post.toast.mismatch.title"),
+                Component.translatable("townstead.field_post.toast.mismatch.body", seedName, soilName)
+        ));
     }
 
     private void eraseAt(int key) {
@@ -1454,14 +1503,10 @@ public class FieldPostScreen extends Screen {
     private void refreshCounts() {
         if (paletteList == null) return;
         if (activeTab == PaletteTab.SEEDS && villageSeedCounts != null) {
-            // Use server-provided village seed counts
+            // Crops tab: show available seeds in village storage
             paletteList.setAssignmentCounts(villageSeedCounts);
-        } else if (activeTab == PaletteTab.SOIL) {
-            // For soil tab, show plan assignments
-            Map<String, Integer> counts = new HashMap<>();
-            for (SoilType val : soilPlan.values()) counts.merge(val.name(), 1, Integer::sum);
-            paletteList.setAssignmentCounts(counts);
         } else {
+            // Soil tab: no counts (no "inventory" concept for soil types)
             paletteList.setAssignmentCounts(Map.of());
         }
     }
@@ -1513,6 +1558,7 @@ public class FieldPostScreen extends Screen {
     public void applyServerSnapshot(com.aetherianartificer.townstead.farming.GridSnapshot snapshot,
                                      Map<String, String> cropPalette,
                                      Map<String, Integer> villageSeedCounts,
+                                     Map<String, Integer> seedSoilCompat,
                                      int farmerCount, int totalPlots, int tilledPlots, int hydrationPercent) {
         if (snapshot.gridSize() != gridSize) return; // size mismatch — ignore
 
@@ -1567,6 +1613,7 @@ public class FieldPostScreen extends Screen {
         this.serverSnapshot = snapshot;
         this.serverCropPalette = cropPalette;
         this.villageSeedCounts = villageSeedCounts;
+        this.seedSoilCompat = seedSoilCompat != null ? seedSoilCompat : java.util.Collections.emptyMap();
         buildToolEntries();
         filterPalette();
     }
@@ -1574,6 +1621,21 @@ public class FieldPostScreen extends Screen {
     private com.aetherianartificer.townstead.farming.GridSnapshot serverSnapshot;
     private Map<String, String> serverCropPalette;
     private Map<String, Integer> villageSeedCounts;
+    private Map<String, Integer> seedSoilCompat = java.util.Collections.emptyMap();
+
+    /**
+     * True if the given seed id is compatible with the given soil type, per the server-derived map.
+     * Returns true when data is missing (permissive default) so unknown seeds don't get flagged.
+     */
+    private boolean isSoilCompatible(String seedId, com.aetherianartificer.townstead.farming.cellplan.SoilType soil) {
+        if (seedId == null || soil == null) return true;
+        if (com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.AUTO.equals(seedId)) return true;
+        if (com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.NONE.equals(seedId)) return true;
+        if (com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.PROTECTED.equals(seedId)) return true;
+        Integer bits = seedSoilCompat.get(seedId);
+        if (bits == null) return true;
+        return (bits & (1 << soil.ordinal())) != 0;
+    }
 
     @Override
     public boolean isPauseScreen() { return false; }

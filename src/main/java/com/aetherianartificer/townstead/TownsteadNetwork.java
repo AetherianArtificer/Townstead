@@ -5,10 +5,6 @@ package com.aetherianartificer.townstead;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
 import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
-import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
-import com.aetherianartificer.townstead.farming.FarmingPolicyData;
-import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
-import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
@@ -80,16 +76,12 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleFarmStatusSync);
         registerS2C(ButcherStatusSyncPayload.class, ButcherStatusSyncPayload::write, ButcherStatusSyncPayload::read,
                 TownsteadNetwork::handleButcherStatusSync);
-        registerS2C(FarmingPolicySyncPayload.class, FarmingPolicySyncPayload::write, FarmingPolicySyncPayload::read,
-                TownsteadNetwork::handleFarmingPolicySync);
         registerS2C(ButcherPolicySyncPayload.class, ButcherPolicySyncPayload::write, ButcherPolicySyncPayload::read,
                 TownsteadNetwork::handleButcherPolicySync);
 
         // Client -> Server
         registerC2S(HungerSetPayload.class, HungerSetPayload::write, HungerSetPayload::read,
                 TownsteadNetwork::handleHungerSet);
-        registerC2S(FarmingPolicySetPayload.class, FarmingPolicySetPayload::write, FarmingPolicySetPayload::read,
-                TownsteadNetwork::handleFarmingPolicySet);
         registerC2S(ButcherPolicySetPayload.class, ButcherPolicySetPayload::write, ButcherPolicySetPayload::read,
                 TownsteadNetwork::handleButcherPolicySet);
 
@@ -204,10 +196,6 @@ public final class TownsteadNetwork {
         HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId());
     }
 
-    private static void handleFarmingPolicySync(FarmingPolicySyncPayload payload) {
-        FarmingPolicyClientStore.set(payload.patternId(), payload.tier(), payload.areaCount());
-    }
-
     private static void handleButcherPolicySync(ButcherPolicySyncPayload payload) {
         ButcherPolicyClientStore.set(payload.profileId(), payload.tier(), payload.areaCount());
     }
@@ -264,20 +252,6 @@ public final class TownsteadNetwork {
         ThirstSyncPayload sync = Townstead.townstead$thirstSync(villager, thirst);
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);
-    }
-
-    private static void handleFarmingPolicySet(FarmingPolicySetPayload payload, ServerPlayer sp) {
-        FarmingPolicyData data = FarmingPolicyData.get(sp.serverLevel());
-        if (payload.tier() == -1) {
-            sendToPlayer(sp, new FarmingPolicySyncPayload(
-                    data.getDefaultPatternId(), data.getDefaultTier(), data.getAreas().size()
-            ));
-            return;
-        }
-        data.setDefaultPolicy(payload.patternId(), payload.tier());
-        sendToPlayer(sp, new FarmingPolicySyncPayload(
-                data.getDefaultPatternId(), data.getDefaultTier(), data.getAreas().size()
-        ));
     }
 
     private static void handleButcherPolicySet(ButcherPolicySetPayload payload, ServerPlayer sp) {
@@ -543,6 +517,7 @@ public final class TownsteadNetwork {
         if (mc.screen instanceof com.aetherianartificer.townstead.client.gui.fieldpost.FieldPostScreen screen
                 && screen.getPostPos().equals(payload.pos())) {
             screen.applyServerSnapshot(payload.snapshot(), payload.cropPalette(), payload.villageSeedCounts(),
+                    payload.seedSoilCompat(),
                     payload.farmerCount(), payload.totalPlots(), payload.tilledPlots(), payload.hydrationPercent());
         }
     }

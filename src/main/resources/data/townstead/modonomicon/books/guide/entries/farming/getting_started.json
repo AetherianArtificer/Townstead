@@ -1,0 +1,23 @@
+{
+  "name": "townstead.guide.entry.farming.getting_started",
+  "icon": { "item": "townstead:field_post" },
+  "category": "townstead:farming",
+  "x": -5,
+  "y": -2,
+  "sort_number": 0,
+  "pages": [
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.farming.getting_started.title",
+      "text": "townstead.guide.entry.farming.getting_started.p1"
+    },
+    {
+      "type": "modonomicon:text",
+      "text": "townstead.guide.entry.farming.getting_started.p2"
+    },
+    {
+      "type": "modonomicon:text",
+      "text": "townstead.guide.entry.farming.getting_started.p3"
+    }
+  ]
+}

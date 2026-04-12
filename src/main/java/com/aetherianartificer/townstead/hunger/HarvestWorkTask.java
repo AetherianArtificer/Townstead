@@ -20,11 +20,8 @@ import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import com.aetherianartificer.townstead.compat.farming.FarmerHarvestToolCompatRegistry;
 import com.aetherianartificer.townstead.compat.farming.FarmerRemovableWeedCompatRegistry;
 import com.aetherianartificer.townstead.compat.farming.FarmerStockDroppableCompatRegistry;
-import com.aetherianartificer.townstead.farming.FarmingPolicyData;
-import com.aetherianartificer.townstead.farming.pattern.FarmPatternDefinition;
-import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
+import com.aetherianartificer.townstead.farming.cellplan.PlannedCell;
 import com.aetherianartificer.townstead.hunger.farm.FarmBlueprint;
-import com.aetherianartificer.townstead.hunger.farm.FarmPlanner;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -106,6 +103,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private long nextTargetScanTick;
     private long nextGroomScanTick;
     private long nextBlueprintPlanTick;
+    private long lastCellPlanSignature; // forces blueprint rebuild when the cell plan changes
     private long lastStockTick = Long.MIN_VALUE;
 
     private BlockPos cachedHarvestTarget;
@@ -399,6 +397,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
         townstead$restockBasics(level, villager);
         townstead$refreshBlueprintIfNeeded(level, villager, gameTime, false);
+        if (cachedFieldPost == null) {
+            actionType = ActionType.NONE;
+            targetPos = null;
+            townstead$clearMovementIntent(villager);
+            townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_FIELD_POST);
+            nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+            return;
+        }
         townstead$refreshInventoryCache(villager, gameTime);
         if (forceScan || gameTime >= nextTargetScanTick) {
             townstead$refreshTargetCache(level, villager, gameTime);
@@ -567,14 +573,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void townstead$refreshTargetCache(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        HarvestWorkIndex.FarmSnapshot snapshot = HarvestWorkIndex.snapshot(
-                level,
-                farmAnchor,
-                farmBlueprint,
-                townstead$farmRadius(),
-                VERTICAL_RADIUS,
-                townstead$groomRadius()
-        );
+        HarvestWorkIndex.FarmSnapshot snapshot = HarvestWorkIndex.snapshot(level, farmAnchor, farmBlueprint);
         cachedHarvestTarget = townstead$findNearestMatureCrop(snapshot, villager, gameTime);
         cachedPlantTarget = townstead$findNearestPlantSpot(snapshot, villager, gameTime);
         cachedTillTarget = townstead$findNearestTillSpot(snapshot, villager, gameTime);
@@ -650,7 +649,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (snapshot == HarvestWorkIndex.FarmSnapshot.EMPTY) return null;
         return snapshot.nearestPlantTarget(
                 villager,
-                FarmerCropCompatRegistry.hasAnyLoadedProvider() && townstead$hasCompatSeed(villager.getInventory()),
                 pos -> !townstead$isBlacklisted(pos, gameTime)
         );
     }
@@ -724,10 +722,13 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private boolean townstead$isPlantTargetValid(ServerLevel level, BlockPos pos, BlockState state) {
-        if (!townstead$isInsideFarmRadius(pos)) return false;
+        // A plant target must be a planned crop position. Compat (rice) cells are only valid
+        // if the underlying soil cell was painted; they don't get to bypass the plan.
+        if (!townstead$isPlannedCropPos(pos)) return false;
+        PlannedCell cell = farmBlueprint == null ? null : farmBlueprint.cellAt(pos.below());
+        if (cell != null && com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.NONE.equals(cell.seedAssignment())) return false;
         if (FarmerCropCompatRegistry.isPlantableSpot(level, pos)) return true;
-        return townstead$isPlannedCropPos(pos)
-                && state.isAir()
+        return state.isAir()
                 && level.getFluidState(pos).isEmpty()
                 && level.getFluidState(pos.above()).isEmpty()
                 && level.getBlockState(pos.below()).getBlock() instanceof FarmBlock;
@@ -867,6 +868,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             if (!level.getBlockState(abovePos).isAir()) return;
         }
         if (level.setBlock(soilPos, Blocks.FARMLAND.defaultBlockState(), 3)) {
+            com.aetherianartificer.townstead.farming.cellplan.PlannedCell cell = farmBlueprint == null ? null : farmBlueprint.cellAt(soilPos);
+            if (cell != null && cell.desiredSoil() == com.aetherianartificer.townstead.farming.cellplan.SoilType.RICH_SOIL) {
+                com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.doCompatTill(level, soilPos);
+            }
             villager.swing(villager.getDominantHand());
             townstead$markWorked(soilPos, gameTime);
             HarvestWorkIndex.invalidate(level, soilPos);
@@ -893,6 +898,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private void townstead$doPlaceWater(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
         if (!townstead$canAttemptWaterPlacement(level, gameTime)) return;
         if (!townstead$canPlaceWaterAt(level, pos)) return;
+        // Respect protected cells — don't place water on plots the player has marked hands-off
+        if (farmBlueprint != null && farmBlueprint.isProtected(pos)) return;
         int slot = townstead$findWaterBucketSlot(villager.getInventory());
         if (slot < 0) return;
 
@@ -971,6 +978,16 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private int townstead$findSeedSlot(SimpleContainer inv, VillagerEntityMCA villager, ServerLevel level, BlockPos plantPos) {
         if (!townstead$isPlantTargetValid(level, plantPos, level.getBlockState(plantPos))) return -1;
+        // Delegate to the blueprint's CellPlanView if a plan assigns a specific seed to this cell.
+        // Falls through to the default scoring loop for null/AUTO overrides.
+        if (farmBlueprint != null) {
+            return farmBlueprint.filterSeedSlot(inv, plantPos, (container, pos) ->
+                    townstead$scoreBestSeed(container, villager, level, pos));
+        }
+        return townstead$scoreBestSeed(inv, villager, level, plantPos);
+    }
+
+    private int townstead$scoreBestSeed(SimpleContainer inv, VillagerEntityMCA villager, ServerLevel level, BlockPos plantPos) {
         boolean hasWater = townstead$hasNearbyWater(level, plantPos.below());
         int bestSlot = -1;
         double bestScore = Double.NEGATIVE_INFINITY;
@@ -1067,35 +1084,13 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return state.is(Blocks.DIRT) || state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.DIRT_PATH) || state.is(Blocks.COARSE_DIRT);
     }
 
-    private boolean townstead$hasHydrationCoverage(ServerLevel level, VillagerEntityMCA villager) {
-        int hydrated = 0;
-        int total = 0;
-        for (BlockPos soilPos : townstead$iterateSoilCells(level)) {
-            if (!townstead$isPlannedSoil(soilPos)) continue;
-            total++;
-            if (townstead$hasNearbyWater(level, soilPos)) hydrated++;
-        }
-        if (total == 0) return true;
-        int percent = (hydrated * 100) / Math.max(1, total);
-        return percent >= townstead$hydrationMinPercent(villager);
-    }
-
     private boolean townstead$needsIrrigation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (townstead$isRicePaddyMode()) {
-            for (BlockPos soilPos : townstead$iterateSoilCells(level)) {
-                if (!townstead$isPlannedSoil(soilPos)) continue;
-                if (townstead$canPlaceWaterAt(level, soilPos)) return true;
-            }
-            return false;
-        }
-        if (!townstead$hasHydrationCoverage(level, villager)) return true;
-        return townstead$hasDryTillableCell(level, gameTime);
-    }
-
-    private boolean townstead$hasDryTillableCell(ServerLevel level, long gameTime) {
-        for (BlockPos soilPos : townstead$iterateSoilCells(level)) {
-            if (!townstead$isTillable(level, soilPos, gameTime)) continue;
-            if (!townstead$hasNearbyWater(level, soilPos)) return true;
+        // A farm needs irrigation only if the plan has painted WATER cells that don't currently have water.
+        // The farmer never places water on farmland or dirt — that's for the user to paint explicitly.
+        if (farmBlueprint == null || farmBlueprint.isEmpty()) return false;
+        for (com.aetherianartificer.townstead.farming.cellplan.PlannedCell cell : farmBlueprint.cells()) {
+            if (cell.desiredSoil() != com.aetherianartificer.townstead.farming.cellplan.SoilType.WATER) continue;
+            if (!level.getFluidState(cell.soilPos()).is(FluidTags.WATER)) return true;
         }
         return false;
     }
@@ -1138,50 +1133,42 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private BlockPos townstead$findNearestWaterPlacementSpot(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        BlockPos bestPreferred = null;
-        double bestPreferredDist = Double.MAX_VALUE;
-        BlockPos bestAny = null;
-        double bestAnyDist = Double.MAX_VALUE;
-        for (BlockPos soilPos : townstead$iterateSoilCells(level)) {
+        if (farmBlueprint == null || farmBlueprint.isEmpty()) return null;
+        BlockPos best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (com.aetherianartificer.townstead.farming.cellplan.PlannedCell cell : farmBlueprint.cells()) {
+            if (cell.desiredSoil() != com.aetherianartificer.townstead.farming.cellplan.SoilType.WATER) continue;
+            BlockPos soilPos = cell.soilPos();
             if (townstead$isBlacklisted(soilPos, gameTime)) continue;
             if (!townstead$canPlaceWaterAt(level, soilPos)) continue;
             double dist = villager.distanceToSqr(soilPos.getX() + 0.5, soilPos.getY() + 0.5, soilPos.getZ() + 0.5);
-            if (dist < bestAnyDist) {
-                bestAnyDist = dist;
-                bestAny = soilPos.immutable();
-            }
-            if (townstead$isPreferredIrrigationCell(soilPos) && dist < bestPreferredDist) {
-                bestPreferredDist = dist;
-                bestPreferred = soilPos.immutable();
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = soilPos.immutable();
             }
         }
-        if (bestPreferred != null) return bestPreferred;
-        return bestAny;
+        return best;
     }
 
     private boolean townstead$canPlaceWaterAt(ServerLevel level, BlockPos soilPos) {
-        if (!townstead$isPlannedSoil(soilPos)) return false;
-        if (!townstead$isRicePaddyMode() && townstead$hasNearbyWater(level, soilPos)) return false;
+        // Only cells explicitly painted as WATER in the plan accept water placement.
+        PlannedCell cell = farmBlueprint == null ? null : farmBlueprint.cellAt(soilPos);
+        if (cell == null || cell.desiredSoil() != com.aetherianartificer.townstead.farming.cellplan.SoilType.WATER) return false;
+        // Already water? Nothing to do.
+        if (level.getFluidState(soilPos).is(FluidTags.WATER)) return false;
 
         BlockState state = level.getBlockState(soilPos);
-        boolean replaceableSoil = state.getBlock() instanceof FarmBlock
+        boolean replaceable = state.isAir()
+                || state.getBlock() instanceof FarmBlock
                 || state.is(Blocks.DIRT)
                 || state.is(Blocks.GRASS_BLOCK)
                 || state.is(Blocks.DIRT_PATH)
                 || state.is(Blocks.COARSE_DIRT);
-        if (!replaceableSoil) return false;
+        if (!replaceable) return false;
 
         BlockState above = level.getBlockState(soilPos.above());
         if (above.isAir()) return true;
         return townstead$canClearWaterPlacementObstruction(above);
-    }
-
-    private boolean townstead$isPreferredIrrigationCell(BlockPos pos) {
-        if (farmAnchor == null) return false;
-        if (townstead$isRicePaddyMode()) return townstead$isPlannedSoil(pos);
-        // Sparse regular lattice for cleaner irrigation layout.
-        return Math.floorMod(pos.getX() - farmAnchor.getX(), 8) == 0
-                && Math.floorMod(pos.getZ() - farmAnchor.getZ(), 8) == 0;
     }
 
     private boolean townstead$canClearTillObstruction(BlockState state) {
@@ -1344,22 +1331,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private Iterable<BlockPos> townstead$iterateSoilCells(ServerLevel level) {
-        if (farmAnchor == null) return List.of();
-        if (farmBlueprint != null && !farmBlueprint.isEmpty()) return farmBlueprint.soilCells();
-
-        // Conservative fallback: existing farm cells only (no random dirt expansion).
-        List<BlockPos> cells = new java.util.ArrayList<>();
-        int farmRadius = townstead$farmRadius();
-        for (BlockPos pos : BlockPos.betweenClosed(
-                farmAnchor.offset(-farmRadius, -VERTICAL_RADIUS, -farmRadius),
-                farmAnchor.offset(farmRadius, VERTICAL_RADIUS, farmRadius))) {
-            BlockState state = level.getBlockState(pos);
-            if (state.getBlock() instanceof FarmBlock
-                    || level.getBlockState(pos.above()).getBlock() instanceof CropBlock) {
-                cells.add(pos.immutable());
-            }
-        }
-        return cells;
+        if (farmAnchor == null || farmBlueprint == null || farmBlueprint.isEmpty()) return List.of();
+        return farmBlueprint.soilCells();
     }
 
     private boolean townstead$isPlannedSoil(BlockPos pos) {
@@ -1407,14 +1380,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             boolean hasSeeds = townstead$findSeedSlot(inv, villager) >= 0;
             boolean hasHoe = townstead$hasHoe(inv);
             townstead$refreshBlueprintIfNeeded(level, villager, level.getGameTime(), true);
-            HarvestWorkIndex.FarmSnapshot snapshot = HarvestWorkIndex.snapshot(
-                    level,
-                    farmAnchor,
-                    farmBlueprint,
-                    townstead$farmRadius(),
-                    VERTICAL_RADIUS,
-                    townstead$groomRadius()
-            );
+            HarvestWorkIndex.FarmSnapshot snapshot = HarvestWorkIndex.snapshot(level, farmAnchor, farmBlueprint);
             long gameTime = level.getGameTime();
             if (townstead$findNearestMatureCrop(snapshot, villager, gameTime) != null) return true;
             BlockPos plantSpot = townstead$findNearestPlantSpot(snapshot, villager, gameTime);
@@ -1440,121 +1406,41 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             return;
         }
         boolean anchorChanged = farmBlueprint == null || !farmAnchor.equals(farmBlueprint.anchor());
-        if (!force && !anchorChanged && gameTime < nextBlueprintPlanTick) return;
+        // Check if the cell plan has changed since last rebuild
+        com.aetherianartificer.townstead.block.FieldPostBlockEntity peekPost =
+                com.aetherianartificer.townstead.block.FieldPostIndex.findBestForAnchor(level, farmAnchor);
+        long currentPlanSig = peekPost != null ? peekPost.getCellPlan().signature() : 0L;
+        boolean planChanged = currentPlanSig != lastCellPlanSignature;
+        if (!force && !anchorChanged && !planChanged && gameTime < nextBlueprintPlanTick) return;
+        lastCellPlanSignature = currentPlanSig;
 
-        FarmingPolicyData.ResolvedFarmingPolicy policy = FarmingPolicyData.get(level).resolveForAnchor(level, farmAnchor);
-        cachedFieldPost = com.aetherianartificer.townstead.block.FieldPostIndex.findBestForAnchor(level, farmAnchor);
-        //? if neoforge {
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
-        //?} else {
-        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
-        *///?}
-        int villagerTier = FarmerProgressData.getTier(hunger);
-        int policyTier = policy.tier();
-        int effectiveTier = Math.max(1, Math.min(policyTier, villagerTier));
-        String resolvedPatternId = policy.patternId();
-        if ("default".equals(policy.source())
-                && FarmPatternRegistry.DEFAULT_PATTERN_ID.equals(resolvedPatternId)) {
-            String seedHint = townstead$detectCropPatternHint(villager.getInventory());
-            if (seedHint != null) resolvedPatternId = seedHint;
+        cachedFieldPost = peekPost;
+
+        // The Field Post plan is the authoritative source of farm cells.
+        // No post or empty plan → no farm work.
+        if (peekPost != null && !peekPost.getCellPlan().isEmpty()) {
+            com.aetherianartificer.townstead.farming.cellplan.ResolvedCellPlan resolved =
+                    com.aetherianartificer.townstead.farming.cellplan.ResolvedCellPlan.resolve(
+                            level, peekPost.getBlockPos(), peekPost.getCellPlan());
+            farmBlueprint = FarmBlueprint.fromCellPlan(farmAnchor, peekPost.getBlockPos(), resolved);
+        } else {
+            farmBlueprint = FarmBlueprint.empty(farmAnchor);
         }
-        FarmPatternDefinition pattern = FarmPatternRegistry.resolveForTier(resolvedPatternId, effectiveTier);
-        String patternId = pattern.id();
-        int baseClusters = townstead$maxClustersForTier(effectiveTier, villager);
-        int basePlots = townstead$maxPlotsForTier(effectiveTier, villager);
-        int maxClusters = townstead$patternClusterCap(pattern.id(), baseClusters);
-        int maxPlots = townstead$patternPlotCap(pattern.id(), basePlots);
-
-        String plannerType = pattern.plannerType();
-        farmBlueprint = switch (plannerType) {
-            case "starter_rows" -> FarmPlanner.planStarterRows(
-                    level,
-                    farmAnchor,
-                    townstead$farmRadius(),
-                    VERTICAL_RADIUS,
-                    maxClusters,
-                    maxPlots,
-                    plannerType
-            );
-            case "compact_plots" -> FarmPlanner.planStarterRows(
-                    level,
-                    farmAnchor,
-                    townstead$farmRadius(),
-                    VERTICAL_RADIUS,
-                    Math.max(1, Math.min(maxClusters, 2)),
-                    Math.max(16, maxPlots / 2),
-                    plannerType
-            );
-            case "market_garden" -> FarmPlanner.planStarterRows(
-                    level,
-                    farmAnchor,
-                    townstead$farmRadius(),
-                    VERTICAL_RADIUS,
-                    Math.max(2, maxClusters),
-                    Math.max(32, maxPlots),
-                    plannerType
-            );
-            case "orchard_blocks" -> FarmPlanner.planStarterRows(
-                    level,
-                    farmAnchor,
-                    townstead$farmRadius(),
-                    VERTICAL_RADIUS,
-                    Math.max(1, Math.min(maxClusters, 3)),
-                    Math.max(24, (maxPlots * 3) / 4),
-                    plannerType
-            );
-            case "dryland_rows" -> FarmPlanner.planStarterRows(
-                    level,
-                    farmAnchor,
-                    townstead$farmRadius(),
-                    VERTICAL_RADIUS,
-                    Math.max(1, maxClusters - 1),
-                    Math.max(20, (maxPlots * 2) / 3),
-                    plannerType
-            );
-            case "rice_paddy" -> FarmPlanner.planStarterRows(
-                    level,
-                    farmAnchor,
-                    townstead$farmRadius(),
-                    VERTICAL_RADIUS,
-                    Math.max(1, Math.min(maxClusters, 2)),
-                    Math.max(12, maxPlots / 3),
-                    plannerType
-            );
-            case "tomato_garden" -> FarmPlanner.planStarterRows(
-                    level,
-                    farmAnchor,
-                    townstead$farmRadius(),
-                    VERTICAL_RADIUS,
-                    Math.max(1, maxClusters),
-                    Math.max(24, (maxPlots * 3) / 4),
-                    plannerType
-            );
-            default -> FarmPlanner.planStarterRows(
-                    level,
-                    farmAnchor,
-                    townstead$farmRadius(),
-                    VERTICAL_RADIUS,
-                    maxClusters,
-                    maxPlots,
-                    plannerType
-            );
-        };
 
         if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
             LOGGER.info(
-                    "Farmer {} blueprint plan: pattern={}, plannerType={}, requiredTier={}, policyTier={}, farmerTier={}, effectiveTier={}, source={}, personality={}, cells={}",
+                    "Farmer {} blueprint plan: source=cell_plan, post={}, personality={}, cells={}",
                     farmAnchor,
-                    patternId,
-                    pattern.plannerType(),
-                    pattern.requiredTier(),
-                    policyTier,
-                    villagerTier,
-                    effectiveTier,
-                    policy.source(),
+                    peekPost != null ? peekPost.getBlockPos() : null,
                     villager.getVillagerBrain().getPersonality().name(),
-                    farmBlueprint == null ? 0 : farmBlueprint.soilCells().size()
+                    farmBlueprint.soilCells().size()
             );
+            StringBuilder cellDump = new StringBuilder("Farmer ").append(farmAnchor).append(" planned cells:");
+            for (com.aetherianartificer.townstead.farming.cellplan.PlannedCell c : farmBlueprint.cells()) {
+                cellDump.append(' ').append(c.soilPos().getX()).append(',').append(c.soilPos().getY()).append(',').append(c.soilPos().getZ())
+                        .append('[').append(c.desiredSoil()).append('/').append(c.seedAssignment()).append(']');
+            }
+            LOGGER.info(cellDump.toString());
         }
         // Keep cadence fixed for stability; add light jitter to avoid synchronized planner spikes.
         nextBlueprintPlanTick = gameTime + BLUEPRINT_REPLAN_INTERVAL + level.random.nextInt(201);
@@ -1699,7 +1585,13 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private boolean townstead$isRicePaddyMode() {
-        return farmBlueprint != null && "rice_paddy".equals(farmBlueprint.plannerType());
+        if (farmBlueprint == null || farmBlueprint.isEmpty()) return false;
+        for (com.aetherianartificer.townstead.farming.cellplan.PlannedCell cell : farmBlueprint.cells()) {
+            String seed = cell.seedAssignment();
+            if (seed == null) continue;
+            if (seed.endsWith(":rice") || seed.endsWith("/rice")) return true;
+        }
+        return false;
     }
 
     private String townstead$detectCropPatternHint(SimpleContainer inv) {
@@ -1778,6 +1670,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         }
 
         String key = switch (blockedReason) {
+            case NO_FIELD_POST -> "dialogue.chat.farm_request.no_field_post/" + (1 + level.random.nextInt(6));
             case NO_SEEDS -> "dialogue.chat.farm_request.no_seeds/" + (1 + level.random.nextInt(6));
             case NO_TOOL -> "dialogue.chat.farm_request.no_tool/" + (1 + level.random.nextInt(6));
             case NO_WATER_PLAN -> "dialogue.chat.farm_request.no_water_plan/" + (1 + level.random.nextInt(4));

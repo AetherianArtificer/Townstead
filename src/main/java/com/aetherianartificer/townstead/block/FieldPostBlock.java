@@ -101,8 +101,17 @@ public class FieldPostBlock extends Block implements EntityBlock, SimpleWaterlog
             CropProductResolver resolver = CropProductResolver.get(serverLevel);
             java.util.Map<String, Integer> seedCounts = GridScanner.countVillageSeeds(
                     serverLevel, pos, fieldPost.getRadius());
+            // Encode soil compatibility as a bitmask per seed (bit N = SoilType.values()[N])
+            java.util.Map<String, Integer> compatBits = new java.util.HashMap<>();
+            com.aetherianartificer.townstead.farming.cellplan.SoilType[] allSoil =
+                    com.aetherianartificer.townstead.farming.cellplan.SoilType.values();
+            resolver.getSoilCompatMap().forEach((seedId, soils) -> {
+                int bits = 0;
+                for (com.aetherianartificer.townstead.farming.cellplan.SoilType s : soils) bits |= (1 << s.ordinal());
+                compatBits.put(seedId, bits);
+            });
             FieldPostGridSyncPayload gridPayload = new FieldPostGridSyncPayload(
-                    pos, snapshot, resolver.getPalette(), seedCounts,
+                    pos, snapshot, resolver.getPalette(), seedCounts, compatBits,
                     status[0], status[1], status[2], status[3]
             );
             //? if neoforge {

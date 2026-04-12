@@ -65,6 +65,22 @@ public final class FarmerCropCompatRegistry {
         return false;
     }
 
+    public static boolean isCompatibleSoil(ServerLevel level, BlockPos pos) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.isCompatibleSoil(level, pos)) return true;
+        }
+        return false;
+    }
+
+    public static boolean doCompatTill(ServerLevel level, BlockPos pos) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.doCompatTill(level, pos)) return true;
+        }
+        return false;
+    }
+
     public static String patternHintForSeed(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
         for (FarmerCropCompat provider : PROVIDERS) {

@@ -36,6 +36,24 @@ public final class FieldPostIndex {
     }
 
     /**
+     * Called when a Field Post's config (including cell plan) changes.
+     * Invalidates any cached farm snapshots that may cover this post's area,
+     * so farmers pick up the new plan on their next tick.
+     */
+    public static void notifyConfigChanged(LevelAccessor level, BlockPos pos) {
+        if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+        FieldPostBlockEntity post = INDEX.get(key((Level) level, pos));
+        int radius = post != null ? post.getRadius() : 32;
+        // Invalidate snapshot caches for any farm anchor that could be covered by this post
+        for (int dx = -radius; dx <= radius; dx += 16) {
+            for (int dz = -radius; dz <= radius; dz += 16) {
+                com.aetherianartificer.townstead.hunger.HarvestWorkIndex.invalidate(
+                        serverLevel, pos.offset(dx, 0, dz));
+            }
+        }
+    }
+
+    /**
      * Find the best Field Post covering the given anchor position.
      * "Best" = highest priority, ties broken by closest distance.
      */

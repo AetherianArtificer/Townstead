@@ -21,4 +21,10 @@ public interface FarmerCropCompat {
     boolean isPlantableSpot(ServerLevel level, BlockPos pos);
 
     default String patternHintForSeed(ItemStack stack) { return null; }
+
+    /** Whether the block at pos is a mod-specific rich/compatible soil (e.g., FD rich soil). */
+    default boolean isCompatibleSoil(ServerLevel level, BlockPos pos) { return false; }
+
+    /** Attempts to convert vanilla farmland at pos to a compatible rich soil. Returns true on success. */
+    default boolean doCompatTill(ServerLevel level, BlockPos pos) { return false; }
 }
