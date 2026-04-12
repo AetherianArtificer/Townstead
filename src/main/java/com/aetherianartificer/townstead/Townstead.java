@@ -19,6 +19,9 @@ import com.google.common.collect.ImmutableSet;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
+import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
+import com.aetherianartificer.townstead.farming.GridScanner;
+import com.aetherianartificer.townstead.farming.CropProductResolver;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
@@ -626,6 +629,11 @@ public class Townstead {
                 FieldPostConfigSyncPayload.STREAM_CODEC,
                 this::handleFieldPostConfigSync
         );
+        registrar.playToClient(
+                FieldPostGridSyncPayload.TYPE,
+                FieldPostGridSyncPayload.STREAM_CODEC,
+                this::handleFieldPostGridSync
+        );
     }
 
     private void handleHungerSync(HungerSyncPayload payload, IPayloadContext context) {
@@ -1094,6 +1102,17 @@ public class Townstead {
             net.minecraft.world.level.block.entity.BlockEntity be = mc.level.getBlockEntity(payload.pos());
             if (be instanceof com.aetherianartificer.townstead.block.FieldPostBlockEntity fieldPost) {
                 fieldPost.applyConfig(payload.config());
+            }
+        });
+    }
+
+    private void handleFieldPostGridSync(FieldPostGridSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc.screen instanceof com.aetherianartificer.townstead.client.gui.fieldpost.FieldPostScreen screen
+                    && screen.getPostPos().equals(payload.pos())) {
+                screen.applyServerSnapshot(payload.snapshot(), payload.cropPalette(), payload.villageSeedCounts(),
+                        payload.farmerCount(), payload.totalPlots(), payload.tilledPlots(), payload.hydrationPercent());
             }
         });
     }

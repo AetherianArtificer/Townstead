@@ -231,9 +231,21 @@ public class FieldPostScreen extends Screen {
             *///?}
             Item seedItem = BuiltInRegistries.ITEM.get(rl);
             if (seedItem == Items.AIR) continue;
-            // Show the crop product (wheat, carrot) not the seed (wheat_seeds)
-            // The toolId stays as the seed ID for the farmer to use
-            ItemStack cropProduct = seedToCropIcon(seedItem);
+
+            // Use server palette if available, otherwise fall back to client-side heuristic
+            ItemStack cropProduct;
+            if (serverCropPalette != null && serverCropPalette.containsKey(seedId)) {
+                //? if >=1.21 {
+                ResourceLocation productRl = ResourceLocation.parse(serverCropPalette.get(seedId));
+                //?} else {
+                /*ResourceLocation productRl = new ResourceLocation(serverCropPalette.get(seedId));
+                *///?}
+                Item productItem = BuiltInRegistries.ITEM.get(productRl);
+                cropProduct = productItem != Items.AIR ? new ItemStack(productItem) : seedToCropIcon(seedItem);
+            } else {
+                cropProduct = seedToCropIcon(seedItem);
+            }
+
             String name = cropProduct.getHoverName().getString();
             String category = categoryFor(rl.getNamespace());
             allSeedEntries.add(new ToolPaletteList.ToolEntry(seedId, name, cropProduct, category));
@@ -354,19 +366,7 @@ public class FieldPostScreen extends Screen {
         }
         paletteList.setScrollAmount(paletteList.getScrollAmount());
 
-        // Update assignment counts for the active layer
-        Map<String, Integer> counts = new HashMap<>();
-        Map<Integer, String> activePlan = activeTab == PaletteTab.SEEDS ? new HashMap<>() : null;
-        if (activeTab == PaletteTab.SEEDS) {
-            for (String val : seedPlan.values()) {
-                counts.merge(val, 1, Integer::sum);
-            }
-        } else {
-            for (SoilType val : soilPlan.values()) {
-                counts.merge(val.name(), 1, Integer::sum);
-            }
-        }
-        paletteList.setAssignmentCounts(counts);
+        refreshCounts();
     }
 
     private void switchTab(PaletteTab tab) {
@@ -506,24 +506,55 @@ public class FieldPostScreen extends Screen {
 
     /**
      * Maps a seed item to its crop product for display in the palette.
-     * e.g., wheat_seeds → wheat, beetroot_seeds → beetroot, melon_seeds → melon
+     * Derives the crop from the seed's registry name, not from display names.
+     * e.g., wheat_seeds → wheat, coffee_seeds → coffee_beans, beetroot_seeds → beetroot
      */
     private ItemStack seedToCropIcon(Item seedItem) {
-        // Direct vanilla seed → crop mappings
+        // Direct vanilla mappings
         if (seedItem == Items.WHEAT_SEEDS) return new ItemStack(Items.WHEAT);
         if (seedItem == Items.BEETROOT_SEEDS) return new ItemStack(Items.BEETROOT);
         if (seedItem == Items.MELON_SEEDS) return new ItemStack(Items.MELON);
         if (seedItem == Items.PUMPKIN_SEEDS) return new ItemStack(Items.PUMPKIN);
-        // Items that are both seed and crop (carrot, potato)
         if (seedItem == Items.CARROT || seedItem == Items.POTATO) return new ItemStack(seedItem);
-        // Sweet berries
         if (seedItem == Items.SWEET_BERRIES) return new ItemStack(Items.SWEET_BERRIES);
-        // For modded seeds: try to find the crop product by name pattern
+
+        // Derive crop product from the seed's registry name
+        net.minecraft.resources.ResourceLocation seedKey = BuiltInRegistries.ITEM.getKey(seedItem);
+        if (seedKey != null) {
+            String ns = seedKey.getNamespace();
+            String path = seedKey.getPath();
+
+            // Strip common seed suffixes to get the base crop name
+            String baseName = path;
+            if (baseName.endsWith("_seeds")) baseName = baseName.substring(0, baseName.length() - 6);
+            else if (baseName.endsWith("_seed")) baseName = baseName.substring(0, baseName.length() - 5);
+
+            // Try various crop item name patterns in the same namespace
+            String[] candidates = {
+                    baseName,                // coffee_seeds → coffee
+                    baseName + "_beans",     // coffee_seeds → coffee_beans
+                    baseName + "_fruit",     // X_seeds → X_fruit
+                    baseName + "_berry",     // X_seeds → X_berry
+                    baseName + "_berries",   // X_seeds → X_berries
+            };
+            for (String candidate : candidates) {
+                //? if >=1.21 {
+                net.minecraft.resources.ResourceLocation cropId = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(ns, candidate);
+                //?} else {
+                /*net.minecraft.resources.ResourceLocation cropId = new net.minecraft.resources.ResourceLocation(ns, candidate);
+                *///?}
+                Item cropItem = BuiltInRegistries.ITEM.get(cropId);
+                if (cropItem != Items.AIR && cropItem != seedItem) return new ItemStack(cropItem);
+            }
+        }
+
+        // Try via the block the seed places (uses cropIcon's block-name patterns)
         if (seedItem instanceof net.minecraft.world.item.BlockItem blockItem) {
             ItemStack cropResult = cropIcon(blockItem.getBlock());
             if (!cropResult.isEmpty() && cropResult.getItem() != seedItem) return cropResult;
         }
-        // Fallback: just show the seed itself
+
+        // Fallback: show the seed itself
         return new ItemStack(seedItem);
     }
 
@@ -1422,13 +1453,17 @@ public class FieldPostScreen extends Screen {
 
     private void refreshCounts() {
         if (paletteList == null) return;
-        Map<String, Integer> counts = new HashMap<>();
-        if (activeTab == PaletteTab.SEEDS) {
-            for (String val : seedPlan.values()) counts.merge(val, 1, Integer::sum);
-        } else {
+        if (activeTab == PaletteTab.SEEDS && villageSeedCounts != null) {
+            // Use server-provided village seed counts
+            paletteList.setAssignmentCounts(villageSeedCounts);
+        } else if (activeTab == PaletteTab.SOIL) {
+            // For soil tab, show plan assignments
+            Map<String, Integer> counts = new HashMap<>();
             for (SoilType val : soilPlan.values()) counts.merge(val.name(), 1, Integer::sum);
+            paletteList.setAssignmentCounts(counts);
+        } else {
+            paletteList.setAssignmentCounts(Map.of());
         }
-        paletteList.setAssignmentCounts(counts);
     }
 
     private void clampScroll() {
@@ -1468,6 +1503,77 @@ public class FieldPostScreen extends Screen {
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {}
     //?}
+
+    public BlockPos getPostPos() { return postPos; }
+
+    /**
+     * Called by the client packet handler when the server sends the grid snapshot.
+     * Populates the grid render data from server-provided data instead of client scanning.
+     */
+    public void applyServerSnapshot(com.aetherianartificer.townstead.farming.GridSnapshot snapshot,
+                                     Map<String, String> cropPalette,
+                                     Map<String, Integer> villageSeedCounts,
+                                     int farmerCount, int totalPlots, int tilledPlots, int hydrationPercent) {
+        if (snapshot.gridSize() != gridSize) return; // size mismatch — ignore
+
+        int count = snapshot.cellCount();
+        renderStates = new BlockState[gridSize][gridSize];
+        renderPositions = new BlockPos[gridSize][gridSize];
+        cellFlags = new byte[gridSize][gridSize];
+        cropIcons = new ItemStack[gridSize][gridSize];
+
+        int half = gridSize / 2;
+        for (int gz = 0; gz < gridSize; gz++) {
+            for (int gx = 0; gx < gridSize; gx++) {
+                int idx = snapshot.index(gx, gz);
+                byte flags = snapshot.flags()[idx];
+                int blockId = snapshot.groundBlockIds()[idx];
+
+                // Reconstruct BlockState for sprite rendering
+                Block block = BuiltInRegistries.BLOCK.byId(blockId);
+                BlockState state = block.defaultBlockState();
+
+                // Apply moisture for farmland sprite selection
+                if ((flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_FARMLAND) != 0
+                        && block instanceof FarmBlock) {
+                    int moisture = (flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_MOIST) != 0 ? 7 : 0;
+                    state = state.setValue(FarmBlock.MOISTURE, moisture);
+                }
+
+                renderStates[gz][gx] = (flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_AIR) != 0 ? null : state;
+                renderPositions[gz][gx] = new BlockPos(postPos.getX() + (gx - half), postPos.getY() - 1, postPos.getZ() + (gz - half));
+
+                // Cell flags
+                if ((flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_POST) != 0) {
+                    cellFlags[gz][gx] = CELL_POST;
+                } else if ((flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_AIR) != 0) {
+                    cellFlags[gz][gx] = CELL_AIR;
+                } else if ((flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_MATURE) != 0) {
+                    cellFlags[gz][gx] = CELL_CROP_MATURE;
+                }
+
+                // Crop icon from server-resolved product
+                int cropItemId = snapshot.cropItemIds()[idx];
+                if (cropItemId > 0) {
+                    Item cropItem = BuiltInRegistries.ITEM.byId(cropItemId);
+                    if (cropItem != Items.AIR) {
+                        cropIcons[gz][gx] = new ItemStack(cropItem);
+                    }
+                }
+            }
+        }
+
+        // Store server data
+        this.serverSnapshot = snapshot;
+        this.serverCropPalette = cropPalette;
+        this.villageSeedCounts = villageSeedCounts;
+        buildToolEntries();
+        filterPalette();
+    }
+
+    private com.aetherianartificer.townstead.farming.GridSnapshot serverSnapshot;
+    private Map<String, String> serverCropPalette;
+    private Map<String, Integer> villageSeedCounts;
 
     @Override
     public boolean isPauseScreen() { return false; }

@@ -4,6 +4,7 @@ package com.aetherianartificer.townstead;
 /*
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
+import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
 import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
 import com.aetherianartificer.townstead.farming.FarmingPolicyData;
 import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
@@ -126,6 +127,8 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleFieldPostConfigSet);
         registerS2C(FieldPostConfigSyncPayload.class, FieldPostConfigSyncPayload::write, FieldPostConfigSyncPayload::read,
                 TownsteadNetwork::handleFieldPostConfigSync);
+        registerS2C(FieldPostGridSyncPayload.class, FieldPostGridSyncPayload::write, FieldPostGridSyncPayload::read,
+                TownsteadNetwork::handleFieldPostGridSync);
     }
 
     // ── Send helpers ──
@@ -533,6 +536,15 @@ public final class TownsteadNetwork {
 
     private static void handleFieldPostConfigSync(FieldPostConfigSyncPayload payload) {
         // Client-side: no-op, screen reads from block entity directly.
+    }
+
+    private static void handleFieldPostGridSync(FieldPostGridSyncPayload payload) {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.screen instanceof com.aetherianartificer.townstead.client.gui.fieldpost.FieldPostScreen screen
+                && screen.getPostPos().equals(payload.pos())) {
+            screen.applyServerSnapshot(payload.snapshot(), payload.cropPalette(), payload.villageSeedCounts(),
+                    payload.farmerCount(), payload.totalPlots(), payload.tilledPlots(), payload.hydrationPercent());
+        }
     }
 
     private static boolean townstead$professionOwnsJobSite(VillagerProfession holderProfession, VillagerProfession targetProfession) {

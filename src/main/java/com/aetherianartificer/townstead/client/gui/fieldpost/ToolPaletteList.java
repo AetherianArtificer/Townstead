@@ -150,7 +150,7 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
             // Stretch to full list width (ignore the row inset)
             int fullLeft = parentList != null ? parentList.xPos : left;
             int fullWidth = parentList != null ? parentList.width - 6 : width; // leave room for scrollbar
-            int btnTop = top + 1;
+            int btnTop = top - 1;
             int btnBottom = top + height + 1;
             int btnRight = fullLeft + fullWidth;
 

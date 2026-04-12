@@ -1,7 +1,11 @@
 package com.aetherianartificer.townstead.block;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.farming.CropProductResolver;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
+import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
+import com.aetherianartificer.townstead.farming.GridScanner;
+import com.aetherianartificer.townstead.farming.GridSnapshot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -81,17 +85,32 @@ public class FieldPostBlock extends Block implements EntityBlock, SimpleWaterlog
             townstead$openScreenClient(pos);
             return InteractionResult.SUCCESS;
         }
-        // Server side: send config sync to player
+        // Server side: build snapshot and send config + grid data to player
         BlockEntity be = level.getBlockEntity(pos);
-        if (be instanceof FieldPostBlockEntity fieldPost) {
-            FieldPostConfigSyncPayload payload = new FieldPostConfigSyncPayload(
+        if (be instanceof FieldPostBlockEntity fieldPost && level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            // Config sync
+            int[] status = GridScanner.computeStatus(
+                    GridScanner.scan(serverLevel, pos, fieldPost.getRadius()));
+            FieldPostConfigSyncPayload configPayload = new FieldPostConfigSyncPayload(
                     pos, fieldPost.toConfig(),
-                    fieldPost.getEffectivePatternId(), 0, 0, 0, 0
+                    fieldPost.getEffectivePatternId(),
+                    status[0], status[1], status[2], status[3]
+            );
+            // Grid snapshot
+            GridSnapshot snapshot = GridScanner.scan(serverLevel, pos, fieldPost.getRadius());
+            CropProductResolver resolver = CropProductResolver.get(serverLevel);
+            java.util.Map<String, Integer> seedCounts = GridScanner.countVillageSeeds(
+                    serverLevel, pos, fieldPost.getRadius());
+            FieldPostGridSyncPayload gridPayload = new FieldPostGridSyncPayload(
+                    pos, snapshot, resolver.getPalette(), seedCounts,
+                    status[0], status[1], status[2], status[3]
             );
             //? if neoforge {
-            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer((ServerPlayer) player, payload);
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer((ServerPlayer) player, configPayload);
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer((ServerPlayer) player, gridPayload);
             //?} else if forge {
-            /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer((ServerPlayer) player, payload);
+            /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer((ServerPlayer) player, configPayload);
+            com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer((ServerPlayer) player, gridPayload);
             *///?}
         }
         return InteractionResult.CONSUME;
