@@ -40,8 +40,35 @@ public interface FarmerCropCompat {
     /** Places the untilled rich-soil block (e.g., FD rich_soil) at pos. Returns true on success. */
     default boolean placeRichSoil(ServerLevel level, BlockPos pos) { return false; }
 
+    /**
+     * Places this mod's implementation of the given SoilType at pos. Returns true on success,
+     * false if this provider doesn't handle the given type (or its mod isn't loaded). Used as a
+     * generic extension point for mod-specific soils beyond vanilla + FD rich soil — e.g.,
+     * Farming for Blockheads fertilized farmland variants. The caller is expected to have already
+     * consumed the required {@link #soilCreationItem} from the farmer's inventory.
+     */
+    default boolean placeSoil(com.aetherianartificer.townstead.farming.cellplan.SoilType type,
+                               ServerLevel level, BlockPos pos) { return false; }
+
+    /**
+     * True if the block at pos already matches this mod's soil for the given SoilType — so the
+     * state machine can skip redundant placement (and detect regression when the block no longer
+     * matches). Defaults to false; mod-specific soils should override.
+     */
+    default boolean isExistingSoil(com.aetherianartificer.townstead.farming.cellplan.SoilType type,
+                                    ServerLevel level, BlockPos pos) { return false; }
+
     /** Legacy: same as placeRichSoilTilled. Kept for any external callers. */
     default boolean doCompatTill(ServerLevel level, BlockPos pos) { return placeRichSoilTilled(level, pos); }
+
+    /**
+     * Returns the crop-product item ID for a given seed ID, or null if this provider doesn't
+     * know about it. Called when the loot-table lookup can't resolve the product — typically for
+     * perennial crops whose blocks only drop seeds on break and yield the real product via
+     * right-click harvest (FD tomato, YH tea, Vinery grapes, etc.).
+     */
+    @Nullable
+    default net.minecraft.resources.ResourceLocation cropProductFor(net.minecraft.resources.ResourceLocation seedId) { return null; }
 
     /**
      * Item the farmer must consume to create this mod's variant of the given soil type.

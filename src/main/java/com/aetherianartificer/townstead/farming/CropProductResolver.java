@@ -191,8 +191,16 @@ public final class CropProductResolver {
                 break;
             }
 
-            // If loot table only yields seeds, try vanilla hardcoded mappings
-            // (melon stem drops melon_seeds, not melon — the fruit grows as a separate block)
+            // If loot table only yields seeds, try compat providers first — they know about
+            // perennial crops where the product comes from right-click harvest, not breaking.
+            if (product == null) {
+                ResourceLocation compatProductId = FarmerCropCompatRegistry.cropProductFor(rl);
+                if (compatProductId != null) {
+                    Item compatProduct = BuiltInRegistries.ITEM.getOptional(compatProductId).orElse(null);
+                    if (compatProduct != null && compatProduct != Items.AIR) product = compatProduct;
+                }
+            }
+            // Vanilla/pattern fallback (melon stem drops melon_seeds, not melon; etc.)
             if (product == null) {
                 product = vanillaFallback(seedItem);
             }
@@ -236,9 +244,12 @@ public final class CropProductResolver {
                 || placedBlock instanceof StemBlock
                 || placedBlock instanceof AttachedStemBlock
                 || placedBlock instanceof BushBlock) {
-            return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED);
+            // Crops accept any farmland-style soil (FFB fertilized variants still extend FarmBlock).
+            return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED,
+                    SoilType.FERTILIZED_RICH, SoilType.FERTILIZED_HEALTHY, SoilType.FERTILIZED_STABLE);
         }
-        return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED);
+        return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED,
+                SoilType.FERTILIZED_RICH, SoilType.FERTILIZED_HEALTHY, SoilType.FERTILIZED_STABLE);
     }
 
     private static Block getPlacedBlock(Item item) {

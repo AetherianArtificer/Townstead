@@ -484,6 +484,9 @@
   "townstead.field_post.soil.protected": "Protected",
   "townstead.field_post.soil.rich_soil": "Rich Soil",
   "townstead.field_post.soil.rich_soil_tilled": "Rich Soil (Tilled)",
+  "townstead.field_post.soil.fertilized_rich": "Fertilized (Yield)",
+  "townstead.field_post.soil.fertilized_healthy": "Fertilized (Growth)",
+  "townstead.field_post.soil.fertilized_stable": "Fertilized (Stable)",
   "townstead.field_post.soil.claim": "Claim",
   "townstead.field_post.filter.in_stock.tooltip": "Show only crops with seeds in village containers or villager inventories",
 

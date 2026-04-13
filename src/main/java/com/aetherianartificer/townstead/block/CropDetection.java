@@ -43,7 +43,11 @@ public final class CropDetection {
         Block placedBlock = getPlacedBlock(item);
         if (placedBlock == null) return false;
 
-        // Exclude non-crop bush subclasses: saplings (trees), flowers, tall grass
+        // Exclude non-crop bush subclasses: saplings (trees), flowers, tall grass.
+        // FlowerBlock-based "crops" (common in MCreator-generated mods) only enter the palette
+        // via explicit compat providers, because each mod's flower block has its own soil
+        // requirement — some accept farmland, some only grass/dirt — and a blanket allow would
+        // put crops in the list that the farmer could never actually plant.
         if (placedBlock instanceof SaplingBlock) return false;
         if (placedBlock instanceof FlowerBlock) return false;
         if (placedBlock instanceof TallGrassBlock) return false;

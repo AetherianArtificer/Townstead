@@ -84,7 +84,7 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
 
     public static class ToolEntry extends ObjectSelectionList.Entry<ToolEntry> {
         public final String toolId;
-        public final String label;
+        public String label;
         public final ItemStack icon;
         @Nullable public final ResourceLocation customIcon; // custom texture instead of item icon
         public final boolean isHeader;

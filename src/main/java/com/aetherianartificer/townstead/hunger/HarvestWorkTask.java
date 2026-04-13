@@ -898,6 +898,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             // Till to farmland first, then upgrade to rich_soil_farmland.
             placed = level.setBlock(soilPos, Blocks.FARMLAND.defaultBlockState(), 3);
             if (placed) com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.placeRichSoilTilled(level, soilPos);
+        } else if (desired == com.aetherianartificer.townstead.farming.cellplan.SoilType.FERTILIZED_RICH
+                || desired == com.aetherianartificer.townstead.farming.cellplan.SoilType.FERTILIZED_HEALTHY
+                || desired == com.aetherianartificer.townstead.farming.cellplan.SoilType.FERTILIZED_STABLE) {
+            // Till to vanilla farmland first (if not already), then apply the fertilizer variant via compat.
+            BlockState current = level.getBlockState(soilPos);
+            if (!(current.getBlock() instanceof FarmBlock)) {
+                level.setBlock(soilPos, Blocks.FARMLAND.defaultBlockState(), 3);
+            }
+            placed = com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.placeSoil(desired, level, soilPos);
         } else {
             placed = level.setBlock(soilPos, Blocks.FARMLAND.defaultBlockState(), 3);
         }

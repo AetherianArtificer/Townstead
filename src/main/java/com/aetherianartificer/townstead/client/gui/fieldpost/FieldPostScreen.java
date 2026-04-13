@@ -265,9 +265,39 @@ public class FieldPostScreen extends Screen {
                 cropProduct = seedToCropIcon(seedItem);
             }
 
+            // Skip auto-registered BlockItems that have no proper translation — these are usually
+            // the crop block's own item form (e.g., peruviansdelight:kiones) that some mods register
+            // alongside the real seed item, which would otherwise show up as "block.modid.xyz" text.
+            ItemStack seedStack = new ItemStack(seedItem);
+            String seedDisplay = seedStack.getHoverName().getString();
+            if (looksLikeUntranslatedKey(seedDisplay, rl)) continue;
+
             String name = cropProduct.getHoverName().getString();
             String category = categoryFor(rl.getNamespace());
             allSeedEntries.add(new ToolPaletteList.ToolEntry(seedId, name, cropProduct, category));
+        }
+
+        // Disambiguate entries that share the same category+label (e.g., Fungi Delight's mushroom
+        // block + mushroom_colony block both resolve to the same crop product, and are distinct
+        // plantable forms we don't want to collapse). Relabel each collision with its seed's own
+        // display name so the player can tell them apart.
+        java.util.Map<String, java.util.List<ToolPaletteList.ToolEntry>> byKey = new java.util.HashMap<>();
+        for (ToolPaletteList.ToolEntry e : allSeedEntries) {
+            byKey.computeIfAbsent(e.categoryKey + "|" + e.label, k -> new java.util.ArrayList<>()).add(e);
+        }
+        for (java.util.List<ToolPaletteList.ToolEntry> group : byKey.values()) {
+            if (group.size() < 2) continue;
+            for (ToolPaletteList.ToolEntry e : group) {
+                //? if >=1.21 {
+                ResourceLocation id = ResourceLocation.parse(e.toolId);
+                //?} else {
+                /*ResourceLocation id = new ResourceLocation(e.toolId);
+                *///?}
+                Item seedItem = BuiltInRegistries.ITEM.get(id);
+                if (seedItem != Items.AIR) {
+                    e.label = new ItemStack(seedItem).getHoverName().getString();
+                }
+            }
         }
 
         // ── Soil tab entries ──
@@ -298,10 +328,41 @@ public class FieldPostScreen extends Screen {
                         new ItemStack(richSoilTilledItem), categoryFor("farmersdelight")));
             }
         }
+        // Fertilized farmland variants — exposed only when at least one compat provider can create
+        // the corresponding soil type. Graceful degradation: no FFB/etc. loaded, the options just
+        // don't show up, and any existing plan cells painted with these types simply stay unworked.
+        maybeAddFertilizedSoilEntry(SoilType.FERTILIZED_RICH, "townstead.field_post.soil.fertilized_rich");
+        maybeAddFertilizedSoilEntry(SoilType.FERTILIZED_HEALTHY, "townstead.field_post.soil.fertilized_healthy");
+        maybeAddFertilizedSoilEntry(SoilType.FERTILIZED_STABLE, "townstead.field_post.soil.fertilized_stable");
+    }
+
+    private void maybeAddFertilizedSoilEntry(SoilType type, String translationKey) {
+        if (!com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.canAnyProviderPlaceSoil(type)) return;
+        // Use the fertilizer item itself as the icon — that's what the player will recognize.
+        net.minecraft.world.item.Item fertilizer =
+                com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.soilCreationItem(type);
+        if (fertilizer == null) return;
+        ItemStack icon = new ItemStack(fertilizer);
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(fertilizer);
+        String category = key != null ? categoryFor(key.getNamespace()) : CAT_TOOLS;
+        allSoilEntries.add(new ToolPaletteList.ToolEntry(type.name(),
+                Component.translatable(translationKey).getString(), icon, category));
     }
 
     private List<ToolPaletteList.ToolEntry> activeEntries() {
         return activeTab == PaletteTab.SEEDS ? allSeedEntries : allSoilEntries;
+    }
+
+    /**
+     * Best-effort detection that an item's hover name is really just its translation key — which
+     * happens when a mod registers a BlockItem for a crop block but forgets to provide a lang entry.
+     * We don't want those in the palette because they show up as literal "block.modid.foo" strings.
+     */
+    private boolean looksLikeUntranslatedKey(String display, ResourceLocation itemId) {
+        if (display == null || display.isEmpty()) return true;
+        if (display.startsWith("block.") || display.startsWith("item.")) return true;
+        // Fallback heuristic: contains the namespace followed by a dot (e.g. "peruviansdelight.kiones").
+        return display.contains(itemId.getNamespace() + ".");
     }
 
     private String categoryFor(String namespace) {
@@ -562,12 +623,27 @@ public class FieldPostScreen extends Screen {
     private boolean isSoilPlanFulfilled(BlockState state, SoilType desired) {
         if (desired == null) return true;
         return switch (desired) {
-            case FARMLAND -> state.getBlock() instanceof FarmBlock && !isCompatRichSoil(state);
+            case FARMLAND -> state.getBlock() instanceof FarmBlock && !isCompatRichSoil(state) && !isFertilizedFarmland(state);
             case RICH_SOIL_TILLED -> state.getBlock() instanceof FarmBlock && isCompatRichSoil(state);
             case RICH_SOIL -> !(state.getBlock() instanceof FarmBlock) && isCompatRichSoil(state);
+            case FERTILIZED_RICH -> isFertilizedVariant(state, "fertilized_farmland_rich");
+            case FERTILIZED_HEALTHY -> isFertilizedVariant(state, "fertilized_farmland_healthy");
+            case FERTILIZED_STABLE -> isFertilizedVariant(state, "fertilized_farmland_stable");
             case WATER -> state.getFluidState().is(Fluids.WATER);
             case NONE, PROTECTED, CLAIM -> false;
         };
+    }
+
+    private boolean isFertilizedFarmland(BlockState state) {
+        ResourceLocation key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        return key != null && "farmingforblockheads".equals(key.getNamespace())
+                && key.getPath().startsWith("fertilized_farmland_");
+    }
+
+    private boolean isFertilizedVariant(BlockState state, String blockPath) {
+        ResourceLocation key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        return key != null && "farmingforblockheads".equals(key.getNamespace())
+                && key.getPath().startsWith(blockPath);
     }
 
     private boolean isCompatRichSoil(BlockState state) {
@@ -985,6 +1061,7 @@ public class FieldPostScreen extends Screen {
                         case FARMLAND -> "minecraft:block/farmland";
                         case RICH_SOIL -> "minecraft:block/dirt"; // untilled variant looks like dark dirt
                         case RICH_SOIL_TILLED -> "minecraft:block/farmland_moist";
+                        case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE -> "minecraft:block/farmland_moist";
                         case WATER -> "minecraft:block/water_still";
                         case NONE -> null;
                         case PROTECTED -> null;
@@ -1003,6 +1080,9 @@ public class FieldPostScreen extends Screen {
                         case FARMLAND -> 0xFF8B6914;
                         case RICH_SOIL -> 0xFF3B2008;
                         case RICH_SOIL_TILLED -> 0xFF4A2D0A;
+                        case FERTILIZED_RICH -> 0xFF4CAF50;     // green border (matches green fertilizer)
+                        case FERTILIZED_HEALTHY -> 0xFFE53935;  // red border (matches red fertilizer)
+                        case FERTILIZED_STABLE -> 0xFFFFB300;   // amber border (matches yellow fertilizer)
                         case WATER -> 0xFF3366CC;
                         case NONE -> 0xFF666666;
                         case PROTECTED -> 0xFFFF4444;

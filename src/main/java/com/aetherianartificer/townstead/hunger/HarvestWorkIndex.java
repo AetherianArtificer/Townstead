@@ -206,7 +206,7 @@ public final class HarvestWorkIndex {
 
             // 2. TILL — current soil doesn't match what the plan wants, and the current block can be turned into the target.
             // Accepts dirt-types or plain farmland (farmland gets upgraded to rich_soil_farmland if RICH_SOIL_TILLED).
-            boolean currentMatchesDesired = soilMatchesDesired(soilState, soilIsFarmland, soilIsCompat, cell.desiredSoil());
+            boolean currentMatchesDesired = soilMatchesDesired(level, soilPos, soilState, soilIsFarmland, soilIsCompat, cell.desiredSoil());
             boolean currentIsReshapeable = isTillableDirt(soilState) || soilIsFarmland || soilIsCompat;
             if (!currentMatchesDesired && currentIsReshapeable && canClearTillObstruction(cropState)) {
                 tillTargets.add(soilPos.immutable());
@@ -257,13 +257,21 @@ public final class HarvestWorkIndex {
      * True if the current block already satisfies the cell's desired soil type.
      * Lets the state machine skip redundant tilling.
      */
-    private static boolean soilMatchesDesired(BlockState soilState, boolean soilIsFarmland, boolean soilIsCompat, SoilType desired) {
+    private static boolean soilMatchesDesired(ServerLevel level, BlockPos pos, BlockState soilState,
+                                               boolean soilIsFarmland, boolean soilIsCompat, SoilType desired) {
         return switch (desired) {
-            case FARMLAND -> soilIsFarmland;
+            case FARMLAND -> soilIsFarmland
+                    // Any FFB fertilized variant is "more than farmland" — don't treat those as matching plain FARMLAND.
+                    && !FarmerCropCompatRegistry.isExistingSoil(SoilType.FERTILIZED_RICH, level, pos)
+                    && !FarmerCropCompatRegistry.isExistingSoil(SoilType.FERTILIZED_HEALTHY, level, pos)
+                    && !FarmerCropCompatRegistry.isExistingSoil(SoilType.FERTILIZED_STABLE, level, pos);
             // Tilled rich soil = compat AND farmland (FD rich_soil_farmland is a FarmBlock subclass).
             case RICH_SOIL_TILLED -> soilIsFarmland && soilIsCompat;
             // Untilled rich soil = compat AND NOT farmland (FD rich_soil is a dirt-type, not FarmBlock).
             case RICH_SOIL -> soilIsCompat && !soilIsFarmland;
+            // Fertilized variants — delegate to the provider (direct block identity check).
+            case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE ->
+                    FarmerCropCompatRegistry.isExistingSoil(desired, level, pos);
             default -> false;
         };
     }
