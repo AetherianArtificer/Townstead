@@ -156,6 +156,25 @@ public final class FarmersDelightCropCompat implements FarmerCropCompat {
         return placeFromId(level, pos, "rich_soil");
     }
 
+    @Override
+    public net.minecraft.world.item.Item soilCreationItem(com.aetherianartificer.townstead.farming.cellplan.SoilType type) {
+        // FD rich soil (both untilled and tilled) is created by applying organic_compost to dirt.
+        // The tilled variant then just needs a hoe — which the farmer already carries — so only the
+        // compost is an additional consumable.
+        if (type != com.aetherianartificer.townstead.farming.cellplan.SoilType.RICH_SOIL
+                && type != com.aetherianartificer.townstead.farming.cellplan.SoilType.RICH_SOIL_TILLED) {
+            return null;
+        }
+        if (!ModCompat.isLoaded(MOD_ID)) return null;
+        //? if >=1.21 {
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(MOD_ID, "organic_compost");
+        //?} else {
+        /*ResourceLocation id = new ResourceLocation(MOD_ID, "organic_compost");
+        *///?}
+        net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.getOptional(id).orElse(null);
+        return item == net.minecraft.world.item.Items.AIR ? null : item;
+    }
+
     private static boolean placeFromId(ServerLevel level, BlockPos pos, String path) {
         if (!ModCompat.isLoaded(MOD_ID)) return false;
         //? if >=1.21 {

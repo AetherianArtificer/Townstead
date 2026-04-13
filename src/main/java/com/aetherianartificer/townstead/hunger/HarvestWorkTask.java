@@ -697,10 +697,21 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private boolean townstead$isHarvestTargetValid(ServerLevel level, BlockPos pos, BlockState state) {
         if (!townstead$isInsideFarmRadius(pos)) return false;
         if (state.getBlock() instanceof CropBlock crop) {
-            return townstead$isPlannedCropPos(pos) && crop.isMaxAge(state);
+            // Allow the candidate to be up to 2 blocks above planned soil — catches FD tomato vines.
+            return townstead$hasPlannedSoilBelow(pos, 2) && crop.isMaxAge(state);
+        }
+        if (FarmerCropCompatRegistry.shouldPartialHarvest(state)) {
+            return townstead$hasPlannedSoilBelow(pos, 2);
         }
         if (state.is(Blocks.MELON) || state.is(Blocks.PUMPKIN)) {
             return townstead$isPlannedOrAdjacentSoil(pos.below()) && townstead$hasAdjacentStem(level, pos);
+        }
+        return false;
+    }
+
+    private boolean townstead$hasPlannedSoilBelow(BlockPos pos, int maxDepth) {
+        for (int dy = 1; dy <= maxDepth; dy++) {
+            if (townstead$isPlannedSoil(pos.below(dy))) return true;
         }
         return false;
     }
@@ -736,8 +747,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private Iterable<BlockPos> townstead$harvestCandidatesNear(ServerLevel level, BlockPos cropPos) {
-        java.util.ArrayList<BlockPos> candidates = new java.util.ArrayList<>(5);
+        java.util.ArrayList<BlockPos> candidates = new java.util.ArrayList<>(6);
         candidates.add(cropPos);
+        // Stacked perennials: FD tomato vine sits one above the budding base; YH tea is double-tall.
+        candidates.add(cropPos.above());
         BlockState state = level.getBlockState(cropPos);
         if (state.getBlock() instanceof StemBlock || state.getBlock() instanceof AttachedStemBlock) {
             for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {
@@ -863,11 +876,24 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         boolean needsHoe = desired != com.aetherianartificer.townstead.farming.cellplan.SoilType.RICH_SOIL;
         if (needsHoe && !townstead$hasHoe(villager.getInventory())) return;
 
+        // Mod soils may require a consumable (e.g., FD rich soil needs organic_compost). Look up
+        // the required item for this soil type; if present, check inventory and mark for consumption.
+        net.minecraft.world.item.Item costItem =
+                com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.soilCreationItem(desired);
+        int costSlot = -1;
+        if (costItem != null) {
+            costSlot = townstead$findItemSlot(villager.getInventory(), costItem);
+            if (costSlot < 0) {
+                townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_TOOL);
+                return;
+            }
+        }
+
         boolean placed;
         if (desired == com.aetherianartificer.townstead.farming.cellplan.SoilType.RICH_SOIL) {
-            // Place untilled rich soil block via compat. If FD isn't loaded, fall back to dirt.
-            placed = com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.placeRichSoil(level, soilPos)
-                    || level.setBlock(soilPos, Blocks.DIRT.defaultBlockState(), 3);
+            // Place untilled rich soil via compat. Failure leaves the cell untouched (don't fall
+            // back to dirt — that would wastefully consume compost without producing rich soil).
+            placed = com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.placeRichSoil(level, soilPos);
         } else if (desired == com.aetherianartificer.townstead.farming.cellplan.SoilType.RICH_SOIL_TILLED) {
             // Till to farmland first, then upgrade to rich_soil_farmland.
             placed = level.setBlock(soilPos, Blocks.FARMLAND.defaultBlockState(), 3);
@@ -877,6 +903,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         }
 
         if (placed) {
+            if (costSlot >= 0) villager.getInventory().getItem(costSlot).shrink(1);
             villager.swing(villager.getDominantHand());
             townstead$markWorked(soilPos, gameTime);
             HarvestWorkIndex.invalidate(level, soilPos);
@@ -1157,9 +1184,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (state.isAir()) return true;
         // Protect existing crops — don't destroy them just to till the dirt below.
         if (state.getBlock() instanceof CropBlock || state.getBlock() instanceof StemBlock) return false;
-        // Leaves and other vegetation from nearby trees can sit above a farm plot. Clear them so
-        // the farmer isn't blocked by a canopy one block up.
+        // Trees sitting on a planned cell: leaves and logs are fair game — the player chose this
+        // spot as farm soil, so the tree loses.
         if (state.getBlock() instanceof net.minecraft.world.level.block.LeavesBlock) return true;
+        if (state.is(net.minecraft.tags.BlockTags.LOGS)) return true;
         return townstead$isRemovableWeed(state);
     }
 
@@ -1233,6 +1261,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return best;
     }
 
+    private int townstead$findItemSlot(SimpleContainer inv, net.minecraft.world.item.Item item) {
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack s = inv.getItem(i);
+            if (!s.isEmpty() && s.getItem() == item) return i;
+        }
+        return -1;
+    }
+
     private int townstead$countSpecificSeed(SimpleContainer inv, String seedId) {
         int count = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
@@ -1278,6 +1314,20 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                 if (townstead$countSpecificSeed(inv, seedId) > 0) continue;
                 NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
                         s -> townstead$matchesSeedId(s, seedId), ItemStack::getCount, farmAnchor);
+            }
+
+            // Soil creation items (e.g., FD organic_compost for rich soil). Pull one of each required
+            // soil-cost item if the inventory is empty of it.
+            java.util.Set<net.minecraft.world.item.Item> requiredSoilItems = new java.util.HashSet<>();
+            for (PlannedCell cell : farmBlueprint.cells()) {
+                net.minecraft.world.item.Item item = com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry
+                        .soilCreationItem(cell.desiredSoil());
+                if (item != null) requiredSoilItems.add(item);
+            }
+            for (net.minecraft.world.item.Item item : requiredSoilItems) {
+                if (townstead$findItemSlot(inv, item) >= 0) continue;
+                NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
+                        s -> !s.isEmpty() && s.getItem() == item, ItemStack::getCount, farmAnchor);
             }
         }
         if (!townstead$hasHarvestTool(inv)) {

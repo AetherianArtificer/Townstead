@@ -10,7 +10,8 @@ import java.util.List;
 
 public final class FarmerCropCompatRegistry {
     private static final List<FarmerCropCompat> PROVIDERS = List.of(
-            new FarmersDelightCropCompat()
+            new FarmersDelightCropCompat(),
+            new YoukaiHomecomingCropCompat()
     );
 
     private FarmerCropCompatRegistry() {}
@@ -100,6 +101,15 @@ public final class FarmerCropCompatRegistry {
 
     public static boolean doCompatTill(ServerLevel level, BlockPos pos) {
         return placeRichSoilTilled(level, pos);
+    }
+
+    public static net.minecraft.world.item.Item soilCreationItem(com.aetherianartificer.townstead.farming.cellplan.SoilType type) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            net.minecraft.world.item.Item item = provider.soilCreationItem(type);
+            if (item != null) return item;
+        }
+        return null;
     }
 
     public static String patternHintForSeed(ItemStack stack) {

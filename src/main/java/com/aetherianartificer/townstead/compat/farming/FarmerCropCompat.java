@@ -1,9 +1,12 @@
 package com.aetherianartificer.townstead.compat.farming;
 
+import com.aetherianartificer.townstead.farming.cellplan.SoilType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -39,4 +42,13 @@ public interface FarmerCropCompat {
 
     /** Legacy: same as placeRichSoilTilled. Kept for any external callers. */
     default boolean doCompatTill(ServerLevel level, BlockPos pos) { return placeRichSoilTilled(level, pos); }
+
+    /**
+     * Item the farmer must consume to create this mod's variant of the given soil type.
+     * Returning null means the soil requires no consumable item beyond tools (e.g., vanilla farmland
+     * only needs a hoe, which is already in the farmer's restock list). If an item is returned, the
+     * farmer will restock it from nearby chests and shrink one stack when creating the soil.
+     */
+    @Nullable
+    default Item soilCreationItem(SoilType type) { return null; }
 }

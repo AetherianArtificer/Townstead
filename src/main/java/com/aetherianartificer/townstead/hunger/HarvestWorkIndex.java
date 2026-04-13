@@ -290,8 +290,12 @@ public final class HarvestWorkIndex {
     }
 
     private static Iterable<BlockPos> harvestCandidatesNear(ServerLevel level, BlockPos cropPos) {
-        ArrayList<BlockPos> candidates = new ArrayList<>(5);
+        ArrayList<BlockPos> candidates = new ArrayList<>(6);
         candidates.add(cropPos);
+        // Stacked crops: FD tomatoes grow a TomatoVineBlock (CropBlock) one block above the
+        // BuddingTomatoBlock base. YH tea is a DoubleCropBlock with an upper half. Without scanning
+        // up, the fruiting/perennial part is invisible to the farmer.
+        candidates.add(cropPos.above());
         BlockState state = level.getBlockState(cropPos);
         if (state.getBlock() instanceof StemBlock || state.getBlock() instanceof AttachedStemBlock) {
             for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {
@@ -304,16 +308,26 @@ public final class HarvestWorkIndex {
     private static boolean isHarvestTargetValid(ServerLevel level, BlockPos pos, BlockState state, FarmBlueprint blueprint) {
         if (blueprint.isProtected(pos)) return false;
         if (state.getBlock() instanceof CropBlock crop) {
-            if (!blueprint.containsSoil(pos.below())) return false;
+            // Walk down up to 2 blocks to find a planned soil — catches stacked crops like FD tomato
+            // vines that sit one block above the budding base (which itself sits above the soil).
+            if (findPlannedSoilBelow(blueprint, pos, 2) == null) return false;
             return crop.isMaxAge(state);
         }
         if (FarmerCropCompatRegistry.shouldPartialHarvest(state)) {
-            return blueprint.containsSoil(pos.below());
+            return findPlannedSoilBelow(blueprint, pos, 2) != null;
         }
         if (state.is(Blocks.MELON) || state.is(Blocks.PUMPKIN)) {
             return isPlannedOrAdjacentSoil(blueprint, pos.below()) && hasAdjacentStem(level, pos);
         }
         return false;
+    }
+
+    private static BlockPos findPlannedSoilBelow(FarmBlueprint blueprint, BlockPos pos, int maxDepth) {
+        for (int dy = 1; dy <= maxDepth; dy++) {
+            BlockPos candidate = pos.below(dy);
+            if (blueprint.containsSoil(candidate)) return candidate;
+        }
+        return null;
     }
 
     private static boolean hasAdjacentStem(ServerLevel level, BlockPos fruitPos) {
@@ -339,6 +353,8 @@ public final class HarvestWorkIndex {
     private static boolean canClearTillObstruction(BlockState state) {
         if (state.isAir()) return true;
         if (state.getBlock() instanceof CropBlock || state.getBlock() instanceof StemBlock) return false;
+        if (state.getBlock() instanceof net.minecraft.world.level.block.LeavesBlock) return true;
+        if (state.is(net.minecraft.tags.BlockTags.LOGS)) return true;
         return isRemovableWeed(state);
     }
 

@@ -272,7 +272,7 @@ public final class CropProductResolver {
             else if (baseName.endsWith("_seed")) baseName = baseName.substring(0, baseName.length() - 5);
             else return null;
             // Try various product names
-            for (String suffix : new String[]{"", "_beans", "_fruit", "_berry", "_berries"}) {
+            for (String suffix : new String[]{"", "_beans", "_fruit", "_berry", "_berries", "_leaves", "_leaf"}) {
                 //? if >=1.21 {
                 ResourceLocation productId = ResourceLocation.fromNamespaceAndPath(ns, baseName + suffix);
                 //?} else {

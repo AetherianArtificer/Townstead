@@ -86,6 +86,30 @@ public final class ResolvedCellPlan implements CellPlanView {
     private static final int Y_SCAN_RANGE = 16;
 
     /**
+     * True if the block is a legitimate "farming ground" block — either already farmland/dirt/grass
+     * types, or a vanilla-tillable natural surface. This is independent of what's stacked above,
+     * so trees, tall grass, crops, or any other overlying block don't disqualify the ground beneath.
+     */
+    private static boolean isNaturalGround(BlockState state) {
+        if (state.getBlock() instanceof FarmBlock) return true;
+        return state.is(net.minecraft.tags.BlockTags.DIRT)
+                || state.is(net.minecraft.world.level.block.Blocks.FARMLAND)
+                || state.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
+                || state.is(net.minecraft.world.level.block.Blocks.DIRT)
+                || state.is(net.minecraft.world.level.block.Blocks.COARSE_DIRT)
+                || state.is(net.minecraft.world.level.block.Blocks.ROOTED_DIRT)
+                || state.is(net.minecraft.world.level.block.Blocks.PODZOL)
+                || state.is(net.minecraft.world.level.block.Blocks.MYCELIUM)
+                || state.is(net.minecraft.world.level.block.Blocks.DIRT_PATH)
+                || state.is(net.minecraft.world.level.block.Blocks.MUD)
+                || state.is(net.minecraft.world.level.block.Blocks.SAND)
+                || state.is(net.minecraft.world.level.block.Blocks.RED_SAND)
+                || state.is(net.minecraft.world.level.block.Blocks.CLAY)
+                || state.is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
+                || state.is(net.minecraft.world.level.block.Blocks.SOUL_SOIL);
+    }
+
+    /**
      * For an XZ offset relative to the post, finds the crop position (one above the ground surface).
      * Uses the same 3-pass scan as GridScanner: farmland first, then solid ground, then water.
      */
@@ -125,30 +149,16 @@ public final class ResolvedCellPlan implements CellPlanView {
         }
         if (bestFarm != null) return bestFarm.above();
 
-        // Pass 2: real ground surface — a solid block whose neighbor above is air or a plant we can clear.
-        // Then pick the one closest in Y to the post, so we don't latch onto a stray stone block higher up.
+        // Pass 2: real farming ground — a block that is *itself* a valid farming surface (dirt,
+        // grass, farmland, sand, etc.), independent of what's stacked above. This naturally accepts
+        // dirt under a tree (the farmer can clear the tree first) and rejects stray stone blocks
+        // or walls/fences, without needing above-block checks. Pick the one closest in Y to the post.
         BlockPos bestGround = null;
         int bestGroundDist = Integer.MAX_VALUE;
         for (int dy = -Y_SCAN_RANGE; dy <= Y_SCAN_RANGE; dy++) {
             BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
             BlockState state = level.getBlockState(candidate);
-            if (state.isAir()) continue;
-            if (state.getBlock() instanceof CropBlock) continue;
-            if (state.getBlock() instanceof BushBlock) continue;
-            if (state.getBlock() instanceof LeavesBlock) continue;
-            if (state.is(BlockTags.LOGS)) continue;
-            if (state.is(BlockTags.FENCES)) continue;
-            if (state.is(BlockTags.WALLS)) continue;
-            if (state.is(BlockTags.SIGNS)) continue;
-            if (state.getFluidState().is(Fluids.WATER) || state.getFluidState().is(Fluids.LAVA)) continue;
-            // Must be a real surface — the block above must be air or clearable plant matter,
-            // not another solid block (which would mean we're inside a structure/cave wall/etc.).
-            BlockState above = level.getBlockState(candidate.above());
-            if (!above.isAir()
-                    && !(above.getBlock() instanceof CropBlock)
-                    && !(above.getBlock() instanceof BushBlock)
-                    && !(above.getBlock() instanceof LeavesBlock)
-                    && !above.getFluidState().is(Fluids.WATER)) continue;
+            if (!isNaturalGround(state)) continue;
             int dist = Math.abs(dy);
             if (dist < bestGroundDist) { bestGroundDist = dist; bestGround = candidate; }
         }

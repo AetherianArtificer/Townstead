@@ -305,17 +305,39 @@ public class FieldPostScreen extends Screen {
     }
 
     private String categoryFor(String namespace) {
+        if ("minecraft".equals(namespace)) return CAT_VANILLA;
+        // Pull the display name straight from the mod's own metadata — same source JEI/REI use.
+        // Namespaces that span multiple mods (HarvestCraft's pamhc2crops + pamhc2trees, etc.)
+        // keep manual overrides so both halves land in the same category.
+        String manual = manualCategoryOverride(namespace);
+        if (manual != null) return manual;
+        String display = lookupModDisplayName(namespace);
+        return display != null ? display : titleCase(namespace);
+    }
+
+    private String manualCategoryOverride(String namespace) {
         return switch (namespace) {
-            case "minecraft" -> CAT_VANILLA;
-            case "farmersdelight" -> "Farmer's Delight";
-            case "croptopia" -> "Croptopia";
             case "pamhc2crops", "pamhc2trees" -> "HarvestCraft";
-            case "twilightforest" -> "Twilight Forest";
-            case "byg" -> "Oh The Biomes You'll Go";
-            case "biomesoplenty" -> "Biomes O' Plenty";
-            case "rusticdelight" -> "Rustic Delight";
-            default -> titleCase(namespace);
+            default -> null;
         };
+    }
+
+    private String lookupModDisplayName(String namespace) {
+        try {
+            //? if >=1.21 {
+            return net.neoforged.fml.ModList.get()
+                    .getModContainerById(namespace)
+                    .map(c -> c.getModInfo().getDisplayName())
+                    .orElse(null);
+            //?} else {
+            /*return net.minecraftforge.fml.ModList.get()
+                    .getModContainerById(namespace)
+                    .map(c -> c.getModInfo().getDisplayName())
+                    .orElse(null);
+            *///?}
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     private String titleCase(String s) {
@@ -632,6 +654,8 @@ public class FieldPostScreen extends Screen {
                     baseName + "_fruit",     // X_seeds → X_fruit
                     baseName + "_berry",     // X_seeds → X_berry
                     baseName + "_berries",   // X_seeds → X_berries
+                    baseName + "_leaves",    // tea_seeds → tea_leaves
+                    baseName + "_leaf",      // tea_seeds → tea_leaf
             };
             for (String candidate : candidates) {
                 //? if >=1.21 {
