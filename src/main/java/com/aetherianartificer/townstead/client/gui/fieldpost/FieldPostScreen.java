@@ -83,6 +83,7 @@ public class FieldPostScreen extends Screen {
     private static final byte CELL_POST = 1;
     private static final byte CELL_CROP_MATURE = 2;
     private static final byte CELL_AIR = 3;
+    private static final byte CELL_HIDDEN = 4; // cell occluded from the post's line of sight
 
     // ── Palette tabs ──
     private enum PaletteTab { SEEDS, SOIL }
@@ -585,6 +586,20 @@ public class FieldPostScreen extends Screen {
                     continue;
                 }
 
+                // Visibility check — mirror the server rule: visible if within a small Y window
+                // of the post (same floor / terrace), OR at the world surface for its column.
+                // Keeps caves, sealed rooms, and ore veins hidden from the planner.
+                boolean nearPostLevel = Math.abs(groundPos.getY() - baseY) <= 6;
+                if (!nearPostLevel) {
+                    int surfaceY = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, wx, wz) - 1;
+                    if (groundPos.getY() < surfaceY - 1) {
+                        cellFlags[gz][gx] = CELL_HIDDEN;
+                        renderStates[gz][gx] = null;
+                        renderPositions[gz][gx] = groundPos;
+                        continue;
+                    }
+                }
+
                 // Check one block above the ground for crops/water/plants
                 BlockPos abovePos = groundPos.above();
                 BlockState aboveState = level.getBlockState(abovePos);
@@ -1001,6 +1016,17 @@ public class FieldPostScreen extends Screen {
                 BlockState state = renderStates[gz][gx];
                 BlockPos worldPos = renderPositions[gz][gx];
                 byte flag = cellFlags[gz][gx];
+
+                // Hidden cells (underground / behind walls) get a neutral opaque fill with a subtle
+                // question-mark so players can't use the planner to peek at ores or caves.
+                if (flag == CELL_HIDDEN) {
+                    g.fill(cx, cy, cx + cs, cy + cs, 0xFF141414);
+                    // Diagonal hatching to make "unknown" visually obvious.
+                    for (int h = 0; h < cs; h += 4) {
+                        g.fill(cx + h, cy, cx + h + 1, cy + cs, 0x20FFFFFF);
+                    }
+                    continue;
+                }
 
                 // Base color under the sprite for fallback
                 g.fill(cx, cy, cx + cs, cy + cs, 0xFF1E1E1E);
@@ -1673,6 +1699,7 @@ public class FieldPostScreen extends Screen {
         int gz = startGZ + vy;
         if (gx < 0 || gz < 0 || gx >= gridSize || gz >= gridSize) return null;
         if (cellFlags[gz][gx] == CELL_POST) return null;
+        if (cellFlags[gz][gx] == CELL_HIDDEN) return null;
         return new int[]{gx, gz};
     }
 
@@ -1876,12 +1903,16 @@ public class FieldPostScreen extends Screen {
                     state = state.setValue(FarmBlock.MOISTURE, moisture);
                 }
 
-                renderStates[gz][gx] = (flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_AIR) != 0 ? null : state;
+                boolean hidden = (flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_HIDDEN) != 0;
+                renderStates[gz][gx] = (hidden
+                        || (flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_AIR) != 0) ? null : state;
                 renderPositions[gz][gx] = new BlockPos(postPos.getX() + (gx - half), postPos.getY() - 1, postPos.getZ() + (gz - half));
 
                 // Cell flags
                 if ((flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_POST) != 0) {
                     cellFlags[gz][gx] = CELL_POST;
+                } else if (hidden) {
+                    cellFlags[gz][gx] = CELL_HIDDEN;
                 } else if ((flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_AIR) != 0) {
                     cellFlags[gz][gx] = CELL_AIR;
                 } else if ((flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_MATURE) != 0) {

@@ -122,6 +122,14 @@ public final class GridScanner {
                     continue;
                 }
 
+                // Hide cells that are buried under terrain — the planner shouldn't x-ray caves or
+                // ore veins. A cell counts as visible if it's close in Y to the post (same floor
+                // or a nearby terrace) OR is at the world surface for its column.
+                if (!isVisibleFromPost(level, postPos, groundPos)) {
+                    flags[idx] = GridSnapshot.FLAG_HIDDEN;
+                    continue;
+                }
+
                 // Check one block above ground for crops/water
                 BlockPos abovePos = groundPos.above();
                 BlockState aboveState = level.getBlockState(abovePos);
@@ -172,6 +180,19 @@ public final class GridScanner {
         }
 
         return new GridSnapshot(gridSize, flags, groundBlockIds, cropItemIds, cropAges, cropMaxAges);
+    }
+
+    /** Y distance from the post above/below which a cell needs the world-surface check. */
+    private static final int VISIBILITY_Y_TOLERANCE = 6;
+
+    // Visible if within VISIBILITY_Y_TOLERANCE Y of the post (same floor/terrace, works for
+    // caves, skybridges, basements) OR at the world surface for its column. Cells failing both —
+    // ore veins and cave systems unrelated to the post's level — are hidden.
+    private static boolean isVisibleFromPost(ServerLevel level, BlockPos postPos, BlockPos groundPos) {
+        if (Math.abs(groundPos.getY() - postPos.getY()) <= VISIBILITY_Y_TOLERANCE) return true;
+        int surfaceY = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
+                groundPos.getX(), groundPos.getZ()) - 1;
+        return groundPos.getY() >= surfaceY - 1;
     }
 
     /**

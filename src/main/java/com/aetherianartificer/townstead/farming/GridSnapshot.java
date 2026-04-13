@@ -23,6 +23,7 @@ public record GridSnapshot(
     public static final byte FLAG_HAS_CROP  = 0x10;
     public static final byte FLAG_MATURE    = 0x20;
     public static final byte FLAG_POST      = 0x40;
+    public static final byte FLAG_HIDDEN    = (byte) 0x80; // occluded from the post's line of sight — render as "unknown"
 
     public int cellCount() { return gridSize * gridSize; }
 
