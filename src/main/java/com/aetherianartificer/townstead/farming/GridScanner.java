@@ -74,23 +74,33 @@ public final class GridScanner {
                     }
                 }
 
-                // Pass 2: any solid ground (skip trees, crops, fluids)
+                // Pass 2: show the actual top of the column so trees, walls, and other features are
+                // visible in the planner — the player can then paint PROTECTED or just not paint
+                // around them. Scan upward from baseY and take the last non-air block before the
+                // first air gap. Widely ranged so tall trees don't get cut off.
                 if (groundPos == null) {
-                    for (int dy = 3; dy >= -3; dy--) {
+                    int scanRange = 16;
+                    BlockPos lastSolid = null;
+                    for (int dy = 0; dy <= scanRange; dy++) {
                         BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
                         BlockState state = level.getBlockState(candidate);
-                        if (state.isAir()) continue;
-                        if (state.getBlock() instanceof CropBlock) continue;
-                        if (state.getBlock() instanceof BushBlock) continue;
-                        if (state.getBlock() instanceof LeavesBlock) continue;
-                        if (state.is(BlockTags.LOGS)) continue;
-                        if (state.is(BlockTags.FENCES)) continue;
-                        if (state.is(BlockTags.WALLS)) continue;
-                        if (state.is(BlockTags.SIGNS)) continue;
-                        if (state.getFluidState().is(Fluids.WATER) || state.getFluidState().is(Fluids.LAVA)) continue;
-                        groundPos = candidate;
-                        groundState = state;
-                        break;
+                        if (state.isAir()) break;
+                        lastSolid = candidate;
+                    }
+                    if (lastSolid != null) {
+                        groundPos = lastSolid;
+                        groundState = level.getBlockState(lastSolid);
+                    } else {
+                        // Column at baseY is air — post is floating above terrain. Scan down for ground.
+                        for (int dy = -1; dy >= -scanRange; dy--) {
+                            BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
+                            BlockState state = level.getBlockState(candidate);
+                            if (!state.isAir() && !state.getFluidState().is(Fluids.WATER) && !state.getFluidState().is(Fluids.LAVA)) {
+                                groundPos = candidate;
+                                groundState = state;
+                                break;
+                            }
+                        }
                     }
                 }
 

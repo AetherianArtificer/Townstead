@@ -642,10 +642,11 @@ public class FieldPostScreen extends Screen {
                 if (rice != Items.AIR) return new ItemStack(rice);
             }
 
-            // Strip common seed suffixes to get the base crop name
+            // Strip common seed suffixes/prefixes to get the base crop name
             String baseName = path;
             if (baseName.endsWith("_seeds")) baseName = baseName.substring(0, baseName.length() - 6);
             else if (baseName.endsWith("_seed")) baseName = baseName.substring(0, baseName.length() - 5);
+            else if (baseName.startsWith("semillas_")) baseName = baseName.substring(9); // Peruvian's Delight Spanish naming
 
             // Try various crop item name patterns in the same namespace
             String[] candidates = {

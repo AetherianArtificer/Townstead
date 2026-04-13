@@ -175,11 +175,23 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
             int textY = btnTop + (btnBottom - btnTop - 8) / 2 + 1;
             String arrow = isCollapsed() ? "\u25B6" : "\u25BC";
             g.drawString(mc.font, arrow, fullLeft + pad, textY, 0xFFFFFFFF, true);
-            g.drawString(mc.font, label, fullLeft + pad + 10, textY, hovered ? 0xFFFFFFA0 : 0xFFFFFFFF, true);
 
             // Member count — same padding from the right as arrow from the left
             String count = "(" + memberCount + ")";
             int countW = mc.font.width(count);
+
+            // Truncate label with ellipsis if it would collide with the count on the right.
+            int labelX = fullLeft + pad + 10;
+            int labelMaxW = btnRight - pad - countW - 4 - labelX;
+            String displayLabel = label;
+            if (mc.font.width(displayLabel) > labelMaxW && labelMaxW > 0) {
+                while (mc.font.width(displayLabel + "..") > labelMaxW && displayLabel.length() > 1) {
+                    displayLabel = displayLabel.substring(0, displayLabel.length() - 1);
+                }
+                displayLabel += "..";
+            }
+            g.drawString(mc.font, displayLabel, labelX, textY, hovered ? 0xFFFFFFA0 : 0xFFFFFFFF, true);
+
             g.drawString(mc.font, count, btnRight - countW - pad, textY, 0xFFA0A0A0, true);
         }
 

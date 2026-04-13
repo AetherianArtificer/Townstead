@@ -11,7 +11,8 @@ import java.util.List;
 public final class FarmerCropCompatRegistry {
     private static final List<FarmerCropCompat> PROVIDERS = List.of(
             new FarmersDelightCropCompat(),
-            new YoukaiHomecomingCropCompat()
+            new YoukaiHomecomingCropCompat(),
+            new PeruvianDelightCropCompat()
     );
 
     private FarmerCropCompatRegistry() {}

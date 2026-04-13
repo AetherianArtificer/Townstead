@@ -270,6 +270,7 @@ public final class CropProductResolver {
             String baseName = path;
             if (baseName.endsWith("_seeds")) baseName = baseName.substring(0, baseName.length() - 6);
             else if (baseName.endsWith("_seed")) baseName = baseName.substring(0, baseName.length() - 5);
+            else if (baseName.startsWith("semillas_")) baseName = baseName.substring(9); // Spanish "semillas_" prefix (Peruvian's Delight)
             else return null;
             // Try various product names
             for (String suffix : new String[]{"", "_beans", "_fruit", "_berry", "_berries", "_leaves", "_leaf"}) {
