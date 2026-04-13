@@ -240,7 +240,8 @@ public class FieldPostScreen extends Screen {
         /*ResourceLocation autoIcon = new ResourceLocation("townstead", "textures/gui/icon_auto.png");
         *///?}
         allSeedEntries.add(new ToolPaletteList.ToolEntry(SeedAssignment.AUTO, Component.translatable("townstead.field_post.seed.auto").getString(), autoIcon, CAT_TOOLS));
-        allSeedEntries.add(new ToolPaletteList.ToolEntry(SeedAssignment.NONE, Component.translatable("townstead.field_post.seed.none").getString(), new ItemStack(Items.BARRIER), CAT_TOOLS));
+        // SeedAssignment.NONE is omitted from the palette — it's functionally identical to Erase
+        // (both result in an unplanted cell). Kept as an enum value for back-compat with old saves.
         allSeedEntries.add(new ToolPaletteList.ToolEntry(SeedAssignment.PROTECTED, Component.translatable("townstead.field_post.seed.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
 
         for (String seedId : CropDetection.getAllPlantableSeeds()) {
@@ -303,9 +304,12 @@ public class FieldPostScreen extends Screen {
 
         // ── Soil tab entries ──
         allSoilEntries.add(new ToolPaletteList.ToolEntry("CLAIM", Component.translatable("townstead.field_post.soil.claim").getString(), new ItemStack(Items.NAME_TAG), CAT_TOOLS));
-        allSoilEntries.add(new ToolPaletteList.ToolEntry("FARMLAND", Component.translatable("townstead.field_post.soil.farmland").getString(), new ItemStack(Items.FARMLAND), CAT_TOOLS));
-        allSoilEntries.add(new ToolPaletteList.ToolEntry("WATER", Component.translatable("townstead.field_post.soil.water").getString(), new ItemStack(Items.WATER_BUCKET), CAT_TOOLS));
-        allSoilEntries.add(new ToolPaletteList.ToolEntry("NONE", Component.translatable("townstead.field_post.soil.none").getString(), new ItemStack(Items.BARRIER), CAT_TOOLS));
+        // Vanilla soils (farmland, water) belong with other vanilla entries — same grouping as
+        // vanilla seeds on the other tab.
+        allSoilEntries.add(new ToolPaletteList.ToolEntry("FARMLAND", Component.translatable("townstead.field_post.soil.farmland").getString(), new ItemStack(Items.FARMLAND), CAT_VANILLA));
+        allSoilEntries.add(new ToolPaletteList.ToolEntry("WATER", Component.translatable("townstead.field_post.soil.water").getString(), new ItemStack(Items.WATER_BUCKET), CAT_VANILLA));
+        // SoilType.NONE is omitted — it's functionally identical to Erase (both leave the cell
+        // outside the plan). Kept as an enum value for back-compat with old saves.
         allSoilEntries.add(new ToolPaletteList.ToolEntry("PROTECTED", Component.translatable("townstead.field_post.soil.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
         // Rich soil variants (only if FD is loaded). Two entries: untilled (for mushrooms) and tilled (for crops).
         if (com.aetherianartificer.townstead.compat.ModCompat.isLoaded("farmersdelight")) {
