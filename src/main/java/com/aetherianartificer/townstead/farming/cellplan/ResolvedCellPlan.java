@@ -52,12 +52,14 @@ public final class ResolvedCellPlan implements CellPlanView {
         Map<Long, SoilType> soilByPos = new HashMap<>();
         Set<Long> protectedPositions = new HashSet<>();
 
-        // Resolve each XZ key to a 3D crop position (one above the ground)
+        // Resolve each XZ key to a 3D crop position (one above the ground).
+        // For WATER cells, soilPos = cropPos (water goes at the surface, rice plants INTO the water).
+        // For all other cells, soilPos = cropPos.below() (plant ON top of soil).
         for (Integer xzKey : plan.soilPlan().keySet()) {
-            BlockPos cropPos = resolveCropPos(level, postPos, xzKey);
-            if (cropPos == null) continue;
             SoilType type = plan.soilPlan().get(xzKey);
-            BlockPos soilPos = cropPos.below();
+            BlockPos cropPos = resolveCropPos(level, postPos, xzKey, type);
+            if (cropPos == null) continue;
+            BlockPos soilPos = (type == SoilType.WATER) ? cropPos : cropPos.below();
             soilByPos.put(soilPos.asLong(), type);
             if (type == SoilType.PROTECTED) {
                 protectedPositions.add(cropPos.asLong());
@@ -65,13 +67,16 @@ public final class ResolvedCellPlan implements CellPlanView {
             }
         }
         for (Integer xzKey : plan.seedPlan().keySet()) {
-            BlockPos cropPos = resolveCropPos(level, postPos, xzKey);
+            SoilType soilType = plan.soilPlan().get(xzKey);
+            BlockPos cropPos = resolveCropPos(level, postPos, xzKey, soilType);
             if (cropPos == null) continue;
+            // Seed override keyed by cropPos which equals soilPos for WATER cells.
+            BlockPos seedKey = (soilType == SoilType.WATER) ? cropPos : cropPos;
             String assignment = plan.seedPlan().get(xzKey);
-            seedByPos.put(cropPos.asLong(), assignment);
+            seedByPos.put(seedKey.asLong(), assignment);
             if (SeedAssignment.PROTECTED.equals(assignment)) {
                 protectedPositions.add(cropPos.asLong());
-                protectedPositions.add(cropPos.below().asLong());
+                protectedPositions.add((soilType == SoilType.WATER ? cropPos : cropPos.below()).asLong());
             }
         }
 
@@ -85,12 +90,28 @@ public final class ResolvedCellPlan implements CellPlanView {
      * Uses the same 3-pass scan as GridScanner: farmland first, then solid ground, then water.
      */
     @Nullable
-    private static BlockPos resolveCropPos(ServerLevel level, BlockPos postPos, int xzKey) {
+    private static BlockPos resolveCropPos(ServerLevel level, BlockPos postPos, int xzKey, SoilType desiredSoil) {
         int xOff = CellPlan.unpackX(xzKey);
         int zOff = CellPlan.unpackZ(xzKey);
         int wx = postPos.getX() + xOff;
         int wz = postPos.getZ() + zOff;
         int baseY = postPos.getY();
+
+        // For WATER cells: FIRST look for any water anywhere in the column (so existing rice
+        // plants — whose lower block is waterlogged — stay correctly resolved even after they
+        // grow a second block above). Only if the column is fully dry do we fall back to the
+        // topmost non-air solid as the replace-with-water position.
+        if (desiredSoil == SoilType.WATER) {
+            for (int dy = Y_SCAN_RANGE; dy >= -Y_SCAN_RANGE; dy--) {
+                BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
+                if (level.getFluidState(candidate).is(Fluids.WATER)) return candidate;
+            }
+            for (int dy = Y_SCAN_RANGE; dy >= -Y_SCAN_RANGE; dy--) {
+                BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
+                if (!level.getBlockState(candidate).isAir()) return candidate;
+            }
+            return null;
+        }
 
         // Pass 1: farmland
         for (int dy = Y_SCAN_RANGE; dy >= -Y_SCAN_RANGE; dy--) {
@@ -152,9 +173,11 @@ public final class ResolvedCellPlan implements CellPlanView {
         List<PlannedCell> out = new ArrayList<>();
         for (Map.Entry<Long, SoilType> entry : soilByPos.entrySet()) {
             SoilType desiredSoil = entry.getValue();
-            if (desiredSoil == SoilType.PROTECTED || desiredSoil == SoilType.NONE) continue;
+            if (desiredSoil == SoilType.PROTECTED || desiredSoil == SoilType.NONE || desiredSoil == SoilType.CLAIM) continue;
             BlockPos soilPos = BlockPos.of(entry.getKey());
-            BlockPos cropPos = soilPos.above();
+            // WATER cells: the plant (rice etc.) goes INTO the water block, same position.
+            // Other cells: the plant sits on top of the soil.
+            BlockPos cropPos = (desiredSoil == SoilType.WATER) ? soilPos : soilPos.above();
             if (protectedPositions.contains(cropPos.asLong())) continue;
 
             String seed = seedByPos.get(cropPos.asLong());

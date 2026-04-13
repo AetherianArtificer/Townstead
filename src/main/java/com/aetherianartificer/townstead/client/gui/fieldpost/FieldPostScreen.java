@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig;
 import com.aetherianartificer.townstead.farming.cellplan.SeedAssignment;
 import com.aetherianartificer.townstead.farming.cellplan.SoilType;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -65,13 +66,14 @@ public class FieldPostScreen extends Screen {
 
     // ── Modes ──
     private enum Mode {
-        PAINT("townstead.field_post.mode.paint", "B", Items.WOODEN_HOE),
-        PAN("townstead.field_post.mode.pan", "H", Items.COMPASS),
-        ERASE("townstead.field_post.mode.erase", "E", Items.BARRIER);
+        PAINT("townstead.field_post.mode.paint", "B", Items.WOODEN_HOE, null),
+        PAN("townstead.field_post.mode.pan", "H", null, "townstead:textures/gui/icon_pan.png"),
+        ERASE("townstead.field_post.mode.erase", "E", Items.BARRIER, null);
         final String translationKey;
         final String shortcut;
         final Item icon;
-        Mode(String k, String s, Item i) { this.translationKey = k; this.shortcut = s; this.icon = i; }
+        final String customTexture;
+        Mode(String k, String s, Item i, String t) { this.translationKey = k; this.shortcut = s; this.icon = i; this.customTexture = t; }
         String label() { return Component.translatable(translationKey).getString(); }
     }
     private Mode mode = Mode.PAINT;
@@ -109,6 +111,8 @@ public class FieldPostScreen extends Screen {
     // Widgets
     private EditBox searchBox;
     private ToolPaletteList paletteList;
+    private Button inStockToggleButton;
+    private boolean inStockOnly = false;
     private final List<ToolPaletteList.ToolEntry> allSeedEntries = new ArrayList<>();
     private final List<ToolPaletteList.ToolEntry> allSoilEntries = new ArrayList<>();
 
@@ -166,16 +170,31 @@ public class FieldPostScreen extends Screen {
 
         recomputeViewport();
 
-        // Search box — aligned with toolbar top
+        // Search box — aligned with toolbar top. Reserves space on the right for the in-stock toggle.
         int searchPad = 4;
+        int toggleW = 14;
+        int searchW = PALETTE_W - searchPad * 2 - toggleW - 2;
         searchBox = new EditBox(font, palLeft + searchPad, palTop + 3,
-                PALETTE_W - searchPad * 2, SEARCH_H - 4,
+                searchW, SEARCH_H - 4,
                 Component.literal("Search"));
         searchBox.setMaxLength(64);
         searchBox.setBordered(true);
         searchBox.setHint(Component.translatable("townstead.field_post.search.hint"));
         searchBox.setResponder(text -> filterPalette());
         addRenderableWidget(searchBox);
+
+        // In-stock only toggle (active in Crops tab). Shows a checkmark when on.
+        inStockToggleButton = Button.builder(Component.literal(""), b -> {
+            inStockOnly = !inStockOnly;
+            updateInStockToggleLabel();
+            filterPalette();
+        })
+                .bounds(palLeft + searchPad + searchW + 2, palTop + 3, toggleW, SEARCH_H - 4)
+                .tooltip(net.minecraft.client.gui.components.Tooltip.create(
+                        Component.translatable("townstead.field_post.filter.in_stock.tooltip")))
+                .build();
+        updateInStockToggleLabel();
+        addRenderableWidget(inStockToggleButton);
 
         buildToolEntries();
 
@@ -252,22 +271,31 @@ public class FieldPostScreen extends Screen {
         }
 
         // ── Soil tab entries ──
+        allSoilEntries.add(new ToolPaletteList.ToolEntry("CLAIM", Component.translatable("townstead.field_post.soil.claim").getString(), new ItemStack(Items.NAME_TAG), CAT_TOOLS));
         allSoilEntries.add(new ToolPaletteList.ToolEntry("FARMLAND", Component.translatable("townstead.field_post.soil.farmland").getString(), new ItemStack(Items.FARMLAND), CAT_TOOLS));
         allSoilEntries.add(new ToolPaletteList.ToolEntry("WATER", Component.translatable("townstead.field_post.soil.water").getString(), new ItemStack(Items.WATER_BUCKET), CAT_TOOLS));
         allSoilEntries.add(new ToolPaletteList.ToolEntry("NONE", Component.translatable("townstead.field_post.soil.none").getString(), new ItemStack(Items.BARRIER), CAT_TOOLS));
         allSoilEntries.add(new ToolPaletteList.ToolEntry("PROTECTED", Component.translatable("townstead.field_post.soil.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
-        // Rich soil (only if FD is loaded)
+        // Rich soil variants (only if FD is loaded). Two entries: untilled (for mushrooms) and tilled (for crops).
         if (com.aetherianartificer.townstead.compat.ModCompat.isLoaded("farmersdelight")) {
             //? if >=1.21 {
             ResourceLocation richSoilId = ResourceLocation.fromNamespaceAndPath("farmersdelight", "rich_soil");
+            ResourceLocation richSoilFarmlandId = ResourceLocation.fromNamespaceAndPath("farmersdelight", "rich_soil_farmland");
             //?} else {
             /*ResourceLocation richSoilId = new ResourceLocation("farmersdelight", "rich_soil");
+            ResourceLocation richSoilFarmlandId = new ResourceLocation("farmersdelight", "rich_soil_farmland");
             *///?}
             Item richSoilItem = BuiltInRegistries.ITEM.get(richSoilId);
             if (richSoilItem != Items.AIR) {
                 allSoilEntries.add(new ToolPaletteList.ToolEntry("RICH_SOIL",
                         Component.translatable("townstead.field_post.soil.rich_soil").getString(),
                         new ItemStack(richSoilItem), categoryFor("farmersdelight")));
+            }
+            Item richSoilTilledItem = BuiltInRegistries.ITEM.get(richSoilFarmlandId);
+            if (richSoilTilledItem != Items.AIR) {
+                allSoilEntries.add(new ToolPaletteList.ToolEntry("RICH_SOIL_TILLED",
+                        Component.translatable("townstead.field_post.soil.rich_soil_tilled").getString(),
+                        new ItemStack(richSoilTilledItem), categoryFor("farmersdelight")));
             }
         }
     }
@@ -308,9 +336,30 @@ public class FieldPostScreen extends Screen {
         return sb.toString();
     }
 
+    private void updateInStockToggleLabel() {
+        if (inStockToggleButton == null) return;
+        inStockToggleButton.setMessage(Component.literal(inStockOnly ? "\u2714" : " "));
+        inStockToggleButton.active = (activeTab == PaletteTab.SEEDS);
+    }
+
+    /** Tool-entry IDs that should never be filtered by in-stock (AUTO / NONE / PROTECTED). */
+    private boolean isReservedToolEntry(String toolId) {
+        return SeedAssignment.AUTO.equals(toolId)
+                || SeedAssignment.NONE.equals(toolId)
+                || SeedAssignment.PROTECTED.equals(toolId);
+    }
+
+    private boolean entryAvailableInVillage(ToolPaletteList.ToolEntry e) {
+        if (isReservedToolEntry(e.toolId)) return true;
+        if (villageSeedCounts == null) return true; // no data yet — don't hide everything
+        Integer count = villageSeedCounts.get(e.toolId);
+        return count != null && count > 0;
+    }
+
     private void filterPalette() {
         if (paletteList == null) return;
         String query = searchBox != null ? searchBox.getValue().toLowerCase(Locale.ROOT) : "";
+        boolean applyStockFilter = inStockOnly && activeTab == PaletteTab.SEEDS;
 
         // Rebuild category groupings from the active tab's entries
         entriesByCategory.clear();
@@ -338,6 +387,7 @@ public class FieldPostScreen extends Screen {
             List<ToolPaletteList.ToolEntry> items = entriesByCategory.get(category);
             List<ToolPaletteList.ToolEntry> matching = new ArrayList<>();
             for (ToolPaletteList.ToolEntry e : items) {
+                if (applyStockFilter && !entryAvailableInVillage(e)) continue;
                 if (query.isEmpty()
                         || e.label.toLowerCase(Locale.ROOT).contains(query)
                         || e.toolId.contains(query)) {
@@ -376,6 +426,7 @@ public class FieldPostScreen extends Screen {
         if (activeTab == PaletteTab.SEEDS) lastSeedSelection = current;
         else lastSoilSelection = current;
         activeTab = tab;
+        updateInStockToggleLabel();
         filterPalette();
     }
 
@@ -453,6 +504,14 @@ public class FieldPostScreen extends Screen {
                     // Water above ground — the cell IS water (not "dirt with water overlay")
                     renderStates[gz][gx] = aboveState;
                     renderPositions[gz][gx] = abovePos;
+                    // A waterlogged crop/bush (e.g., FD rice planted INTO the water) still needs
+                    // its icon shown — check for the plant block in the same cell.
+                    if (aboveState.getBlock() instanceof CropBlock crop) {
+                        if (crop.isMaxAge(aboveState)) cellFlags[gz][gx] = CELL_CROP_MATURE;
+                        cropIcons[gz][gx] = cropIcon(aboveState.getBlock());
+                    } else if (aboveState.getBlock() instanceof BushBlock) {
+                        cropIcons[gz][gx] = cropIcon(aboveState.getBlock());
+                    }
                 } else {
                     renderStates[gz][gx] = groundState;
                     renderPositions[gz][gx] = groundPos;
@@ -475,6 +534,33 @@ public class FieldPostScreen extends Screen {
         double opacity = minecraft.options.textBackgroundOpacity().get();
         int alpha = (int) (opacity * 255.0) & 0xFF;
         return (alpha << 24);
+    }
+
+    /** True if the cell's current ground block already matches the plan's desired soil type. */
+    private boolean isSoilPlanFulfilled(BlockState state, SoilType desired) {
+        if (desired == null) return true;
+        return switch (desired) {
+            case FARMLAND -> state.getBlock() instanceof FarmBlock && !isCompatRichSoil(state);
+            case RICH_SOIL_TILLED -> state.getBlock() instanceof FarmBlock && isCompatRichSoil(state);
+            case RICH_SOIL -> !(state.getBlock() instanceof FarmBlock) && isCompatRichSoil(state);
+            case WATER -> state.getFluidState().is(Fluids.WATER);
+            case NONE, PROTECTED, CLAIM -> false;
+        };
+    }
+
+    private boolean isCompatRichSoil(BlockState state) {
+        net.minecraft.resources.ResourceLocation key = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        return key != null && "farmersdelight".equals(key.getNamespace())
+                && (key.getPath().equals("rich_soil") || key.getPath().equals("rich_soil_farmland"));
+    }
+
+    /** True if the cell's crop is already present (seed plan is done). */
+    private boolean isSeedPlanFulfilled(BlockState growthState, String seedId) {
+        if (seedId == null) return true;
+        if (SeedAssignment.NONE.equals(seedId) || SeedAssignment.PROTECTED.equals(seedId)) return true;
+        if (growthState == null) return false;
+        Block b = growthState.getBlock();
+        return b instanceof CropBlock || b instanceof BushBlock;
     }
 
     private boolean isNaturalGround(BlockState state) {
@@ -523,6 +609,16 @@ public class FieldPostScreen extends Screen {
         if (seedKey != null) {
             String ns = seedKey.getNamespace();
             String path = seedKey.getPath();
+
+            // FD rice panicle → rice (the grain). Panicle is the plantable, rice is the product.
+            if ("farmersdelight".equals(ns) && "rice_panicle".equals(path)) {
+                //? if >=1.21 {
+                Item rice = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(ns, "rice"));
+                //?} else {
+                /*Item rice = BuiltInRegistries.ITEM.get(new ResourceLocation(ns, "rice"));
+                *///?}
+                if (rice != Items.AIR) return new ItemStack(rice);
+            }
 
             // Strip common seed suffixes to get the base crop name
             String baseName = path;
@@ -708,12 +804,28 @@ public class FieldPostScreen extends Screen {
                 drawCellBorder(g, bx, btnY, btnSize, ACCENT);
             }
 
-            // Scale item icon to fit within the button
+            // Scale item icon or custom texture to fit within the button
             g.pose().pushPose();
             float iconScale = (btnSize - 2) / 16.0f;
             g.pose().translate(bx + 1, btnY + 1, 0);
             g.pose().scale(iconScale, iconScale, 1.0f);
-            g.renderItem(new ItemStack(m.icon), 0, 0);
+            if (m.customTexture != null) {
+                String[] parts = m.customTexture.split(":", 2);
+                //? if >=1.21 {
+                ResourceLocation tex = ResourceLocation.fromNamespaceAndPath(parts[0], parts[1]);
+                //?} else {
+                /*ResourceLocation tex = new ResourceLocation(parts[0], parts[1]);
+                *///?}
+                // Inset custom textures slightly so they don't touch the button border.
+                //? if >=1.21 {
+                g.blit(tex, 2, 2, 12, 12, 0, 0, 16, 16, 16, 16);
+                //?} else {
+                /*com.mojang.blaze3d.systems.RenderSystem.setShaderTexture(0, tex);
+                g.blit(tex, 2, 2, 12, 12, 0, 0, 16, 16, 16, 16);
+                *///?}
+            } else if (m.icon != null) {
+                g.renderItem(new ItemStack(m.icon), 0, 0);
+            }
             g.pose().popPose();
 
             if (hovered) {
@@ -828,15 +940,30 @@ public class FieldPostScreen extends Screen {
                 int zOff = gz - half;
                 int planKey = CellPlan.packXZ(xOff, zOff);
 
+                // Compute fulfillment once so we can skip overlays on done cells.
+                // Read live world state so freshly-grown crops are detected.
+                BlockPos cellGround = renderPositions[gz][gx];
+                BlockState cellState = cellGround != null ? level.getBlockState(cellGround) : renderStates[gz][gx];
+                BlockState cellCropState = cellGround != null ? level.getBlockState(cellGround.above()) : null;
+                BlockState cellGrowthState = null;
+                if (cellState != null && (cellState.getBlock() instanceof CropBlock || cellState.getBlock() instanceof BushBlock)) {
+                    cellGrowthState = cellState;
+                } else if (cellCropState != null && (cellCropState.getBlock() instanceof CropBlock || cellCropState.getBlock() instanceof BushBlock)) {
+                    cellGrowthState = cellCropState;
+                }
+
                 // Soil plan: show as texture overlay so you can see what it'll become
                 SoilType soilAssignment = soilPlan.get(planKey);
-                if (soilAssignment != null) {
+                boolean soilDone = cellState != null && isSoilPlanFulfilled(cellState, soilAssignment);
+                if (soilAssignment != null && !soilDone) {
                     String soilTexture = switch (soilAssignment) {
                         case FARMLAND -> "minecraft:block/farmland";
-                        case RICH_SOIL -> "minecraft:block/farmland_moist"; // visual approximation
+                        case RICH_SOIL -> "minecraft:block/dirt"; // untilled variant looks like dark dirt
+                        case RICH_SOIL_TILLED -> "minecraft:block/farmland_moist";
                         case WATER -> "minecraft:block/water_still";
                         case NONE -> null;
                         case PROTECTED -> null;
+                        case CLAIM -> null;
                     };
                     if (soilTexture != null) {
                         // Render the planned soil texture as a semi-transparent overlay
@@ -849,20 +976,23 @@ public class FieldPostScreen extends Screen {
                     }
                     int borderColor = switch (soilAssignment) {
                         case FARMLAND -> 0xFF8B6914;
-                        case RICH_SOIL -> 0xFF4A2D0A;
+                        case RICH_SOIL -> 0xFF3B2008;
+                        case RICH_SOIL_TILLED -> 0xFF4A2D0A;
                         case WATER -> 0xFF3366CC;
                         case NONE -> 0xFF666666;
                         case PROTECTED -> 0xFFFF4444;
+                        case CLAIM -> 0xFFFFCC00; // yellow — pending server resolution
                     };
                     drawCellBorder(g, cx, cy, cs, borderColor);
                 }
 
                 // Seed plan: show as a smaller centered icon
                 String seedAssignment = seedPlan.get(planKey);
-                if (seedAssignment != null) {
+                boolean seedDone = isSeedPlanFulfilled(cellGrowthState, seedAssignment);
+                if (seedAssignment != null && !seedDone) {
                     ToolPaletteList.ToolEntry tool = findToolEntry(seedAssignment);
                     if (tool != null) {
-                        if (soilAssignment == null) drawCellBorder(g, cx, cy, cs, PLAN_BORDER);
+                        if (soilAssignment == null || soilDone) drawCellBorder(g, cx, cy, cs, PLAN_BORDER);
                         float scale = cs / 16.0f * 0.65f;
                         float iconSize = 16 * scale;
                         float offXi = (cs - iconSize) / 2.0f;
@@ -980,11 +1110,12 @@ public class FieldPostScreen extends Screen {
         int[] cell = gridCellAt(mouseX, mouseY);
         if (cell == null) return;
         int gx = cell[0], gz = cell[1];
-        BlockState state = renderStates[gz][gx];
-        if (state == null || state.isAir()) return;
 
         int half = gridSize / 2;
         BlockPos groundPos = renderPositions[gz][gx];
+        // Read live world state rather than the (stale) server snapshot so newly-grown crops show up.
+        BlockState state = groundPos != null ? level.getBlockState(groundPos) : renderStates[gz][gx];
+        if (state == null || state.isAir()) return;
         BlockPos cropPos = groundPos != null ? groundPos.above() : null;
         BlockState cropState = cropPos != null ? level.getBlockState(cropPos) : null;
 
@@ -994,16 +1125,40 @@ public class FieldPostScreen extends Screen {
         int nameColor = 0x77CC44;
         ItemStack cropItemIcon = null;
 
-        if (cropState != null && cropState.getBlock() instanceof CropBlock crop) {
+        // Pick the most meaningful growth state to display. For stacked crops (FD rice: base
+        // BushBlock stays at max age once panicles spawn, and the panicles CropBlock is what
+        // actually matures), prefer the upper CropBlock so the "ready" indicator reflects the
+        // harvestable part.
+        BlockState growthState = null;
+        boolean baseIsCrop = state.getBlock() instanceof CropBlock || state.getBlock() instanceof BushBlock;
+        boolean aboveIsCrop = cropState != null && (cropState.getBlock() instanceof CropBlock || cropState.getBlock() instanceof BushBlock);
+        if (baseIsCrop && aboveIsCrop && cropState.getBlock() instanceof CropBlock) {
+            // Both present and the upper is a proper CropBlock (e.g. RicePaniclesBlock) — show it.
+            growthState = cropState;
+        } else if (baseIsCrop) {
+            growthState = state;
+        } else if (aboveIsCrop) {
+            growthState = cropState;
+        }
+
+        if (growthState != null && growthState.getBlock() instanceof CropBlock crop) {
             cropItemIcon = cropIcon(crop);
             cropName = cropItemIcon.getHoverName().getString();
-            cropAge = crop.getAge(cropState);
+            cropAge = crop.getAge(growthState);
             cropMaxAge = crop.getMaxAge();
             int pct = cropMaxAge > 0 ? (cropAge * 100) / cropMaxAge : 0;
             nameColor = cropAge >= cropMaxAge ? 0xFFDD44 : (pct > 50 ? 0x77CC44 : 0xCCCC44);
-        } else if (cropState != null && cropState.getBlock() instanceof BushBlock) {
-            cropItemIcon = cropIcon(cropState.getBlock());
+        } else if (growthState != null && growthState.getBlock() instanceof BushBlock) {
+            cropItemIcon = cropIcon(growthState.getBlock());
             cropName = cropItemIcon.getHoverName().getString();
+            // Some mod bush-crops track growth via an "age" integer property — show as % when present.
+            net.minecraft.world.level.block.state.properties.Property<?> ageProp = growthState.getBlock().getStateDefinition().getProperty("age");
+            if (ageProp instanceof net.minecraft.world.level.block.state.properties.IntegerProperty intAge) {
+                cropAge = growthState.getValue(intAge);
+                cropMaxAge = intAge.getPossibleValues().stream().mapToInt(Integer::intValue).max().orElse(cropAge);
+                int pct = cropMaxAge > 0 ? (cropAge * 100) / cropMaxAge : 0;
+                nameColor = cropAge >= cropMaxAge ? 0xFFDD44 : (pct > 50 ? 0x77CC44 : 0xCCCC44);
+            }
         } else if (cropState != null && cropState.getFluidState().is(Fluids.WATER)) {
             cropName = Component.translatable("townstead.field_post.tooltip.water").getString();
             nameColor = 0x5599FF;
@@ -1051,10 +1206,13 @@ public class FieldPostScreen extends Screen {
                 ? Component.translatable("townstead.field_post.tooltip.ready").getString() : null;
         String pctText = (cropAge >= 0 && cropAge < cropMaxAge && cropMaxAge > 0)
                 ? ((cropAge * 100) / cropMaxAge) + "%" : null;
-        String soilPlanText = soilPlanEntry != null
+        // Suppress plan lines when the plan is already fulfilled — the tile already matches.
+        boolean soilFulfilled = isSoilPlanFulfilled(state, soilPlanEntry);
+        boolean seedFulfilled = isSeedPlanFulfilled(growthState, seedPlanEntry);
+        String soilPlanText = (soilPlanEntry != null && !soilFulfilled)
                 ? Component.translatable("townstead.field_post.tooltip.plan.soil", titleCase(soilPlanEntry.name().toLowerCase())).getString() : null;
         String seedPlanText = null;
-        if (seedPlanEntry != null) {
+        if (seedPlanEntry != null && !seedFulfilled) {
             ToolPaletteList.ToolEntry t = findToolEntry(seedPlanEntry);
             seedPlanText = Component.translatable("townstead.field_post.tooltip.plan.seed", t != null ? t.label : seedPlanEntry).getString();
         }
@@ -1442,7 +1600,18 @@ public class FieldPostScreen extends Screen {
         if (now - lastMismatchToastTick < 1500) return; // throttle to 1 every 1.5s
         lastMismatchToastTick = now;
 
-        String seedName = Component.translatable("item." + seed.replace(':', '.')).getString();
+        String seedName;
+        try {
+            //? if >=1.21 {
+            net.minecraft.resources.ResourceLocation rl = net.minecraft.resources.ResourceLocation.parse(seed);
+            //?} else {
+            /*net.minecraft.resources.ResourceLocation rl = new net.minecraft.resources.ResourceLocation(seed);
+            *///?}
+            net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(rl);
+            seedName = new net.minecraft.world.item.ItemStack(item).getHoverName().getString();
+        } catch (Exception e) {
+            seedName = seed;
+        }
         String soilName = Component.translatable("townstead.field_post.soil." + soil.name().toLowerCase(java.util.Locale.ROOT)).getString();
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
         mc.getToasts().addToast(net.minecraft.client.gui.components.toasts.SystemToast.multiline(

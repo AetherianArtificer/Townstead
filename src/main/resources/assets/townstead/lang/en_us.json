@@ -483,6 +483,9 @@
   "townstead.field_post.soil.none": "None (revert)",
   "townstead.field_post.soil.protected": "Protected",
   "townstead.field_post.soil.rich_soil": "Rich Soil",
+  "townstead.field_post.soil.rich_soil_tilled": "Rich Soil (Tilled)",
+  "townstead.field_post.soil.claim": "Claim",
+  "townstead.field_post.filter.in_stock.tooltip": "Show only crops with seeds in village containers or villager inventories",
 
   "townstead.field_post.zoom": "Zoom",
 
@@ -570,9 +573,26 @@
     "townstead.guide.entry.farming.troubleshooting.unreachable": "**\"Target Unreachable\"** - pathfinding can't get them to a cell. Check for obstructions, fences, or soil cells placed too high up. Try removing any barriers between the composter and the farm."
 ,
 
-    "townstead.guide.entry.needs.coming_soon": "More Info to Come",
-    "townstead.guide.entry.needs.coming_soon.title": "More Info to Come",
-    "townstead.guide.entry.needs.coming_soon.body": "Hunger, thirst, and energy documentation is still being written. Check back in a future update.",
+    "townstead.guide.entry.needs.overview": "Needs Overview",
+    "townstead.guide.entry.needs.overview.intro.title": "The Three Meters",
+    "townstead.guide.entry.needs.overview.intro.body": "Every villager tracks three needs: hunger, thirst, and energy. When all three are topped up, villagers work well and stay in a good mood. When one of them runs out, problems follow.",
+    "townstead.guide.entry.needs.overview.meters.title": "At a Glance",
+    "townstead.guide.entry.needs.overview.meters.body": "- **Hunger** - 0 to 100. Drops from work and time. Refilled by eating.\n- **Thirst** - 0 to 20. Drops slowly on its own, faster from work. Refilled by drinking.\n- **Energy** - 0 to 20 fatigue. Rises from work, falls from sleep. Visible in the dialogue screen as an Energy bar (100 down to 0).",
+    "townstead.guide.entry.needs.overview.what_next.title": "Where to Look Next",
+    "townstead.guide.entry.needs.overview.what_next.body": "Each meter has its own entry covering the details.\n\n- [Hunger](entry://townstead:guide/needs/hunger)\n- [Thirst](entry://townstead:guide/needs/thirst)\n- [Energy](entry://townstead:guide/needs/energy)\n\nThe [Reading Status](entry://townstead:guide/needs/reading_status) entry covers how to check a villager's current state in-game.",
+
+    "townstead.guide.entry.needs.hunger": "Hunger",
+    "townstead.guide.entry.needs.hunger.intro.title": "What Hunger Does",
+    "townstead.guide.entry.needs.hunger.intro.body": "Hunger runs from 0 to 100. Villagers start at 80 and lose points over time. At low values they slow down, get grumpy, and eventually starve.",
+    "townstead.guide.entry.needs.hunger.states.title": "Hunger States",
+    "townstead.guide.entry.needs.hunger.states.body": "The meter is split into five bands:\n\n- **Well-Fed** (80-100) - small mood boost\n- **Adequate** (50-79) - no effect\n- **Hungry** (25-49) - mood drops, villager starts seeking food\n- **Famished** (1-24) - mood drops harder, movement speed drops 25%\n- **Starving** (0) - large mood penalty, no more drain but also no work",
+    "townstead.guide.entry.needs.hunger.how_they_eat.title": "How Villagers Eat",
+    "townstead.guide.entry.needs.hunger.how_they_eat.body": "A hungry villager looks for food in this order:\n\n- Their own inventory\n- Nearby dropped items\n- Containers near their home (chests, barrels, etc.)\n- Ripe crops they can harvest\n\nEach source can be toggled in the config. If all sources fail, they stay hungry until something shows up.",
+    "townstead.guide.entry.needs.hunger.meal_times.title": "Meal Times",
+    "townstead.guide.entry.needs.hunger.meal_times.body": "Villagers prefer to eat at breakfast, lunch, and dinner rather than constantly nibbling. They only break the schedule if hunger drops below 25, which counts as an emergency.\n\nThis means a healthy villager will look well-fed most of the day and only dip slightly before each meal.",
+    "townstead.guide.entry.needs.hunger.keeping_fed.title": "Keeping Them Fed",
+    "townstead.guide.entry.needs.hunger.keeping_fed.body": "The reliable setup is a stocked chest near the villager's home plus a food source that refills it. For farmers this is automatic once the farm is producing. For other jobs you'll want a [farmer](entry://townstead:guide/professions/farmer) nearby, or hand out food yourself.\n\nBetter food restores more hunger. Golden carrots go a long way; raw potatoes do not.",
+
     "townstead.guide.entry.professions.coming_soon": "More Info to Come",
     "townstead.guide.entry.professions.coming_soon.title": "More Info to Come",
     "townstead.guide.entry.professions.coming_soon.body": "Profession assignment and shift scheduling documentation is still being written. Check back in a future update.",

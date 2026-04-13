@@ -25,6 +25,12 @@ public record FieldPostConfig(
         List<String> rotationPatterns,
         CellPlan cellPlan
 ) {
+    public FieldPostConfig withCellPlan(CellPlan plan) {
+        return new FieldPostConfig(patternId, tierCap, radius, priority,
+                autoSeedMode, seedFilter, waterEnabled, maxWaterCells,
+                groomEnabled, groomRadius, rotationEnabled, rotationPatterns, plan);
+    }
+
     public static FieldPostConfig defaults() {
         return new FieldPostConfig(
                 FieldPostBlockEntity.DEFAULT_PATTERN,

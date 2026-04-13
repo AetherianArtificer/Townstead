@@ -12,6 +12,12 @@ public interface FarmerCropCompat {
 
     boolean isSeed(ItemStack stack);
 
+    /**
+     * If true, this item is NOT a seed even if class-based detection would include it
+     * (e.g., FD rice is a BlockItem that places a growth-stage block, but the real seed is rice_panicle).
+     */
+    default boolean excludeAsSeed(ItemStack stack) { return false; }
+
     boolean shouldPartialHarvest(BlockState state);
 
     List<ItemStack> doPartialHarvest(ServerLevel level, BlockPos pos, BlockState state);
@@ -25,6 +31,12 @@ public interface FarmerCropCompat {
     /** Whether the block at pos is a mod-specific rich/compatible soil (e.g., FD rich soil). */
     default boolean isCompatibleSoil(ServerLevel level, BlockPos pos) { return false; }
 
-    /** Attempts to convert vanilla farmland at pos to a compatible rich soil. Returns true on success. */
-    default boolean doCompatTill(ServerLevel level, BlockPos pos) { return false; }
+    /** Places the tilled rich-soil variant (e.g., FD rich_soil_farmland) at pos. Returns true on success. */
+    default boolean placeRichSoilTilled(ServerLevel level, BlockPos pos) { return false; }
+
+    /** Places the untilled rich-soil block (e.g., FD rich_soil) at pos. Returns true on success. */
+    default boolean placeRichSoil(ServerLevel level, BlockPos pos) { return false; }
+
+    /** Legacy: same as placeRichSoilTilled. Kept for any external callers. */
+    default boolean doCompatTill(ServerLevel level, BlockPos pos) { return placeRichSoilTilled(level, pos); }
 }

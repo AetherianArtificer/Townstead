@@ -10,12 +10,14 @@ import com.aetherianartificer.townstead.hunger.farm.FarmBlueprint;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.AttachedStemBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ComposterBlock;
 import net.minecraft.world.level.block.CropBlock;
@@ -125,11 +127,68 @@ public final class HarvestWorkIndex {
             BlockState soilState = level.getBlockState(soilPos);
             BlockState cropState = level.getBlockState(cropPos);
 
-            // WATER-painted cells: the only thing the farmer does here is place water if missing.
-            // They never till, plant on top, or harvest a water cell's crop slot.
+            // WATER-painted cells: place water if missing, plant rice etc. if seed matches,
+            // harvest if a crop is there. A crop already growing on the cell is sacred — never
+            // destroy it with water placement even if the waterlog state got disturbed (e.g. player
+            // bucketed it).
             if (cell.desiredSoil() == com.aetherianartificer.townstead.farming.cellplan.SoilType.WATER) {
-                if (!level.getFluidState(soilPos).is(FluidTags.WATER)) {
-                    waterTargets.add(soilPos.immutable());
+                boolean hasCrop = soilState.getBlock() instanceof CropBlock
+                        || soilState.getBlock() instanceof net.minecraft.world.level.block.BushBlock;
+                boolean hasWater = level.getFluidState(soilPos).is(FluidTags.WATER);
+
+                // Harvest first. For stacked water crops (FD rice: RiceBlock at soilPos, RicePaniclesBlock
+                // at soilPos+1), harvest the upper block when it matures — breaking the base early
+                // destroys the whole plant while the top is still growing.
+                if (hasCrop) {
+                    BlockState above = level.getBlockState(soilPos.above());
+                    boolean upperIsCrop = above.getBlock() instanceof CropBlock || above.getBlock() instanceof net.minecraft.world.level.block.BushBlock;
+
+                    if (upperIsCrop) {
+                        if (above.getBlock() instanceof CropBlock upperCrop && upperCrop.isMaxAge(above)) {
+                            harvestTargets.add(soilPos.above().immutable());
+                        } else if (FarmerCropCompatRegistry.shouldPartialHarvest(above)) {
+                            harvestTargets.add(soilPos.above().immutable());
+                        }
+                        // Upper crop not mature yet — leave the whole plant alone.
+                    } else {
+                        // No upper block — harvest the base if it's a vanilla CropBlock at max age,
+                        // or a compat partial-harvest block. BushBlocks alone are treated as "still
+                        // growing" (they normally spawn an upper block at max age).
+                        if (soilState.getBlock() instanceof CropBlock crop && crop.isMaxAge(soilState)) {
+                            harvestTargets.add(soilPos.immutable());
+                        } else if (FarmerCropCompatRegistry.shouldPartialHarvest(soilState)) {
+                            harvestTargets.add(soilPos.immutable());
+                        }
+                    }
+                    // Crop present — don't try to place water or plant over it.
+                    continue;
+                }
+
+                if (!hasWater) {
+                    if (isWaterPlaceable(soilState)) {
+                        waterTargets.add(soilPos.immutable());
+                    } else if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+                        org.slf4j.LoggerFactory.getLogger("townstead/HarvestWorkIndex").info(
+                                "WATER cell {} dry but not placeable: block={}", soilPos, soilState.getBlock());
+                    }
+                    continue;
+                }
+
+                // Water is in place, no crop yet — try to plant the assigned seed.
+                boolean seedAllowed = !SeedAssignment.NONE.equals(cell.seedAssignment())
+                        && !SeedAssignment.AUTO.equals(cell.seedAssignment())
+                        && cell.seedAssignment() != null;
+                boolean plantable = FarmerCropCompatRegistry.isPlantableSpot(level, soilPos);
+                boolean matches = seedMatchesSoil(level, cell);
+                if (seedAllowed && plantable && matches) {
+                    plantTargets.add(soilPos.immutable());
+                } else if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get() && seedAllowed) {
+                    org.slf4j.LoggerFactory.getLogger("townstead/HarvestWorkIndex").info(
+                            "WATER cell {} has water but no plant target: seed={}, blockHere={}, blockBelow={}, plantable={}, matches={}",
+                            soilPos, cell.seedAssignment(),
+                            level.getBlockState(soilPos).getBlock(),
+                            level.getBlockState(soilPos.below()).getBlock(),
+                            plantable, matches);
                 }
                 continue;
             }
@@ -143,10 +202,13 @@ public final class HarvestWorkIndex {
             }
 
             boolean soilIsFarmland = soilState.getBlock() instanceof FarmBlock;
-            boolean soilIsCompat = FarmerCropCompatRegistry.isExistingFarmSoil(level, soilPos);
+            boolean soilIsCompat = FarmerCropCompatRegistry.isCompatibleSoil(level, soilPos);
 
-            // 2. TILL — dirt-type that can be hoed, crop space clear
-            if (!soilIsFarmland && !soilIsCompat && isTillableDirt(soilState) && canClearTillObstruction(cropState)) {
+            // 2. TILL — current soil doesn't match what the plan wants, and the current block can be turned into the target.
+            // Accepts dirt-types or plain farmland (farmland gets upgraded to rich_soil_farmland if RICH_SOIL_TILLED).
+            boolean currentMatchesDesired = soilMatchesDesired(soilState, soilIsFarmland, soilIsCompat, cell.desiredSoil());
+            boolean currentIsReshapeable = isTillableDirt(soilState) || soilIsFarmland || soilIsCompat;
+            if (!currentMatchesDesired && currentIsReshapeable && canClearTillObstruction(cropState)) {
                 tillTargets.add(soilPos.immutable());
                 if (hasNearbyWater(level, soilPos)) {
                     hydratedTillTargets.add(soilPos.immutable());
@@ -155,10 +217,14 @@ public final class HarvestWorkIndex {
 
             // 3. PLANT — crop slot empty, seed not NONE, and either vanilla farmland OR a compat plantable spot (FD rice in water).
             // Also: the seed assignment (if specific) must be compatible with this cell's painted soil.
+            // Wrong crops on the cell are not handled here — mature ones get picked up by the harvest
+            // path above (any mature crop on a planned cell is a harvest target), after which the cell
+            // goes empty and the planting path takes over. Growing crops are left alone.
             boolean seedAllowed = !SeedAssignment.NONE.equals(cell.seedAssignment());
+            boolean matches = seedMatchesSoil(level, cell);
             boolean plantable = (soilIsFarmland && cropState.isAir() && level.getFluidState(cropPos).isEmpty())
                     || FarmerCropCompatRegistry.isPlantableSpot(level, cropPos);
-            if (seedAllowed && plantable && seedMatchesSoil(level, cell)) {
+            if (seedAllowed && plantable && matches) {
                 plantTargets.add(cropPos.immutable());
             }
 
@@ -185,6 +251,21 @@ public final class HarvestWorkIndex {
                 List.copyOf(groomTargets),
                 gameTime + FARM_TTL_TICKS
         );
+    }
+
+    /**
+     * True if the current block already satisfies the cell's desired soil type.
+     * Lets the state machine skip redundant tilling.
+     */
+    private static boolean soilMatchesDesired(BlockState soilState, boolean soilIsFarmland, boolean soilIsCompat, SoilType desired) {
+        return switch (desired) {
+            case FARMLAND -> soilIsFarmland;
+            // Tilled rich soil = compat AND farmland (FD rich_soil_farmland is a FarmBlock subclass).
+            case RICH_SOIL_TILLED -> soilIsFarmland && soilIsCompat;
+            // Untilled rich soil = compat AND NOT farmland (FD rich_soil is a dirt-type, not FarmBlock).
+            case RICH_SOIL -> soilIsCompat && !soilIsFarmland;
+            default -> false;
+        };
     }
 
     /**
@@ -241,6 +322,14 @@ public final class HarvestWorkIndex {
             if (adjacent.getBlock() instanceof StemBlock || adjacent.getBlock() instanceof AttachedStemBlock) return true;
         }
         return false;
+    }
+
+    private static boolean isWaterPlaceable(BlockState state) {
+        // Player asked for water here — place it unless the block is physically impossible to remove
+        // (bedrock, barriers, command blocks, etc.).
+        if (state.isAir()) return true;
+        // Destroy speed of -1 marks vanilla "unbreakable" blocks (bedrock, barrier, command_block, structure_block, ...).
+        return state.getDestroySpeed(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, net.minecraft.core.BlockPos.ZERO) >= 0;
     }
 
     private static boolean isTillableDirt(BlockState state) {

@@ -33,19 +33,23 @@ public final class CropDetection {
      * or is recognized by any registered FarmerCropCompat provider.
      */
     public static boolean isPlantableSeed(Item item) {
-        // Check compat providers first (handles special cases like FD rice)
-        if (FarmerCropCompatRegistry.isSeed(new ItemStack(item))) return true;
+        ItemStack stack = new ItemStack(item);
+        // Compat providers can explicitly disqualify items that class-detection would accept.
+        if (FarmerCropCompatRegistry.excludeAsSeed(stack)) return false;
+        // Check compat providers first (handles special cases like FD rice_panicle)
+        if (FarmerCropCompatRegistry.isSeed(stack)) return true;
 
         // Generic detection: does this item place a crop/bush block?
         Block placedBlock = getPlacedBlock(item);
         if (placedBlock == null) return false;
 
-        // Exclude non-crop bush subclasses: saplings (trees), flowers, tall grass, mushrooms
+        // Exclude non-crop bush subclasses: saplings (trees), flowers, tall grass
         if (placedBlock instanceof SaplingBlock) return false;
         if (placedBlock instanceof FlowerBlock) return false;
         if (placedBlock instanceof TallGrassBlock) return false;
         if (placedBlock instanceof DoublePlantBlock) return false;
-        if (placedBlock instanceof MushroomBlock) return false;
+        // Mushrooms ARE allowed — they plant on rich soil for colony farming.
+        if (placedBlock instanceof MushroomBlock) return true;
 
         return placedBlock instanceof CropBlock || placedBlock instanceof BushBlock;
     }

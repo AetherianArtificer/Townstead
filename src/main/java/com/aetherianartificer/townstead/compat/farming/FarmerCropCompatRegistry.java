@@ -31,6 +31,15 @@ public final class FarmerCropCompatRegistry {
         return false;
     }
 
+    public static boolean excludeAsSeed(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.excludeAsSeed(stack)) return true;
+        }
+        return false;
+    }
+
     public static boolean shouldPartialHarvest(BlockState state) {
         for (FarmerCropCompat provider : PROVIDERS) {
             if (!ModCompat.isLoaded(provider.modId())) continue;
@@ -73,12 +82,24 @@ public final class FarmerCropCompatRegistry {
         return false;
     }
 
-    public static boolean doCompatTill(ServerLevel level, BlockPos pos) {
+    public static boolean placeRichSoilTilled(ServerLevel level, BlockPos pos) {
         for (FarmerCropCompat provider : PROVIDERS) {
             if (!ModCompat.isLoaded(provider.modId())) continue;
-            if (provider.doCompatTill(level, pos)) return true;
+            if (provider.placeRichSoilTilled(level, pos)) return true;
         }
         return false;
+    }
+
+    public static boolean placeRichSoil(ServerLevel level, BlockPos pos) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.placeRichSoil(level, pos)) return true;
+        }
+        return false;
+    }
+
+    public static boolean doCompatTill(ServerLevel level, BlockPos pos) {
+        return placeRichSoilTilled(level, pos);
     }
 
     public static String patternHintForSeed(ItemStack stack) {

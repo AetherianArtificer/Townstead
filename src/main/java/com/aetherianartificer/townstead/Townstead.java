@@ -1039,7 +1039,13 @@ public class Townstead {
             if (!(be instanceof com.aetherianartificer.townstead.block.FieldPostBlockEntity fieldPost)) return;
             if (sp.distanceToSqr(payload.pos().getX() + 0.5, payload.pos().getY() + 0.5, payload.pos().getZ() + 0.5) > 64.0) return;
 
-            fieldPost.applyConfig(payload.config());
+            // Resolve CLAIM markers against the live world before applying.
+            com.aetherianartificer.townstead.farming.cellplan.CellPlan resolvedPlan =
+                    com.aetherianartificer.townstead.farming.cellplan.ClaimResolver.resolveAll(
+                            sp.serverLevel(), payload.pos(), payload.config().cellPlan());
+            com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig resolvedConfig =
+                    payload.config().withCellPlan(resolvedPlan);
+            fieldPost.applyConfig(resolvedConfig);
             LOGGER.debug("Field Post config set at {} by {}", payload.pos(), sp.getName().getString());
 
             PacketDistributor.sendToPlayer(sp, new FieldPostConfigSyncPayload(

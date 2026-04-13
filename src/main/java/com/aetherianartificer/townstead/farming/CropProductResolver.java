@@ -73,13 +73,27 @@ public final class CropProductResolver {
      * <p>Empty set means "unknown, plant anywhere"; never null.</p>
      */
     public Set<SoilType> getCompatibleSoils(String seedId) {
-        Set<SoilType> out = seedSoilCompat.get(seedId);
-        return out != null ? out : EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL);
+        // Always derive fresh — cached values could be stale if a mod updates its compat hints
+        // between server lifetimes. The derivation is cheap (registry lookup + compat hint check).
+        ResourceLocation rl;
+        try {
+            //? if >=1.21 {
+            rl = ResourceLocation.parse(seedId);
+            //?} else {
+            /*rl = new ResourceLocation(seedId);
+            *///?}
+        } catch (Exception e) { return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED); }
+        Item item = BuiltInRegistries.ITEM.get(rl);
+        if (item == Items.AIR) return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED);
+        Block placed = getPlacedBlock(item);
+        return placed != null
+                ? deriveCompatibleSoils(item, placed)
+                : EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED);
     }
 
     public Set<SoilType> getCompatibleSoils(Item seedItem) {
         ResourceLocation key = BuiltInRegistries.ITEM.getKey(seedItem);
-        return key == null ? EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL) : getCompatibleSoils(key.toString());
+        return key == null ? EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED) : getCompatibleSoils(key.toString());
     }
 
     /** Returns the whole seed→compatible-soils map (for client sync). */
@@ -148,6 +162,15 @@ public final class CropProductResolver {
             Block placedBlock = getPlacedBlock(seedItem);
             if (placedBlock == null) continue;
 
+            // FD rice is both the seed and the final food product (rice_panicle is an intermediate
+            // drop). Display as "Rice" in the palette instead of "Rice Panicle".
+            if ("farmersdelight".equals(rl.getNamespace()) && "rice".equals(rl.getPath())) {
+                seedToProduct.put(seedId, seedId);
+                blockProductCache.put(placedBlock, seedItem);
+                seedSoilCompat.put(seedId, deriveCompatibleSoils(seedItem, placedBlock));
+                continue;
+            }
+
             // Query loot table for the crop product
             BlockState maxAgeState;
             if (placedBlock instanceof CropBlock crop) {
@@ -204,13 +227,18 @@ public final class CropProductResolver {
         if ("rice_paddy".equals(hint)) {
             return EnumSet.of(SoilType.WATER);
         }
+        // Mushrooms grow on untilled rich soil (plain dirt variant).
+        if (placedBlock instanceof net.minecraft.world.level.block.MushroomBlock) {
+            return EnumSet.of(SoilType.RICH_SOIL);
+        }
+        // Saplings: untilled rich soil (FD boost) or any standard dirt-type. Skipping for now since isPlantableSeed filters them out.
         if (placedBlock instanceof CropBlock
                 || placedBlock instanceof StemBlock
                 || placedBlock instanceof AttachedStemBlock
                 || placedBlock instanceof BushBlock) {
-            return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL);
+            return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED);
         }
-        return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL);
+        return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED);
     }
 
     private static Block getPlacedBlock(Item item) {
@@ -228,6 +256,12 @@ public final class CropProductResolver {
         if (seedItem == Items.BEETROOT_SEEDS) return Items.BEETROOT;
         if (seedItem == Items.MELON_SEEDS) return Items.MELON;
         if (seedItem == Items.PUMPKIN_SEEDS) return Items.PUMPKIN;
+        // FD rice is both seed and food — no suffix stripping, return itself.
+        ResourceLocation fdKey = BuiltInRegistries.ITEM.getKey(seedItem);
+        if (fdKey != null && "farmersdelight".equals(fdKey.getNamespace())
+                && "rice".equals(fdKey.getPath())) {
+            return seedItem;
+        }
         // For modded seeds: try stripping _seeds/_seed suffix and looking up the base item
         ResourceLocation key = BuiltInRegistries.ITEM.getKey(seedItem);
         if (key != null) {

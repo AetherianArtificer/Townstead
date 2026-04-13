@@ -180,6 +180,8 @@ public final class CellPlan {
         // Raw key methods for NBT/network loading and screen construction (key already packed)
         public Builder rawSoil(int packedKey, SoilType t) { soilPlan.put(packedKey, t); return this; }
         public Builder rawSeed(int packedKey, String v) { seedPlan.put(packedKey, v); return this; }
+        public Builder removeSoil(int packedKey) { soilPlan.remove(packedKey); return this; }
+        public Builder removeSeed(int packedKey) { seedPlan.remove(packedKey); return this; }
 
         public CellPlan build() {
             return new CellPlan(new HashMap<>(soilPlan), new HashMap<>(seedPlan));
