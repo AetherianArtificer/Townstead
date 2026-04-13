@@ -1189,11 +1189,18 @@ public class FieldPostScreen extends Screen {
         SoilType soilPlanEntry = soilPlan.get(planKey);
         String seedPlanEntry = seedPlan.get(planKey);
 
-        // Mod origin
+        // Mod origin — prefer the crop's namespace (e.g., a Croptopia crop on vanilla farmland
+        // should be labeled "Croptopia", not nothing). Fall back to the ground block.
         String modName = null;
-        net.minecraft.resources.ResourceLocation blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
-        if (blockId != null && !"minecraft".equals(blockId.getNamespace())) {
-            modName = categoryFor(blockId.getNamespace());
+        net.minecraft.resources.ResourceLocation cropId = growthState != null
+                ? net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(growthState.getBlock()) : null;
+        if (cropId != null && !"minecraft".equals(cropId.getNamespace())) {
+            modName = categoryFor(cropId.getNamespace());
+        } else {
+            net.minecraft.resources.ResourceLocation blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
+            if (blockId != null && !"minecraft".equals(blockId.getNamespace())) {
+                modName = categoryFor(blockId.getNamespace());
+            }
         }
 
         // ── Compute tooltip dimensions — measure every line precisely ──
