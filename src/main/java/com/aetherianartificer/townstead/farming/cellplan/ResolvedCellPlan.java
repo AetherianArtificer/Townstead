@@ -113,15 +113,23 @@ public final class ResolvedCellPlan implements CellPlanView {
             return null;
         }
 
-        // Pass 1: farmland
-        for (int dy = Y_SCAN_RANGE; dy >= -Y_SCAN_RANGE; dy--) {
+        // Pass 1: farmland — prefer the one closest in Y to the post.
+        BlockPos bestFarm = null;
+        int bestFarmDist = Integer.MAX_VALUE;
+        for (int dy = -Y_SCAN_RANGE; dy <= Y_SCAN_RANGE; dy++) {
             BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
             if (level.getBlockState(candidate).getBlock() instanceof FarmBlock) {
-                return candidate.above();
+                int dist = Math.abs(dy);
+                if (dist < bestFarmDist) { bestFarmDist = dist; bestFarm = candidate; }
             }
         }
-        // Pass 2: any solid ground (skip trees/crops/fluids)
-        for (int dy = Y_SCAN_RANGE; dy >= -Y_SCAN_RANGE; dy--) {
+        if (bestFarm != null) return bestFarm.above();
+
+        // Pass 2: real ground surface — a solid block whose neighbor above is air or a plant we can clear.
+        // Then pick the one closest in Y to the post, so we don't latch onto a stray stone block higher up.
+        BlockPos bestGround = null;
+        int bestGroundDist = Integer.MAX_VALUE;
+        for (int dy = -Y_SCAN_RANGE; dy <= Y_SCAN_RANGE; dy++) {
             BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
             BlockState state = level.getBlockState(candidate);
             if (state.isAir()) continue;
@@ -133,9 +141,18 @@ public final class ResolvedCellPlan implements CellPlanView {
             if (state.is(BlockTags.WALLS)) continue;
             if (state.is(BlockTags.SIGNS)) continue;
             if (state.getFluidState().is(Fluids.WATER) || state.getFluidState().is(Fluids.LAVA)) continue;
-            return candidate.above();
+            // Must be a real surface — the block above must be air or clearable plant matter,
+            // not another solid block (which would mean we're inside a structure/cave wall/etc.).
+            BlockState above = level.getBlockState(candidate.above());
+            if (!above.isAir()
+                    && !(above.getBlock() instanceof CropBlock)
+                    && !(above.getBlock() instanceof BushBlock)
+                    && !(above.getBlock() instanceof LeavesBlock)
+                    && !above.getFluidState().is(Fluids.WATER)) continue;
+            int dist = Math.abs(dy);
+            if (dist < bestGroundDist) { bestGroundDist = dist; bestGround = candidate; }
         }
-        return null;
+        return bestGround != null ? bestGround.above() : null;
     }
 
     // ── CellPlanView impl ──
