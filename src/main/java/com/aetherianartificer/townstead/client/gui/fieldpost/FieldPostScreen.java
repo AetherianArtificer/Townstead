@@ -422,7 +422,13 @@ public class FieldPostScreen extends Screen {
     private void updateInStockToggleLabel() {
         if (inStockToggleButton == null) return;
         inStockToggleButton.setMessage(Component.literal(inStockOnly ? "\u2714" : " "));
-        inStockToggleButton.active = (activeTab == PaletteTab.SEEDS);
+        boolean active = (activeTab == PaletteTab.SEEDS);
+        inStockToggleButton.active = active;
+        // Hide the tooltip while the button is disabled — it's irrelevant in Soil mode.
+        inStockToggleButton.setTooltip(active
+                ? net.minecraft.client.gui.components.Tooltip.create(
+                        Component.translatable("townstead.field_post.filter.in_stock.tooltip"))
+                : null);
     }
 
     /** Tool-entry IDs that should never be filtered by in-stock (AUTO / NONE / PROTECTED). */
@@ -1358,7 +1364,10 @@ public class FieldPostScreen extends Screen {
             if (seedPlanText != null) contentH += lineH;
         }
         if (modName != null) contentH += 9; // mod origin is rendered at 0.85x scale, ~9px
-        contentH += pad;
+        // Bottom padding: the last line's `+= lineH` already includes ~3px of natural trailing
+        // whitespace (line height 11 vs. glyph height 8). Trim that from the final pad so the
+        // visible top and bottom gutters match.
+        contentH += Math.max(0, pad - 3);
 
         // Position tooltip (avoid going off-screen)
         int tx = mouseX + 12;
@@ -1367,9 +1376,9 @@ public class FieldPostScreen extends Screen {
         if (ty + contentH > height) ty = height - contentH - 2;
         if (ty < 2) ty = 2;
 
-        // ── Draw tooltip box (above everything, Z=400) ──
+        // ── Draw tooltip box (above everything, including cardinal labels and any widget decorations) ──
         g.pose().pushPose();
-        g.pose().translate(0, 0, 400);
+        g.pose().translate(0, 0, 1000);
 
         int borderInner = 0xFF5000AA;
         int borderGrad = 0xFF28007F;
