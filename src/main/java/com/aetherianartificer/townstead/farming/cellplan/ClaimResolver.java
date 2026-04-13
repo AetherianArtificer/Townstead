@@ -93,13 +93,16 @@ public final class ClaimResolver {
         ResourceLocation waterBlockId = BuiltInRegistries.BLOCK.getKey(waterState.getBlock());
         if (waterBlockId != null && "farmersdelight".equals(waterBlockId.getNamespace())
                 && (waterBlockId.getPath().contains("rice") || waterBlockId.getPath().contains("paddy"))) {
+            // Return the seed (farmersdelight:rice), not the harvest product (rice_panicle).
+            // Claim → rice_panicle wouldn't replant because our FD compat treats rice as the
+            // plantable and excludes rice_panicle — the farmer would never find it in inventory.
             //? if >=1.21 {
-            Item panicle = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("farmersdelight", "rice_panicle"));
+            Item riceSeed = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("farmersdelight", "rice"));
             //?} else {
-            /*Item panicle = BuiltInRegistries.ITEM.get(new ResourceLocation("farmersdelight", "rice_panicle"));
+            /*Item riceSeed = BuiltInRegistries.ITEM.get(new ResourceLocation("farmersdelight", "rice"));
             *///?}
-            if (panicle != Items.AIR) {
-                ResourceLocation id = BuiltInRegistries.ITEM.getKey(panicle);
+            if (riceSeed != Items.AIR) {
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(riceSeed);
                 if (id != null) return id.toString();
             }
         }

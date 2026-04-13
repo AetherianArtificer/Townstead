@@ -1845,12 +1845,22 @@ public class FieldPostScreen extends Screen {
         for (String val : seedPlan.values()) {
             if (SeedAssignment.isExplicitSeed(val) && !seeds.contains(val)) seeds.add(val);
         }
+        // Re-read the blockentity's config right before sending so we don't clobber non-plan
+        // settings (radius, water, groom, rotation) that may have been updated by the server
+        // via a later sync packet after this screen opened.
+        FieldPostConfig current = loadedConfig;
+        if (level != null) {
+            net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(postPos);
+            if (be instanceof com.aetherianartificer.townstead.block.FieldPostBlockEntity fpBe) {
+                current = fpBe.toConfig();
+            }
+        }
         FieldPostConfig config = new FieldPostConfig(
-                loadedConfig.patternId(), loadedConfig.tierCap(), loadedConfig.radius(),
-                loadedConfig.priority(), seeds.isEmpty(), seeds,
-                loadedConfig.waterEnabled(), loadedConfig.maxWaterCells(),
-                loadedConfig.groomEnabled(), loadedConfig.groomRadius(),
-                loadedConfig.rotationEnabled(), loadedConfig.rotationPatterns(),
+                current.patternId(), current.tierCap(), current.radius(),
+                current.priority(), seeds.isEmpty(), seeds,
+                current.waterEnabled(), current.maxWaterCells(),
+                current.groomEnabled(), current.groomRadius(),
+                current.rotationEnabled(), current.rotationPatterns(),
                 plan);
         FieldPostConfigSetPayload payload = new FieldPostConfigSetPayload(postPos, config);
         //? if neoforge {
@@ -1872,6 +1882,28 @@ public class FieldPostScreen extends Screen {
      * Called by the client packet handler when the server sends the grid snapshot.
      * Populates the grid render data from server-provided data instead of client scanning.
      */
+    /**
+     * Find the Y in this column whose block matches the snapshot-provided ground block, searching
+     * outward from postY. Falls back to the first non-air block if the exact match isn't visible
+     * client-side (chunk not loaded, etc.), then to postY-1 as last resort.
+     */
+    private BlockPos resolveCellYLocal(int wx, int wz, int baseY, Block expectedBlock) {
+        final int range = 8;
+        for (int dy = 0; dy <= range; dy++) {
+            for (int sign : (dy == 0 ? new int[]{0} : new int[]{-1, 1})) {
+                BlockPos candidate = new BlockPos(wx, baseY - 1 + sign * dy, wz);
+                if (level.getBlockState(candidate).getBlock() == expectedBlock) return candidate;
+            }
+        }
+        for (int dy = 0; dy <= range; dy++) {
+            for (int sign : (dy == 0 ? new int[]{0} : new int[]{-1, 1})) {
+                BlockPos candidate = new BlockPos(wx, baseY - 1 + sign * dy, wz);
+                if (!level.getBlockState(candidate).isAir()) return candidate;
+            }
+        }
+        return new BlockPos(wx, baseY - 1, wz);
+    }
+
     public void applyServerSnapshot(com.aetherianartificer.townstead.farming.GridSnapshot snapshot,
                                      Map<String, String> cropPalette,
                                      Map<String, Integer> villageSeedCounts,
@@ -1906,7 +1938,13 @@ public class FieldPostScreen extends Screen {
                 boolean hidden = (flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_HIDDEN) != 0;
                 renderStates[gz][gx] = (hidden
                         || (flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_AIR) != 0) ? null : state;
-                renderPositions[gz][gx] = new BlockPos(postPos.getX() + (gx - half), postPos.getY() - 1, postPos.getZ() + (gz - half));
+                // Resolve the real Y for this cell from the local world column so tooltips,
+                // growth dots, and plan-fulfillment checks read the right block later. The server
+                // snapshot doesn't carry per-cell Y, and assuming postY-1 breaks on any uneven
+                // terrain (terraces, slopes, water crops, etc.).
+                int wx = postPos.getX() + (gx - half);
+                int wz = postPos.getZ() + (gz - half);
+                renderPositions[gz][gx] = resolveCellYLocal(wx, wz, postPos.getY(), block);
 
                 // Cell flags
                 if ((flags & com.aetherianartificer.townstead.farming.GridSnapshot.FLAG_POST) != 0) {
