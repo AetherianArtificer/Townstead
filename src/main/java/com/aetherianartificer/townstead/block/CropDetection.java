@@ -51,7 +51,14 @@ public final class CropDetection {
         // Mushrooms ARE allowed — they plant on rich soil for colony farming.
         if (placedBlock instanceof MushroomBlock) return true;
 
-        return placedBlock instanceof CropBlock || placedBlock instanceof BushBlock;
+        if (placedBlock instanceof CropBlock) return true;
+        // BushBlock is ambiguous — mods use the class for both actual growing crops (rice, tomato
+        // vine, etc.) and decorative food-display blocks (e.g. a 3D "barley" model placed from the
+        // food item). Only the growing kind has an "age" property.
+        if (placedBlock instanceof BushBlock) {
+            return placedBlock.getStateDefinition().getProperty("age") != null;
+        }
+        return false;
     }
 
     /**
