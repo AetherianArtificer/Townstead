@@ -170,6 +170,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private final List<NodeData> townstead$catalogNodes = new ArrayList<>();
     @Unique
+    private final Set<String> townstead$builtTypes = new HashSet<>();
+    @Unique
     private double townstead$catalogPanX = 0.0;
     @Unique
     private double townstead$catalogPanY = 0.0;
@@ -424,7 +426,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         context.fill(graphX, graphY, graphRight, insideBottom, 0xFF1B1E24);
         townstead$drawCatalogGrid(context, graphX, graphY, graphW, graphH);
         townstead$drawCatalogConnections(context, graphX, graphY, graphW, graphH);
-        townstead$drawCatalogNodes(context, graphX, graphY, graphW, graphH);
+        townstead$drawCatalogNodes(context, graphX, graphY, graphW, graphH, mouseX, mouseY, partialTicks);
         context.disableScissor();
 
         context.fill(detailsX, detailsY, detailsRight, detailsBottom, 0xFF232A36);
@@ -480,8 +482,6 @@ public abstract class BlueprintScreenMixin extends Screen {
 
         int needsHeaderY = detailsMidY + 6;
         context.drawString(this.font, Component.literal("Needs"), detailsTextX, needsHeaderY, 0xD0D0D0);
-        int pageIndicatorY = needsHeaderY + 2;
-        int pageIndicatorX = detailsRight - 50;
         int needsListTop = needsHeaderY + this.font.lineHeight + 4;
         int needsListBottom = detailsBottom - 4;
         List<RequirementRow> allRequirements = townstead$sortedRequirements(selected.getGroups());
@@ -508,14 +508,19 @@ public abstract class BlueprintScreenMixin extends Screen {
                 townstead$catalogNeedsNextButton.setX(nextX);
                 townstead$catalogNeedsNextButton.setY(buttonY);
             }
-            pageIndicatorX = prevX - 42;
+            float pageScale = 0.72f;
+            String pageText = (townstead$catalogNeedsPage + 1) + " / " + totalPages;
+            int pageVisualW = (int) Math.ceil(this.font.width(pageText) * pageScale);
+            int pageVisualH = (int) Math.ceil(this.font.lineHeight * pageScale);
+            int pageVisualX = prevX - 4 - pageVisualW;
+            int pageVisualY = buttonY + (14 - pageVisualH) / 2 - 1;
             context.pose().pushPose();
-            context.pose().scale(0.72f, 0.72f, 1.0f);
+            context.pose().scale(pageScale, pageScale, 1.0f);
             context.drawString(
                     this.font,
-                    Component.literal("[" + (townstead$catalogNeedsPage + 1) + " / " + totalPages + "]"),
-                    (int) Math.floor(pageIndicatorX / 0.72f),
-                    (int) Math.floor(pageIndicatorY / 0.72f),
+                    Component.literal(pageText),
+                    Math.round(pageVisualX / pageScale),
+                    Math.round(pageVisualY / pageScale),
                     0xA8BDD8);
             context.pose().popPose();
         } else {
@@ -1073,11 +1078,11 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private void townstead$buildCatalogEntries() {
         List<BuildingType> all = new ArrayList<>(BuildingTypes.getInstance().getBuildingTypes().values());
-        Set<String> builtTypes = new HashSet<>();
+        townstead$builtTypes.clear();
         BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
         if (accessor.townstead$getVillage() != null) {
             for (Building building : accessor.townstead$getVillage().getBuildings().values()) {
-                builtTypes.add(building.getType());
+                townstead$builtTypes.add(building.getType());
             }
         }
         all = all.stream()
@@ -1196,15 +1201,28 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     @Unique
-    private void townstead$drawCatalogNodes(GuiGraphics context, int insideX, int insideY, int insideW, int insideH) {
+    private void townstead$drawCatalogNodes(GuiGraphics context, int insideX, int insideY, int insideW, int insideH,
+            int mouseX, int mouseY, float partialTicks) {
         for (NodeData node : townstead$catalogNodes) {
             int screenX = insideX + (int) Math.round((node.worldX() + townstead$catalogPanX) * townstead$catalogZoom);
             int screenY = insideY + (int) Math.round((node.worldY() + townstead$catalogPanY) * townstead$catalogZoom);
             int nodeW = Math.max(16, (int) Math.round(26 * townstead$catalogZoom));
             int nodeH = Math.max(16, (int) Math.round(26 * townstead$catalogZoom));
 
-            int border = node.index() == townstead$catalogSelected ? 0xFFD9E9FF : 0xFF6D7A8D;
-            int fill = node.index() == townstead$catalogSelected ? 0xFF3A4D66 : 0xFF2A3342;
+            boolean hovered = mouseX >= screenX && mouseX <= screenX + nodeW
+                    && mouseY >= screenY && mouseY <= screenY + nodeH;
+            boolean selected = node.index() == townstead$catalogSelected;
+            boolean built = townstead$builtTypes.contains(node.type().name());
+
+            int border;
+            int fill;
+            if (built) {
+                border = selected ? 0xFFCDEBD0 : (hovered ? 0xFFA8D9AE : 0xFF5F9466);
+                fill = selected ? 0xFF2F5C3A : (hovered ? 0xFF295236 : 0xFF1F4029);
+            } else {
+                border = selected ? 0xFFD9E9FF : (hovered ? 0xFFB8C7DB : 0xFF6D7A8D);
+                fill = selected ? 0xFF3A4D66 : (hovered ? 0xFF34435A : 0xFF2A3342);
+            }
             context.fill(screenX - 1, screenY - 1, screenX + nodeW + 1, screenY + nodeH + 1, border);
             context.fill(screenX, screenY, screenX + nodeW, screenY + nodeH, fill);
 
@@ -1278,18 +1296,25 @@ public abstract class BlueprintScreenMixin extends Screen {
     private void townstead$drawNodeIcon(GuiGraphics context, NodeData node, int screenX, int screenY, int nodeW,
             int nodeH) {
         BuildingType type = node.type();
+        float iconScale = Math.max(0.55f, (float) townstead$catalogZoom);
+        int centerX = screenX + nodeW / 2;
+        int centerY = screenY + nodeH / 2;
         if (!type.name().startsWith("compat/")) {
-            int centerX = screenX + (nodeW / 2);
-            int centerY = screenY + (nodeH / 2);
-            this.drawBuildingIcon(context, MCA_BUILDING_ICONS, centerX, centerY, type.iconU(), type.iconV());
+            context.pose().pushPose();
+            context.pose().translate(centerX, centerY, 0);
+            context.pose().scale(iconScale, iconScale, 1.0f);
+            this.drawBuildingIcon(context, MCA_BUILDING_ICONS, 0, 0, type.iconU(), type.iconV());
+            context.pose().popPose();
             return;
         }
         ItemStack icon = townstead$resolveNodeIcon(type);
         if (icon.isEmpty())
             return;
-        int iconX = screenX + nodeW / 2 - 8;
-        int iconY = screenY + nodeH / 2 - 8;
-        context.renderItem(icon, iconX, iconY);
+        context.pose().pushPose();
+        context.pose().translate(centerX, centerY, 0);
+        context.pose().scale(iconScale, iconScale, 1.0f);
+        context.renderItem(icon, -8, -8);
+        context.pose().popPose();
     }
 
     @Unique
