@@ -116,19 +116,27 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private static final String CAFE_TYPE_PREFIX = "compat/rusticdelight/cafe_l";
     @Unique
-    private static final int ADV_WINDOW_W = 320;
+    private static final int ADV_WINDOW_MIN_W = 320;
     @Unique
-    private static final int ADV_WINDOW_H = 188;
+    private static final int ADV_WINDOW_MIN_H = 188;
+    @Unique
+    private static final int ADV_WINDOW_MAX_W = 640;
+    @Unique
+    private static final int ADV_WINDOW_MAX_H = 380;
     @Unique
     private static final int ADV_INSIDE_X = 9;
     @Unique
     private static final int ADV_INSIDE_Y = 18;
     @Unique
-    private static final int ADV_INSIDE_W = 302;
+    private int ADV_WINDOW_W = ADV_WINDOW_MIN_W;
     @Unique
-    private static final int ADV_INSIDE_H = 161;
+    private int ADV_WINDOW_H = ADV_WINDOW_MIN_H;
     @Unique
-    private static final int CATALOG_DETAILS_W = 108;
+    private int ADV_INSIDE_W = ADV_WINDOW_MIN_W - 18;
+    @Unique
+    private int ADV_INSIDE_H = ADV_WINDOW_MIN_H - 27;
+    @Unique
+    private int CATALOG_DETAILS_W = 108;
     @Unique
     private static final ResourceLocation MCA_BUILDING_ICONS = MCA.locate("textures/buildings.png");
 
@@ -161,6 +169,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     private int townstead$catalogSelected = 0;
     @Unique
     private final List<NodeData> townstead$catalogNodes = new ArrayList<>();
+    @Unique
+    private final Set<String> townstead$builtTypes = new HashSet<>();
     @Unique
     private double townstead$catalogPanX = 0.0;
     @Unique
@@ -269,6 +279,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$initProfessionPage();
             townstead$setNavVisible(true);
         } else if (TOWNSTEAD_CATALOG_PAGE.equals(this.page)) {
+            townstead$recomputeCatalogDims();
             townstead$nodeItemIconCache.clear();
             townstead$buildCatalogEntries();
             townstead$buildCatalogNodes();
@@ -362,6 +373,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             CallbackInfo ci) {
         if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page))
             return;
+        townstead$recomputeCatalogDims();
         int windowX = townstead$catalogWindowX();
         int windowY = townstead$catalogWindowY();
         context.fill(windowX, windowY, windowX + ADV_WINDOW_W, windowY + ADV_WINDOW_H, 0xFFDEDEDE);
@@ -414,7 +426,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         context.fill(graphX, graphY, graphRight, insideBottom, 0xFF1B1E24);
         townstead$drawCatalogGrid(context, graphX, graphY, graphW, graphH);
         townstead$drawCatalogConnections(context, graphX, graphY, graphW, graphH);
-        townstead$drawCatalogNodes(context, graphX, graphY, graphW, graphH);
+        townstead$drawCatalogNodes(context, graphX, graphY, graphW, graphH, mouseX, mouseY, partialTicks);
         context.disableScissor();
 
         context.fill(detailsX, detailsY, detailsRight, detailsBottom, 0xFF232A36);
@@ -470,8 +482,6 @@ public abstract class BlueprintScreenMixin extends Screen {
 
         int needsHeaderY = detailsMidY + 6;
         context.drawString(this.font, Component.literal("Needs"), detailsTextX, needsHeaderY, 0xD0D0D0);
-        int pageIndicatorY = needsHeaderY + 2;
-        int pageIndicatorX = detailsRight - 50;
         int needsListTop = needsHeaderY + this.font.lineHeight + 4;
         int needsListBottom = detailsBottom - 4;
         List<RequirementRow> allRequirements = townstead$sortedRequirements(selected.getGroups());
@@ -498,14 +508,19 @@ public abstract class BlueprintScreenMixin extends Screen {
                 townstead$catalogNeedsNextButton.setX(nextX);
                 townstead$catalogNeedsNextButton.setY(buttonY);
             }
-            pageIndicatorX = prevX - 42;
+            float pageScale = 0.72f;
+            String pageText = (townstead$catalogNeedsPage + 1) + " / " + totalPages;
+            int pageVisualW = (int) Math.ceil(this.font.width(pageText) * pageScale);
+            int pageVisualH = (int) Math.ceil(this.font.lineHeight * pageScale);
+            int pageVisualX = prevX - 4 - pageVisualW;
+            int pageVisualY = buttonY + (14 - pageVisualH) / 2 - 1;
             context.pose().pushPose();
-            context.pose().scale(0.72f, 0.72f, 1.0f);
+            context.pose().scale(pageScale, pageScale, 1.0f);
             context.drawString(
                     this.font,
-                    Component.literal("[" + (townstead$catalogNeedsPage + 1) + " / " + totalPages + "]"),
-                    (int) Math.floor(pageIndicatorX / 0.72f),
-                    (int) Math.floor(pageIndicatorY / 0.72f),
+                    Component.literal(pageText),
+                    Math.round(pageVisualX / pageScale),
+                    Math.round(pageVisualY / pageScale),
                     0xA8BDD8);
             context.pose().popPose();
         } else {
@@ -617,36 +632,76 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     //? if neoforge {
-    @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (townstead$dispatchScroll(mouseX, mouseY, verticalAmount))
+            return true;
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
     //?} else {
-    /*@Inject(method = "m_6050_", remap = false, at = @At("HEAD"), cancellable = true)
+    /*@Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (townstead$dispatchScroll(mouseX, mouseY, delta))
+            return true;
+        return super.mouseScrolled(mouseX, mouseY, delta);
+    }
     *///?}
-    private void townstead$scrollNav(double mouseX, double mouseY, double horizontalAmount, double verticalAmount,
-            CallbackInfoReturnable<Boolean> cir) {
-        if (TOWNSTEAD_CATALOG_PAGE.equals(this.page))
-            return;
+
+    @Unique
+    private boolean townstead$dispatchScroll(double mouseX, double mouseY, double verticalAmount) {
+        if (townstead$handleCatalogScroll(mouseX, mouseY, verticalAmount))
+            return true;
+        if (townstead$handleShiftScroll(mouseX, mouseY, verticalAmount))
+            return true;
+        if (townstead$handleProfessionScroll(mouseX, mouseY, verticalAmount))
+            return true;
+        return townstead$handleNavScroll(mouseX, mouseY, verticalAmount);
+    }
+
+    @Unique
+    private boolean townstead$handleCatalogScroll(double mouseX, double mouseY, double verticalAmount) {
+        if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page))
+            return false;
+        int direction = verticalAmount > 0 ? 1 : (verticalAmount < 0 ? -1 : 0);
+        if (direction == 0)
+            return false;
+        int windowX = townstead$catalogWindowX();
+        int windowY = townstead$catalogWindowY();
+        int insideX = windowX + ADV_INSIDE_X;
+        int insideY = windowY + ADV_INSIDE_Y;
+        int graphRight = insideX + (ADV_INSIDE_W - CATALOG_DETAILS_W - 2);
+        int insideBottom = insideY + ADV_INSIDE_H;
+        double focalX = mouseX;
+        double focalY = mouseY;
+        if (mouseX < insideX || mouseX > graphRight || mouseY < insideY || mouseY > insideBottom) {
+            focalX = insideX + ((ADV_INSIDE_W - CATALOG_DETAILS_W - 2) / 2.0);
+            focalY = insideY + (ADV_INSIDE_H / 2.0);
+        }
+        townstead$applyCatalogZoom(direction, focalX, focalY, insideX, insideY);
+        return true;
+    }
+
+    @Unique
+    private boolean townstead$handleNavScroll(double mouseX, double mouseY, double verticalAmount) {
         if (townstead$navButtons.isEmpty())
-            return;
+            return false;
         int left = this.width / 2 - 180;
         int top = this.height / 2 - 56;
         int right = left + NAV_BUTTON_WIDTH;
         int bottom = top + (NAV_VISIBLE_ROWS * NAV_BUTTON_STEP);
         if (!(mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom))
-            return;
-
+            return false;
         int overflowRows = Math.max(0, townstead$navButtons.size() - NAV_VISIBLE_ROWS);
         if (overflowRows <= 0)
-            return;
+            return false;
         int maxScroll = overflowRows * NAV_BUTTON_STEP;
-
         if (verticalAmount < 0) {
             townstead$navScrollPx = Math.max(-maxScroll, townstead$navScrollPx - NAV_BUTTON_STEP);
         } else if (verticalAmount > 0) {
             townstead$navScrollPx = Math.min(0, townstead$navScrollPx + NAV_BUTTON_STEP);
         }
         townstead$applyNavScroll();
-        cir.setReturnValue(true);
-        cir.cancel();
+        return true;
     }
 
     //? if neoforge {
@@ -775,6 +830,17 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     @Unique
+    private void townstead$recomputeCatalogDims() {
+        int w = Math.max(ADV_WINDOW_MIN_W, Math.min(ADV_WINDOW_MAX_W, this.width - 40));
+        int h = Math.max(ADV_WINDOW_MIN_H, Math.min(ADV_WINDOW_MAX_H, this.height - 40));
+        ADV_WINDOW_W = w;
+        ADV_WINDOW_H = h;
+        ADV_INSIDE_W = w - 18;
+        ADV_INSIDE_H = h - 27;
+        CATALOG_DETAILS_W = Math.max(108, Math.min(180, (int) Math.round(w * 0.32)));
+    }
+
+    @Unique
     private int townstead$catalogWindowX() {
         return (this.width - ADV_WINDOW_W) / 2;
     }
@@ -789,11 +855,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         int windowX = townstead$catalogWindowX();
         int windowY = townstead$catalogWindowY();
         townstead$catalogBackButton = addRenderableWidget(new ButtonWidget(
-                windowX + 6,
+                windowX + 2,
                 windowY + 2,
-                38,
+                40,
                 14,
-                Component.literal("<<"),
+                Component.translatable("townstead.gui.back"),
                 b -> setPage(townstead$catalogReturnPage)));
         townstead$catalogZoomOutButton = addRenderableWidget(new ButtonWidget(
                 windowX + ADV_WINDOW_W - 40,
@@ -1012,11 +1078,11 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private void townstead$buildCatalogEntries() {
         List<BuildingType> all = new ArrayList<>(BuildingTypes.getInstance().getBuildingTypes().values());
-        Set<String> builtTypes = new HashSet<>();
+        townstead$builtTypes.clear();
         BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
         if (accessor.townstead$getVillage() != null) {
             for (Building building : accessor.townstead$getVillage().getBuildings().values()) {
-                builtTypes.add(building.getType());
+                townstead$builtTypes.add(building.getType());
             }
         }
         all = all.stream()
@@ -1135,15 +1201,28 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     @Unique
-    private void townstead$drawCatalogNodes(GuiGraphics context, int insideX, int insideY, int insideW, int insideH) {
+    private void townstead$drawCatalogNodes(GuiGraphics context, int insideX, int insideY, int insideW, int insideH,
+            int mouseX, int mouseY, float partialTicks) {
         for (NodeData node : townstead$catalogNodes) {
             int screenX = insideX + (int) Math.round((node.worldX() + townstead$catalogPanX) * townstead$catalogZoom);
             int screenY = insideY + (int) Math.round((node.worldY() + townstead$catalogPanY) * townstead$catalogZoom);
             int nodeW = Math.max(16, (int) Math.round(26 * townstead$catalogZoom));
             int nodeH = Math.max(16, (int) Math.round(26 * townstead$catalogZoom));
 
-            int border = node.index() == townstead$catalogSelected ? 0xFFD9E9FF : 0xFF6D7A8D;
-            int fill = node.index() == townstead$catalogSelected ? 0xFF3A4D66 : 0xFF2A3342;
+            boolean hovered = mouseX >= screenX && mouseX <= screenX + nodeW
+                    && mouseY >= screenY && mouseY <= screenY + nodeH;
+            boolean selected = node.index() == townstead$catalogSelected;
+            boolean built = townstead$builtTypes.contains(node.type().name());
+
+            int border;
+            int fill;
+            if (built) {
+                border = selected ? 0xFFCDEBD0 : (hovered ? 0xFFA8D9AE : 0xFF5F9466);
+                fill = selected ? 0xFF2F5C3A : (hovered ? 0xFF295236 : 0xFF1F4029);
+            } else {
+                border = selected ? 0xFFD9E9FF : (hovered ? 0xFFB8C7DB : 0xFF6D7A8D);
+                fill = selected ? 0xFF3A4D66 : (hovered ? 0xFF34435A : 0xFF2A3342);
+            }
             context.fill(screenX - 1, screenY - 1, screenX + nodeW + 1, screenY + nodeH + 1, border);
             context.fill(screenX, screenY, screenX + nodeW, screenY + nodeH, fill);
 
@@ -1217,18 +1296,25 @@ public abstract class BlueprintScreenMixin extends Screen {
     private void townstead$drawNodeIcon(GuiGraphics context, NodeData node, int screenX, int screenY, int nodeW,
             int nodeH) {
         BuildingType type = node.type();
+        float iconScale = Math.max(0.55f, (float) townstead$catalogZoom);
+        int centerX = screenX + nodeW / 2;
+        int centerY = screenY + nodeH / 2;
         if (!type.name().startsWith("compat/")) {
-            int centerX = screenX + (nodeW / 2);
-            int centerY = screenY + (nodeH / 2);
-            this.drawBuildingIcon(context, MCA_BUILDING_ICONS, centerX, centerY, type.iconU(), type.iconV());
+            context.pose().pushPose();
+            context.pose().translate(centerX, centerY, 0);
+            context.pose().scale(iconScale, iconScale, 1.0f);
+            this.drawBuildingIcon(context, MCA_BUILDING_ICONS, 0, 0, type.iconU(), type.iconV());
+            context.pose().popPose();
             return;
         }
         ItemStack icon = townstead$resolveNodeIcon(type);
         if (icon.isEmpty())
             return;
-        int iconX = screenX + nodeW / 2 - 8;
-        int iconY = screenY + nodeH / 2 - 8;
-        context.renderItem(icon, iconX, iconY);
+        context.pose().pushPose();
+        context.pose().translate(centerX, centerY, 0);
+        context.pose().scale(iconScale, iconScale, 1.0f);
+        context.renderItem(icon, -8, -8);
+        context.pose().popPose();
     }
 
     @Unique
@@ -1341,6 +1427,10 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (BuiltInRegistries.BLOCK.containsKey(id)) {
             Block block = BuiltInRegistries.BLOCK.get(id);
             return Component.translatable(block.getDescriptionId()).getString();
+        }
+        if (BuiltInRegistries.ITEM.containsKey(id)) {
+            Item item = BuiltInRegistries.ITEM.get(id);
+            return Component.translatable(item.getDescriptionId()).getString();
         }
         String tagPath = id.toString().replace(':', '.').replace('/', '.');
         String slashKey = "tag.block." + tagPath;
@@ -1531,7 +1621,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         // Back button
         addRenderableWidget(new ButtonWidget(
                 leftX, topY, 40, 14,
-                Component.literal("<< Back"),
+                Component.translatable("townstead.gui.back"),
                 b -> setPage("villagers")));
 
         // Pagination buttons (right-aligned)
@@ -1866,32 +1956,25 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
-    //? if neoforge {
-    @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
-    //?} else {
-    /*@Inject(method = "m_6050_", remap = false, at = @At("HEAD"), cancellable = true)
-    *///?}
-    private void townstead$shiftScrollPage(double mouseX, double mouseY, double horizontalAmount, double verticalAmount,
-            CallbackInfoReturnable<Boolean> cir) {
+    @Unique
+    private boolean townstead$handleShiftScroll(double mouseX, double mouseY, double verticalAmount) {
         if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page))
-            return;
-
-        // Scroll changes page if cursor is over the grid area
+            return false;
         int gridX = townstead$shiftGridLeft();
         int cellW = townstead$shiftCellW();
         int gridY = this.height / 2 - 48;
         int gridRight = gridX + ShiftData.HOURS_PER_DAY * cellW;
         int gridBottom = gridY + SHIFT_ROWS_PER_PAGE * (SHIFT_CELL_H + 2);
-
-        if (mouseX >= gridX && mouseX <= gridRight && mouseY >= gridY && mouseY <= gridBottom) {
-            if (verticalAmount < 0) {
-                townstead$shiftPageDelta(1);
-            } else if (verticalAmount > 0) {
-                townstead$shiftPageDelta(-1);
-            }
-            cir.setReturnValue(true);
-            cir.cancel();
+        if (mouseX < gridX || mouseX > gridRight || mouseY < gridY || mouseY > gridBottom)
+            return false;
+        if (verticalAmount < 0) {
+            townstead$shiftPageDelta(1);
+        } else if (verticalAmount > 0) {
+            townstead$shiftPageDelta(-1);
+        } else {
+            return false;
         }
+        return true;
     }
 
     // =====================================================================
@@ -1911,7 +1994,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         // Back button
         addRenderableWidget(new ButtonWidget(
                 leftX, topY, 40, 14,
-                Component.literal("<< Back"),
+                Component.translatable("townstead.gui.back"),
                 b -> setPage("villagers")));
 
         // Villager list pagination (right-aligned with profession panel)
@@ -2205,16 +2288,10 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
-    //? if neoforge {
-    @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
-    //?} else {
-    /*@Inject(method = "m_6050_", remap = false, at = @At("HEAD"), cancellable = true)
-    *///?}
-    private void townstead$professionScrollPage(double mouseX, double mouseY, double horizontalAmount, double verticalAmount,
-            CallbackInfoReturnable<Boolean> cir) {
+    @Unique
+    private boolean townstead$handleProfessionScroll(double mouseX, double mouseY, double verticalAmount) {
         if (!TOWNSTEAD_PROFESSION_PAGE.equals(this.page))
-            return;
-
+            return false;
         int leftX = this.width / 2 - 80;
         int listRight = this.width / 2 + 40;
         int profPanelX = listRight + 8;
@@ -2222,27 +2299,27 @@ public abstract class BlueprintScreenMixin extends Screen {
         int listY = this.height / 2 - 48;
         int listBottom = listY + PROF_ROWS_PER_PAGE * 15;
 
-        // Scroll villager list (left side)
         if (mouseX >= leftX && mouseX <= listRight && mouseY >= listY && mouseY <= listBottom) {
             if (verticalAmount < 0) {
                 townstead$profPageDelta(1);
             } else if (verticalAmount > 0) {
                 townstead$profPageDelta(-1);
+            } else {
+                return false;
             }
-            cir.setReturnValue(true);
-            cir.cancel();
-            return;
+            return true;
         }
 
-        // Scroll profession panel (right side)
         if (mouseX >= profPanelX && mouseX <= profPanelRight && mouseY >= listY && mouseY <= this.height / 2 + 76) {
             if (verticalAmount < 0) {
                 townstead$profScroll++;
             } else if (verticalAmount > 0) {
                 townstead$profScroll = Math.max(0, townstead$profScroll - 1);
+            } else {
+                return false;
             }
-            cir.setReturnValue(true);
-            cir.cancel();
+            return true;
         }
+        return false;
     }
 }
