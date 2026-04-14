@@ -125,6 +125,13 @@ tasks.withType<ProcessResources> {
             )
         }
     }
+    // 1.20.1 recipe conditions use "conditions" key and "forge:mod_loaded" type
+    filesMatching("data/*/recipe/*.json") {
+        filter {
+            it.replace("\"neoforge:conditions\"", "\"conditions\"")
+              .replace("\"neoforge:mod_loaded\"", "\"forge:mod_loaded\"")
+        }
+    }
 }
 
 tasks.withType<JavaCompile> { options.encoding = "UTF-8" }

@@ -525,7 +525,7 @@
   "townstead.field_post.toast.mismatch.body": "%1$s can't be planted on %2$s. The farmer will skip this cell.",
 
   "townstead.guide.name": "Townstead Guide",
-  "townstead.guide.subtitle": "Living Villages, Done Right",
+  "townstead.guide.subtitle": "Villager needs, farming, and integrations",
   "townstead.guide.landing": "Welcome to Townstead. This guide covers how to set your villagers up for a good life: feeding them, keeping them rested, and giving them something useful to do. Start with [Farming](entry://townstead:guide/farming/getting_started) if you're new here.",
 
   "townstead.guide.category.farming": "Farming",
@@ -594,7 +594,7 @@
     "townstead.guide.entry.needs.overview.meters.title": "At a Glance",
     "townstead.guide.entry.needs.overview.meters.body": "- **Hunger** - 0 to 100. Drops from work and time. Refilled by eating.\n- **Thirst** - 0 to 20. Drops slowly on its own, faster from work. Refilled by drinking.\n- **Energy** - 0 to 20 fatigue. Rises from work, falls from sleep. Visible in the dialogue screen as an Energy bar (100 down to 0).",
     "townstead.guide.entry.needs.overview.what_next.title": "Where to Look Next",
-    "townstead.guide.entry.needs.overview.what_next.body": "Each meter has its own entry covering the details.\n\n- [Hunger](entry://townstead:guide/needs/hunger)\n- [Thirst](entry://townstead:guide/needs/thirst)\n- [Energy](entry://townstead:guide/needs/energy)\n\nThe [Reading Status](entry://townstead:guide/needs/reading_status) entry covers how to check a villager's current state in-game.",
+    "townstead.guide.entry.needs.overview.what_next.body": "Each meter has its own entry covering the details.\n\n- [Hunger](entry://townstead:guide/needs/hunger)\n\nMore entries (thirst, energy, reading status) will appear here as they're written.",
 
     "townstead.guide.entry.needs.hunger": "Hunger",
     "townstead.guide.entry.needs.hunger.intro.title": "What Hunger Does",
@@ -606,7 +606,7 @@
     "townstead.guide.entry.needs.hunger.meal_times.title": "Meal Times",
     "townstead.guide.entry.needs.hunger.meal_times.body": "Villagers prefer to eat at breakfast, lunch, and dinner rather than constantly nibbling. They only break the schedule if hunger drops below 25, which counts as an emergency.\n\nThis means a healthy villager will look well-fed most of the day and only dip slightly before each meal.",
     "townstead.guide.entry.needs.hunger.keeping_fed.title": "Keeping Them Fed",
-    "townstead.guide.entry.needs.hunger.keeping_fed.body": "The reliable setup is a stocked chest near the villager's home plus a food source that refills it. For farmers this is automatic once the farm is producing. For other jobs you'll want a [farmer](entry://townstead:guide/professions/farmer) nearby, or hand out food yourself.\n\nBetter food restores more hunger. Golden carrots go a long way; raw potatoes do not.",
+    "townstead.guide.entry.needs.hunger.keeping_fed.body": "The reliable setup is a stocked chest near the villager's home plus a food source that refills it. For farmers this is automatic once the farm is producing. For other jobs you'll want a farmer nearby, or hand out food yourself.\n\nBetter food restores more hunger. Golden carrots go a long way; raw potatoes do not.",
 
     "townstead.guide.entry.professions.coming_soon": "More Info to Come",
     "townstead.guide.entry.professions.coming_soon.title": "More Info to Come",
