@@ -1,0 +1,6 @@
+{
+  "label": "Farmer's Delight",
+  "match_prefix": "compat/farmersdelight/kitchen_l",
+  "layout": "tiered",
+  "priority": 10
+}
