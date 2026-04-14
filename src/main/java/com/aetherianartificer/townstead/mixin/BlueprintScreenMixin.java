@@ -850,11 +850,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         int windowX = townstead$catalogWindowX();
         int windowY = townstead$catalogWindowY();
         townstead$catalogBackButton = addRenderableWidget(new ButtonWidget(
-                windowX,
-                windowY,
-                38,
+                windowX + 2,
+                windowY + 2,
+                40,
                 14,
-                Component.literal("<<"),
+                Component.translatable("townstead.gui.back"),
                 b -> setPage(townstead$catalogReturnPage)));
         townstead$catalogZoomOutButton = addRenderableWidget(new ButtonWidget(
                 windowX + ADV_WINDOW_W - 40,
@@ -1596,7 +1596,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         // Back button
         addRenderableWidget(new ButtonWidget(
                 leftX, topY, 40, 14,
-                Component.literal("<< Back"),
+                Component.translatable("townstead.gui.back"),
                 b -> setPage("villagers")));
 
         // Pagination buttons (right-aligned)
@@ -1969,7 +1969,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         // Back button
         addRenderableWidget(new ButtonWidget(
                 leftX, topY, 40, 14,
-                Component.literal("<< Back"),
+                Component.translatable("townstead.gui.back"),
                 b -> setPage("villagers")));
 
         // Villager list pagination (right-aligned with profession panel)
