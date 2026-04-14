@@ -617,36 +617,76 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     //? if neoforge {
-    @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (townstead$dispatchScroll(mouseX, mouseY, verticalAmount))
+            return true;
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
     //?} else {
-    /*@Inject(method = "m_6050_", remap = false, at = @At("HEAD"), cancellable = true)
+    /*@Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (townstead$dispatchScroll(mouseX, mouseY, delta))
+            return true;
+        return super.mouseScrolled(mouseX, mouseY, delta);
+    }
     *///?}
-    private void townstead$scrollNav(double mouseX, double mouseY, double horizontalAmount, double verticalAmount,
-            CallbackInfoReturnable<Boolean> cir) {
-        if (TOWNSTEAD_CATALOG_PAGE.equals(this.page))
-            return;
+
+    @Unique
+    private boolean townstead$dispatchScroll(double mouseX, double mouseY, double verticalAmount) {
+        if (townstead$handleCatalogScroll(mouseX, mouseY, verticalAmount))
+            return true;
+        if (townstead$handleShiftScroll(mouseX, mouseY, verticalAmount))
+            return true;
+        if (townstead$handleProfessionScroll(mouseX, mouseY, verticalAmount))
+            return true;
+        return townstead$handleNavScroll(mouseX, mouseY, verticalAmount);
+    }
+
+    @Unique
+    private boolean townstead$handleCatalogScroll(double mouseX, double mouseY, double verticalAmount) {
+        if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page))
+            return false;
+        int direction = verticalAmount > 0 ? 1 : (verticalAmount < 0 ? -1 : 0);
+        if (direction == 0)
+            return false;
+        int windowX = townstead$catalogWindowX();
+        int windowY = townstead$catalogWindowY();
+        int insideX = windowX + ADV_INSIDE_X;
+        int insideY = windowY + ADV_INSIDE_Y;
+        int graphRight = insideX + (ADV_INSIDE_W - CATALOG_DETAILS_W - 2);
+        int insideBottom = insideY + ADV_INSIDE_H;
+        double focalX = mouseX;
+        double focalY = mouseY;
+        if (mouseX < insideX || mouseX > graphRight || mouseY < insideY || mouseY > insideBottom) {
+            focalX = insideX + ((ADV_INSIDE_W - CATALOG_DETAILS_W - 2) / 2.0);
+            focalY = insideY + (ADV_INSIDE_H / 2.0);
+        }
+        townstead$applyCatalogZoom(direction, focalX, focalY, insideX, insideY);
+        return true;
+    }
+
+    @Unique
+    private boolean townstead$handleNavScroll(double mouseX, double mouseY, double verticalAmount) {
         if (townstead$navButtons.isEmpty())
-            return;
+            return false;
         int left = this.width / 2 - 180;
         int top = this.height / 2 - 56;
         int right = left + NAV_BUTTON_WIDTH;
         int bottom = top + (NAV_VISIBLE_ROWS * NAV_BUTTON_STEP);
         if (!(mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom))
-            return;
-
+            return false;
         int overflowRows = Math.max(0, townstead$navButtons.size() - NAV_VISIBLE_ROWS);
         if (overflowRows <= 0)
-            return;
+            return false;
         int maxScroll = overflowRows * NAV_BUTTON_STEP;
-
         if (verticalAmount < 0) {
             townstead$navScrollPx = Math.max(-maxScroll, townstead$navScrollPx - NAV_BUTTON_STEP);
         } else if (verticalAmount > 0) {
             townstead$navScrollPx = Math.min(0, townstead$navScrollPx + NAV_BUTTON_STEP);
         }
         townstead$applyNavScroll();
-        cir.setReturnValue(true);
-        cir.cancel();
+        return true;
     }
 
     //? if neoforge {
@@ -789,8 +829,8 @@ public abstract class BlueprintScreenMixin extends Screen {
         int windowX = townstead$catalogWindowX();
         int windowY = townstead$catalogWindowY();
         townstead$catalogBackButton = addRenderableWidget(new ButtonWidget(
-                windowX + 6,
-                windowY + 2,
+                windowX,
+                windowY,
                 38,
                 14,
                 Component.literal("<<"),
@@ -1342,6 +1382,10 @@ public abstract class BlueprintScreenMixin extends Screen {
             Block block = BuiltInRegistries.BLOCK.get(id);
             return Component.translatable(block.getDescriptionId()).getString();
         }
+        if (BuiltInRegistries.ITEM.containsKey(id)) {
+            Item item = BuiltInRegistries.ITEM.get(id);
+            return Component.translatable(item.getDescriptionId()).getString();
+        }
         String tagPath = id.toString().replace(':', '.').replace('/', '.');
         String slashKey = "tag.block." + tagPath;
         String dottedKey = "tag.item." + tagPath;
@@ -1866,32 +1910,25 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
-    //? if neoforge {
-    @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
-    //?} else {
-    /*@Inject(method = "m_6050_", remap = false, at = @At("HEAD"), cancellable = true)
-    *///?}
-    private void townstead$shiftScrollPage(double mouseX, double mouseY, double horizontalAmount, double verticalAmount,
-            CallbackInfoReturnable<Boolean> cir) {
+    @Unique
+    private boolean townstead$handleShiftScroll(double mouseX, double mouseY, double verticalAmount) {
         if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page))
-            return;
-
-        // Scroll changes page if cursor is over the grid area
+            return false;
         int gridX = townstead$shiftGridLeft();
         int cellW = townstead$shiftCellW();
         int gridY = this.height / 2 - 48;
         int gridRight = gridX + ShiftData.HOURS_PER_DAY * cellW;
         int gridBottom = gridY + SHIFT_ROWS_PER_PAGE * (SHIFT_CELL_H + 2);
-
-        if (mouseX >= gridX && mouseX <= gridRight && mouseY >= gridY && mouseY <= gridBottom) {
-            if (verticalAmount < 0) {
-                townstead$shiftPageDelta(1);
-            } else if (verticalAmount > 0) {
-                townstead$shiftPageDelta(-1);
-            }
-            cir.setReturnValue(true);
-            cir.cancel();
+        if (mouseX < gridX || mouseX > gridRight || mouseY < gridY || mouseY > gridBottom)
+            return false;
+        if (verticalAmount < 0) {
+            townstead$shiftPageDelta(1);
+        } else if (verticalAmount > 0) {
+            townstead$shiftPageDelta(-1);
+        } else {
+            return false;
         }
+        return true;
     }
 
     // =====================================================================
@@ -2205,16 +2242,10 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
-    //? if neoforge {
-    @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
-    //?} else {
-    /*@Inject(method = "m_6050_", remap = false, at = @At("HEAD"), cancellable = true)
-    *///?}
-    private void townstead$professionScrollPage(double mouseX, double mouseY, double horizontalAmount, double verticalAmount,
-            CallbackInfoReturnable<Boolean> cir) {
+    @Unique
+    private boolean townstead$handleProfessionScroll(double mouseX, double mouseY, double verticalAmount) {
         if (!TOWNSTEAD_PROFESSION_PAGE.equals(this.page))
-            return;
-
+            return false;
         int leftX = this.width / 2 - 80;
         int listRight = this.width / 2 + 40;
         int profPanelX = listRight + 8;
@@ -2222,27 +2253,27 @@ public abstract class BlueprintScreenMixin extends Screen {
         int listY = this.height / 2 - 48;
         int listBottom = listY + PROF_ROWS_PER_PAGE * 15;
 
-        // Scroll villager list (left side)
         if (mouseX >= leftX && mouseX <= listRight && mouseY >= listY && mouseY <= listBottom) {
             if (verticalAmount < 0) {
                 townstead$profPageDelta(1);
             } else if (verticalAmount > 0) {
                 townstead$profPageDelta(-1);
+            } else {
+                return false;
             }
-            cir.setReturnValue(true);
-            cir.cancel();
-            return;
+            return true;
         }
 
-        // Scroll profession panel (right side)
         if (mouseX >= profPanelX && mouseX <= profPanelRight && mouseY >= listY && mouseY <= this.height / 2 + 76) {
             if (verticalAmount < 0) {
                 townstead$profScroll++;
             } else if (verticalAmount > 0) {
                 townstead$profScroll = Math.max(0, townstead$profScroll - 1);
+            } else {
+                return false;
             }
-            cir.setReturnValue(true);
-            cir.cancel();
+            return true;
         }
+        return false;
     }
 }
