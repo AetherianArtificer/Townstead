@@ -1,0 +1,8 @@
+{
+  "parent": "townstead:block/field_post_template",
+  "textures": {
+    "log": "minecraft:block/dark_oak_log",
+    "log_top": "minecraft:block/dark_oak_log_top",
+    "planks": "minecraft:block/dark_oak_planks"
+  }
+}

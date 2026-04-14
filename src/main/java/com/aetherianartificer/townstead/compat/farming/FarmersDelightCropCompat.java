@@ -29,7 +29,7 @@ public final class FarmersDelightCropCompat implements FarmerCropCompat {
     public boolean isSeed(ItemStack stack) {
         if (stack.isEmpty()) return false;
         ResourceLocation key = stack.getItem().builtInRegistryHolder().key().location();
-        // Rice item (places RiceBlock which extends BushBlock, not CropBlock)
+        // Rice — the actual seed planted into water. `rice_panicle` is the harvested drop, not the seed.
         if (ModCompat.matchesLoadedModPath(key, MOD_ID, "rice")) return true;
         // Tomato seeds (places BuddingTomatoBlock which extends BushBlock, not CropBlock)
         if (ModCompat.matchesLoadedModPath(key, MOD_ID, "tomato_seeds")) return true;
@@ -40,10 +40,31 @@ public final class FarmersDelightCropCompat implements FarmerCropCompat {
     }
 
     @Override
+    public boolean excludeAsSeed(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        ResourceLocation key = stack.getItem().builtInRegistryHolder().key().location();
+        // Non-plantable items that our generic class-based detection would otherwise flag as seeds.
+        if (ModCompat.matchesLoadedModPath(key, MOD_ID, "rice_panicle")) return true; // harvest product
+        if (ModCompat.matchesLoadedModPath(key, MOD_ID, "sandy_shrub")) return true; // decorative, world-gen
+        if (ModCompat.matchesLoadedModPath(key, MOD_ID, "wild_rice")) return true; // world-gen only
+        return false;
+    }
+
+    @Override
     public boolean shouldPartialHarvest(BlockState state) {
         ResourceLocation key = state.getBlock().builtInRegistryHolder().key().location();
-        if (!ModCompat.matchesLoadedModPath(key, MOD_ID, "tomatoes")) return false;
-        return isMatureAge(state);
+        // Tomato vine — partial harvest when ripe, resets to age 0.
+        if (ModCompat.matchesLoadedModPath(key, MOD_ID, "tomatoes")) {
+            return isMatureAge(state);
+        }
+        // Mushroom colonies — harvestable at any age > 0; each harvest yields one mushroom and
+        // decrements age (matching the vanilla shear interaction on MushroomColonyBlock).
+        if (ModCompat.matchesLoadedModPath(key, MOD_ID, "red_mushroom_colony")
+                || ModCompat.matchesLoadedModPath(key, MOD_ID, "brown_mushroom_colony")) {
+            IntegerProperty ageProp = findAgeProperty(state);
+            return ageProp != null && state.getValue(ageProp) > 0;
+        }
+        return false;
     }
 
     @Override
@@ -53,11 +74,24 @@ public final class FarmersDelightCropCompat implements FarmerCropCompat {
         IntegerProperty ageProp = findAgeProperty(state);
         if (ageProp == null) return List.of();
 
-        // Reset vine age to 0 — the vine keeps growing for next harvest
+        ResourceLocation key = state.getBlock().builtInRegistryHolder().key().location();
+
+        // Mushroom colony — decrement age, drop one of the matching mushroom.
+        if (ModCompat.matchesLoadedModPath(key, MOD_ID, "red_mushroom_colony")
+                || ModCompat.matchesLoadedModPath(key, MOD_ID, "brown_mushroom_colony")) {
+            int age = state.getValue(ageProp);
+            BlockState dec = state.setValue(ageProp, Math.max(0, age - 1));
+            level.setBlock(pos, dec, Block.UPDATE_ALL);
+            net.minecraft.world.item.Item mushroom = ModCompat.matchesLoadedModPath(key, MOD_ID, "red_mushroom_colony")
+                    ? net.minecraft.world.item.Items.RED_MUSHROOM
+                    : net.minecraft.world.item.Items.BROWN_MUSHROOM;
+            return java.util.List.of(new ItemStack(mushroom));
+        }
+
+        // Tomato vine — reset age to 0 and drop 1-2 tomatoes.
         BlockState reset = state.setValue(ageProp, 0);
         level.setBlock(pos, reset, Block.UPDATE_ALL);
 
-        // Drop 1-2 tomatoes (matching FD's right-click harvest logic)
         List<ItemStack> drops = new ArrayList<>();
         //? if >=1.21 {
         ResourceLocation tomatoId = ResourceLocation.fromNamespaceAndPath(MOD_ID, "tomato");
@@ -102,6 +136,55 @@ public final class FarmersDelightCropCompat implements FarmerCropCompat {
                 || below.is(Blocks.FARMLAND)
                 || below.is(Blocks.GRASS_BLOCK)
                 || below.is(Blocks.CLAY);
+    }
+
+    @Override
+    public boolean isCompatibleSoil(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        ResourceLocation key = state.getBlock().builtInRegistryHolder().key().location();
+        return ModCompat.matchesLoadedModPath(key, MOD_ID, "rich_soil")
+                || ModCompat.matchesLoadedModPath(key, MOD_ID, "rich_soil_farmland");
+    }
+
+    @Override
+    public boolean placeRichSoilTilled(ServerLevel level, BlockPos pos) {
+        return placeFromId(level, pos, "rich_soil_farmland");
+    }
+
+    @Override
+    public boolean placeRichSoil(ServerLevel level, BlockPos pos) {
+        return placeFromId(level, pos, "rich_soil");
+    }
+
+    @Override
+    public net.minecraft.world.item.Item soilCreationItem(com.aetherianartificer.townstead.farming.cellplan.SoilType type) {
+        // FD rich soil (both untilled and tilled) is created by applying organic_compost to dirt.
+        // The tilled variant then just needs a hoe — which the farmer already carries — so only the
+        // compost is an additional consumable.
+        if (type != com.aetherianartificer.townstead.farming.cellplan.SoilType.RICH_SOIL
+                && type != com.aetherianartificer.townstead.farming.cellplan.SoilType.RICH_SOIL_TILLED) {
+            return null;
+        }
+        if (!ModCompat.isLoaded(MOD_ID)) return null;
+        //? if >=1.21 {
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(MOD_ID, "organic_compost");
+        //?} else {
+        /*ResourceLocation id = new ResourceLocation(MOD_ID, "organic_compost");
+        *///?}
+        net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.getOptional(id).orElse(null);
+        return item == net.minecraft.world.item.Items.AIR ? null : item;
+    }
+
+    private static boolean placeFromId(ServerLevel level, BlockPos pos, String path) {
+        if (!ModCompat.isLoaded(MOD_ID)) return false;
+        //? if >=1.21 {
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
+        //?} else {
+        /*ResourceLocation id = new ResourceLocation(MOD_ID, path);
+        *///?}
+        Block block = BuiltInRegistries.BLOCK.getOptional(id).orElse(null);
+        if (block == null) return false;
+        return level.setBlock(pos, block.defaultBlockState(), Block.UPDATE_ALL);
     }
 
     private static boolean isMatureAge(BlockState state) {

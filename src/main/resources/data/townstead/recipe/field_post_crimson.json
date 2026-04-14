@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": { "item": "minecraft:crimson_planks" },
+    "L": { "item": "minecraft:crimson_stem" }
+  },
+  "result": {
+    "id": "townstead:field_post_crimson",
+    "count": 1
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": { "item": "minecraft:bamboo_planks" },
+    "L": { "item": "minecraft:bamboo_block" }
+  },
+  "result": {
+    "id": "townstead:field_post_bamboo",
+    "count": 1
+  }
+}

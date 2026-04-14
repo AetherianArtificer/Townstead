@@ -1,7 +1,8 @@
 package com.aetherianartificer.townstead;
 
-import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
-import com.aetherianartificer.townstead.farming.pattern.FarmPatternDataLoader;
+import com.aetherianartificer.townstead.block.FieldPostBlock;
+import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
+import com.aetherianartificer.townstead.block.FieldPostMenu;
 import com.aetherianartificer.townstead.compat.ConditionalCompatPack;
 import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
@@ -13,10 +14,11 @@ import com.aetherianartificer.townstead.compat.thirst.RusticDelightThirstCompat;
 import com.aetherianartificer.townstead.compat.cooking.BaristaTradesCompat;
 import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
 import com.google.common.collect.ImmutableSet;
-import com.aetherianartificer.townstead.farming.FarmingPolicyData;
-import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
-import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
-import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
+import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
+import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
+import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
+import com.aetherianartificer.townstead.farming.GridScanner;
+import com.aetherianartificer.townstead.farming.CropProductResolver;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
 import com.aetherianartificer.townstead.profession.ProfessionScanner;
@@ -60,6 +62,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.GsonHelper;
@@ -122,6 +131,16 @@ public class Townstead {
             DeferredRegister.create(net.minecraft.core.registries.Registries.VILLAGER_PROFESSION, MOD_ID);
     private static final DeferredRegister<net.minecraft.world.item.crafting.RecipeSerializer<?>> RECIPE_SERIALIZERS =
             DeferredRegister.create(net.minecraft.core.registries.Registries.RECIPE_SERIALIZER, MOD_ID);
+    private static final DeferredRegister<Block> BLOCKS =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.BLOCK, MOD_ID);
+    private static final DeferredRegister<Item> ITEMS =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.ITEM, MOD_ID);
+    private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.BLOCK_ENTITY_TYPE, MOD_ID);
+    private static final DeferredRegister<MenuType<?>> MENU_TYPES =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.MENU, MOD_ID);
+    private static final DeferredRegister<net.minecraft.world.item.CreativeModeTab> CREATIVE_MODE_TABS =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.CREATIVE_MODE_TAB, MOD_ID);
 
     //? if neoforge {
     public static final Supplier<AttachmentType<CompoundTag>> HUNGER_DATA = ATTACHMENTS.register(
@@ -174,10 +193,82 @@ public class Townstead {
             )
     );
 
+    // ── Field Post block ──
+
+    public static final Supplier<Block> FIELD_POST = BLOCKS.register("field_post",
+            () -> new FieldPostBlock(BlockBehaviour.Properties.of()
+                    .strength(2.0f)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion()));
+
+    public static final Supplier<Item> FIELD_POST_ITEM = ITEMS.register("field_post",
+            () -> new BlockItem(FIELD_POST.get(), new Item.Properties()));
+
+    private static final String[] FIELD_POST_WOOD_VARIANTS = {
+            "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove",
+            "cherry", "bamboo", "crimson", "warped"
+    };
+
+    public static final java.util.List<Supplier<Block>> FIELD_POST_VARIANTS = new java.util.ArrayList<>();
+    public static final java.util.List<Supplier<Item>> FIELD_POST_VARIANT_ITEMS = new java.util.ArrayList<>();
+
+    static {
+        for (String wood : FIELD_POST_WOOD_VARIANTS) {
+            String id = "field_post_" + wood;
+            Supplier<Block> block = BLOCKS.register(id,
+                    () -> new FieldPostBlock(BlockBehaviour.Properties.of()
+                            .strength(2.0f)
+                            .sound(SoundType.WOOD)
+                            .noOcclusion()));
+            FIELD_POST_VARIANTS.add(block);
+            FIELD_POST_VARIANT_ITEMS.add(ITEMS.register(id,
+                    () -> new BlockItem(block.get(), new Item.Properties())));
+        }
+    }
+
+    public static final Supplier<BlockEntityType<FieldPostBlockEntity>> FIELD_POST_BE =
+            BLOCK_ENTITY_TYPES.register("field_post",
+                    () -> {
+                        Block[] blocks = new Block[1 + FIELD_POST_VARIANTS.size()];
+                        blocks[0] = FIELD_POST.get();
+                        for (int i = 0; i < FIELD_POST_VARIANTS.size(); i++) {
+                            blocks[i + 1] = FIELD_POST_VARIANTS.get(i).get();
+                        }
+                        return BlockEntityType.Builder.of(FieldPostBlockEntity::new, blocks).build(null);
+                    });
+
+    public static final Supplier<net.minecraft.world.item.CreativeModeTab> TOWNSTEAD_TAB =
+            CREATIVE_MODE_TABS.register("main",
+                    () -> net.minecraft.world.item.CreativeModeTab.builder()
+                            .title(net.minecraft.network.chat.Component.translatable("itemGroup.townstead"))
+                            .icon(() -> new net.minecraft.world.item.ItemStack(FIELD_POST_ITEM.get()))
+                            .displayItems((params, output) -> {
+                                output.accept(FIELD_POST_ITEM.get());
+                                for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
+                                    output.accept(variant.get());
+                                }
+                            })
+                            .build());
+
+    //? if neoforge {
+    public static final Supplier<MenuType<FieldPostMenu>> FIELD_POST_MENU =
+            MENU_TYPES.register("field_post",
+                    () -> net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(FieldPostMenu::clientFactory));
+    //?} else if forge {
+    /*public static final Supplier<MenuType<FieldPostMenu>> FIELD_POST_MENU =
+            MENU_TYPES.register("field_post",
+                    () -> net.minecraftforge.common.extensions.IForgeMenuType.create(FieldPostMenu::clientFactory));
+    *///?}
+
     //? if neoforge {
     public Townstead(IEventBus modBus, ModContainer modContainer) {
         ATTACHMENTS.register(modBus);
         PROFESSIONS.register(modBus);
+        BLOCKS.register(modBus);
+        ITEMS.register(modBus);
+        BLOCK_ENTITY_TYPES.register(modBus);
+        MENU_TYPES.register(modBus);
+        CREATIVE_MODE_TABS.register(modBus);
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
             RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
         }
@@ -189,12 +280,12 @@ public class Townstead {
         modBus.addListener(this::addPackFinders);
         townstead$registerKeybinds(modBus);
         townstead$registerClientTooltipFactory(modBus);
+        townstead$registerMenuScreens(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         registerDialogueConditions();
-        FarmPatternRegistry.bootstrap();
         ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
     }
@@ -202,6 +293,11 @@ public class Townstead {
     /*public Townstead() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         PROFESSIONS.register(modBus);
+        BLOCKS.register(modBus);
+        ITEMS.register(modBus);
+        BLOCK_ENTITY_TYPES.register(modBus);
+        MENU_TYPES.register(modBus);
+        CREATIVE_MODE_TABS.register(modBus);
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
             RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
         }
@@ -211,6 +307,7 @@ public class Townstead {
         townstead$registerClientConfigScreen(modContainer);
         TownsteadNetwork.register();
         townstead$registerClientTooltipFactory(modBus);
+        townstead$registerMenuScreens(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -218,7 +315,6 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         registerDialogueConditions();
-        FarmPatternRegistry.bootstrap();
         ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
     }
@@ -273,8 +369,8 @@ public class Townstead {
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {
-        event.addListener(new FarmPatternDataLoader());
         event.addListener(new ButcherProfileDataLoader());
+        com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
     private void registerDialogueConditions() {
@@ -420,6 +516,9 @@ public class Townstead {
     }
     *///?}
 
+    // Screen is opened client-side directly via FieldPostScreenOpener (no menu registration needed)
+    private static void townstead$registerMenuScreens(Object modBus) {}
+
     private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
         //? if neoforge {
         try {
@@ -472,11 +571,6 @@ public class Townstead {
                 this::handleButcherStatusSync
         );
         registrar.playToClient(
-                FarmingPolicySyncPayload.TYPE,
-                FarmingPolicySyncPayload.STREAM_CODEC,
-                this::handleFarmingPolicySync
-        );
-        registrar.playToClient(
                 ButcherPolicySyncPayload.TYPE,
                 ButcherPolicySyncPayload.STREAM_CODEC,
                 this::handleButcherPolicySync
@@ -493,11 +587,6 @@ public class Townstead {
                     this::handleThirstSet
             );
         }
-        registrar.playToServer(
-                FarmingPolicySetPayload.TYPE,
-                FarmingPolicySetPayload.STREAM_CODEC,
-                this::handleFarmingPolicySet
-        );
         registrar.playToServer(
                 ButcherPolicySetPayload.TYPE,
                 ButcherPolicySetPayload.STREAM_CODEC,
@@ -543,6 +632,22 @@ public class Townstead {
                 FatigueSetPayload.STREAM_CODEC,
                 this::handleFatigueSet
         );
+        // Field Post
+        registrar.playToServer(
+                FieldPostConfigSetPayload.TYPE,
+                FieldPostConfigSetPayload.STREAM_CODEC,
+                this::handleFieldPostConfigSet
+        );
+        registrar.playToClient(
+                FieldPostConfigSyncPayload.TYPE,
+                FieldPostConfigSyncPayload.STREAM_CODEC,
+                this::handleFieldPostConfigSync
+        );
+        registrar.playToClient(
+                FieldPostGridSyncPayload.TYPE,
+                FieldPostGridSyncPayload.STREAM_CODEC,
+                this::handleFieldPostGridSync
+        );
     }
 
     private void handleHungerSync(HungerSyncPayload payload, IPayloadContext context) {
@@ -576,10 +681,6 @@ public class Townstead {
 
     private void handleButcherStatusSync(ButcherStatusSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId()));
-    }
-
-    private void handleFarmingPolicySync(FarmingPolicySyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> FarmingPolicyClientStore.set(payload.patternId(), payload.tier(), payload.areaCount()));
     }
 
     private void handleButcherPolicySync(ButcherPolicySyncPayload payload, IPayloadContext context) {
@@ -644,30 +745,6 @@ public class Townstead {
             ThirstSyncPayload sync = townstead$thirstSync(villager, thirst);
             PacketDistributor.sendToPlayer(sp, sync);
             PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
-        });
-    }
-
-    private void handleFarmingPolicySet(FarmingPolicySetPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer sp)) return;
-            FarmingPolicyData data = FarmingPolicyData.get(sp.serverLevel());
-            if (payload.tier() == -1) {
-                PacketDistributor.sendToPlayer(sp, new FarmingPolicySyncPayload(
-                        data.getDefaultPatternId(),
-                        data.getDefaultTier(),
-                        data.getAreas().size()
-                ));
-                return;
-            }
-
-
-
-            data.setDefaultPolicy(payload.patternId(), payload.tier());
-            PacketDistributor.sendToPlayer(sp, new FarmingPolicySyncPayload(
-                    data.getDefaultPatternId(),
-                    data.getDefaultTier(),
-                    data.getAreas().size()
-            ));
         });
     }
 
@@ -983,6 +1060,53 @@ public class Townstead {
             FatigueSyncPayload sync = townstead$fatigueSync(villager, fatigue);
             PacketDistributor.sendToPlayer(sp, sync);
             PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+        });
+    }
+
+    private void handleFieldPostConfigSet(FieldPostConfigSetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            net.minecraft.world.level.block.entity.BlockEntity be =
+                    sp.serverLevel().getBlockEntity(payload.pos());
+            if (!(be instanceof com.aetherianartificer.townstead.block.FieldPostBlockEntity fieldPost)) return;
+            if (sp.distanceToSqr(payload.pos().getX() + 0.5, payload.pos().getY() + 0.5, payload.pos().getZ() + 0.5) > 64.0) return;
+
+            // Resolve CLAIM markers against the live world before applying.
+            com.aetherianartificer.townstead.farming.cellplan.CellPlan resolvedPlan =
+                    com.aetherianartificer.townstead.farming.cellplan.ClaimResolver.resolveAll(
+                            sp.serverLevel(), payload.pos(), payload.config().cellPlan());
+            com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig resolvedConfig =
+                    payload.config().withCellPlan(resolvedPlan);
+            fieldPost.applyConfig(resolvedConfig);
+            LOGGER.debug("Field Post config set at {} by {}", payload.pos(), sp.getName().getString());
+
+            PacketDistributor.sendToPlayer(sp, new FieldPostConfigSyncPayload(
+                    payload.pos(), fieldPost.toConfig(),
+                    fieldPost.getEffectivePatternId(), 0, 0, 0, 0
+            ));
+        });
+    }
+
+    private void handleFieldPostConfigSync(FieldPostConfigSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc.level == null) return;
+            net.minecraft.world.level.block.entity.BlockEntity be = mc.level.getBlockEntity(payload.pos());
+            if (be instanceof com.aetherianartificer.townstead.block.FieldPostBlockEntity fieldPost) {
+                fieldPost.applyConfig(payload.config());
+            }
+        });
+    }
+
+    private void handleFieldPostGridSync(FieldPostGridSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc.screen instanceof com.aetherianartificer.townstead.client.gui.fieldpost.FieldPostScreen screen
+                    && screen.getPostPos().equals(payload.pos())) {
+                screen.applyServerSnapshot(payload.snapshot(), payload.cropPalette(), payload.villageSeedCounts(),
+                        payload.seedSoilCompat(),
+                        payload.farmerCount(), payload.totalPlots(), payload.tilledPlots(), payload.hydrationPercent());
+            }
         });
     }
 

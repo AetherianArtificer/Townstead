@@ -249,6 +249,7 @@ public final class HungerData {
 
     public enum FarmBlockedReason {
         NONE("none", "townstead.farm.blocked.none"),
+        NO_FIELD_POST("no_field_post", "townstead.farm.blocked.no_field_post"),
         NO_SEEDS("no_seeds", "townstead.farm.blocked.no_seeds"),
         NO_TOOL("no_tool", "townstead.farm.blocked.no_tool"),
         NO_WATER_PLAN("no_water_plan", "townstead.farm.blocked.no_water_plan"),

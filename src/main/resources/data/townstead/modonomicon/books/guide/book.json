@@ -1,0 +1,7 @@
+{
+  "name": "townstead.guide.name",
+  "tooltip": "townstead.guide.subtitle",
+  "creative_tab": "functional_blocks",
+  "generate_book_item": false,
+  "auto_add_read_conditions": true
+}

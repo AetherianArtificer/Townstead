@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": { "item": "minecraft:oak_planks" },
+    "L": { "item": "minecraft:oak_log" }
+  },
+  "result": {
+    "id": "townstead:field_post",
+    "count": 1
+  }
+}

@@ -4,10 +4,6 @@ package com.aetherianartificer.townstead.mixin;
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
-import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
-import com.aetherianartificer.townstead.farming.pattern.FarmPatternDefinition;
-import com.aetherianartificer.townstead.farming.pattern.FarmPatternRegistry;
 import com.aetherianartificer.townstead.mixin.accessor.BlueprintScreenAccessor;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
@@ -102,8 +98,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     protected abstract void drawBuildingIcon(GuiGraphics context, ResourceLocation texture, int x, int y, int u, int v);
 
     @Unique
-    private static final String TOWNSTEAD_FARMING_PAGE = "townstead_farming";
-    @Unique
     private static final String TOWNSTEAD_CATALOG_PAGE = "townstead_catalog";
     @Unique
     private static final String TOWNSTEAD_SHIFT_PAGE = "townstead_shift";
@@ -117,8 +111,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     private static final int NAV_BUTTON_STEP = 22;
     @Unique
     private static final int NAV_VISIBLE_ROWS = 6;
-    @Unique
-    private static final long POLICY_DEBOUNCE_NANOS = 150_000_000L; // 150ms
     @Unique
     private static final String KITCHEN_TYPE_PREFIX = "compat/farmersdelight/kitchen_l";
     @Unique
@@ -147,8 +139,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private int townstead$navScrollPx = 0;
     @Unique
-    private Button townstead$farmingNavButton;
-    @Unique
     private boolean townstead$redirectingCatalog = false;
     @Unique
     private Button townstead$catalogBackButton;
@@ -165,22 +155,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private String townstead$catalogReturnPage = "map";
 
-    @Unique
-    private List<String> townstead$farmingFamilies = List.of();
-    @Unique
-    private int townstead$farmingFamilyIndex = 0;
-    @Unique
-    private int townstead$farmingTier = 3;
-    @Unique
-    private boolean townstead$pendingPatternChange = false;
-    @Unique
-    private String townstead$pendingFamily = "starter_rows";
-    @Unique
-    private boolean townstead$pendingPolicySend = false;
-    @Unique
-    private long townstead$lastPolicyInputNanos = 0L;
-    @Unique
-    private Button townstead$farmPatternValue;
     @Unique
     private List<BuildingType> townstead$catalogEntries = List.of();
     @Unique
@@ -288,17 +262,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$collectNavButtons();
         townstead$applyNavScroll();
 
-        if (TOWNSTEAD_FARMING_PAGE.equals(this.page)) {
-            townstead$refreshFamilies();
-            townstead$syncFromClientStore();
-            //? if neoforge {
-            PacketDistributor.sendToServer(new FarmingPolicySetPayload("", -1));
-            //?} else if forge {
-            /*TownsteadNetwork.sendToServer(new FarmingPolicySetPayload("", -1));
-            *///?}
-            townstead$addFarmingPageControls();
-            townstead$setNavVisible(true);
-        } else if (TOWNSTEAD_SHIFT_PAGE.equals(this.page)) {
+        if (TOWNSTEAD_SHIFT_PAGE.equals(this.page)) {
             townstead$initShiftPage();
             townstead$setNavVisible(true);
         } else if (TOWNSTEAD_PROFESSION_PAGE.equals(this.page)) {
@@ -318,7 +282,6 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$addVillagersPageControls();
             townstead$setNavVisible(true);
         } else {
-            townstead$farmPatternValue = null;
             townstead$catalogNodes.clear();
             townstead$catalogDragging = false;
             townstead$catalogDragArmed = false;
@@ -341,29 +304,6 @@ public abstract class BlueprintScreenMixin extends Screen {
                 b.active = !TOWNSTEAD_CATALOG_PAGE.equals(this.page);
             }
         }
-    }
-
-    //? if neoforge {
-    @Inject(method = "render", at = @At("TAIL"))
-    //?} else {
-    /*@Inject(method = "m_88315_", remap = false, at = @At("TAIL"))
-    *///?}
-    private void townstead$renderFarmingPage(GuiGraphics context, int mouseX, int mouseY, float partialTicks,
-            CallbackInfo ci) {
-        if (!TOWNSTEAD_FARMING_PAGE.equals(this.page))
-            return;
-
-        townstead$syncFromClientStore();
-        townstead$flushDebouncedPolicyIfReady();
-        townstead$refreshFarmingLabels();
-
-        int cx = this.width / 2 + 38;
-        int cy = this.height / 2 - 52;
-        context.drawCenteredString(this.font, Component.translatable("gui.blueprint.farming"), cx, cy, 0xFFFFFF);
-        context.drawCenteredString(this.font, Component.translatable("townstead.blueprint.farming.pattern"), cx,
-                cy + 14, 0xA0A0A0);
-        context.drawCenteredString(this.font, Component.translatable("townstead.blueprint.farming.tier.auto"), cx,
-                cy + 38, 0xA0A0A0);
     }
 
     //? if neoforge {
@@ -1529,27 +1469,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     @Unique
-    private void townstead$ensureFarmingNavButton() {
-        if (townstead$farmingNavButton != null && this.children().contains(townstead$farmingNavButton)) {
-            if (!townstead$navButtons.contains(townstead$farmingNavButton)) {
-                townstead$navButtons.add(townstead$farmingNavButton);
-            }
-            return;
-        }
-
-        int navX = this.width / 2 - 180;
-        int navYStart = this.height / 2 - 56;
-        int y = navYStart + (NAV_BUTTON_STEP * townstead$navButtons.size());
-
-        townstead$farmingNavButton = addRenderableWidget(new ButtonWidget(
-                navX, y, NAV_BUTTON_WIDTH, NAV_BUTTON_HEIGHT,
-                Component.translatable("gui.blueprint.farming"),
-                b -> setPage(TOWNSTEAD_FARMING_PAGE)));
-        townstead$navButtons.add(townstead$farmingNavButton);
-        townstead$navBaseY.put(townstead$farmingNavButton, y);
-    }
-
-    @Unique
     private void townstead$applyNavScroll() {
         for (Button b : townstead$navButtons) {
             Integer baseY = townstead$navBaseY.get(b);
@@ -1559,128 +1478,6 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
-    @Unique
-    private void townstead$addFarmingPageControls() {
-        int x = this.width / 2 - 26;
-        int y = this.height / 2 - 32;
-
-        addRenderableWidget(new ButtonWidget(x, y, 20, 20, Component.literal("<"), b -> townstead$cycleFamily(-1)));
-        townstead$farmPatternValue = addRenderableWidget(new ButtonWidget(x + 22, y, 84, 20, Component.empty(), b -> {
-        }));
-        townstead$farmPatternValue.active = false;
-        addRenderableWidget(
-                new ButtonWidget(x + 108, y, 20, 20, Component.literal(">"), b -> townstead$cycleFamily(1)));
-
-        townstead$refreshFarmingLabels();
-    }
-
-    @Unique
-    private void townstead$refreshFamilies() {
-        List<String> families = FarmPatternRegistry.all().stream()
-                .map(FarmPatternDefinition::family)
-                .filter(f -> f != null && !f.isBlank())
-                .distinct()
-                .sorted(Comparator.comparing((String f) -> !"starter_rows".equals(f)).thenComparing(String::compareTo))
-                .toList();
-        if (families.isEmpty())
-            families = List.of("starter_rows");
-        townstead$farmingFamilies = new ArrayList<>(families);
-    }
-
-    @Unique
-    private void townstead$syncFromClientStore() {
-        String currentFamily = FarmingPolicyClientStore.getPatternId();
-        townstead$farmingTier = Math.max(1, Math.min(5, FarmingPolicyClientStore.getTier()));
-        if (townstead$pendingPatternChange) {
-            if (currentFamily.equals(townstead$pendingFamily)) {
-                townstead$pendingPatternChange = false;
-            } else {
-                // Keep optimistic UI selection until server confirms.
-                return;
-            }
-        }
-        int idx = townstead$farmingFamilies.indexOf(currentFamily);
-        if (idx >= 0) {
-            townstead$farmingFamilyIndex = idx;
-        } else if (!townstead$farmingFamilies.isEmpty()) {
-            townstead$farmingFamilyIndex = 0;
-        }
-    }
-
-    @Unique
-    private void townstead$cycleFamily(int delta) {
-        if (townstead$farmingFamilies.isEmpty())
-            return;
-        int size = townstead$farmingFamilies.size();
-        int next = (townstead$farmingFamilyIndex + delta) % size;
-        if (next < 0)
-            next += size;
-        townstead$farmingFamilyIndex = next;
-        townstead$pendingFamily = townstead$farmingFamilies.get(townstead$farmingFamilyIndex);
-        townstead$pendingPatternChange = true;
-        townstead$queuePolicySend();
-        townstead$refreshFarmingLabels();
-    }
-
-    @Unique
-    private void townstead$sendPolicy() {
-        String family = townstead$farmingFamilies.isEmpty()
-                ? "starter_rows"
-                : townstead$farmingFamilies.get(townstead$farmingFamilyIndex);
-        // Keep policy tier cap at max so per-villager progression drives effective
-        // unlocks.
-        //? if neoforge {
-        PacketDistributor.sendToServer(new FarmingPolicySetPayload(family, 5));
-        //?} else if forge {
-        /*TownsteadNetwork.sendToServer(new FarmingPolicySetPayload(family, 5));
-        *///?}
-    }
-
-    @Unique
-    private void townstead$queuePolicySend() {
-        townstead$pendingPolicySend = true;
-        townstead$lastPolicyInputNanos = System.nanoTime();
-    }
-
-    @Unique
-    private void townstead$flushDebouncedPolicyIfReady() {
-        if (!townstead$pendingPolicySend)
-            return;
-        long now = System.nanoTime();
-        if (now - townstead$lastPolicyInputNanos < POLICY_DEBOUNCE_NANOS)
-            return;
-        townstead$pendingPolicySend = false;
-        townstead$sendPolicy();
-    }
-
-    @Unique
-    private void townstead$refreshFarmingLabels() {
-        if (townstead$farmPatternValue != null) {
-            String family = townstead$farmingFamilies.isEmpty()
-                    ? "starter_rows"
-                    : townstead$farmingFamilies.get(townstead$farmingFamilyIndex);
-            townstead$farmPatternValue.setMessage(Component.literal(townstead$displayFamilyName(family)));
-        }
-    }
-
-    @Unique
-    private String townstead$displayFamilyName(String family) {
-        String key = "townstead.farming.family." + family;
-        String translated = Component.translatable(key).getString();
-        if (!translated.equals(key))
-            return translated;
-        String[] parts = family.split("_");
-        StringBuilder out = new StringBuilder();
-        for (String part : parts) {
-            if (part.isEmpty())
-                continue;
-            if (!out.isEmpty())
-                out.append(' ');
-            out.append(part.substring(0, 1).toUpperCase(Locale.ROOT))
-                    .append(part.substring(1));
-        }
-        return out.toString();
-    }
 
     // =====================================================================
     // Shift Manager page

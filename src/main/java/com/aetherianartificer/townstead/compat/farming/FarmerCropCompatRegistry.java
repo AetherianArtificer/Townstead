@@ -10,7 +10,12 @@ import java.util.List;
 
 public final class FarmerCropCompatRegistry {
     private static final List<FarmerCropCompat> PROVIDERS = List.of(
-            new FarmersDelightCropCompat()
+            new FarmersDelightCropCompat(),
+            new YoukaiHomecomingCropCompat(),
+            new PeruvianDelightCropCompat(),
+            new VineryCropCompat(),
+            new FarmingForBlockheadsCompat(),
+            new CreepyDelightCropCompat()
     );
 
     private FarmerCropCompatRegistry() {}
@@ -27,6 +32,15 @@ public final class FarmerCropCompatRegistry {
         for (FarmerCropCompat provider : PROVIDERS) {
             if (!ModCompat.isLoaded(provider.modId())) continue;
             if (provider.isSeed(stack)) return true;
+        }
+        return false;
+    }
+
+    public static boolean excludeAsSeed(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.excludeAsSeed(stack)) return true;
         }
         return false;
     }
@@ -63,6 +77,79 @@ public final class FarmerCropCompatRegistry {
             if (provider.isPlantableSpot(level, pos)) return true;
         }
         return false;
+    }
+
+    public static boolean isCompatibleSoil(ServerLevel level, BlockPos pos) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.isCompatibleSoil(level, pos)) return true;
+        }
+        return false;
+    }
+
+    public static boolean placeRichSoilTilled(ServerLevel level, BlockPos pos) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.placeRichSoilTilled(level, pos)) return true;
+        }
+        return false;
+    }
+
+    public static boolean placeRichSoil(ServerLevel level, BlockPos pos) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.placeRichSoil(level, pos)) return true;
+        }
+        return false;
+    }
+
+    public static boolean doCompatTill(ServerLevel level, BlockPos pos) {
+        return placeRichSoilTilled(level, pos);
+    }
+
+    public static boolean placeSoil(com.aetherianartificer.townstead.farming.cellplan.SoilType type,
+                                     ServerLevel level, BlockPos pos) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.placeSoil(type, level, pos)) return true;
+        }
+        return false;
+    }
+
+    public static boolean isExistingSoil(com.aetherianartificer.townstead.farming.cellplan.SoilType type,
+                                          ServerLevel level, BlockPos pos) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.isExistingSoil(type, level, pos)) return true;
+        }
+        return false;
+    }
+
+    /** True if any loaded provider can place the given soil type — used to gate palette visibility. */
+    public static boolean canAnyProviderPlaceSoil(com.aetherianartificer.townstead.farming.cellplan.SoilType type) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.soilCreationItem(type) != null) return true;
+        }
+        return false;
+    }
+
+    public static net.minecraft.resources.ResourceLocation cropProductFor(net.minecraft.resources.ResourceLocation seedId) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            net.minecraft.resources.ResourceLocation product = provider.cropProductFor(seedId);
+            if (product != null) return product;
+        }
+        return null;
+    }
+
+    public static net.minecraft.world.item.Item soilCreationItem(com.aetherianartificer.townstead.farming.cellplan.SoilType type) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            net.minecraft.world.item.Item item = provider.soilCreationItem(type);
+            if (item != null) return item;
+        }
+        return null;
     }
 
     public static String patternHintForSeed(ItemStack stack) {

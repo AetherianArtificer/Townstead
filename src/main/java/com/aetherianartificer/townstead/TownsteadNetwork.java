@@ -2,10 +2,9 @@ package com.aetherianartificer.townstead;
 
 //? if forge {
 /*
-import com.aetherianartificer.townstead.farming.FarmingPolicyClientStore;
-import com.aetherianartificer.townstead.farming.FarmingPolicyData;
-import com.aetherianartificer.townstead.farming.FarmingPolicySetPayload;
-import com.aetherianartificer.townstead.farming.FarmingPolicySyncPayload;
+import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
+import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
+import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
@@ -77,16 +76,12 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleFarmStatusSync);
         registerS2C(ButcherStatusSyncPayload.class, ButcherStatusSyncPayload::write, ButcherStatusSyncPayload::read,
                 TownsteadNetwork::handleButcherStatusSync);
-        registerS2C(FarmingPolicySyncPayload.class, FarmingPolicySyncPayload::write, FarmingPolicySyncPayload::read,
-                TownsteadNetwork::handleFarmingPolicySync);
         registerS2C(ButcherPolicySyncPayload.class, ButcherPolicySyncPayload::write, ButcherPolicySyncPayload::read,
                 TownsteadNetwork::handleButcherPolicySync);
 
         // Client -> Server
         registerC2S(HungerSetPayload.class, HungerSetPayload::write, HungerSetPayload::read,
                 TownsteadNetwork::handleHungerSet);
-        registerC2S(FarmingPolicySetPayload.class, FarmingPolicySetPayload::write, FarmingPolicySetPayload::read,
-                TownsteadNetwork::handleFarmingPolicySet);
         registerC2S(ButcherPolicySetPayload.class, ButcherPolicySetPayload::write, ButcherPolicySetPayload::read,
                 TownsteadNetwork::handleButcherPolicySet);
 
@@ -118,6 +113,14 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleVillageResidentsSync);
         registerC2S(ProfessionSetPayload.class, ProfessionSetPayload::write, ProfessionSetPayload::read,
                 TownsteadNetwork::handleProfessionSet);
+
+        // Field Post
+        registerC2S(FieldPostConfigSetPayload.class, FieldPostConfigSetPayload::write, FieldPostConfigSetPayload::read,
+                TownsteadNetwork::handleFieldPostConfigSet);
+        registerS2C(FieldPostConfigSyncPayload.class, FieldPostConfigSyncPayload::write, FieldPostConfigSyncPayload::read,
+                TownsteadNetwork::handleFieldPostConfigSync);
+        registerS2C(FieldPostGridSyncPayload.class, FieldPostGridSyncPayload::write, FieldPostGridSyncPayload::read,
+                TownsteadNetwork::handleFieldPostGridSync);
     }
 
     // ── Send helpers ──
@@ -193,10 +196,6 @@ public final class TownsteadNetwork {
         HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId());
     }
 
-    private static void handleFarmingPolicySync(FarmingPolicySyncPayload payload) {
-        FarmingPolicyClientStore.set(payload.patternId(), payload.tier(), payload.areaCount());
-    }
-
     private static void handleButcherPolicySync(ButcherPolicySyncPayload payload) {
         ButcherPolicyClientStore.set(payload.profileId(), payload.tier(), payload.areaCount());
     }
@@ -253,20 +252,6 @@ public final class TownsteadNetwork {
         ThirstSyncPayload sync = Townstead.townstead$thirstSync(villager, thirst);
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);
-    }
-
-    private static void handleFarmingPolicySet(FarmingPolicySetPayload payload, ServerPlayer sp) {
-        FarmingPolicyData data = FarmingPolicyData.get(sp.serverLevel());
-        if (payload.tier() == -1) {
-            sendToPlayer(sp, new FarmingPolicySyncPayload(
-                    data.getDefaultPatternId(), data.getDefaultTier(), data.getAreas().size()
-            ));
-            return;
-        }
-        data.setDefaultPolicy(payload.patternId(), payload.tier());
-        sendToPlayer(sp, new FarmingPolicySyncPayload(
-                data.getDefaultPatternId(), data.getDefaultTier(), data.getAreas().size()
-        ));
     }
 
     private static void handleButcherPolicySet(ButcherPolicySetPayload payload, ServerPlayer sp) {
@@ -504,6 +489,42 @@ public final class TownsteadNetwork {
                 Townstead.LOGGER.debug("Released stale job-site ticket for {} at {}", profession, pos);
             }
         });
+    }
+
+    // ── Field Post handlers ──
+
+    private static void handleFieldPostConfigSet(FieldPostConfigSetPayload payload, ServerPlayer sp) {
+        net.minecraft.world.level.block.entity.BlockEntity be =
+                sp.serverLevel().getBlockEntity(payload.pos());
+        if (!(be instanceof com.aetherianartificer.townstead.block.FieldPostBlockEntity fieldPost)) return;
+        if (sp.distanceToSqr(payload.pos().getX() + 0.5, payload.pos().getY() + 0.5, payload.pos().getZ() + 0.5) > 64.0) return;
+
+        com.aetherianartificer.townstead.farming.cellplan.CellPlan resolvedPlan =
+                com.aetherianartificer.townstead.farming.cellplan.ClaimResolver.resolveAll(
+                        sp.serverLevel(), payload.pos(), payload.config().cellPlan());
+        com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig resolvedConfig =
+                payload.config().withCellPlan(resolvedPlan);
+        fieldPost.applyConfig(resolvedConfig);
+        Townstead.LOGGER.debug("Field Post config set at {} by {}", payload.pos(), sp.getName().getString());
+
+        sendToPlayer(sp, new FieldPostConfigSyncPayload(
+                payload.pos(), fieldPost.toConfig(),
+                fieldPost.getEffectivePatternId(), 0, 0, 0, 0
+        ));
+    }
+
+    private static void handleFieldPostConfigSync(FieldPostConfigSyncPayload payload) {
+        // Client-side: no-op, screen reads from block entity directly.
+    }
+
+    private static void handleFieldPostGridSync(FieldPostGridSyncPayload payload) {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.screen instanceof com.aetherianartificer.townstead.client.gui.fieldpost.FieldPostScreen screen
+                && screen.getPostPos().equals(payload.pos())) {
+            screen.applyServerSnapshot(payload.snapshot(), payload.cropPalette(), payload.villageSeedCounts(),
+                    payload.seedSoilCompat(),
+                    payload.farmerCount(), payload.totalPlots(), payload.tilledPlots(), payload.hydrationPercent());
+        }
     }
 
     private static boolean townstead$professionOwnsJobSite(VillagerProfession holderProfession, VillagerProfession targetProfession) {

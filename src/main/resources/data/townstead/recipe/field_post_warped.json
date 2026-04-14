@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": { "item": "minecraft:warped_planks" },
+    "L": { "item": "minecraft:warped_stem" }
+  },
+  "result": {
+    "id": "townstead:field_post_warped",
+    "count": 1
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "townstead:block/field_post_cherry" },
+    "facing=east":  { "model": "townstead:block/field_post_cherry", "y": 90 },
+    "facing=south": { "model": "townstead:block/field_post_cherry", "y": 180 },
+    "facing=west":  { "model": "townstead:block/field_post_cherry", "y": 270 }
+  }
+}

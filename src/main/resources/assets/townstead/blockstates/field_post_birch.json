@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "townstead:block/field_post_birch" },
+    "facing=east":  { "model": "townstead:block/field_post_birch", "y": 90 },
+    "facing=south": { "model": "townstead:block/field_post_birch", "y": 180 },
+    "facing=west":  { "model": "townstead:block/field_post_birch", "y": 270 }
+  }
+}
