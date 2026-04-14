@@ -1,13 +1,12 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " F ",
-    " F "
+    "P",
+    "L"
   ],
   "key": {
-    "S": { "item": "minecraft:oak_sign" },
-    "F": { "item": "minecraft:oak_fence" }
+    "P": { "item": "minecraft:oak_planks" },
+    "L": { "item": "minecraft:oak_log" }
   },
   "result": {
     "id": "townstead:field_post",

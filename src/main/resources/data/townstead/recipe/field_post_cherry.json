@@ -1,13 +1,12 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " F ",
-    " F "
+    "P",
+    "L"
   ],
   "key": {
-    "S": { "item": "minecraft:cherry_sign" },
-    "F": { "item": "minecraft:cherry_fence" }
+    "P": { "item": "minecraft:cherry_planks" },
+    "L": { "item": "minecraft:cherry_log" }
   },
   "result": {
     "id": "townstead:field_post_cherry",

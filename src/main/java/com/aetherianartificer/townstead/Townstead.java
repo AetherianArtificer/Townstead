@@ -139,6 +139,8 @@ public class Townstead {
             DeferredRegister.create(net.minecraft.core.registries.Registries.BLOCK_ENTITY_TYPE, MOD_ID);
     private static final DeferredRegister<MenuType<?>> MENU_TYPES =
             DeferredRegister.create(net.minecraft.core.registries.Registries.MENU, MOD_ID);
+    private static final DeferredRegister<net.minecraft.world.item.CreativeModeTab> CREATIVE_MODE_TABS =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.CREATIVE_MODE_TAB, MOD_ID);
 
     //? if neoforge {
     public static final Supplier<AttachmentType<CompoundTag>> HUNGER_DATA = ATTACHMENTS.register(
@@ -235,6 +237,19 @@ public class Townstead {
                         return BlockEntityType.Builder.of(FieldPostBlockEntity::new, blocks).build(null);
                     });
 
+    public static final Supplier<net.minecraft.world.item.CreativeModeTab> TOWNSTEAD_TAB =
+            CREATIVE_MODE_TABS.register("main",
+                    () -> net.minecraft.world.item.CreativeModeTab.builder()
+                            .title(net.minecraft.network.chat.Component.translatable("itemGroup.townstead"))
+                            .icon(() -> new net.minecraft.world.item.ItemStack(FIELD_POST_ITEM.get()))
+                            .displayItems((params, output) -> {
+                                output.accept(FIELD_POST_ITEM.get());
+                                for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
+                                    output.accept(variant.get());
+                                }
+                            })
+                            .build());
+
     //? if neoforge {
     public static final Supplier<MenuType<FieldPostMenu>> FIELD_POST_MENU =
             MENU_TYPES.register("field_post",
@@ -253,6 +268,7 @@ public class Townstead {
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         MENU_TYPES.register(modBus);
+        CREATIVE_MODE_TABS.register(modBus);
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
             RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
         }
@@ -269,19 +285,9 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
-        modBus.addListener(this::onBuildCreativeTab);
         registerDialogueConditions();
         ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
-    }
-
-    private void onBuildCreativeTab(net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.FUNCTIONAL_BLOCKS) {
-            event.accept(FIELD_POST_ITEM.get());
-            for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
-                event.accept(variant.get());
-            }
-        }
     }
     //?} else if forge {
     /*public Townstead() {
@@ -291,6 +297,7 @@ public class Townstead {
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         MENU_TYPES.register(modBus);
+        CREATIVE_MODE_TABS.register(modBus);
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
             RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
         }
@@ -303,7 +310,6 @@ public class Townstead {
         townstead$registerMenuScreens(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
-        modBus.addListener(this::onBuildCreativeTabForge);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -311,15 +317,6 @@ public class Townstead {
         registerDialogueConditions();
         ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
-    }
-
-    private void onBuildCreativeTabForge(net.minecraftforge.event.BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.FUNCTIONAL_BLOCKS) {
-            event.accept(FIELD_POST_ITEM.get());
-            for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
-                event.accept(variant.get());
-            }
-        }
     }
     *///?}
 

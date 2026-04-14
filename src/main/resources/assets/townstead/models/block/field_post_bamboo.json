@@ -3,7 +3,6 @@
   "textures": {
     "log": "minecraft:block/bamboo_block",
     "log_top": "minecraft:block/bamboo_block_top",
-    "planks": "minecraft:block/bamboo_planks",
-    "chain": "minecraft:block/chain"
+    "planks": "minecraft:block/bamboo_planks"
   }
 }

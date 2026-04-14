@@ -1,13 +1,12 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " F ",
-    " F "
+    "P",
+    "L"
   ],
   "key": {
-    "S": { "item": "minecraft:spruce_sign" },
-    "F": { "item": "minecraft:spruce_fence" }
+    "P": { "item": "minecraft:spruce_planks" },
+    "L": { "item": "minecraft:spruce_log" }
   },
   "result": {
     "id": "townstead:field_post_spruce",

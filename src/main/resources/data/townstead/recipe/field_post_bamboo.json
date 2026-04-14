@@ -1,13 +1,12 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " F ",
-    " F "
+    "P",
+    "L"
   ],
   "key": {
-    "S": { "item": "minecraft:bamboo_sign" },
-    "F": { "item": "minecraft:bamboo_fence" }
+    "P": { "item": "minecraft:bamboo_planks" },
+    "L": { "item": "minecraft:bamboo_block" }
   },
   "result": {
     "id": "townstead:field_post_bamboo",

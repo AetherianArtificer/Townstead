@@ -462,6 +462,8 @@
   "townstead.dialogue.first.settling": "I'm looking for a place to settle.",
   "townstead.dialogue.first.spent_night": "I stayed at the inn last night.",
 
+  "itemGroup.townstead": "Townstead",
+
   "block.townstead.field_post": "Oak Field Post",
   "block.townstead.field_post_spruce": "Spruce Field Post",
   "block.townstead.field_post_birch": "Birch Field Post",

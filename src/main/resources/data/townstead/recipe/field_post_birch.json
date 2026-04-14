@@ -1,13 +1,12 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " F ",
-    " F "
+    "P",
+    "L"
   ],
   "key": {
-    "S": { "item": "minecraft:birch_sign" },
-    "F": { "item": "minecraft:birch_fence" }
+    "P": { "item": "minecraft:birch_planks" },
+    "L": { "item": "minecraft:birch_log" }
   },
   "result": {
     "id": "townstead:field_post_birch",

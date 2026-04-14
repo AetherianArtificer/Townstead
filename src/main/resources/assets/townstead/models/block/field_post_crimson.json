@@ -3,7 +3,6 @@
   "textures": {
     "log": "minecraft:block/crimson_stem",
     "log_top": "minecraft:block/crimson_stem_top",
-    "planks": "minecraft:block/crimson_planks",
-    "chain": "minecraft:block/chain"
+    "planks": "minecraft:block/crimson_planks"
   }
 }

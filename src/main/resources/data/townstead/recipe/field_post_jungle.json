@@ -1,13 +1,12 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " F ",
-    " F "
+    "P",
+    "L"
   ],
   "key": {
-    "S": { "item": "minecraft:jungle_sign" },
-    "F": { "item": "minecraft:jungle_fence" }
+    "P": { "item": "minecraft:jungle_planks" },
+    "L": { "item": "minecraft:jungle_log" }
   },
   "result": {
     "id": "townstead:field_post_jungle",

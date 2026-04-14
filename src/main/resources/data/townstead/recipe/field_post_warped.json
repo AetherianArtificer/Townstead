@@ -1,13 +1,12 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " F ",
-    " F "
+    "P",
+    "L"
   ],
   "key": {
-    "S": { "item": "minecraft:warped_sign" },
-    "F": { "item": "minecraft:warped_fence" }
+    "P": { "item": "minecraft:warped_planks" },
+    "L": { "item": "minecraft:warped_stem" }
   },
   "result": {
     "id": "townstead:field_post_warped",

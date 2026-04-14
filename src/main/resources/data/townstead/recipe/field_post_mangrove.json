@@ -1,13 +1,12 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " F ",
-    " F "
+    "P",
+    "L"
   ],
   "key": {
-    "S": { "item": "minecraft:mangrove_sign" },
-    "F": { "item": "minecraft:mangrove_fence" }
+    "P": { "item": "minecraft:mangrove_planks" },
+    "L": { "item": "minecraft:mangrove_log" }
   },
   "result": {
     "id": "townstead:field_post_mangrove",

@@ -3,7 +3,6 @@
   "textures": {
     "log": "minecraft:block/spruce_log",
     "log_top": "minecraft:block/spruce_log_top",
-    "planks": "minecraft:block/spruce_planks",
-    "chain": "minecraft:block/chain"
+    "planks": "minecraft:block/spruce_planks"
   }
 }

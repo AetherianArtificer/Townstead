@@ -3,7 +3,6 @@
   "textures": {
     "log": "minecraft:block/mangrove_log",
     "log_top": "minecraft:block/mangrove_log_top",
-    "planks": "minecraft:block/mangrove_planks",
-    "chain": "minecraft:block/chain"
+    "planks": "minecraft:block/mangrove_planks"
   }
 }
