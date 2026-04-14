@@ -116,19 +116,27 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private static final String CAFE_TYPE_PREFIX = "compat/rusticdelight/cafe_l";
     @Unique
-    private static final int ADV_WINDOW_W = 320;
+    private static final int ADV_WINDOW_MIN_W = 320;
     @Unique
-    private static final int ADV_WINDOW_H = 188;
+    private static final int ADV_WINDOW_MIN_H = 188;
+    @Unique
+    private static final int ADV_WINDOW_MAX_W = 640;
+    @Unique
+    private static final int ADV_WINDOW_MAX_H = 380;
     @Unique
     private static final int ADV_INSIDE_X = 9;
     @Unique
     private static final int ADV_INSIDE_Y = 18;
     @Unique
-    private static final int ADV_INSIDE_W = 302;
+    private int ADV_WINDOW_W = ADV_WINDOW_MIN_W;
     @Unique
-    private static final int ADV_INSIDE_H = 161;
+    private int ADV_WINDOW_H = ADV_WINDOW_MIN_H;
     @Unique
-    private static final int CATALOG_DETAILS_W = 108;
+    private int ADV_INSIDE_W = ADV_WINDOW_MIN_W - 18;
+    @Unique
+    private int ADV_INSIDE_H = ADV_WINDOW_MIN_H - 27;
+    @Unique
+    private int CATALOG_DETAILS_W = 108;
     @Unique
     private static final ResourceLocation MCA_BUILDING_ICONS = MCA.locate("textures/buildings.png");
 
@@ -269,6 +277,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$initProfessionPage();
             townstead$setNavVisible(true);
         } else if (TOWNSTEAD_CATALOG_PAGE.equals(this.page)) {
+            townstead$recomputeCatalogDims();
             townstead$nodeItemIconCache.clear();
             townstead$buildCatalogEntries();
             townstead$buildCatalogNodes();
@@ -362,6 +371,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             CallbackInfo ci) {
         if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page))
             return;
+        townstead$recomputeCatalogDims();
         int windowX = townstead$catalogWindowX();
         int windowY = townstead$catalogWindowY();
         context.fill(windowX, windowY, windowX + ADV_WINDOW_W, windowY + ADV_WINDOW_H, 0xFFDEDEDE);
@@ -812,6 +822,17 @@ public abstract class BlueprintScreenMixin extends Screen {
                 cir.cancel();
             }
         }
+    }
+
+    @Unique
+    private void townstead$recomputeCatalogDims() {
+        int w = Math.max(ADV_WINDOW_MIN_W, Math.min(ADV_WINDOW_MAX_W, this.width - 40));
+        int h = Math.max(ADV_WINDOW_MIN_H, Math.min(ADV_WINDOW_MAX_H, this.height - 40));
+        ADV_WINDOW_W = w;
+        ADV_WINDOW_H = h;
+        ADV_INSIDE_W = w - 18;
+        ADV_INSIDE_H = h - 27;
+        CATALOG_DETAILS_W = Math.max(108, Math.min(180, (int) Math.round(w * 0.32)));
     }
 
     @Unique
