@@ -462,7 +462,17 @@
   "townstead.dialogue.first.settling": "I'm looking for a place to settle.",
   "townstead.dialogue.first.spent_night": "I stayed at the inn last night.",
 
-  "block.townstead.field_post": "Field Post",
+  "block.townstead.field_post": "Oak Field Post",
+  "block.townstead.field_post_spruce": "Spruce Field Post",
+  "block.townstead.field_post_birch": "Birch Field Post",
+  "block.townstead.field_post_jungle": "Jungle Field Post",
+  "block.townstead.field_post_acacia": "Acacia Field Post",
+  "block.townstead.field_post_dark_oak": "Dark Oak Field Post",
+  "block.townstead.field_post_mangrove": "Mangrove Field Post",
+  "block.townstead.field_post_cherry": "Cherry Field Post",
+  "block.townstead.field_post_bamboo": "Bamboo Field Post",
+  "block.townstead.field_post_crimson": "Crimson Field Post",
+  "block.townstead.field_post_warped": "Warped Field Post",
   "container.townstead.field_post": "Plot Planner",
 
   "townstead.field_post.mode.paint": "Paint",

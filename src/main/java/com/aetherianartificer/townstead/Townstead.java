@@ -202,9 +202,38 @@ public class Townstead {
     public static final Supplier<Item> FIELD_POST_ITEM = ITEMS.register("field_post",
             () -> new BlockItem(FIELD_POST.get(), new Item.Properties()));
 
+    private static final String[] FIELD_POST_WOOD_VARIANTS = {
+            "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove",
+            "cherry", "bamboo", "crimson", "warped"
+    };
+
+    public static final java.util.List<Supplier<Block>> FIELD_POST_VARIANTS = new java.util.ArrayList<>();
+    public static final java.util.List<Supplier<Item>> FIELD_POST_VARIANT_ITEMS = new java.util.ArrayList<>();
+
+    static {
+        for (String wood : FIELD_POST_WOOD_VARIANTS) {
+            String id = "field_post_" + wood;
+            Supplier<Block> block = BLOCKS.register(id,
+                    () -> new FieldPostBlock(BlockBehaviour.Properties.of()
+                            .strength(2.0f)
+                            .sound(SoundType.WOOD)
+                            .noOcclusion()));
+            FIELD_POST_VARIANTS.add(block);
+            FIELD_POST_VARIANT_ITEMS.add(ITEMS.register(id,
+                    () -> new BlockItem(block.get(), new Item.Properties())));
+        }
+    }
+
     public static final Supplier<BlockEntityType<FieldPostBlockEntity>> FIELD_POST_BE =
             BLOCK_ENTITY_TYPES.register("field_post",
-                    () -> BlockEntityType.Builder.of(FieldPostBlockEntity::new, FIELD_POST.get()).build(null));
+                    () -> {
+                        Block[] blocks = new Block[1 + FIELD_POST_VARIANTS.size()];
+                        blocks[0] = FIELD_POST.get();
+                        for (int i = 0; i < FIELD_POST_VARIANTS.size(); i++) {
+                            blocks[i + 1] = FIELD_POST_VARIANTS.get(i).get();
+                        }
+                        return BlockEntityType.Builder.of(FieldPostBlockEntity::new, blocks).build(null);
+                    });
 
     //? if neoforge {
     public static final Supplier<MenuType<FieldPostMenu>> FIELD_POST_MENU =
@@ -249,6 +278,9 @@ public class Townstead {
     private void onBuildCreativeTab(net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(FIELD_POST_ITEM.get());
+            for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
+                event.accept(variant.get());
+            }
         }
     }
     //?} else if forge {
@@ -284,6 +316,9 @@ public class Townstead {
     private void onBuildCreativeTabForge(net.minecraftforge.event.BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(FIELD_POST_ITEM.get());
+            for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
+                event.accept(variant.get());
+            }
         }
     }
     *///?}

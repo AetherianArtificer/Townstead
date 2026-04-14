@@ -6,11 +6,11 @@
     " F "
   ],
   "key": {
-    "S": { "item": "minecraft:oak_sign" },
-    "F": { "item": "minecraft:oak_fence" }
+    "S": { "item": "minecraft:jungle_sign" },
+    "F": { "item": "minecraft:jungle_fence" }
   },
   "result": {
-    "id": "townstead:field_post",
+    "id": "townstead:field_post_jungle",
     "count": 1
   }
 }

@@ -1,0 +1,9 @@
+{
+  "parent": "townstead:block/field_post_template",
+  "textures": {
+    "log": "minecraft:block/jungle_log",
+    "log_top": "minecraft:block/jungle_log_top",
+    "planks": "minecraft:block/jungle_planks",
+    "chain": "minecraft:block/chain"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "#log"
+  },
+  "elements": [
+    {
+      "name": "post",
+      "from": [6, 0, 6],
+      "to": [10, 16, 10],
+      "faces": {
+        "north": {"uv": [6, 0, 10, 16], "texture": "#log"},
+        "east":  {"uv": [6, 0, 10, 16], "texture": "#log"},
+        "south": {"uv": [6, 0, 10, 16], "texture": "#log"},
+        "west":  {"uv": [6, 0, 10, 16], "texture": "#log"},
+        "up":    {"uv": [6, 6, 10, 10], "texture": "#log_top"},
+        "down":  {"uv": [6, 6, 10, 10], "texture": "#log_top", "cullface": "down"}
+      }
+    },
+    {
+      "name": "sign",
+      "from": [3, 6, 5],
+      "to": [13, 13, 6],
+      "faces": {
+        "north": {"uv": [3, 9, 13, 16], "texture": "#planks"},
+        "east":  {"uv": [5, 9, 6, 16],  "texture": "#planks"},
+        "south": {"uv": [3, 9, 13, 16], "texture": "#planks"},
+        "west":  {"uv": [5, 9, 6, 16],  "texture": "#planks"},
+        "up":    {"uv": [3, 5, 13, 6],  "texture": "#planks"},
+        "down":  {"uv": [3, 5, 13, 6],  "texture": "#planks"}
+      }
+    }
+  ]
+}

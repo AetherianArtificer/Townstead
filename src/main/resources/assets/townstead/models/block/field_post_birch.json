@@ -1,0 +1,9 @@
+{
+  "parent": "townstead:block/field_post_template",
+  "textures": {
+    "log": "minecraft:block/birch_log",
+    "log_top": "minecraft:block/birch_log_top",
+    "planks": "minecraft:block/birch_planks",
+    "chain": "minecraft:block/chain"
+  }
+}
