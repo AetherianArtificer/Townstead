@@ -33,6 +33,7 @@ import com.aetherianartificer.townstead.shift.ShiftSyncPayload;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.aetherianartificer.townstead.village.VillageResidentRoster;
 import com.aetherianartificer.townstead.village.VillageResidentsSyncPayload;
+import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileDataLoader;
 import com.aetherianartificer.townstead.hunger.profile.ButcherProfileRegistry;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
@@ -370,6 +371,7 @@ public class Townstead {
 
     private void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new ButcherProfileDataLoader());
+        event.addListener(new CatalogDataLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 

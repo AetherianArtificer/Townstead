@@ -1088,6 +1088,8 @@ public abstract class BlueprintScreenMixin extends Screen {
         all = all.stream()
                 .filter(BuildingType::visible)
                 .filter(bt -> ModCompat.isCompatAvailable(bt.name()))
+                .filter(bt -> !com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
+                        .overrideFor(bt.name()).hide())
                 .sorted(Comparator.comparing(this::townstead$catalogSortKey))
                 .collect(Collectors.toList());
         townstead$catalogEntries = all;
@@ -1116,20 +1118,18 @@ public abstract class BlueprintScreenMixin extends Screen {
             for (int index : indices) {
                 BuildingType type = townstead$catalogEntries.get(index);
                 String name = type.name();
+                Optional<com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef> match =
+                        com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.matchGroup(name);
                 int nodeX;
                 int nodeY;
-                if (name.startsWith(KITCHEN_TYPE_PREFIX)) {
+                boolean tiered = match.isPresent()
+                        && "tiered".equals(match.get().layout())
+                        && !match.get().tierPrefix().isEmpty()
+                        && name.startsWith(match.get().tierPrefix());
+                if (tiered) {
                     int tier = 1;
                     try {
-                        tier = Integer.parseInt(name.substring(KITCHEN_TYPE_PREFIX.length()));
-                    } catch (NumberFormatException ignored) {
-                    }
-                    nodeX = 24 + (tier - 1) * 56;
-                    nodeY = y + 8;
-                } else if (name.startsWith(CAFE_TYPE_PREFIX)) {
-                    int tier = 1;
-                    try {
-                        tier = Integer.parseInt(name.substring(CAFE_TYPE_PREFIX.length()));
+                        tier = Integer.parseInt(name.substring(match.get().tierPrefix().length()));
                     } catch (NumberFormatException ignored) {
                     }
                     nodeX = 24 + (tier - 1) * 56;
@@ -1171,7 +1171,17 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private void townstead$drawCatalogConnections(GuiGraphics context, int insideX, int insideY, int insideW,
             int insideH) {
-        for (String prefix : new String[] { KITCHEN_TYPE_PREFIX, CAFE_TYPE_PREFIX }) {
+        java.util.Set<String> tierPrefixes = new java.util.LinkedHashSet<>();
+        for (com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef g
+                : com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.groups()) {
+            if ("tiered".equals(g.layout()) && !g.tierPrefix().isEmpty())
+                tierPrefixes.add(g.tierPrefix());
+        }
+        if (tierPrefixes.isEmpty()) {
+            tierPrefixes.add(KITCHEN_TYPE_PREFIX);
+            tierPrefixes.add(CAFE_TYPE_PREFIX);
+        }
+        for (String prefix : tierPrefixes) {
             for (int tier = 1; tier < 5; tier++) {
                 NodeData from = null;
                 NodeData to = null;
@@ -1258,6 +1268,12 @@ public abstract class BlueprintScreenMixin extends Screen {
         Optional<ResourceLocation> cached = townstead$nodeItemIconCache.get(buildingTypeName);
         if (cached != null && cached.isPresent()) {
             return cached;
+        }
+        Optional<ResourceLocation> datapack =
+                com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.overrideFor(buildingTypeName).nodeItem();
+        if (datapack.isPresent()) {
+            townstead$nodeItemIconCache.put(buildingTypeName, datapack);
+            return datapack;
         }
         Optional<ResourceLocation> result = Optional.empty();
         try {
@@ -1349,16 +1365,16 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private String townstead$compatGroupLabel(String name) {
+        Optional<com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef> match =
+                com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.matchGroup(name);
+        if (match.isPresent())
+            return match.get().label();
         if (!name.startsWith("compat/"))
             return "Core";
         String[] parts = name.split("/");
         if (parts.length < 2)
             return "Compat";
         String mod = parts[1];
-        if ("farmersdelight".equals(mod))
-            return "Farmer's Delight";
-        if ("rusticdelight".equals(mod))
-            return "Rustic Delight";
         return mod.substring(0, 1).toUpperCase(Locale.ROOT) + mod.substring(1);
     }
 
