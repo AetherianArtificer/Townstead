@@ -80,7 +80,19 @@ public class ToolPaletteList extends ObjectSelectionList<ToolPaletteList.ToolEnt
     // Suppress the default list separators (horizontal bars at top/bottom)
     @Override
     protected void renderListSeparators(GuiGraphics g) {}
-    //?}
+    //?} else {
+    /*// 1.20.1's AbstractSelectionList.render paints an unconditional dirt "header" band above
+    // the list (y=0 to y0) and a dirt "footer" band below it (y1 to screen bottom) using
+    // options_background.png. setRenderBackground(false) only kills the main background, not
+    // these decorative bands. We wrap super.render in a scissor clipping to the list's
+    // actual bounds so the dirt can't leak outside the intended area.
+    @Override
+    public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
+        g.enableScissor(this.x0, this.y0, this.x1, this.y1);
+        super.render(g, mouseX, mouseY, partial);
+        g.disableScissor();
+    }
+    *///?}
 
     public static class ToolEntry extends ObjectSelectionList.Entry<ToolEntry> {
         public final String toolId;

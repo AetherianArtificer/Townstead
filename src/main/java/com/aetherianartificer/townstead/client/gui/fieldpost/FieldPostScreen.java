@@ -900,6 +900,7 @@ public class FieldPostScreen extends Screen {
         // Widgets (search box + palette list)
         super.render(g, mouseX, mouseY, partial);
 
+
         // Cell tooltip (after super so it renders on top)
         renderGridTooltip(g, mouseX, mouseY);
     }
@@ -1878,7 +1879,10 @@ public class FieldPostScreen extends Screen {
     //? if >=1.21 {
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {}
-    //?}
+    //?} else {
+    /*@Override
+    public void renderBackground(GuiGraphics g) {}
+    *///?}
 
     public BlockPos getPostPos() { return postPos; }
 

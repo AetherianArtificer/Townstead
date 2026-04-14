@@ -77,6 +77,14 @@ public final class FrameRenderer {
                 CellTextures.blit(g, texture, x + tx, y + ty, tileSize);
             }
         }
+        // 1.20.1 only: flush the atlas batch BEFORE disabling scissor. GuiGraphics queues
+        // atlas-sprite draws and flushes them later in a combined render pass; on 1.20.1 that
+        // flush happens after scissor is disabled, so tiles render unclipped and bleed outside
+        // the intended strip (showing as a "dirt-looking" plank texture over tabs/search).
+        // 1.21.1's GuiGraphics handles this correctly on its own.
+        //? if <1.21 {
+        /*g.flush();
+        *///?}
         g.disableScissor();
     }
 }
