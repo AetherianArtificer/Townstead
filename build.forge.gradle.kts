@@ -56,6 +56,13 @@ repositories {
     }
 }
 
+// Modonomicon transitively pulls a specific JEI artifact that isn't on any of our configured
+// maven repos. We only use modonomicon's book-type APIs at compile time (no JEI code), so
+// excluding JEI globally gets us unstuck without losing anything we need.
+configurations.all {
+    exclude(group = "mezz.jei")
+}
+
 dependencies {
     "minecraft"("net.minecraftforge:forge:1.20.1-47.3.0")
     compileOnly(files("${rootProject.projectDir}/libs/mca-forge-7.6.15+1.20.1-universal.jar"))

@@ -71,7 +71,11 @@ public final class YoukaiHomecomingCropCompat implements FarmerCropCompat {
         }
 
         List<ItemStack> drops = new ArrayList<>();
+        //? if >=1.21 {
         ResourceLocation leavesId = ResourceLocation.fromNamespaceAndPath(MOD_ID, "tea_leaves");
+        //?} else {
+        /*ResourceLocation leavesId = new ResourceLocation(MOD_ID, "tea_leaves");
+        *///?}
         BuiltInRegistries.ITEM.getOptional(leavesId).ifPresent(leaves -> {
             int count = 1 + level.random.nextInt(2);
             drops.add(new ItemStack(leaves, count));
