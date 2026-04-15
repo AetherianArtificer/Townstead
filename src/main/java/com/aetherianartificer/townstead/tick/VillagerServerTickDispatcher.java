@@ -29,6 +29,7 @@ public final class VillagerServerTickDispatcher {
                 EmergencyBedClaims.releaseAll(level, villager.getUUID());
             }
             BedOccupancySanitizer.forget(villager);
+            WorkToolTicker.forget(villager);
             LAST_TICK.remove(villager.getId());
             return;
         }
@@ -45,5 +46,6 @@ public final class VillagerServerTickDispatcher {
         FatigueVillagerTicker.tick(villager);
         ProfessionProgressMemoryTicker.tick(villager);
         GuardRestEnforcerTicker.tick(villager);
+        WorkToolTicker.tick(villager);
     }
 }
