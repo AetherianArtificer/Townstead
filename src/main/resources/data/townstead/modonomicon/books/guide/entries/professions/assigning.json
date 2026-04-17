@@ -1,0 +1,23 @@
+{
+  "name": "townstead.guide.entry.professions.assigning",
+  "icon": { "item": "minecraft:name_tag" },
+  "category": "townstead:professions",
+  "x": -2,
+  "y": 0,
+  "sort_number": 1,
+  "parents": [
+    { "entry": "townstead:professions/overview" }
+  ],
+  "pages": [
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.professions.assigning.page1.title",
+      "text": "townstead.guide.entry.professions.assigning.page1.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.professions.assigning.page2.title",
+      "text": "townstead.guide.entry.professions.assigning.page2.body"
+    }
+  ]
+}

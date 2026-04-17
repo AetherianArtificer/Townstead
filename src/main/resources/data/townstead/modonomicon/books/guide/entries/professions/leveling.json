@@ -1,0 +1,23 @@
+{
+  "name": "townstead.guide.entry.professions.leveling",
+  "icon": { "item": "minecraft:experience_bottle" },
+  "category": "townstead:professions",
+  "x": 0,
+  "y": 0,
+  "sort_number": 2,
+  "parents": [
+    { "entry": "townstead:professions/overview" }
+  ],
+  "pages": [
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.professions.leveling.page1.title",
+      "text": "townstead.guide.entry.professions.leveling.page1.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.professions.leveling.page2.title",
+      "text": "townstead.guide.entry.professions.leveling.page2.body"
+    }
+  ]
+}

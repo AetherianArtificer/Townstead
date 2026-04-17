@@ -1,0 +1,32 @@
+{
+  "name": "townstead.guide.entry.integrations.rustic_delight",
+  "icon": { "item": "minecraft:sweet_berries" },
+  "category": "townstead:integrations",
+  "x": 4,
+  "y": 0,
+  "sort_number": 5,
+  "parents": [
+    { "entry": "townstead:integrations/overview" }
+  ],
+  "condition": {
+    "type": "modonomicon:mod_loaded",
+    "mod_id": "rusticdelight"
+  },
+  "pages": [
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.integrations.rustic_delight.page1.title",
+      "text": "townstead.guide.entry.integrations.rustic_delight.page1.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.integrations.rustic_delight.page2.title",
+      "text": "townstead.guide.entry.integrations.rustic_delight.page2.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.integrations.rustic_delight.page3.title",
+      "text": "townstead.guide.entry.integrations.rustic_delight.page3.body"
+    }
+  ]
+}

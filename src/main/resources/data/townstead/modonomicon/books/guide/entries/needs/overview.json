@@ -2,24 +2,10 @@
   "name": "townstead.guide.entry.needs.overview",
   "icon": { "item": "minecraft:bread" },
   "category": "townstead:needs",
-  "x": 0,
-  "y": -2,
-  "sort_number": 0,
+  "x": 0, "y": -2, "sort_number": 0,
   "pages": [
-    {
-      "type": "modonomicon:text",
-      "title": "townstead.guide.entry.needs.overview.intro.title",
-      "text": "townstead.guide.entry.needs.overview.intro.body"
-    },
-    {
-      "type": "modonomicon:text",
-      "title": "townstead.guide.entry.needs.overview.meters.title",
-      "text": "townstead.guide.entry.needs.overview.meters.body"
-    },
-    {
-      "type": "modonomicon:text",
-      "title": "townstead.guide.entry.needs.overview.what_next.title",
-      "text": "townstead.guide.entry.needs.overview.what_next.body"
-    }
+    { "type": "modonomicon:text", "title": "townstead.guide.entry.needs.overview.page1.title", "text": "townstead.guide.entry.needs.overview.page1.body" },
+    { "type": "modonomicon:text", "title": "townstead.guide.entry.needs.overview.page2.title", "text": "townstead.guide.entry.needs.overview.page2.body" },
+    { "type": "modonomicon:text", "title": "townstead.guide.entry.needs.overview.page3.title", "text": "townstead.guide.entry.needs.overview.page3.body" }
   ]
 }
