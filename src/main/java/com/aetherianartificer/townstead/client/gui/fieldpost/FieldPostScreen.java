@@ -1156,6 +1156,20 @@ public class FieldPostScreen extends Screen {
                     }
                 }
 
+                // Managed indicator: cell is in the plan but both soil and seed are already
+                // satisfied by the live world, so neither overlay block above drew a border.
+                // Draw a subtle outline so the player can see the farmer is looking after it.
+                boolean drewSoilBorder = soilAssignment != null && !soilDone
+                        && soilAssignment != SoilType.NONE;
+                boolean drewSeedBorder = seedAssignment != null && !seedDone
+                        && findToolEntry(seedAssignment) != null
+                        && (soilAssignment == null || soilDone);
+                boolean hasPlan = (soilAssignment != null && soilAssignment != SoilType.NONE)
+                        || (seedAssignment != null && !SeedAssignment.NONE.equals(seedAssignment));
+                if (hasPlan && !drewSoilBorder && !drewSeedBorder) {
+                    drawCellBorder(g, cx, cy, cs, 0xAA44AA44);
+                }
+
                 // Mismatch warning: seed assigned on an incompatible soil type.
                 // Renders a small yellow triangle with an exclamation mark in the top-right corner.
                 if (soilAssignment != null && seedAssignment != null
@@ -1999,6 +2013,9 @@ public class FieldPostScreen extends Screen {
         if (com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.AUTO.equals(seedId)) return true;
         if (com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.NONE.equals(seedId)) return true;
         if (com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.PROTECTED.equals(seedId)) return true;
+        // CLAIM is a server-resolved placeholder, not a real soil — the real soil/seed pair is
+        // derived from live world state at save time, so there's nothing to validate here.
+        if (soil == com.aetherianartificer.townstead.farming.cellplan.SoilType.CLAIM) return true;
         Integer bits = seedSoilCompat.get(seedId);
         if (bits == null) return true;
         return (bits & (1 << soil.ordinal())) != 0;
