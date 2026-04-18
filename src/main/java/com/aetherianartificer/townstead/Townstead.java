@@ -307,6 +307,7 @@ public class Townstead {
         modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC, modContainer));
         townstead$registerClientConfigScreen(modContainer);
         TownsteadNetwork.register();
+        townstead$registerKeybinds(modBus);
         townstead$registerClientTooltipFactory(modBus);
         townstead$registerMenuScreens(modBus);
         modBus.addListener(this::onCommonSetup);
@@ -492,8 +493,16 @@ public class Townstead {
         }
     }
     //?} else {
-    /*private static void townstead$registerKeybinds(Object modBus) {
-        // Forge 1.20.1: keybinds not yet supported for RPG dialogue
+    /*private static void townstead$registerKeybinds(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.minecraftforge.client.event.RegisterKeyMappingsEvent event) ->
+                            event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.TALK)
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no keybinds.
+        }
     }
     *///?}
 
