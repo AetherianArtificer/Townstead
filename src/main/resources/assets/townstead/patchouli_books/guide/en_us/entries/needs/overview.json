@@ -1,0 +1,12 @@
+{
+  "name": "townstead.guide.entry.needs.overview",
+  "icon": "minecraft:bread",
+  "category": "townstead:needs",
+  "priority": true,
+  "sortnum": 0,
+  "pages": [
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.overview.page1.title", "text": "townstead.guide.entry.needs.overview.page1.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.overview.page2.title", "text": "townstead.guide.entry.needs.overview.page2.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.overview.page3.title", "text": "townstead.guide.entry.needs.overview.page3.body" }
+  ]
+}

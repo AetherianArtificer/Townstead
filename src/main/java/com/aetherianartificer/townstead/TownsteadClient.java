@@ -51,6 +51,7 @@ public final class TownsteadClient {
         if (!hooksRegistered) {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
+            MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             hooksRegistered = true;
         }
         *///?}
@@ -85,9 +86,17 @@ public final class TownsteadClient {
     private static void onClientTick(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
         TownsteadKeybinds.onClientTick();
     }
+    //?} else if forge {
+    /*private static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
+        TownsteadKeybinds.onClientTick();
+    }
+    *///?}
+
+    //? if neoforge {
 
     private static void onGatherTooltipComponents(RenderTooltipEvent.GatherComponents event) {
-        if (event.getItemStack().is(FatigueData.ENERGY_RESTORING_TAG)) {
+        if (FatigueData.isEnergyRestoring(event.getItemStack())) {
             event.getTooltipElements().add(Either.right(
                     new EnergyTooltipComponent(FatigueData.ENERGY_RESTORE_AMOUNT)));
         }

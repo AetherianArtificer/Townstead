@@ -1,0 +1,24 @@
+{
+  "name": "townstead.guide.entry.integrations.thirst_was_taken",
+  "icon": "minecraft:glass_bottle",
+  "category": "townstead:integrations",
+  "sortnum": 4,
+  "flag": "mod:thirst",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.thirst_was_taken.page1.title",
+      "text": "townstead.guide.entry.integrations.thirst_was_taken.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.thirst_was_taken.page2.title",
+      "text": "townstead.guide.entry.integrations.thirst_was_taken.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.thirst_was_taken.page3.title",
+      "text": "townstead.guide.entry.integrations.thirst_was_taken.page3.body"
+    }
+  ]
+}

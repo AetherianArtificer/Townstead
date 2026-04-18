@@ -1,0 +1,29 @@
+{
+  "name": "townstead.guide.entry.farming.field_post",
+  "icon": "townstead:field_post",
+  "category": "townstead:farming",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.field_post.page1.title",
+      "text": "townstead.guide.entry.farming.field_post.page1.body"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "townstead:field_post",
+      "title": "townstead.guide.entry.farming.field_post.page2.title",
+      "text": "townstead.guide.entry.farming.field_post.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.field_post.page3.title",
+      "text": "townstead.guide.entry.farming.field_post.page3.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.field_post.page4.title",
+      "text": "townstead.guide.entry.farming.field_post.page4.body"
+    }
+  ]
+}

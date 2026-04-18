@@ -1,0 +1,24 @@
+{
+  "name": "townstead.guide.entry.integrations.farmers_delight",
+  "icon": "minecraft:campfire",
+  "category": "townstead:integrations",
+  "sortnum": 1,
+  "flag": "mod:farmersdelight",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.farmers_delight.page1.title",
+      "text": "townstead.guide.entry.integrations.farmers_delight.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.farmers_delight.page2.title",
+      "text": "townstead.guide.entry.integrations.farmers_delight.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.farmers_delight.page3.title",
+      "text": "townstead.guide.entry.integrations.farmers_delight.page3.body"
+    }
+  ]
+}

@@ -55,7 +55,6 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_MAX_PLOTS;
     public static final ModConfigSpec.BooleanValue ENABLE_FARMER_WATER_PLACEMENT;
     public static final ModConfigSpec.IntValue FARMER_WATER_PLACEMENTS_PER_DAY;
-    public static final ModConfigSpec.IntValue FARMER_HYDRATION_MIN_PERCENT;
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_SEARCH_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_GROOM_RADIUS;
@@ -113,7 +112,6 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue FARMER_MAX_PLOTS;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FARMER_WATER_PLACEMENT;
     public static final ForgeConfigSpec.IntValue FARMER_WATER_PLACEMENTS_PER_DAY;
-    public static final ForgeConfigSpec.IntValue FARMER_HYDRATION_MIN_PERCENT;
     public static final ForgeConfigSpec.IntValue FARMER_WATER_SOURCE_SEARCH_RADIUS;
     public static final ForgeConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
     public static final ForgeConfigSpec.IntValue FARMER_GROOM_RADIUS;
@@ -277,16 +275,12 @@ public final class TownsteadConfig {
                 .defineInRange("farmerMaxPlots", 192, 16, 1024);
         ENABLE_FARMER_WATER_PLACEMENT = b
                 .translation("townstead.configuration.farming.enableFarmerWaterPlacement")
-                .comment("Allow farmers to place water sources in planned farm tiles when hydration is insufficient.")
+                .comment("Allow farmers to place water sources in cells painted Water in the plot planner.")
                 .define("enableFarmerWaterPlacement", true);
         FARMER_WATER_PLACEMENTS_PER_DAY = b
                 .translation("townstead.configuration.farming.farmerWaterPlacementsPerDay")
                 .comment("Maximum water source placements a farmer can perform per Minecraft day.")
                 .defineInRange("farmerWaterPlacementsPerDay", 2, 0, 16);
-        FARMER_HYDRATION_MIN_PERCENT = b
-                .translation("townstead.configuration.farming.farmerHydrationMinPercent")
-                .comment("Minimum planned farm hydration coverage percent required before expansion tilling.")
-                .defineInRange("farmerHydrationMinPercent", 35, 0, 100);
         FARMER_WATER_SOURCE_SEARCH_RADIUS = b
                 .translation("townstead.configuration.farming.farmerWaterSourceSearchRadius")
                 .comment("Maximum horizontal distance farmers may travel to find water for bucket refills.")

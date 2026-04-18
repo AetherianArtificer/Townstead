@@ -1,0 +1,28 @@
+{
+  "name": "townstead.guide.entry.farming.troubleshooting",
+  "icon": "minecraft:paper",
+  "category": "townstead:farming",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.troubleshooting.page1.title",
+      "text": "townstead.guide.entry.farming.troubleshooting.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.troubleshooting.page2.title",
+      "text": "townstead.guide.entry.farming.troubleshooting.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.troubleshooting.page3.title",
+      "text": "townstead.guide.entry.farming.troubleshooting.page3.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.troubleshooting.page4.title",
+      "text": "townstead.guide.entry.farming.troubleshooting.page4.body"
+    }
+  ]
+}

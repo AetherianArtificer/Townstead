@@ -1,0 +1,24 @@
+{
+  "name": "townstead.guide.entry.professions.cook",
+  "icon": "minecraft:campfire",
+  "category": "townstead:professions",
+  "sortnum": 6,
+  "flag": "mod:farmersdelight",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.cook.page1.title",
+      "text": "townstead.guide.entry.professions.cook.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.cook.page2.title",
+      "text": "townstead.guide.entry.professions.cook.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.cook.page3.title",
+      "text": "townstead.guide.entry.professions.cook.page3.body"
+    }
+  ]
+}

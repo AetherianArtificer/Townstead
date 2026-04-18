@@ -50,24 +50,14 @@ minecraft {
 
 repositories {
     maven("https://maven.architectury.dev/")
-    maven {
-        url = uri("https://dl.cloudsmith.io/public/klikli-dev/mods/maven/")
-        content { includeGroup("com.klikli_dev") }
-    }
-}
-
-// Modonomicon transitively pulls a specific JEI artifact that isn't on any of our configured
-// maven repos. We only use modonomicon's book-type APIs at compile time (no JEI code), so
-// excluding JEI globally gets us unstuck without losing anything we need.
-configurations.all {
-    exclude(group = "mezz.jei")
+    maven("https://maven.blamejared.com")
 }
 
 dependencies {
     "minecraft"("net.minecraftforge:forge:1.20.1-47.3.0")
     compileOnly(files("${rootProject.projectDir}/libs/mca-forge-7.6.15+1.20.1-universal.jar"))
     compileOnly("dev.architectury:architectury-forge:9.2.14")
-    compileOnly(fg.deobf("com.klikli_dev:modonomicon-1.20.1-forge:1.79.3"))
+    compileOnly(fg.deobf("vazkii.patchouli:Patchouli:1.20.1-85-FORGE:api"))
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -116,12 +106,12 @@ tasks.withType<ProcessResources> {
     filesMatching("data/*/recipe/*.json") {
         filter { it.replace("\"id\":", "\"item\":") }
     }
-    // 1.20.1 modonomicon: book id is stored as NBT on the result item, not a 1.21 data component
+    // 1.20.1 Patchouli: book id is stored as NBT on the result item, not a 1.21 data component
     filesMatching("data/townstead/recipe/townstead_guide.json") {
         filter {
             it.replace(
-                Regex("""\"components\"\s*:\s*\{\s*\"modonomicon:book_id\"\s*:\s*\"([^\"]+)\"\s*\}"""),
-                "\"nbt\": \"{\\\\\"modonomicon:book_id\\\\\":\\\\\"$1\\\\\"}\""
+                Regex("""\"components\"\s*:\s*\{\s*\"patchouli:book\"\s*:\s*\"([^\"]+)\"\s*\}\s*,"""),
+                "\"nbt\": \"{\\\\\"patchouli:book\\\\\":\\\\\"$1\\\\\"}\","
             )
         }
     }

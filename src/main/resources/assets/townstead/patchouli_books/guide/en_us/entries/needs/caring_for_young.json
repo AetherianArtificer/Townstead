@@ -1,0 +1,11 @@
+{
+  "name": "townstead.guide.entry.needs.caring_for_young",
+  "icon": "minecraft:golden_apple",
+  "category": "townstead:needs",
+  "sortnum": 4,
+  "pages": [
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.caring_for_young.page1.title", "text": "townstead.guide.entry.needs.caring_for_young.page1.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.caring_for_young.page2.title", "text": "townstead.guide.entry.needs.caring_for_young.page2.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.caring_for_young.page3.title", "text": "townstead.guide.entry.needs.caring_for_young.page3.body" }
+  ]
+}

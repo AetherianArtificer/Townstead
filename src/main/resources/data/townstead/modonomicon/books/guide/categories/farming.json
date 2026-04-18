@@ -1,7 +1,0 @@
-{
-  "name": "townstead.guide.category.farming",
-  "description": "townstead.guide.category.farming.desc",
-  "icon": { "item": "townstead:field_post" },
-  "sort_number": 0,
-  "background": "townstead:textures/gui/guide_bg.png"
-}

@@ -1,0 +1,24 @@
+{
+  "name": "townstead.guide.entry.professions.barista",
+  "icon": "minecraft:flower_pot",
+  "category": "townstead:professions",
+  "sortnum": 7,
+  "flag": "mod:rusticdelight",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.barista.page1.title",
+      "text": "townstead.guide.entry.professions.barista.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.barista.page2.title",
+      "text": "townstead.guide.entry.professions.barista.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.barista.page3.title",
+      "text": "townstead.guide.entry.professions.barista.page3.body"
+    }
+  ]
+}

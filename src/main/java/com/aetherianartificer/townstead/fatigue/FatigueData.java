@@ -4,11 +4,14 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
+
+import java.util.Set;
 
 public final class FatigueData {
 
@@ -30,7 +33,7 @@ public final class FatigueData {
     // Misaligned bed: -0.6/interval → full recovery in ~17 MC hours
     public static final float RECOVERY_BED_MISALIGNED = -0.6f;
     public static final float RECOVERY_REST_NO_BED = -0.05f;
-    // -0.4/interval → clears collapse (2pts) in ~5 intervals ≈ 2 minutes
+    // -0.4/interval → clears collapse in ~5 gameTime intervals ≈ 2 real minutes
     public static final float RECOVERY_COLLAPSED = -0.4f;
 
     // --- Multipliers ---
@@ -62,6 +65,9 @@ public final class FatigueData {
     // --- Tick intervals ---
     public static final int ACCUMULATION_INTERVAL = 500;
     public static final int MOOD_CHECK_INTERVAL = 2400;
+    // Collapse recovery uses gameTime (not dayTime) so villagers escape collapse
+    // in predictable real time regardless of doDaylightCycle or time-scaling mods.
+    public static final int COLLAPSED_GAMETIME_INTERVAL = 500;
 
     // --- NBT keys (attachment internal) ---
     private static final String KEY_FATIGUE = "fatigue";
@@ -258,13 +264,37 @@ public final class FatigueData {
             TagKey.create(Registries.ITEM, new ResourceLocation(Townstead.MOD_ID, "energy_restoring"));
     *///?}
 
+    // Fallback item IDs. Some modpacks ship a datapack that replaces our
+    // townstead:energy_restoring tag (LSO bundles have been observed doing this),
+    // leaving villagers unable to auto-drink even when they hold coffee.
+    //? if >=1.21 {
+    private static final Set<ResourceLocation> FALLBACK_ENERGY_RESTORING_IDS = Set.of(
+            ResourceLocation.fromNamespaceAndPath("rusticdelight", "coffee"),
+            ResourceLocation.fromNamespaceAndPath("rusticdelight", "milk_coffee"),
+            ResourceLocation.fromNamespaceAndPath("rusticdelight", "chocolate_coffee"),
+            ResourceLocation.fromNamespaceAndPath("rusticdelight", "honey_coffee"),
+            ResourceLocation.fromNamespaceAndPath("rusticdelight", "syrup_coffee"),
+            ResourceLocation.fromNamespaceAndPath("rusticdelight", "dark_coffee")
+    );
+    //?} else {
+    /*private static final Set<ResourceLocation> FALLBACK_ENERGY_RESTORING_IDS = Set.of(
+            new ResourceLocation("rusticdelight", "coffee"),
+            new ResourceLocation("rusticdelight", "milk_coffee"),
+            new ResourceLocation("rusticdelight", "chocolate_coffee"),
+            new ResourceLocation("rusticdelight", "honey_coffee"),
+            new ResourceLocation("rusticdelight", "syrup_coffee"),
+            new ResourceLocation("rusticdelight", "dark_coffee")
+    );
+    *///?}
+
     /**
      * Apply fatigue reduction when a villager consumes an energy-restoring item.
-     * Items are matched via the {@code townstead:energy_restoring} item tag.
+     * Items are matched via the {@code townstead:energy_restoring} item tag,
+     * with a hardcoded fallback for modpacks that override the tag.
      */
     public static void applyCoffeeEffect(VillagerEntityMCA villager, ItemStack consumed) {
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return;
-        if (!consumed.is(ENERGY_RESTORING_TAG)) return;
+        if (!isEnergyRestoring(consumed)) return;
 
         //? if neoforge {
         CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
@@ -281,10 +311,15 @@ public final class FatigueData {
     }
 
     /**
-     * Check if an item is an energy-restoring item (tagged {@code townstead:energy_restoring}).
+     * Check if an item is an energy-restoring item. Matches the
+     * {@code townstead:energy_restoring} item tag, or a hardcoded fallback list
+     * for modpacks that override the tag.
      */
     public static boolean isEnergyRestoring(ItemStack stack) {
-        return !stack.isEmpty() && stack.is(ENERGY_RESTORING_TAG);
+        if (stack.isEmpty()) return false;
+        if (stack.is(ENERGY_RESTORING_TAG)) return true;
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        return FALLBACK_ENERGY_RESTORING_IDS.contains(id);
     }
 
     /**

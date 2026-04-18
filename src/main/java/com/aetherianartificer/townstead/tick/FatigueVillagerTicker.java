@@ -98,8 +98,9 @@ public final class FatigueVillagerTicker {
             fatigueIterations++;
 
             if (FatigueData.isCollapsed(fatigue)) {
-                applyFatigueDelta(fatigue, state, FatigueData.RECOVERY_COLLAPSED);
-                FatigueData.tryAutoDrinkCoffee(self);
+                // Collapsed recovery runs on gameTime below so it's robust to
+                // doDaylightCycle=false and time-scaling mods. Skip here.
+                continue;
             } else if (inBed) {
                 float recovery = isCycleAligned
                         ? FatigueData.RECOVERY_BED_ALIGNED
@@ -129,12 +130,30 @@ public final class FatigueVillagerTicker {
                 applyFatigueDelta(fatigue, state, rate);
             }
         }
-        if (fatigueIterations > 0) {
+
+        // --- Collapsed recovery on gameTime (independent of dayTime) ---
+        long gameTime = level.getGameTime();
+        int collapsedIterations = 0;
+        if (FatigueData.isCollapsed(fatigue)) {
+            if (state.lastCollapsedGameTime < 0) state.lastCollapsedGameTime = gameTime;
+            while (gameTime - state.lastCollapsedGameTime >= FatigueData.COLLAPSED_GAMETIME_INTERVAL
+                    && collapsedIterations < 100) {
+                state.lastCollapsedGameTime += FatigueData.COLLAPSED_GAMETIME_INTERVAL;
+                collapsedIterations++;
+                applyFatigueDelta(fatigue, state, FatigueData.RECOVERY_COLLAPSED);
+                FatigueData.tryAutoDrinkCoffee(self);
+                if (!FatigueData.isCollapsed(fatigue)) break;
+            }
+        } else {
+            state.lastCollapsedGameTime = gameTime;
+        }
+
+        if (fatigueIterations > 0 || collapsedIterations > 0) {
             changed = FatigueData.getFatigue(fatigue) != oldFatigue;
         }
 
         // --- Collapse / gate / auto-coffee (runs after interval processing) ---
-        if (changed || fatigueIterations > 0) {
+        if (changed || fatigueIterations > 0 || collapsedIterations > 0) {
             int currentFatigue = FatigueData.getFatigue(fatigue);
             int collapseThreshold = FatigueData.COLLAPSE_THRESHOLD;
             int recoveryGate = FatigueData.RECOVERY_GATE;
@@ -419,6 +438,7 @@ public final class FatigueVillagerTicker {
         private double lastPenalty = 0.0;
         private float fatigueResidue = 0f;
         private long lastFatigueDayTime = -1;
+        private long lastCollapsedGameTime = -1;
         private long lastMoodDayTime = -1;
         private Schedule preOverrideSchedule = null;
     }

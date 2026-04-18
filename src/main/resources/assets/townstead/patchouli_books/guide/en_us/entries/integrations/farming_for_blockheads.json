@@ -1,0 +1,19 @@
+{
+  "name": "townstead.guide.entry.integrations.farming_for_blockheads",
+  "icon": "minecraft:bone_meal",
+  "category": "townstead:integrations",
+  "sortnum": 2,
+  "flag": "mod:farmingforblockheads",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.farming_for_blockheads.page1.title",
+      "text": "townstead.guide.entry.integrations.farming_for_blockheads.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.farming_for_blockheads.page2.title",
+      "text": "townstead.guide.entry.integrations.farming_for_blockheads.page2.body"
+    }
+  ]
+}

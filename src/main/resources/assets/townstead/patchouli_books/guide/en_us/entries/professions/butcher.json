@@ -1,0 +1,23 @@
+{
+  "name": "townstead.guide.entry.professions.butcher",
+  "icon": "minecraft:smoker",
+  "category": "townstead:professions",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.butcher.page1.title",
+      "text": "townstead.guide.entry.professions.butcher.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.butcher.page2.title",
+      "text": "townstead.guide.entry.professions.butcher.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.butcher.page3.title",
+      "text": "townstead.guide.entry.professions.butcher.page3.body"
+    }
+  ]
+}

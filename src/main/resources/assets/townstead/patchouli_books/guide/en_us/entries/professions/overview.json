@@ -1,0 +1,19 @@
+{
+  "name": "townstead.guide.entry.professions.overview",
+  "icon": "minecraft:emerald",
+  "category": "townstead:professions",
+  "priority": true,
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.overview.page1.title",
+      "text": "townstead.guide.entry.professions.overview.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.overview.page2.title",
+      "text": "townstead.guide.entry.professions.overview.page2.body"
+    }
+  ]
+}
