@@ -1,0 +1,11 @@
+{
+  "name": "townstead.guide.entry.needs.reading_status",
+  "icon": "minecraft:paper",
+  "category": "townstead:needs",
+  "sortnum": 5,
+  "pages": [
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.reading_status.page1.title", "text": "townstead.guide.entry.needs.reading_status.page1.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.reading_status.page2.title", "text": "townstead.guide.entry.needs.reading_status.page2.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.reading_status.page3.title", "text": "townstead.guide.entry.needs.reading_status.page3.body" }
+  ]
+}

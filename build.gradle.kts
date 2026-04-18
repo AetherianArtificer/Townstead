@@ -30,15 +30,12 @@ neoForge {
 }
 
 repositories {
-    maven {
-        url = uri("https://dl.cloudsmith.io/public/klikli-dev/mods/maven/")
-        content { includeGroup("com.klikli_dev") }
-    }
+    maven { url = uri("https://maven.blamejared.com") }
 }
 
 dependencies {
     compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.5+1.21.1.jar"))
-    compileOnly("com.klikli_dev:modonomicon-1.21.1-neoforge:1.120.1") { isTransitive = false }
+    compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }

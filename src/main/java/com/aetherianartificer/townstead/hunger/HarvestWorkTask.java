@@ -1681,11 +1681,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return null;
     }
 
-    private int townstead$hydrationMinPercent(VillagerEntityMCA villager) {
-        int base = Math.max(0, Math.min(100, TownsteadConfig.FARMER_HYDRATION_MIN_PERCENT.get()));
-        return townstead$scaleInt(base, townstead$profile(villager).hydrationScale(), 0, 100);
-    }
-
     private int townstead$waterSourceSearchRadius() {
         return Math.max(8, TownsteadConfig.FARMER_WATER_SOURCE_SEARCH_RADIUS.get());
     }

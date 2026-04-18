@@ -1,0 +1,19 @@
+{
+  "name": "townstead.guide.entry.integrations.overview",
+  "icon": "minecraft:compass",
+  "category": "townstead:integrations",
+  "priority": true,
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.overview.page1.title",
+      "text": "townstead.guide.entry.integrations.overview.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.overview.page2.title",
+      "text": "townstead.guide.entry.integrations.overview.page2.body"
+    }
+  ]
+}

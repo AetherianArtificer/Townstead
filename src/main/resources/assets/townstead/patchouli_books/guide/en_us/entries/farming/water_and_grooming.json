@@ -1,0 +1,18 @@
+{
+  "name": "townstead.guide.entry.farming.water_and_grooming",
+  "icon": "minecraft:water_bucket",
+  "category": "townstead:farming",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.water_and_grooming.page1.title",
+      "text": "townstead.guide.entry.farming.water_and_grooming.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.water_and_grooming.page2.title",
+      "text": "townstead.guide.entry.farming.water_and_grooming.page2.body"
+    }
+  ]
+}

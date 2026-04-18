@@ -1,0 +1,28 @@
+{
+  "name": "townstead.guide.entry.farming.how_farmers_work",
+  "icon": "minecraft:wheat",
+  "category": "townstead:farming",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.how_farmers_work.page1.title",
+      "text": "townstead.guide.entry.farming.how_farmers_work.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.how_farmers_work.page2.title",
+      "text": "townstead.guide.entry.farming.how_farmers_work.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.how_farmers_work.page3.title",
+      "text": "townstead.guide.entry.farming.how_farmers_work.page3.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.how_farmers_work.page4.title",
+      "text": "townstead.guide.entry.farming.how_farmers_work.page4.body"
+    }
+  ]
+}

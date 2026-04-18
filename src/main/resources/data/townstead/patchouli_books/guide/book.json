@@ -1,0 +1,10 @@
+{
+  "name": "townstead.guide.name",
+  "landing_text": "townstead.guide.landing",
+  "subtitle": "townstead.guide.subtitle",
+  "creative_tab": "townstead:main",
+  "use_resource_pack": true,
+  "i18n": true,
+  "show_progress": false,
+  "header_color": "303030"
+}

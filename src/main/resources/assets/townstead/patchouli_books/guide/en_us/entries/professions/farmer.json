@@ -1,0 +1,23 @@
+{
+  "name": "townstead.guide.entry.professions.farmer",
+  "icon": "townstead:field_post",
+  "category": "townstead:professions",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.farmer.page1.title",
+      "text": "townstead.guide.entry.professions.farmer.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.farmer.page2.title",
+      "text": "townstead.guide.entry.professions.farmer.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.farmer.page3.title",
+      "text": "townstead.guide.entry.professions.farmer.page3.body"
+    }
+  ]
+}

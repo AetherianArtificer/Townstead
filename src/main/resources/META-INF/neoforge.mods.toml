@@ -39,8 +39,8 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies.townstead]]
-modId = "modonomicon"
-type = "optional"
-versionRange = "[1.120,)"
+modId = "patchouli"
+type = "required"
+versionRange = "[1.21.1-93,)"
 ordering = "AFTER"
 side = "BOTH"

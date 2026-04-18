@@ -1,9 +1,0 @@
-{
-  "name": "townstead.guide.name",
-  "tooltip": "townstead.guide.subtitle",
-  "creative_tab": "townstead",
-  "generate_book_item": false,
-  "auto_add_read_conditions": false,
-  "font": "minecraft:default",
-  "default_title_color": 3158064
-}

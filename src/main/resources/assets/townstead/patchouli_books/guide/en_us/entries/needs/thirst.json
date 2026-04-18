@@ -1,0 +1,12 @@
+{
+  "name": "townstead.guide.entry.needs.thirst",
+  "icon": "minecraft:water_bucket",
+  "category": "townstead:needs",
+  "sortnum": 2,
+  "pages": [
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.thirst.page1.title", "text": "townstead.guide.entry.needs.thirst.page1.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.thirst.page2.title", "text": "townstead.guide.entry.needs.thirst.page2.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.thirst.page3.title", "text": "townstead.guide.entry.needs.thirst.page3.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.thirst.page4.title", "text": "townstead.guide.entry.needs.thirst.page4.body" }
+  ]
+}

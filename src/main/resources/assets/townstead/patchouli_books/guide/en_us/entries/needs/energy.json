@@ -1,0 +1,17 @@
+{
+  "name": "townstead.guide.entry.needs.energy",
+  "icon": "minecraft:red_bed",
+  "category": "townstead:needs",
+  "sortnum": 3,
+  "pages": [
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.energy.page1.title", "text": "townstead.guide.entry.needs.energy.page1.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.energy.page2.title", "text": "townstead.guide.entry.needs.energy.page2.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.energy.page3.title", "text": "townstead.guide.entry.needs.energy.page3.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.energy.page3b.title", "text": "townstead.guide.entry.needs.energy.page3b.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.energy.page4.title", "text": "townstead.guide.entry.needs.energy.page4.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.energy.page5.title", "text": "townstead.guide.entry.needs.energy.page5.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.energy.page5b.title", "text": "townstead.guide.entry.needs.energy.page5b.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.energy.page6.title", "text": "townstead.guide.entry.needs.energy.page6.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.energy.page7.title", "text": "townstead.guide.entry.needs.energy.page7.body" }
+  ]
+}

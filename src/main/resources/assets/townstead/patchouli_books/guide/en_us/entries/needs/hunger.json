@@ -1,0 +1,13 @@
+{
+  "name": "townstead.guide.entry.needs.hunger",
+  "icon": "minecraft:cooked_beef",
+  "category": "townstead:needs",
+  "sortnum": 1,
+  "pages": [
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.hunger.page1.title", "text": "townstead.guide.entry.needs.hunger.page1.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.hunger.page2.title", "text": "townstead.guide.entry.needs.hunger.page2.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.hunger.page3.title", "text": "townstead.guide.entry.needs.hunger.page3.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.hunger.page4.title", "text": "townstead.guide.entry.needs.hunger.page4.body" },
+    { "type": "patchouli:text", "title": "townstead.guide.entry.needs.hunger.page5.title", "text": "townstead.guide.entry.needs.hunger.page5.body" }
+  ]
+}

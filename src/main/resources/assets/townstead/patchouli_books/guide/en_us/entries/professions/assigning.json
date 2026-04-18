@@ -1,0 +1,18 @@
+{
+  "name": "townstead.guide.entry.professions.assigning",
+  "icon": "minecraft:name_tag",
+  "category": "townstead:professions",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.assigning.page1.title",
+      "text": "townstead.guide.entry.professions.assigning.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.assigning.page2.title",
+      "text": "townstead.guide.entry.professions.assigning.page2.body"
+    }
+  ]
+}

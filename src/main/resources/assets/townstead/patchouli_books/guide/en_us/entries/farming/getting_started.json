@@ -1,0 +1,30 @@
+{
+  "name": "townstead.guide.entry.farming.getting_started",
+  "icon": "townstead:field_post",
+  "category": "townstead:farming",
+  "priority": true,
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.getting_started.page1.title",
+      "text": "townstead.guide.entry.farming.getting_started.page1.body"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "townstead:field_post",
+      "title": "townstead.guide.entry.farming.getting_started.page2.title",
+      "text": "townstead.guide.entry.farming.getting_started.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.getting_started.page3.title",
+      "text": "townstead.guide.entry.farming.getting_started.page3.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.farming.getting_started.page4.title",
+      "text": "townstead.guide.entry.farming.getting_started.page4.body"
+    }
+  ]
+}
