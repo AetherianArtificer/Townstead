@@ -51,3 +51,10 @@ mandatory = true
 versionRange = "[1.20.1-85,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies.townstead]]
+modId = "travelerstitles"
+mandatory = false
+versionRange = "[0,)"
+ordering = "NONE"
+side = "CLIENT"

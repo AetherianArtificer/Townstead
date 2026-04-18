@@ -6,6 +6,9 @@ import com.aetherianartificer.townstead.block.FieldPostMenu;
 import com.aetherianartificer.townstead.compat.ConditionalCompatPack;
 import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload;
+import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsStore;
+import com.aetherianartificer.townstead.compat.travelerstitles.VillageEnterTitlePayload;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
@@ -279,6 +282,8 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) ->
+                ClientCapsStore.clear(e.getEntity().getUUID()));
         registerDialogueConditions();
         LOGGER.info("Townstead loaded");
     }
@@ -308,6 +313,8 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
+        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) ->
+                ClientCapsStore.clear(e.getEntity().getUUID()));
         registerDialogueConditions();
         LOGGER.info("Townstead loaded");
     }
@@ -639,6 +646,30 @@ public class Townstead {
                 FieldPostGridSyncPayload.STREAM_CODEC,
                 this::handleFieldPostGridSync
         );
+        // Traveler's Titles integration
+        registrar.playToServer(
+                ClientCapsPayload.TYPE,
+                ClientCapsPayload.STREAM_CODEC,
+                this::handleClientCaps
+        );
+        registrar.playToClient(
+                VillageEnterTitlePayload.TYPE,
+                VillageEnterTitlePayload.STREAM_CODEC,
+                this::handleVillageEnterTitle
+        );
+    }
+
+    private void handleClientCaps(ClientCapsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            ClientCapsStore.setTravelersTitles(sp.getUUID(), payload.hasTravelersTitles());
+        });
+    }
+
+    private void handleVillageEnterTitle(VillageEnterTitlePayload payload, IPayloadContext context) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.compat.travelerstitles.TravelersTitlesBridge
+                        .displayVillageTitle(payload.title(), payload.population()));
     }
 
     private void handleHungerSync(HungerSyncPayload payload, IPayloadContext context) {

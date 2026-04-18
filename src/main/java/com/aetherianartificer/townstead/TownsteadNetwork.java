@@ -2,6 +2,10 @@ package com.aetherianartificer.townstead;
 
 //? if forge {
 /*
+import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload;
+import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsStore;
+import com.aetherianartificer.townstead.compat.travelerstitles.TravelersTitlesBridge;
+import com.aetherianartificer.townstead.compat.travelerstitles.VillageEnterTitlePayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
 import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
@@ -117,6 +121,12 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleFieldPostConfigSync);
         registerS2C(FieldPostGridSyncPayload.class, FieldPostGridSyncPayload::write, FieldPostGridSyncPayload::read,
                 TownsteadNetwork::handleFieldPostGridSync);
+
+        // Traveler's Titles integration
+        registerC2S(ClientCapsPayload.class, ClientCapsPayload::write, ClientCapsPayload::read,
+                TownsteadNetwork::handleClientCaps);
+        registerS2C(VillageEnterTitlePayload.class, VillageEnterTitlePayload::write, VillageEnterTitlePayload::read,
+                TownsteadNetwork::handleVillageEnterTitle);
     }
 
     // ── Send helpers ──
@@ -502,6 +512,14 @@ public final class TownsteadNetwork {
                     payload.seedSoilCompat(),
                     payload.farmerCount(), payload.totalPlots(), payload.tilledPlots(), payload.hydrationPercent());
         }
+    }
+
+    private static void handleClientCaps(ClientCapsPayload payload, ServerPlayer sp) {
+        ClientCapsStore.setTravelersTitles(sp.getUUID(), payload.hasTravelersTitles());
+    }
+
+    private static void handleVillageEnterTitle(VillageEnterTitlePayload payload) {
+        TravelersTitlesBridge.displayVillageTitle(payload.title(), payload.population());
     }
 
     private static boolean townstead$professionOwnsJobSite(VillagerProfession holderProfession, VillagerProfession targetProfession) {

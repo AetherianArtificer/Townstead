@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead;
 
 import com.aetherianartificer.townstead.client.TownsteadKeybinds;
+import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
@@ -13,6 +15,7 @@ import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.PacketDistributor;
 //?} else if forge {
 /*import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.client.ConfigScreenHandler;
@@ -37,6 +40,7 @@ public final class TownsteadClient {
                 (IConfigScreenFactory) (container, parent) -> new ConfigurationScreen(container, parent));
         if (!hooksRegistered) {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
+            NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientConnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
@@ -50,10 +54,24 @@ public final class TownsteadClient {
         }
         if (!hooksRegistered) {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
+            MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientConnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             hooksRegistered = true;
         }
+        *///?}
+    }
+
+    //? if neoforge {
+    private static void onClientConnect(ClientPlayerNetworkEvent.LoggingIn event) {
+    //?} else if forge {
+    /*private static void onClientConnect(ClientPlayerNetworkEvent.LoggingIn event) {
+    *///?}
+        boolean hasTT = ModCompat.isLoaded("travelerstitles");
+        //? if neoforge {
+        PacketDistributor.sendToServer(new ClientCapsPayload(hasTT));
+        //?} else if forge {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(new ClientCapsPayload(hasTT));
         *///?}
     }
 

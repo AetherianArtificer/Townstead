@@ -6,6 +6,7 @@
     "ChefsDelightProfessionGuardMixin",
     "FarmBlockMixin",
     "compat.farmersdelight.StoveVillagerDamageMixin",
+    "compat.mca.PlayerSaveDataWelcomeMixin",
     "ReportBuildingMessageMixin",
     "TombstoneRevivalMixin",
     "VillagerHungerMixin",
