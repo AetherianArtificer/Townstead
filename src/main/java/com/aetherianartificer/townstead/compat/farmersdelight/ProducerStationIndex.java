@@ -1,7 +1,10 @@
 package com.aetherianartificer.townstead.compat.farmersdelight;
 
 import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
-import com.aetherianartificer.townstead.compat.farmersdelight.ProducerStationSessions.SessionSnapshot;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions.SessionSnapshot;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.IngredientResolver;
@@ -96,7 +99,7 @@ public final class ProducerStationIndex {
                 logSkip(role, villager, slot, "recently_abandoned");
                 continue;
             }
-            if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) {
+            if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) {
                 logSkip(role, villager, slot, "claimed");
                 continue;
             }

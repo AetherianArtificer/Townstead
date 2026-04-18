@@ -14,9 +14,6 @@ public record HungerSyncPayload(
         int farmerTier,
         int farmerXp,
         int farmerXpToNext,
-        int butcherTier,
-        int butcherXp,
-        int butcherXpToNext,
         int cookTier,
         int cookXp,
         int cookXpToNext
@@ -37,17 +34,11 @@ public record HungerSyncPayload(
                 buf.writeVarInt(payload.farmerTier());
                 buf.writeVarInt(payload.farmerXp());
                 buf.writeVarInt(payload.farmerXpToNext());
-                buf.writeVarInt(payload.butcherTier());
-                buf.writeVarInt(payload.butcherXp());
-                buf.writeVarInt(payload.butcherXpToNext());
                 buf.writeVarInt(payload.cookTier());
                 buf.writeVarInt(payload.cookXp());
                 buf.writeVarInt(payload.cookXpToNext());
             },
             buf -> new HungerSyncPayload(
-                    buf.readVarInt(),
-                    buf.readVarInt(),
-                    buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),
@@ -78,9 +69,6 @@ public record HungerSyncPayload(
         buf.writeVarInt(farmerTier);
         buf.writeVarInt(farmerXp);
         buf.writeVarInt(farmerXpToNext);
-        buf.writeVarInt(butcherTier);
-        buf.writeVarInt(butcherXp);
-        buf.writeVarInt(butcherXpToNext);
         buf.writeVarInt(cookTier);
         buf.writeVarInt(cookXp);
         buf.writeVarInt(cookXpToNext);
@@ -88,9 +76,6 @@ public record HungerSyncPayload(
 
     public static HungerSyncPayload read(FriendlyByteBuf buf) {
         return new HungerSyncPayload(
-                buf.readVarInt(),
-                buf.readVarInt(),
-                buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),

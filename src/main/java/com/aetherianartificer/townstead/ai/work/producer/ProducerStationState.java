@@ -1,4 +1,4 @@
-package com.aetherianartificer.townstead.compat.farmersdelight;
+package com.aetherianartificer.townstead.ai.work.producer;
 
 public enum ProducerStationState {
     EMPTY_READY,

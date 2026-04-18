@@ -1,4 +1,4 @@
-package com.aetherianartificer.townstead.compat.farmersdelight;
+package com.aetherianartificer.townstead.ai.work.producer;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -8,12 +8,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class CookStationClaims {
+public final class ProducerStationClaims {
     private static final Map<String, UUID> STATION_CLAIM_OWNER = new ConcurrentHashMap<>();
     private static final Map<String, Long> STATION_CLAIM_UNTIL = new ConcurrentHashMap<>();
     private static final Object CLAIM_LOCK = new Object();
 
-    private CookStationClaims() {}
+    private ProducerStationClaims() {}
 
     public static void claim(ServerLevel level, UUID owner, BlockPos pos, long untilTick) {
         tryClaim(level, owner, pos, untilTick);
@@ -72,6 +72,6 @@ public final class CookStationClaims {
     }
 
     static String claimKey(ResourceLocation dimensionId, long posAsLong) {
-        return CookClaimKeys.claimKey(dimensionId == null ? null : dimensionId.toString(), posAsLong);
+        return ProducerClaimKeys.claimKey(dimensionId == null ? null : dimensionId.toString(), posAsLong);
     }
 }

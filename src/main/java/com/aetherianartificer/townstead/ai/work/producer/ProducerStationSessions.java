@@ -1,4 +1,4 @@
-package com.aetherianartificer.townstead.compat.farmersdelight;
+package com.aetherianartificer.townstead.ai.work.producer;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -44,14 +44,14 @@ public final class ProducerStationSessions {
                 ? Map.of()
                 : Collections.unmodifiableMap(new HashMap<>(stagedInputs));
         SESSIONS.put(
-                CookClaimKeys.claimKey(level.dimension().location().toString(), pos.asLong()),
+                ProducerClaimKeys.claimKey(level.dimension().location().toString(), pos.asLong()),
                 new SessionSnapshot(owner, recipeId, recipeOutputId, Math.max(0, expectedOutputCount), snapshot, untilTick)
         );
     }
 
     public static @Nullable SessionSnapshot snapshot(ServerLevel level, BlockPos pos) {
         if (level == null || pos == null) return null;
-        String key = CookClaimKeys.claimKey(level.dimension().location().toString(), pos.asLong());
+        String key = ProducerClaimKeys.claimKey(level.dimension().location().toString(), pos.asLong());
         SessionSnapshot session = SESSIONS.get(key);
         if (session == null) return null;
         if (session.untilTick() <= level.getGameTime()) {
@@ -63,7 +63,7 @@ public final class ProducerStationSessions {
 
     public static void release(ServerLevel level, UUID owner, BlockPos pos) {
         if (level == null || owner == null || pos == null) return;
-        String key = CookClaimKeys.claimKey(level.dimension().location().toString(), pos.asLong());
+        String key = ProducerClaimKeys.claimKey(level.dimension().location().toString(), pos.asLong());
         SessionSnapshot session = SESSIONS.get(key);
         if (session == null || !session.isOwner(owner)) return;
         SESSIONS.remove(key);

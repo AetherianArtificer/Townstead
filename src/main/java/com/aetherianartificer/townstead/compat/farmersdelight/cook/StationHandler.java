@@ -4,10 +4,10 @@ import com.mojang.authlib.GameProfile;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.compat.farmersdelight.CookStationClaims;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
-import com.aetherianartificer.townstead.compat.farmersdelight.ProducerStationSessions;
-import com.aetherianartificer.townstead.compat.farmersdelight.ProducerStationState;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
@@ -91,7 +91,10 @@ public final class StationHandler {
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack slot = handler.getStackInSlot(i);
             if (slot.isEmpty()) continue;
-            if (allowedContainerPrestage != null && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(allowedContainerPrestage)) continue;
+            // Cooking pot container slot holds stock (bowls/bottles) — never counts as unexpected,
+            // regardless of recipe. Mismatched stock is handled by gather failing to insert a
+            // different container, which triggers a clean abandon.
+            if (i == FD_COOKING_POT_CONTAINER_SLOT) continue;
             if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
             return true;
         }
@@ -205,7 +208,7 @@ public final class StationHandler {
     ) {
         List<StationSlot> discovered = new ArrayList<>();
         for (StationSlot slot : KitchenStationIndex.snapshot(level, kitchenBounds).stations()) {
-            if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) continue;
+            if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) continue;
             if (findStandingPosition(level, villager, slot.pos()) == null) continue;
             discovered.add(slot);
         }
@@ -223,7 +226,7 @@ public final class StationHandler {
         if (found.containsKey(key)) return;
         StationType type = stationType(level, pos);
         if (type == null) return;
-        if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return;
+        if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return;
         if (findStandingPosition(level, villager, pos.immutable()) == null) return;
 
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
@@ -546,7 +549,7 @@ public final class StationHandler {
     ) {
         if (pos == null) return false;
         pos = canonicalStationAnchor(level, pos);
-        if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return false;
+        if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return false;
         if (!isSurfaceFireStation(level, pos)) return false;
 
         BlockState state = level.getBlockState(pos);
@@ -959,11 +962,15 @@ public final class StationHandler {
         });
         if (found[0]) return true;
 
+        boolean isCookingPot = FD_COOKING_POT.equals(stationId);
         if (be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize(); i++) {
                 ItemStack slot = container.getItem(i);
                 if (slot.isEmpty()) continue;
-                if (allowedContainerPrestage != Items.AIR && i == FD_COOKING_POT_CONTAINER_SLOT && slot.is(allowedContainerPrestage)) continue;
+                // Cooking pot container slot holds stock (bowls/bottles). Never counts as "contents"
+                // regardless of recipe — stock is maintained across cycles, and mismatched stock
+                // is handled by gatherInputs failing to insert, which leads to clean abandon.
+                if (isCookingPot && i == FD_COOKING_POT_CONTAINER_SLOT) continue;
                 if (allowedPrestage != null && allowedPrestage.contains(slot.getItem())) continue;
                 return true;
             }
@@ -1181,7 +1188,7 @@ public final class StationHandler {
             @Nullable ProducerStationSessions.SessionSnapshot session
     ) {
         if (level == null || villager == null || pos == null || stationType == null) return ProducerStationState.BLOCKED;
-        if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return ProducerStationState.BLOCKED;
+        if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return ProducerStationState.BLOCKED;
 
         boolean hasContents = stationHasAnyContents(level, pos, stationType);
         boolean ownsSession = session != null && session.isOwner(villager.getUUID());
@@ -1247,7 +1254,7 @@ public final class StationHandler {
         }
 
         if (stationType == StationType.HOT_STATION) {
-            movedAny |= clearCookingPotContents(level, villager, pos);
+            movedAny |= clearCookingPotContents(level, villager, pos, storageBounds);
         }
         return movedAny || !stationHasAnyContents(level, pos, stationType);
     }
@@ -1397,6 +1404,9 @@ public final class StationHandler {
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return extracted;
 
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        boolean isCookingPot = FD_COOKING_POT.equals(blockId);
+
         StorageSearchContext searchContext = new StorageSearchContext(level);
         searchContext.forEachUniqueItemHandler(pos, (dir, handler) -> {
             for (int i = 0; i < handler.getSlots(); i++) {
@@ -1411,6 +1421,7 @@ public final class StationHandler {
 
         if (be instanceof Container container) {
             for (int i = 0; i < container.getContainerSize(); i++) {
+                if (isCookingPot && i == FD_COOKING_POT_CONTAINER_SLOT) continue;
                 ItemStack slot = container.getItem(i);
                 if (slot.isEmpty()) continue;
                 ResourceLocation id = BuiltInRegistries.ITEM.getKey(slot.getItem());
@@ -1450,14 +1461,15 @@ public final class StationHandler {
 
     // ── Clear station contents ──
 
-    public static boolean clearCookingPotContents(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
+    public static boolean clearCookingPotContents(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, Set<Long> storageBounds) {
         if (pos == null) return false;
-        if (CookStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return false;
+        if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return false;
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         if (!FD_COOKING_POT.equals(blockId)) return false;
 
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return false;
+        final BlockPos anchor = pos;
         final boolean[] clearedAnyRef = new boolean[1];
         StorageSearchContext searchContext = new StorageSearchContext(level);
 
@@ -1467,13 +1479,7 @@ public final class StationHandler {
                 ItemStack extracted = handler.extractItem(i, handler.getStackInSlot(i).getCount(), false);
                 if (extracted.isEmpty()) continue;
                 clearedAnyRef[0] = true;
-                ItemStack remainder = villager.getInventory().addItem(extracted);
-                if (!remainder.isEmpty()) {
-                    ItemEntity drop = new ItemEntity(
-                            level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
-                    drop.setPickUpDelay(0);
-                    level.addFreshEntity(drop);
-                }
+                routeClearedItem(level, villager, extracted, anchor, storageBounds);
             }
         });
         if (be instanceof Container container) {
@@ -1484,19 +1490,12 @@ public final class StationHandler {
                 container.setItem(i, ItemStack.EMPTY);
                 container.setChanged();
                 clearedAnyRef[0] = true;
-                ItemStack remainder = villager.getInventory().addItem(taken);
-                if (!remainder.isEmpty()) {
-                    ItemEntity drop = new ItemEntity(
-                            level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
-                    drop.setPickUpDelay(0);
-                    level.addFreshEntity(drop);
-                }
+                routeClearedItem(level, villager, taken, anchor, storageBounds);
             }
         }
 
-        // Reflection fallback: clear remaining items (e.g. bowl in container slot)
-        // that IItemHandler and Container couldn't extract
-        if (clearRemainingViaReflection(be, villager, level)) clearedAnyRef[0] = true;
+        // Reflection fallback: clear remaining items that IItemHandler and Container couldn't extract.
+        if (clearRemainingViaReflection(be, villager, level, anchor, storageBounds)) clearedAnyRef[0] = true;
 
         if (clearedAnyRef[0]) {
             KitchenStationIndex.invalidate(level, pos);
@@ -1504,7 +1503,20 @@ public final class StationHandler {
         return clearedAnyRef[0];
     }
 
-    private static boolean clearRemainingViaReflection(BlockEntity be, VillagerEntityMCA villager, ServerLevel level) {
+    private static void routeClearedItem(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, BlockPos stationAnchor, Set<Long> storageBounds) {
+        if (stack.isEmpty()) return;
+        IngredientResolver.storeOutputInCookStorage(level, villager, stack, stationAnchor, storageBounds);
+        if (stack.isEmpty()) return;
+        ItemStack remainder = villager.getInventory().addItem(stack);
+        if (!remainder.isEmpty()) {
+            ItemEntity drop = new ItemEntity(
+                    level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
+            drop.setPickUpDelay(0);
+            level.addFreshEntity(drop);
+        }
+    }
+
+    private static boolean clearRemainingViaReflection(BlockEntity be, VillagerEntityMCA villager, ServerLevel level, BlockPos stationAnchor, Set<Long> storageBounds) {
         boolean cleared = false;
         try {
             for (Field field : be.getClass().getDeclaredFields()) {
@@ -1526,13 +1538,7 @@ public final class StationHandler {
                     ItemStack taken = slot.copy();
                     setStack.invoke(handler, i, ItemStack.EMPTY);
                     cleared = true;
-                    ItemStack remainder = villager.getInventory().addItem(taken);
-                    if (!remainder.isEmpty()) {
-                        ItemEntity drop = new ItemEntity(
-                                level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
-                        drop.setPickUpDelay(0);
-                        level.addFreshEntity(drop);
-                    }
+                    routeClearedItem(level, villager, taken, stationAnchor, storageBounds);
                 }
                 if (cleared) {
                     be.setChanged();

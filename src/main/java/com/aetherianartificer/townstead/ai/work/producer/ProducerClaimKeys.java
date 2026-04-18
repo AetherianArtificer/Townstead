@@ -1,7 +1,7 @@
-package com.aetherianartificer.townstead.compat.farmersdelight;
+package com.aetherianartificer.townstead.ai.work.producer;
 
-final class CookClaimKeys {
-    private CookClaimKeys() {}
+final class ProducerClaimKeys {
+    private ProducerClaimKeys() {}
 
     static String claimKey(String dimensionId, long posAsLong) {
         if (dimensionId == null || dimensionId.isBlank()) return "unknown|" + posAsLong;

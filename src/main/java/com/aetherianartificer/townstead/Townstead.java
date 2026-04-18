@@ -34,17 +34,10 @@ import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.aetherianartificer.townstead.village.VillageResidentRoster;
 import com.aetherianartificer.townstead.village.VillageResidentsSyncPayload;
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
-import com.aetherianartificer.townstead.hunger.profile.ButcherProfileDataLoader;
-import com.aetherianartificer.townstead.hunger.profile.ButcherProfileRegistry;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.FarmerProgressData;
-import com.aetherianartificer.townstead.hunger.ButcherProgressData;
 import com.aetherianartificer.townstead.hunger.CookProgressData;
-import com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore;
-import com.aetherianartificer.townstead.hunger.ButcherPolicyData;
-import com.aetherianartificer.townstead.hunger.ButcherPolicySetPayload;
-import com.aetherianartificer.townstead.hunger.ButcherPolicySyncPayload;
 import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.ButcherStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
@@ -287,7 +280,6 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         registerDialogueConditions();
-        ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
     }
     //?} else if forge {
@@ -317,7 +309,6 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         registerDialogueConditions();
-        ButcherProfileRegistry.bootstrap();
         LOGGER.info("Townstead loaded");
     }
     *///?}
@@ -371,7 +362,6 @@ public class Townstead {
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {
-        event.addListener(new ButcherProfileDataLoader());
         event.addListener(new CatalogDataLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
@@ -581,11 +571,6 @@ public class Townstead {
                 ButcherStatusSyncPayload.STREAM_CODEC,
                 this::handleButcherStatusSync
         );
-        registrar.playToClient(
-                ButcherPolicySyncPayload.TYPE,
-                ButcherPolicySyncPayload.STREAM_CODEC,
-                this::handleButcherPolicySync
-        );
         registrar.playToServer(
                 HungerSetPayload.TYPE,
                 HungerSetPayload.STREAM_CODEC,
@@ -598,11 +583,6 @@ public class Townstead {
                     this::handleThirstSet
             );
         }
-        registrar.playToServer(
-                ButcherPolicySetPayload.TYPE,
-                ButcherPolicySetPayload.STREAM_CODEC,
-                this::handleButcherPolicySet
-        );
         registrar.playToClient(
                 ShiftSyncPayload.TYPE,
                 ShiftSyncPayload.STREAM_CODEC,
@@ -668,9 +648,6 @@ public class Townstead {
                 payload.farmerTier(),
                 payload.farmerXp(),
                 payload.farmerXpToNext(),
-                payload.butcherTier(),
-                payload.butcherXp(),
-                payload.butcherXpToNext(),
                 payload.cookTier(),
                 payload.cookXp(),
                 payload.cookXpToNext()
@@ -692,10 +669,6 @@ public class Townstead {
 
     private void handleButcherStatusSync(ButcherStatusSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId()));
-    }
-
-    private void handleButcherPolicySync(ButcherPolicySyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> ButcherPolicyClientStore.set(payload.profileId(), payload.tier(), payload.areaCount()));
     }
 
     private void handleHungerSet(HungerSetPayload payload, IPayloadContext context) {
@@ -756,30 +729,6 @@ public class Townstead {
             ThirstSyncPayload sync = townstead$thirstSync(villager, thirst);
             PacketDistributor.sendToPlayer(sp, sync);
             PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
-        });
-    }
-
-    private void handleButcherPolicySet(ButcherPolicySetPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer sp)) return;
-            ButcherPolicyData data = ButcherPolicyData.get(sp.serverLevel());
-            if (payload.tier() == -1) {
-                PacketDistributor.sendToPlayer(sp, new ButcherPolicySyncPayload(
-                        data.getDefaultProfileId(),
-                        data.getDefaultTier(),
-                        data.getAreas().size()
-                ));
-                return;
-            }
-
-
-
-            data.setDefaultPolicy(payload.profileId(), payload.tier());
-            PacketDistributor.sendToPlayer(sp, new ButcherPolicySyncPayload(
-                    data.getDefaultProfileId(),
-                    data.getDefaultTier(),
-                    data.getAreas().size()
-            ));
         });
     }
 
@@ -1181,9 +1130,6 @@ public class Townstead {
                 FarmerProgressData.getTier(hunger),
                 FarmerProgressData.getXp(hunger),
                 FarmerProgressData.getXpToNextTier(hunger),
-                ButcherProgressData.getTier(hunger),
-                ButcherProgressData.getXp(hunger),
-                ButcherProgressData.getXpToNextTier(hunger),
                 CookProgressData.getTier(hunger),
                 CookProgressData.getXp(hunger),
                 CookProgressData.getXpToNextTier(hunger)

@@ -76,14 +76,10 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleFarmStatusSync);
         registerS2C(ButcherStatusSyncPayload.class, ButcherStatusSyncPayload::write, ButcherStatusSyncPayload::read,
                 TownsteadNetwork::handleButcherStatusSync);
-        registerS2C(ButcherPolicySyncPayload.class, ButcherPolicySyncPayload::write, ButcherPolicySyncPayload::read,
-                TownsteadNetwork::handleButcherPolicySync);
 
         // Client -> Server
         registerC2S(HungerSetPayload.class, HungerSetPayload::write, HungerSetPayload::read,
                 TownsteadNetwork::handleHungerSet);
-        registerC2S(ButcherPolicySetPayload.class, ButcherPolicySetPayload::write, ButcherPolicySetPayload::read,
-                TownsteadNetwork::handleButcherPolicySet);
 
         if (ThirstBridgeResolver.anyThirstModLoaded()) {
             registerS2C(ThirstSyncPayload.class, ThirstSyncPayload::write, ThirstSyncPayload::read,
@@ -178,7 +174,6 @@ public final class TownsteadNetwork {
         HungerClientStore.set(
                 payload.entityId(), payload.hunger(),
                 payload.farmerTier(), payload.farmerXp(), payload.farmerXpToNext(),
-                payload.butcherTier(), payload.butcherXp(), payload.butcherXpToNext(),
                 payload.cookTier(), payload.cookXp(), payload.cookXpToNext()
         );
     }
@@ -194,10 +189,6 @@ public final class TownsteadNetwork {
 
     private static void handleButcherStatusSync(ButcherStatusSyncPayload payload) {
         HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId());
-    }
-
-    private static void handleButcherPolicySync(ButcherPolicySyncPayload payload) {
-        ButcherPolicyClientStore.set(payload.profileId(), payload.tier(), payload.areaCount());
     }
 
     // ── Server-side handlers (C2S) ──
@@ -252,20 +243,6 @@ public final class TownsteadNetwork {
         ThirstSyncPayload sync = Townstead.townstead$thirstSync(villager, thirst);
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);
-    }
-
-    private static void handleButcherPolicySet(ButcherPolicySetPayload payload, ServerPlayer sp) {
-        ButcherPolicyData data = ButcherPolicyData.get(sp.serverLevel());
-        if (payload.tier() == -1) {
-            sendToPlayer(sp, new ButcherPolicySyncPayload(
-                    data.getDefaultProfileId(), data.getDefaultTier(), data.getAreas().size()
-            ));
-            return;
-        }
-        data.setDefaultPolicy(payload.profileId(), payload.tier());
-        sendToPlayer(sp, new ButcherPolicySyncPayload(
-                data.getDefaultProfileId(), data.getDefaultTier(), data.getAreas().size()
-        ));
     }
 
     private static void handleFatigueSync(FatigueSyncPayload payload) {

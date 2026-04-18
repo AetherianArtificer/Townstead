@@ -279,7 +279,7 @@ public abstract class VillagerEditorMixin extends Screen {
     private void townstead$modHunger(int delta) {
         townstead$hungerDirty = true;
         townstead$editorHunger = Math.max(0, Math.min(townstead$editorHunger + delta, HungerData.MAX_HUNGER));
-        HungerClientStore.set(villager.getId(), townstead$editorHunger, 1, 0, 0, 1, 0, 0, 1, 0, 0);
+        HungerClientStore.set(villager.getId(), townstead$editorHunger, 1, 0, 0, 1, 0, 0);
         // Write into villagerData — MCA's syncVillagerData() will carry these to the server
         // when the user clicks "Done"
         villagerData.putInt(HungerData.EDITOR_KEY_HUNGER, townstead$editorHunger);

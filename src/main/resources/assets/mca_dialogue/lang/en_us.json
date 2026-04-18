@@ -117,13 +117,6 @@
   "dialogue.chat.butcher_request.no_valid_target/3": "Everything's in order for now.",
   "dialogue.chat.butcher_request.no_valid_target/4": "Nothing to tend at the moment.",
 
-  "dialogue.chat.butcher_progress.tier_up/1": "My hand is steadier, and my cuts are cleaner now.",
-  "dialogue.chat.butcher_progress.tier_up/2": "I've learned to work the smoker with better timing.",
-  "dialogue.chat.butcher_progress.tier_up/3": "Another day, another step in my craft.",
-  "dialogue.chat.butcher_progress.tier_up/4": "The butcher's trade is coming easier to me.",
-  "dialogue.chat.butcher_progress.tier_up/5": "I can handle finer cuts than before.",
-  "dialogue.chat.butcher_progress.tier_up/6": "I've grown into a better butcher.",
-
   "dialogue.chat.cook_request.no_kitchen/1": "I need a proper kitchen before I can cook.",
   "dialogue.chat.cook_request.no_kitchen/2": "There's no kitchen station ready for me.",
   "dialogue.chat.cook_request.no_kitchen/3": "Give me a kitchen and I'll feed everyone.",
