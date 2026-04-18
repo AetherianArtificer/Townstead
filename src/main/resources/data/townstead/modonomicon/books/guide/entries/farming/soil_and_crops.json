@@ -1,0 +1,28 @@
+{
+  "name": "townstead.guide.entry.farming.soil_and_crops",
+  "icon": { "item": "minecraft:wheat_seeds" },
+  "category": "townstead:farming",
+  "x": -2,
+  "y": 4,
+  "sort_number": 3,
+  "parents": [
+    { "entry": "townstead:farming/plot_planner" }
+  ],
+  "pages": [
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.farming.soil_and_crops.page1.title",
+      "text": "townstead.guide.entry.farming.soil_and_crops.page1.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.farming.soil_and_crops.page2.title",
+      "text": "townstead.guide.entry.farming.soil_and_crops.page2.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.farming.soil_and_crops.page3.title",
+      "text": "townstead.guide.entry.farming.soil_and_crops.page3.body"
+    }
+  ]
+}

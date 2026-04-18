@@ -2,5 +2,6 @@
   "name": "townstead.guide.category.integrations",
   "description": "townstead.guide.category.integrations.desc",
   "icon": { "item": "minecraft:compass" },
-  "sort_number": 3
+  "sort_number": 3,
+  "background": "townstead:textures/gui/guide_bg.png"
 }

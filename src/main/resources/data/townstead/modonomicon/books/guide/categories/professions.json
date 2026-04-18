@@ -2,5 +2,6 @@
   "name": "townstead.guide.category.professions",
   "description": "townstead.guide.category.professions.desc",
   "icon": { "item": "minecraft:emerald" },
-  "sort_number": 2
+  "sort_number": 2,
+  "background": "townstead:textures/gui/guide_bg.png"
 }

@@ -2,26 +2,32 @@
   "name": "townstead.guide.entry.farming.troubleshooting",
   "icon": { "item": "minecraft:paper" },
   "category": "townstead:farming",
-  "x": -3,
-  "y": 2,
+  "x": 2,
+  "y": 4,
   "sort_number": 6,
+  "parents": [
+    { "entry": "townstead:farming/how_farmers_work" }
+  ],
   "pages": [
     {
       "type": "modonomicon:text",
-      "title": "townstead.guide.entry.farming.troubleshooting.title",
-      "text": "townstead.guide.entry.farming.troubleshooting.no_plan"
+      "title": "townstead.guide.entry.farming.troubleshooting.page1.title",
+      "text": "townstead.guide.entry.farming.troubleshooting.page1.body"
     },
     {
       "type": "modonomicon:text",
-      "text": "townstead.guide.entry.farming.troubleshooting.no_seeds"
+      "title": "townstead.guide.entry.farming.troubleshooting.page2.title",
+      "text": "townstead.guide.entry.farming.troubleshooting.page2.body"
     },
     {
       "type": "modonomicon:text",
-      "text": "townstead.guide.entry.farming.troubleshooting.no_tool"
+      "title": "townstead.guide.entry.farming.troubleshooting.page3.title",
+      "text": "townstead.guide.entry.farming.troubleshooting.page3.body"
     },
     {
       "type": "modonomicon:text",
-      "text": "townstead.guide.entry.farming.troubleshooting.unreachable"
+      "title": "townstead.guide.entry.farming.troubleshooting.page4.title",
+      "text": "townstead.guide.entry.farming.troubleshooting.page4.body"
     }
   ]
 }

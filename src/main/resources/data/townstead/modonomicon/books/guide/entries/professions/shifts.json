@@ -1,0 +1,33 @@
+{
+  "name": "townstead.guide.entry.professions.shifts",
+  "icon": { "item": "minecraft:clock" },
+  "category": "townstead:professions",
+  "x": 2,
+  "y": 0,
+  "sort_number": 3,
+  "parents": [
+    { "entry": "townstead:professions/overview" }
+  ],
+  "pages": [
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.professions.shifts.page1.title",
+      "text": "townstead.guide.entry.professions.shifts.page1.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.professions.shifts.page2.title",
+      "text": "townstead.guide.entry.professions.shifts.page2.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.professions.shifts.page3.title",
+      "text": "townstead.guide.entry.professions.shifts.page3.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.professions.shifts.page4.title",
+      "text": "townstead.guide.entry.professions.shifts.page4.body"
+    }
+  ]
+}

@@ -2,22 +2,27 @@
   "name": "townstead.guide.entry.farming.plot_planner",
   "icon": { "item": "minecraft:wooden_hoe" },
   "category": "townstead:farming",
-  "x": -1,
-  "y": -2,
+  "x": -2,
+  "y": 2,
   "sort_number": 2,
+  "parents": [
+    { "entry": "townstead:farming/field_post" }
+  ],
   "pages": [
     {
       "type": "modonomicon:text",
-      "title": "townstead.guide.entry.farming.plot_planner.title",
-      "text": "townstead.guide.entry.farming.plot_planner.p1"
+      "title": "townstead.guide.entry.farming.plot_planner.page1.title",
+      "text": "townstead.guide.entry.farming.plot_planner.page1.body"
     },
     {
       "type": "modonomicon:text",
-      "text": "townstead.guide.entry.farming.plot_planner.p2"
+      "title": "townstead.guide.entry.farming.plot_planner.page2.title",
+      "text": "townstead.guide.entry.farming.plot_planner.page2.body"
     },
     {
       "type": "modonomicon:text",
-      "text": "townstead.guide.entry.farming.plot_planner.p3"
+      "title": "townstead.guide.entry.farming.plot_planner.page3.title",
+      "text": "townstead.guide.entry.farming.plot_planner.page3.body"
     }
   ]
 }

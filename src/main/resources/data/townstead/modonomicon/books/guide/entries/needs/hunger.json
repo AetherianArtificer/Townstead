@@ -2,34 +2,13 @@
   "name": "townstead.guide.entry.needs.hunger",
   "icon": { "item": "minecraft:cooked_beef" },
   "category": "townstead:needs",
-  "x": -2,
-  "y": 0,
-  "sort_number": 1,
+  "x": -2, "y": 0, "sort_number": 1,
+  "parents": [{ "entry": "townstead:needs/overview" }],
   "pages": [
-    {
-      "type": "modonomicon:text",
-      "title": "townstead.guide.entry.needs.hunger.intro.title",
-      "text": "townstead.guide.entry.needs.hunger.intro.body"
-    },
-    {
-      "type": "modonomicon:text",
-      "title": "townstead.guide.entry.needs.hunger.states.title",
-      "text": "townstead.guide.entry.needs.hunger.states.body"
-    },
-    {
-      "type": "modonomicon:text",
-      "title": "townstead.guide.entry.needs.hunger.how_they_eat.title",
-      "text": "townstead.guide.entry.needs.hunger.how_they_eat.body"
-    },
-    {
-      "type": "modonomicon:text",
-      "title": "townstead.guide.entry.needs.hunger.meal_times.title",
-      "text": "townstead.guide.entry.needs.hunger.meal_times.body"
-    },
-    {
-      "type": "modonomicon:text",
-      "title": "townstead.guide.entry.needs.hunger.keeping_fed.title",
-      "text": "townstead.guide.entry.needs.hunger.keeping_fed.body"
-    }
+    { "type": "modonomicon:text", "title": "townstead.guide.entry.needs.hunger.page1.title", "text": "townstead.guide.entry.needs.hunger.page1.body" },
+    { "type": "modonomicon:text", "title": "townstead.guide.entry.needs.hunger.page2.title", "text": "townstead.guide.entry.needs.hunger.page2.body" },
+    { "type": "modonomicon:text", "title": "townstead.guide.entry.needs.hunger.page3.title", "text": "townstead.guide.entry.needs.hunger.page3.body" },
+    { "type": "modonomicon:text", "title": "townstead.guide.entry.needs.hunger.page4.title", "text": "townstead.guide.entry.needs.hunger.page4.body" },
+    { "type": "modonomicon:text", "title": "townstead.guide.entry.needs.hunger.page5.title", "text": "townstead.guide.entry.needs.hunger.page5.body" }
   ]
 }

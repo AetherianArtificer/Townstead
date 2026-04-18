@@ -1,0 +1,32 @@
+{
+  "name": "townstead.guide.entry.integrations.legendary_survival_overhaul",
+  "icon": { "item": "minecraft:potion" },
+  "category": "townstead:integrations",
+  "x": 0,
+  "y": 0,
+  "sort_number": 3,
+  "parents": [
+    { "entry": "townstead:integrations/overview" }
+  ],
+  "condition": {
+    "type": "modonomicon:mod_loaded",
+    "mod_id": "legendarysurvivaloverhaul"
+  },
+  "pages": [
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.integrations.legendary_survival_overhaul.page1.title",
+      "text": "townstead.guide.entry.integrations.legendary_survival_overhaul.page1.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.integrations.legendary_survival_overhaul.page2.title",
+      "text": "townstead.guide.entry.integrations.legendary_survival_overhaul.page2.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.integrations.legendary_survival_overhaul.page3.title",
+      "text": "townstead.guide.entry.integrations.legendary_survival_overhaul.page3.body"
+    }
+  ]
+}

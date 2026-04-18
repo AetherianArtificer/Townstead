@@ -158,10 +158,7 @@ public final class ClaimResolver {
                 continue;
             }
             builder.rawSoil(key, r.soil());
-            // Only write the seed if there isn't one explicitly painted already
-            if (plan.seedPlan().get(key) == null) {
-                builder.rawSeed(key, r.seed());
-            }
+            builder.rawSeed(key, r.seed());
         }
         return builder.build();
     }

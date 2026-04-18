@@ -2,23 +2,33 @@
   "name": "townstead.guide.entry.farming.field_post",
   "icon": { "item": "townstead:field_post" },
   "category": "townstead:farming",
-  "x": -3,
-  "y": -2,
+  "x": -2,
+  "y": 0,
   "sort_number": 1,
+  "parents": [
+    { "entry": "townstead:farming/getting_started" }
+  ],
   "pages": [
     {
       "type": "modonomicon:text",
-      "title": "townstead.guide.entry.farming.field_post.title",
-      "text": "townstead.guide.entry.farming.field_post.p1"
+      "title": "townstead.guide.entry.farming.field_post.page1.title",
+      "text": "townstead.guide.entry.farming.field_post.page1.body"
     },
     {
       "type": "modonomicon:crafting_recipe",
       "recipe_id_1": "townstead:field_post",
-      "text": "townstead.guide.entry.farming.field_post.craft"
+      "title1": "townstead.guide.entry.farming.field_post.page2.title",
+      "text": "townstead.guide.entry.farming.field_post.page2.body"
     },
     {
       "type": "modonomicon:text",
-      "text": "townstead.guide.entry.farming.field_post.p2"
+      "title": "townstead.guide.entry.farming.field_post.page3.title",
+      "text": "townstead.guide.entry.farming.field_post.page3.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.farming.field_post.page4.title",
+      "text": "townstead.guide.entry.farming.field_post.page4.body"
     }
   ]
 }

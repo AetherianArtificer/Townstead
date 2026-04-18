@@ -1120,16 +1120,22 @@ public abstract class BlueprintScreenMixin extends Screen {
                 String name = type.name();
                 Optional<com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef> match =
                         com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.matchGroup(name);
+                String tierPrefix = null;
+                if (match.isPresent() && "tiered".equals(match.get().layout())
+                        && !match.get().tierPrefix().isEmpty()
+                        && name.startsWith(match.get().tierPrefix())) {
+                    tierPrefix = match.get().tierPrefix();
+                } else if (name.startsWith(KITCHEN_TYPE_PREFIX)) {
+                    tierPrefix = KITCHEN_TYPE_PREFIX;
+                } else if (name.startsWith(CAFE_TYPE_PREFIX)) {
+                    tierPrefix = CAFE_TYPE_PREFIX;
+                }
                 int nodeX;
                 int nodeY;
-                boolean tiered = match.isPresent()
-                        && "tiered".equals(match.get().layout())
-                        && !match.get().tierPrefix().isEmpty()
-                        && name.startsWith(match.get().tierPrefix());
-                if (tiered) {
+                if (tierPrefix != null) {
                     int tier = 1;
                     try {
-                        tier = Integer.parseInt(name.substring(match.get().tierPrefix().length()));
+                        tier = Integer.parseInt(name.substring(tierPrefix.length()));
                     } catch (NumberFormatException ignored) {
                     }
                     nodeX = 24 + (tier - 1) * 56;

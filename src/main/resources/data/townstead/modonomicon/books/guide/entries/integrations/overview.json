@@ -1,0 +1,20 @@
+{
+  "name": "townstead.guide.entry.integrations.overview",
+  "icon": { "item": "minecraft:compass" },
+  "category": "townstead:integrations",
+  "x": 0,
+  "y": -2,
+  "sort_number": 0,
+  "pages": [
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.integrations.overview.page1.title",
+      "text": "townstead.guide.entry.integrations.overview.page1.body"
+    },
+    {
+      "type": "modonomicon:text",
+      "title": "townstead.guide.entry.integrations.overview.page2.title",
+      "text": "townstead.guide.entry.integrations.overview.page2.body"
+    }
+  ]
+}
