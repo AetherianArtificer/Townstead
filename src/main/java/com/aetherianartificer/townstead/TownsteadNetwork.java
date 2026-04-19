@@ -2,6 +2,10 @@ package com.aetherianartificer.townstead;
 
 //? if forge {
 /*
+import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload;
+import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsStore;
+import com.aetherianartificer.townstead.compat.travelerstitles.TravelersTitlesBridge;
+import com.aetherianartificer.townstead.compat.travelerstitles.VillageEnterTitlePayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
 import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
@@ -76,14 +80,14 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleFarmStatusSync);
         registerS2C(ButcherStatusSyncPayload.class, ButcherStatusSyncPayload::write, ButcherStatusSyncPayload::read,
                 TownsteadNetwork::handleButcherStatusSync);
-        registerS2C(ButcherPolicySyncPayload.class, ButcherPolicySyncPayload::write, ButcherPolicySyncPayload::read,
-                TownsteadNetwork::handleButcherPolicySync);
+        registerS2C(FishermanStatusSyncPayload.class, FishermanStatusSyncPayload::write, FishermanStatusSyncPayload::read,
+                TownsteadNetwork::handleFishermanStatusSync);
+        registerS2C(FishermanHookLinkPayload.class, FishermanHookLinkPayload::write, FishermanHookLinkPayload::read,
+                TownsteadNetwork::handleFishermanHookLink);
 
         // Client -> Server
         registerC2S(HungerSetPayload.class, HungerSetPayload::write, HungerSetPayload::read,
                 TownsteadNetwork::handleHungerSet);
-        registerC2S(ButcherPolicySetPayload.class, ButcherPolicySetPayload::write, ButcherPolicySetPayload::read,
-                TownsteadNetwork::handleButcherPolicySet);
 
         if (ThirstBridgeResolver.anyThirstModLoaded()) {
             registerS2C(ThirstSyncPayload.class, ThirstSyncPayload::write, ThirstSyncPayload::read,
@@ -121,6 +125,12 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleFieldPostConfigSync);
         registerS2C(FieldPostGridSyncPayload.class, FieldPostGridSyncPayload::write, FieldPostGridSyncPayload::read,
                 TownsteadNetwork::handleFieldPostGridSync);
+
+        // Traveler's Titles integration
+        registerC2S(ClientCapsPayload.class, ClientCapsPayload::write, ClientCapsPayload::read,
+                TownsteadNetwork::handleClientCaps);
+        registerS2C(VillageEnterTitlePayload.class, VillageEnterTitlePayload::write, VillageEnterTitlePayload::read,
+                TownsteadNetwork::handleVillageEnterTitle);
     }
 
     // ── Send helpers ──
@@ -178,7 +188,6 @@ public final class TownsteadNetwork {
         HungerClientStore.set(
                 payload.entityId(), payload.hunger(),
                 payload.farmerTier(), payload.farmerXp(), payload.farmerXpToNext(),
-                payload.butcherTier(), payload.butcherXp(), payload.butcherXpToNext(),
                 payload.cookTier(), payload.cookXp(), payload.cookXpToNext()
         );
     }
@@ -196,8 +205,12 @@ public final class TownsteadNetwork {
         HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId());
     }
 
-    private static void handleButcherPolicySync(ButcherPolicySyncPayload payload) {
-        ButcherPolicyClientStore.set(payload.profileId(), payload.tier(), payload.areaCount());
+    private static void handleFishermanStatusSync(FishermanStatusSyncPayload payload) {
+        HungerClientStore.setFishermanBlockedReason(payload.entityId(), payload.blockedReasonId());
+    }
+
+    private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {
+        com.aetherianartificer.townstead.hunger.FishermanHookLinkStore.link(payload.hookEntityId(), payload.villagerEntityId());
     }
 
     // ── Server-side handlers (C2S) ──
@@ -252,20 +265,6 @@ public final class TownsteadNetwork {
         ThirstSyncPayload sync = Townstead.townstead$thirstSync(villager, thirst);
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);
-    }
-
-    private static void handleButcherPolicySet(ButcherPolicySetPayload payload, ServerPlayer sp) {
-        ButcherPolicyData data = ButcherPolicyData.get(sp.serverLevel());
-        if (payload.tier() == -1) {
-            sendToPlayer(sp, new ButcherPolicySyncPayload(
-                    data.getDefaultProfileId(), data.getDefaultTier(), data.getAreas().size()
-            ));
-            return;
-        }
-        data.setDefaultPolicy(payload.profileId(), payload.tier());
-        sendToPlayer(sp, new ButcherPolicySyncPayload(
-                data.getDefaultProfileId(), data.getDefaultTier(), data.getAreas().size()
-        ));
     }
 
     private static void handleFatigueSync(FatigueSyncPayload payload) {
@@ -525,6 +524,14 @@ public final class TownsteadNetwork {
                     payload.seedSoilCompat(),
                     payload.farmerCount(), payload.totalPlots(), payload.tilledPlots(), payload.hydrationPercent());
         }
+    }
+
+    private static void handleClientCaps(ClientCapsPayload payload, ServerPlayer sp) {
+        ClientCapsStore.setTravelersTitles(sp.getUUID(), payload.hasTravelersTitles());
+    }
+
+    private static void handleVillageEnterTitle(VillageEnterTitlePayload payload) {
+        TravelersTitlesBridge.displayVillageTitle(payload.title(), payload.population());
     }
 
     private static boolean townstead$professionOwnsJobSite(VillagerProfession holderProfession, VillagerProfession targetProfession) {

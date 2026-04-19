@@ -6,6 +6,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
+import com.aetherianartificer.townstead.hunger.FishermanSupplyManager;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
 
@@ -26,7 +27,8 @@ public final class WorkToolTicker {
     private record Rule(VillagerProfession profession, Predicate<ItemStack> matcher) {}
 
     private static final List<Rule> RULES = List.of(
-            new Rule(VillagerProfession.FARMER, stack -> stack.getItem() instanceof HoeItem)
+            new Rule(VillagerProfession.FARMER, stack -> stack.getItem() instanceof HoeItem),
+            new Rule(VillagerProfession.FISHERMAN, FishermanSupplyManager::isFishingRod)
     );
 
     private static final Map<UUID, ItemStack> PREVIOUS_MAIN_HAND = new ConcurrentHashMap<>();

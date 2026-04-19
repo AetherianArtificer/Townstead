@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.compat.farmersdelight;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.ProducerStationSessions.SessionSnapshot;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions.SessionSnapshot;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;

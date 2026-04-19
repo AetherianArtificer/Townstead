@@ -1,7 +1,11 @@
 package com.aetherianartificer.townstead;
 
 import com.aetherianartificer.townstead.client.TownsteadKeybinds;
+import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.hunger.FishermanLineRenderer;
+import com.aetherianartificer.townstead.hunger.FishingRodCastPredicates;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
 import com.aetherianartificer.townstead.fatigue.EnergyTooltipComponent;
@@ -13,6 +17,7 @@ import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.PacketDistributor;
 //?} else if forge {
 /*import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.client.ConfigScreenHandler;
@@ -37,9 +42,11 @@ public final class TownsteadClient {
                 (IConfigScreenFactory) (container, parent) -> new ConfigurationScreen(container, parent));
         if (!hooksRegistered) {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
+            NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientConnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
+            NeoForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             hooksRegistered = true;
         }
         //?} else if forge {
@@ -50,11 +57,30 @@ public final class TownsteadClient {
         }
         if (!hooksRegistered) {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
+            MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientConnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
+            MinecraftForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             hooksRegistered = true;
         }
         *///?}
+    }
+
+    //? if neoforge {
+    private static void onClientConnect(ClientPlayerNetworkEvent.LoggingIn event) {
+    //?} else if forge {
+    /*private static void onClientConnect(ClientPlayerNetworkEvent.LoggingIn event) {
+    *///?}
+        boolean hasTT = ModCompat.isLoaded("travelerstitles");
+        //? if neoforge {
+        PacketDistributor.sendToServer(new ClientCapsPayload(hasTT));
+        //?} else if forge {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(new ClientCapsPayload(hasTT));
+        *///?}
+        // Wrap fishing-rod cast predicates so villagers show the "cast"
+        // model variant while their hook is in the water. Safe to call
+        // every reconnect — the wrapper is idempotent.
+        FishingRodCastPredicates.registerOnce();
     }
 
     //? if neoforge {
@@ -63,10 +89,10 @@ public final class TownsteadClient {
     /*private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
     *///?}
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
+        clearClientStore("com.aetherianartificer.townstead.hunger.FishermanHookLinkStore");
         clearClientStore("com.aetherianartificer.townstead.thirst.ThirstClientStore");
         clearClientStore("com.aetherianartificer.townstead.fatigue.FatigueClientStore");
         clearClientStore("com.aetherianartificer.townstead.farming.FarmingPolicyClientStore");
-        clearClientStore("com.aetherianartificer.townstead.hunger.ButcherPolicyClientStore");
         clearClientStore("com.aetherianartificer.townstead.shift.ShiftClientStore");
         clearClientStore("com.aetherianartificer.townstead.profession.ProfessionClientStore");
         clearClientStore("com.aetherianartificer.townstead.village.VillageResidentClientStore");

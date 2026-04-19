@@ -376,16 +376,14 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         int bestNutrition = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
+            if (!FoodSafety.isSafeNutritiousFood(stack)) continue;
             //? if >=1.21 {
             FoodProperties food = stack.get(DataComponents.FOOD);
-            //?} else {
-            /*FoodProperties food = stack.getFoodProperties(null);
-            *///?}
-            //? if >=1.21 {
-            if (food != null && food.nutrition() > bestNutrition) {
+            if (food.nutrition() > bestNutrition) {
                 bestNutrition = food.nutrition();
             //?} else {
-            /*if (food != null && food.getNutrition() > bestNutrition) {
+            /*FoodProperties food = stack.getFoodProperties(null);
+            if (food.getNutrition() > bestNutrition) {
                 bestNutrition = food.getNutrition();
             *///?}
                 best = stack;
@@ -395,16 +393,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean townstead$isFood(ItemStack stack) {
-        //? if >=1.21 {
-        FoodProperties food = stack.get(DataComponents.FOOD);
-        //?} else {
-        /*FoodProperties food = stack.getFoodProperties(null);
-        *///?}
-        //? if >=1.21 {
-        return food != null && food.nutrition() > 0;
-        //?} else {
-        /*return food != null && food.getNutrition() > 0;
-        *///?}
+        return FoodSafety.isSafeNutritiousFood(stack);
     }
 
     private boolean townstead$findGroundItem(ServerLevel level, VillagerEntityMCA villager) {
@@ -440,18 +429,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     private boolean townstead$findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
         List<ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>> candidates = new ArrayList<>();
         NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                stack -> {
-                    //? if >=1.21 {
-                    FoodProperties food = stack.get(DataComponents.FOOD);
-                    //?} else {
-                    /*FoodProperties food = stack.getFoodProperties(null);
-                    *///?}
-                    //? if >=1.21 {
-                    return food != null && food.nutrition() > 0;
-                    //?} else {
-                    /*return food != null && food.getNutrition() > 0;
-                    *///?}
-                },
+                FoodSafety::isSafeNutritiousFood,
                 stack -> {
                     //? if >=1.21 {
                     FoodProperties food = stack.get(DataComponents.FOOD);

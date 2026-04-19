@@ -11,12 +11,10 @@ public final class HungerClientStore {
     private static final Map<Integer, Integer> HUNGER_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, String> FARM_BLOCKED_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, String> BUTCHER_BLOCKED_MAP = new ConcurrentHashMap<>();
+    private static final Map<Integer, String> FISHERMAN_BLOCKED_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> FARMER_TIER_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> FARMER_XP_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> FARMER_XP_TO_NEXT_MAP = new ConcurrentHashMap<>();
-    private static final Map<Integer, Integer> BUTCHER_TIER_MAP = new ConcurrentHashMap<>();
-    private static final Map<Integer, Integer> BUTCHER_XP_MAP = new ConcurrentHashMap<>();
-    private static final Map<Integer, Integer> BUTCHER_XP_TO_NEXT_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> COOK_TIER_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> COOK_XP_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> COOK_XP_TO_NEXT_MAP = new ConcurrentHashMap<>();
@@ -38,9 +36,6 @@ public final class HungerClientStore {
             int farmerTier,
             int farmerXp,
             int farmerXpToNext,
-            int butcherTier,
-            int butcherXp,
-            int butcherXpToNext,
             int cookTier,
             int cookXp,
             int cookXpToNext
@@ -49,9 +44,6 @@ public final class HungerClientStore {
         FARMER_TIER_MAP.put(entityId, farmerTier);
         FARMER_XP_MAP.put(entityId, farmerXp);
         FARMER_XP_TO_NEXT_MAP.put(entityId, farmerXpToNext);
-        BUTCHER_TIER_MAP.put(entityId, butcherTier);
-        BUTCHER_XP_MAP.put(entityId, butcherXp);
-        BUTCHER_XP_TO_NEXT_MAP.put(entityId, butcherXpToNext);
         COOK_TIER_MAP.put(entityId, cookTier);
         COOK_XP_MAP.put(entityId, cookXp);
         COOK_XP_TO_NEXT_MAP.put(entityId, cookXpToNext);
@@ -66,12 +58,10 @@ public final class HungerClientStore {
         HUNGER_MAP.remove(entityId);
         FARM_BLOCKED_MAP.remove(entityId);
         BUTCHER_BLOCKED_MAP.remove(entityId);
+        FISHERMAN_BLOCKED_MAP.remove(entityId);
         FARMER_TIER_MAP.remove(entityId);
         FARMER_XP_MAP.remove(entityId);
         FARMER_XP_TO_NEXT_MAP.remove(entityId);
-        BUTCHER_TIER_MAP.remove(entityId);
-        BUTCHER_XP_MAP.remove(entityId);
-        BUTCHER_XP_TO_NEXT_MAP.remove(entityId);
         COOK_TIER_MAP.remove(entityId);
         COOK_XP_MAP.remove(entityId);
         COOK_XP_TO_NEXT_MAP.remove(entityId);
@@ -95,6 +85,15 @@ public final class HungerClientStore {
         return HungerData.ButcherBlockedReason.fromId(BUTCHER_BLOCKED_MAP.getOrDefault(entityId, "none"));
     }
 
+    public static void setFishermanBlockedReason(int entityId, String reasonId) {
+        FISHERMAN_BLOCKED_MAP.put(entityId, reasonId);
+        if (onChange != null) onChange.run();
+    }
+
+    public static HungerData.FishermanBlockedReason getFishermanBlockedReason(int entityId) {
+        return HungerData.FishermanBlockedReason.fromId(FISHERMAN_BLOCKED_MAP.getOrDefault(entityId, "none"));
+    }
+
     public static int getFarmerTier(int entityId) {
         return FARMER_TIER_MAP.getOrDefault(entityId, 1);
     }
@@ -105,18 +104,6 @@ public final class HungerClientStore {
 
     public static int getFarmerXpToNext(int entityId) {
         return FARMER_XP_TO_NEXT_MAP.getOrDefault(entityId, 0);
-    }
-
-    public static int getButcherTier(int entityId) {
-        return BUTCHER_TIER_MAP.getOrDefault(entityId, 1);
-    }
-
-    public static int getButcherXp(int entityId) {
-        return BUTCHER_XP_MAP.getOrDefault(entityId, 0);
-    }
-
-    public static int getButcherXpToNext(int entityId) {
-        return BUTCHER_XP_TO_NEXT_MAP.getOrDefault(entityId, 0);
     }
 
     public static int getCookTier(int entityId) {
@@ -135,12 +122,10 @@ public final class HungerClientStore {
         HUNGER_MAP.clear();
         FARM_BLOCKED_MAP.clear();
         BUTCHER_BLOCKED_MAP.clear();
+        FISHERMAN_BLOCKED_MAP.clear();
         FARMER_TIER_MAP.clear();
         FARMER_XP_MAP.clear();
         FARMER_XP_TO_NEXT_MAP.clear();
-        BUTCHER_TIER_MAP.clear();
-        BUTCHER_XP_MAP.clear();
-        BUTCHER_XP_TO_NEXT_MAP.clear();
         COOK_TIER_MAP.clear();
         COOK_XP_MAP.clear();
         COOK_XP_TO_NEXT_MAP.clear();

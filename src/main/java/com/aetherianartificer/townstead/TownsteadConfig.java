@@ -66,6 +66,10 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue ENABLE_BARISTA_REQUEST_CHAT;
     public static final ModConfigSpec.IntValue BARISTA_REQUEST_INTERVAL_TICKS;
+    public static final ModConfigSpec.BooleanValue ENABLE_FISHERMAN_REQUEST_CHAT;
+    public static final ModConfigSpec.IntValue FISHERMAN_REQUEST_INTERVAL_TICKS;
+    public static final ModConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
+    public static final ModConfigSpec.IntValue FISHERMAN_INVENTORY_FULL_THRESHOLD;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -123,6 +127,10 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
     public static final ForgeConfigSpec.BooleanValue ENABLE_BARISTA_REQUEST_CHAT;
     public static final ForgeConfigSpec.IntValue BARISTA_REQUEST_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_FISHERMAN_REQUEST_CHAT;
+    public static final ForgeConfigSpec.IntValue FISHERMAN_REQUEST_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
+    public static final ForgeConfigSpec.IntValue FISHERMAN_INVENTORY_FULL_THRESHOLD;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -305,6 +313,26 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.farming.farmerRequestIntervalTicks")
                 .comment("Minimum ticks between farmer shortage request messages.")
                 .defineInRange("farmerRequestIntervalTicks", 3600, 200, 24000);
+        b.pop();
+
+        // ── Fishing ──
+        b.translation("townstead.configuration.fishing").push("fishing");
+        ENABLE_FISHERMAN_REQUEST_CHAT = b
+                .translation("townstead.configuration.fishing.enableFishermanRequestChat")
+                .comment("Allow fishermen to periodically announce missing rods or water in local chat.")
+                .define("enableFishermanRequestChat", true);
+        FISHERMAN_REQUEST_INTERVAL_TICKS = b
+                .translation("townstead.configuration.fishing.fishermanRequestIntervalTicks")
+                .comment("Minimum ticks between fisherman shortage request messages.")
+                .defineInRange("fishermanRequestIntervalTicks", 3600, 200, 24000);
+        FISHERMAN_WATER_SEARCH_RADIUS = b
+                .translation("townstead.configuration.fishing.fishermanWaterSearchRadius")
+                .comment("How many blocks away from the barrel to look for water when fishing.")
+                .defineInRange("fishermanWaterSearchRadius", 16, 4, 48);
+        FISHERMAN_INVENTORY_FULL_THRESHOLD = b
+                .translation("townstead.configuration.fishing.fishermanInventoryFullThreshold")
+                .comment("Number of items the fisherman carries before returning to deposit.")
+                .defineInRange("fishermanInventoryFullThreshold", 16, 1, 64);
         b.pop();
 
         // ── Cooking ──

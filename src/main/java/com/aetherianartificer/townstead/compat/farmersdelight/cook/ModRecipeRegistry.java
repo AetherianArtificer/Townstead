@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerRecipe;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
@@ -28,8 +29,11 @@ public final class ModRecipeRegistry {
 
     public enum StationType { CUTTING_BOARD, HOT_STATION, FIRE_STATION }
 
-    public record RecipeIngredient(List<ResourceLocation> itemIds, int count) {
+    public record RecipeIngredient(List<ResourceLocation> itemIds, int count) implements ProducerRecipe.ResolvedIngredient {
         public ResourceLocation primaryId() { return itemIds.get(0); }
+
+        @Override
+        public List<ResourceLocation> acceptableIds() { return itemIds; }
     }
 
     public record DiscoveredRecipe(
@@ -50,7 +54,7 @@ public final class ModRecipeRegistry {
             //?} else {
             /*@Nullable Recipe<?> source
             *///?}
-    ) {}
+    ) implements ProducerRecipe {}
 
     //? if >=1.21 {
     private static final ResourceLocation FD_COOKING_POT = ResourceLocation.parse("farmersdelight:cooking_pot");

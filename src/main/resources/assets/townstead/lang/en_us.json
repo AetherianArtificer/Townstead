@@ -1,5 +1,6 @@
 {
   "townstead.gui.back": "<< Back",
+  "townstead.village_title.population": "Population: %s",
   "townstead.configuration.title": "%s Configuration",
   "townstead.configuration.section.townstead.server.toml": "Server Settings",
   "townstead.configuration.section.townstead.server.toml.title": "%s Server Settings",

@@ -56,6 +56,7 @@ public final class HungerData {
     private static final String KEY_MOOD_DRIFT = "moodDrift";
     private static final String KEY_FARM_BLOCKED_REASON = "farmBlockedReason";
     private static final String KEY_BUTCHER_BLOCKED_REASON = "butcherBlockedReason";
+    private static final String KEY_FISHERMAN_BLOCKED_REASON = "fishermanBlockedReason";
 
     // --- NBT keys for editor sync (piggybacked on MCA's VillagerEditorSyncRequest) ---
     public static final String EDITOR_KEY_HUNGER = "townstead_hunger";
@@ -131,6 +132,15 @@ public final class HungerData {
 
     public static void setButcherBlockedReason(CompoundTag tag, ButcherBlockedReason reason) {
         tag.putString(KEY_BUTCHER_BLOCKED_REASON, reason.id);
+    }
+
+    public static FishermanBlockedReason getFishermanBlockedReason(CompoundTag tag) {
+        String id = tag.getString(KEY_FISHERMAN_BLOCKED_REASON);
+        return FishermanBlockedReason.fromId(id);
+    }
+
+    public static void setFishermanBlockedReason(CompoundTag tag, FishermanBlockedReason reason) {
+        tag.putString(KEY_FISHERMAN_BLOCKED_REASON, reason.id);
     }
 
     /**
@@ -311,6 +321,38 @@ public final class HungerData {
 
         public static ButcherBlockedReason fromId(String id) {
             for (ButcherBlockedReason reason : values()) {
+                if (reason.id.equals(id)) return reason;
+            }
+            return NONE;
+        }
+    }
+
+    public enum FishermanBlockedReason {
+        NONE("none", "townstead.fisherman.blocked.none"),
+        NO_ROD("no_rod", "townstead.fisherman.blocked.no_rod"),
+        NO_WATER("no_water", "townstead.fisherman.blocked.no_water"),
+        NO_STORAGE("no_storage", "townstead.fisherman.blocked.no_storage"),
+        UNREACHABLE("unreachable", "townstead.fisherman.blocked.unreachable"),
+        NO_BARREL("no_barrel", "townstead.fisherman.blocked.no_barrel");
+
+        private final String id;
+        private final String translationKey;
+
+        FishermanBlockedReason(String id, String translationKey) {
+            this.id = id;
+            this.translationKey = translationKey;
+        }
+
+        public String id() {
+            return id;
+        }
+
+        public String translationKey() {
+            return translationKey;
+        }
+
+        public static FishermanBlockedReason fromId(String id) {
+            for (FishermanBlockedReason reason : values()) {
                 if (reason.id.equals(id)) return reason;
             }
             return NONE;

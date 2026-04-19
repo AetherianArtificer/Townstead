@@ -5,9 +5,12 @@
   "mixins": [
     "ChefsDelightProfessionGuardMixin",
     "FarmBlockMixin",
+    "FishingHookKeepAliveMixin",
     "compat.farmersdelight.StoveVillagerDamageMixin",
+    "compat.mca.PlayerSaveDataWelcomeMixin",
     "ReportBuildingMessageMixin",
     "TombstoneRevivalMixin",
+    "VillagerEatSafetyMixin",
     "VillagerHungerMixin",
     "VillagerServerTickMixin"
   ],
@@ -18,6 +21,7 @@
     "accessor.AbstractDynamicScreenAccessor",
     "accessor.BlueprintScreenAccessor",
     "accessor.InteractScreenAccessor",
+    "client.FishingHookRendererMixin",
     "InteractScreenMixin",
     "VillagerEditorMixin"
   ],

@@ -3,502 +3,274 @@ package com.aetherianartificer.townstead.compat.farmersdelight;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
-import com.aetherianartificer.townstead.ai.work.WorkMovement;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
 import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.WorkTarget;
-import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
-import com.aetherianartificer.townstead.ai.work.WorkTargetFailures;
-import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
-import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerBlockedReason;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerRecipe;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerWorkTask;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.IngredientResolver;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelector;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler.StationSlot;
 import com.aetherianartificer.townstead.hunger.CookProgressData;
-import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.entity.ai.behavior.Behavior;
-import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
-import net.minecraft.world.entity.ai.behavior.BlockPosTracker;
-import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.ai.memory.MemoryStatus;
-import net.minecraft.world.entity.npc.VillagerProfession;
-import net.minecraft.world.entity.schedule.Activity;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
-import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
-public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements WorkTaskAdapter {
+public class BaristaWorkTask extends ProducerWorkTask {
 
-    // ── Constants ──
-
-    private static final int SEARCH_RADIUS = 24;
-    private static final int VERTICAL_RADIUS = 3;
-    private static final int CLOSE_ENOUGH = 0;
-    private static final int BUILDING_CLOSE_ENOUGH = 2;
-    private static final int MAX_DURATION = 1200;
-    private static final double ARRIVAL_DISTANCE_SQ = 0.36d;
-    private static final double NEAR_STATION_DISTANCE_SQ = 9.0d;
-    private static final long STAND_REACQUIRE_INTERVAL_TICKS = 60L;
-    private static final int REQUEST_RANGE = 24;
-    private static final int IDLE_BACKOFF = 80;
-    private static final int OCCUPIED_BACKOFF = 200;
-    private static final float WALK_SPEED = 0.52f;
-    private static final long RECIPE_REPEAT_COOLDOWN_TICKS = 200L;
-    private static final long ABANDONED_STATION_COOLDOWN_TICKS = 100L;
-    private static final int STATE_TIMEOUT_TICKS = 100;
-    private static final int OPPORTUNISTIC_SWEEP_INTERVAL = 10;
-    private static final int MAX_RECIPE_ATTEMPTS = 3;
     private static final long ROOM_BOUNDS_CACHE_TICKS = 80L;
-    private static final long WORKSITE_TARGET_RETRY_COOLDOWN_TICKS = 60L;
-    private static final int WORKSITE_MAX_RETRIES = 2;
 
-    // ── State machine ──
+    // Subclass-only state
+    private @Nullable StationType stationType;
 
-    private enum BaristaState { PATH_TO_WORKSITE, PATH_TO_STATION, RECONCILE_STATION, SELECT_RECIPE, GATHER, BREW, COLLECT, COLLECT_WAIT }
-    private enum BlockedReason { NONE, NO_CAFE, NO_INGREDIENTS, NO_RECIPE, NO_STORAGE, UNREACHABLE }
-
-    private static final int COLLECT_WAIT_MAX_TICKS = 40;
-    private static final long STATION_SESSION_LEASE_TICKS = MAX_DURATION + 40L;
-
-    private BaristaState state = BaristaState.PATH_TO_WORKSITE;
-    private long stateEnteredTick;
-    private BlockPos stationAnchor;
-    private BlockPos standPos;
-    private StationType stationType;
-    private DiscoveredRecipe activeRecipe;
-    private ItemStack pendingOutput = ItemStack.EMPTY;
-    private long brewDoneTick;
-    private long nextStandReacquireTick;
-    private long nextDebugTick;
-    private long nextRequestTick;
-    private BlockedReason blocked = BlockedReason.NONE;
-    private final Map<ResourceLocation, Integer> stagedInputs = new HashMap<>();
-    private final Map<ResourceLocation, Long> recipeCooldownUntil = new HashMap<>();
-    private final Map<Long, Long> abandonedUntilByStation = new HashMap<>();
-    private int recipeAttempts;
-    private long idleUntilTick;
-    private BlockPos currentWorksiteTarget;
-    private String currentWorksiteTargetKind = "stand";
-    private final WorkTargetProgress worksiteTargetProgress = new WorkTargetProgress();
-    private final WorkTargetFailures worksiteTargetFailures = new WorkTargetFailures();
-
-    // Cafe navigation area cache
+    // Cafe bounds cache
     private Set<Long> cachedCafeNavigationArea = Set.of();
-    private BlockPos cachedCafeNavigationAnchor = null;
+    private @Nullable BlockPos cachedCafeNavigationAnchor = null;
     private long cachedCafeNavigationUntil = 0L;
     private WorkBuildingNav.Snapshot cachedCafeSnapshot = WorkBuildingNav.Snapshot.EMPTY;
 
     public BaristaWorkTask() {
-        super(ImmutableMap.of(
-                MemoryModuleType.WALK_TARGET, MemoryStatus.REGISTERED,
-                MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED
-        ), MAX_DURATION);
+        super();
     }
 
-    // ── Behavior lifecycle ──
+    // ── Identity / guards ──
 
     @Override
-    protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
+    protected boolean isTaskEnabled() {
         if (!ModCompat.isLoaded("rusticdelight")) return false;
-        if (!TownsteadConfig.isTownsteadCookEnabled()) return false;
-        if (townstead$isFatigueGated(villager)) return false;
+        return TownsteadConfig.isTownsteadCookEnabled();
+    }
+
+    @Override
+    protected boolean isEligibleVillager(ServerLevel level, VillagerEntityMCA villager) {
         VillagerProfession profession = villager.getVillagerData().getProfession();
         if (!FarmersDelightBaristaAssignment.isBaristaProfession(profession)) return false;
-        if (!FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager)) return false;
-        VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
-        return currentActivity(villager) == Activity.WORK;
+        return FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager);
+    }
+
+    // ── Worksite ──
+
+    @Override
+    protected @Nullable WorkSiteRef resolveWorksite(ServerLevel level, VillagerEntityMCA villager) {
+        Set<Long> bounds = activeCafeStorageBounds(villager);
+        if (bounds.isEmpty()) return null;
+        BlockPos reference = activeCafeReference(villager);
+        return WorkSiteRef.building(reference, bounds);
     }
 
     @Override
-    protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!FarmersDelightBaristaAssignment.isBaristaProfession(villager.getVillagerData().getProfession())) return;
-        blocked = BlockedReason.NONE;
-        state = BaristaState.PATH_TO_WORKSITE;
-        stateEnteredTick = gameTime;
-        recipeAttempts = 0;
-        abandonedUntilByStation.clear();
-        resetWorksiteTargeting();
+    protected boolean isVillagerAtWorksite(ServerLevel level, VillagerEntityMCA villager) {
+        return isVillagerInActiveCafe(villager);
     }
 
     @Override
-    protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!ModCompat.isLoaded("rusticdelight")) return false;
-        if (!TownsteadConfig.isTownsteadCookEnabled()) return false;
-        if (!FarmersDelightBaristaAssignment.isBaristaProfession(villager.getVillagerData().getProfession())) return false;
-        VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
-        return currentActivity(villager) == Activity.WORK;
-    }
-
-    @Override
-    protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        releaseStationClaim(villager, stationAnchor);
-        releaseStationSession(level, villager, stationAnchor);
-        stationAnchor = null;
-        standPos = null;
-        stationType = null;
-        activeRecipe = null;
-        pendingOutput = ItemStack.EMPTY;
-        stagedInputs.clear();
-        recipeCooldownUntil.clear();
-        recipeAttempts = 0;
-        idleUntilTick = 0L;
-        cachedCafeNavigationArea = Set.of();
-        cachedCafeNavigationAnchor = null;
-        cachedCafeNavigationUntil = 0L;
-        cachedCafeSnapshot = WorkBuildingNav.Snapshot.EMPTY;
-        resetWorksiteTargeting();
-        state = BaristaState.PATH_TO_WORKSITE;
-    }
-
-    @Override
-    protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager)) {
-            clearAll(villager, gameTime);
-            return;
-        }
-
-        if (gameTime < idleUntilTick) return;
-
-        debugTick(level, villager, gameTime);
-
-        // State timeout
-        if (gameTime - stateEnteredTick > STATE_TIMEOUT_TICKS
-                && state != BaristaState.PATH_TO_WORKSITE
-                && state != BaristaState.PATH_TO_STATION
-                && state != BaristaState.RECONCILE_STATION
-                && state != BaristaState.BREW
-                && state != BaristaState.COLLECT_WAIT) {
-            debugChat(level, villager, "STATE:timeout in " + state.name() + ", resetting");
-            transitionToNavigationState(villager, gameTime);
-            releaseStationClaim(villager, stationAnchor);
-            releaseStationSession(level, villager, stationAnchor);
-            stationAnchor = null;
-            activeRecipe = null;
-            recipeAttempts = 0;
-        }
-
-        // Opportunistic sweep: pick up any recipe outputs near the villager
-        if (gameTime % OPPORTUNISTIC_SWEEP_INTERVAL == 0) {
-            ProducerOutputHelper.sweepNearbyOutputs(level, villager, stationAnchor, activeCafeStorageBounds(villager), ModRecipeRegistry.allOutputIds(level));
-        }
-
-        switch (state) {
-            case PATH_TO_WORKSITE -> tickPathToWorksite(level, villager, gameTime);
-            case PATH_TO_STATION -> tickPathToStation(level, villager, gameTime);
-            case RECONCILE_STATION -> tickReconcileStation(level, villager, gameTime);
-            case SELECT_RECIPE -> tickSelectRecipe(level, villager, gameTime);
-            case GATHER -> tickGather(level, villager, gameTime);
-            case BREW -> tickBrew(level, villager, gameTime);
-            case COLLECT -> tickCollect(level, villager, gameTime);
-            case COLLECT_WAIT -> tickCollectWait(level, villager, gameTime);
-        }
-    }
-
-    // ── State: PATH_TO_WORKSITE ──
-
-    private void tickPathToWorksite(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        releaseStationClaim(villager, stationAnchor);
-        releaseStationSession(level, villager, stationAnchor);
-        stationAnchor = null;
-        standPos = null;
-        stationType = null;
-        activeRecipe = null;
-        stagedInputs.clear();
-
-        Set<Long> cafeStorageBounds = activeCafeStorageBounds(villager);
-        if (cafeStorageBounds.isEmpty()) {
-            setBlocked(level, villager, gameTime, BlockedReason.NO_CAFE, "");
-            idleUntilTick = gameTime + IDLE_BACKOFF;
-            return;
-        }
-
+    protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteRef site) {
         WorkBuildingNav.Snapshot cafeSnapshot = activeCafeSnapshot(level, villager);
-        List<StationSlot> stations = cafeSnapshot.stations();
-        stations = stations.stream()
+        return currentOrNewCafeWorksiteTarget(villager, gameTime, cafeSnapshot);
+    }
+
+    @Override
+    protected BlockPos worksiteReference(VillagerEntityMCA villager) {
+        return activeCafeReference(villager);
+    }
+
+    @Override
+    protected @Nullable BlockPos refreshStandPosition(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos stationAnchor) {
+        if (stationAnchor == null) return null;
+        return findCafeStandingPosition(level, villager, stationAnchor, activeCafeSnapshot(level, villager));
+    }
+
+    // ── Station acquisition ──
+
+    @Override
+    protected @Nullable ProducerStationSelection selectStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
+        WorkBuildingNav.Snapshot cafeSnapshot = activeCafeSnapshot(level, villager);
+        List<StationSlot> stations = cafeSnapshot.stations().stream()
                 .filter(s -> s.type() == StationType.HOT_STATION || s.type() == StationType.FIRE_STATION)
                 .toList();
         if (stations.isEmpty()) {
-            debugChat(level, villager, "ACQUIRE:no stations found in cafe (" + cafeStorageBounds.size() + " bounds)");
-            setBlocked(level, villager, gameTime, BlockedReason.NO_CAFE, "");
-            idleUntilTick = gameTime + IDLE_BACKOFF;
-            return;
+            debugChat(level, villager, "ACQUIRE:no stations found in cafe (" + cafeBounds.size() + " bounds)");
+            setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_WORKSITE, "");
+            return null;
         }
-
-        if (isVillagerInActiveCafe(villager)) {
-            blocked = BlockedReason.NONE;
-            resetWorksiteTargeting();
-            transition(BaristaState.PATH_TO_STATION, gameTime);
-            return;
-        }
-
-        BlockPos target = currentOrNewCafeWorksiteTarget(villager, gameTime, cafeSnapshot);
-        if (target == null) {
-            debugChat(level, villager, "ENTER:no worksite target from "
-                    + villager.blockPosition().getX() + "," + villager.blockPosition().getY() + "," + villager.blockPosition().getZ());
-            setBlocked(level, villager, gameTime, BlockedReason.UNREACHABLE, "");
-            idleUntilTick = gameTime + IDLE_BACKOFF;
-            return;
-        }
-
-        WorkNavigationResult move = WorkMovement.tickMoveToTarget(
-                villager,
-                target,
-                WALK_SPEED,
-                BUILDING_CLOSE_ENOUGH,
-                ARRIVAL_DISTANCE_SQ,
-                worksiteTargetProgress,
-                worksiteTargetFailures,
-                gameTime,
-                STATE_TIMEOUT_TICKS,
-                WORKSITE_MAX_RETRIES,
-                (int) WORKSITE_TARGET_RETRY_COOLDOWN_TICKS
-        );
-        switch (move) {
-            case ARRIVED -> {
-                blocked = BlockedReason.NONE;
-                currentWorksiteTarget = null;
-                if (isVillagerInActiveCafe(villager)) {
-                    transition(BaristaState.PATH_TO_STATION, gameTime);
-                }
-            }
-            case MOVING -> blocked = BlockedReason.NONE;
-            case BLOCKED -> {
-                currentWorksiteTarget = null;
-                debugChat(level, villager, "ENTER:blocked toward "
-                        + target.getX() + "," + target.getY() + "," + target.getZ()
-                        + " kind=" + currentWorksiteTargetKind);
-            }
-            case NO_TARGET -> {
-                currentWorksiteTarget = null;
-                setBlocked(level, villager, gameTime, BlockedReason.UNREACHABLE, "");
-            }
-        }
-    }
-
-    // ── State: PATH_TO_STATION ──
-
-    private void tickPathToStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!isVillagerInActiveCafe(villager)) {
-            transition(BaristaState.PATH_TO_WORKSITE, gameTime);
-            return;
-        }
-
-        WorkBuildingNav.Snapshot cafeSnapshot = activeCafeSnapshot(level, villager);
-        List<StationSlot> stations = cafeSnapshot.stations();
-        stations = stations.stream()
-                .filter(s -> s.type() == StationType.HOT_STATION || s.type() == StationType.FIRE_STATION)
-                .toList();
-        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
-
         ProducerStationIndex.Selection best = ProducerStationIndex.chooseBaristaSelection(
                 level, villager, cafeSnapshot, cafeBounds, abandonedUntilByStation, gameTime, recipeCooldownUntil);
-        if (best == null) {
-            debugChat(level, villager, "ACQUIRE:no usable station/recipe pair, resetting");
-            recipeAttempts = 0;
-            idleUntilTick = gameTime + IDLE_BACKOFF;
-            return;
-        }
+        if (best == null) return null;
 
-        stationAnchor = best.station().pos();
         stationType = best.station().type();
-        standPos = best.standPos();
-        activeRecipe = best.recipe();
-
-        long claimUntil = gameTime + MAX_DURATION + 20L;
-        CookStationClaims.tryClaim(level, villager.getUUID(), stationAnchor, claimUntil);
-
-        BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
         debugChat(level, villager, "ACQUIRE:" + stationType.name()
-                + " at " + stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ());
-        transition(BaristaState.RECONCILE_STATION, gameTime);
+                + " at " + best.station().pos().getX() + "," + best.station().pos().getY() + "," + best.station().pos().getZ());
+        return new ProducerStationSelection(best.station().pos(), best.standPos(), best.recipe());
     }
 
-    private void tickReconcileStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!ensureNearStation(level, villager, gameTime)) return;
-        if (stationAnchor == null || stationType == null) {
-            transition(BaristaState.PATH_TO_STATION, gameTime);
-            return;
-        }
+    @Override
+    protected void claimStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor == null) return;
+        ProducerStationClaims.tryClaim(level, villager.getUUID(), stationAnchor, gameTime + MAX_DURATION + 20L);
+    }
 
+    @Override
+    protected void releaseStationClaim(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos) {
+        if (pos == null) return;
+        ProducerStationClaims.release(level, villager.getUUID(), pos);
+    }
+
+    // ── Reconcile ──
+
+    @Override
+    protected ProducerStationState classifyStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor == null || stationType == null) return ProducerStationState.BLOCKED;
         ProducerStationSessions.SessionSnapshot session = ProducerStationSessions.snapshot(level, stationAnchor);
         if (activeRecipe == null && session != null) {
             activeRecipe = ProducerWorkSupport.findSessionRecipe(ProducerRole.BARISTA, level, session, stationType);
         }
-
-        ProducerStationState stationState = StationHandler.classifyProducerStation(
-                level, villager, stationAnchor, stationType, activeRecipe, session);
-
-        switch (stationState) {
-            case EMPTY_READY -> transition(activeRecipe != null ? BaristaState.GATHER : BaristaState.SELECT_RECIPE, gameTime);
-            case OWNED_STAGED, COMPATIBLE_PARTIAL -> {
-                if (activeRecipe != null) {
-                    brewDoneTick = Math.max(gameTime + 10L, brewDoneTick);
-                    refreshStationSession(level, villager, gameTime);
-                    transition(BaristaState.BREW, gameTime);
-                } else {
-                    transition(BaristaState.SELECT_RECIPE, gameTime);
-                }
-            }
-            case FINISHED_OUTPUT -> transition(BaristaState.COLLECT, gameTime);
-            case FOREIGN_CONTENTS -> {
-                Set<Long> cafeBounds = activeCafeStorageBounds(villager);
-                boolean cleaned = StationHandler.cleanupForeignProducerStation(level, villager, stationAnchor, stationType, cafeBounds);
-                if (cleaned && !StationHandler.stationHasAnyContents(level, stationAnchor, stationType)) {
-                    transition(BaristaState.SELECT_RECIPE, gameTime);
-                } else {
-                    debugChat(level, villager, "RECONCILE:foreign contents persisted, rotating station");
-                    abandonCurrentStation(level, villager, gameTime, true);
-                }
-            }
-            case BLOCKED -> {
-                abandonCurrentStation(level, villager, gameTime, true);
-            }
-        }
+        return StationHandler.classifyProducerStation(level, villager, stationAnchor, stationType, fdRecipe(), session);
     }
 
-    // ── State: SELECT_RECIPE ──
+    @Override
+    protected boolean cleanupForeignStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor == null || stationType == null) return false;
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
+        boolean cleaned = StationHandler.cleanupForeignProducerStation(level, villager, stationAnchor, stationType, cafeBounds);
+        return cleaned && !StationHandler.stationHasAnyContents(level, stationAnchor, stationType);
+    }
 
-    private void tickSelectRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!ensureNearStation(level, villager, gameTime)) return;
+    // ── Recipe / gather / produce / collect ──
 
-        if (stationAnchor == null || !StationHandler.isStation(level, stationAnchor)) {
-            transition(BaristaState.PATH_TO_STATION, gameTime);
-            return;
-        }
-
+    @Override
+    protected @Nullable ProducerRecipe pickRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor == null || stationType == null) return null;
+        if (!StationHandler.isStation(level, stationAnchor)) return null;
         Set<Long> cafeBounds = activeCafeStorageBounds(villager);
         DiscoveredRecipe recipe = ProducerWorkSupport.pickRecipe(
-                ProducerRole.BARISTA,
-                level,
-                villager,
-                stationType,
-                stationAnchor,
-                cafeBounds,
-                recipeCooldownUntil);
-
+                ProducerRole.BARISTA, level, villager, stationType, stationAnchor, cafeBounds, recipeCooldownUntil);
         if (recipe == null) {
             int available = ModRecipeRegistry.getBeverageRecipesForStation(level, stationType).size();
             debugChat(level, villager, "SELECT:no beverage recipe for " + stationType.name()
                     + " (candidates=" + available + "), rotating");
-            setBlocked(level, villager, gameTime, BlockedReason.NO_RECIPE, "");
-            abandonCurrentStation(level, villager, gameTime, true);
-            return;
+        } else {
+            debugChat(level, villager, "SELECT:" + recipe.output() + " tier=" + recipe.tier());
         }
-
-        activeRecipe = recipe;
-        recipeAttempts = 0;
-        debugChat(level, villager, "SELECT:" + recipe.output() + " tier=" + recipe.tier());
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
-            String container = recipe.containerItemId() == null
-                    ? "none"
-                    : recipe.containerItemId() + " x" + recipe.containerCount();
-            debugChat(level, villager, "SELECT-DETAIL:id=" + recipe.id()
-                    + " inputs=" + recipe.inputs().size()
-                    + " container=" + container
-                    + " station=" + recipe.stationType());
-        }
-        transition(BaristaState.GATHER, gameTime);
+        return recipe;
     }
 
-    // ── State: GATHER ──
-
-    private void tickGather(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!ensureNearStation(level, villager, gameTime)) return;
-        if (activeRecipe == null) {
-            transition(BaristaState.SELECT_RECIPE, gameTime);
-            return;
-        }
-
+    @Override
+    protected GatherResult gatherInputs(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (activeRecipe == null || stationAnchor == null || stationType == null) return GatherResult.fail(null);
+        DiscoveredRecipe recipe = fdRecipe();
         Set<Long> cafeBounds = activeCafeStorageBounds(villager);
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
-            String missingBefore = IngredientResolver.describeMissingRequirements(level, villager, activeRecipe, stationAnchor, cafeBounds);
-            debugChat(level, villager, "GATHER:start recipe=" + activeRecipe.output()
-                    + " station=" + stationType
-                    + " missingBefore=" + (missingBefore == null || missingBefore.isBlank() ? "<none>" : missingBefore));
-        }
         IngredientResolver.PullResult pullResult = IngredientResolver.pullAndConsumeDetailed(
-                level, villager, activeRecipe, stationAnchor, stationType, stagedInputs, cafeBounds);
-        boolean success = pullResult.success();
-
-        if (!success) {
-            debugChat(level, villager, "GATHER:failed for " + activeRecipe.output()
-                    + (pullResult.detail().isBlank() ? "" : " (" + pullResult.detail() + ")"));
-            for (String diagnostic : pullResult.diagnostics()) {
-                debugChat(level, villager, "GATHER:diag=" + diagnostic);
-            }
-            Set<ResourceLocation> soughtIds = new LinkedHashSet<>();
-            for (RecipeIngredient ingredient : activeRecipe.inputs()) {
-                soughtIds.addAll(ingredient.itemIds());
-            }
-            debugChat(level, villager, "GATHER:buildingStorage=" + IngredientResolver.describeKitchenStorage(level, cafeBounds, soughtIds));
-            if (stationAnchor != null && stationType == StationType.HOT_STATION) {
-                debugChat(level, villager, "GATHER:pot=" + StationHandler.describeCookingPotInputs(level, stationAnchor));
-            }
-            IngredientResolver.rollbackStagedInputs(level, villager, stationAnchor, stagedInputs);
-            String recipeName = townstead$itemDisplayName(level, activeRecipe.output());
-            String missing = IngredientResolver.describeMissingRequirements(level, villager, activeRecipe, stationAnchor, cafeBounds);
+                level, villager, recipe, stationAnchor, stationType, stagedInputs, cafeBounds);
+        if (!pullResult.success()) {
+            String recipeName = townstead$itemDisplayName(level, recipe.output());
+            String missing = IngredientResolver.describeMissingRequirements(level, villager, recipe, stationAnchor, cafeBounds);
             if (missing == null || missing.isBlank()) missing = pullResult.detail();
-            setBlocked(level, villager, gameTime, BlockedReason.NO_INGREDIENTS,
-                    missing == null || missing.isBlank() ? recipeName : missing);
-            recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
-            activeRecipe = null;
-            recipeAttempts++;
-            if (recipeAttempts >= MAX_RECIPE_ATTEMPTS) {
-                debugChat(level, villager, "GATHER:max attempts, rotating station");
-                idleUntilTick = gameTime + IDLE_BACKOFF;
-                abandonCurrentStation(level, villager, gameTime, true);
-            } else {
-                transition(BaristaState.SELECT_RECIPE, gameTime);
-            }
-            return;
+            String detail = (missing == null || missing.isBlank()) ? recipeName : missing;
+            return GatherResult.fail(detail);
         }
 
-        debugChat(level, villager, "GATHER:success for " + activeRecipe.output());
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get() && stationAnchor != null && stationType == StationType.HOT_STATION) {
-            debugChat(level, villager, "GATHER:pot=" + StationHandler.describeCookingPotInputs(level, stationAnchor));
-        }
-        brewDoneTick = gameTime + activeRecipe.cookTimeTicks();
-        refreshStationSession(level, villager, gameTime);
-        playSound(level);
-        transition(BaristaState.BREW, gameTime);
+        debugChat(level, villager, "GATHER:success for " + recipe.output());
+        return GatherResult.ok();
     }
 
-    // ── State: BREW ──
+    @Override
+    protected void rollbackGather(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        IngredientResolver.rollbackStagedInputs(level, villager, stationAnchor, stagedInputs);
+    }
 
-    private void tickBrew(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (stationAnchor != null && standPos != null) {
-            BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
-            villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(stationAnchor));
-        }
-        if (gameTime % 30 == 0) {
-            villager.swing(villager.getDominantHand());
+    @Override
+    protected boolean beginProduce(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (activeRecipe == null) return false;
+        DiscoveredRecipe recipe = fdRecipe();
+        produceDoneTick = gameTime + recipe.cookTimeTicks();
+        return true;
+    }
+
+    @Override
+    protected boolean isProduceDone(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (activeRecipe == null) return true;
+        DiscoveredRecipe recipe = fdRecipe();
+
+        if (stationType == StationType.HOT_STATION
+                && stationAnchor != null
+                && !ProducerOutputHelper.hotStationOutputCollectible(level, stationAnchor, recipe)
+                && !StationHandler.stationHasCollectibleOutput(level, stationAnchor, ModRecipeRegistry.allOutputIds(level))) {
+            return false;
         }
 
-        // Collect surface drops while waiting
+        return true;
+    }
+
+    @Override
+    protected CollectResult collectFromStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
+        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
+        boolean collected = ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, cafeBounds, outputIds);
+
+        if (stationType == StationType.HOT_STATION) {
+            ProducerOutputHelper.CollectResult result = ProducerOutputHelper.collectHotStationOutputs(
+                    level, villager, stationAnchor, fdRecipe(), cafeBounds, outputIds, true);
+            if (result.shouldWait()) return CollectResult.waiting(false);
+            collected |= result.collected();
+        }
+
+        if (stationType == StationType.FIRE_STATION && !collected) {
+            return CollectResult.waiting(false);
+        }
+
+        return collected ? CollectResult.ofCollected() : CollectResult.none();
+    }
+
+    @Override
+    protected void storeOutputs(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
+        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
+        ProducerOutputHelper.finishCollectInventoryOutputs(level, villager, pendingOutput, stationAnchor, cafeBounds, outputIds);
+    }
+
+    @Override
+    protected void awardProductionXp(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (activeRecipe == null) return;
+        int xp = Math.max(1, activeRecipe.tier());
+        //? if neoforge {
+        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
+        CookProgressData.addXp(data, xp, level.getGameTime());
+        //? if neoforge {
+        villager.setData(Townstead.HUNGER_DATA, data);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", data);
+        *///?}
+    }
+
+    // ── Hooks ──
+
+    @Override
+    protected void onProduceTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationType == StationType.FIRE_STATION && stationAnchor != null) {
             Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
             List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
@@ -515,187 +287,163 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
                 }
             }
         }
-
-        if (gameTime < brewDoneTick) return;
-        if (stationType == StationType.HOT_STATION
-                && stationAnchor != null
-                && !ProducerOutputHelper.hotStationOutputCollectible(level, stationAnchor, activeRecipe)
-                && !StationHandler.stationHasCollectibleOutput(level, stationAnchor, ModRecipeRegistry.allOutputIds(level))) {
-            refreshStationSession(level, villager, gameTime);
-            return;
-        }
-
-        debugChat(level, villager, "BREW:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
-        transition(BaristaState.COLLECT, gameTime);
     }
 
-    // ── State: COLLECT ──
-
-    private void tickCollect(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
-        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
-        boolean collected = false;
-
-        // Collect surface drops (campfire/fire station items that pop out)
-        collected |= ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, cafeBounds, outputIds);
-
-        // Extract output from hot station (cooking pot)
-        if (stationType == StationType.HOT_STATION) {
-            ProducerOutputHelper.CollectResult result = ProducerOutputHelper.collectHotStationOutputs(
-                    level, villager, stationAnchor, activeRecipe, cafeBounds, outputIds, true);
-            if (result.shouldWait()) {
-                transition(BaristaState.COLLECT_WAIT, gameTime);
-                return;
-            }
-            collected |= result.collected();
-        }
-
-        // For fire station, if nothing was collected yet, wait for items to land
-        if (stationType == StationType.FIRE_STATION && !collected) {
-            transition(BaristaState.COLLECT_WAIT, gameTime);
-            return;
-        }
-
-        finishCollect(level, villager, cafeBounds, outputIds, gameTime);
+    @Override
+    protected boolean mustWaitBeyondCollectTimeout(ServerLevel level, VillagerEntityMCA villager) {
+        return stationType == StationType.HOT_STATION;
     }
 
-    // ── State: COLLECT_WAIT ──
-
-    private void tickCollectWait(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (activeRecipe == null) {
-            transition(BaristaState.RECONCILE_STATION, gameTime);
-            return;
-        }
-
-        // Keep looking at the station while waiting
-        if (stationAnchor != null && standPos != null) {
-            BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
-            villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(stationAnchor));
-        }
-
-        Set<Long> cafeBounds = activeCafeStorageBounds(villager);
-        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
-        boolean collected = false;
-
-        // Try collecting surface drops
-        collected |= ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, cafeBounds, outputIds);
-
-        // Try extracting from hot station
-        if (stationType == StationType.HOT_STATION) {
-            ProducerOutputHelper.CollectResult result = ProducerOutputHelper.collectHotStationOutputs(
-                    level, villager, stationAnchor, activeRecipe, cafeBounds, outputIds, false);
-            collected |= result.collected();
-        }
-
-        // If we collected something, or timed out, finish
-        long elapsed = gameTime - stateEnteredTick;
-        if (collected || elapsed >= COLLECT_WAIT_MAX_TICKS) {
-            if (!collected && stationType == StationType.HOT_STATION && activeRecipe != null) {
-                if (elapsed == COLLECT_WAIT_MAX_TICKS) {
-                    debugChat(level, villager, "COLLECT_WAIT:still waiting for real pot output " + activeRecipe.output());
-                }
-                return;
-            }
-            finishCollect(level, villager, cafeBounds, outputIds, gameTime);
-        }
+    @Override
+    protected void onSessionRefresh(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor == null || activeRecipe == null) return;
+        DiscoveredRecipe recipe = fdRecipe();
+        ProducerStationSessions.beginOrRefresh(
+                level, villager.getUUID(), stationAnchor,
+                recipe.id(), recipe.output(), recipe.outputCount(),
+                stagedInputs, gameTime + STATION_SESSION_LEASE_TICKS);
     }
 
-    private void finishCollect(ServerLevel level, VillagerEntityMCA villager,
-                               Set<Long> cafeBounds, Set<ResourceLocation> outputIds, long gameTime) {
-        ProducerOutputHelper.finishCollectInventoryOutputs(level, villager, pendingOutput, stationAnchor, cafeBounds, outputIds);
-        pendingOutput = ItemStack.EMPTY;
-
-        // Award XP
-        awardBaristaXP(level, villager);
-
-        // Mark recipe cooldown
-        if (activeRecipe != null) {
-            recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
-        }
-
-        debugChat(level, villager, "COLLECT:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
-        activeRecipe = null;
-        stagedInputs.clear();
-        releaseStationClaim(villager, stationAnchor);
-        releaseStationSession(level, villager, stationAnchor);
-
-        // Station rotation: 50% chance to rotate
-        if (ThreadLocalRandom.current().nextDouble() < 0.5d) {
-            transition(BaristaState.PATH_TO_STATION, gameTime);
-        } else {
-            transition(BaristaState.RECONCILE_STATION, gameTime);
-        }
+    @Override
+    protected void onSessionRelease(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos, long gameTime) {
+        if (pos == null) return;
+        ProducerStationSessions.release(level, villager.getUUID(), pos);
     }
 
-    // ── Navigation helper ──
-
-    private boolean ensureNearStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (stationAnchor == null || standPos == null) {
-            transitionToNavigationState(villager, gameTime);
-            return false;
-        }
-
-        if (!isVillagerInActiveCafe(villager)) {
-            transitionToNavigationState(villager, gameTime);
-            return false;
-        }
-
-        BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
-        villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(stationAnchor));
-        double distSq = villager.distanceToSqr(standPos.getX() + 0.5, standPos.getY() + 0.5, standPos.getZ() + 0.5);
-        double anchorDistSq = villager.distanceToSqr(
-                stationAnchor.getX() + 0.5, stationAnchor.getY() + 0.5, stationAnchor.getZ() + 0.5);
-
-        if (distSq > ARRIVAL_DISTANCE_SQ && anchorDistSq > NEAR_STATION_DISTANCE_SQ) {
-            if (gameTime >= nextStandReacquireTick) {
-                nextStandReacquireTick = gameTime + STAND_REACQUIRE_INTERVAL_TICKS;
-                BlockPos refreshed = findCafeStandingPosition(level, villager, stationAnchor,
-                        activeCafeSnapshot(level, villager));
-                if (refreshed != null) standPos = refreshed;
-            }
-            return false;
-        }
-        nextStandReacquireTick = 0L;
-        return true;
+    @Override
+    protected void onOpportunisticSweep(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        ProducerOutputHelper.sweepNearbyOutputs(
+                level, villager, stationAnchor,
+                activeCafeStorageBounds(villager),
+                ModRecipeRegistry.allOutputIds(level));
     }
 
-    // ── State transition ──
-
-    private void transition(BaristaState newState, long gameTime) {
-        state = newState;
-        stateEnteredTick = gameTime;
-    }
-
-    private void transitionToNavigationState(VillagerEntityMCA villager, long gameTime) {
-        transition(isVillagerInActiveCafe(villager) ? BaristaState.PATH_TO_STATION : BaristaState.PATH_TO_WORKSITE, gameTime);
-    }
-
-    private void abandonCurrentStation(ServerLevel level, VillagerEntityMCA villager, long gameTime, boolean markUsed) {
-        if (markUsed && stationAnchor != null) {
-            abandonedUntilByStation.put(stationAnchor.asLong(), gameTime + ABANDONED_STATION_COOLDOWN_TICKS);
-        }
-        releaseStationClaim(villager, stationAnchor);
-        releaseStationSession(level, villager, stationAnchor);
-        stationAnchor = null;
-        standPos = null;
+    @Override
+    protected void onStop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         stationType = null;
-        activeRecipe = null;
-        stagedInputs.clear();
-        transitionToNavigationState(villager, gameTime);
+        cachedCafeNavigationArea = Set.of();
+        cachedCafeNavigationAnchor = null;
+        cachedCafeNavigationUntil = 0L;
+        cachedCafeSnapshot = WorkBuildingNav.Snapshot.EMPTY;
     }
 
-    private void resetWorksiteTargeting() {
-        currentWorksiteTarget = null;
-        currentWorksiteTargetKind = "stand";
-        worksiteTargetProgress.reset();
-        worksiteTargetFailures.reset();
+    @Override
+    protected void onClearAll(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        stationType = null;
+        cachedCafeNavigationArea = Set.of();
+        cachedCafeNavigationAnchor = null;
+        cachedCafeNavigationUntil = 0L;
+        cachedCafeSnapshot = WorkBuildingNav.Snapshot.EMPTY;
     }
 
+    @Override
+    protected void playGatherSound(ServerLevel level, VillagerEntityMCA villager) {
+        if (stationAnchor == null || stationType == null) return;
+        level.playSound(null, stationAnchor, SoundEvents.CAMPFIRE_CRACKLE, net.minecraft.sounds.SoundSource.BLOCKS, 0.35f, 1.0f);
+    }
+
+    @Override
+    protected void announceBlocked(ServerLevel level, VillagerEntityMCA villager, long gameTime,
+                                   ProducerBlockedReason reason, @Nullable String detail) {
+        if (reason == ProducerBlockedReason.NONE || reason == ProducerBlockedReason.NO_RECIPE) return;
+        if (!TownsteadConfig.isBaristaRequestChatEnabled()) return;
+        if (gameTime < nextRequestTick) return;
+        if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
+        if (reason == ProducerBlockedReason.UNREACHABLE
+                && !shouldAnnounceBlockedNavigation(level, villager, activeWorkTarget(level, villager))) {
+            return;
+        }
+        switch (reason) {
+            case NO_WORKSITE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_cafe/" + (1 + level.random.nextInt(4)));
+            case NO_INGREDIENTS -> {
+                if (detail != null && !detail.isBlank()) {
+                    villager.sendChatToAllAround("dialogue.chat.barista_request.no_ingredients_item", detail);
+                } else {
+                    villager.sendChatToAllAround("dialogue.chat.barista_request.no_ingredients/" + (1 + level.random.nextInt(4)));
+                }
+            }
+            case NO_STORAGE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_storage/" + (1 + level.random.nextInt(4)));
+            case UNREACHABLE -> villager.sendChatToAllAround("dialogue.chat.barista_request.unreachable/" + (1 + level.random.nextInt(4)));
+            default -> {}
+        }
+        nextRequestTick = gameTime + Math.max(200, TownsteadConfig.BARISTA_REQUEST_INTERVAL_TICKS.get());
+    }
+
+    // ── Subclass helpers ──
+
+    /** Typed downcast — base stores {@code activeRecipe} as {@link ProducerRecipe}. */
+    private @Nullable DiscoveredRecipe fdRecipe() {
+        return (DiscoveredRecipe) activeRecipe;
+    }
+
+    /** Resolve the set of blocks belonging to this villager's assigned cafe. */
+    private Set<Long> activeCafeStorageBounds(VillagerEntityMCA villager) {
+        if (!(villager.level() instanceof ServerLevel level)) return Set.of();
+        return FarmersDelightBaristaAssignment.assignedCafeBounds(level, villager);
+    }
+
+    /** Cache the expensive cafe bounds / walkable-interior snapshot for ROOM_BOUNDS_CACHE_TICKS. */
+    private void cacheCafeNavigationArea(BlockPos anchor, long gameTime, Set<Long> bounds) {
+        cachedCafeNavigationAnchor = anchor == null ? null : anchor.immutable();
+        cachedCafeNavigationArea = bounds == null ? Set.of() : bounds;
+        cachedCafeNavigationUntil = gameTime + ROOM_BOUNDS_CACHE_TICKS;
+    }
+
+    /** Returns a cached WorkBuildingNav.Snapshot for the active cafe (rebuilds at TTL expiry). */
+    private WorkBuildingNav.Snapshot activeCafeSnapshot(ServerLevel level, VillagerEntityMCA villager) {
+        BlockPos anchor = activeCafeReference(villager);
+        long gameTime = level.getGameTime();
+        if (anchor != null && cachedCafeNavigationAnchor != null
+                && anchor.equals(cachedCafeNavigationAnchor)
+                && gameTime <= cachedCafeNavigationUntil
+                && !cachedCafeSnapshot.walkableInterior().isEmpty()) {
+            return cachedCafeSnapshot;
+        }
+        Set<Long> assigned = activeCafeStorageBounds(villager);
+        WorkBuildingNav.Snapshot snapshot = WorkBuildingNav.snapshot(level, assigned, anchor);
+        cachedCafeSnapshot = snapshot;
+        cacheCafeNavigationArea(anchor, gameTime, snapshot.walkableInterior());
+        return snapshot;
+    }
+
+    private Optional<Building> activeCafeBuilding(ServerLevel level, VillagerEntityMCA villager) {
+        return FarmersDelightBaristaAssignment.assignedCafe(level, villager);
+    }
+
+    /** Pick the best reference block for cafe queries: assigned center, station anchor, or villager. */
+    private BlockPos activeCafeReference(VillagerEntityMCA villager) {
+        if (villager.level() instanceof ServerLevel level) {
+            Optional<Building> assigned = activeCafeBuilding(level, villager);
+            if (assigned.isPresent()) {
+                BlockPos center = assigned.get().getCenter();
+                if (center != null) return center;
+                for (BlockPos bp : (Iterable<BlockPos>) assigned.get().getBlockPosStream()::iterator) {
+                    return bp.immutable();
+                }
+            }
+        }
+        if (stationAnchor != null) return stationAnchor;
+        return villager.blockPosition();
+    }
+
+    /** True when the villager is inside the active cafe (by Building containment or walkable-interior). */
+    private boolean isVillagerInActiveCafe(VillagerEntityMCA villager) {
+        if (!(villager.level() instanceof ServerLevel level)) return false;
+        Optional<Building> assigned = activeCafeBuilding(level, villager);
+        if (assigned.isPresent() && buildingContainsVillager(assigned.get(), villager)) return true;
+        return WorkBuildingNav.isInsideOrOnStationStand(activeCafeSnapshot(level, villager), villager.blockPosition());
+    }
+
+    private boolean buildingContainsVillager(Building building, VillagerEntityMCA villager) {
+        BlockPos pos = villager.blockPosition();
+        if (building.containsPos(pos)) return true;
+        if (building.containsPos(pos.below())) return true;
+        return building.containsPos(pos.above());
+    }
+
+    /** Re-use the existing worksite target if still valid, otherwise pick a nearest non-blacklisted stand/approach. */
     private @Nullable BlockPos currentOrNewCafeWorksiteTarget(
-            VillagerEntityMCA villager,
-            long gameTime,
-            WorkBuildingNav.Snapshot cafeSnapshot
-    ) {
+            VillagerEntityMCA villager, long gameTime, WorkBuildingNav.Snapshot cafeSnapshot) {
         if (currentWorksiteTarget != null
                 && !worksiteTargetFailures.isBlacklisted(currentWorksiteTarget, gameTime)) {
             return currentWorksiteTarget;
@@ -740,83 +488,7 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return currentWorksiteTarget;
     }
 
-    private @Nullable BlockPos findCafeStandingPosition(
-            ServerLevel level,
-            VillagerEntityMCA villager,
-            BlockPos anchor,
-            WorkBuildingNav.Snapshot cafeSnapshot
-    ) {
-        BlockPos stand = WorkBuildingNav.nearestStationStand(cafeSnapshot, villager, anchor);
-        if (stand != null) return stand;
-        BlockPos fallback = StationHandler.findStandingPosition(level, villager, anchor);
-        if (fallback != null && cafeSnapshot.walkableInterior().contains(fallback.asLong())) {
-            return fallback.immutable();
-        }
-        return null;
-    }
-
-    // ── Cafe bounds ──
-
-    private Set<Long> activeCafeStorageBounds(VillagerEntityMCA villager) {
-        if (!(villager.level() instanceof ServerLevel level)) return Set.of();
-        return FarmersDelightBaristaAssignment.assignedCafeBounds(level, villager);
-    }
-
-    private void cacheCafeNavigationArea(BlockPos anchor, long gameTime, Set<Long> bounds) {
-        cachedCafeNavigationAnchor = anchor == null ? null : anchor.immutable();
-        cachedCafeNavigationArea = bounds == null ? Set.of() : bounds;
-        cachedCafeNavigationUntil = gameTime + ROOM_BOUNDS_CACHE_TICKS;
-    }
-
-    private WorkBuildingNav.Snapshot activeCafeSnapshot(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos anchor = activeCafeReference(villager);
-        long gameTime = level.getGameTime();
-        if (anchor != null && cachedCafeNavigationAnchor != null
-                && anchor.equals(cachedCafeNavigationAnchor)
-                && gameTime <= cachedCafeNavigationUntil
-                && !cachedCafeSnapshot.walkableInterior().isEmpty()) {
-            return cachedCafeSnapshot;
-        }
-        Set<Long> assigned = activeCafeStorageBounds(villager);
-        WorkBuildingNav.Snapshot snapshot = WorkBuildingNav.snapshot(level, assigned, anchor);
-        cachedCafeSnapshot = snapshot;
-        cacheCafeNavigationArea(anchor, gameTime, snapshot.walkableInterior());
-        return snapshot;
-    }
-
-    private Optional<Building> activeCafeBuilding(ServerLevel level, VillagerEntityMCA villager) {
-        return FarmersDelightBaristaAssignment.assignedCafe(level, villager);
-    }
-
-    private BlockPos activeCafeReference(VillagerEntityMCA villager) {
-        if (villager.level() instanceof ServerLevel level) {
-            Optional<Building> assigned = activeCafeBuilding(level, villager);
-            if (assigned.isPresent()) {
-                BlockPos center = assigned.get().getCenter();
-                if (center != null) return center;
-                for (BlockPos bp : (Iterable<BlockPos>) assigned.get().getBlockPosStream()::iterator) {
-                    return bp.immutable();
-                }
-            }
-        }
-        if (stationAnchor != null) return stationAnchor;
-        return villager.blockPosition();
-    }
-
-    private boolean isVillagerInActiveCafe(VillagerEntityMCA villager) {
-        if (!(villager.level() instanceof ServerLevel level)) return false;
-        Optional<Building> assigned = activeCafeBuilding(level, villager);
-        if (assigned.isPresent() && buildingContainsVillager(assigned.get(), villager)) return true;
-        return WorkBuildingNav.isInsideOrOnStationStand(activeCafeSnapshot(level, villager), villager.blockPosition());
-    }
-
-    private boolean buildingContainsVillager(Building building, VillagerEntityMCA villager) {
-        BlockPos pos = villager.blockPosition();
-        if (building.containsPos(pos)) return true;
-        if (building.containsPos(pos.below())) return true;
-        return building.containsPos(pos.above());
-    }
-
+    /** Pick a target inside the assigned cafe building when the villager isn't in it yet. */
     private @Nullable BlockPos pickCafeBuildingEntryTarget(Building building, ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         BlockPos center = building.getCenter();
         if (center != null && !worksiteTargetFailures.isBlacklisted(center, gameTime)) {
@@ -851,196 +523,28 @@ public class BaristaWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return best;
     }
 
-    // ── Station claims ──
-
-    private void releaseStationClaim(VillagerEntityMCA villager, @Nullable BlockPos pos) {
-        if (villager == null || pos == null) return;
-        if (!(villager.level() instanceof ServerLevel level)) return;
-        CookStationClaims.release(level, villager.getUUID(), pos);
-    }
-
-    private void releaseStationSession(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos) {
-        if (level == null || villager == null || pos == null) return;
-        ProducerStationSessions.release(level, villager.getUUID(), pos);
-    }
-
-    private void refreshStationSession(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (level == null || villager == null || stationAnchor == null || activeRecipe == null) return;
-        ProducerStationSessions.beginOrRefresh(
-                level,
-                villager.getUUID(),
-                stationAnchor,
-                activeRecipe.id(),
-                activeRecipe.output(),
-                activeRecipe.outputCount(),
-                stagedInputs,
-                gameTime + STATION_SESSION_LEASE_TICKS
-        );
-    }
-
-    // ── XP ──
-
-    private void awardBaristaXP(ServerLevel level, VillagerEntityMCA villager) {
-        if (activeRecipe == null) return;
-        int xp = Math.max(1, activeRecipe.tier());
-        //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
-        //?} else {
-        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
-        *///?}
-        CookProgressData.addXp(data, xp, level.getGameTime());
-        //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, data);
-        //?} else {
-        /*villager.getPersistentData().put("townstead_hunger", data);
-        *///?}
-    }
-
-    // ── Sound ──
-
-    private void playSound(ServerLevel level) {
-        if (stationAnchor == null || stationType == null) return;
-        level.playSound(null, stationAnchor, SoundEvents.CAMPFIRE_CRACKLE, net.minecraft.sounds.SoundSource.BLOCKS, 0.35f, 1.0f);
-    }
-
-    // ── Blocked state ──
-
-    private void setBlocked(ServerLevel level, VillagerEntityMCA villager, long gameTime, BlockedReason reason, String itemName) {
-        blocked = reason;
-        if (reason != BlockedReason.NONE) {
-            BlockPos pos = villager.blockPosition();
-            debugChat(level, villager, "BLOCKED:" + reason.name()
-                    + " pos=" + pos.getX() + "," + pos.getY() + "," + pos.getZ()
-                    + (itemName == null || itemName.isBlank() ? "" : " detail=" + itemName));
+    /** Fresh stand position near the given anchor: prefer cafe snapshot, fall back to station-handler scan. */
+    private @Nullable BlockPos findCafeStandingPosition(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor,
+            WorkBuildingNav.Snapshot cafeSnapshot
+    ) {
+        BlockPos stand = WorkBuildingNav.nearestStationStand(cafeSnapshot, villager, anchor);
+        if (stand != null) return stand;
+        BlockPos fallback = StationHandler.findStandingPosition(level, villager, anchor);
+        if (fallback != null && cafeSnapshot.walkableInterior().contains(fallback.asLong())) {
+            return fallback.immutable();
         }
-        if (reason == BlockedReason.NONE || reason == BlockedReason.NO_RECIPE) return;
-        if (!TownsteadConfig.isBaristaRequestChatEnabled()) return;
-        if (gameTime < nextRequestTick) return;
-        if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
-        if (reason == BlockedReason.UNREACHABLE
-                && !shouldAnnounceBlockedNavigation(level, villager, activeWorkTarget(level, villager))) {
-            return;
-        }
-        switch (blocked) {
-            case NO_CAFE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_cafe/" + (1 + level.random.nextInt(4)));
-            case NO_INGREDIENTS -> {
-                if (itemName != null && !itemName.isBlank()) {
-                    villager.sendChatToAllAround("dialogue.chat.barista_request.no_ingredients_item", itemName);
-                } else {
-                    villager.sendChatToAllAround("dialogue.chat.barista_request.no_ingredients/" + (1 + level.random.nextInt(4)));
-                }
-            }
-            case NO_STORAGE -> villager.sendChatToAllAround("dialogue.chat.barista_request.no_storage/" + (1 + level.random.nextInt(4)));
-            case UNREACHABLE -> villager.sendChatToAllAround("dialogue.chat.barista_request.unreachable/" + (1 + level.random.nextInt(4)));
-            case NONE -> {}
-            case NO_RECIPE -> {}
-        }
-        nextRequestTick = gameTime + Math.max(200, TownsteadConfig.BARISTA_REQUEST_INTERVAL_TICKS.get());
+        return null;
     }
 
-    // ── Reset ──
-
-    private void clearAll(VillagerEntityMCA villager, long gameTime) {
-        ServerLevel level = (ServerLevel) villager.level();
-        releaseStationClaim(villager, stationAnchor);
-        releaseStationSession(level, villager, stationAnchor);
-        stationAnchor = null;
-        standPos = null;
-        stationType = null;
-        activeRecipe = null;
-        pendingOutput = ItemStack.EMPTY;
-        stagedInputs.clear();
-        recipeCooldownUntil.clear();
-        abandonedUntilByStation.clear();
-        recipeAttempts = 0;
-        idleUntilTick = 0L;
-        resetWorksiteTargeting();
-        state = BaristaState.PATH_TO_WORKSITE;
-        stateEnteredTick = gameTime;
-        cachedCafeNavigationArea = Set.of();
-        cachedCafeNavigationAnchor = null;
-        cachedCafeNavigationUntil = 0L;
-    }
-
-    // ── Activity ──
-
-    private Activity currentActivity(VillagerEntityMCA villager) {
-        long dayTime = villager.level().getDayTime() % 24000L;
-        return villager.getBrain().getSchedule().getActivityAt((int) dayTime);
-    }
-
-    @Override
-    public WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
-        Set<Long> bounds = activeCafeStorageBounds(villager);
-        BlockPos reference = activeCafeReference(villager);
-        return bounds.isEmpty() ? null : WorkSiteRef.building(reference, bounds);
-    }
-
-    @Override
-    public WorkTarget activeWorkTarget(ServerLevel level, VillagerEntityMCA villager) {
-        if (currentWorksiteTarget != null && state == BaristaState.PATH_TO_WORKSITE) {
-            return WorkTarget.buildingApproach(currentWorksiteTarget, activeCafeReference(villager), currentWorksiteTargetKind);
-        }
-        if (standPos == null || stationAnchor == null) return null;
-        return WorkTarget.stationStand(standPos, stationAnchor, state.name().toLowerCase());
-    }
-
-    @Override
-    public float navigationWalkSpeed(ServerLevel level, VillagerEntityMCA villager) {
-        return WALK_SPEED;
-    }
-
-    @Override
-    public int navigationCloseEnough(ServerLevel level, VillagerEntityMCA villager) {
-        return CLOSE_ENOUGH;
-    }
-
-    @Override
-    public double navigationArrivalDistanceSq(ServerLevel level, VillagerEntityMCA villager) {
-        return ARRIVAL_DISTANCE_SQ;
-    }
-
-    @Override
-    public String navigationState(ServerLevel level, VillagerEntityMCA villager) {
-        return state.name();
-    }
-
-    @Override
-    public String navigationBlockedState(ServerLevel level, VillagerEntityMCA villager) {
-        return blocked.name();
-    }
-
-    // ── Debug ──
-
-    private void debugChat(ServerLevel level, VillagerEntityMCA villager, String msg) {
-    }
-
-    private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-    }
-
-    private static boolean townstead$isFatigueGated(VillagerEntityMCA villager) {
-        if (!TownsteadConfig.isVillagerFatigueEnabled()) return false;
-        //? if neoforge {
-        net.minecraft.nbt.CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
-        //?} else {
-        /*net.minecraft.nbt.CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
-        *///?}
-        return FatigueData.isGated(fatigue) || FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD;
-    }
-
-    private static String townstead$stationDisplayName(ModRecipeRegistry.StationType stationType) {
-        String raw = stationType.name().toLowerCase().replace('_', ' ');
-        StringBuilder sb = new StringBuilder();
-        boolean capitalize = true;
-        for (char c : raw.toCharArray()) {
-            sb.append(capitalize ? Character.toUpperCase(c) : c);
-            capitalize = (c == ' ');
-        }
-        return sb.toString();
-    }
-
-    private static String townstead$itemDisplayName(ServerLevel level, net.minecraft.resources.ResourceLocation itemId) {
+    private static String townstead$itemDisplayName(ServerLevel level, ResourceLocation itemId) {
+        //? if >=1.21 {
         var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(itemId);
+        //?} else {
+        /*var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(itemId);
+        *///?}
         if (item == null) return itemId.getPath();
         return item.getDefaultInstance().getHoverName().getString();
     }

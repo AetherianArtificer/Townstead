@@ -1250,17 +1250,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         int best = -1;
         int nutrition = -1;
         for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!FoodSafety.isSafeNutritiousFood(stack)) continue;
             //? if >=1.21 {
-            FoodProperties food = inv.getItem(i).get(DataComponents.FOOD);
-            //?} else {
-            /*FoodProperties food = inv.getItem(i).getFoodProperties(null);
-            *///?}
-            //? if >=1.21 {
-            if (food == null || food.nutrition() <= 0) continue;
+            FoodProperties food = stack.get(DataComponents.FOOD);
             if (food.nutrition() > nutrition) {
                 nutrition = food.nutrition();
             //?} else {
-            /*if (food == null || food.getNutrition() <= 0) continue;
+            /*FoodProperties food = stack.getFoodProperties(null);
             if (food.getNutrition() > nutrition) {
                 nutrition = food.getNutrition();
             *///?}

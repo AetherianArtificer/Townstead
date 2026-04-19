@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
+import com.aetherianartificer.townstead.hunger.FishermanWorkTask;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.BaristaWorkTask;
@@ -78,6 +79,7 @@ public abstract class VillagerHungerMixin extends Villager {
         brain.addActivity(Activity.WORK,
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
                         Pair.of(70, new HarvestWorkTask()),
+                        Pair.of(71, new FishermanWorkTask()),
                         Pair.of(72, new CookWorkTask()),
                         Pair.of(72, new BaristaWorkTask()),
                         Pair.of(74, new ButcherWorkTask())

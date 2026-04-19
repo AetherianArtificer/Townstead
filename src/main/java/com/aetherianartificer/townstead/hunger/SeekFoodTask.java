@@ -217,6 +217,9 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
+            // Skip anything with harmful effects (pufferfish, spider eye, etc.)
+            // so a fisherman who just caught a puffer doesn't poison themselves.
+            if (!FoodSafety.isSafeToEat(stack)) continue;
             //? if >=1.21 {
             FoodProperties food = stack.get(DataComponents.FOOD);
             //?} else {
@@ -236,6 +239,12 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         if (best.isEmpty()) return false;
 
         if (!VillagerEatingManager.startEating(villager, best)) return false;
+        if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            com.aetherianartificer.townstead.Townstead.LOGGER.info(
+                    "[SeekFood] villager {} eating inventory item {}",
+                    villager.getUUID(),
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(best.getItem()));
+        }
         best.shrink(1);
         return true;
     }
@@ -333,18 +342,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     private boolean findGroundItem(ServerLevel level, VillagerEntityMCA villager) {
         AABB searchBox = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
         List<ItemEntity> items = level.getEntitiesOfClass(ItemEntity.class, searchBox,
-                item -> {
-                    //? if >=1.21 {
-                    FoodProperties food = item.getItem().get(DataComponents.FOOD);
-                    //?} else {
-                    /*FoodProperties food = item.getItem().getFoodProperties(null);
-                    *///?}
-                    //? if >=1.21 {
-                    return food != null && food.nutrition() > 0 && !item.isRemoved();
-                    //?} else {
-                    /*return food != null && food.getNutrition() > 0 && !item.isRemoved();
-                    *///?}
-                });
+                item -> !item.isRemoved() && FoodSafety.isSafeNutritiousFood(item.getItem()));
 
         if (items.isEmpty()) return false;
 
@@ -373,18 +371,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
     private boolean findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
         List<ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>> candidates = new ArrayList<>();
         NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                stack -> {
-                    //? if >=1.21 {
-                    FoodProperties food = stack.get(DataComponents.FOOD);
-                    //?} else {
-                    /*FoodProperties food = stack.getFoodProperties(null);
-                    *///?}
-                    //? if >=1.21 {
-                    return food != null && food.nutrition() > 0;
-                    //?} else {
-                    /*return food != null && food.getNutrition() > 0;
-                    *///?}
-                },
+                FoodSafety::isSafeNutritiousFood,
                 stack -> {
                     //? if >=1.21 {
                     FoodProperties food = stack.get(DataComponents.FOOD);
@@ -484,12 +471,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
         boolean ate = false;
 
         for (ItemStack drop : drops) {
-            //? if >=1.21 {
-            FoodProperties food = drop.get(DataComponents.FOOD);
-            //?} else {
-            /*FoodProperties food = drop.getFoodProperties(null);
-            *///?}
-            if (food != null && !ate) {
+            if (!ate && FoodSafety.isSafeToEat(drop)) {
                 if (VillagerEatingManager.startEating(villager, drop)) {
                     drop.shrink(1);
                     ate = true;
