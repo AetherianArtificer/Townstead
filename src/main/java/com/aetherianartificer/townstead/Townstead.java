@@ -43,6 +43,9 @@ import com.aetherianartificer.townstead.hunger.FarmerProgressData;
 import com.aetherianartificer.townstead.hunger.CookProgressData;
 import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.ButcherStatusSyncPayload;
+import com.aetherianartificer.townstead.hunger.FishermanHookLinkPayload;
+import com.aetherianartificer.townstead.hunger.FishermanHookLinkStore;
+import com.aetherianartificer.townstead.hunger.FishermanStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.HungerSetPayload;
 import com.aetherianartificer.townstead.hunger.HungerSyncPayload;
 import com.aetherianartificer.townstead.compat.thirst.PurificationCampfireRecipe;
@@ -578,6 +581,16 @@ public class Townstead {
                 ButcherStatusSyncPayload.STREAM_CODEC,
                 this::handleButcherStatusSync
         );
+        registrar.playToClient(
+                FishermanStatusSyncPayload.TYPE,
+                FishermanStatusSyncPayload.STREAM_CODEC,
+                this::handleFishermanStatusSync
+        );
+        registrar.playToClient(
+                FishermanHookLinkPayload.TYPE,
+                FishermanHookLinkPayload.STREAM_CODEC,
+                this::handleFishermanHookLink
+        );
         registrar.playToServer(
                 HungerSetPayload.TYPE,
                 HungerSetPayload.STREAM_CODEC,
@@ -700,6 +713,19 @@ public class Townstead {
 
     private void handleButcherStatusSync(ButcherStatusSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId()));
+    }
+
+    private void handleFishermanStatusSync(FishermanStatusSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> HungerClientStore.setFishermanBlockedReason(payload.entityId(), payload.blockedReasonId()));
+    }
+
+    private void handleFishermanHookLink(FishermanHookLinkPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            FishermanHookLinkStore.link(payload.hookEntityId(), payload.villagerEntityId());
+            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+                LOGGER.info("[Fisherman] client got hook-link hookId={} villagerId={}", payload.hookEntityId(), payload.villagerEntityId());
+            }
+        });
     }
 
     private void handleHungerSet(HungerSetPayload payload, IPayloadContext context) {

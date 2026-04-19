@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.client.TownsteadKeybinds;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.hunger.FishermanLineRenderer;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
 import com.aetherianartificer.townstead.fatigue.EnergyTooltipComponent;
@@ -44,6 +45,7 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
+            NeoForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             hooksRegistered = true;
         }
         //?} else if forge {
@@ -57,6 +59,7 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientConnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
+            MinecraftForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             hooksRegistered = true;
         }
         *///?}
@@ -81,6 +84,7 @@ public final class TownsteadClient {
     /*private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
     *///?}
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
+        clearClientStore("com.aetherianartificer.townstead.hunger.FishermanHookLinkStore");
         clearClientStore("com.aetherianartificer.townstead.thirst.ThirstClientStore");
         clearClientStore("com.aetherianartificer.townstead.fatigue.FatigueClientStore");
         clearClientStore("com.aetherianartificer.townstead.farming.FarmingPolicyClientStore");

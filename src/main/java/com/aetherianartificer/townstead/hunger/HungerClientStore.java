@@ -11,6 +11,7 @@ public final class HungerClientStore {
     private static final Map<Integer, Integer> HUNGER_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, String> FARM_BLOCKED_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, String> BUTCHER_BLOCKED_MAP = new ConcurrentHashMap<>();
+    private static final Map<Integer, String> FISHERMAN_BLOCKED_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> FARMER_TIER_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> FARMER_XP_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> FARMER_XP_TO_NEXT_MAP = new ConcurrentHashMap<>();
@@ -57,6 +58,7 @@ public final class HungerClientStore {
         HUNGER_MAP.remove(entityId);
         FARM_BLOCKED_MAP.remove(entityId);
         BUTCHER_BLOCKED_MAP.remove(entityId);
+        FISHERMAN_BLOCKED_MAP.remove(entityId);
         FARMER_TIER_MAP.remove(entityId);
         FARMER_XP_MAP.remove(entityId);
         FARMER_XP_TO_NEXT_MAP.remove(entityId);
@@ -81,6 +83,15 @@ public final class HungerClientStore {
 
     public static HungerData.ButcherBlockedReason getButcherBlockedReason(int entityId) {
         return HungerData.ButcherBlockedReason.fromId(BUTCHER_BLOCKED_MAP.getOrDefault(entityId, "none"));
+    }
+
+    public static void setFishermanBlockedReason(int entityId, String reasonId) {
+        FISHERMAN_BLOCKED_MAP.put(entityId, reasonId);
+        if (onChange != null) onChange.run();
+    }
+
+    public static HungerData.FishermanBlockedReason getFishermanBlockedReason(int entityId) {
+        return HungerData.FishermanBlockedReason.fromId(FISHERMAN_BLOCKED_MAP.getOrDefault(entityId, "none"));
     }
 
     public static int getFarmerTier(int entityId) {
@@ -111,6 +122,7 @@ public final class HungerClientStore {
         HUNGER_MAP.clear();
         FARM_BLOCKED_MAP.clear();
         BUTCHER_BLOCKED_MAP.clear();
+        FISHERMAN_BLOCKED_MAP.clear();
         FARMER_TIER_MAP.clear();
         FARMER_XP_MAP.clear();
         FARMER_XP_TO_NEXT_MAP.clear();

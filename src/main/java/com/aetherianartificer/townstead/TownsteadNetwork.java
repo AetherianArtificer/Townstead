@@ -80,6 +80,10 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleFarmStatusSync);
         registerS2C(ButcherStatusSyncPayload.class, ButcherStatusSyncPayload::write, ButcherStatusSyncPayload::read,
                 TownsteadNetwork::handleButcherStatusSync);
+        registerS2C(FishermanStatusSyncPayload.class, FishermanStatusSyncPayload::write, FishermanStatusSyncPayload::read,
+                TownsteadNetwork::handleFishermanStatusSync);
+        registerS2C(FishermanHookLinkPayload.class, FishermanHookLinkPayload::write, FishermanHookLinkPayload::read,
+                TownsteadNetwork::handleFishermanHookLink);
 
         // Client -> Server
         registerC2S(HungerSetPayload.class, HungerSetPayload::write, HungerSetPayload::read,
@@ -199,6 +203,14 @@ public final class TownsteadNetwork {
 
     private static void handleButcherStatusSync(ButcherStatusSyncPayload payload) {
         HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId());
+    }
+
+    private static void handleFishermanStatusSync(FishermanStatusSyncPayload payload) {
+        HungerClientStore.setFishermanBlockedReason(payload.entityId(), payload.blockedReasonId());
+    }
+
+    private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {
+        com.aetherianartificer.townstead.hunger.FishermanHookLinkStore.link(payload.hookEntityId(), payload.villagerEntityId());
     }
 
     // ── Server-side handlers (C2S) ──

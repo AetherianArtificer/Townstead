@@ -117,6 +117,30 @@
   "dialogue.chat.butcher_request.no_valid_target/3": "Everything's in order for now.",
   "dialogue.chat.butcher_request.no_valid_target/4": "Nothing to tend at the moment.",
 
+  "dialogue.chat.fisherman_request.no_rod/1": "I could use a fishing rod to work with.",
+  "dialogue.chat.fisherman_request.no_rod/2": "My hands alone won't catch fish.",
+  "dialogue.chat.fisherman_request.no_rod/3": "A rod, please, and I'll get to the water.",
+  "dialogue.chat.fisherman_request.no_rod/4": "No rod in my pack. I can't fish like this.",
+  "dialogue.chat.fisherman_request.no_rod/5": "Spare a fishing rod and I'll fill the barrel.",
+  "dialogue.chat.fisherman_request.no_rod/6": "I need tackle before I can cast a line.",
+
+  "dialogue.chat.fisherman_request.no_water/1": "There's no water near my barrel.",
+  "dialogue.chat.fisherman_request.no_water/2": "I can't fish on dry land.",
+  "dialogue.chat.fisherman_request.no_water/3": "Move me closer to a pond or river, please.",
+  "dialogue.chat.fisherman_request.no_water/4": "This barrel needs water nearby if I'm to work.",
+  "dialogue.chat.fisherman_request.no_water/5": "Without open water, my rod sits idle.",
+  "dialogue.chat.fisherman_request.no_water/6": "I've looked all around and found no water to fish.",
+
+  "dialogue.chat.fisherman_request.no_storage/1": "My catches need somewhere to go.",
+  "dialogue.chat.fisherman_request.no_storage/2": "A chest would help, these fish shouldn't rot on me.",
+  "dialogue.chat.fisherman_request.no_storage/3": "The barrel's full, and I have no other place to stow fish.",
+  "dialogue.chat.fisherman_request.no_storage/4": "Clear some storage and I'll keep fishing.",
+
+  "dialogue.chat.fisherman_request.unreachable/1": "I can't reach the water from here.",
+  "dialogue.chat.fisherman_request.unreachable/2": "Something blocks my path to the shore.",
+  "dialogue.chat.fisherman_request.unreachable/3": "The way to my fishing spot is obstructed.",
+  "dialogue.chat.fisherman_request.unreachable/4": "Clear the path and I'll be at the water.",
+
   "dialogue.chat.cook_request.no_kitchen/1": "I need a proper kitchen before I can cook.",
   "dialogue.chat.cook_request.no_kitchen/2": "There's no kitchen station ready for me.",
   "dialogue.chat.cook_request.no_kitchen/3": "Give me a kitchen and I'll feed everyone.",
