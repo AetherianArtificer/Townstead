@@ -270,17 +270,13 @@ public final class ButcherSupplyManager {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (excludeButcherOutput && isButcherOutput(stack)) continue;
+            if (!FoodSafety.isSafeNutritiousFood(stack)) continue;
             //? if >=1.21 {
             FoodProperties food = stack.get(DataComponents.FOOD);
-            //?} else {
-            /*FoodProperties food = stack.getFoodProperties(null);
-            *///?}
-            //? if >=1.21 {
-            if (food == null || food.nutrition() <= 0) continue;
             if (food.nutrition() > bestNutrition) {
                 bestNutrition = food.nutrition();
             //?} else {
-            /*if (food == null || food.getNutrition() <= 0) continue;
+            /*FoodProperties food = stack.getFoodProperties(null);
             if (food.getNutrition() > bestNutrition) {
                 bestNutrition = food.getNutrition();
             *///?}

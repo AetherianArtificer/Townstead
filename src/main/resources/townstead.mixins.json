@@ -10,6 +10,7 @@
     "compat.mca.PlayerSaveDataWelcomeMixin",
     "ReportBuildingMessageMixin",
     "TombstoneRevivalMixin",
+    "VillagerEatSafetyMixin",
     "VillagerHungerMixin",
     "VillagerServerTickMixin"
   ],

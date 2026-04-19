@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
 import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.hunger.FoodSafety;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.aetherianartificer.townstead.thirst.VillagerDrinkingManager;
@@ -227,16 +228,17 @@ public final class HungerVillagerTicker {
         int bestNutrition = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
+            // Skip anything harmful (pufferfish, spider eye, rotten flesh, etc.)
+            // so the passive-hunger ticker doesn't silently drop puffers into
+            // the void via startEating → shrink(1) → mixin-blocked eat.
+            if (!FoodSafety.isSafeNutritiousFood(stack)) continue;
             //? if >=1.21 {
             FoodProperties food = stack.get(DataComponents.FOOD);
-            //?} else {
-            /*FoodProperties food = stack.getFoodProperties(null);
-            *///?}
-            //? if >=1.21 {
-            if (food != null && food.nutrition() > bestNutrition) {
+            if (food.nutrition() > bestNutrition) {
                 bestNutrition = food.nutrition();
             //?} else {
-            /*if (food != null && food.getNutrition() > bestNutrition) {
+            /*FoodProperties food = stack.getFoodProperties(null);
+            if (food.getNutrition() > bestNutrition) {
                 bestNutrition = food.getNutrition();
             *///?}
                 best = stack;
