@@ -115,11 +115,23 @@ public final class FishermanLineRenderer {
             int hookId = entry.getKey();
             int villagerId = entry.getValue();
             Entity hookEntity = mc.level.getEntity(hookId);
-            if (hookEntity == null) continue; // race: link arrived before spawn
+            if (hookEntity == null) {
+                // Null entity. If we've never seen this hook alive, it's
+                // probably the spawn-packet race (link arrived first) — leave
+                // the link alone and retry next frame. If we HAVE seen it
+                // alive, the server has since removed it (reel, despawn,
+                // chunk unload) — evict so the cast-predicate wrapper can
+                // flip the rod back to its uncast model.
+                if (FishermanHookLinkStore.isConfirmed(hookId)) {
+                    FishermanHookLinkStore.unlink(hookId);
+                }
+                continue;
+            }
             if (!(hookEntity instanceof FishingHook hook) || !hook.isAlive()) {
                 FishermanHookLinkStore.unlink(hookId);
                 continue;
             }
+            FishermanHookLinkStore.markConfirmed(hookId);
             Entity villagerEntity = mc.level.getEntity(villagerId);
             if (!(villagerEntity instanceof LivingEntity villager) || !villager.isAlive()) continue;
             if (hook.getPlayerOwner() != null) continue;
@@ -152,17 +164,22 @@ public final class FishermanLineRenderer {
         int packedLight = mc.getEntityRenderDispatcher().getPackedLightCoords(hook, partialTick);
 
         poseStack.pushPose();
-        poseStack.translate(hookX - camPos.x, hookY - camPos.y, hookZ - camPos.z);
-        poseStack.scale(0.5F, 0.5F, 0.5F);
-        poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
-        PoseStack.Pose pose = poseStack.last();
+        try {
+            poseStack.translate(hookX - camPos.x, hookY - camPos.y, hookZ - camPos.z);
+            poseStack.scale(0.5F, 0.5F, 0.5F);
+            poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
+            PoseStack.Pose pose = poseStack.last();
 
-        emitBobberVertex(consumer, pose, packedLight, -0.5F, -0.5F, 0, 1);
-        emitBobberVertex(consumer, pose, packedLight,  0.5F, -0.5F, 1, 1);
-        emitBobberVertex(consumer, pose, packedLight,  0.5F,  0.5F, 1, 0);
-        emitBobberVertex(consumer, pose, packedLight, -0.5F,  0.5F, 0, 0);
-
-        poseStack.popPose();
+            emitBobberVertex(consumer, pose, packedLight, -0.5F, -0.5F, 0, 1);
+            emitBobberVertex(consumer, pose, packedLight,  0.5F, -0.5F, 1, 1);
+            emitBobberVertex(consumer, pose, packedLight,  0.5F,  0.5F, 1, 0);
+            emitBobberVertex(consumer, pose, packedLight, -0.5F,  0.5F, 0, 0);
+        } finally {
+            // Always pop. Without this, an exception between push and pop
+            // leaves the pose stack unbalanced, and vanilla's end-of-frame
+            // checkPoseStack() crashes with "Pose stack not empty".
+            poseStack.popPose();
+        }
     }
 
     private static void emitBobberVertex(VertexConsumer consumer, PoseStack.Pose pose,
@@ -198,25 +215,28 @@ public final class FishermanLineRenderer {
         float dz = (float) (handPos.z - hookZ);
 
         poseStack.pushPose();
-        poseStack.translate(hookX - camPos.x, hookY - camPos.y, hookZ - camPos.z);
-        PoseStack.Pose pose = poseStack.last();
-        // Catenary from local (0,0,0) (bobber attach point, already translated
-        // by bobberEndOffset above) to local (dx, dy, dz) (hand attach point).
-        // y = dy * (t² + t) / 2 gives a concave-up curve that sags below the
-        // straight line by up to dy * 0.125 near t = 0.5 — visually reads as
-        // a droopy fishing line when dy > 0 (hand above bobber).
-        float prevX = 0F, prevY = 0F, prevZ = 0F;
-        for (int k = 1; k <= SEGMENTS; k++) {
-            float t = k / (float) SEGMENTS;
-            float x = dx * t;
-            float y = dy * (t * t + t) * 0.5F;
-            float z = dz * t;
-            emitLineSegment(consumer, pose, prevX, prevY, prevZ, x, y, z);
-            prevX = x;
-            prevY = y;
-            prevZ = z;
+        try {
+            poseStack.translate(hookX - camPos.x, hookY - camPos.y, hookZ - camPos.z);
+            PoseStack.Pose pose = poseStack.last();
+            // Catenary from local (0,0,0) (bobber attach point, already translated
+            // by bobberEndOffset above) to local (dx, dy, dz) (hand attach point).
+            // y = dy * (t² + t) / 2 gives a concave-up curve that sags below the
+            // straight line by up to dy * 0.125 near t = 0.5 — visually reads as
+            // a droopy fishing line when dy > 0 (hand above bobber).
+            float prevX = 0F, prevY = 0F, prevZ = 0F;
+            for (int k = 1; k <= SEGMENTS; k++) {
+                float t = k / (float) SEGMENTS;
+                float x = dx * t;
+                float y = dy * (t * t + t) * 0.5F;
+                float z = dz * t;
+                emitLineSegment(consumer, pose, prevX, prevY, prevZ, x, y, z);
+                prevX = x;
+                prevY = y;
+                prevZ = z;
+            }
+        } finally {
+            poseStack.popPose();
         }
-        poseStack.popPose();
     }
 
     /** World-space position where the fishing line attaches on the villager. */

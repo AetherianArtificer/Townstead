@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -15,12 +16,22 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class FishermanHookLinkStore {
     private static final Map<Integer, Integer> HOOK_TO_VILLAGER = new ConcurrentHashMap<>();
+    /**
+     * Hook ids we've seen exist as a live entity on the client at least once.
+     * Used by the renderer to distinguish "link arrived before spawn packet"
+     * (don't evict yet — tolerate the race) from "hook was visible and has
+     * since been removed from the world" (safe to evict). Without this, the
+     * cast-predicate wrapper keeps the rod in cast mode forever because the
+     * link entry never gets cleaned up after the reel.
+     */
+    private static final Set<Integer> CONFIRMED = ConcurrentHashMap.newKeySet();
 
     private FishermanHookLinkStore() {}
 
     public static void link(int hookEntityId, int villagerEntityId) {
         if (villagerEntityId < 0) {
             HOOK_TO_VILLAGER.remove(hookEntityId);
+            CONFIRMED.remove(hookEntityId);
             return;
         }
         HOOK_TO_VILLAGER.put(hookEntityId, villagerEntityId);
@@ -28,6 +39,7 @@ public final class FishermanHookLinkStore {
 
     public static void unlink(int hookEntityId) {
         HOOK_TO_VILLAGER.remove(hookEntityId);
+        CONFIRMED.remove(hookEntityId);
     }
 
     public static Integer villagerFor(int hookEntityId) {
@@ -38,7 +50,22 @@ public final class FishermanHookLinkStore {
         return Collections.unmodifiableMap(HOOK_TO_VILLAGER);
     }
 
+    /**
+     * Called by the renderer after successfully resolving the hook entity as
+     * alive — promotes the link from "might be a pre-spawn race" to "we've
+     * actually seen this hook." Subsequent null resolves are then safe to
+     * evict.
+     */
+    public static void markConfirmed(int hookEntityId) {
+        CONFIRMED.add(hookEntityId);
+    }
+
+    public static boolean isConfirmed(int hookEntityId) {
+        return CONFIRMED.contains(hookEntityId);
+    }
+
     public static void clear() {
         HOOK_TO_VILLAGER.clear();
+        CONFIRMED.clear();
     }
 }

@@ -33,8 +33,8 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.projectile.FishingHook;
 import net.minecraft.world.entity.schedule.Activity;
-import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Blocks;
@@ -259,11 +259,21 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             return;
         }
 
-        // Refresh cached rod reference if it got removed from inventory (broken, dropped, or pulled out).
+        // Refresh cached rod reference if it got removed from inventory (broken,
+        // dropped, pulled out by the player, swapped via the villager editor,
+        // etc.). When this happens, discard any active hook so the prior cast's
+        // line disappears — otherwise a swap during WAIT_FOR_BITE leaves an
+        // orphaned hook rendering alongside the new cast's line ("double line"
+        // bug).
         if (currentRod != null && (currentRod.isEmpty() || !inventoryContains(villager.getInventory(), currentRod))) {
+            discardHook(level);
             currentRod = FishermanSupplyManager.findRodInInventory(villager.getInventory());
             if (currentRod == null) {
                 enterPhase(Phase.FETCH_ROD, gameTime);
+            } else if (phase == Phase.WAIT_FOR_BITE || phase == Phase.CAST || phase == Phase.AIM) {
+                // Rod swap mid-cast: restart the cast cycle cleanly instead of
+                // leaving the state machine expecting the old hook to bite.
+                enterPhase(Phase.IDLE, gameTime);
             }
         }
 
@@ -537,7 +547,13 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         fakePlayer.setYHeadRot(yaw);
         fakePlayer.xRotO = pitch;
         fakePlayer.yRotO = yaw;
-        fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, currentRod.copy());
+        // FakePlayer must hold a VANILLA fishing rod or vanilla's
+        // FishingHook.shouldStopFishing() discards the hook every tick
+        // (it does `stack.is(Items.FISHING_ROD)`, which rejects modded
+        // rods like Starcatcher). The real rod in the villager's hand is
+        // what we display and damage; this vanilla stand-in just satisfies
+        // the owner-hand check.
+        fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, townstead$vanillaRodProxy());
 
         int luck = townstead$fishingLuckLevel(level, currentRod);
         int lure = townstead$fishingSpeedLevel(level, currentRod);
@@ -677,7 +693,17 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         ServerPlayer fakePlayer = getFishingActor(level, villager);
         if (fakePlayer == null) return;
         fakePlayer.setPos(villager.getX(), villager.getEyeY(), villager.getZ());
-        fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, currentRod.copy());
+        fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, townstead$vanillaRodProxy());
+    }
+
+    /**
+     * Plain vanilla fishing rod stack used in the FakePlayer's hand so
+     * vanilla FishingHook.shouldStopFishing passes its {@code is(Items.FISHING_ROD)}
+     * check — modded rods (Starcatcher, etc.) would otherwise fail that
+     * check and vanilla would discard the hook every tick.
+     */
+    private static ItemStack townstead$vanillaRodProxy() {
+        return new ItemStack(Items.FISHING_ROD);
     }
 
     private void tickWaitForBite(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -924,7 +950,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
-            if (stack.getItem() instanceof FishingRodItem) continue;
+            if (FishermanSupplyManager.isFishingRod(stack)) continue;
             total += stack.getCount();
         }
         return total;

@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.compat.starcatcher.StarcatcherCompat;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -19,6 +20,19 @@ public final class FishermanSupplyManager {
     private FishermanSupplyManager() {}
 
     /**
+     * True if the stack is something the fisherman will use as a fishing rod
+     * for inventory pickup, hand display, and the cast animation. Matches
+     * vanilla FishingRodItem plus Starcatcher rods (when that mod is loaded)
+     * so villagers can wield and visibly hold modded rods without us needing
+     * deep integration with Starcatcher's minigame / custom bob entity.
+     */
+    public static boolean isFishingRod(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        if (stack.getItem() instanceof FishingRodItem) return true;
+        return StarcatcherCompat.isStarcatcherRod(stack);
+    }
+
+    /**
      * Return the villager's best fishing rod from their inventory, or null if none.
      * Returns the live stack reference so the caller can mutate durability directly.
      * Preference order: highest total enchantment level, then remaining durability.
@@ -29,7 +43,7 @@ public final class FishermanSupplyManager {
         int bestScore = Integer.MIN_VALUE;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty() || !(stack.getItem() instanceof FishingRodItem)) continue;
+            if (!isFishingRod(stack)) continue;
             int score = scoreRod(stack);
             if (score > bestScore) {
                 bestScore = score;
@@ -51,7 +65,7 @@ public final class FishermanSupplyManager {
                 villager,
                 horizontalRadius,
                 verticalRadius,
-                stack -> stack.getItem() instanceof FishingRodItem,
+                FishermanSupplyManager::isFishingRod,
                 FishermanSupplyManager::scoreRod,
                 anchor
         );
@@ -99,7 +113,7 @@ public final class FishermanSupplyManager {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
-            if (stack.getItem() instanceof FishingRodItem) continue;
+            if (isFishingRod(stack)) continue;
 
             int before = stack.getCount();
             ItemStack working = stack;

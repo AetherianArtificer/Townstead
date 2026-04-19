@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.FishermanLineRenderer;
+import com.aetherianartificer.townstead.hunger.FishingRodCastPredicates;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
 import com.aetherianartificer.townstead.fatigue.EnergyTooltipComponent;
@@ -76,6 +77,10 @@ public final class TownsteadClient {
         //?} else if forge {
         /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(new ClientCapsPayload(hasTT));
         *///?}
+        // Wrap fishing-rod cast predicates so villagers show the "cast"
+        // model variant while their hook is in the water. Safe to call
+        // every reconnect — the wrapper is idempotent.
+        FishingRodCastPredicates.registerOnce();
     }
 
     //? if neoforge {
