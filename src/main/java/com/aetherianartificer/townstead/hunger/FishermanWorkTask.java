@@ -2,6 +2,11 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.dock.Dock;
+import com.aetherianartificer.townstead.dock.DockBerthClaims;
+import com.aetherianartificer.townstead.dock.DockBuildingSync;
+import com.aetherianartificer.townstead.dock.DockScanner;
+import com.aetherianartificer.townstead.recognition.RecognitionEffects;
 import com.aetherianartificer.townstead.ai.work.WorkMovement;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
@@ -107,6 +112,15 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int BITE_MIN_TICKS = 200;
     private static final int BITE_RANDOM_TICKS = 700;
     private static final int BITE_LURE_REDUCTION_TICKS = 100;
+    // Pier (tier 2+) shortens the bite wait and its minimum floor by 20%.
+    // Scaling the floor in lockstep keeps the low end of the range meaningful —
+    // otherwise short rolls would just clip at BITE_MIN_TICKS and the player
+    // wouldn't feel the bonus when lure was low.
+    private static final int PIER_BITE_SPEED_PCT = 80;
+    // Wharf (tier 3) rolls the fishing loot table a second time with this
+    // probability per reel. Merged into the villager's inventory like the
+    // primary catch; the rod is NOT damaged extra.
+    private static final float WHARF_DOUBLE_CATCH_CHANCE = 0.15F;
     // Last stretch of the wait: nibble cue plays, villager leans in.
     private static final int NIBBLE_LEAD_TICKS = 30;
     // Ambient micro-actions while waiting: subtle look offsets so the villager
@@ -148,6 +162,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private long phaseEnteredTick;
     private @Nullable BlockPos stationAnchor;
     private @Nullable FishingWaterIndex.FishingSpot currentWaterSpot;
+    // Dock detected around the barrel on the most recent water-spot acquisition.
+    // Drives the tier bonus applied during spawnHook: tier 2 adds +1 Luck of the Sea,
+    // tier 3 adds +1 Luck and +1 Lure — but only when the chosen water spot is
+    // inside the dock's bounds (i.e., the villager is actually casting from the deck).
+    private @Nullable Dock currentDock;
     private long biteDeadline = Long.MAX_VALUE;
     private long nextCastReadyTick;
     private @Nullable WeakReference<FishingHook> currentHook;
@@ -207,6 +226,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         phaseEnteredTick = gameTime;
         stationAnchor = townstead$resolveBarrelAnchor(level, villager);
         currentWaterSpot = null;
+        currentDock = null;
         biteDeadline = Long.MAX_VALUE;
         nextCastReadyTick = 0L;
         currentHook = null;
@@ -237,6 +257,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         discardHook(level);
         releaseCurrentWaterSpot(level, villager);
         phase = Phase.IDLE;
+        currentDock = null;
         currentRod = null;
         biteDeadline = Long.MAX_VALUE;
         nextCastReadyTick = 0L;
@@ -507,13 +528,19 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 net.minecraft.sounds.SoundSource.NEUTRAL,
                 0.5F, 0.4F / (level.random.nextFloat() * 0.4F + 0.8F));
 
-        int lure = townstead$fishingSpeedLevel(level, currentRod);
+        int lure = townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus();
         int wait = BITE_MIN_TICKS + level.random.nextInt(Math.max(1, BITE_RANDOM_TICKS))
                 - lure * BITE_LURE_REDUCTION_TICKS;
-        biteDeadline = gameTime + Math.max(BITE_MIN_TICKS, wait);
+        int floor = BITE_MIN_TICKS;
+        if (townstead$dockBiteSpeedActive()) {
+            wait = wait * PIER_BITE_SPEED_PCT / 100;
+            floor = BITE_MIN_TICKS * PIER_BITE_SPEED_PCT / 100;
+        }
+        biteDeadline = gameTime + Math.max(floor, wait);
         nibbleTriggered = false;
         nextAmbientLookTick = gameTime + AMBIENT_LOOK_INTERVAL_TICKS;
         nextAmbientGlanceTick = gameTime + AMBIENT_GLANCE_INTERVAL_TICKS;
+        townstead$maybeAnnounceFirstDockUse(level, villager);
         enterPhase(Phase.WAIT_FOR_BITE, gameTime);
     }
 
@@ -555,8 +582,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         // the owner-hand check.
         fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, townstead$vanillaRodProxy());
 
-        int luck = townstead$fishingLuckLevel(level, currentRod);
-        int lure = townstead$fishingSpeedLevel(level, currentRod);
+        int luck = townstead$fishingLuckLevel(level, currentRod) + townstead$dockLuckBonus();
+        int lure = townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus();
 
         // Vanilla constructor places the hook 0.3 blocks forward of the
         // FakePlayer at eye height and applies the normalized look-vector
@@ -801,19 +828,14 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 0.5F, 0.4F / (level.random.nextFloat() * 0.4F + 0.8F));
 
         List<ItemStack> loot = rollFishingLoot(level, hook, villager, rodCopy, origin);
+        townstead$depositFishingLoot(level, villager, loot);
 
-        if (!loot.isEmpty()) {
-            SimpleContainer inv = villager.getInventory();
-            for (ItemStack item : loot) {
-                if (item == null || item.isEmpty()) continue;
-                ItemStack copy = item.copy();
-                ItemStack remainder = inv.addItem(copy);
-                if (!remainder.isEmpty() && stationAnchor != null) {
-                    NearbyItemSources.insertIntoNearbyStorage(
-                            level, villager, remainder,
-                            STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL,
-                            stationAnchor);
-                }
+        if (townstead$dockDoubleCatchTriggers(level)) {
+            List<ItemStack> bonus = rollFishingLoot(level, hook, villager, rodCopy, origin);
+            townstead$depositFishingLoot(level, villager, bonus);
+            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+                LOGGER.info("[Fisherman] wharf double-catch (tier {}) yielded {} extra item(s)",
+                        currentDock.tier(), bonus.size());
             }
         }
 
@@ -989,25 +1011,53 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
     private boolean acquireUnclaimedWaterSpot(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null) return false;
+        long untilTick = gameTime + MAX_DURATION + 20L;
+        Dock detected = DockScanner.scan(level, stationAnchor);
+        if (detected != null) {
+            // Surface the dock in MCA's blueprint by injecting a synthetic
+            // Building into the nearest village. Idempotent: sync() short-
+            // circuits when tier is unchanged and no stale overlaps linger.
+            DockBuildingSync.sync(level, detected);
+        }
+        Dock claimedDock = null;
+        if (detected != null && DockBerthClaims.tryClaim(level, detected, villager.getUUID(), untilTick)) {
+            claimedDock = detected;
+        }
+        // Overflow fishermen (berth cap hit) fall back to the non-preferred water
+        // search so they don't crowd the deck with no bonus to show for it.
         FishingWaterIndex.FishingSpot spot = FishingWaterIndex.availableSpot(
                 level, villager, stationAnchor,
                 townstead$waterSearchRadius(),
                 WATER_VERTICAL_RADIUS_DOWN,
                 WATER_VERTICAL_RADIUS_UP,
-                townstead$waterFallbackRadius());
-        if (spot == null) return false;
-        long untilTick = gameTime + MAX_DURATION + 20L;
+                townstead$waterFallbackRadius(),
+                claimedDock == null ? null : claimedDock.bounds());
+        if (spot == null) {
+            if (claimedDock != null) {
+                DockBerthClaims.release(level, claimedDock, villager.getUUID());
+            }
+            return false;
+        }
         if (!FishingSpotClaims.tryClaim(level, villager.getUUID(), spot.waterPos(), untilTick)) {
+            if (claimedDock != null) {
+                DockBerthClaims.release(level, claimedDock, villager.getUUID());
+            }
             return false;
         }
         currentWaterSpot = spot;
+        currentDock = claimedDock;
         return true;
     }
 
     private void releaseCurrentWaterSpot(ServerLevel level, VillagerEntityMCA villager) {
-        if (currentWaterSpot == null) return;
-        FishingSpotClaims.release(level, villager.getUUID(), currentWaterSpot.waterPos());
-        currentWaterSpot = null;
+        if (currentWaterSpot != null) {
+            FishingSpotClaims.release(level, villager.getUUID(), currentWaterSpot.waterPos());
+            currentWaterSpot = null;
+        }
+        if (currentDock != null) {
+            DockBerthClaims.release(level, currentDock, villager.getUUID());
+            currentDock = null;
+        }
     }
 
     private @Nullable BlockPos townstead$resolveBarrelAnchor(ServerLevel level, VillagerEntityMCA villager) {
@@ -1082,6 +1132,44 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         *///?}
     }
 
+    /**
+     * Whether the villager is actively casting from inside a dock's bounds.
+     * All dock-tier bonuses (luck, lure, bite speed, double-catch) gate on
+     * this — a fisherman who fell back to a shoreline spot because the dock
+     * was crowded or unavailable gets none.
+     */
+    private boolean townstead$dockBonusActive() {
+        return currentDock != null
+                && currentWaterSpot != null
+                && currentDock.contains(currentWaterSpot.waterPos());
+    }
+
+    /** Pier (tier 2) and Wharf (tier 3) each add +1 to Luck of the Sea. */
+    private int townstead$dockLuckBonus() {
+        return townstead$dockBonusActive() && currentDock.tier() >= 2 ? 1 : 0;
+    }
+
+    /** Wharf (tier 3) adds +1 Lure on top of any Pier bonus. */
+    private int townstead$dockLureBonus() {
+        return townstead$dockBonusActive() && currentDock.tier() >= 3 ? 1 : 0;
+    }
+
+    /** Pier (tier 2) and above: bite wait scales to {@link #PIER_BITE_SPEED_PCT}%. */
+    private boolean townstead$dockBiteSpeedActive() {
+        return townstead$dockBonusActive() && currentDock.tier() >= 2;
+    }
+
+    /**
+     * Wharf (tier 3): chance per reel to pull a bonus loot roll. Uses the
+     * level's shared random so nothing distinguishes it from any other
+     * fishing-rng tick.
+     */
+    private boolean townstead$dockDoubleCatchTriggers(ServerLevel level) {
+        return townstead$dockBonusActive()
+                && currentDock.tier() >= 3
+                && level.random.nextFloat() < WHARF_DOUBLE_CATCH_CHANCE;
+    }
+
     private static int townstead$fishingSpeedLevel(ServerLevel level, ItemStack rod) {
         if (rod == null || rod.isEmpty()) return 0;
         //? if >=1.21 {
@@ -1091,6 +1179,28 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         //?} else {
         /*return EnchantmentHelper.getItemEnchantmentLevel(Enchantments.FISHING_SPEED, rod);
         *///?}
+    }
+
+    /**
+     * Move rolled fishing loot into the villager's inventory, spilling overflow
+     * into nearby storage (via the existing station-anchor fallback) when the
+     * inventory is full. Extracted so the Wharf double-catch path can reuse
+     * the same deposit logic without duplicating the spill handler.
+     */
+    private void townstead$depositFishingLoot(ServerLevel level, VillagerEntityMCA villager, List<ItemStack> loot) {
+        if (loot.isEmpty()) return;
+        SimpleContainer inv = villager.getInventory();
+        for (ItemStack item : loot) {
+            if (item == null || item.isEmpty()) continue;
+            ItemStack copy = item.copy();
+            ItemStack remainder = inv.addItem(copy);
+            if (!remainder.isEmpty() && stationAnchor != null) {
+                NearbyItemSources.insertIntoNearbyStorage(
+                        level, villager, remainder,
+                        STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL,
+                        stationAnchor);
+            }
+        }
     }
 
     private static List<ItemStack> rollFishingLoot(ServerLevel level, @Nullable FishingHook hook,
@@ -1162,14 +1272,15 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             return;
         }
 
-        String key = switch (blockedReason) {
-            case NO_ROD -> "dialogue.chat.fisherman_request.no_rod/" + (1 + level.random.nextInt(6));
-            case NO_WATER -> "dialogue.chat.fisherman_request.no_water/" + (1 + level.random.nextInt(6));
-            case NO_STORAGE -> "dialogue.chat.fisherman_request.no_storage/" + (1 + level.random.nextInt(4));
-            case UNREACHABLE -> "dialogue.chat.fisherman_request.unreachable/" + (1 + level.random.nextInt(4));
+        String state = switch (blockedReason) {
+            case NO_ROD -> "no_rod";
+            case NO_WATER -> "no_water";
+            case NO_STORAGE -> "no_storage";
+            case UNREACHABLE -> "unreachable";
             case NO_BARREL, NONE -> null;
         };
-        if (key == null) return;
+        if (state == null) return;
+        String key = FishermanRequestDialogue.pickKey(villager, state, level.random);
 
         villager.sendChatToAllAround(key);
         villager.getLongTermMemory().remember("townstead.fisherman_request.any");
@@ -1177,6 +1288,34 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
         int interval = Math.max(200, TownsteadConfig.FISHERMAN_REQUEST_INTERVAL_TICKS.get());
         nextRequestTick = gameTime + interval;
+    }
+
+    /**
+     * Key under which each villager records that they've acknowledged fishing
+     * from a dock at least once. Persisted forever via MCA's LongTermMemory,
+     * which round-trips through NBT — survives save/load so the chat line
+     * never fires twice for the same villager.
+     */
+    private static final String MEMORY_FIRST_DOCK_USE = "townstead.fisherman_dock_first_use";
+
+    /**
+     * One-shot "first time ever" chat on successful cast from inside a dock.
+     * Gated by {@link #townstead$dockBonusActive} so shoreline fallbacks don't
+     * consume the milestone, and by the request-chat config + player-proximity
+     * check so we don't send translation keys into an empty scene.
+     */
+    private void townstead$maybeAnnounceFirstDockUse(ServerLevel level, VillagerEntityMCA villager) {
+        if (!TownsteadConfig.ENABLE_FISHERMAN_REQUEST_CHAT.get()) return;
+        if (!townstead$dockBonusActive()) return;
+        if (villager.getLongTermMemory().hasMemory(MEMORY_FIRST_DOCK_USE)) return;
+        if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
+        String key = FishermanRequestDialogue.pickKey(villager, "dock_first_use", level.random);
+        villager.sendChatToAllAround(key);
+        villager.getLongTermMemory().remember(MEMORY_FIRST_DOCK_USE);
+        // Small, personal ack effect on the villager — MAJOR/GRAND are reserved
+        // for structural dock milestones and fire from DockScanner instead.
+        RecognitionEffects.play(level, villager.position().add(0, 1.0, 0),
+                RecognitionEffects.Tier.MINOR);
     }
 
     // ── Debug ──
@@ -1209,6 +1348,16 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         int invNonRod = countNonRodItems(villager.getInventory());
         int invThreshold = Math.max(1, TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD.get());
         String invSummary = townstead$summarizeInventory(villager.getInventory());
+        String dockInfo;
+        if (currentDock == null) {
+            dockInfo = "none";
+        } else {
+            boolean inBounds = currentWaterSpot != null && currentDock.contains(currentWaterSpot.waterPos());
+            int occupancy = DockBerthClaims.occupancy(level, currentDock);
+            dockInfo = "t" + currentDock.tier() + "(" + currentDock.plankCount() + "p)"
+                    + (inBounds ? "*" : "")
+                    + "[" + occupancy + "/" + currentDock.tier() + "]";
+        }
         player.sendSystemMessage(Component.literal("[FishermanDBG:" + name + "#" + id + "] phase=" + phase.name()
                 + " anchor=" + anchor
                 + " target=" + (target == null ? "none" : target.describe())
@@ -1216,6 +1365,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 + " rod=" + (currentRod == null ? "none" : (currentRod.getDamageValue() + "/" + currentRod.getMaxDamage()))
                 + " site=" + (site == null ? "none" : site.describe())
                 + " hook=" + hookInfo
+                + " dock=" + dockInfo
                 + " inv=" + invNonRod + "/" + invThreshold + " (" + invSummary + ")"
                 + " nav=" + navSnapshot.snapshotRebuilds() + "/" + navSnapshot.pathAttempts()
                 + "/" + navSnapshot.pathSuccesses() + "/" + navSnapshot.pathFailures()));

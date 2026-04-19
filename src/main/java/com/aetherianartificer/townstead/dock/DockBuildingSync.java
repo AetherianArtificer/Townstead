@@ -1,0 +1,191 @@
+package com.aetherianartificer.townstead.dock;
+
+import com.aetherianartificer.townstead.Townstead;
+import net.conczin.mca.server.world.data.Building;
+import net.conczin.mca.server.world.data.Village;
+import net.conczin.mca.server.world.data.VillageManager;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Injects a detected {@link Dock} into its nearest {@link Village} as a
+ * synthetic {@link Building}, so the dock appears in MCA's blueprint UI
+ * alongside normal buildings. Idempotent: repeated calls for the same dock
+ * short-circuit unless the tier has changed.
+ *
+ * Lifecycle interaction with MCA:
+ *  - Building type set to {@code dock_l{tier}} ({@link #buildingNbt}),
+ *    {@code isTypeForced = true} so {@code determineType()} won't reassign
+ *    the type when block counts drift.
+ *  - The companion mixin {@code BuildingValidateOpenAirMixin} short-circuits
+ *    {@code validateBuilding} for dock types so MCA's flood-fill doesn't
+ *    wipe our open-air building when a nearby block change triggers re-scan.
+ *  - Building ID is a stable negative hash of the dock's bounds min-corner,
+ *    keeping it out of MCA's positive-incrementing ID namespace. On world
+ *    reload the Building is restored via NBT, and subsequent sync calls find
+ *    it by ID and no-op unless tier has changed.
+ *
+ * Plank positions across the dock footprint are seeded into the building's
+ * blocks map grouped by specific block id (oak_planks, birch_planks, etc.),
+ * so {@code validateBlocks} can correctly prune entries when planks are
+ * broken. If all tracked blocks disappear, MCA removes the building.
+ */
+public final class DockBuildingSync {
+    private static final Logger LOG = LoggerFactory.getLogger(Townstead.MOD_ID + "/DockBuildingSync");
+
+    private DockBuildingSync() {}
+
+    /**
+     * Ensure a Building entry representing {@code dock} exists in its nearest
+     * village, at the correct tier. Returns true if the village was modified.
+     */
+    public static boolean sync(ServerLevel level, Dock dock) {
+        if (level == null || dock == null) return false;
+        BoundingBox bb = dock.bounds();
+        BlockPos center = new BlockPos(
+                (bb.minX() + bb.maxX()) / 2,
+                bb.minY(),
+                (bb.minZ() + bb.maxZ()) / 2);
+        VillageManager manager = VillageManager.get(level);
+        Optional<Village> villageOpt = manager.findNearestVillage(center, Village.MERGE_MARGIN);
+        if (villageOpt.isEmpty()) {
+            // No hosting village yet. Don't fabricate one — wait for MCA to
+            // establish a village via normal building reports, then the dock
+            // will sync on a subsequent fisherman scan.
+            return false;
+        }
+        Village village = villageOpt.get();
+        String desiredType = "dock_l" + dock.tier();
+        int id = synthIdFor(dock);
+
+        Building existing = village.getBuildings().get(id);
+        boolean purged = purgeOverlappingStaleDocks(village, bb, id);
+        if (existing != null && desiredType.equals(existing.getType()) && !purged) {
+            // Entry already correct and no stale neighbors to clean up.
+            return false;
+        }
+
+        CompoundTag nbt = buildingNbt(level, id, desiredType, dock);
+        Building building = new Building(nbt);
+        village.getBuildings().put(id, building);
+        village.calculateDimensions();
+        village.markDirty();
+        LOG.info("[DockSync] {} {} at [{},{},{}]..[{},{},{}] id={}",
+                existing == null ? "injected" : "updated", desiredType,
+                bb.minX(), bb.minY(), bb.minZ(),
+                bb.maxX(), bb.maxY(), bb.maxZ(), id);
+        return true;
+    }
+
+    /**
+     * Remove any other {@code dock_*} building whose bounds intersect this
+     * dock's footprint. Handles (a) tier-up when a plank expansion shifted
+     * the min-corner and thus the synthetic ID, and (b) dock reshape. Caller
+     * provides {@code selfId} so we don't remove the entry we're about to
+     * update in place.
+     */
+    private static boolean purgeOverlappingStaleDocks(Village village, BoundingBox bb, int selfId) {
+        List<Integer> toRemove = new ArrayList<>();
+        for (Map.Entry<Integer, Building> e : village.getBuildings().entrySet()) {
+            Integer otherId = e.getKey();
+            if (otherId == selfId) continue;
+            Building other = e.getValue();
+            String t = other.getType();
+            if (t == null || !t.startsWith("dock_")) continue;
+            if (boundsIntersect(other, bb)) {
+                toRemove.add(otherId);
+            }
+        }
+        for (int rid : toRemove) village.removeBuilding(rid);
+        return !toRemove.isEmpty();
+    }
+
+    private static boolean boundsIntersect(Building other, BoundingBox bb) {
+        BlockPos op0 = other.getPos0();
+        BlockPos op1 = other.getPos1();
+        return op0.getX() <= bb.maxX() && op1.getX() >= bb.minX()
+                && op0.getY() <= bb.maxY() && op1.getY() >= bb.minY()
+                && op0.getZ() <= bb.maxZ() && op1.getZ() >= bb.minZ();
+    }
+
+    private static CompoundTag buildingNbt(ServerLevel level, int id, String type, Dock dock) {
+        BoundingBox bb = dock.bounds();
+        CompoundTag v = new CompoundTag();
+        v.putInt("id", id);
+        v.putInt("size", dock.plankCount());
+        v.putInt("pos0X", bb.minX());
+        v.putInt("pos0Y", bb.minY());
+        v.putInt("pos0Z", bb.minZ());
+        v.putInt("pos1X", bb.maxX());
+        v.putInt("pos1Y", bb.maxY());
+        v.putInt("pos1Z", bb.maxZ());
+        v.putInt("posX", (bb.minX() + bb.maxX()) / 2);
+        v.putInt("posY", (bb.minY() + bb.maxY()) / 2);
+        v.putInt("posZ", (bb.minZ() + bb.maxZ()) / 2);
+        v.putBoolean("isTypeForced", true);
+        v.putString("type", type);
+        v.putBoolean("strictScan", false);
+        v.put("blocks2", collectPlankBlocksNbt(level, bb));
+        return v;
+    }
+
+    /**
+     * Scan the dock bounds for plank blocks and return a blocks-map NBT
+     * grouped by specific block id. This populates the Building's blocks
+     * map so MCA's {@code validateBlocks} can correctly prune entries when
+     * planks are broken (the Building is then invalidated only once ALL its
+     * planks are gone).
+     */
+    private static CompoundTag collectPlankBlocksNbt(ServerLevel level, BoundingBox bb) {
+        Map<String, List<BlockPos>> byBlockId = new HashMap<>();
+        for (BlockPos p : BlockPos.betweenClosed(
+                new BlockPos(bb.minX(), bb.minY(), bb.minZ()),
+                new BlockPos(bb.maxX(), bb.maxY(), bb.maxZ()))) {
+            BlockState s = level.getBlockState(p);
+            if (!s.is(BlockTags.PLANKS)) continue;
+            ResourceLocation key = BuiltInRegistries.BLOCK.getKey(s.getBlock());
+            byBlockId.computeIfAbsent(key.toString(), k -> new ArrayList<>()).add(p.immutable());
+        }
+        CompoundTag blocks2 = new CompoundTag();
+        for (Map.Entry<String, List<BlockPos>> entry : byBlockId.entrySet()) {
+            ListTag list = new ListTag();
+            for (BlockPos pos : entry.getValue()) {
+                CompoundTag posTag = new CompoundTag();
+                posTag.putInt("x", pos.getX());
+                posTag.putInt("y", pos.getY());
+                posTag.putInt("z", pos.getZ());
+                list.add(posTag);
+            }
+            blocks2.put(entry.getKey(), list);
+        }
+        return blocks2;
+    }
+
+    /**
+     * Stable negative ID derived from the dock's bounds min-corner. Positive
+     * IDs belong to MCA's auto-increment namespace; sign-bit-flipped keeps us
+     * disjoint. Min-corner is stable as long as the plank footprint is, which
+     * is the common case — tier-ups that grow the footprint shift the ID, and
+     * we rely on {@link #purgeOverlappingStaleDocks} to evict the old entry.
+     */
+    private static int synthIdFor(Dock dock) {
+        BoundingBox bb = dock.bounds();
+        int h = (bb.minX() * 31 + bb.minY()) * 31 + bb.minZ();
+        return h | Integer.MIN_VALUE;
+    }
+}

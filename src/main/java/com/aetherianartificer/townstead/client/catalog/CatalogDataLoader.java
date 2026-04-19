@@ -72,7 +72,17 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         GROUPS.sort(Comparator.comparingInt(GroupDef::priority).reversed()
                 .thenComparing(g -> -g.matchPrefix().length()));
 
-        LOGGER.info("Catalog reload: groups={}, building overrides={}", GROUPS.size(), OVERRIDES.size());
+        if (LOGGER.isInfoEnabled()) {
+            StringBuilder groupList = new StringBuilder();
+            for (GroupDef g : GROUPS) {
+                if (groupList.length() > 0) groupList.append(", ");
+                groupList.append(g.id()).append("[label='").append(g.label())
+                        .append("',prefix='").append(g.matchPrefix())
+                        .append("',layout=").append(g.layout()).append("]");
+            }
+            LOGGER.info("Catalog reload: groups={} ({}), building overrides={}",
+                    GROUPS.size(), groupList, OVERRIDES.size());
+        }
     }
 
     private static void loadGroup(String id, JsonObject json) {

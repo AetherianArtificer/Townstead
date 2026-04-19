@@ -1,0 +1,14 @@
+{
+  "color": "ff2a6a90",
+  "visible": true,
+  "priority": 7,
+  "icon": true,
+  "iconU": 242,
+  "iconV": 188,
+  "townsteadNodeItem": "minecraft:oak_chest_boat",
+  "blocks": {
+    "#minecraft:planks": 48,
+    "#minecraft:fences": 12,
+    "minecraft:lantern": 6
+  }
+}

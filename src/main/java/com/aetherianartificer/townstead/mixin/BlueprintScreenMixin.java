@@ -111,10 +111,9 @@ public abstract class BlueprintScreenMixin extends Screen {
     private static final int NAV_BUTTON_STEP = 22;
     @Unique
     private static final int NAV_VISIBLE_ROWS = 6;
-    @Unique
-    private static final String KITCHEN_TYPE_PREFIX = "compat/farmersdelight/kitchen_l";
-    @Unique
-    private static final String CAFE_TYPE_PREFIX = "compat/rusticdelight/cafe_l";
+    // Tiered building type names follow `<family>_l<digits>`. Auto-detection
+    // of the family prefix drives tier layout and group labeling generically
+    // — no per-family hardcoded constants.
     @Unique
     private static final int ADV_WINDOW_MIN_W = 320;
     @Unique
@@ -357,6 +356,11 @@ public abstract class BlueprintScreenMixin extends Screen {
             BlockPos p1 = building.getPos1();
             WidgetUtils.drawRectangle(context, p0.getX(), p0.getZ(), p1.getX(), p1.getZ(), bt.getColor());
 
+            // Item rendering is handled by townstead$drawCompatBuildingIcon
+            // (HEAD-injected on drawBuildingIcon): it resolves the node item
+            // by (iconU, iconV) and cancels MCA's atlas draw. Here we just
+            // call drawBuildingIcon so the inject runs with the right UV, and
+            // it takes over if a node item is configured for this type.
             BlockPos c = building.getCenter();
             drawBuildingIcon(context, MCA_BUILDING_ICONS, c.getX(), c.getZ(), bt.iconU(), bt.iconV());
         }
@@ -1125,10 +1129,8 @@ public abstract class BlueprintScreenMixin extends Screen {
                         && !match.get().tierPrefix().isEmpty()
                         && name.startsWith(match.get().tierPrefix())) {
                     tierPrefix = match.get().tierPrefix();
-                } else if (name.startsWith(KITCHEN_TYPE_PREFIX)) {
-                    tierPrefix = KITCHEN_TYPE_PREFIX;
-                } else if (name.startsWith(CAFE_TYPE_PREFIX)) {
-                    tierPrefix = CAFE_TYPE_PREFIX;
+                } else {
+                    tierPrefix = townstead$autoTierPrefix(name);
                 }
                 int nodeX;
                 int nodeY;
@@ -1183,9 +1185,11 @@ public abstract class BlueprintScreenMixin extends Screen {
             if ("tiered".equals(g.layout()) && !g.tierPrefix().isEmpty())
                 tierPrefixes.add(g.tierPrefix());
         }
-        if (tierPrefixes.isEmpty()) {
-            tierPrefixes.add(KITCHEN_TYPE_PREFIX);
-            tierPrefixes.add(CAFE_TYPE_PREFIX);
+        // Auto-detect additional tier prefixes from node names. Handles any
+        // <family>_lN building type without needing an explicit group JSON.
+        for (NodeData node : townstead$catalogNodes) {
+            String auto = townstead$autoTierPrefix(node.type().name());
+            if (auto != null) tierPrefixes.add(auto);
         }
         for (String prefix : tierPrefixes) {
             for (int tier = 1; tier < 5; tier++) {
@@ -1321,7 +1325,12 @@ public abstract class BlueprintScreenMixin extends Screen {
         float iconScale = Math.max(0.55f, (float) townstead$catalogZoom);
         int centerX = screenX + nodeW / 2;
         int centerY = screenY + nodeH / 2;
-        if (!type.name().startsWith("compat/")) {
+        // Prefer the item-icon path whenever a townsteadNodeItem is declared,
+        // regardless of whether the type lives under compat/ or a root-level
+        // namespace (e.g., dock_l1). Only fall back to the MCA atlas sprite
+        // when no node item is configured.
+        Optional<ResourceLocation> nodeItem = townstead$nodeItemForType(type.name());
+        if (nodeItem.isEmpty()) {
             context.pose().pushPose();
             context.pose().translate(centerX, centerY, 0);
             context.pose().scale(iconScale, iconScale, 1.0f);
@@ -1375,6 +1384,19 @@ public abstract class BlueprintScreenMixin extends Screen {
                 com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.matchGroup(name);
         if (match.isPresent())
             return match.get().label();
+        // Auto-label derived from the tier family prefix, so any `<family>_lN`
+        // building types cluster under a "<Family>" heading even if no catalog
+        // group JSON is loaded. Prettier variants ("Docks" vs. "Dock", etc.)
+        // still come from an explicit group JSON when one is provided.
+        String autoTier = townstead$autoTierPrefix(name);
+        if (autoTier != null) {
+            String family = autoTier.substring(0, autoTier.length() - 2); // strip trailing "_l"
+            int lastSlash = family.lastIndexOf('/');
+            String leaf = lastSlash >= 0 ? family.substring(lastSlash + 1) : family;
+            if (!leaf.isEmpty()) {
+                return leaf.substring(0, 1).toUpperCase(Locale.ROOT) + leaf.substring(1);
+            }
+        }
         if (!name.startsWith("compat/"))
             return "Core";
         String[] parts = name.split("/");
@@ -1382,6 +1404,28 @@ public abstract class BlueprintScreenMixin extends Screen {
             return "Compat";
         String mod = parts[1];
         return mod.substring(0, 1).toUpperCase(Locale.ROOT) + mod.substring(1);
+    }
+
+    /**
+     * Return the tier family prefix for a building type name of the form
+     * {@code <family>_l<digits>}, or null if the name doesn't follow the
+     * tiered convention. The returned prefix includes the trailing "_l"
+     * so it can be passed directly to the tier-layout math that does
+     * {@code name.substring(prefix.length())}.
+     *
+     * Examples:
+     *   dock_l1                                   -> "dock_l"
+     *   compat/farmersdelight/kitchen_l3          -> "compat/farmersdelight/kitchen_l"
+     *   house, graveyard, compat/x/y              -> null
+     */
+    @Unique
+    private static String townstead$autoTierPrefix(String name) {
+        if (name == null) return null;
+        int idx = name.lastIndexOf("_l");
+        if (idx <= 0 || idx >= name.length() - 2) return null;
+        String suffix = name.substring(idx + 2);
+        if (suffix.isEmpty() || !suffix.chars().allMatch(Character::isDigit)) return null;
+        return name.substring(0, idx + 2);
     }
 
     @Unique

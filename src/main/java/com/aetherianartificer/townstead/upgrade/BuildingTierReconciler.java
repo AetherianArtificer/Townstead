@@ -37,6 +37,12 @@ public final class BuildingTierReconciler {
         TierRef ref = parseTierRef(currentType);
         if (ref == null) return;
 
+        // Docks own their own feature-based tier evaluation in DockScanner
+        // (lights, pillars, deep water, cargo barrels, fishing-station set).
+        // Reconciling by simple block counts here would override that with a
+        // weaker answer.
+        if ("dock".equals(ref.prefix())) return;
+
         LOG.info("[Reconciler] Building '{}' forced={}", currentType, building.isTypeForced());
         if (!building.isTypeForced()) return;
 

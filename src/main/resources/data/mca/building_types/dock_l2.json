@@ -1,0 +1,14 @@
+{
+  "color": "ff3a80a8",
+  "visible": true,
+  "priority": 6,
+  "icon": true,
+  "iconU": 241,
+  "iconV": 188,
+  "townsteadNodeItem": "minecraft:birch_boat",
+  "blocks": {
+    "#minecraft:planks": 24,
+    "#minecraft:fences": 6,
+    "minecraft:lantern": 3
+  }
+}
