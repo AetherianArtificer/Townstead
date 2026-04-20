@@ -1,7 +1,7 @@
 {
   "color": "ff2a6a90",
   "visible": true,
-  "priority": 7,
+  "priority": -1,
   "icon": true,
   "iconU": 242,
   "iconV": 188,

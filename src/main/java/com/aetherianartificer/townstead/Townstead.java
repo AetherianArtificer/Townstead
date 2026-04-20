@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead;
 import com.aetherianartificer.townstead.block.FieldPostBlock;
 import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
 import com.aetherianartificer.townstead.block.FieldPostMenu;
+import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.compat.ConditionalCompatPack;
 import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
@@ -69,6 +70,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.GsonHelper;
@@ -283,6 +285,8 @@ public class Townstead {
         townstead$registerMenuScreens(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
+                townstead$seedBuildingRecognition(e.getServer()));
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) ->
@@ -314,6 +318,8 @@ public class Townstead {
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
+                townstead$seedBuildingRecognition(e.getServer()));
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) ->
@@ -374,6 +380,23 @@ public class Townstead {
     private void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new CatalogDataLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
+    }
+
+    /**
+     * Populate BuildingRecognitionTracker with the current state of every
+     * village on every level so the player's first blueprint action doesn't
+     * get silenced as the "initial snapshot" — pre-existing buildings are
+     * baseline, not news. Subsequent reconciles diff against this seed and
+     * emit events only for real adds/upgrades.
+     */
+    private static void townstead$seedBuildingRecognition(MinecraftServer server) {
+        for (ServerLevel level : server.getAllLevels()) {
+            net.conczin.mca.server.world.data.VillageManager manager =
+                    net.conczin.mca.server.world.data.VillageManager.get(level);
+            for (net.conczin.mca.server.world.data.Village v : manager) {
+                BuildingRecognitionTracker.seed(level, v);
+            }
+        }
     }
 
     private void registerDialogueConditions() {

@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.mixin;
 import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBuildingSync;
 import com.aetherianartificer.townstead.dock.DockScanner;
+import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.upgrade.BuildingTierReconciler;
 import net.conczin.mca.network.c2s.ReportBuildingMessage;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -44,12 +45,15 @@ public abstract class ReportBuildingMessageMixin {
                 ServerLevel level = player.serverLevel();
                 VillageManager.get(level)
                         .findNearestVillage(player)
-                        .ifPresent(v -> BuildingTierReconciler.reconcileVillage(v, level));
-                // Dock detection doesn't ride MCA's flood-fill — open-air piers
-                // fail that validation. Scan from the player's position on any
-                // building-report action and sync if a dock is found. Handles
-                // the "stand on the deck, click Add Building / Refresh" flow.
-                townstead$detectAndSyncDockFromReport(level, player);
+                        .ifPresent(v -> {
+                            BuildingTierReconciler.reconcileVillage(v, level);
+                            // Open-air dock detection happens before the
+                            // recognition diff so fresh docks show up in the
+                            // tracker's "current" snapshot and fire events
+                            // alongside any MCA-side adds/upgrades.
+                            townstead$detectAndSyncDockFromReport(level, player);
+                            BuildingRecognitionTracker.reconcile(level, v);
+                        });
             }
             default -> {
             }

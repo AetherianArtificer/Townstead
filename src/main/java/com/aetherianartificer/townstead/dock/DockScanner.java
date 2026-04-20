@@ -1,9 +1,7 @@
 package com.aetherianartificer.townstead.dock;
 
-import com.aetherianartificer.townstead.recognition.RecognitionEffects;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
@@ -34,20 +32,28 @@ import java.util.concurrent.ConcurrentHashMap;
  *   Tier 1 — Landing
  *     - 9+ horizontally connected {@code #minecraft:planks} at the same Y-level
  *     - 6+ of those planks horizontally adjacent to a water source block
+ *     - 3+ planks with a water source directly below (the deck actually
+ *       extends over water, not a shoreline patio next to it)
+ *     - Perimeter planks mostly unwalled: a solid block above a perimeter
+ *       plank is a house wall, so at most 30% may be walled. Decisive filter
+ *       for plank houses (walls everywhere) vs decks (railings, not walls).
+ *     - 70%+ of planks have open sky (no solid roof within 6 above), so
+ *       boat-house-style fully covered structures don't register as docks
  *
  *   Tier 2 — Pier
  *     - 24+ planks
  *     - 3+ light sources inside the bounds (lanterns or torches)
  *     - 6+ railing blocks inside the bounds ({@code #minecraft:fences} or
  *       {@code #minecraft:walls})
- *     - 2+ pillared planks (a plank with a {@code #minecraft:logs} block in the
- *       column below that's in contact with water — a post holding the deck up)
  *
- *   Tier 3 — Wharf (scaled-up Pier plus deep water)
+ *   Tier 3 — Wharf
  *     - 48+ planks
- *     - 6+ light sources, 12+ railings, 4+ pillared planks
- *     - 2+ planks with a water column ≥3 deep directly underneath (pier
- *       actually reaches over real water, not a shoreline raft)
+ *     - 6+ light sources
+ *     - 12+ railing blocks
+ *
+ * Tier thresholds mirror the dock_l2 / dock_l3 JSON block recipes exactly so
+ * the Add / Refresh / Upgrade paths (which consult DockScanner and the JSON
+ * separately) agree on the tier a given structure qualifies for.
  *
  * Bounds used for scanning are the plank component's axis-aligned box expanded
  * by 1 block horizontally and 2 blocks vertically, so decorations sitting just
@@ -59,32 +65,37 @@ public final class DockScanner {
 
     private static final int T1_MIN_PLANKS = 9;
     private static final int T1_MIN_WATER_TOUCH = 6;
+    // Minimum fraction of deck planks that must have open sky overhead.
+    // 0.7 means a cabin with a small attached porch (majority roofed) still
+    // reads as a cabin, not a dock. A real pier should be mostly open-top.
+    private static final float T1_MIN_OPEN_SKY_RATIO = 0.7f;
+    private static final int ROOF_SCAN_HEIGHT = 6;
+    // A real dock extends OVER water. Require multiple planks with a water
+    // source directly below, not just one — a shoreline house with a single
+    // plank hanging over the edge shouldn't qualify.
+    private static final int T1_MIN_PLANKS_OVER_WATER = 3;
+    // The decisive house-vs-dock filter: on a house the perimeter planks have
+    // walls directly above (the outside walls sitting on the floor). A dock
+    // has at most a few fence/wall railings, which aren't counted as walls.
+    // Reject if more than this fraction of perimeter planks have a wall above.
+    private static final float T1_MAX_WALLED_PERIMETER_RATIO = 0.30f;
 
+    // Tier thresholds — deliberately mirror the dock_l2 / dock_l3 JSON recipes
+    // block-for-block. Keeping DockScanner and the JSON requirements in lockstep
+    // means Add Building, Refresh, and Upgrade Building all reach the same
+    // conclusion about which tier the dock qualifies for.
     private static final int T2_MIN_PLANKS = 24;
     private static final int T2_MIN_LIGHTS = 3;
     private static final int T2_MIN_RAILING = 6;
-    private static final int T2_MIN_PILLARS = 2;
 
     private static final int T3_MIN_PLANKS = 48;
     private static final int T3_MIN_LIGHTS = 6;
     private static final int T3_MIN_RAILING = 12;
-    private static final int T3_MIN_PILLARS = 4;
-    private static final int T3_MIN_DEEP_WATER_REACH = 2;
-    private static final int DEEP_WATER_DEPTH = 3;
-
-    private static final int PILLAR_SCAN_DEPTH = 8;
 
     private static final long CACHE_TTL_TICKS = 200L;
     private static final long EMPTY_CACHE_TTL_TICKS = 400L;
 
     private static final Map<Key, Entry> CACHE = new ConcurrentHashMap<>();
-
-    // Max tier ever observed for a given dock, keyed by dock identity (bounds
-    // min-corner), NOT scan origin — otherwise two scans from different
-    // positions over the same deck would each fire their own tier-up effect.
-    // In-memory only: on server restart the first scan re-fires MAJOR/GRAND
-    // once. Deliberate simplification, no SavedData wiring needed yet.
-    private static final Map<String, Integer> MAX_TIER_SEEN = new ConcurrentHashMap<>();
 
     private DockScanner() {}
 
@@ -114,9 +125,6 @@ public final class DockScanner {
         Dock dock = scanUncached(level, near, horizontalRadius);
         long ttl = dock == null ? EMPTY_CACHE_TTL_TICKS : CACHE_TTL_TICKS;
         CACHE.put(key, new Entry(dock, now + ttl));
-        if (dock != null) {
-            maybeFireRecognitionForTier(level, dock);
-        }
         return dock;
     }
 
@@ -125,44 +133,6 @@ public final class DockScanner {
         String dim = level.dimension().location().toString();
         long posKey = near.asLong();
         CACHE.keySet().removeIf(k -> k.dim.equals(dim) && k.posKey == posKey);
-    }
-
-    /**
-     * Fires a one-shot recognition effect when a dock's tier rises past its
-     * previous high-water mark. First-ever recognition (0 → 1) gets MAJOR;
-     * subsequent tier-ups scale (2 → MAJOR, 3 → GRAND) so reaching Wharf
-     * feels like the peak. Tier drops do nothing — we only celebrate upward.
-     *
-     * Uses {@code playArea} so particles span the full dock footprint, and
-     * announces a translated one-line status message to players nearby so
-     * the event is legible without being in direct sight of the structure.
-     */
-    private static void maybeFireRecognitionForTier(ServerLevel level, Dock dock) {
-        String dockId = dockIdentityKey(level, dock);
-        int prev = MAX_TIER_SEEN.getOrDefault(dockId, 0);
-        if (dock.tier() <= prev) return;
-        MAX_TIER_SEEN.put(dockId, dock.tier());
-        RecognitionEffects.Tier effect = dock.tier() >= 3
-                ? RecognitionEffects.Tier.GRAND
-                : RecognitionEffects.Tier.MAJOR;
-        RecognitionEffects.playArea(level, dock.bounds(), effect);
-        RecognitionEffects.announce(level, dock.centerVec(),
-                Component.translatable("townstead.dock.recognized." + tierKey(dock.tier())),
-                48.0);
-    }
-
-    private static String tierKey(int tier) {
-        return switch (tier) {
-            case 2 -> "pier";
-            case 3 -> "wharf";
-            default -> "landing";
-        };
-    }
-
-    private static String dockIdentityKey(ServerLevel level, Dock dock) {
-        BoundingBox bb = dock.bounds();
-        return level.dimension().location().toString()
-                + "|" + bb.minX() + "," + bb.minY() + "," + bb.minZ();
     }
 
     private static @Nullable Dock scanUncached(ServerLevel level, BlockPos near, int horizontalRadius) {
@@ -180,6 +150,9 @@ public final class DockScanner {
         Set<Long> best = largestHorizontalComponent(planks);
         if (best.size() < T1_MIN_PLANKS) return null;
         if (!meetsWaterTouch(level, best, T1_MIN_WATER_TOUCH)) return null;
+        if (!hasLowWalledPerimeter(level, best, T1_MAX_WALLED_PERIMETER_RATIO)) return null;
+        if (!meetsOpenSkyRatio(level, best, T1_MIN_OPEN_SKY_RATIO)) return null;
+        if (countPlanksOverWater(level, best) < T1_MIN_PLANKS_OVER_WATER) return null;
 
         BoundingBox bounds = computeBounds(best);
 
@@ -223,6 +196,101 @@ public final class DockScanner {
         return best;
     }
 
+    /**
+     * Roof rejection. For each plank, look up to {@link #ROOF_SCAN_HEIGHT}
+     * blocks above for anything that reads as a ceiling (planks, logs, stone,
+     * slabs, stairs — basically any block with collision that isn't explicit
+     * pier furniture). Fences, walls, lanterns, torches and leaves don't
+     * count as roof, so a post with a hanging lantern over a plank is fine.
+     * A dock qualifies when at least {@code minRatio} of its planks have
+     * clear sky by this definition.
+     */
+    private static boolean meetsOpenSkyRatio(ServerLevel level, Set<Long> deck, float minRatio) {
+        if (deck.isEmpty()) return false;
+        int openCount = 0;
+        for (long k : deck) {
+            BlockPos p = BlockPos.of(k);
+            boolean roofed = false;
+            for (int i = 1; i <= ROOF_SCAN_HEIGHT; i++) {
+                BlockPos above = p.above(i);
+                if (isRoofBlock(level.getBlockState(above), level, above)) {
+                    roofed = true;
+                    break;
+                }
+            }
+            if (!roofed) openCount++;
+        }
+        return (float) openCount / deck.size() >= minRatio;
+    }
+
+    private static boolean isRoofBlock(BlockState state, ServerLevel level, BlockPos pos) {
+        if (state.isAir()) return false;
+        if (state.getFluidState().isSource()) return false;
+        if (state.is(BlockTags.LEAVES)) return false;
+        if (state.is(BlockTags.FENCES)) return false;
+        if (state.is(BlockTags.WALLS)) return false;
+        if (state.is(Blocks.LANTERN) || state.is(Blocks.SOUL_LANTERN)) return false;
+        if (state.is(Blocks.TORCH) || state.is(Blocks.WALL_TORCH)
+                || state.is(Blocks.SOUL_TORCH) || state.is(Blocks.SOUL_WALL_TORCH)) return false;
+        // Anything else with a non-empty collision shape is treated as a
+        // ceiling — covers full blocks, slabs, stairs, half-blocks, etc.
+        return !state.getCollisionShape(level, pos).isEmpty();
+    }
+
+    /**
+     * The decisive house-vs-dock test. A perimeter plank is one with at least
+     * one horizontal neighbor that isn't itself in the plank component — the
+     * outer ring of the deck footprint. On a house, each perimeter plank has
+     * an outside wall sitting directly on it ({@link #isRoofBlock} returns
+     * true for solid structural blocks, excluding fence/wall railings and
+     * pier furniture). On a dock, perimeter planks have open air above, or
+     * at most the occasional fence post / lantern — none of which count.
+     *
+     * Accept the component as a dock only when the fraction of perimeter
+     * planks with a wall block directly above stays below {@code maxRatio}.
+     */
+    private static boolean hasLowWalledPerimeter(ServerLevel level, Set<Long> deck, float maxRatio) {
+        int perimeterCount = 0;
+        int walledCount = 0;
+        for (long k : deck) {
+            BlockPos p = BlockPos.of(k);
+            boolean onPerimeter = false;
+            for (Direction d : Direction.Plane.HORIZONTAL) {
+                if (!deck.contains(p.relative(d).asLong())) {
+                    onPerimeter = true;
+                    break;
+                }
+            }
+            if (!onPerimeter) continue;
+            perimeterCount++;
+            BlockPos above = p.above();
+            if (isRoofBlock(level.getBlockState(above), level, above)) {
+                walledCount++;
+            }
+        }
+        if (perimeterCount == 0) return true;
+        return (float) walledCount / perimeterCount <= maxRatio;
+    }
+
+    /**
+     * Count planks with a water source block directly below. These are the
+     * "over the water" parts of the dock. A pier on a shoreline has its
+     * inner-edge planks on dirt and its water-facing planks over water, so
+     * at least one will qualify. Pure land-side plank patches (a house, a
+     * beach patio) have dirt/sand below all their planks — never qualify.
+     */
+    private static int countPlanksOverWater(ServerLevel level, Set<Long> deck) {
+        int count = 0;
+        for (long k : deck) {
+            BlockPos p = BlockPos.of(k);
+            BlockState below = level.getBlockState(p.below());
+            if (below.getFluidState().isSource() && below.getFluidState().is(FluidTags.WATER)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     private static boolean meetsWaterTouch(ServerLevel level, Set<Long> deck, int required) {
         int touching = 0;
         for (long k : deck) {
@@ -261,15 +329,12 @@ public final class DockScanner {
 
     private static boolean pierQualifies(ServerLevel level, Set<Long> deck, BoundingBox bounds) {
         return countLights(level, bounds) >= T2_MIN_LIGHTS
-                && countRailings(level, bounds) >= T2_MIN_RAILING
-                && countPillars(level, deck) >= T2_MIN_PILLARS;
+                && countRailings(level, bounds) >= T2_MIN_RAILING;
     }
 
     private static boolean wharfQualifies(ServerLevel level, Set<Long> deck, BoundingBox bounds) {
         return countLights(level, bounds) >= T3_MIN_LIGHTS
-                && countRailings(level, bounds) >= T3_MIN_RAILING
-                && countPillars(level, deck) >= T3_MIN_PILLARS
-                && countDeepWaterReach(level, deck) >= T3_MIN_DEEP_WATER_REACH;
+                && countRailings(level, bounds) >= T3_MIN_RAILING;
     }
 
     private static int countLights(ServerLevel level, BoundingBox bb) {
@@ -297,57 +362,6 @@ public final class DockScanner {
         for (BlockPos p : boundsPositions(bb)) {
             BlockState s = level.getBlockState(p);
             if (s.is(BlockTags.FENCES) || s.is(BlockTags.WALLS)) count++;
-        }
-        return count;
-    }
-
-    private static int countPillars(ServerLevel level, Set<Long> deck) {
-        int count = 0;
-        for (long k : deck) {
-            if (hasPillar(level, BlockPos.of(k))) count++;
-        }
-        return count;
-    }
-
-    /**
-     * A plank is "pillared" if some block in the column directly below it
-     * ({@code #minecraft:logs}) has a water source horizontally adjacent.
-     * Captures a post sunk into the water column holding up the deck.
-     * Walks down to PILLAR_SCAN_DEPTH past intervening air or water; stops
-     * at non-log solid ground (can't pillar through solid terrain).
-     */
-    private static boolean hasPillar(ServerLevel level, BlockPos plank) {
-        for (int i = 1; i <= PILLAR_SCAN_DEPTH; i++) {
-            BlockPos under = plank.below(i);
-            BlockState us = level.getBlockState(under);
-            if (us.is(BlockTags.LOGS)) {
-                for (Direction d : Direction.Plane.HORIZONTAL) {
-                    BlockState ns = level.getBlockState(under.relative(d));
-                    if (ns.getFluidState().isSource() && ns.getFluidState().is(FluidTags.WATER)) {
-                        return true;
-                    }
-                }
-                continue;
-            }
-            if (us.isAir() || us.getFluidState().is(FluidTags.WATER)) continue;
-            return false;
-        }
-        return false;
-    }
-
-    private static int countDeepWaterReach(ServerLevel level, Set<Long> deck) {
-        int count = 0;
-        for (long k : deck) {
-            BlockPos p = BlockPos.of(k);
-            boolean allWater = true;
-            for (int i = 1; i <= DEEP_WATER_DEPTH; i++) {
-                BlockState s = level.getBlockState(p.below(i));
-                if (!s.getFluidState().isSource() || !s.getFluidState().is(FluidTags.WATER)) {
-                    allWater = false;
-                    break;
-                }
-            }
-            if (allWater) count++;
         }
         return count;
     }

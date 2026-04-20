@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.dock;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -71,12 +72,24 @@ public final class DockBuildingSync {
         }
         Village village = villageOpt.get();
         String desiredType = "dock_l" + dock.tier();
-        int id = synthIdFor(dock);
+        // Prefer the ID of an existing overlapping dock so a dock reshape
+        // (planks added/removed, bounds shifted) updates the same Building
+        // instead of creating a fresh one + orphaning the old. Stable IDs
+        // keep BuildingRecognitionTracker from seeing reshapes as new docks.
+        int id = findOverlappingDockId(village, bb).orElseGet(() -> synthIdFor(dock));
 
         Building existing = village.getBuildings().get(id);
         boolean purged = purgeOverlappingStaleDocks(village, bb, id);
         if (existing != null && desiredType.equals(existing.getType()) && !purged) {
-            // Entry already correct and no stale neighbors to clean up.
+            return false;
+        }
+        // Don't let an auto-scan downgrade a dock. If a transient scan result
+        // comes back at a lower tier than the existing entry (e.g., the player
+        // is clicking Refresh just outside the deck, so some lanterns fall
+        // outside the scan box), keep the existing tier. Real destruction of
+        // planks pushes the dock below tier 1 and the Building validates to
+        // TOO_SMALL via the open-air mixin, which removes it properly.
+        if (existing != null && tierOf(existing.getType()) > dock.tier() && !purged) {
             return false;
         }
 
@@ -89,7 +102,36 @@ public final class DockBuildingSync {
                 existing == null ? "injected" : "updated", desiredType,
                 bb.minX(), bb.minY(), bb.minZ(),
                 bb.maxX(), bb.maxY(), bb.maxZ(), id);
+        // Let the generic tracker pick up add/tier-up events and fire the
+        // recognition effects + announcement.
+        BuildingRecognitionTracker.reconcile(level, village);
         return true;
+    }
+
+    /**
+     * Extract the tier number from a {@code dock_lN} type string. Returns 0
+     * for anything that doesn't fit the pattern, so the "don't downgrade"
+     * guard only fires between comparable dock types.
+     */
+    private static int tierOf(String type) {
+        if (type == null || !type.startsWith("dock_l")) return 0;
+        String suffix = type.substring("dock_l".length());
+        if (suffix.isEmpty() || !suffix.chars().allMatch(Character::isDigit)) return 0;
+        try {
+            return Integer.parseInt(suffix);
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    private static Optional<Integer> findOverlappingDockId(Village village, BoundingBox bb) {
+        for (Map.Entry<Integer, Building> e : village.getBuildings().entrySet()) {
+            Building other = e.getValue();
+            String t = other.getType();
+            if (t == null || !t.startsWith("dock_")) continue;
+            if (boundsIntersect(other, bb)) return Optional.of(e.getKey());
+        }
+        return Optional.empty();
     }
 
     /**
