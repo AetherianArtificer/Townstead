@@ -6,6 +6,7 @@
   "iconU": 244,
   "iconV": 180,
   "townsteadNodeItem": "farmersdelight:netherite_knife",
+  "townsteadSpirit": { "pastoral": 25, "commercial": 12 },
   "noBeds": true,
   "blocks": {
     "farmersdelight:stove": 3,

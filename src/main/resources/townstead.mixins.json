@@ -9,6 +9,7 @@
     "FishingHookKeepAliveMixin",
     "compat.farmersdelight.StoveVillagerDamageMixin",
     "compat.mca.PlayerSaveDataWelcomeMixin",
+    "GetVillageRequestMixin",
     "ReportBuildingMessageMixin",
     "TombstoneRevivalMixin",
     "VillagerEatSafetyMixin",

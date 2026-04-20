@@ -10,9 +10,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 //? if neoforge {
-public record VillageEnterTitlePayload(String title, int population) implements CustomPacketPayload {
+public record VillageEnterTitlePayload(String title, int population, String subtitleKey) implements CustomPacketPayload {
 //?} else {
-/*public record VillageEnterTitlePayload(String title, int population) {
+/*public record VillageEnterTitlePayload(String title, int population, String subtitleKey) {
 *///?}
 
     //? if neoforge {
@@ -23,6 +23,7 @@ public record VillageEnterTitlePayload(String title, int population) implements 
             StreamCodec.composite(
                     ByteBufCodecs.STRING_UTF8, VillageEnterTitlePayload::title,
                     ByteBufCodecs.VAR_INT, VillageEnterTitlePayload::population,
+                    ByteBufCodecs.STRING_UTF8, VillageEnterTitlePayload::subtitleKey,
                     VillageEnterTitlePayload::new
             );
 
@@ -42,12 +43,14 @@ public record VillageEnterTitlePayload(String title, int population) implements 
     /*public void write(FriendlyByteBuf buf) {
         buf.writeUtf(title);
         buf.writeVarInt(population);
+        buf.writeUtf(subtitleKey == null ? "" : subtitleKey);
     }
 
     public static VillageEnterTitlePayload read(FriendlyByteBuf buf) {
         String title = buf.readUtf();
         int population = buf.readVarInt();
-        return new VillageEnterTitlePayload(title, population);
+        String subtitleKey = buf.readUtf();
+        return new VillageEnterTitlePayload(title, population, subtitleKey);
     }
     *///?}
 }

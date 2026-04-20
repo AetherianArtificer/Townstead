@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBuildingSync;
 import com.aetherianartificer.townstead.dock.DockScanner;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
+import com.aetherianartificer.townstead.spirit.SpiritReconciler;
 import com.aetherianartificer.townstead.upgrade.BuildingTierReconciler;
 import net.conczin.mca.network.c2s.ReportBuildingMessage;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -53,6 +54,7 @@ public abstract class ReportBuildingMessageMixin {
                             // alongside any MCA-side adds/upgrades.
                             townstead$detectAndSyncDockFromReport(level, player);
                             BuildingRecognitionTracker.reconcile(level, v);
+                            SpiritReconciler.reconcileVillage(level, v);
                         });
             }
             default -> {

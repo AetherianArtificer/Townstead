@@ -6,6 +6,7 @@
   "iconU": 243,
   "iconV": 180,
   "townsteadNodeItem": "farmersdelight:stove",
+  "townsteadSpirit": { "pastoral": 18, "commercial": 9 },
   "noBeds": true,
   "blocks": {
     "farmersdelight:stove": 2,

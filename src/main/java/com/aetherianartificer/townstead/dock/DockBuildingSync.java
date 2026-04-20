@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.dock;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
+import com.aetherianartificer.townstead.spirit.SpiritReconciler;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -105,6 +106,7 @@ public final class DockBuildingSync {
         // Let the generic tracker pick up add/tier-up events and fire the
         // recognition effects + announcement.
         BuildingRecognitionTracker.reconcile(level, village);
+        SpiritReconciler.reconcileVillage(level, village);
         return true;
     }
 

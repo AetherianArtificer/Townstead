@@ -30,8 +30,13 @@ public abstract class PlayerSaveDataWelcomeMixin {
         if (!(sp.level() instanceof ServerLevel level)) return;
 
         int population = village.getResidents(level).size();
+        com.aetherianartificer.townstead.spirit.VillageSpiritCache.Entry entry =
+                com.aetherianartificer.townstead.spirit.VillageSpiritCache.get(level, village.getId());
+        String subtitleKey = entry != null
+                ? entry.readout().translationKey()
+                : "townstead.spirit.readout.settlement";
         VillageEnterTitlePayload payload =
-                new VillageEnterTitlePayload(village.getName(), population);
+                new VillageEnterTitlePayload(village.getName(), population, subtitleKey);
         //? if neoforge {
         PacketDistributor.sendToPlayer(sp, payload);
         //?} else if forge {

@@ -395,6 +395,7 @@ public class Townstead {
                     net.conczin.mca.server.world.data.VillageManager.get(level);
             for (net.conczin.mca.server.world.data.Village v : manager) {
                 BuildingRecognitionTracker.seed(level, v);
+                com.aetherianartificer.townstead.spirit.SpiritReconciler.seed(level, v);
             }
         }
     }
@@ -610,6 +611,11 @@ public class Townstead {
                 this::handleFishermanStatusSync
         );
         registrar.playToClient(
+                com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.TYPE,
+                com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.STREAM_CODEC,
+                this::handleVillageSpiritSync
+        );
+        registrar.playToClient(
                 FishermanHookLinkPayload.TYPE,
                 FishermanHookLinkPayload.STREAM_CODEC,
                 this::handleFishermanHookLink
@@ -705,7 +711,7 @@ public class Townstead {
     private void handleVillageEnterTitle(VillageEnterTitlePayload payload, IPayloadContext context) {
         context.enqueueWork(() ->
                 com.aetherianartificer.townstead.compat.travelerstitles.TravelersTitlesBridge
-                        .displayVillageTitle(payload.title(), payload.population()));
+                        .displayVillageTitle(payload.title(), payload.population(), payload.subtitleKey()));
     }
 
     private void handleHungerSync(HungerSyncPayload payload, IPayloadContext context) {
@@ -740,6 +746,11 @@ public class Townstead {
 
     private void handleFishermanStatusSync(FishermanStatusSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> HungerClientStore.setFishermanBlockedReason(payload.entityId(), payload.blockedReasonId()));
+    }
+
+    private void handleVillageSpiritSync(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload payload,
+                                         IPayloadContext context) {
+        context.enqueueWork(() -> com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.put(payload));
     }
 
     private void handleFishermanHookLink(FishermanHookLinkPayload payload, IPayloadContext context) {

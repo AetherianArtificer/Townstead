@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.client.catalog;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.spirit.BuildingSpiritIndex;
+import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -17,6 +19,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +52,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         synchronized (OVERRIDES) {
             OVERRIDES.clear();
         }
+        BuildingSpiritIndex.clear();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation location = entry.getKey();
@@ -68,6 +72,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         }
 
         scanLegacyBuildingTypes(resourceManager);
+        scanSpiritCompanions(resourceManager);
 
         GROUPS.sort(Comparator.comparingInt(GroupDef::priority).reversed()
                 .thenComparing(g -> -g.matchPrefix().length()));
@@ -80,8 +85,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                         .append("',prefix='").append(g.matchPrefix())
                         .append("',layout=").append(g.layout()).append("]");
             }
-            LOGGER.info("Catalog reload: groups={} ({}), building overrides={}",
-                    GROUPS.size(), groupList, OVERRIDES.size());
+            LOGGER.info("Catalog reload: groups={} ({}), building overrides={}, building-spirits={}",
+                    GROUPS.size(), groupList, OVERRIDES.size(), BuildingSpiritIndex.size());
         }
     }
 
@@ -103,6 +108,10 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         }
         boolean hide = GsonHelper.getAsBoolean(json, "hide", false);
         putOverride(buildingType, new BuildingOverride(nodeItem, hide), true);
+        if (json.has("townsteadSpirit")) {
+            Map<String, Integer> spirit = parseSpiritMap(json.getAsJsonObject("townsteadSpirit"), null);
+            if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
+        }
     }
 
     private static void putOverride(String buildingType, BuildingOverride incoming, boolean preferIncoming) {
@@ -133,17 +142,74 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
             try (InputStream in = entry.getValue().open();
                     InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
                 JsonObject json = GSON.fromJson(reader, JsonObject.class);
-                if (json == null || !json.has("townsteadNodeItem"))
-                    continue;
-                ResourceLocation parsed = ResourceLocation.tryParse(
-                        GsonHelper.getAsString(json, "townsteadNodeItem"));
-                if (parsed == null)
-                    continue;
-                putOverride(buildingType, new BuildingOverride(Optional.of(parsed), false), false);
+                if (json == null) continue;
+                if (json.has("townsteadNodeItem")) {
+                    ResourceLocation parsed = ResourceLocation.tryParse(
+                            GsonHelper.getAsString(json, "townsteadNodeItem"));
+                    if (parsed != null) {
+                        putOverride(buildingType, new BuildingOverride(Optional.of(parsed), false), false);
+                    }
+                }
+                if (json.has("townsteadSpirit")) {
+                    Map<String, Integer> spirit = parseSpiritMap(json.getAsJsonObject("townsteadSpirit"), location);
+                    if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
+                }
             } catch (Exception ex) {
                 LOGGER.debug("Skipped legacy building_type scan for '{}': {}", location, ex.getMessage());
             }
         }
+    }
+
+    /**
+     * Load spirit contributions for vanilla MCA building types via companion
+     * JSONs under {@code data/<ns>/spirit/<building_type>.json}. The path is
+     * namespace-rooted (not nested inside another "townstead/" prefix) so
+     * companion files live at {@code data/townstead/spirit/...} in our jar
+     * and any add-on mod can drop {@code data/<their-ns>/spirit/...} too.
+     */
+    private static void scanSpiritCompanions(ResourceManager resourceManager) {
+        Map<ResourceLocation, Resource> resources = resourceManager.listResources("spirit",
+                id -> id.getPath().endsWith(".json"));
+        for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
+            ResourceLocation location = entry.getKey();
+            String path = location.getPath();
+            if (!path.startsWith("spirit/") || !path.endsWith(".json")) continue;
+            String buildingType = path.substring("spirit/".length(),
+                    path.length() - ".json".length());
+            try (InputStream in = entry.getValue().open();
+                    InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                JsonObject json = GSON.fromJson(reader, JsonObject.class);
+                if (json == null || !json.has("townsteadSpirit")) continue;
+                Map<String, Integer> spirit = parseSpiritMap(json.getAsJsonObject("townsteadSpirit"), location);
+                if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
+            } catch (Exception ex) {
+                LOGGER.debug("Skipped spirit companion scan for '{}': {}", location, ex.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Parse a {@code townsteadSpirit} JSON object into an immutable int-valued
+     * map. Unknown spirit ids warn-log and are dropped. Non-positive values
+     * are dropped silently (a "0" entry is a no-op).
+     */
+    private static Map<String, Integer> parseSpiritMap(JsonObject obj, ResourceLocation source) {
+        if (obj == null || obj.size() == 0) return Map.of();
+        Map<String, Integer> out = new HashMap<>();
+        for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
+            String spiritId = e.getKey();
+            if (!SpiritRegistry.contains(spiritId)) {
+                LOGGER.warn("Unknown spirit id '{}' in {}; ignored", spiritId, source);
+                continue;
+            }
+            try {
+                int pts = e.getValue().getAsInt();
+                if (pts > 0) out.put(spiritId, pts);
+            } catch (Exception ex) {
+                LOGGER.warn("Invalid spirit value for '{}' in {}: {}", spiritId, source, ex.getMessage());
+            }
+        }
+        return out;
     }
 
     public static List<GroupDef> groups() {

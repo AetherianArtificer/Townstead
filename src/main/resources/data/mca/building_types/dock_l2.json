@@ -6,6 +6,7 @@
   "iconU": 241,
   "iconV": 188,
   "townsteadNodeItem": "minecraft:birch_boat",
+  "townsteadSpirit": { "nautical": 10, "industrious": 5 },
   "blocks": {
     "#minecraft:planks": 24,
     "#minecraft:fences": 6,

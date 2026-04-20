@@ -22,10 +22,12 @@ public final class TravelersTitlesBridge {
 
     private TravelersTitlesBridge() {}
 
-    public static void displayVillageTitle(String villageName, int population) {
+    public static void displayVillageTitle(String villageName, int population, String subtitleKey) {
         if (!ensureResolved()) return;
         Component title = Component.literal(villageName);
-        Component subtitle = Component.translatable("townstead.village_title.population", population);
+        Component subtitle = (subtitleKey != null && !subtitleKey.isEmpty())
+                ? Component.translatable(subtitleKey)
+                : Component.translatable("townstead.village_title.population", population);
         try {
             displayTitleHandle.invoke(biomeRenderer, title, subtitle);
         } catch (Throwable t) {

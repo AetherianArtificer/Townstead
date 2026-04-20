@@ -6,6 +6,7 @@
   "iconU": 240,
   "iconV": 188,
   "townsteadNodeItem": "minecraft:oak_boat",
+  "townsteadSpirit": { "nautical": 5 },
   "blocks": {
     "#minecraft:planks": 9
   }

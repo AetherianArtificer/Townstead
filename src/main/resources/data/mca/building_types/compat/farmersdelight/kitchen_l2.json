@@ -6,6 +6,7 @@
   "iconU": 241,
   "iconV": 180,
   "townsteadNodeItem": "farmersdelight:cutting_board",
+  "townsteadSpirit": { "pastoral": 8, "commercial": 4 },
   "noBeds": true,
   "blocks": {
     "#townstead:compat/farmersdelight/kitchen_heat_sources": 1,
