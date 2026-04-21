@@ -1,0 +1,6 @@
+{
+  "label": "Docks",
+  "match_prefix": "dock_l",
+  "layout": "tiered",
+  "priority": 10
+}

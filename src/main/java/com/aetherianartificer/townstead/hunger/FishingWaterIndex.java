@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 import javax.annotation.Nullable;
 import java.util.ArrayDeque;
@@ -69,10 +70,31 @@ public final class FishingWaterIndex {
             int verticalRadiusUp,
             int fallbackHorizontalRadius
     ) {
-        FishingSpot chosen = pickUnclaimed(level, villager, anchor, horizontalRadius, verticalRadiusDown, verticalRadiusUp);
+        return availableSpot(level, villager, anchor, horizontalRadius, verticalRadiusDown,
+                verticalRadiusUp, fallbackHorizontalRadius, null);
+    }
+
+    /**
+     * As {@link #availableSpot}, but biased toward water spots whose
+     * {@code waterPos} falls inside {@code preferred}. If any unclaimed spot
+     * inside the preference box exists, one of those is returned; otherwise
+     * we fall back to any unclaimed spot in range. Used to make fishermen
+     * with a nearby dock prefer casting from the deck.
+     */
+    public static @Nullable FishingSpot availableSpot(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor,
+            int horizontalRadius,
+            int verticalRadiusDown,
+            int verticalRadiusUp,
+            int fallbackHorizontalRadius,
+            @Nullable BoundingBox preferred
+    ) {
+        FishingSpot chosen = pickUnclaimed(level, villager, anchor, horizontalRadius, verticalRadiusDown, verticalRadiusUp, preferred);
         if (chosen != null) return chosen;
         if (fallbackHorizontalRadius > horizontalRadius) {
-            return pickUnclaimed(level, villager, anchor, fallbackHorizontalRadius, verticalRadiusDown, verticalRadiusUp);
+            return pickUnclaimed(level, villager, anchor, fallbackHorizontalRadius, verticalRadiusDown, verticalRadiusUp, preferred);
         }
         return null;
     }
@@ -83,18 +105,31 @@ public final class FishingWaterIndex {
             BlockPos anchor,
             int horizontalRadius,
             int verticalRadiusDown,
-            int verticalRadiusUp
+            int verticalRadiusUp,
+            @Nullable BoundingBox preferred
     ) {
         WaterSnapshot snapshot = getOrBuildSnapshot(level, anchor, horizontalRadius, verticalRadiusDown, verticalRadiusUp);
         if (snapshot == null || snapshot.spots().isEmpty()) return null;
         java.util.UUID uuid = villager.getUUID();
-        List<FishingSpot> unclaimed = new ArrayList<>();
+        List<FishingSpot> preferredPool = new ArrayList<>();
+        List<FishingSpot> fallbackPool = new ArrayList<>();
         for (FishingSpot spot : snapshot.spots()) {
             if (FishingSpotClaims.isClaimedByOther(level, uuid, spot.waterPos())) continue;
-            unclaimed.add(spot);
+            if (preferred != null && insideBounds(preferred, spot.waterPos())) {
+                preferredPool.add(spot);
+            } else {
+                fallbackPool.add(spot);
+            }
         }
-        if (unclaimed.isEmpty()) return null;
-        return unclaimed.get(level.random.nextInt(unclaimed.size()));
+        List<FishingSpot> pool = !preferredPool.isEmpty() ? preferredPool : fallbackPool;
+        if (pool.isEmpty()) return null;
+        return pool.get(level.random.nextInt(pool.size()));
+    }
+
+    private static boolean insideBounds(BoundingBox bb, BlockPos pos) {
+        return pos.getX() >= bb.minX() && pos.getX() <= bb.maxX()
+                && pos.getY() >= bb.minY() && pos.getY() <= bb.maxY()
+                && pos.getZ() >= bb.minZ() && pos.getZ() <= bb.maxZ();
     }
 
     private static @Nullable WaterSnapshot getOrBuildSnapshot(

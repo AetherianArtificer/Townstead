@@ -3,11 +3,13 @@
   "package": "com.aetherianartificer.townstead.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BuildingValidateOpenAirMixin",
     "ChefsDelightProfessionGuardMixin",
     "FarmBlockMixin",
     "FishingHookKeepAliveMixin",
     "compat.farmersdelight.StoveVillagerDamageMixin",
     "compat.mca.PlayerSaveDataWelcomeMixin",
+    "GetVillageRequestMixin",
     "ReportBuildingMessageMixin",
     "TombstoneRevivalMixin",
     "VillagerEatSafetyMixin",

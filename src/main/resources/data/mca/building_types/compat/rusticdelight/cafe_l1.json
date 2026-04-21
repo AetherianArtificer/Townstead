@@ -6,6 +6,7 @@
   "iconU": 240,
   "iconV": 184,
   "townsteadNodeItem": "rusticdelight:coffee_beans",
+  "townsteadSpirit": { "commercial": 5, "pastoral": 2 },
   "noBeds": true,
   "blocks": {
     "farmersdelight:cooking_pot": 1,

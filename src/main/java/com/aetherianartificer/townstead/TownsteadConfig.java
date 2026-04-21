@@ -81,6 +81,11 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue DIALOGUE_REDUCE_MOTION;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
+    public static final ModConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
+    public static final ModConfigSpec.BooleanValue SPIRIT_NARRATION;
+    public static final ModConfigSpec.BooleanValue SPIRIT_LARGER_HIT_TARGETS;
+    public static final ModConfigSpec.BooleanValue SPIRIT_HIGH_CONTRAST;
+    public static final ModConfigSpec.DoubleValue SPIRIT_FONT_SCALE;
     public static final ModConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
     public static final ModConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
@@ -142,6 +147,11 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_REDUCE_MOTION;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
+    public static final ForgeConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
+    public static final ForgeConfigSpec.BooleanValue SPIRIT_NARRATION;
+    public static final ForgeConfigSpec.BooleanValue SPIRIT_LARGER_HIT_TARGETS;
+    public static final ForgeConfigSpec.BooleanValue SPIRIT_HIGH_CONTRAST;
+    public static final ForgeConfigSpec.DoubleValue SPIRIT_FONT_SCALE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
@@ -476,6 +486,26 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.accessibility.disableCameraMovement")
                 .comment("Prevent the camera from rotating to face the villager during dialogue.")
                 .define("disableCameraMovement", false);
+        SPIRIT_COLORBLIND_PATTERNS = clientBuilder
+                .translation("townstead.configuration.accessibility.spiritColorblindPatterns")
+                .comment("Add distinct hatching patterns to Spirit page bars so they can be told apart without color.")
+                .define("spiritColorblindPatterns", false);
+        SPIRIT_NARRATION = clientBuilder
+                .translation("townstead.configuration.accessibility.spiritNarration")
+                .comment("Announce the hovered spirit row through the narrator (e.g., 'Nautical: 10 of 25 points, Dockside').")
+                .define("spiritNarration", false);
+        SPIRIT_LARGER_HIT_TARGETS = clientBuilder
+                .translation("townstead.configuration.accessibility.spiritLargerHitTargets")
+                .comment("Grow Spirit page row heights and bar thickness for easier clicking on touch or low-precision setups.")
+                .define("spiritLargerHitTargets", false);
+        SPIRIT_HIGH_CONTRAST = clientBuilder
+                .translation("townstead.configuration.accessibility.spiritHighContrast")
+                .comment("Use stronger borders and pure black/white text on the Spirit page.")
+                .define("spiritHighContrast", false);
+        SPIRIT_FONT_SCALE = clientBuilder
+                .translation("townstead.configuration.accessibility.spiritFontScale")
+                .comment("Text scale multiplier for the Spirit page (1.0 = default, 1.5 = 50% larger). Respects MC's overall GUI scale.")
+                .defineInRange("spiritFontScale", 1.0, 1.0, 2.0);
         clientBuilder.pop();
 
         CLIENT_SPEC = clientBuilder.build();

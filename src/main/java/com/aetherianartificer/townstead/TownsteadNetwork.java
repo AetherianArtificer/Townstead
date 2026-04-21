@@ -82,6 +82,10 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleButcherStatusSync);
         registerS2C(FishermanStatusSyncPayload.class, FishermanStatusSyncPayload::write, FishermanStatusSyncPayload::read,
                 TownsteadNetwork::handleFishermanStatusSync);
+        registerS2C(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.write(buf, p),
+                com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload::read,
+                TownsteadNetwork::handleVillageSpiritSync);
         registerS2C(FishermanHookLinkPayload.class, FishermanHookLinkPayload::write, FishermanHookLinkPayload::read,
                 TownsteadNetwork::handleFishermanHookLink);
 
@@ -207,6 +211,10 @@ public final class TownsteadNetwork {
 
     private static void handleFishermanStatusSync(FishermanStatusSyncPayload payload) {
         HungerClientStore.setFishermanBlockedReason(payload.entityId(), payload.blockedReasonId());
+    }
+
+    private static void handleVillageSpiritSync(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload payload) {
+        com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.put(payload);
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {
@@ -531,7 +539,7 @@ public final class TownsteadNetwork {
     }
 
     private static void handleVillageEnterTitle(VillageEnterTitlePayload payload) {
-        TravelersTitlesBridge.displayVillageTitle(payload.title(), payload.population());
+        TravelersTitlesBridge.displayVillageTitle(payload.title(), payload.population(), payload.subtitleKey());
     }
 
     private static boolean townstead$professionOwnsJobSite(VillagerProfession holderProfession, VillagerProfession targetProfession) {

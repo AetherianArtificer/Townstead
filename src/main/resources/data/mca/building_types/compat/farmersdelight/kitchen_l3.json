@@ -6,6 +6,7 @@
   "iconU": 242,
   "iconV": 180,
   "townsteadNodeItem": "farmersdelight:cooking_pot",
+  "townsteadSpirit": { "pastoral": 12, "commercial": 6 },
   "noBeds": true,
   "blocks": {
     "#townstead:compat/farmersdelight/kitchen_heat_sources": 2,
