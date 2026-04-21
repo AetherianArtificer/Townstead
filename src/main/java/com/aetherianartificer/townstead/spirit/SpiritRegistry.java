@@ -35,6 +35,11 @@ public final class SpiritRegistry {
         register(new Spirit("industrious", "townstead.spirit.industrious", 0xFFBF8A3A, Items.ANVIL));
         register(new Spirit("commercial",  "townstead.spirit.commercial",  0xFFD9A14A, Items.EMERALD));
         register(new Spirit("tourism",     "townstead.spirit.tourism",     0xFFE85B8A, Items.COMPASS));
+        register(new Spirit("magical",     "townstead.spirit.magical",     0xFFC04AC0, Items.ENCHANTED_BOOK));
+        register(new Spirit("spiritual",   "townstead.spirit.spiritual",   0xFFE8E2C8, Items.TOTEM_OF_UNDYING));
+        register(new Spirit("haunted",     "townstead.spirit.haunted",     0xFF7A4A8A, Items.SKELETON_SKULL));
+        register(new Spirit("mining",      "townstead.spirit.mining",      0xFF8A8A9A, Items.RAW_IRON));
+        register(new Spirit("natural",     "townstead.spirit.natural",     0xFF3E7A4E, Items.OAK_SAPLING));
     }
 
     private static void register(Spirit s) {

@@ -541,6 +541,8 @@ public abstract class BlueprintScreenMixin extends Screen {
             int chipX = detailsTextX;
             int chipMaxRight = detailsX + CATALOG_DETAILS_W - 4;
             int chipH = 11;
+            com.aetherianartificer.townstead.spirit.SpiritRegistry.Spirit hoveredSpirit = null;
+            int hoveredPts = 0;
             for (com.aetherianartificer.townstead.spirit.SpiritRegistry.Spirit s :
                     com.aetherianartificer.townstead.spirit.SpiritRegistry.ordered()) {
                 Integer pts = spiritPts.get(s.id());
@@ -569,9 +571,28 @@ public abstract class BlueprintScreenMixin extends Screen {
                 context.pose().popPose();
                 // "+N" text after the icon, tinted with spirit color.
                 context.drawString(this.font, label, chipX + 12, chipY + 2, s.color(), false);
+                // Capture hover for tooltip rendering after the loop.
+                if (mouseX >= chipX && mouseX < chipX + chipW
+                        && mouseY >= chipY && mouseY < chipY + chipH) {
+                    hoveredSpirit = s;
+                    hoveredPts = pts;
+                }
                 chipX += chipW + 3;
             }
             detailsTextY = chipY + chipH + 3;
+
+            // Tooltip on the hovered chip — spirit name (in its color) + a
+            // terse one-liner clarifying that the +N is per-building.
+            if (hoveredSpirit != null) {
+                java.util.List<net.minecraft.network.chat.Component> tooltip = new java.util.ArrayList<>();
+                tooltip.add(net.minecraft.network.chat.Component.translatable(hoveredSpirit.displayKey())
+                        .withStyle(net.minecraft.network.chat.Style.EMPTY.withColor(
+                                net.minecraft.network.chat.TextColor.fromRgb(hoveredSpirit.color() & 0x00FFFFFF))));
+                tooltip.add(net.minecraft.network.chat.Component.translatable(
+                        "townstead.spirit.chip.tooltip", hoveredPts)
+                        .withStyle(net.minecraft.ChatFormatting.GRAY));
+                context.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
+            }
         }
         String descKey = "buildingType." + selected.name() + ".description";
         String desc = Component.translatable(descKey).getString();
