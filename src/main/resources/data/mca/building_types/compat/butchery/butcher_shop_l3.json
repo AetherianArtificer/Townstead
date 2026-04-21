@@ -1,0 +1,22 @@
+{
+  "color": "ff902020",
+  "visible": true,
+  "priority": 4,
+  "icon": true,
+  "iconU": 242,
+  "iconV": 192,
+  "townsteadNodeItem": "butchery:meat_grinder",
+  "townsteadSpirit": { "pastoral": 12, "industrious": 6 },
+  "blocks": {
+    "#townstead:compat/butchery/butcher_shop_heat_sources": 1,
+    "#butchery:wooden_butchers_table": 1,
+    "#townstead:compat/butchery/butcher_shop_storage": 1,
+    "butchery:basin": 1,
+    "butchery:hook": 1,
+    "#townstead:compat/butchery/butcher_shop_counters": 1,
+    "butchery:meat_grinder": 1,
+    "butchery:skin_rack": 1,
+    "butchery:pestle_and_mortar": 1,
+    "butchery:freezer": 1
+  }
+}

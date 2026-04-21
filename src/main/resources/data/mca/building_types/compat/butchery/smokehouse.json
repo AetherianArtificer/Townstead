@@ -1,0 +1,14 @@
+{
+  "color": "ff8c5a3a",
+  "visible": true,
+  "priority": 2,
+  "icon": true,
+  "iconU": 244,
+  "iconV": 192,
+  "townsteadNodeItem": "minecraft:smoker",
+  "townsteadSpirit": { "pastoral": 4, "industrious": 2 },
+  "blocks": {
+    "#townstead:compat/butchery/butcher_shop_heat_sources": 4,
+    "#townstead:compat/butchery/butcher_shop_storage": 2
+  }
+}

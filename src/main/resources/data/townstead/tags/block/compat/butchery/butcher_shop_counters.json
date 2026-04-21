@@ -1,0 +1,41 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "butchery:oak_counter",
+      "required": false
+    },
+    {
+      "id": "butchery:spruce_counter",
+      "required": false
+    },
+    {
+      "id": "butchery:birch_counter",
+      "required": false
+    },
+    {
+      "id": "butchery:jungle_counter",
+      "required": false
+    },
+    {
+      "id": "butchery:acacia_counter",
+      "required": false
+    },
+    {
+      "id": "butchery:dark_oak_counter",
+      "required": false
+    },
+    {
+      "id": "butchery:mangrove_counter",
+      "required": false
+    },
+    {
+      "id": "butchery:crimson_counter",
+      "required": false
+    },
+    {
+      "id": "butchery:warped_counter",
+      "required": false
+    }
+  ]
+}

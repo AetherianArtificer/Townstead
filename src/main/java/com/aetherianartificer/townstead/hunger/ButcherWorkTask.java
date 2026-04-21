@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.butchery.ButcheryCompat;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
 import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
 import com.aetherianartificer.townstead.ai.work.WorkTarget;
@@ -304,7 +305,21 @@ public class ButcherWorkTask extends ProducerWorkTask {
 
     @Override
     protected void awardProductionXp(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        // Butcher has no profession XP system (task #7 stripped it).
+        // XP only meaningful when Butchery is loaded; it gates the Butchery
+        // trade catalog. Without Butchery there are no Butchery-specific trades
+        // to unlock, so the data layer stays dormant.
+        if (!ButcheryCompat.isLoaded()) return;
+        //? if neoforge {
+        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
+        ButcherProgressData.addXp(data, 1, gameTime);
+        //? if neoforge {
+        villager.setData(Townstead.HUNGER_DATA, data);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", data);
+        *///?}
     }
 
     // ── Hooks ──

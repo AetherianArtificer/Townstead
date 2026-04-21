@@ -1,0 +1,34 @@
+{
+  "name": "townstead.guide.entry.integrations.butchery",
+  "icon": "butchery:cleaver",
+  "category": "townstead:integrations",
+  "sortnum": 5,
+  "flag": "mod:butchery",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.butchery.page1.title",
+      "text": "townstead.guide.entry.integrations.butchery.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.butchery.page2.title",
+      "text": "townstead.guide.entry.integrations.butchery.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.butchery.page3.title",
+      "text": "townstead.guide.entry.integrations.butchery.page3.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.butchery.page4.title",
+      "text": "townstead.guide.entry.integrations.butchery.page4.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.butchery.page5.title",
+      "text": "townstead.guide.entry.integrations.butchery.page5.body"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "color": "ffa85858",
+  "visible": true,
+  "priority": 2,
+  "icon": true,
+  "iconU": 240,
+  "iconV": 192,
+  "townsteadNodeItem": "butchery:metal_butchers_table",
+  "townsteadSpirit": { "pastoral": 4, "industrious": 2 },
+  "blocks": {
+    "#townstead:compat/butchery/butcher_shop_heat_sources": 1,
+    "#butchery:wooden_butchers_table": 1,
+    "#townstead:compat/butchery/butcher_shop_storage": 1
+  }
+}

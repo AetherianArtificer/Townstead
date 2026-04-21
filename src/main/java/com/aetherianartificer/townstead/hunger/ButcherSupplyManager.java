@@ -6,9 +6,13 @@ import net.minecraft.core.BlockPos;
 //? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
 //?}
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -21,6 +25,20 @@ public final class ButcherSupplyManager {
     private static final int SEARCH_RADIUS = 16;
     private static final int VERTICAL_RADIUS = 3;
     private static final int FOOD_RESERVE_COUNT = 4;
+
+    // Cross-loader "cooked meat" tags. Present when Butchery (and other meat
+    // mods) publish them. Absent tags resolve to empty and are harmless.
+    //? if >=1.21 {
+    private static final TagKey<Item> COOKED_MEAT_TAG_C = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("c:cooked_meat"));
+    private static final TagKey<Item> COOKED_MEAT_TAG_FORGE = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("forge:cooked_meat"));
+    //?} else {
+    /*private static final TagKey<Item> COOKED_MEAT_TAG_C = TagKey.create(
+            Registries.ITEM, new ResourceLocation("c", "cooked_meat"));
+    private static final TagKey<Item> COOKED_MEAT_TAG_FORGE = TagKey.create(
+            Registries.ITEM, new ResourceLocation("forge", "cooked_meat"));
+    *///?}
 
     private ButcherSupplyManager() {}
 
@@ -187,13 +205,15 @@ public final class ButcherSupplyManager {
 
     public static boolean isButcherOutput(ItemStack stack) {
         if (stack.isEmpty()) return false;
-        return stack.is(Items.COOKED_BEEF)
+        if (stack.is(Items.COOKED_BEEF)
                 || stack.is(Items.COOKED_PORKCHOP)
                 || stack.is(Items.COOKED_MUTTON)
                 || stack.is(Items.COOKED_CHICKEN)
                 || stack.is(Items.COOKED_RABBIT)
                 || stack.is(Items.COOKED_COD)
-                || stack.is(Items.COOKED_SALMON);
+                || stack.is(Items.COOKED_SALMON)) return true;
+        // Butchery and any other mod publishing the common "cooked meat" tag.
+        return stack.is(COOKED_MEAT_TAG_C) || stack.is(COOKED_MEAT_TAG_FORGE);
     }
 
     public static boolean isValidSmokerInput(ItemStack stack, ServerLevel level) {

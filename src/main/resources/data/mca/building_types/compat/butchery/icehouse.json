@@ -1,0 +1,15 @@
+{
+  "color": "ff6a9ab0",
+  "visible": true,
+  "priority": 2,
+  "icon": true,
+  "iconU": 241,
+  "iconV": 196,
+  "townsteadNodeItem": "butchery:freezer",
+  "townsteadSpirit": { "industrious": 4 },
+  "blocks": {
+    "butchery:freezer": 2,
+    "#townstead:compat/butchery/icehouse_cold_blocks": 8,
+    "#townstead:compat/butchery/butcher_shop_storage": 1
+  }
+}
