@@ -405,7 +405,7 @@
   "buildingType.dock_l1": "Landing",
   "buildingType.dock_l1.description": "A plank deck at the water's edge. A fisherman with a nearby barrel prefers to cast from it.",
   "buildingType.dock_l2": "Pier",
-  "buildingType.dock_l2.description": "A proper pier with lights, railings, and posts sunk into the water. Fishermen cast luckier and bites come faster.",
+  "buildingType.dock_l2.description": "A proper pier with lights, railings, and posts sunk into the water. Fishing here is noticeably more productive.",
   "buildingType.dock_l3": "Wharf",
   "buildingType.dock_l3.description": "A substantial wharf built over deep water, with abundant lanterns, railings, and pillars. Fishermen get better loot, faster bites, and occasional double catches.",
   "townstead.building.established": "%s built!",
