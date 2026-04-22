@@ -1170,6 +1170,10 @@ public class FieldPostScreen extends Screen {
                     drawCellBorder(g, cx, cy, cs, 0xAA44AA44);
                 }
 
+                if (SeedAssignment.AUTO.equals(seedAssignment)) {
+                    drawAutoBadge(g, cx, cy, cs);
+                }
+
                 // Mismatch warning: seed assigned on an incompatible soil type.
                 // Renders a small yellow triangle with an exclamation mark in the top-right corner.
                 if (soilAssignment != null && seedAssignment != null
@@ -1375,7 +1379,7 @@ public class FieldPostScreen extends Screen {
         String soilPlanText = (soilPlanEntry != null && !soilFulfilled)
                 ? Component.translatable("townstead.field_post.tooltip.plan.soil", titleCase(soilPlanEntry.name().toLowerCase())).getString() : null;
         String seedPlanText = null;
-        if (seedPlanEntry != null && !seedFulfilled) {
+        if (seedPlanEntry != null && (!seedFulfilled || SeedAssignment.AUTO.equals(seedPlanEntry))) {
             ToolPaletteList.ToolEntry t = findToolEntry(seedPlanEntry);
             seedPlanText = Component.translatable("townstead.field_post.tooltip.plan.seed", t != null ? t.label : seedPlanEntry).getString();
         }
@@ -1522,6 +1526,22 @@ public class FieldPostScreen extends Screen {
         g.fill(cx, cy + cs - 1, cx + cs, cy + cs, color);
         g.fill(cx, cy + 1, cx + 1, cy + cs - 1, color);
         g.fill(cx + cs - 1, cy + 1, cx + cs, cy + cs - 1, color);
+    }
+
+    private void drawAutoBadge(GuiGraphics g, int cx, int cy, int cs) {
+        int badgeW = Math.max(7, cs / 3);
+        int badgeH = Math.max(6, cs / 4);
+        int bx = cx + cs - badgeW - 1;
+        int by = cy + cs - badgeH - 1;
+        g.fill(bx, by, bx + badgeW, by + badgeH, 0xE0000000);
+        g.fill(bx + 1, by + 1, bx + badgeW - 1, by + badgeH - 1, 0xE055AA55);
+        int ax = bx + Math.max(1, badgeW / 3);
+        int ay = by + 1;
+        int ah = badgeH - 2;
+        g.fill(ax, ay + 1, ax + 1, ay + ah, 0xFFFFFFFF);
+        g.fill(ax + 2, ay + 1, ax + 3, ay + ah, 0xFFFFFFFF);
+        g.fill(ax + 1, ay, ax + 2, ay + 1, 0xFFFFFFFF);
+        g.fill(ax + 1, ay + ah / 2, ax + 2, ay + ah / 2 + 1, 0xFFFFFFFF);
     }
 
     private ToolPaletteList.ToolEntry findToolEntry(String id) {
@@ -1743,6 +1763,9 @@ public class FieldPostScreen extends Screen {
             if (type != null) soilPlan.put(key, type);
         } else {
             seedPlan.put(key, tool.toolId);
+            if (SeedAssignment.AUTO.equals(tool.toolId) || SeedAssignment.isExplicitSeed(tool.toolId)) {
+                soilPlan.putIfAbsent(key, SoilType.FARMLAND);
+            }
         }
         maybeShowMismatchToast(key);
         refreshCounts();
