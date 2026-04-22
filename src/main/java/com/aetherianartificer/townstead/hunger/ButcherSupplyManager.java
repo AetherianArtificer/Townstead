@@ -455,13 +455,20 @@ public final class ButcherSupplyManager {
     }
 
     private static int fuelScore(ItemStack stack) {
-        int score = stack.getCount();
-        if (stack.is(Items.CHARCOAL)) return score + 500;
-        if (stack.is(Items.COAL)) return score + 450;
-        if (stack.is(Items.BLAZE_ROD)) return score + 300;
-        if (stack.is(Items.DRIED_KELP_BLOCK)) return score + 200;
-        if (stack.is(Items.COAL_BLOCK)) return score + 50;
-        return score;
+        // Tiered scoring so traditional fuels (coal family, blaze rod, kelp
+        // block) always beat count-only fuels like animal fats, regardless
+        // of stack size. Count is a within-tier tiebreaker: if the butcher
+        // has multiple coal stacks, pull the fullest one. The previous
+        // "count + small bonus" scheme got beaten by large stacks of
+        // secondary fuels like butchery's animal fat, which the player
+        // would rather save for other uses.
+        int count = stack.getCount();
+        if (stack.is(Items.CHARCOAL)) return 1_000_000 + count;
+        if (stack.is(Items.COAL)) return 900_000 + count;
+        if (stack.is(Items.COAL_BLOCK)) return 800_000 + count;
+        if (stack.is(Items.BLAZE_ROD)) return 500_000 + count;
+        if (stack.is(Items.DRIED_KELP_BLOCK)) return 400_000 + count;
+        return count;
     }
 
     private static int findBestFoodSlot(SimpleContainer inv, boolean excludeButcherOutput) {

@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.butchery.ButcheryCompat;
 import com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask;
+import com.aetherianartificer.townstead.compat.butchery.GrinderWorkTask;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
 import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
 import com.aetherianartificer.townstead.ai.work.WorkTarget;
@@ -69,11 +70,15 @@ public class ButcherWorkTask extends ProducerWorkTask {
     protected boolean isEligibleVillager(ServerLevel level, VillagerEntityMCA villager) {
         VillagerProfession profession = villager.getVillagerData().getProfession();
         if (profession != VillagerProfession.BUTCHER) return false;
-        // Yield the smoker while there's carcass work waiting. Without this,
-        // this task keeps WALK_TARGET held continuously, which blocks the
-        // higher-priority CarcassWorkTask (WALK_TARGET=VALUE_ABSENT) from
-        // ever starting even when a fresh kill is hanging next door.
-        return !CarcassWorkTask.hasPendingWork(level, villager);
+        // Yield the smoker while there's higher-priority carcass OR grinder
+        // work pending. Without this, the smoker keeps WALK_TARGET held
+        // continuously and blocks those tasks (both require
+        // WALK_TARGET=VALUE_ABSENT) from ever starting even when a fresh
+        // kill is hanging next door or the grinder is ready to turn raw
+        // pork into sausages.
+        if (CarcassWorkTask.hasPendingWork(level, villager)) return false;
+        if (GrinderWorkTask.hasPendingWork(level, villager)) return false;
+        return true;
     }
 
     // ── Worksite ──

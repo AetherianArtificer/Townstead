@@ -236,7 +236,10 @@ public class SausageHookTask extends Behavior<VillagerEntityMCA> {
         HangTarget best = null;
         double bestDsq = Double.MAX_VALUE;
 
-        for (ButcheryShopScanner.ShopRef ref : ButcheryShopScanner.carcassCapableShops(level, villager)) {
+        // Display-side shops only. Slaughterhouse hooks are for hanging
+        // carcasses during the kill/drain flow; sausages belong in the
+        // butcher's shop where customers see them.
+        for (ButcheryShopScanner.ShopRef ref : ButcheryShopScanner.butcherShopsForDisplay(level, villager)) {
             Building building = ref.building();
             List<BlockPos> hooks = building.getBlocks().get(HOOK_ID);
             if (hooks == null) continue;

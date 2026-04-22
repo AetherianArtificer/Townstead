@@ -267,6 +267,18 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
         return false;
     }
 
+    /**
+     * True if the villager has an actionable grinder pending anywhere in
+     * their shops. Used by {@link com.aetherianartificer.townstead.hunger.ButcherWorkTask}
+     * to yield the smoker while there's grinder work, so the butcher
+     * prioritizes mince/sausage production over plain smoking.
+     */
+    public static boolean hasPendingWork(ServerLevel level, VillagerEntityMCA villager) {
+        if (!ButcheryCompat.isLoaded()) return false;
+        if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        return findGrinderWithWork(level, villager) != null;
+    }
+
     // ── Scanning / planning ──
 
     private record Plan(Action action, @Nullable GrinderStateMachine.Recipe recipe) {}
@@ -302,6 +314,13 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
      * Cheap read-only plan: "does this grinder have something actionable
      * right now given the villager's current inventory?" Used by the
      * brain's fast start-condition check.
+     *
+     * <p>Counts items already staged in the grinder's ingredient slots
+     * (intestines slot 1, attachment slot 2, blood-bottle slot 3) as
+     * fulfilling the recipe's requirement. Attachment in particular
+     * persists across batches (the mod never shrinks slot 2), so on
+     * second and subsequent sausage batches the butcher doesn't need
+     * another attachment in inventory or storage.
      */
     @Nullable
     private static Plan planReadOnly(ServerLevel level, VillagerEntityMCA villager, BlockPos gp) {
@@ -313,11 +332,11 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
         }
         if (!grinder.getItem(GrinderStateMachine.SLOT_INPUT).isEmpty()) return null;
         SimpleContainer inv = villager.getInventory();
-        // Fully loaded inventory beats "carries input only"; check the
-        // complete-recipe case first so we prefer recipes the villager can
-        // stage end-to-end without any pull.
+        // Fully actionable recipe (inv + staged slots cover everything)
+        // wins over the "just has meat" fallback, so we try the
+        // complete-recipe case first.
         for (GrinderStateMachine.Recipe r : GrinderStateMachine.Recipe.values()) {
-            if (ButcherSupplyManager.hasRecipeInputs(inv, r)) return new Plan(Action.LOAD, r);
+            if (canPrepareRecipe(inv, grinder, r)) return new Plan(Action.LOAD, r);
         }
         // Fallback: villager at least carries the raw meat (likely from
         // their own carcass work). Walking over is still worth it because
@@ -347,7 +366,7 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
         if (!grinder.getItem(GrinderStateMachine.SLOT_INPUT).isEmpty()) return null;
         SimpleContainer inv = villager.getInventory();
         for (GrinderStateMachine.Recipe r : GrinderStateMachine.Recipe.values()) {
-            if (tryPrepareRecipe(level, villager, inv, gp, r)) {
+            if (tryPrepareRecipe(level, villager, inv, grinder, gp, r)) {
                 return new Plan(Action.LOAD, r);
             }
         }
@@ -358,23 +377,58 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
             ServerLevel level,
             VillagerEntityMCA villager,
             SimpleContainer inv,
+            Container grinder,
             BlockPos grinderPos,
             GrinderStateMachine.Recipe recipe
     ) {
-        if (ButcherSupplyManager.hasRecipeInputs(inv, recipe)) return true;
-        // Missing at least one ingredient; try to pull the specific pieces.
+        if (canPrepareRecipe(inv, grinder, recipe)) return true;
+        // Missing at least one ingredient; try to pull only the pieces
+        // that aren't already staged in the grinder or in villager inv.
         if (recipe.requiresCasings) {
-            if (!anyMatches(inv, GrinderStateMachine::isIntestines)
+            if (!hasIntestinesAvailable(inv, grinder)
                     && !ButcherSupplyManager.pullIntestines(level, villager, grinderPos)) return false;
-            if (!anyMatches(inv, GrinderStateMachine::isSausageAttachment)
+            if (!hasAttachmentAvailable(inv, grinder)
                     && !ButcherSupplyManager.pullSausageAttachment(level, villager, grinderPos)) return false;
         }
         if (recipe == GrinderStateMachine.Recipe.BLOOD_SAUSAGE
-                && !anyMatches(inv, GrinderStateMachine::isBloodBottle)
+                && !hasBloodBottleAvailable(inv, grinder)
                 && !ButcherSupplyManager.pullBloodBottle(level, villager, grinderPos)) return false;
         if (!anyMatches(inv, s -> GrinderStateMachine.isInputForRecipe(s, recipe))
                 && !ButcherSupplyManager.pullGrinderInput(level, villager, grinderPos, recipe)) return false;
-        return ButcherSupplyManager.hasRecipeInputs(inv, recipe);
+        return canPrepareRecipe(inv, grinder, recipe);
+    }
+
+    /**
+     * True if every ingredient the recipe needs is either in the
+     * villager's inventory or already staged in the grinder's slot 1/2/3.
+     * Raw meat must come from inventory because slot 0 is always empty at
+     * planning time (we check that precondition upstream).
+     */
+    private static boolean canPrepareRecipe(SimpleContainer inv, Container grinder,
+                                            GrinderStateMachine.Recipe recipe) {
+        if (!anyMatches(inv, s -> GrinderStateMachine.isInputForRecipe(s, recipe))) return false;
+        if (recipe.requiresCasings) {
+            if (!hasIntestinesAvailable(inv, grinder)) return false;
+            if (!hasAttachmentAvailable(inv, grinder)) return false;
+        }
+        if (recipe == GrinderStateMachine.Recipe.BLOOD_SAUSAGE
+                && !hasBloodBottleAvailable(inv, grinder)) return false;
+        return true;
+    }
+
+    private static boolean hasIntestinesAvailable(SimpleContainer inv, Container grinder) {
+        return GrinderStateMachine.isIntestines(grinder.getItem(GrinderStateMachine.SLOT_INTESTINES))
+                || anyMatches(inv, GrinderStateMachine::isIntestines);
+    }
+
+    private static boolean hasAttachmentAvailable(SimpleContainer inv, Container grinder) {
+        return GrinderStateMachine.isSausageAttachment(grinder.getItem(GrinderStateMachine.SLOT_ATTACHMENT))
+                || anyMatches(inv, GrinderStateMachine::isSausageAttachment);
+    }
+
+    private static boolean hasBloodBottleAvailable(SimpleContainer inv, Container grinder) {
+        return GrinderStateMachine.isBloodBottle(grinder.getItem(GrinderStateMachine.SLOT_BLOOD))
+                || anyMatches(inv, GrinderStateMachine::isBloodBottle);
     }
 
     private static boolean anyMatches(SimpleContainer inv,

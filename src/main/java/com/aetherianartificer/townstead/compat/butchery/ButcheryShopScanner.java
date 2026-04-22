@@ -81,6 +81,23 @@ public final class ButcheryShopScanner {
         return out;
     }
 
+    /**
+     * Butcher shops only — the customer-facing side of the operation.
+     * Excludes the slaughterhouse type because kill / drain work belongs
+     * there, while finished-goods display (hung sausages, decorative cuts)
+     * belongs in the shop proper. Tier ≥ 2 so the shop has a hook.
+     */
+    public static List<ShopRef> butcherShopsForDisplay(ServerLevel level, VillagerEntityMCA villager) {
+        List<ShopRef> all = allShops(level, villager);
+        List<ShopRef> out = new ArrayList<>(all.size());
+        for (ShopRef ref : all) {
+            if (ref.tier() < MIN_CARCASS_TIER) continue;
+            if (SLAUGHTERHOUSE_TYPE.equals(ref.building().getType())) continue;
+            out.add(ref);
+        }
+        return out;
+    }
+
     /** Highest-tier butchery-related building in the village, if any. */
     public static Optional<ShopRef> shopFor(ServerLevel level, VillagerEntityMCA villager) {
         List<ShopRef> all = allShops(level, villager);
