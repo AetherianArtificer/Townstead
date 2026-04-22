@@ -146,5 +146,6 @@
   "witty.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Butcher without a cleaver. That's just a guy standing around.</happy>",
   "witty.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Skinning with a cleaver: bold artistic choice. A proper knife would be saner.</happy>",
   "witty.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>A cleaver on iron is aspirational, not practical. Hacksaw, please.</happy>",
-  "witty.dialogue.chat.butcher_request.no_cleaner/1": "<happy>The blood adds character. Still, a sponge would make it less character-building.</happy>"
+  "witty.dialogue.chat.butcher_request.no_cleaner/1": "<happy>The blood adds character. Still, a sponge would make it less character-building.</happy>",
+  "witty.dialogue.chat.butcher_request.no_hammer/1": "<happy>Cracking a skull with bare hands is a party trick, not a career. Hammer, please.</happy>"
 }

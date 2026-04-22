@@ -40,8 +40,9 @@ public final class ButcherToolAcquisitionTicker {
         boolean needsCleaver = !ButcherToolDamage.hasCleaver(villager);
         boolean needsKnife = !ButcherToolDamage.hasKnife(villager);
         boolean needsHacksaw = !ButcherToolDamage.hasHacksaw(villager);
+        boolean needsHammer = !ButcherToolDamage.hasHammer(villager);
         boolean needsCloth = !hasCloth(villager);
-        if (!needsCleaver && !needsKnife && !needsHacksaw && !needsCloth) {
+        if (!needsCleaver && !needsKnife && !needsHacksaw && !needsHammer && !needsCloth) {
             NEXT_PULL_TICK.remove(villager.getUUID());
             return;
         }
@@ -59,6 +60,9 @@ public final class ButcherToolAcquisitionTicker {
         }
         if (needsHacksaw) {
             ButcherSupplyManager.pullHacksaw(level, villager, villager.blockPosition());
+        }
+        if (needsHammer) {
+            ButcherSupplyManager.pullHammer(level, villager, villager.blockPosition());
         }
         if (needsCloth) {
             ButcherSupplyManager.pullCloth(level, villager, villager.blockPosition());

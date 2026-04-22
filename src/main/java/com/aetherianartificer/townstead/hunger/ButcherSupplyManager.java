@@ -165,6 +165,23 @@ public final class ButcherSupplyManager {
     }
 
     /**
+     * Pull a hammer from nearby storage. Used for breaking placed head /
+     * skull blocks into their component material drops.
+     */
+    public static boolean pullHammer(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.tick.WorkToolTicker::isHammer,
+                ButcherSupplyManager::toolScore,
+                anchor
+        );
+    }
+
+    /**
      * Pull a sponge or rag from nearby storage. Prefers already-wet cloths
      * so the butcher can clean right away without a detour to a cauldron
      * or water source.

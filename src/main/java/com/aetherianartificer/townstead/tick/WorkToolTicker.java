@@ -44,6 +44,10 @@ public final class WorkToolTicker {
             Registries.ITEM, ResourceLocation.parse("c:hacksaw"));
     private static final TagKey<Item> HACKSAW_TAG_FORGE = TagKey.create(
             Registries.ITEM, ResourceLocation.parse("forge:hacksaw"));
+    private static final TagKey<Item> HAMMER_TAG_C = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("c:hammer"));
+    private static final TagKey<Item> HAMMER_TAG_FORGE = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("forge:hammer"));
     //?} else {
     /*private static final TagKey<Item> CLEAVER_TAG_C = TagKey.create(
             Registries.ITEM, new ResourceLocation("c", "cleaver"));
@@ -57,6 +61,10 @@ public final class WorkToolTicker {
             Registries.ITEM, new ResourceLocation("c", "hacksaw"));
     private static final TagKey<Item> HACKSAW_TAG_FORGE = TagKey.create(
             Registries.ITEM, new ResourceLocation("forge", "hacksaw"));
+    private static final TagKey<Item> HAMMER_TAG_C = TagKey.create(
+            Registries.ITEM, new ResourceLocation("c", "hammer"));
+    private static final TagKey<Item> HAMMER_TAG_FORGE = TagKey.create(
+            Registries.ITEM, new ResourceLocation("forge", "hammer"));
     *///?}
 
     private static final List<Rule> RULES = List.of(
@@ -66,16 +74,18 @@ public final class WorkToolTicker {
     );
 
     /**
-     * Matches cleavers, skinning knives, hacksaws, and cleaning cloths
-     * (sponge / rag) so the per-stage hand swap (cleaver for most cuts,
-     * knife for skin, hacksaw for golem, cloth for blood cleanup) doesn't
-     * get reverted by the ticker's next pass.
+     * Matches cleavers, skinning knives, hacksaws, hammers, and cleaning
+     * cloths (sponge / rag) so the per-stage hand swap (cleaver for most
+     * cuts, knife for skin, hacksaw for golem, hammer for head breakdown,
+     * cloth for blood cleanup) doesn't get reverted by the ticker's next
+     * pass.
      */
     public static boolean isButcherTool(ItemStack stack) {
         if (stack.isEmpty() || !ButcheryCompat.isLoaded()) return false;
         return stack.is(CLEAVER_TAG_C) || stack.is(CLEAVER_TAG_FORGE)
                 || stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE)
                 || stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE)
+                || stack.is(HAMMER_TAG_C) || stack.is(HAMMER_TAG_FORGE)
                 || com.aetherianartificer.townstead.compat.butchery.SpongeRagHelper.isCloth(stack);
     }
 
@@ -92,6 +102,11 @@ public final class WorkToolTicker {
     public static boolean isHacksaw(ItemStack stack) {
         if (stack.isEmpty()) return false;
         return stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE);
+    }
+
+    public static boolean isHammer(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        return stack.is(HAMMER_TAG_C) || stack.is(HAMMER_TAG_FORGE);
     }
 
     private static final Map<UUID, ItemStack> PREVIOUS_MAIN_HAND = new ConcurrentHashMap<>();

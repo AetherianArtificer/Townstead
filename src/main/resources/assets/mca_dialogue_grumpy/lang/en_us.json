@@ -121,5 +121,6 @@
   "grumpy.dialogue.chat.butcher_request.no_cleaver/1": "<angry>Cleaver. I need a cleaver. How is this complicated?</angry>",
   "grumpy.dialogue.chat.butcher_request.no_skinning_knife/1": "<angry>Skinning knife. For the skin. Keep up.</angry>",
   "grumpy.dialogue.chat.butcher_request.no_hacksaw/1": "<angry>Hacksaw. For the iron one. Obviously.</angry>",
-  "grumpy.dialogue.chat.butcher_request.no_cleaner/1": "<angry>Sponge. Rag. Either. Now.</angry>"
+  "grumpy.dialogue.chat.butcher_request.no_cleaner/1": "<angry>Sponge. Rag. Either. Now.</angry>",
+  "grumpy.dialogue.chat.butcher_request.no_hammer/1": "<angry>Hammer. For the head. Come on.</angry>"
 }

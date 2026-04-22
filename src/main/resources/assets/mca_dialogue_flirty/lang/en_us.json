@@ -122,5 +122,6 @@
   "flirty.dialogue.chat.butcher_request.no_cleaver/1": "<flirty>Give me a cleaver, darling. I'm useless without one.</flirty>",
   "flirty.dialogue.chat.butcher_request.no_skinning_knife/1": "<flirty>Bring me a skinning knife, darling. This hide deserves a gentle touch.</flirty>",
   "flirty.dialogue.chat.butcher_request.no_hacksaw/1": "<flirty>Be a dear and fetch a hacksaw, sweetheart. This one's made of iron.</flirty>",
-  "flirty.dialogue.chat.butcher_request.no_cleaner/1": "<flirty>Fetch me a damp sponge, darling. A lady can't work in all this mess.</flirty>"
+  "flirty.dialogue.chat.butcher_request.no_cleaner/1": "<flirty>Fetch me a damp sponge, darling. A lady can't work in all this mess.</flirty>",
+  "flirty.dialogue.chat.butcher_request.no_hammer/1": "<flirty>Bring me a hammer, sweetheart. I'll show you what I can do with it.</flirty>"
 }

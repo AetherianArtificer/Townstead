@@ -118,5 +118,6 @@
   "playful.dialogue.chat.butcher_request.no_cleaver/1": "<happy>No cleaver? I'd mime it but the meat wouldn't get it.</happy>",
   "playful.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>No skinning knife? I'd use a cleaver, but that's basically a crime.</happy>",
   "playful.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>No hacksaw? I'd gnaw the golem but my dental plan is absolutely terrible.</happy>",
-  "playful.dialogue.chat.butcher_request.no_cleaner/1": "Without a sponge or rag, I'm mostly just standing here looking concerned, %1$s."
+  "playful.dialogue.chat.butcher_request.no_cleaner/1": "Without a sponge or rag, I'm mostly just standing here looking concerned, %1$s.",
+  "playful.dialogue.chat.butcher_request.no_hammer/1": "<happy>No hammer? I could knock on the head politely. Unlikely to work.</happy>"
 }

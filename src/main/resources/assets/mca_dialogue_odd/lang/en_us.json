@@ -127,5 +127,6 @@
   "odd.dialogue.chat.butcher_request.no_cleaver/1": "<excited>The cleaver is missing! The meat waits. The meat knows.</excited>",
   "odd.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>The hide begs for the little knife. The little knife is elsewhere. Mystery!</excited>",
   "odd.dialogue.chat.butcher_request.no_hacksaw/1": "<excited>The iron beast whispers! It wants the teeth of the hacksaw. Who am I to refuse?</excited>",
-  "odd.dialogue.chat.butcher_request.no_cleaner/1": "<excited>The blood puddles hum. They want a sponge. Or a rag. Bring them, %1$s!</excited>"
+  "odd.dialogue.chat.butcher_request.no_cleaner/1": "<excited>The blood puddles hum. They want a sponge. Or a rag. Bring them, %1$s!</excited>",
+  "odd.dialogue.chat.butcher_request.no_hammer/1": "<excited>The head is full of secrets! A hammer would let them out!</excited>"
 }

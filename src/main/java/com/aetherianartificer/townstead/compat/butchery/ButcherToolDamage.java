@@ -33,6 +33,10 @@ public final class ButcherToolDamage {
         return findFirst(villager, WorkToolTicker::isHacksaw) >= 0;
     }
 
+    public static boolean hasHammer(VillagerEntityMCA villager) {
+        return findFirst(villager, WorkToolTicker::isHammer) >= 0;
+    }
+
     /** Damage the first cleaver in inventory by one durability point. */
     public static void consumeCleaverUse(VillagerEntityMCA villager) {
         damageFirst(villager, WorkToolTicker::isCleaver);
@@ -46,6 +50,11 @@ public final class ButcherToolDamage {
     /** Damage the first hacksaw in inventory by one durability point. */
     public static void consumeHacksawUse(VillagerEntityMCA villager) {
         damageFirst(villager, WorkToolTicker::isHacksaw);
+    }
+
+    /** Damage the first hammer in inventory by one durability point. */
+    public static void consumeHammerUse(VillagerEntityMCA villager) {
+        damageFirst(villager, WorkToolTicker::isHammer);
     }
 
     private static int findFirst(VillagerEntityMCA villager, java.util.function.Predicate<ItemStack> matcher) {

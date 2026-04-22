@@ -131,5 +131,6 @@
   "confident.dialogue.chat.butcher_request.no_cleaver/1": "<excited>A craftsman without a cleaver is nothing. Fix it.</excited>",
   "confident.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>A craftsman without a skinning knife ruins the hide. Fix it.</excited>",
   "confident.dialogue.chat.butcher_request.no_hacksaw/1": "<excited>A proper butcher uses the right tool. Hacksaw for iron. Fix it.</excited>",
-  "confident.dialogue.chat.butcher_request.no_cleaner/1": "<excited>A clean shop is a working shop. Sponge or rag. Now.</excited>"
+  "confident.dialogue.chat.butcher_request.no_cleaner/1": "<excited>A clean shop is a working shop. Sponge or rag. Now.</excited>",
+  "confident.dialogue.chat.butcher_request.no_hammer/1": "<excited>A hammer for the head. Simple request. Deliver.</excited>"
 }

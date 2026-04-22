@@ -89,7 +89,8 @@ public abstract class VillagerHungerMixin extends Villager {
                         Pair.of(74, new com.aetherianartificer.townstead.compat.butchery.GrinderWorkTask()),
                         Pair.of(75, new ButcherWorkTask()),
                         Pair.of(76, new com.aetherianartificer.townstead.compat.butchery.SausageHookTask()),
-                        Pair.of(77, new com.aetherianartificer.townstead.compat.butchery.BloodCleanupTask())
+                        Pair.of(77, new com.aetherianartificer.townstead.compat.butchery.BloodCleanupTask()),
+                        Pair.of(78, new com.aetherianartificer.townstead.compat.butchery.HeadHammeringTask())
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();

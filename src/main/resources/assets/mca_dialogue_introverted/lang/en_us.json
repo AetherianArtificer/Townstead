@@ -143,5 +143,6 @@
   "introverted.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>I... I don't have a cleaver. Is that a problem?</nervous>",
   "introverted.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>I... don't have a skinning knife. For the hide. Sorry.</nervous>",
   "introverted.dialogue.chat.butcher_request.no_hacksaw/1": "<nervous>Um... a cleaver won't, er, work on iron. I'd need a hacksaw.</nervous>",
-  "introverted.dialogue.chat.butcher_request.no_cleaner/1": "<nervous>There's, um, blood on the floor. I'd need a sponge or rag to clean it.</nervous>"
+  "introverted.dialogue.chat.butcher_request.no_cleaner/1": "<nervous>There's, um, blood on the floor. I'd need a sponge or rag to clean it.</nervous>",
+  "introverted.dialogue.chat.butcher_request.no_hammer/1": "<nervous>Um, a hammer? For the head. Sorry to ask.</nervous>"
 }
