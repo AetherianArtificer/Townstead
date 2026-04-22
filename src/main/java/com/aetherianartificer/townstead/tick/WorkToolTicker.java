@@ -40,6 +40,10 @@ public final class WorkToolTicker {
             Registries.ITEM, ResourceLocation.parse("c:skinning_knives"));
     private static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(
             Registries.ITEM, ResourceLocation.parse("forge:skinning_knives"));
+    private static final TagKey<Item> HACKSAW_TAG_C = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("c:hacksaw"));
+    private static final TagKey<Item> HACKSAW_TAG_FORGE = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("forge:hacksaw"));
     //?} else {
     /*private static final TagKey<Item> CLEAVER_TAG_C = TagKey.create(
             Registries.ITEM, new ResourceLocation("c", "cleaver"));
@@ -49,6 +53,10 @@ public final class WorkToolTicker {
             Registries.ITEM, new ResourceLocation("c", "skinning_knives"));
     private static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(
             Registries.ITEM, new ResourceLocation("forge", "skinning_knives"));
+    private static final TagKey<Item> HACKSAW_TAG_C = TagKey.create(
+            Registries.ITEM, new ResourceLocation("c", "hacksaw"));
+    private static final TagKey<Item> HACKSAW_TAG_FORGE = TagKey.create(
+            Registries.ITEM, new ResourceLocation("forge", "hacksaw"));
     *///?}
 
     private static final List<Rule> RULES = List.of(
@@ -58,14 +66,15 @@ public final class WorkToolTicker {
     );
 
     /**
-     * Matches both cleavers and knives so SlaughterWorkTask can swap to a knife
-     * during an active slaughter without WorkToolTicker reverting to a cleaver
-     * on the next tick.
+     * Matches cleavers, skinning knives, and hacksaws so the per-stage tool
+     * swap (cleaver for most cuts, knife for skin, hacksaw for golem
+     * processing) doesn't get reverted by the ticker's next pass.
      */
     public static boolean isButcherTool(ItemStack stack) {
         if (stack.isEmpty() || !ButcheryCompat.isLoaded()) return false;
         return stack.is(CLEAVER_TAG_C) || stack.is(CLEAVER_TAG_FORGE)
-                || stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE);
+                || stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE)
+                || stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE);
     }
 
     public static boolean isKnife(ItemStack stack) {
@@ -76,6 +85,11 @@ public final class WorkToolTicker {
     public static boolean isCleaver(ItemStack stack) {
         if (stack.isEmpty()) return false;
         return stack.is(CLEAVER_TAG_C) || stack.is(CLEAVER_TAG_FORGE);
+    }
+
+    public static boolean isHacksaw(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        return stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE);
     }
 
     private static final Map<UUID, ItemStack> PREVIOUS_MAIN_HAND = new ConcurrentHashMap<>();

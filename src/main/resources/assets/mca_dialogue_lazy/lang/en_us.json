@@ -79,5 +79,6 @@
   "lazy.dialogue.chat.plains/4": "<sleepy>Ah, lazy evenings like this make me wanna just plop down and gaze at the sky and clouds. Don't really feel like doing anything else, to be honest.</sleepy>",
   "lazy.dialogue.chat.plains/8": "<happy>You ever catch the morning sunrise in the plains? It's, like, totally epic.</happy> <sleepy>You should totally drag yourself out of bed and witness it sometime. But, uh, no pressure or anything.</sleepy>",
   "lazy.dialogue.chat.butcher_request.no_cleaver/1": "<sleepy>No cleaver means no work. Perfect, really.</sleepy>",
-  "lazy.dialogue.chat.butcher_request.no_skinning_knife/1": "<sleepy>No skinning knife? Hide stays on. Less work for me.</sleepy>"
+  "lazy.dialogue.chat.butcher_request.no_skinning_knife/1": "<sleepy>No skinning knife? Hide stays on. Less work for me.</sleepy>",
+  "lazy.dialogue.chat.butcher_request.no_hacksaw/1": "<sleepy>No hacksaw? Iron golem waits. So do I. Forever.</sleepy>"
 }

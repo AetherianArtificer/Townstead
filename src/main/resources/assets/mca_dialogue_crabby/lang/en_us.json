@@ -118,5 +118,6 @@
   "crabby.dialogue.joke.animal.failed/2": "<yell>Show some respect, that sheep's been through enough!</yell>",
   "crabby.dialogue.joke.animal.failed/3": "<yell>Watch your mouth about my pig, will you?</yell>",
   "crabby.dialogue.chat.butcher_request.no_cleaver/1": "<angry>No cleaver. What am I supposed to use, my teeth?</angry>",
-  "crabby.dialogue.chat.butcher_request.no_skinning_knife/1": "<angry>No skinning knife. What, I tear the hide off with my teeth too?</angry>"
+  "crabby.dialogue.chat.butcher_request.no_skinning_knife/1": "<angry>No skinning knife. What, I tear the hide off with my teeth too?</angry>",
+  "crabby.dialogue.chat.butcher_request.no_hacksaw/1": "<angry>No hacksaw for the iron one. What do you think I am, a blacksmith?</angry>"
 }

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.butchery.GrinderStateMachine;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 //? if >=1.21 {
@@ -146,12 +147,94 @@ public final class ButcherSupplyManager {
     }
 
     /**
+     * Pull the first hacksaw found in nearby storage into the butcher's
+     * inventory. Needed to process iron golem bodies (hacksaw is the only
+     * tool Butchery's IronGolemCutUpProcedure accepts).
+     */
+    public static boolean pullHacksaw(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.tick.WorkToolTicker::isHacksaw,
+                ButcherSupplyManager::toolScore,
+                anchor
+        );
+    }
+
+    /**
      * Prefer the least-damaged tool so the villager doesn't burn through a
      * nearly-broken blade first while a fresh one sits in the next chest.
      */
     private static int toolScore(ItemStack stack) {
         if (!stack.isDamageableItem()) return 0;
         return stack.getMaxDamage() - stack.getDamageValue();
+    }
+
+    // ── Grinder-specific pulls ──
+
+    public static boolean pullIntestines(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                GrinderStateMachine::isIntestines,
+                ItemStack::getCount,
+                anchor);
+    }
+
+    public static boolean pullSausageAttachment(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                GrinderStateMachine::isSausageAttachment,
+                ItemStack::getCount,
+                anchor);
+    }
+
+    public static boolean pullBloodBottle(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                GrinderStateMachine::isBloodBottle,
+                ItemStack::getCount,
+                anchor);
+    }
+
+    public static boolean pullGrinderInput(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor,
+            GrinderStateMachine.Recipe recipe
+    ) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                stack -> GrinderStateMachine.isInputForRecipe(stack, recipe),
+                ItemStack::getCount,
+                anchor);
+    }
+
+    /** True if the villager carries everything needed to stage the recipe. */
+    public static boolean hasRecipeInputs(SimpleContainer inv, GrinderStateMachine.Recipe recipe) {
+        boolean hasMeat = false;
+        boolean hasIntestines = !recipe.requiresCasings;
+        boolean hasAttachment = !recipe.requiresCasings;
+        boolean hasBlood = recipe != GrinderStateMachine.Recipe.BLOOD_SAUSAGE;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty()) continue;
+            if (!hasMeat && GrinderStateMachine.isInputForRecipe(stack, recipe)) hasMeat = true;
+            if (recipe.requiresCasings) {
+                if (!hasIntestines && GrinderStateMachine.isIntestines(stack)) hasIntestines = true;
+                if (!hasAttachment && GrinderStateMachine.isSausageAttachment(stack)) hasAttachment = true;
+            }
+            if (recipe == GrinderStateMachine.Recipe.BLOOD_SAUSAGE) {
+                if (!hasBlood && GrinderStateMachine.isBloodBottle(stack)) hasBlood = true;
+            }
+        }
+        return hasMeat && hasIntestines && hasAttachment && hasBlood;
     }
 
     public static boolean hasStockableOutput(SimpleContainer inv) {
@@ -257,7 +340,19 @@ public final class ButcherSupplyManager {
                 || stack.is(Items.COOKED_COD)
                 || stack.is(Items.COOKED_SALMON)) return true;
         // Butchery and any other mod publishing the common "cooked meat" tag.
-        return stack.is(COOKED_MEAT_TAG_C) || stack.is(COOKED_MEAT_TAG_FORGE);
+        if (stack.is(COOKED_MEAT_TAG_C) || stack.is(COOKED_MEAT_TAG_FORGE)) return true;
+        // Grinder terminal outputs: mince never gets smoked further, meat
+        // scraps are a finished good, and the final-stage returned glass
+        // bottle from blood sausage gets offloaded with everything else.
+        // Raw sausage / raw blood sausage are intentionally NOT listed here
+        // so the smoker's isRawInput still accepts them as smoker input.
+        ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id.equals(GrinderStateMachine.RAW_LAMB_MINCE_ID)
+                || id.equals(GrinderStateMachine.RAW_BEEF_MINCE_ID)
+                || id.equals(GrinderStateMachine.MEAT_SCRAPS_ID)) {
+            return true;
+        }
+        return false;
     }
 
     public static boolean isValidSmokerInput(ItemStack stack, ServerLevel level) {

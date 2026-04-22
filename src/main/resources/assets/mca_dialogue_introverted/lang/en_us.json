@@ -141,5 +141,6 @@
   "introverted.dialogue.joke.animal.failed/5": "<nervous>Um, I'd prefer it if we didn't make jokes about the cow's eyebrows like that, it's a sensitive topic for me.</nervous>",
   "_": "",
   "introverted.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>I... I don't have a cleaver. Is that a problem?</nervous>",
-  "introverted.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>I... don't have a skinning knife. For the hide. Sorry.</nervous>"
+  "introverted.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>I... don't have a skinning knife. For the hide. Sorry.</nervous>",
+  "introverted.dialogue.chat.butcher_request.no_hacksaw/1": "<nervous>Um... a cleaver won't, er, work on iron. I'd need a hacksaw.</nervous>"
 }

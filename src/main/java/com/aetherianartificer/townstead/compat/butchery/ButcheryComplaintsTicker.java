@@ -43,23 +43,17 @@ public final class ButcheryComplaintsTicker {
     //? if >=1.21 {
     private static final ResourceLocation HOOK_ID = ResourceLocation.parse("butchery:hook");
     private static final ResourceLocation SKIN_RACK_ID = ResourceLocation.parse("butchery:skin_rack");
-    private static final ResourceLocation FREEZER_ID = ResourceLocation.parse("butchery:freezer");
     private static final ResourceLocation MEAT_GRINDER_ID = ResourceLocation.parse("butchery:meat_grinder");
     private static final TagKey<Item> SKINS_TAG = TagKey.create(
             Registries.ITEM, ResourceLocation.parse("butchery:skins"));
-    private static final TagKey<Item> ORGANS_TAG = TagKey.create(
-            Registries.ITEM, ResourceLocation.parse("butchery:organs"));
     private static final TagKey<Item> RAW_MEATS_TAG = TagKey.create(
             Registries.ITEM, ResourceLocation.parse("butchery:raw_meats"));
     //?} else {
     /*private static final ResourceLocation HOOK_ID = new ResourceLocation("butchery", "hook");
     private static final ResourceLocation SKIN_RACK_ID = new ResourceLocation("butchery", "skin_rack");
-    private static final ResourceLocation FREEZER_ID = new ResourceLocation("butchery", "freezer");
     private static final ResourceLocation MEAT_GRINDER_ID = new ResourceLocation("butchery", "meat_grinder");
     private static final TagKey<Item> SKINS_TAG = TagKey.create(
             Registries.ITEM, new ResourceLocation("butchery", "skins"));
-    private static final TagKey<Item> ORGANS_TAG = TagKey.create(
-            Registries.ITEM, new ResourceLocation("butchery", "organs"));
     private static final TagKey<Item> RAW_MEATS_TAG = TagKey.create(
             Registries.ITEM, new ResourceLocation("butchery", "raw_meats"));
     *///?}
@@ -177,8 +171,8 @@ public final class ButcheryComplaintsTicker {
         if (!anyLivestock) return variant("dialogue.chat.butcher_request.no_livestock", 4, level);
 
         // Output piling up without the station that normally consumes it.
-        // Skin rack first (most common high-volume output), then freezer
-        // (organs), then grinder (raw meats → mince/sausage).
+        // Skin rack first (most common high-volume output), then grinder
+        // (raw meats → mince/sausage).
         String overflow = pickMissingStation(level, villager);
         if (overflow != null) return overflow;
 
@@ -194,10 +188,10 @@ public final class ButcheryComplaintsTicker {
                 && !villageHasBlock(v, SKIN_RACK_ID)) {
             return variant("dialogue.chat.butcher_request.no_skin_rack", 3, level);
         }
-        if (hasTaggedItemInInventory(villager, ORGANS_TAG)
-                && !villageHasBlock(v, FREEZER_ID)) {
-            return variant("dialogue.chat.butcher_request.no_freezer", 3, level);
-        }
+        // No organs complaint: Butchery's freezer is just a storage block
+        // (no spoilage, no expiry, no tick behavior), so a "needs cold
+        // storage" complaint would be a lie. Revisit if a spoilage
+        // mechanic ever lands.
         if (hasTaggedItemInInventory(villager, RAW_MEATS_TAG)
                 && !villageHasBlock(v, MEAT_GRINDER_ID)) {
             return variant("dialogue.chat.butcher_request.no_grinder", 3, level);
