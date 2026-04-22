@@ -466,13 +466,11 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     private static void deposit(ServerLevel level, VillagerEntityMCA villager, List<ItemStack> drops) {
         for (ItemStack stack : drops) {
             if (stack.isEmpty()) continue;
-            // Route hides / organs to their Butchery station first so the
-            // specialty equipment in a Tier 3 shop (or dedicated Tannery) has
-            // a mechanical purpose. Anything that does not route, or overflow
-            // from a full station, falls back to inventory and then ground.
-            ItemStack remaining = CarcassOutputRouter.route(level, villager, stack);
-            if (remaining.isEmpty()) continue;
-            ItemStack leftover = villager.getInventory().addItem(remaining);
+            // Cut drops (hides, organs, meat) go into the villager's
+            // inventory. ButcherDeliveryTask (priority 76) then walks them
+            // to the skin rack / pestle / general storage. This avoids the
+            // old teleporty "hide just appears in the skin rack" behavior.
+            ItemStack leftover = villager.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 ItemEntity ie = new ItemEntity(level,
                         villager.getX(), villager.getY() + 0.25, villager.getZ(), leftover);

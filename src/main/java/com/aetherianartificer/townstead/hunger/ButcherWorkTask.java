@@ -297,19 +297,21 @@ public class ButcherWorkTask extends ProducerWorkTask {
 
     @Override
     protected void storeOutputs(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (stationAnchor == null) return;
-        // Drain villager inventory into nearby storage (old ActionType.STOCK behavior).
-        ButcherSupplyManager.offloadOutput(level, villager, stationAnchor);
-
-        // Also offload any leftover output that still sits in the smoker's output slot (old STOCK_SMOKER_OUTPUT branch).
+        // Output stays in villager inventory; ButcherDeliveryTask walks it
+        // to storage. No more teleporty inventory-to-chest transfer from
+        // within the smoker task itself.
+        //
+        // If cooked output is still sitting in the smoker's slot 2 (e.g.
+        // the villager got interrupted before collecting), pull it into
+        // inventory now. The delivery task will move it onward.
         SmokerBlockEntity smoker = getSmoker(level);
         if (smoker == null) return;
         ItemStack leftover = smoker.getItem(2);
         if (leftover.isEmpty()) return;
         ItemStack moving = leftover.copy();
-        NearbyItemSources.insertIntoNearbyStorage(level, villager, moving, 16, 3, stationAnchor);
-        if (moving.getCount() != leftover.getCount()) {
-            smoker.setItem(2, moving);
+        ItemStack remaining = villager.getInventory().addItem(moving);
+        if (remaining.getCount() != leftover.getCount()) {
+            smoker.setItem(2, remaining);
             smoker.setChanged();
         }
     }

@@ -203,9 +203,8 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
             ie.setPickUpDelay(10);
             level.addFreshEntity(ie);
         }
-        // Best-effort offload: the carcass pipeline already knows how to
-        // route mince / scraps to nearby storage.
-        ButcherSupplyManager.offloadOutput(level, villager, grinderPos);
+        // No teleport offload here. Items sit in villager inventory and
+        // ButcherDeliveryTask (priority 76) walks them to storage.
     }
 
     private void executeLoad(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
