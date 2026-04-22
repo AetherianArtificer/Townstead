@@ -165,6 +165,30 @@ public final class ButcherSupplyManager {
     }
 
     /**
+     * Pull a sponge or rag from nearby storage. Prefers already-wet cloths
+     * so the butcher can clean right away without a detour to a cauldron
+     * or water source.
+     */
+    public static boolean pullCloth(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.compat.butchery.SpongeRagHelper::isCloth,
+                ButcherSupplyManager::clothScore,
+                anchor
+        );
+    }
+
+    /** Prefer wet cloths over dry; among equals, prefer higher wetness. */
+    private static int clothScore(ItemStack stack) {
+        int wetness = com.aetherianartificer.townstead.compat.butchery.SpongeRagHelper.readWetness(stack);
+        return wetness * 100 + stack.getCount();
+    }
+
+    /**
      * Prefer the least-damaged tool so the villager doesn't burn through a
      * nearly-broken blade first while a fresh one sits in the next chest.
      */

@@ -118,5 +118,6 @@
   "peppy.dialogue.rock_paper_scissor.rock/1": "<yell>Boom! Rock it like a volcanic eruption!</yell>",
   "peppy.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Hey %1$s! Teensy issue, no cleaver! Think you could help?</happy>",
   "peppy.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Hey %1$s! Itty bitty problem, no skinning knife! Any chance you've got one?</happy>",
-  "peppy.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>Hey %1$s! Could I borrow a hacksaw? Iron golem on my to-do list!</happy>"
+  "peppy.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>Hey %1$s! Could I borrow a hacksaw? Iron golem on my to-do list!</happy>",
+  "peppy.dialogue.chat.butcher_request.no_cleaner/1": "<happy>Hey %1$s! Tiny ask, a sponge or rag? Puddles to mop!</happy>"
 }

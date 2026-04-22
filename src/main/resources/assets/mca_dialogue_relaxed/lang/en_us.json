@@ -80,5 +80,6 @@
   "relaxed.dialogue.chat.plains/8": "<happy>You ever catch the morning sunrise in the plains? It's, like, totally epic.</happy> <sleepy>You should totally drag yourself out of bed and witness it sometime. But, uh, no pressure or anything.</sleepy>",
   "relaxed.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Cleaver when you can, no rush.</happy>",
   "relaxed.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Skinning knife when you can, no rush.</happy>",
-  "relaxed.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>Hacksaw for the iron one, whenever you have a moment.</happy>"
+  "relaxed.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>Hacksaw for the iron one, whenever you have a moment.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_cleaner/1": "<happy>Sponge or rag when you can. The puddles aren't going anywhere.</happy>"
 }

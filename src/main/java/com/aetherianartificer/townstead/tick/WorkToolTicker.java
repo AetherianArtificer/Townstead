@@ -66,15 +66,17 @@ public final class WorkToolTicker {
     );
 
     /**
-     * Matches cleavers, skinning knives, and hacksaws so the per-stage tool
-     * swap (cleaver for most cuts, knife for skin, hacksaw for golem
-     * processing) doesn't get reverted by the ticker's next pass.
+     * Matches cleavers, skinning knives, hacksaws, and cleaning cloths
+     * (sponge / rag) so the per-stage hand swap (cleaver for most cuts,
+     * knife for skin, hacksaw for golem, cloth for blood cleanup) doesn't
+     * get reverted by the ticker's next pass.
      */
     public static boolean isButcherTool(ItemStack stack) {
         if (stack.isEmpty() || !ButcheryCompat.isLoaded()) return false;
         return stack.is(CLEAVER_TAG_C) || stack.is(CLEAVER_TAG_FORGE)
                 || stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE)
-                || stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE);
+                || stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE)
+                || com.aetherianartificer.townstead.compat.butchery.SpongeRagHelper.isCloth(stack);
     }
 
     public static boolean isKnife(ItemStack stack) {

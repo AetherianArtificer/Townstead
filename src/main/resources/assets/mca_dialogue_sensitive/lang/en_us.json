@@ -164,5 +164,6 @@
   "_": "",
   "sensitive.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>I'd feel more confident with a cleaver in hand.</nervous>",
   "sensitive.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>I'd feel awful ruining the hide. A skinning knife would help.</nervous>",
-  "sensitive.dialogue.chat.butcher_request.no_hacksaw/1": "<nervous>I'd hate to break a good cleaver on iron. A hacksaw would be kinder.</nervous>"
+  "sensitive.dialogue.chat.butcher_request.no_hacksaw/1": "<nervous>I'd hate to break a good cleaver on iron. A hacksaw would be kinder.</nervous>",
+  "sensitive.dialogue.chat.butcher_request.no_cleaner/1": "<nervous>It bothers me to leave blood everywhere. A sponge or rag would help.</nervous>"
 }

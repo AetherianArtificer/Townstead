@@ -145,5 +145,6 @@
   "witty.dialogue.no_money/2": "<angry>Oh, dear me! It seems your emerald stash is a bit on the meager side if you wish to bask in the brilliance of my talents.</angry>",
   "witty.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Butcher without a cleaver. That's just a guy standing around.</happy>",
   "witty.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Skinning with a cleaver: bold artistic choice. A proper knife would be saner.</happy>",
-  "witty.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>A cleaver on iron is aspirational, not practical. Hacksaw, please.</happy>"
+  "witty.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>A cleaver on iron is aspirational, not practical. Hacksaw, please.</happy>",
+  "witty.dialogue.chat.butcher_request.no_cleaner/1": "<happy>The blood adds character. Still, a sponge would make it less character-building.</happy>"
 }

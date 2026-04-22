@@ -126,5 +126,6 @@
   "greedy.dialogue.stay.success/2": "<excited>Oh, absolutely! Staying in this village would be the most fantastic thing ever! I simply cannot resist!</excited>",
   "greedy.dialogue.chat.butcher_request.no_cleaver/1": "<excited>A cleaver costs pennies, %1$s. Without one I cost you gold.</excited>",
   "greedy.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>A skinning knife, %1$s. Every ruined hide is coin out of both our pockets.</excited>",
-  "greedy.dialogue.chat.butcher_request.no_hacksaw/1": "<excited>A hacksaw costs pennies, %1$s. A butchered golem sells for iron. Math.</excited>"
+  "greedy.dialogue.chat.butcher_request.no_hacksaw/1": "<excited>A hacksaw costs pennies, %1$s. A butchered golem sells for iron. Math.</excited>",
+  "greedy.dialogue.chat.butcher_request.no_cleaner/1": "<excited>A dirty shop loses customers, %1$s. Buy a sponge. Save the sale.</excited>"
 }

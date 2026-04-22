@@ -125,5 +125,6 @@
   "gloomy.dialogue.story.exploring.success/2": "<sad>Ugh... I guess it must be nice to travel and explore.</sad> I mean, I love my village, family, and friends... <sad>but hearing you talk about it just makes me feel even more trapped.</sad>",
   "gloomy.dialogue.chat.butcher_request.no_cleaver/1": "<sad>No cleaver. I suppose that's my excuse to do nothing today.</sad>",
   "gloomy.dialogue.chat.butcher_request.no_skinning_knife/1": "<sad>No skinning knife. The hide will spoil. Everything does, eventually.</sad>",
-  "gloomy.dialogue.chat.butcher_request.no_hacksaw/1": "<sad>No hacksaw. The iron body just sits there, judging.</sad>"
+  "gloomy.dialogue.chat.butcher_request.no_hacksaw/1": "<sad>No hacksaw. The iron body just sits there, judging.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_cleaner/1": "<sad>The blood stays. No sponge, no rag. Fitting, really.</sad>"
 }

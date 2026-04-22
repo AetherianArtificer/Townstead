@@ -142,5 +142,6 @@
   "_": "",
   "shy.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>Um, a c-cleaver? I can't do the work without one...</nervous>",
   "shy.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>Um, a s-skinning knife? I don't want to tear the hide...</nervous>",
-  "shy.dialogue.chat.butcher_request.no_hacksaw/1": "<nervous>Um, a h-hacksaw? The iron one is, um, a bit beyond me without one...</nervous>"
+  "shy.dialogue.chat.butcher_request.no_hacksaw/1": "<nervous>Um, a h-hacksaw? The iron one is, um, a bit beyond me without one...</nervous>",
+  "shy.dialogue.chat.butcher_request.no_cleaner/1": "<nervous>Um, the p-puddles... I'd need a sponge. Or a rag. I'm sorry.</nervous>"
 }
