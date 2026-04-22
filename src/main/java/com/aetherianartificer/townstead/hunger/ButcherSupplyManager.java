@@ -110,6 +110,50 @@ public final class ButcherSupplyManager {
         );
     }
 
+    /**
+     * Pull the first cleaver found in nearby storage into the butcher's
+     * inventory. Same search radius and anchor conventions as raw input /
+     * fuel sourcing. Returns true if a cleaver was pulled.
+     */
+    public static boolean pullCleaver(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.tick.WorkToolTicker::isCleaver,
+                ButcherSupplyManager::toolScore,
+                anchor
+        );
+    }
+
+    /**
+     * Pull the first skinning knife found in nearby storage into the
+     * butcher's inventory. Needed for the skin stage of drained carcasses.
+     */
+    public static boolean pullKnife(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.tick.WorkToolTicker::isKnife,
+                ButcherSupplyManager::toolScore,
+                anchor
+        );
+    }
+
+    /**
+     * Prefer the least-damaged tool so the villager doesn't burn through a
+     * nearly-broken blade first while a fresh one sits in the next chest.
+     */
+    private static int toolScore(ItemStack stack) {
+        if (!stack.isDamageableItem()) return 0;
+        return stack.getMaxDamage() - stack.getDamageValue();
+    }
+
     public static boolean hasStockableOutput(SimpleContainer inv) {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             if (isButcherOutput(inv.getItem(i))) return true;
