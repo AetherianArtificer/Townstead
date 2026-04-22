@@ -140,5 +140,6 @@
   "introverted.dialogue.kiss.slap/2": "<sad>Please don't do that again, I-I'm really not comfortable with it, and it... it really upsets me...</sad>",
   "introverted.dialogue.joke.animal.failed/5": "<nervous>Um, I'd prefer it if we didn't make jokes about the cow's eyebrows like that, it's a sensitive topic for me.</nervous>",
   "_": "",
-  "introverted.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>I... I don't have a cleaver. Is that a problem?</nervous>"
+  "introverted.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>I... I don't have a cleaver. Is that a problem?</nervous>",
+  "introverted.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>I... don't have a skinning knife. For the hide. Sorry.</nervous>"
 }

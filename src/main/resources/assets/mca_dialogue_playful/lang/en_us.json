@@ -115,5 +115,6 @@
   "playful.dialogue.rock_paper_scissor/1": "<excited>Alright, prepare yourself for the ultimate showdown of rock, paper, scissors!</excited> Let's see who triumphs!",
   "playful.dialogue.rock_paper_scissor/2": "<excited>Brace yourself for the thrashing of a lifetime, my friend!</excited> I guarantee victory shall be mine this time!",
   "playful.dialogue.rock_paper_scissor.rock/1": "<yell>Boom! Rock it like a volcanic eruption!</yell>",
-  "playful.dialogue.chat.butcher_request.no_cleaver/1": "<happy>No cleaver? I'd mime it but the meat wouldn't get it.</happy>"
+  "playful.dialogue.chat.butcher_request.no_cleaver/1": "<happy>No cleaver? I'd mime it but the meat wouldn't get it.</happy>",
+  "playful.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>No skinning knife? I'd use a cleaver, but that's basically a crime.</happy>"
 }

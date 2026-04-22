@@ -243,12 +243,18 @@ public final class ButcheryComplaintsTicker {
     }
 
     private static boolean freshCarcassWithoutBasin(ServerLevel level, Building building) {
-        for (List<BlockPos> positions : building.getBlocks().values()) {
-            for (BlockPos pos : positions) {
-                BlockState state = level.getBlockState(pos);
-                if (!CarcassStateMachine.isFreshCarcass(state)) continue;
-                if (!CarcassStateMachine.hasBasinNearby(level, pos)) return true;
-            }
+        // Carcass blocks aren't in any building type's block requirements, so
+        // they aren't indexed in building.getBlocks(). Check hook.below() for
+        // each tracked hook, which is where SlaughterWorkTask places them.
+        // Draining needs a blood grate in the column directly below the hook,
+        // matching Butchery's own FillbloodgrateProcedure scan.
+        List<BlockPos> hooks = building.getBlocks().get(HOOK_ID);
+        if (hooks == null) return false;
+        for (BlockPos hook : hooks) {
+            BlockPos pos = hook.below();
+            BlockState state = level.getBlockState(pos);
+            if (!CarcassStateMachine.isFreshCarcass(state)) continue;
+            if (!CarcassStateMachine.hasBloodGrateBelow(level, pos)) return true;
         }
         return false;
     }

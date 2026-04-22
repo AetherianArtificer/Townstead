@@ -235,7 +235,17 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         if (carcass == null) return;
         BlockState current = level.getBlockState(carcassPos);
         if (!current.isAir() && !current.canBeReplaced()) return;
-        level.setBlock(carcassPos, carcass.defaultBlockState(), 3);
+        // Match Butchery's PlacecowcarcassProcedure: a hung fresh carcass
+        // sits at blockstate=1, which is also the state the bleeding
+        // procedure (and our CarcassStateMachine) expects.
+        BlockState fresh = carcass.defaultBlockState();
+        var blockstate = fresh.getBlock().getStateDefinition()
+                .getProperty(CarcassStateMachine.BLOCKSTATE_PROPERTY);
+        if (blockstate instanceof net.minecraft.world.level.block.state.properties.IntegerProperty ip
+                && ip.getPossibleValues().contains(CarcassStateMachine.HUNG_BLOCKSTATE)) {
+            fresh = fresh.setValue(ip, CarcassStateMachine.HUNG_BLOCKSTATE);
+        }
+        level.setBlock(carcassPos, fresh, 3);
 
         markThrottle(villager, gameTime);
         awardXp(villager, 2, gameTime);

@@ -2,27 +2,29 @@ package com.aetherianartificer.townstead.compat.butchery;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.hunger.ButcherProgressData;
+import com.aetherianartificer.townstead.tick.WorkToolTicker;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
-import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.function.Predicate;
+
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Butcher villagers at Tier 2+ shops drive drained carcass blocks through the
@@ -40,12 +42,38 @@ import java.util.Optional;
  */
 public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     private static final int MAX_DURATION = 1200;
-    private static final int SCAN_RADIUS_HORIZ = 12;
-    private static final int SCAN_RADIUS_VERT = 4;
-    private static final double ARRIVAL_DISTANCE_SQ = 2.25; // stand within ~1.5 blocks
+    private static final double ARRIVAL_DISTANCE_SQ = 2.89; // stand within ~1.7 blocks
     private static final float WALK_SPEED = 0.55f;
-    private static final int STAGE_COOLDOWN_TICKS = 24;
-    private static final int PATH_TIMEOUT_TICKS = 140;
+    /** Per cutting stroke on a drained carcass (head, skin, cuts 1-3). */
+    private static final int CUT_STROKE_COOLDOWN_TICKS = 30;
+    /** Brief beat between arrival-at-a-ripe-carcass and the first cut so the
+     *  drain→cut transition reads as a distinct moment. */
+    private static final int POST_DRAIN_PAUSE_TICKS = 20;
+    private static final int PATH_TIMEOUT_TICKS = 200;
+    private static final int STAND_SEARCH_RADIUS = 2;
+    private static final int STAND_DROP_LIMIT = 6;
+
+    //? if >=1.21 {
+    private static final ResourceLocation HOOK_ID = ResourceLocation.parse("butchery:hook");
+    private static final ResourceLocation SOUND_SWEEP =
+            ResourceLocation.parse("entity.player.attack.sweep");
+    private static final ResourceLocation SOUND_HONEY_HIT =
+            ResourceLocation.parse("block.honey_block.hit");
+    private static final ResourceLocation SOUND_AXE_STRIP =
+            ResourceLocation.parse("item.axe.strip");
+    private static final ResourceLocation SOUND_HONEY_STEP =
+            ResourceLocation.parse("block.honey_block.step");
+    //?} else {
+    /*private static final ResourceLocation HOOK_ID = new ResourceLocation("butchery", "hook");
+    private static final ResourceLocation SOUND_SWEEP =
+            new ResourceLocation("entity.player.attack.sweep");
+    private static final ResourceLocation SOUND_HONEY_HIT =
+            new ResourceLocation("block.honey_block.hit");
+    private static final ResourceLocation SOUND_AXE_STRIP =
+            new ResourceLocation("item.axe.strip");
+    private static final ResourceLocation SOUND_HONEY_STEP =
+            new ResourceLocation("block.honey_block.step");
+    *///?}
 
     private enum Phase { PATH, PROCESS }
 
@@ -80,7 +108,7 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         phase = Phase.PATH;
         startedTick = gameTime;
         lastPathTick = gameTime;
-        nextStageTick = gameTime + STAGE_COOLDOWN_TICKS;
+        nextStageTick = gameTime + CUT_STROKE_COOLDOWN_TICKS;
         stalled = false;
         setWalkTarget(villager, standPos != null ? standPos : targetCarcass);
     }
@@ -102,8 +130,11 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (targetCarcass == null) return;
+        // Look at the middle of the hanging body (carcass block occupies the
+        // space below the hook), slightly above center so the villager gazes
+        // up at the work rather than at the floor.
         villager.getLookControl().setLookAt(
-                targetCarcass.getX() + 0.5, targetCarcass.getY() + 0.5, targetCarcass.getZ() + 0.5);
+                targetCarcass.getX() + 0.5, targetCarcass.getY() + 1.0, targetCarcass.getZ() + 0.5);
 
         if (phase == Phase.PATH) {
             BlockPos anchor = standPos != null ? standPos : targetCarcass;
@@ -111,7 +142,10 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
                     anchor.getX() + 0.5, anchor.getY(), anchor.getZ() + 0.5);
             if (dsq <= ARRIVAL_DISTANCE_SQ) {
                 phase = Phase.PROCESS;
-                nextStageTick = gameTime + STAGE_COOLDOWN_TICKS;
+                // First stroke cadence depends on whether we're about to drain
+                // or cut; either cadence is fine here since the tick() below
+                // will re-read the block state and pick the right one.
+                nextStageTick = gameTime + CUT_STROKE_COOLDOWN_TICKS;
                 villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
             } else {
                 // Re-stamp walk target periodically in case other tasks clear it.
@@ -124,41 +158,144 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         if (gameTime < nextStageTick) return;
         BlockState current = level.getBlockState(targetCarcass);
 
-        // Pre-stage: if the carcass is still fresh, bleed it first. Drained
-        // state-machine stages resume on the next cooldown tick.
+        // Fresh carcass: mirror the player's cleaver-on-hanging-carcass flow.
+        // A single opening cut initiates the 45-second passive drain; after
+        // the timer matures, the next visit swaps the block for its drained
+        // twin and cutting begins. No further strokes during the drain.
         if (CarcassStateMachine.isFreshCarcass(current)) {
-            if (!CarcassStateMachine.hasBasinNearby(level, targetCarcass)) {
-                // Basin was removed mid-cycle; abort.
+            if (!CarcassStateMachine.hasBloodGrateBelow(level, targetCarcass)) {
+                // Grate was removed mid-cycle; abort.
                 targetCarcass = null;
                 return;
             }
-            if (CarcassStateMachine.bleed(level, targetCarcass)) {
-                awardXp(villager, CarcassStateMachine.BLEED_XP, gameTime);
+            long readyTick = CarcassStateMachine.readDrainReadyTick(level, targetCarcass);
+            if (readyTick == 0L) {
+                // First-visit drain initiation: one opening cut, set the
+                // 900-tick timer, then release the task so the butcher can
+                // go do other work while the blood drains. The carcass
+                // won't reappear as processable until the timer ripens.
                 villager.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
+                playDrainSounds(level, targetCarcass);
                 ButcherToolDamage.consumeCleaverUse(villager);
+                CarcassStateMachine.initiateBleed(level, targetCarcass, gameTime);
+                awardXp(villager, CarcassStateMachine.BLEED_XP, gameTime);
+                targetCarcass = null; // end the task cleanly
+                return;
             }
-            nextStageTick = gameTime + STAGE_COOLDOWN_TICKS;
-            return;
-        }
-
-        CarcassStateMachine.Stage stage = CarcassStateMachine.Stage
-                .forCurrentState(CarcassStateMachine.currentState(current));
-        if (stage == null) {
-            // Block mid-transition or species finished: reset and bail.
+            if (gameTime >= readyTick) {
+                // Drain matured while we were away (or on the next tick if
+                // we just caught a ripe one). Do the fresh→drained swap
+                // silently — the transition itself isn't a click event in
+                // the mod — and start cutting after a short pause.
+                CarcassStateMachine.bleed(level, targetCarcass);
+                nextStageTick = gameTime + POST_DRAIN_PAUSE_TICKS;
+                return;
+            }
+            // Still draining; shouldn't normally be reached because
+            // isProcessable gates us out. Bail to be safe.
             targetCarcass = null;
             return;
         }
+
+        // Drained carcass: one deliberate strike per stage, matching the
+        // mod's HangingXcutupProcedure — swing, break-particles, cut sounds,
+        // loot drop, block-state advance. The skin stage (2→3) uses a
+        // skinning knife; every other stage uses the cleaver. Match the
+        // mod's tool-specific path exactly: if the right tool is missing,
+        // stall and complain rather than fudging the swing with the wrong
+        // blade.
+        CarcassStateMachine.Stage stage = CarcassStateMachine.Stage
+                .forCurrentState(CarcassStateMachine.currentState(current));
+        if (stage == null) {
+            targetCarcass = null;
+            return;
+        }
+        boolean needsKnife = stage == CarcassStateMachine.Stage.SKIN;
+        if (needsKnife && !ButcherToolDamage.hasKnife(villager)) {
+            // Emit the specific "need skinning knife" chat and bail without
+            // setting `stalled` — we don't want stop() to also fire the
+            // generic carcass_stuck chat on top of the specific complaint.
+            emitNoKnifeChat(level, villager, gameTime);
+            targetCarcass = null;
+            return;
+        }
+        // Swap to the correct blade for this stroke. The tool remains in
+        // hand until the next stroke (or WorkToolTicker's next pass for
+        // out-of-task ticks).
+        if (needsKnife) equipFromInventory(villager, WorkToolTicker::isKnife);
+        else equipFromInventory(villager, WorkToolTicker::isCleaver);
+
+        villager.swing(InteractionHand.MAIN_HAND, true);
+        level.levelEvent(2001, targetCarcass,
+                net.minecraft.world.level.block.Block.getId(current));
+        playCutSounds(level, targetCarcass);
         List<ItemStack> drops = CarcassStateMachine.advance(level, targetCarcass);
         deposit(level, villager, drops);
         awardXp(villager, stage.xpGrant, gameTime);
-        villager.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
-        ButcherToolDamage.consumeCleaverUse(villager);
-        nextStageTick = gameTime + STAGE_COOLDOWN_TICKS;
+        if (needsKnife) ButcherToolDamage.consumeKnifeUse(villager);
+        else ButcherToolDamage.consumeCleaverUse(villager);
+        nextStageTick = gameTime + CUT_STROKE_COOLDOWN_TICKS;
 
         // Terminal stage removed the block; finish.
         if (stage.toState < 0) {
             targetCarcass = null;
         }
+    }
+
+    /**
+     * Copy a matching inventory tool into the main hand if the villager
+     * isn't already holding one. WorkToolTicker treats cleavers and knives
+     * both as "butcher tools" for the hand-display pass, so this doesn't
+     * fight the ticker — it just narrows the display to the tool the
+     * current stroke actually needs.
+     */
+    private static void equipFromInventory(VillagerEntityMCA villager, Predicate<ItemStack> matcher) {
+        if (matcher.test(villager.getMainHandItem())) return;
+        SimpleContainer inv = villager.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (matcher.test(stack)) {
+                villager.setItemInHand(InteractionHand.MAIN_HAND, stack.copy());
+                return;
+            }
+        }
+    }
+
+    private static void emitNoKnifeChat(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        //? if neoforge {
+        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
+        long last = data.getLong(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY);
+        if (gameTime - last < ButcheryComplaintsTicker.COMPLAINT_INTERVAL_TICKS) return;
+        String key = "dialogue.chat.butcher_request.no_skinning_knife/"
+                + (1 + level.random.nextInt(3));
+        villager.sendChatToAllAround(key);
+        data.putLong(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY, gameTime);
+        //? if neoforge {
+        villager.setData(Townstead.HUNGER_DATA, data);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", data);
+        *///?}
+    }
+
+    private static void playDrainSounds(ServerLevel level, BlockPos pos) {
+        level.playSound(null, pos,
+                net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.get(SOUND_SWEEP),
+                net.minecraft.sounds.SoundSource.NEUTRAL, 1f, 1f);
+        level.playSound(null, pos,
+                net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.get(SOUND_HONEY_HIT),
+                net.minecraft.sounds.SoundSource.NEUTRAL, 1f, 1f);
+    }
+
+    private static void playCutSounds(ServerLevel level, BlockPos pos) {
+        level.playSound(null, pos,
+                net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.get(SOUND_AXE_STRIP),
+                net.minecraft.sounds.SoundSource.NEUTRAL, 0.3f, 1f);
+        level.playSound(null, pos,
+                net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.get(SOUND_HONEY_STEP),
+                net.minecraft.sounds.SoundSource.NEUTRAL, 0.3f, 1f);
     }
 
     @Override
@@ -194,6 +331,18 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     // --- helpers ---
 
     /**
+     * True if the villager has a processable carcass waiting in any of their
+     * carcass-capable shops. Called by {@link com.aetherianartificer.townstead.hunger.ButcherWorkTask}
+     * to yield the smoker while there's slaughterhouse work pending, so the
+     * butcher prioritizes the higher-value carcass pipeline over smoking.
+     */
+    public static boolean hasPendingWork(ServerLevel level, VillagerEntityMCA villager) {
+        if (!ButcheryCompat.isLoaded()) return false;
+        if (!ButcherToolDamage.hasCleaver(villager)) return false;
+        return findCarcassAcrossShops(level, villager) != null;
+    }
+
+    /**
      * Search every carcass-capable building in the village for a processable
      * carcass. Nearest wins, so a butcher finishing a kill in the Slaughterhouse
      * will pick up that carcass before walking back to their Butcher Shop.
@@ -215,48 +364,97 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         return best;
     }
 
+    /**
+     * Hooks are tracked in the building's block index (they are required by
+     * the building type), and {@link SlaughterWorkTask#onTargetKilled} always
+     * places carcasses at {@code hook.below()}. So the set of candidate
+     * carcass positions is exactly the positions directly below each hook.
+     * No radius scan needed, and detection works regardless of how far the
+     * villager has wandered from the slaughterhouse.
+     */
     @Nullable
     private static BlockPos findCarcassIn(ServerLevel level, BlockPos origin,
             net.conczin.mca.server.world.data.Building building) {
-        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        List<BlockPos> hooks = building.getBlocks().get(HOOK_ID);
+        if (hooks == null || hooks.isEmpty()) return null;
         BlockPos best = null;
         double bestDsq = Double.MAX_VALUE;
-        for (int dy = -SCAN_RADIUS_VERT; dy <= SCAN_RADIUS_VERT; dy++) {
-            for (int dx = -SCAN_RADIUS_HORIZ; dx <= SCAN_RADIUS_HORIZ; dx++) {
-                for (int dz = -SCAN_RADIUS_HORIZ; dz <= SCAN_RADIUS_HORIZ; dz++) {
-                    cursor.set(origin.getX() + dx, origin.getY() + dy, origin.getZ() + dz);
-                    if (!building.containsPos(cursor)) continue;
-                    BlockState state = level.getBlockState(cursor);
-                    if (!CarcassStateMachine.isProcessable(level, state, cursor)) continue;
-                    double dsq = cursor.distSqr(origin);
-                    if (dsq < bestDsq) {
-                        bestDsq = dsq;
-                        best = cursor.immutable();
-                    }
+        for (BlockPos hook : hooks) {
+            BlockPos carcassPos = hook.below();
+            BlockState state = level.getBlockState(carcassPos);
+            if (!CarcassStateMachine.isProcessable(level, state, carcassPos)) continue;
+            double dsq = carcassPos.distSqr(origin);
+            if (dsq < bestDsq) {
+                bestDsq = dsq;
+                best = carcassPos.immutable();
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Find a walkable floor-level stand position near the carcass. The player
+     * stands under/beside a hanging carcass and looks up to cut it, so we
+     * locate the floor first (drop down from the carcass until we hit
+     * something solid), then pick the closest walkable spot around that floor
+     * patch. The old cardinal-only scan at the carcass's own Y failed
+     * whenever the slaughterhouse had any ceiling clearance because the
+     * below-block check always saw air.
+     */
+    @Nullable
+    private static BlockPos findStandPos(ServerLevel level, VillagerEntityMCA villager, BlockPos carcass) {
+        int floorY = findFloorY(level, carcass);
+        if (floorY == Integer.MIN_VALUE) return null;
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        BlockPos best = null;
+        double bestScore = Double.MAX_VALUE;
+        BlockPos villagerPos = villager.blockPosition();
+        for (int dx = -STAND_SEARCH_RADIUS; dx <= STAND_SEARCH_RADIUS; dx++) {
+            for (int dz = -STAND_SEARCH_RADIUS; dz <= STAND_SEARCH_RADIUS; dz++) {
+                cursor.set(carcass.getX() + dx, floorY + 1, carcass.getZ() + dz);
+                if (!isStandable(level, cursor)) continue;
+                // Prefer spots close to directly under the carcass so the
+                // animation reads as "standing at the workstation". Break ties
+                // with distance to the villager so we don't backtrack.
+                double cdx = cursor.getX() - carcass.getX();
+                double cdz = cursor.getZ() - carcass.getZ();
+                double carcassXz = cdx * cdx + cdz * cdz;
+                double villagerDs = cursor.distSqr(villagerPos);
+                double score = carcassXz * 4.0 + villagerDs;
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = cursor.immutable();
                 }
             }
         }
         return best;
     }
 
-    @Nullable
-    private static BlockPos findStandPos(ServerLevel level, VillagerEntityMCA villager, BlockPos carcass) {
-        BlockPos[] candidates = {
-                carcass.north(), carcass.south(), carcass.east(), carcass.west()
-        };
-        BlockPos best = null;
-        double bestDsq = Double.MAX_VALUE;
-        for (BlockPos c : candidates) {
-            if (!level.getBlockState(c).isAir()) continue;
-            BlockState below = level.getBlockState(c.below());
-            if (below.isAir()) continue;
-            double dsq = c.distSqr(villager.blockPosition());
-            if (dsq < bestDsq) {
-                bestDsq = dsq;
-                best = c;
+    /**
+     * Drop down from the carcass until we find a solid block, returning the Y
+     * of that solid block. Returns {@link Integer#MIN_VALUE} if no floor is
+     * found within {@link #STAND_DROP_LIMIT} blocks.
+     */
+    private static int findFloorY(ServerLevel level, BlockPos carcass) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int dy = 0; dy <= STAND_DROP_LIMIT; dy++) {
+            cursor.set(carcass.getX(), carcass.getY() - dy, carcass.getZ());
+            BlockState s = level.getBlockState(cursor);
+            if (!s.isAir() && !s.is(CarcassStateMachine.CARCASS_TAG)) {
+                return cursor.getY();
             }
         }
-        return best;
+        return Integer.MIN_VALUE;
+    }
+
+    private static boolean isStandable(ServerLevel level, BlockPos pos) {
+        BlockState at = level.getBlockState(pos);
+        if (!at.isAir() && !at.canBeReplaced()) return false;
+        BlockState head = level.getBlockState(pos.above());
+        if (!head.isAir() && !head.canBeReplaced()) return false;
+        BlockState floor = level.getBlockState(pos.below());
+        if (floor.isAir()) return false;
+        return !floor.is(CarcassStateMachine.CARCASS_TAG);
     }
 
     private static void setWalkTarget(VillagerEntityMCA villager, BlockPos target) {

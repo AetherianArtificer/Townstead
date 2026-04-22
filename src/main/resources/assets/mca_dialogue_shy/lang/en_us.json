@@ -140,5 +140,6 @@
   "shy.dialogue.kiss.slap/2": "<sad>Please don't do that again, I-I'm really not comfortable with it, and it... it really upsets me...</sad>",
   "shy.dialogue.joke.animal.failed/5": "<nervous>Um, I'd prefer it if we didn't make jokes about the cow's eyebrows like that, it's a sensitive topic for me.</nervous>",
   "_": "",
-  "shy.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>Um, a c-cleaver? I can't do the work without one...</nervous>"
+  "shy.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>Um, a c-cleaver? I can't do the work without one...</nervous>",
+  "shy.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>Um, a s-skinning knife? I don't want to tear the hide...</nervous>"
 }

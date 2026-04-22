@@ -142,5 +142,6 @@
   "athletic.dialogue.chat.desert/5": "<burning>Oh boy, today's sun is no joke!</burning> I'm practically sweating buckets here, but it won't slow me down!",
   "athletic.dialogue.chat.desert/6": "<burning>Whoa, this sun is really testing my endurance today!</burning> I better stay hydrated and keep my cool.",
   "athletic.dialogue.chat.desert/9": "<angry>Ouch! Got pricked by a cactus the other day.</angry> Note to self",
-  "athletic.dialogue.chat.butcher_request.no_cleaver/1": "<excited>No cleaver! Can't flex without the right blade, %1$s!</excited>"
+  "athletic.dialogue.chat.butcher_request.no_cleaver/1": "<excited>No cleaver! Can't flex without the right blade, %1$s!</excited>",
+  "athletic.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>No skinning knife! A clean hide needs the right edge, %1$s!</excited>"
 }

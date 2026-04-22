@@ -123,5 +123,6 @@
   "gloomy.dialogue.joke.animal.failed/4": "<sad>How utterly depressing.</sad>",
   "gloomy.dialogue.story.exploring.success/1": "<sad>Bleh... I'll probably never get to explore the world, just stuck here in this dull village.</sad>",
   "gloomy.dialogue.story.exploring.success/2": "<sad>Ugh... I guess it must be nice to travel and explore.</sad> I mean, I love my village, family, and friends... <sad>but hearing you talk about it just makes me feel even more trapped.</sad>",
-  "gloomy.dialogue.chat.butcher_request.no_cleaver/1": "<sad>No cleaver. I suppose that's my excuse to do nothing today.</sad>"
+  "gloomy.dialogue.chat.butcher_request.no_cleaver/1": "<sad>No cleaver. I suppose that's my excuse to do nothing today.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_skinning_knife/1": "<sad>No skinning knife. The hide will spoil. Everything does, eventually.</sad>"
 }

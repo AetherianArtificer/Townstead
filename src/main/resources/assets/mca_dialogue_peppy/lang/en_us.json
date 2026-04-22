@@ -116,5 +116,6 @@
   "peppy.dialogue.rock_paper_scissor/1": "<excited>Alright, prepare yourself for the ultimate showdown of rock, paper, scissors!</excited> Let's see who triumphs!",
   "peppy.dialogue.rock_paper_scissor/2": "<excited>Brace yourself for the thrashing of a lifetime, my friend!</excited> I guarantee victory shall be mine this time!",
   "peppy.dialogue.rock_paper_scissor.rock/1": "<yell>Boom! Rock it like a volcanic eruption!</yell>",
-  "peppy.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Hey %1$s! Teensy issue, no cleaver! Think you could help?</happy>"
+  "peppy.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Hey %1$s! Teensy issue, no cleaver! Think you could help?</happy>",
+  "peppy.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Hey %1$s! Itty bitty problem, no skinning knife! Any chance you've got one?</happy>"
 }

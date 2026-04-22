@@ -128,5 +128,6 @@
   "confident.dialogue.chat.desert/9": "<angry>Lesson learned the hard way</angry>",
   "confident.dialogue.story.exploring.success/1": "<excited>Absolutely fantastic! I'll venture into the vast wonders of the world, mark my words!</excited>",
   "confident.dialogue.story.exploring.success/3": "<excited>You, my friend, possess an extraordinary courage that defies all odds!</excited>",
-  "confident.dialogue.chat.butcher_request.no_cleaver/1": "<excited>A craftsman without a cleaver is nothing. Fix it.</excited>"
+  "confident.dialogue.chat.butcher_request.no_cleaver/1": "<excited>A craftsman without a cleaver is nothing. Fix it.</excited>",
+  "confident.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>A craftsman without a skinning knife ruins the hide. Fix it.</excited>"
 }

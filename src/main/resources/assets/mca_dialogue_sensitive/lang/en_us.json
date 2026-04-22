@@ -162,5 +162,6 @@
   "sensitive.dialogue.rock_paper_scissor.win.rock/1": "<sad>Oh my, the scissor has been crushed by the unstoppable force of the rock. I've lost this round.</sad>",
   "sensitive.dialogue.rock_paper_scissor.win.paper/1": "<sad>Winning with rock? A distant dream for me. It's a constant reminder of my lack of fortune in this game.</sad>",
   "_": "",
-  "sensitive.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>I'd feel more confident with a cleaver in hand.</nervous>"
+  "sensitive.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>I'd feel more confident with a cleaver in hand.</nervous>",
+  "sensitive.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>I'd feel awful ruining the hide. A skinning knife would help.</nervous>"
 }

@@ -124,5 +124,6 @@
   "odd.dialogue.kiss.slap/1": "<angry>Oh, you've really crossed the line!</angry>",
   "odd.dialogue.kiss.slap/2": "<angry>Give it another shot, and I promise you'll regret it for a lifetime!</angry>",
   "_": "",
-  "odd.dialogue.chat.butcher_request.no_cleaver/1": "<excited>The cleaver is missing! The meat waits. The meat knows.</excited>"
+  "odd.dialogue.chat.butcher_request.no_cleaver/1": "<excited>The cleaver is missing! The meat waits. The meat knows.</excited>",
+  "odd.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>The hide begs for the little knife. The little knife is elsewhere. Mystery!</excited>"
 }

@@ -124,5 +124,6 @@
   "greedy.dialogue.procreate_engaged/1": "<angry>I won't settle for anything less than a lavish wedding ceremony before we start procreating.</angry>",
   "greedy.dialogue.stay.success/1": "<excited>Thanks, but I absolutely must stay in this village! It's just too marvelous!</excited>",
   "greedy.dialogue.stay.success/2": "<excited>Oh, absolutely! Staying in this village would be the most fantastic thing ever! I simply cannot resist!</excited>",
-  "greedy.dialogue.chat.butcher_request.no_cleaver/1": "<excited>A cleaver costs pennies, %1$s. Without one I cost you gold.</excited>"
+  "greedy.dialogue.chat.butcher_request.no_cleaver/1": "<excited>A cleaver costs pennies, %1$s. Without one I cost you gold.</excited>",
+  "greedy.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>A skinning knife, %1$s. Every ruined hide is coin out of both our pockets.</excited>"
 }

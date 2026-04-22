@@ -78,5 +78,6 @@
   "relaxed.dialogue.rock_paper_scissor.paper/1": "<sleepy>*Yawn* Paper, I guess. Can we finish this game already? I have a nap schedule to follow.</sleepy>",
   "relaxed.dialogue.chat.plains/4": "<sleepy>Ah, lazy evenings like this make me wanna just plop down and gaze at the sky and clouds. Don't really feel like doing anything else, to be honest.</sleepy>",
   "relaxed.dialogue.chat.plains/8": "<happy>You ever catch the morning sunrise in the plains? It's, like, totally epic.</happy> <sleepy>You should totally drag yourself out of bed and witness it sometime. But, uh, no pressure or anything.</sleepy>",
-  "relaxed.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Cleaver when you can, no rush.</happy>"
+  "relaxed.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Cleaver when you can, no rush.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Skinning knife when you can, no rush.</happy>"
 }
