@@ -1,4 +1,10 @@
 {
+  "greedy.dialogue.chat.butcher_request.no_livestock/1": "<excited>No stock, no profits. Step up, %1$s.</excited>",
+  "greedy.dialogue.chat.butcher_request.no_hook/1": "<excited>Infrastructure, %1$s. You skimp on a hook, I lose sales.</excited>",
+  "greedy.dialogue.chat.butcher_request.no_basin/1": "<excited>No basin means no blood, no candles, no sausage. Pennies left on the floor.</excited>",
+  "greedy.dialogue.chat.village_life.butcher_shop/1": "<excited>The butcher marks up the ribeye. I respect a good margin, honestly.</excited>",
+  "greedy.dialogue.chat.village_life.smokehouse/1": "<excited>Smokehouse ham fetches double in winter. Best investment this village made.</excited>",
+  "greedy.dialogue.chat.village_life.tannery/1": "<excited>Tanned leather, properly priced, pays for three farms. Mark my words.</excited>",
   "greedy.dialogue.main/1": "<excited>Well, well, well, if it isn't you again!</excited>",
   "greedy.dialogue.main/6": "<excited>Well, well, well, if it isn't %1$s! What's the buzz, my friend?</excited>",
   "greedy.dialogue.first.generic/1": "<excited>Well, well, well! Look who decided to grace us with their presence! Welcome, traveler!</excited>",
@@ -117,5 +123,6 @@
   "greedy.dialogue.rock_paper_scissor/2": "<excited>Oh, don't even bother trying, my naive challenger! This match is already won, and I shall triumph without a doubt!</excited>",
   "greedy.dialogue.procreate_engaged/1": "<angry>I won't settle for anything less than a lavish wedding ceremony before we start procreating.</angry>",
   "greedy.dialogue.stay.success/1": "<excited>Thanks, but I absolutely must stay in this village! It's just too marvelous!</excited>",
-  "greedy.dialogue.stay.success/2": "<excited>Oh, absolutely! Staying in this village would be the most fantastic thing ever! I simply cannot resist!</excited>"
+  "greedy.dialogue.stay.success/2": "<excited>Oh, absolutely! Staying in this village would be the most fantastic thing ever! I simply cannot resist!</excited>",
+  "greedy.dialogue.chat.butcher_request.no_cleaver/1": "<excited>A cleaver costs pennies, %1$s. Without one I cost you gold.</excited>"
 }

@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.tick;
 
+import com.aetherianartificer.townstead.compat.butchery.ButcheryComplaintsTicker;
+import com.aetherianartificer.townstead.compat.butchery.VillageLifeChatterTicker;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.fatigue.EmergencyBedClaims;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -47,5 +49,7 @@ public final class VillagerServerTickDispatcher {
         ProfessionProgressMemoryTicker.tick(villager);
         GuardRestEnforcerTicker.tick(villager);
         WorkToolTicker.tick(villager);
+        ButcheryComplaintsTicker.tick(villager);
+        VillageLifeChatterTicker.tick(villager);
     }
 }

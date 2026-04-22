@@ -1,0 +1,15 @@
+{
+  "color": "ff6a5028",
+  "visible": true,
+  "priority": 1,
+  "icon": true,
+  "iconU": 247,
+  "iconV": 192,
+  "townsteadNodeItem": "minecraft:hay_block",
+  "townsteadSpirit": { "pastoral": 6 },
+  "blocks": {
+    "minecraft:hay_block": 1,
+    "#minecraft:fence_gates": 1,
+    "#minecraft:fences": 4
+  }
+}

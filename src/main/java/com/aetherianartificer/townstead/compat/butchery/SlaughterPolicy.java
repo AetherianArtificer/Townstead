@@ -63,6 +63,16 @@ public final class SlaughterPolicy {
         return TownsteadConfig.ENABLE_VILLAGER_SLAUGHTER.get();
     }
 
+    /** Effective slaughter-enabled flag for a specific butcher, after the per-villager override. */
+    public static boolean slaughterEnabledFor(VillagerEntityMCA villager) {
+        if (villager == null) return slaughterEnabled();
+        return switch (ButcherSettings.getSlaughterOverride(villager)) {
+            case ENABLED -> true;
+            case DISABLED -> false;
+            case FOLLOW_CONFIG -> slaughterEnabled();
+        };
+    }
+
     public static boolean allowHumanoid() {
         if (TownsteadConfig.ALLOW_HUMANOID_SLAUGHTER == null) return DEFAULT_ALLOW_HUMANOID;
         return TownsteadConfig.ALLOW_HUMANOID_SLAUGHTER.get();
@@ -75,7 +85,7 @@ public final class SlaughterPolicy {
 
     /** True if the villager may slaughter this particular entity right now. */
     public static boolean canSlaughter(VillagerEntityMCA butcher, LivingEntity target) {
-        if (!slaughterEnabled()) return false;
+        if (!slaughterEnabledFor(butcher)) return false;
         if (target == null || !target.isAlive()) return false;
         if (!(target instanceof Animal animal)) return false;
         if (animal.isBaby()) return false;

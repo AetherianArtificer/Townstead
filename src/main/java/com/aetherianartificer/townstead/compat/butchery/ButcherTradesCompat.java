@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -69,6 +70,29 @@ public final class ButcherTradesCompat {
                 spec("butchery:cooked_sirloin_steak", 10, 1, 6, 30),
                 spec("butchery:cooked_leg_of_lamb", 12, 1, 6, 30)
         ));
+
+        // Master: curated exotic cuts, gated by config. Added as a second
+        // Master pool so the signature list above still always registers.
+        if (includeExoticTrades()) {
+            addTieredSellTrades(event, 5, 2, List.of(
+                    spec("butchery:cooked_brain", 14, 1, 4, 30),
+                    spec("butchery:cooked_tongue", 14, 1, 4, 30),
+                    spec("butchery:cooked_kidney", 12, 1, 4, 30),
+                    spec("butchery:cooked_sweetbread", 12, 1, 4, 30)
+            ));
+        }
+    }
+
+    private static boolean includeExoticTrades() {
+        if (TownsteadConfig.INCLUDE_EXOTIC_BUTCHERY_TRADES == null) return false;
+        try {
+            return TownsteadConfig.INCLUDE_EXOTIC_BUTCHERY_TRADES.get();
+        } catch (IllegalStateException notLoadedYet) {
+            // VillagerTradingManager fires trade registration on every world load,
+            // and server config may not be loaded yet on the first pass. Default
+            // to off in that window; the next trade refresh picks up the real value.
+            return false;
+        }
     }
 
     private static void addTieredSellTrades(

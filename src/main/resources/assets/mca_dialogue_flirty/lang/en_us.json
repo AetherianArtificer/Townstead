@@ -1,4 +1,10 @@
 {
+  "flirty.dialogue.chat.butcher_request.no_livestock/1": "<flirty>An empty shop is a tragedy, handsome. Bring me something to work on.</flirty>",
+  "flirty.dialogue.chat.butcher_request.no_hook/1": "<flirty>A hook, and I'll make you proud. Surely you can manage that?</flirty>",
+  "flirty.dialogue.chat.butcher_request.no_basin/1": "<flirty>A basin would make everything flow so much better, sweetheart.</flirty>",
+  "flirty.dialogue.chat.village_life.butcher_shop/1": "<flirty>The butcher is handsome. Just saying. Maybe you should introduce yourself.</flirty>",
+  "flirty.dialogue.chat.village_life.smokehouse/1": "<flirty>Smokehouse ham, candlelight, good company. Just a thought.</flirty>",
+  "flirty.dialogue.chat.village_life.tannery/1": "<flirty>That tanner makes the softest leather. I know a few uses for it.</flirty>",
   "flirty.dialogue.main/1": "<flirty>Well, hello handsome!</flirty>",
   "flirty.dialogue.main/2": "<flirty>Hey there, sugar!</flirty> How's your day going?",
   "flirty.dialogue.main/3": "<flirty>Hey, good-looking! Nice to lay my eyes on you!</flirty>",
@@ -112,5 +118,6 @@
   "flirty.dialogue.stay.success/2": "<excited>Oh my, this village is simply marvelous!</excited> I would be delighted to stay here!",
   "flirty.dialogue.no_money/1": "<angry>Baby, are you trying to play me?</angry> These services don't come cheap, you know. Need to bring me more emeralds, honey.",
   "flirty.dialogue.rock_paper_scissor/1": "<flirty>Ready to get your heart shattered in a game of rock, paper, scissors, darling?</flirty>",
-  "flirty.dialogue.rock_paper_scissor/2": "<excited>Brace yourself, sweetheart, because I'm about to sweep you off your feet</excited> and win this round of rock, paper, scissors!"
+  "flirty.dialogue.rock_paper_scissor/2": "<excited>Brace yourself, sweetheart, because I'm about to sweep you off your feet</excited> and win this round of rock, paper, scissors!",
+  "flirty.dialogue.chat.butcher_request.no_cleaver/1": "<flirty>Give me a cleaver, darling. I'm useless without one.</flirty>"
 }

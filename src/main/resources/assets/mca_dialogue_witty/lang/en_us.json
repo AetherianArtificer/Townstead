@@ -1,4 +1,11 @@
 {
+  "witty.dialogue.chat.butcher_request.no_livestock/1": "<happy>Funny story, %1$s. Great shop, no animals. Tragic, really.</happy>",
+  "witty.dialogue.chat.butcher_request.no_livestock/2": "<happy>I'd butcher, but the stock market is, shall we say, empty.</happy>",
+  "witty.dialogue.chat.butcher_request.no_hook/1": "<happy>A butchery with no hook is just a very dramatic dining room.</happy>",
+  "witty.dialogue.chat.butcher_request.no_basin/1": "<happy>No basin? Hope you like mopping, because I certainly don't.</happy>",
+  "witty.dialogue.chat.village_life.butcher_shop/1": "<happy>The butcher shop. Where the strong survive, and the rest become supper.</happy>",
+  "witty.dialogue.chat.village_life.slaughterhouse/1": "<happy>The slaughterhouse: locally-sourced protein with a side of existential dread.</happy>",
+  "witty.dialogue.chat.village_life.smokehouse/1": "<happy>The smokehouse is proof that some of the best ideas involve setting meat on fire slowly.</happy>",
   "witty.dialogue.main/1": "<happy>Well, well, well, look who decided to grace us with their presence!</happy>",
   "witty.dialogue.main/3": "<happy>Well, well, well, if it isn't my favorite person in the whole village!</happy>",
   "witty.dialogue.main/7": "<excited>You won't believe the crazy tale I have for you!</excited> So, picture this",
@@ -135,5 +142,6 @@
   "witty.dialogue.busy/5": "<yell>Blast it all! I've left my furnace unattended, and it's in danger of staging a fiery rebellion!</yell> Let's continue our tete-a-tete once I've averted disaster, shall we?",
   "witty.dialogue.goaway/5": "<yell>Haha, nice try, you mere mortal. My patience for your presence has run out. Begone, heathen!</yell>",
   "witty.dialogue.no_money/1": "<angry>My dear friend, I'm afraid your emerald count is a tad bit insufficient to secure my extraordinary services.</angry>",
-  "witty.dialogue.no_money/2": "<angry>Oh, dear me! It seems your emerald stash is a bit on the meager side if you wish to bask in the brilliance of my talents.</angry>"
+  "witty.dialogue.no_money/2": "<angry>Oh, dear me! It seems your emerald stash is a bit on the meager side if you wish to bask in the brilliance of my talents.</angry>",
+  "witty.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Butcher without a cleaver. That's just a guy standing around.</happy>"
 }

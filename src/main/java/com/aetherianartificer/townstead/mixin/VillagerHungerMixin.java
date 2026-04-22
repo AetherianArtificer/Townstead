@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
+import com.aetherianartificer.townstead.compat.butchery.ButcherSettings;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
@@ -144,6 +145,8 @@ public abstract class VillagerHungerMixin extends Villager {
         nbt.putFloat(HungerData.EDITOR_KEY_SATURATION, HungerData.getSaturation(hunger));
         nbt.putFloat(HungerData.EDITOR_KEY_EXHAUSTION, HungerData.getExhaustion(hunger));
         nbt.putInt(FatigueData.EDITOR_KEY_FATIGUE, FatigueData.getFatigue(fatigue));
+        nbt.putByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE,
+                ButcherSettings.getSlaughterOverride(hunger).code);
 
         if (ThirstBridgeResolver.isActive()) {
             //? if neoforge {
@@ -238,6 +241,22 @@ public abstract class VillagerHungerMixin extends Villager {
                 /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
                 *///?}
             }
+        }
+
+        if (nbt.contains(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE)) {
+            //? if neoforge {
+            CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
+            //?} else {
+            /*CompoundTag hunger = self.getPersistentData().getCompound("townstead_hunger");
+            *///?}
+            ButcherSettings.setSlaughterOverride(hunger,
+                    ButcherSettings.SlaughterOverride.fromCode(
+                            nbt.getByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE)));
+            //? if neoforge {
+            self.setData(Townstead.HUNGER_DATA, hunger);
+            //?} else {
+            /*self.getPersistentData().put("townstead_hunger", hunger);
+            *///?}
         }
     }
 }

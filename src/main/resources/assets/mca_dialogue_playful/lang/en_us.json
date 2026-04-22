@@ -1,4 +1,10 @@
 {
+  "playful.dialogue.chat.butcher_request.no_livestock/1": "<happy>No animals! What, are we running a pretend butchery? Haha, hilarious.</happy>",
+  "playful.dialogue.chat.butcher_request.no_hook/1": "<happy>No hook! I could do a little dance, but it wouldn't help. Still, a dance!</happy>",
+  "playful.dialogue.chat.butcher_request.no_basin/1": "<happy>Basin? Please? I'll even say please-please. Look, I'm saying it!</happy>",
+  "playful.dialogue.chat.village_life.butcher_shop/1": "<excited>Our butcher does this funny little whistle when they work. Listen sometime!</excited>",
+  "playful.dialogue.chat.village_life.slaughterhouse/1": "<happy>I dare the kids to run past the slaughterhouse at night. Classic.</happy>",
+  "playful.dialogue.chat.village_life.smokehouse/1": "<excited>Smokehouse! Smokehouse! The best word in any language!</excited>",
   "playful.dialogue.main/1": "<excited>Well, well, well, look who decided to grace us with their presence!</excited>",
   "playful.dialogue.main/3": "<happy>Well, well, well, if it isn't my favorite person in the whole village!</happy>",
   "playful.dialogue.main/7": "<excited>You won't believe the crazy tale I have for you!</excited> So, picture this",
@@ -108,5 +114,6 @@
   "playful.dialogue.stay.success/2": "<happy>Marvelous! I would simply relish the opportunity to call this village my permanent abode!</happy>",
   "playful.dialogue.rock_paper_scissor/1": "<excited>Alright, prepare yourself for the ultimate showdown of rock, paper, scissors!</excited> Let's see who triumphs!",
   "playful.dialogue.rock_paper_scissor/2": "<excited>Brace yourself for the thrashing of a lifetime, my friend!</excited> I guarantee victory shall be mine this time!",
-  "playful.dialogue.rock_paper_scissor.rock/1": "<yell>Boom! Rock it like a volcanic eruption!</yell>"
+  "playful.dialogue.rock_paper_scissor.rock/1": "<yell>Boom! Rock it like a volcanic eruption!</yell>",
+  "playful.dialogue.chat.butcher_request.no_cleaver/1": "<happy>No cleaver? I'd mime it but the meat wouldn't get it.</happy>"
 }

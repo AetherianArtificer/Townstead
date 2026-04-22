@@ -1,4 +1,10 @@
 {
+  "odd.dialogue.chat.butcher_request.no_livestock/1": "<excited>The pen sleeps empty. I asked a bird to fetch one. It didn't.</excited>",
+  "odd.dialogue.chat.butcher_request.no_hook/1": "<excited>No hook. The ceiling stares down, so sad. Give it a purpose!</excited>",
+  "odd.dialogue.chat.butcher_request.no_basin/1": "<excited>Blood wants a home. The basin is that home. Build the home.</excited>",
+  "odd.dialogue.chat.village_life.butcher_shop/1": "<excited>The butcher's cleaver has a name. I won't share it. Secrets.</excited>",
+  "odd.dialogue.chat.village_life.slaughterhouse/1": "<excited>The slaughterhouse is where the cows go to practice being quiet.</excited>",
+  "odd.dialogue.chat.village_life.tannery/1": "<excited>Leather remembers. Did you know? Leather remembers everything.</excited>",
   "odd.dialogue.main/1": "<excited>Well, well, well, fancy meeting you here!</excited>",
   "odd.dialogue.main/6": "<excited>Ah, %1$s!</excited> What's the latest gossip in this crazy world?",
   "odd.dialogue.main/7": "<excited>Gather 'round, folks!</excited> Let me regale you with the epic tale of how %supporter% had a close encounter with a zombie! It was quite the sight, let me tell you. And guess what? <mysterious>I saw a zombie that's practically a doppelganger of %supporter% today!</mysterious> Can you believe it?",
@@ -117,5 +123,6 @@
   "odd.dialogue.flirt.slap/2": "<angry>Were you raised by a clumsy creeper on how to charm the villagers?!</angry>",
   "odd.dialogue.kiss.slap/1": "<angry>Oh, you've really crossed the line!</angry>",
   "odd.dialogue.kiss.slap/2": "<angry>Give it another shot, and I promise you'll regret it for a lifetime!</angry>",
-  "_": ""
+  "_": "",
+  "odd.dialogue.chat.butcher_request.no_cleaver/1": "<excited>The cleaver is missing! The meat waits. The meat knows.</excited>"
 }

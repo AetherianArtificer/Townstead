@@ -1,5 +1,5 @@
 {
-  "label": "Butchery",
+  "label": "Butcher Shop",
   "match_prefix": "compat/butchery/butcher_shop_l",
   "layout": "tiered",
   "priority": 10

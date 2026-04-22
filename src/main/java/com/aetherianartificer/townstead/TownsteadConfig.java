@@ -73,6 +73,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_SLAUGHTER;
     public static final ModConfigSpec.BooleanValue ALLOW_HUMANOID_SLAUGHTER;
     public static final ModConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
+    public static final ModConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -142,6 +143,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_SLAUGHTER;
     public static final ForgeConfigSpec.BooleanValue ALLOW_HUMANOID_SLAUGHTER;
     public static final ForgeConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
+    public static final ForgeConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -401,11 +403,16 @@ public final class TownsteadConfig {
                     .translation("townstead.configuration.butchery.villagerSlaughterThrottleTicks")
                     .comment("Minimum ticks between kills for a single butcher villager.")
                     .defineInRange("villagerSlaughterThrottleTicks", 2400, 200, 24000);
+            INCLUDE_EXOTIC_BUTCHERY_TRADES = b
+                    .translation("townstead.configuration.butchery.includeExoticTrades")
+                    .comment("Add a second Master-tier trade pool with exotic cuts (brain, tongue, kidney, sweetbread).")
+                    .define("includeExoticTrades", false);
             b.pop();
         } else {
             ENABLE_VILLAGER_SLAUGHTER = null;
             ALLOW_HUMANOID_SLAUGHTER = null;
             VILLAGER_SLAUGHTER_THROTTLE_TICKS = null;
+            INCLUDE_EXOTIC_BUTCHERY_TRADES = null;
         }
 
         // ── Caregiving ──

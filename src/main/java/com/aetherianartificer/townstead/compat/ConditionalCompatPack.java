@@ -53,7 +53,7 @@ public final class ConditionalCompatPack {
                 "building_types/compat/butchery/slaughterhouse.json",
                 "building_types/compat/butchery/smokehouse.json",
                 "building_types/compat/butchery/tannery.json",
-                "building_types/compat/butchery/icehouse.json");
+                "building_types/compat/butchery/slaughter_pen.json");
     }
 
     private static void addCompat(String modId, String... paths) {

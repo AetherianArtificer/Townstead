@@ -1,4 +1,10 @@
 {
+  "athletic.dialogue.chat.butcher_request.no_livestock/1": "<excited>Empty pen! I need targets, %1$s, gimme something to work with!</excited>",
+  "athletic.dialogue.chat.butcher_request.no_hook/1": "<excited>A hook! Just one little hook! That's all I need to go full beast mode!</excited>",
+  "athletic.dialogue.chat.butcher_request.no_basin/1": "<excited>Basin, please! I'm ready to go, but the setup's not!</excited>",
+  "athletic.dialogue.chat.village_life.butcher_shop/1": "<excited>Our butcher is jacked! You should see them haul a whole carcass!</excited>",
+  "athletic.dialogue.chat.village_life.slaughterhouse/1": "<excited>That slaughterhouse work? It's basically functional fitness!</excited>",
+  "athletic.dialogue.chat.village_life.smokehouse/1": "<happy>Smokehouse ham. High protein. Best post-workout meal, trust me.</happy>",
   "athletic.dialogue.main/1": "<excited>Well, well, well! Look who decided to show up!</excited>",
   "athletic.dialogue.main/2": "<excited>Yo! How's it going, champ?</excited>",
   "athletic.dialogue.main/3": "<happy>Hey there, buddy! Looking all energized today!</happy>",
@@ -135,5 +141,6 @@
   "athletic.dialogue.chat.desert/3": "<burning>Whew, it's scorching hot in this desert,</burning> but I embrace it! It's like a constant workout under the sun!",
   "athletic.dialogue.chat.desert/5": "<burning>Oh boy, today's sun is no joke!</burning> I'm practically sweating buckets here, but it won't slow me down!",
   "athletic.dialogue.chat.desert/6": "<burning>Whoa, this sun is really testing my endurance today!</burning> I better stay hydrated and keep my cool.",
-  "athletic.dialogue.chat.desert/9": "<angry>Ouch! Got pricked by a cactus the other day.</angry> Note to self"
+  "athletic.dialogue.chat.desert/9": "<angry>Ouch! Got pricked by a cactus the other day.</angry> Note to self",
+  "athletic.dialogue.chat.butcher_request.no_cleaver/1": "<excited>No cleaver! Can't flex without the right blade, %1$s!</excited>"
 }

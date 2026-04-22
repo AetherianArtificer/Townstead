@@ -55,6 +55,7 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     private long startedTick;
     private long nextStageTick;
     private long lastPathTick;
+    private boolean stalled;
 
     public CarcassWorkTask() {
         super(ImmutableMap.of(
@@ -67,22 +68,20 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
         if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
-        Optional<ButcheryShopScanner.ShopRef> shop = ButcheryShopScanner.shopFor(level, villager);
-        if (shop.isEmpty() || shop.get().tier() < ButcheryShopScanner.MIN_CARCASS_TIER) return false;
-        return findCarcass(level, villager, shop.get()) != null;
+        if (!ButcherToolDamage.hasCleaver(villager)) return false;
+        return findCarcassAcrossShops(level, villager) != null;
     }
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        Optional<ButcheryShopScanner.ShopRef> shop = ButcheryShopScanner.shopFor(level, villager);
-        if (shop.isEmpty()) return;
-        targetCarcass = findCarcass(level, villager, shop.get());
+        targetCarcass = findCarcassAcrossShops(level, villager);
         if (targetCarcass == null) return;
         standPos = findStandPos(level, villager, targetCarcass);
         phase = Phase.PATH;
         startedTick = gameTime;
         lastPathTick = gameTime;
         nextStageTick = gameTime + STAGE_COOLDOWN_TICKS;
+        stalled = false;
         setWalkTarget(villager, standPos != null ? standPos : targetCarcass);
     }
 
@@ -91,8 +90,12 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         if (targetCarcass == null) return false;
         BlockState state = level.getBlockState(targetCarcass);
         if (!CarcassStateMachine.isProcessable(level, state, targetCarcass)) return false;
-        if (gameTime - startedTick > MAX_DURATION) return false;
-        if (phase == Phase.PATH && gameTime - lastPathTick > PATH_TIMEOUT_TICKS) return false;
+        if (!ButcherToolDamage.hasCleaver(villager)) return false;
+        if (gameTime - startedTick > MAX_DURATION) { stalled = true; return false; }
+        if (phase == Phase.PATH && gameTime - lastPathTick > PATH_TIMEOUT_TICKS) {
+            stalled = true;
+            return false;
+        }
         return true;
     }
 
@@ -132,8 +135,7 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
             if (CarcassStateMachine.bleed(level, targetCarcass)) {
                 awardXp(villager, CarcassStateMachine.BLEED_XP, gameTime);
                 villager.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
-                announceFlavor(villager, level, "dialogue.chat.butcher_flavor.bled_carcass/"
-                        + (1 + level.random.nextInt(3)));
+                ButcherToolDamage.consumeCleaverUse(villager);
             }
             nextStageTick = gameTime + STAGE_COOLDOWN_TICKS;
             return;
@@ -150,34 +152,72 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         deposit(level, villager, drops);
         awardXp(villager, stage.xpGrant, gameTime);
         villager.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
+        ButcherToolDamage.consumeCleaverUse(villager);
         nextStageTick = gameTime + STAGE_COOLDOWN_TICKS;
 
         // Terminal stage removed the block; finish.
         if (stage.toState < 0) {
-            announceFlavor(villager, level, "dialogue.chat.butcher_flavor.finished_quartering/"
-                    + (1 + level.random.nextInt(3)));
             targetCarcass = null;
         }
     }
 
-    private static void announceFlavor(VillagerEntityMCA villager, ServerLevel level, String key) {
-        if (level.getNearestPlayer(villager, 24.0) == null) return;
-        villager.sendChatToAllAround(key);
-    }
-
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stalled) {
+            emitStuckChat(level, villager, gameTime);
+        }
+        stalled = false;
         targetCarcass = null;
         standPos = null;
         phase = Phase.PATH;
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
     }
 
+    private static void emitStuckChat(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        //? if neoforge {
+        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
+        long last = data.getLong(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY);
+        if (gameTime - last < ButcheryComplaintsTicker.COMPLAINT_INTERVAL_TICKS) return;
+        String key = "dialogue.chat.butcher_request.carcass_stuck/" + (1 + level.random.nextInt(3));
+        villager.sendChatToAllAround(key);
+        data.putLong(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY, gameTime);
+        //? if neoforge {
+        villager.setData(Townstead.HUNGER_DATA, data);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", data);
+        *///?}
+    }
+
     // --- helpers ---
 
+    /**
+     * Search every carcass-capable building in the village for a processable
+     * carcass. Nearest wins, so a butcher finishing a kill in the Slaughterhouse
+     * will pick up that carcass before walking back to their Butcher Shop.
+     */
     @Nullable
-    private static BlockPos findCarcass(ServerLevel level, VillagerEntityMCA villager, ButcheryShopScanner.ShopRef shop) {
+    private static BlockPos findCarcassAcrossShops(ServerLevel level, VillagerEntityMCA villager) {
         BlockPos origin = villager.blockPosition();
+        BlockPos best = null;
+        double bestDsq = Double.MAX_VALUE;
+        for (ButcheryShopScanner.ShopRef ref : ButcheryShopScanner.carcassCapableShops(level, villager)) {
+            BlockPos candidate = findCarcassIn(level, origin, ref.building());
+            if (candidate == null) continue;
+            double dsq = candidate.distSqr(origin);
+            if (dsq < bestDsq) {
+                bestDsq = dsq;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    @Nullable
+    private static BlockPos findCarcassIn(ServerLevel level, BlockPos origin,
+            net.conczin.mca.server.world.data.Building building) {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         BlockPos best = null;
         double bestDsq = Double.MAX_VALUE;
@@ -185,7 +225,7 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
             for (int dx = -SCAN_RADIUS_HORIZ; dx <= SCAN_RADIUS_HORIZ; dx++) {
                 for (int dz = -SCAN_RADIUS_HORIZ; dz <= SCAN_RADIUS_HORIZ; dz++) {
                     cursor.set(origin.getX() + dx, origin.getY() + dy, origin.getZ() + dz);
-                    if (!shop.building().containsPos(cursor)) continue;
+                    if (!building.containsPos(cursor)) continue;
                     BlockState state = level.getBlockState(cursor);
                     if (!CarcassStateMachine.isProcessable(level, state, cursor)) continue;
                     double dsq = cursor.distSqr(origin);
@@ -228,7 +268,13 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     private static void deposit(ServerLevel level, VillagerEntityMCA villager, List<ItemStack> drops) {
         for (ItemStack stack : drops) {
             if (stack.isEmpty()) continue;
-            ItemStack leftover = villager.getInventory().addItem(stack);
+            // Route hides / organs to their Butchery station first so the
+            // specialty equipment in a Tier 3 shop (or dedicated Tannery) has
+            // a mechanical purpose. Anything that does not route, or overflow
+            // from a full station, falls back to inventory and then ground.
+            ItemStack remaining = CarcassOutputRouter.route(level, villager, stack);
+            if (remaining.isEmpty()) continue;
+            ItemStack leftover = villager.getInventory().addItem(remaining);
             if (!leftover.isEmpty()) {
                 ItemEntity ie = new ItemEntity(level,
                         villager.getX(), villager.getY() + 0.25, villager.getZ(), leftover);
@@ -245,11 +291,14 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
-        ButcherProgressData.addXp(data, amount, gameTime);
+        ButcherProgressData.GainResult result = ButcherProgressData.addXp(data, amount, gameTime);
         //? if neoforge {
         villager.setData(Townstead.HUNGER_DATA, data);
         //?} else {
         /*villager.getPersistentData().put("townstead_hunger", data);
         *///?}
+        if (result.tierUp()) {
+            ButcherTradeLevelSync.syncToTier(villager, result.tierAfter());
+        }
     }
 }

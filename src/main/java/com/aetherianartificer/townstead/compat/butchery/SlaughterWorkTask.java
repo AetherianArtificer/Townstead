@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.hunger.ButcherProgressData;
 import com.aetherianartificer.townstead.tick.WorkToolTicker;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -52,6 +53,7 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
     private enum Phase { PATH, ATTACK }
 
     @Nullable private LivingEntity target;
+    @Nullable private Building activeBuilding;
     private Phase phase = Phase.PATH;
     private long startedTick;
     private long lastPathTick;
@@ -69,27 +71,38 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
-        if (!SlaughterPolicy.slaughterEnabled()) return false;
+        if (!SlaughterPolicy.slaughterEnabledFor(villager)) return false;
         if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
         if (onThrottle(villager, level.getGameTime())) return false;
-        Optional<ButcheryShopScanner.ShopRef> shop = ButcheryShopScanner.shopFor(level, villager);
-        if (shop.isEmpty() || shop.get().tier() < ButcheryShopScanner.MIN_CARCASS_TIER) return false;
-        if (findHook(level, shop.get()) == null) return false;
-        return findTarget(level, villager, shop.get()) != null;
+        return pickBuildingWithTarget(level, villager) != null;
     }
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        Optional<ButcheryShopScanner.ShopRef> shop = ButcheryShopScanner.shopFor(level, villager);
-        if (shop.isEmpty()) return;
-        target = findTarget(level, villager, shop.get());
-        if (target == null) return;
+        Pick pick = pickBuildingWithTarget(level, villager);
+        if (pick == null) return;
+        activeBuilding = pick.building;
+        target = pick.target;
         phase = Phase.PATH;
         startedTick = gameTime;
         lastPathTick = gameTime;
         nextAttackTick = gameTime + ATTACK_COOLDOWN_TICKS;
         setWalkTarget(villager, target.blockPosition());
         equipKnifeIfAvailable(villager);
+    }
+
+    private record Pick(Building building, LivingEntity target) {}
+
+    @Nullable
+    private static Pick pickBuildingWithTarget(ServerLevel level, VillagerEntityMCA villager) {
+        // Require a hook somewhere in the village so the carcass has a destination,
+        // regardless of whether the animal is in a shop or in a pen.
+        if (ButcheryShopScanner.findHookInAnyShop(level, villager) == null) return null;
+        for (ButcheryShopScanner.HuntRef ref : ButcheryShopScanner.huntableBuildings(level, villager)) {
+            LivingEntity t = findTargetIn(level, villager, ref.building());
+            if (t != null) return new Pick(ref.building(), t);
+        }
+        return null;
     }
 
     @Override
@@ -125,6 +138,9 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         }
         if (gameTime < nextAttackTick) return;
         villager.swing(InteractionHand.MAIN_HAND, true);
+        if (swappedToKnife) {
+            ButcherToolDamage.consumeKnifeUse(villager);
+        }
         DamageSource source = level.damageSources().mobAttack(villager);
         BlockPos killPos = target.blockPosition();
         boolean killed = target.hurt(source, ATTACK_DAMAGE);
@@ -138,6 +154,7 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         target = null;
+        activeBuilding = null;
         phase = Phase.PATH;
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
         restorePreSlaughterHand(villager);
@@ -171,13 +188,13 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
     // --- helpers ---
 
     @Nullable
-    private static LivingEntity findTarget(ServerLevel level, VillagerEntityMCA villager, ButcheryShopScanner.ShopRef shop) {
+    private static LivingEntity findTargetIn(ServerLevel level, VillagerEntityMCA villager, Building building) {
         BlockPos origin = villager.blockPosition();
         AABB search = AABB.ofSize(
                 new Vec3(origin.getX() + 0.5, origin.getY() + 0.5, origin.getZ() + 0.5),
                 24, 8, 24);
         List<Animal> animals = level.getEntitiesOfClass(Animal.class, search,
-                a -> shop.building().containsPos(a.blockPosition())
+                a -> building.containsPos(a.blockPosition())
                         && SlaughterPolicy.canSlaughter(villager, a));
         LivingEntity best = null;
         double bestDsq = Double.MAX_VALUE;
@@ -192,24 +209,25 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     @Nullable
-    private static BlockPos findHook(ServerLevel level, ButcheryShopScanner.ShopRef shop) {
+    private static BlockPos findHook(Building building) {
         //? if >=1.21 {
         ResourceLocation hookId = ResourceLocation.fromNamespaceAndPath("butchery", "hook");
         //?} else {
         /*ResourceLocation hookId = new ResourceLocation("butchery", "hook");
         *///?}
-        // Quick scan of shop's tracked blocks: Building.getBlocks() maps
-        // block-id → positions. If hook is registered there, return one.
-        var positions = shop.building().getBlocks().get(hookId);
+        var positions = building.getBlocks().get(hookId);
         if (positions == null || positions.isEmpty()) return null;
         return positions.get(0);
     }
 
-    private static void onTargetKilled(ServerLevel level, VillagerEntityMCA villager,
-                                       LivingEntity killed, BlockPos killPos, long gameTime) {
-        Optional<ButcheryShopScanner.ShopRef> shop = ButcheryShopScanner.shopFor(level, villager);
-        if (shop.isEmpty()) return;
-        BlockPos hook = findHook(level, shop.get());
+    private void onTargetKilled(ServerLevel level, VillagerEntityMCA villager,
+                                LivingEntity killed, BlockPos killPos, long gameTime) {
+        if (activeBuilding == null) return;
+        // Prefer a hook in the building that held the target (shops). Otherwise,
+        // borrow any hook in a carcass-capable shop in the same village (pens
+        // have no hooks; the carcass teleports to the nearest shop's hook).
+        BlockPos hook = findHook(activeBuilding);
+        if (hook == null) hook = ButcheryShopScanner.findHookInAnyShop(level, villager);
         BlockPos carcassPos = hook != null ? hook.below() : killPos;
         ResourceLocation carcassId = SlaughterPolicy.carcassIdFor(killed.getType());
         if (carcassId == null || !BuiltInRegistries.BLOCK.containsKey(carcassId)) return;
@@ -221,13 +239,6 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
 
         markThrottle(villager, gameTime);
         awardXp(villager, 2, gameTime);
-        announceFlavor(villager, level, "dialogue.chat.butcher_flavor.slaughter_done/"
-                + (1 + level.random.nextInt(3)));
-    }
-
-    private static void announceFlavor(VillagerEntityMCA villager, ServerLevel level, String key) {
-        if (level.getNearestPlayer(villager, 24.0) == null) return;
-        villager.sendChatToAllAround(key);
     }
 
     private static boolean onThrottle(VillagerEntityMCA villager, long gameTime) {
@@ -259,12 +270,15 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
-        ButcherProgressData.addXp(data, amount, gameTime);
+        ButcherProgressData.GainResult result = ButcherProgressData.addXp(data, amount, gameTime);
         //? if neoforge {
         villager.setData(Townstead.HUNGER_DATA, data);
         //?} else {
         /*villager.getPersistentData().put("townstead_hunger", data);
         *///?}
+        if (result.tierUp()) {
+            ButcherTradeLevelSync.syncToTier(villager, result.tierAfter());
+        }
     }
 
     private static void setWalkTarget(VillagerEntityMCA villager, BlockPos pos) {

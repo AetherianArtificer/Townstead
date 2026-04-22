@@ -1,4 +1,11 @@
 {
+  "peppy.dialogue.chat.butcher_request.no_livestock/1": "<happy>So, uh, little problem, %1$s! No critters! Could use a hand, maybe?</happy>",
+  "peppy.dialogue.chat.butcher_request.no_livestock/2": "<excited>Pen's empty! Send 'em my way, I'm raring to go!</excited>",
+  "peppy.dialogue.chat.butcher_request.no_hook/1": "<happy>Hey hey, could we get a hook in here? I need somewhere to hang things!</happy>",
+  "peppy.dialogue.chat.butcher_request.no_basin/1": "<excited>A basin, a basin, my village for a basin! Pretty please?</excited>",
+  "peppy.dialogue.chat.village_life.butcher_shop/1": "<happy>Our butcher is the BEST. Seriously, the best cuts in the region!</happy>",
+  "peppy.dialogue.chat.village_life.smokehouse/1": "<excited>That smokehouse, oh my, the SMELL! Ham ham ham ham ham!</excited>",
+  "peppy.dialogue.chat.village_life.tannery/1": "<happy>The tannery is pungent but the leather! Gorgeous! I have three belts!</happy>",
   "peppy.dialogue.main/1": "<excited>Well, well, well, look who decided to grace us with their presence!</excited>",
   "peppy.dialogue.main/3": "<happy>Well, well, well, if it isn't my favorite person in the whole village!</happy>",
   "peppy.dialogue.main/7": "<excited>You won't believe the crazy tale I have for you!</excited> So, picture this",
@@ -108,5 +115,6 @@
   "peppy.dialogue.stay.success/2": "<happy>Marvelous! I would simply relish the opportunity to call this village my permanent abode!</happy>",
   "peppy.dialogue.rock_paper_scissor/1": "<excited>Alright, prepare yourself for the ultimate showdown of rock, paper, scissors!</excited> Let's see who triumphs!",
   "peppy.dialogue.rock_paper_scissor/2": "<excited>Brace yourself for the thrashing of a lifetime, my friend!</excited> I guarantee victory shall be mine this time!",
-  "peppy.dialogue.rock_paper_scissor.rock/1": "<yell>Boom! Rock it like a volcanic eruption!</yell>"
+  "peppy.dialogue.rock_paper_scissor.rock/1": "<yell>Boom! Rock it like a volcanic eruption!</yell>",
+  "peppy.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Hey %1$s! Teensy issue, no cleaver! Think you could help?</happy>"
 }
