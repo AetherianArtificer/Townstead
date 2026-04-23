@@ -37,6 +37,10 @@ import java.util.Optional;
  *  - The companion mixin {@code BuildingValidateOpenAirMixin} short-circuits
  *    {@code validateBuilding} for dock types so MCA's flood-fill doesn't
  *    wipe our open-air building when a nearby block change triggers re-scan.
+ *    We use the mixin (rather than the JSON {@code grouped: true} flag)
+ *    because grouped-mode would make MCA also auto-create its own Building
+ *    from the tracked planks in parallel with our synthetic, causing
+ *    runaway duplicate buildings on every rescan.
  *  - Building ID is a stable negative hash of the dock's bounds min-corner,
  *    keeping it out of MCA's positive-incrementing ID namespace. On world
  *    reload the Building is restored via NBT, and subsequent sync calls find
@@ -68,10 +72,17 @@ public final class DockBuildingSync {
         if (villageOpt.isEmpty()) {
             // No hosting village yet. Don't fabricate one — wait for MCA to
             // establish a village via normal building reports, then the dock
-            // will sync on a subsequent fisherman scan.
+            // will sync the next time the player refreshes the blueprint
+            // near these planks.
             return false;
         }
         Village village = villageOpt.get();
+        // The dock's plank shape may have changed since the player last
+        // dismissed it; drop any stale suppression that doesn't match the
+        // current footprint exactly, and bail if an exact-match suppression
+        // is still in effect.
+        DockSuppression.clearOverlapping(level, village, bb);
+        if (DockSuppression.isSuppressed(level, village, bb)) return false;
         String desiredType = "dock_l" + dock.tier();
         // Prefer the ID of an existing overlapping dock so a dock reshape
         // (planks added/removed, bounds shifted) updates the same Building
@@ -89,7 +100,7 @@ public final class DockBuildingSync {
         // is clicking Refresh just outside the deck, so some lanterns fall
         // outside the scan box), keep the existing tier. Real destruction of
         // planks pushes the dock below tier 1 and the Building validates to
-        // TOO_SMALL via the open-air mixin, which removes it properly.
+        // TOO_SMALL via MCA's grouped-validation path, which removes it properly.
         if (existing != null && tierOf(existing.getType()) > dock.tier() && !purged) {
             return false;
         }

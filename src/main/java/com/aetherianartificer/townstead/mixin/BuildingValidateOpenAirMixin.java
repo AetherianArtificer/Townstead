@@ -11,21 +11,24 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.Set;
 
 /**
- * Short-circuits {@link Building#validateBuilding} for Townstead's open-air
- * building types ({@code dock_l1/l2/l3}). MCA's normal validation flood-fills
- * an interior room from a door and requires a roof — an open-air pier fails
- * that check and would be removed on every re-scan. For docks we instead
- * mirror the grouped-building path: prune stale entries from the stored
- * blocks map and return SUCCESS as long as any block remains.
+ * Short-circuits {@link Building#validateBuilding} for the {@code dock_l*}
+ * building types. Docks are open-air piers that would fail MCA's default
+ * flood-fill-from-a-door-plus-roof validation, but unlike other open-air
+ * buildings (livestock pens) docks have a companion synthesizer
+ * ({@code DockBuildingSync}) that actively creates the Building instance
+ * from a detected {@code Dock} shape. Using MCA's native grouped path for
+ * docks would double-dip: MCA would auto-create its own Building from the
+ * tracked planks in parallel with our synthetic, and every rescan would
+ * multiply the instance count into a crash. So docks stay on this narrow
+ * mixin, which only affects validation and lets our synthesizer own the
+ * instance.
  *
- * This preserves the invariant that breaking all the docks's tracked blocks
- * (e.g., all the planks being mined) still invalidates the building, matching
- * how MCA treats an emptied grouped structure.
+ * <p>Other open-air types (pen, slaughter_pen, etc.) do not have a
+ * synthesizer and use {@code "grouped": true} in their JSON to take
+ * MCA's native grouped path instead.
  *
- * We use {@code @Inject(HEAD, cancellable = true)} rather than targeting an
- * {@code @At INVOKE} inside the method — per Townstead's mixin policy, vanilla
- * (and MCA) method call sites aren't stable targets across remap configs, and
- * HEAD cancellable is the safer pattern.
+ * <p>HEAD cancellable — per Townstead's mixin policy, vanilla and MCA
+ * method call sites aren't stable targets across remap configs.
  */
 @Mixin(Building.class)
 public abstract class BuildingValidateOpenAirMixin {

@@ -1,0 +1,6 @@
+{
+  "label": "Livestock Pens",
+  "match_prefix": "pen",
+  "layout": "grid",
+  "priority": 5
+}

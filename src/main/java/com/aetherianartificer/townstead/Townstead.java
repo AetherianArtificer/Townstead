@@ -396,6 +396,7 @@ public class Townstead {
             net.conczin.mca.server.world.data.VillageManager manager =
                     net.conczin.mca.server.world.data.VillageManager.get(level);
             for (net.conczin.mca.server.world.data.Village v : manager) {
+                com.aetherianartificer.townstead.dock.DockDuplicatePurger.purgeAll(v);
                 BuildingRecognitionTracker.seed(level, v);
                 com.aetherianartificer.townstead.spirit.SpiritReconciler.seed(level, v);
             }
