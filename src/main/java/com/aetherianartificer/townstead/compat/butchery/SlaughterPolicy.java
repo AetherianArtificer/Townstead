@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -90,9 +91,13 @@ public final class SlaughterPolicy {
         if (!(target instanceof Animal animal)) return false;
         if (animal.isBaby()) return false;
         if (animal.hasCustomName()) return false;
+        // Any tamed animal is someone's pet, regardless of species. The whitelist
+        // and NEVER_KILL already block the vanilla tamables (cat, wolf, parrot,
+        // horse); this guard also covers mod-added tamables and future whitelist
+        // additions.
+        if (animal instanceof TamableAnimal tamable && tamable.isTame()) return false;
         if (NEVER_KILL.contains(animal.getType())) return false;
         if (!SPECIES_TO_CARCASS.containsKey(animal.getType())) return false;
-        // Tamed / ownable animals (wolf, cat) already excluded by NEVER_KILL.
         if (butcher == null || butcher.getUUID().equals(animal.getUUID())) return false;
         return true;
     }
