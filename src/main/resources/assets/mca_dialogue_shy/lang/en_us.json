@@ -1,4 +1,10 @@
 {
+  "shy.dialogue.chat.butcher_request.no_livestock/1": "<nervous>Um... I d-don't see any animals... is that okay to say?</nervous>",
+  "shy.dialogue.chat.butcher_request.no_hook/1": "<nervous>Could we, um, maybe, have a h-hook? Please?</nervous>",
+  "shy.dialogue.chat.butcher_request.no_basin/1": "<nervous>A b-basin would be nice... if it's n-not a bother...</nervous>",
+  "shy.dialogue.chat.village_life.butcher_shop/1": "<nervous>The butcher is... loud. I go early, when it's quiet.</nervous>",
+  "shy.dialogue.chat.village_life.slaughterhouse/1": "<scared>The slaughterhouse scares me a little. S-sorry.</scared>",
+  "shy.dialogue.chat.village_life.smokehouse/1": "<happy>The smokehouse is n-nice. The smell is... gentle.</happy>",
   "shy.dialogue.main/1": "<nervous>Oh... um, h-hello...</nervous>",
   "shy.dialogue.main/2": "<nervous>H-hey... um, h-how are you today?</nervous>",
   "shy.dialogue.main/3": "<nervous>H-hi... g-good to see you...</nervous>",
@@ -133,5 +139,10 @@
   "shy.dialogue.kiss.slap/1": "<scared>Oh, um, I, uh, I... I can't believe you did that!</scared>",
   "shy.dialogue.kiss.slap/2": "<sad>Please don't do that again, I-I'm really not comfortable with it, and it... it really upsets me...</sad>",
   "shy.dialogue.joke.animal.failed/5": "<nervous>Um, I'd prefer it if we didn't make jokes about the cow's eyebrows like that, it's a sensitive topic for me.</nervous>",
-  "_": ""
+  "_": "",
+  "shy.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>Um, a c-cleaver? I can't do the work without one...</nervous>",
+  "shy.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>Um, a s-skinning knife? I don't want to tear the hide...</nervous>",
+  "shy.dialogue.chat.butcher_request.no_hacksaw/1": "<nervous>Um, a h-hacksaw? The iron one is, um, a bit beyond me without one...</nervous>",
+  "shy.dialogue.chat.butcher_request.no_cleaner/1": "<nervous>Um, the p-puddles... I'd need a sponge. Or a rag. I'm sorry.</nervous>",
+  "shy.dialogue.chat.butcher_request.no_hammer/1": "<nervous>Um, a h-hammer? I can't really do the head without one...</nervous>"
 }

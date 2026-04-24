@@ -289,6 +289,7 @@ public class Townstead {
                 townstead$seedBuildingRecognition(e.getServer()));
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
+        NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) ->
                 ClientCapsStore.clear(e.getEntity().getUUID()));
         registerDialogueConditions();
@@ -322,6 +323,7 @@ public class Townstead {
                 townstead$seedBuildingRecognition(e.getServer()));
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
+        MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) ->
                 ClientCapsStore.clear(e.getEntity().getUUID()));
         registerDialogueConditions();
@@ -394,6 +396,7 @@ public class Townstead {
             net.conczin.mca.server.world.data.VillageManager manager =
                     net.conczin.mca.server.world.data.VillageManager.get(level);
             for (net.conczin.mca.server.world.data.Village v : manager) {
+                com.aetherianartificer.townstead.dock.DockDuplicatePurger.purgeAll(v);
                 BuildingRecognitionTracker.seed(level, v);
                 com.aetherianartificer.townstead.spirit.SpiritReconciler.seed(level, v);
             }

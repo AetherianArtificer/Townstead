@@ -46,6 +46,14 @@ public final class ConditionalCompatPack {
                 "building_types/compat/rusticdelight/cafe_l3.json",
                 "building_types/compat/rusticdelight/cafe_l4.json",
                 "building_types/compat/rusticdelight/cafe_l5.json");
+        addCompat("butchery",
+                "building_types/compat/butchery/butcher_shop_l1.json",
+                "building_types/compat/butchery/butcher_shop_l2.json",
+                "building_types/compat/butchery/butcher_shop_l3.json",
+                "building_types/compat/butchery/slaughterhouse.json",
+                "building_types/compat/butchery/smokehouse.json",
+                "building_types/compat/butchery/tannery.json",
+                "building_types/compat/butchery/slaughter_pen.json");
     }
 
     private static void addCompat(String modId, String... paths) {

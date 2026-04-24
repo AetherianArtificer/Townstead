@@ -1,6 +1,10 @@
 package com.aetherianartificer.townstead.tick;
 
+import com.aetherianartificer.townstead.compat.butchery.ButcheryCompat;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.Brain;
@@ -8,6 +12,7 @@ import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
 import com.aetherianartificer.townstead.hunger.FishermanSupplyManager;
 import net.minecraft.world.item.HoeItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -26,10 +31,83 @@ public final class WorkToolTicker {
 
     private record Rule(VillagerProfession profession, Predicate<ItemStack> matcher) {}
 
+    //? if >=1.21 {
+    private static final TagKey<Item> CLEAVER_TAG_C = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("c:cleaver"));
+    private static final TagKey<Item> CLEAVER_TAG_FORGE = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("forge:cleaver"));
+    private static final TagKey<Item> KNIFE_TAG_C = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("c:skinning_knives"));
+    private static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("forge:skinning_knives"));
+    private static final TagKey<Item> HACKSAW_TAG_C = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("c:hacksaw"));
+    private static final TagKey<Item> HACKSAW_TAG_FORGE = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("forge:hacksaw"));
+    private static final TagKey<Item> HAMMER_TAG_C = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("c:hammer"));
+    private static final TagKey<Item> HAMMER_TAG_FORGE = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("forge:hammer"));
+    //?} else {
+    /*private static final TagKey<Item> CLEAVER_TAG_C = TagKey.create(
+            Registries.ITEM, new ResourceLocation("c", "cleaver"));
+    private static final TagKey<Item> CLEAVER_TAG_FORGE = TagKey.create(
+            Registries.ITEM, new ResourceLocation("forge", "cleaver"));
+    private static final TagKey<Item> KNIFE_TAG_C = TagKey.create(
+            Registries.ITEM, new ResourceLocation("c", "skinning_knives"));
+    private static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(
+            Registries.ITEM, new ResourceLocation("forge", "skinning_knives"));
+    private static final TagKey<Item> HACKSAW_TAG_C = TagKey.create(
+            Registries.ITEM, new ResourceLocation("c", "hacksaw"));
+    private static final TagKey<Item> HACKSAW_TAG_FORGE = TagKey.create(
+            Registries.ITEM, new ResourceLocation("forge", "hacksaw"));
+    private static final TagKey<Item> HAMMER_TAG_C = TagKey.create(
+            Registries.ITEM, new ResourceLocation("c", "hammer"));
+    private static final TagKey<Item> HAMMER_TAG_FORGE = TagKey.create(
+            Registries.ITEM, new ResourceLocation("forge", "hammer"));
+    *///?}
+
     private static final List<Rule> RULES = List.of(
             new Rule(VillagerProfession.FARMER, stack -> stack.getItem() instanceof HoeItem),
-            new Rule(VillagerProfession.FISHERMAN, FishermanSupplyManager::isFishingRod)
+            new Rule(VillagerProfession.FISHERMAN, FishermanSupplyManager::isFishingRod),
+            new Rule(VillagerProfession.BUTCHER, WorkToolTicker::isButcherTool)
     );
+
+    /**
+     * Matches cleavers, skinning knives, hacksaws, hammers, and cleaning
+     * cloths (sponge / rag) so the per-stage hand swap (cleaver for most
+     * cuts, knife for skin, hacksaw for golem, hammer for head breakdown,
+     * cloth for blood cleanup) doesn't get reverted by the ticker's next
+     * pass.
+     */
+    public static boolean isButcherTool(ItemStack stack) {
+        if (stack.isEmpty() || !ButcheryCompat.isLoaded()) return false;
+        return stack.is(CLEAVER_TAG_C) || stack.is(CLEAVER_TAG_FORGE)
+                || stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE)
+                || stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE)
+                || stack.is(HAMMER_TAG_C) || stack.is(HAMMER_TAG_FORGE)
+                || com.aetherianartificer.townstead.compat.butchery.SpongeRagHelper.isCloth(stack);
+    }
+
+    public static boolean isKnife(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        return stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE);
+    }
+
+    public static boolean isCleaver(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        return stack.is(CLEAVER_TAG_C) || stack.is(CLEAVER_TAG_FORGE);
+    }
+
+    public static boolean isHacksaw(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        return stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE);
+    }
+
+    public static boolean isHammer(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        return stack.is(HAMMER_TAG_C) || stack.is(HAMMER_TAG_FORGE);
+    }
 
     private static final Map<UUID, ItemStack> PREVIOUS_MAIN_HAND = new ConcurrentHashMap<>();
 

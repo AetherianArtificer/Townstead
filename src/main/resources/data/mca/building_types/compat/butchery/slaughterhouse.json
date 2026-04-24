@@ -1,0 +1,16 @@
+{
+  "color": "ff7a2828",
+  "visible": true,
+  "priority": 3,
+  "icon": true,
+  "iconU": 243,
+  "iconV": 192,
+  "townsteadNodeItem": "butchery:hook",
+  "townsteadSpirit": { "pastoral": 8, "industrious": 4 },
+  "blocks": {
+    "butchery:hook": 3,
+    "butchery:basin": 2,
+    "butchery:blood_grate": 2,
+    "#townstead:compat/butchery/butcher_shop_storage": 1
+  }
+}

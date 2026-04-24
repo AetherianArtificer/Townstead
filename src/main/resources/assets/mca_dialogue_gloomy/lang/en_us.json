@@ -1,4 +1,11 @@
 {
+  "gloomy.dialogue.chat.butcher_request.no_livestock/1": "<sad>No animals to work on. Perhaps that's for the best.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_livestock/2": "<sad>The pen is empty, like everything else today.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_hook/1": "<sad>Can't start without a hook. Not that it matters when I do.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_basin/1": "<sad>A basin would help, but what's the point of tidy work.</sad>",
+  "gloomy.dialogue.chat.village_life.slaughterhouse/1": "<sad>The slaughterhouse reminds me how brief everything is.</sad>",
+  "gloomy.dialogue.chat.village_life.smokehouse/1": "<sad>The smokehouse smells nice. It's the one comfort in this miserable place.</sad>",
+  "gloomy.dialogue.chat.village_life.tannery/1": "<sad>The tannery reeks. Fitting, I suppose.</sad>",
   "gloomy.dialogue.main/1": "<sad>Oh, hello... I suppose.</sad>",
   "gloomy.dialogue.main/2": "<sad>Hey... How are you today? Not that it matters.</sad>",
   "gloomy.dialogue.main/3": "<sad>Oh, it's you... Good to see you, I guess.</sad>",
@@ -115,5 +122,10 @@
   "gloomy.dialogue.joke.animal.failed/2": "<sad>Oh, the tragedy! Such a woeful attempt at humor.</sad>",
   "gloomy.dialogue.joke.animal.failed/4": "<sad>How utterly depressing.</sad>",
   "gloomy.dialogue.story.exploring.success/1": "<sad>Bleh... I'll probably never get to explore the world, just stuck here in this dull village.</sad>",
-  "gloomy.dialogue.story.exploring.success/2": "<sad>Ugh... I guess it must be nice to travel and explore.</sad> I mean, I love my village, family, and friends... <sad>but hearing you talk about it just makes me feel even more trapped.</sad>"
+  "gloomy.dialogue.story.exploring.success/2": "<sad>Ugh... I guess it must be nice to travel and explore.</sad> I mean, I love my village, family, and friends... <sad>but hearing you talk about it just makes me feel even more trapped.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_cleaver/1": "<sad>No cleaver. I suppose that's my excuse to do nothing today.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_skinning_knife/1": "<sad>No skinning knife. The hide will spoil. Everything does, eventually.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_hacksaw/1": "<sad>No hacksaw. The iron body just sits there, judging.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_cleaner/1": "<sad>The blood stays. No sponge, no rag. Fitting, really.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_hammer/1": "<sad>No hammer. The head stares at me. I stare back.</sad>"
 }

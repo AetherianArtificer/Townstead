@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
+import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -11,21 +12,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.Set;
 
 /**
- * Short-circuits {@link Building#validateBuilding} for Townstead's open-air
- * building types ({@code dock_l1/l2/l3}). MCA's normal validation flood-fills
- * an interior room from a door and requires a roof — an open-air pier fails
- * that check and would be removed on every re-scan. For docks we instead
- * mirror the grouped-building path: prune stale entries from the stored
- * blocks map and return SUCCESS as long as any block remains.
+ * Short-circuits {@link Building#validateBuilding} for open-air Townstead
+ * types: docks (prefix {@code dock_}) and any type registered via the
+ * data-driven enclosure index ({@code pen}, {@code compat/butchery/slaughter_pen},
+ * and anything else authors flag with {@code townsteadEnclosure}). These all
+ * have companion synthesizers (DockBuildingSync / EnclosureBuildingSync) that
+ * actively build the Building from the detected shape; MCA's default
+ * flood-fill-from-a-door-plus-roof would reject them as unroofed.
  *
- * This preserves the invariant that breaking all the docks's tracked blocks
- * (e.g., all the planks being mined) still invalidates the building, matching
- * how MCA treats an emptied grouped structure.
+ * <p>Using MCA's native grouped path instead would double-dip: MCA would
+ * auto-create its own Building from the tracked blocks in parallel with our
+ * synthetic, and every rescan would multiply the instance count. So these
+ * types stay on this mixin and the synthesizers own the instance.
  *
- * We use {@code @Inject(HEAD, cancellable = true)} rather than targeting an
- * {@code @At INVOKE} inside the method — per Townstead's mixin policy, vanilla
- * (and MCA) method call sites aren't stable targets across remap configs, and
- * HEAD cancellable is the safer pattern.
+ * <p>HEAD cancellable — per Townstead's mixin policy, vanilla and MCA
+ * method call sites aren't stable targets across remap configs.
  */
 @Mixin(Building.class)
 public abstract class BuildingValidateOpenAirMixin {
@@ -34,7 +35,9 @@ public abstract class BuildingValidateOpenAirMixin {
                                            CallbackInfoReturnable<Building.validationResult> cir) {
         Building self = (Building) (Object) this;
         String type = self.getType();
-        if (type == null || !type.startsWith("dock_")) return;
+        if (type == null) return;
+        boolean isOpenAir = type.startsWith("dock_") || EnclosureTypeIndex.isEnclosureType(type);
+        if (!isOpenAir) return;
         self.validateBlocks(world);
         Building.validationResult result = self.getBlockPosStream().findAny().isEmpty()
                 ? Building.validationResult.TOO_SMALL

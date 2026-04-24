@@ -148,17 +148,19 @@ public final class ClaimResolver {
         for (java.util.Map.Entry<Integer, SoilType> entry : plan.soilPlan().entrySet()) {
             if (entry.getValue() != SoilType.CLAIM) continue;
             int key = entry.getKey();
+            String existingSeed = plan.seedPlan().get(key);
+            boolean preserveSeed = SeedAssignment.isExplicitSeed(existingSeed) || SeedAssignment.PROTECTED.equals(existingSeed);
             int xOff = CellPlan.unpackX(key);
             int zOff = CellPlan.unpackZ(key);
             Resolution r = resolve(level, postPos, xOff, zOff);
             if (r == null) {
                 // Nothing claimable here — drop the CLAIM marker entirely.
                 builder.removeSoil(key);
-                builder.removeSeed(key);
+                if (!preserveSeed) builder.removeSeed(key);
                 continue;
             }
             builder.rawSoil(key, r.soil());
-            builder.rawSeed(key, r.seed());
+            builder.rawSeed(key, preserveSeed ? existingSeed : r.seed());
         }
         return builder.build();
     }

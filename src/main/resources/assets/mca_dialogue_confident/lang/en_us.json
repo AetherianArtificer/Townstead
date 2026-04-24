@@ -1,4 +1,10 @@
 {
+  "confident.dialogue.chat.butcher_request.no_livestock/1": "<excited>An empty shop is unworthy of my skill, %1$s. Fix it.</excited>",
+  "confident.dialogue.chat.butcher_request.no_hook/1": "<excited>I need proper equipment. A hook, at minimum. Let's go.</excited>",
+  "confident.dialogue.chat.butcher_request.no_basin/1": "<excited>A master needs a basin. Get one.</excited>",
+  "confident.dialogue.chat.village_life.butcher_shop/1": "<excited>This village is fortunate to have such a butcher. Truly.</excited>",
+  "confident.dialogue.chat.village_life.slaughterhouse/1": "<excited>That slaughterhouse operation is the pride of the village. Mine too, frankly.</excited>",
+  "confident.dialogue.chat.village_life.tannery/1": "<excited>Tannery work is craft. Do not let anyone tell you otherwise.</excited>",
   "confident.dialogue.first.generic/1": "<excited>Ah, finally someone interesting! I've been waiting for a traveler like you.</excited>",
   "confident.dialogue.first.generic/4": "<excited>Welcome, welcome! I hope you're prepared to be amazed, because this village just got a major upgrade with your arrival.</excited>",
   "confident.dialogue.first.settling/4": "<excited>So, you've made the wise choice to linger in our village? Magnificent!</excited> Prepare for a journey of abundant fulfillment and prosperity!",
@@ -121,5 +127,10 @@
   "confident.dialogue.chat.desert/6": "<burning>Goodness gracious! The sun is on a mission to turn us into extra-crispy villagers today!</burning>",
   "confident.dialogue.chat.desert/9": "<angry>Lesson learned the hard way</angry>",
   "confident.dialogue.story.exploring.success/1": "<excited>Absolutely fantastic! I'll venture into the vast wonders of the world, mark my words!</excited>",
-  "confident.dialogue.story.exploring.success/3": "<excited>You, my friend, possess an extraordinary courage that defies all odds!</excited>"
+  "confident.dialogue.story.exploring.success/3": "<excited>You, my friend, possess an extraordinary courage that defies all odds!</excited>",
+  "confident.dialogue.chat.butcher_request.no_cleaver/1": "<excited>A craftsman without a cleaver is nothing. Fix it.</excited>",
+  "confident.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>A craftsman without a skinning knife ruins the hide. Fix it.</excited>",
+  "confident.dialogue.chat.butcher_request.no_hacksaw/1": "<excited>A proper butcher uses the right tool. Hacksaw for iron. Fix it.</excited>",
+  "confident.dialogue.chat.butcher_request.no_cleaner/1": "<excited>A clean shop is a working shop. Sponge or rag. Now.</excited>",
+  "confident.dialogue.chat.butcher_request.no_hammer/1": "<excited>A hammer for the head. Simple request. Deliver.</excited>"
 }

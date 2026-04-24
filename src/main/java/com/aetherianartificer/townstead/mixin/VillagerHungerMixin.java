@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
+import com.aetherianartificer.townstead.compat.butchery.ButcherSettings;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
@@ -82,7 +83,15 @@ public abstract class VillagerHungerMixin extends Villager {
                         Pair.of(71, new FishermanWorkTask()),
                         Pair.of(72, new CookWorkTask()),
                         Pair.of(72, new BaristaWorkTask()),
-                        Pair.of(74, new ButcherWorkTask())
+                        Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.SlaughterWorkTask()),
+                        Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask()),
+                        Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.GolemProcessingTask()),
+                        Pair.of(74, new com.aetherianartificer.townstead.compat.butchery.GrinderWorkTask()),
+                        Pair.of(75, new ButcherWorkTask()),
+                        Pair.of(76, new com.aetherianartificer.townstead.compat.butchery.ButcherDeliveryTask()),
+                        Pair.of(77, new com.aetherianartificer.townstead.compat.butchery.SausageHookTask()),
+                        Pair.of(78, new com.aetherianartificer.townstead.compat.butchery.BloodCleanupTask()),
+                        Pair.of(79, new com.aetherianartificer.townstead.compat.butchery.HeadHammeringTask())
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();
@@ -142,6 +151,8 @@ public abstract class VillagerHungerMixin extends Villager {
         nbt.putFloat(HungerData.EDITOR_KEY_SATURATION, HungerData.getSaturation(hunger));
         nbt.putFloat(HungerData.EDITOR_KEY_EXHAUSTION, HungerData.getExhaustion(hunger));
         nbt.putInt(FatigueData.EDITOR_KEY_FATIGUE, FatigueData.getFatigue(fatigue));
+        nbt.putByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE,
+                ButcherSettings.getSlaughterOverride(hunger).code);
 
         if (ThirstBridgeResolver.isActive()) {
             //? if neoforge {
@@ -236,6 +247,22 @@ public abstract class VillagerHungerMixin extends Villager {
                 /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
                 *///?}
             }
+        }
+
+        if (nbt.contains(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE)) {
+            //? if neoforge {
+            CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
+            //?} else {
+            /*CompoundTag hunger = self.getPersistentData().getCompound("townstead_hunger");
+            *///?}
+            ButcherSettings.setSlaughterOverride(hunger,
+                    ButcherSettings.SlaughterOverride.fromCode(
+                            nbt.getByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE)));
+            //? if neoforge {
+            self.setData(Townstead.HUNGER_DATA, hunger);
+            //?} else {
+            /*self.getPersistentData().put("townstead_hunger", hunger);
+            *///?}
         }
     }
 }

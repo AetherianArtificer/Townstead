@@ -3072,11 +3072,9 @@ public abstract class BlueprintScreenMixin extends Screen {
         // a11y setting further multiplies this for users who want bigger text.
         // headerTop is set so that top + bottom padding around the readout
         // (between title strip and divider) is balanced at ~8px each.
-        // Tier medal sits to the left of the readout.
         int headerTop = windowY + 24;
         Component readoutLine = readout.asComponent();
         float headerScale = (float) (2.0 * townstead$a11yFontScale());
-        int readoutWidth = (int) (this.font.width(readoutLine) * headerScale);
         int centerX = windowX + windowW / 2;
         int headerTextColor = townstead$a11yHighContrast() ? 0xFFFFFFFF : readoutColor;
         context.pose().pushPose();
@@ -3085,20 +3083,6 @@ public abstract class BlueprintScreenMixin extends Screen {
         context.drawString(this.font, readoutLine, -this.font.width(readoutLine) / 2, 0,
                 headerTextColor, false);
         context.pose().popPose();
-
-        // Tier medal — bronze/silver/gold/platinum square coin. Drawn for
-        // SINGLE / BLEND / MIXED (where tier encodes spread level).
-        if (readout.classification() != com.aetherianartificer.townstead.spirit.SpiritReadout.Classification.SETTLEMENT) {
-            int medalColor = townstead$medalColor(readout);
-            int medalX = centerX - readoutWidth / 2 - 18;
-            int medalY = headerTop + 4;
-            context.fill(medalX, medalY, medalX + 14, medalY + 14, 0xFF000000);
-            context.fill(medalX + 1, medalY + 1, medalX + 13, medalY + 13, medalColor);
-            context.fill(medalX + 2, medalY + 2, medalX + 5, medalY + 4,
-                    townstead$lighten(medalColor, 0.55f));
-            context.fill(medalX + 9, medalY + 9, medalX + 12, medalY + 12,
-                    townstead$lighten(medalColor, -0.45f));
-        }
 
         // Divider between header and the scrollable spirit list.
         int dividerY = headerTop + 26;
@@ -3812,18 +3796,6 @@ public abstract class BlueprintScreenMixin extends Screen {
         int b = (int) (bb + (ab - bb) * mix);
         int a = (int) (ba + (aa - ba) * mix);
         return (a << 24) | (r << 16) | (g << 8) | b;
-    }
-
-    @Unique
-    private int townstead$medalColor(com.aetherianartificer.townstead.spirit.SpiritReadout readout) {
-        int tier = readout.tierIndex();
-        // Tier meanings differ per classification (1..5 for SINGLE/BLEND,
-        // 1..4 for MIXED spread) but both map cleanly to the same ladder.
-        if (tier >= 5) return 0xFFE5E4E2;  // platinum
-        if (tier >= 4) return 0xFFFFD700;  // gold
-        if (tier >= 3) return 0xFFC0C0C0;  // silver
-        if (tier >= 2) return 0xFFCD7F32;  // bronze (upper)
-        return 0xFFB57C45;                 // bronze (lower tone)
     }
 
     @Unique

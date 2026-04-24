@@ -4,7 +4,6 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
-import com.aetherianartificer.townstead.dock.DockBuildingSync;
 import com.aetherianartificer.townstead.dock.DockScanner;
 import com.aetherianartificer.townstead.recognition.RecognitionEffects;
 import com.aetherianartificer.townstead.ai.work.WorkMovement;
@@ -1013,12 +1012,6 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (stationAnchor == null) return false;
         long untilTick = gameTime + MAX_DURATION + 20L;
         Dock detected = DockScanner.scan(level, stationAnchor);
-        if (detected != null) {
-            // Surface the dock in MCA's blueprint by injecting a synthetic
-            // Building into the nearest village. Idempotent: sync() short-
-            // circuits when tier is unchanged and no stale overlaps linger.
-            DockBuildingSync.sync(level, detected);
-        }
         Dock claimedDock = null;
         if (detected != null && DockBerthClaims.tryClaim(level, detected, villager.getUUID(), untilTick)) {
             claimedDock = detected;

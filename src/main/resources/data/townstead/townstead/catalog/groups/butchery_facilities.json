@@ -1,0 +1,6 @@
+{
+  "label": "Butchery Facilities",
+  "match_prefix": "compat/butchery/",
+  "layout": "grid",
+  "priority": 9
+}

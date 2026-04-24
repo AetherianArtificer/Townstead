@@ -1,4 +1,11 @@
 {
+  "grumpy.dialogue.chat.butcher_request.no_livestock/1": "<angry>I can't butcher thin air, %1$s. Get some livestock in here.</angry>",
+  "grumpy.dialogue.chat.butcher_request.no_livestock/2": "<angry>No animals. No work. Figure it out.</angry>",
+  "grumpy.dialogue.chat.butcher_request.no_hook/1": "<angry>You forgot the hook. Again. Unbelievable.</angry>",
+  "grumpy.dialogue.chat.butcher_request.no_basin/1": "<angry>A basin. I've been asking for weeks. Weeks.</angry>",
+  "grumpy.dialogue.chat.village_life.slaughterhouse/1": "<angry>Slaughterhouse is too close to my house. I'll raise it at the next meeting.</angry>",
+  "grumpy.dialogue.chat.village_life.tannery/1": "<angry>The tannery smell gets into your clothes. Useless.</angry>",
+  "grumpy.dialogue.chat.village_life.butcher_shop/1": "<angry>Butcher overcharged me again. Not going back for a while.</angry>",
   "grumpy.dialogue.main/1": "<angry>What do you want?</angry>",
   "grumpy.dialogue.main/2": "<angry>What's your problem today?</angry>",
   "grumpy.dialogue.main/3": "<angry>Oh, it's you again.</angry>",
@@ -110,5 +117,10 @@
   "grumpy.dialogue.joke.monster.success/1": "<happy>Humph! That bonebag had it coming.</happy>",
   "grumpy.dialogue.joke.monster.success/3": "<happy>Ha! You squashed that bug good!</happy>",
   "grumpy.dialogue.joke.animal.failed/2": "<yell>Show some respect, that sheep's been through enough!</yell>",
-  "grumpy.dialogue.joke.animal.failed/3": "<yell>Watch your mouth about my pig, will you?</yell>"
+  "grumpy.dialogue.joke.animal.failed/3": "<yell>Watch your mouth about my pig, will you?</yell>",
+  "grumpy.dialogue.chat.butcher_request.no_cleaver/1": "<angry>A cleaver, %1$s. Unless you'd rather I tenderize the hog with harsh language.</angry>",
+  "grumpy.dialogue.chat.butcher_request.no_skinning_knife/1": "<angry>A skinning knife. Not a butter knife, not a spoon, a skinning knife. Try to keep up.</angry>",
+  "grumpy.dialogue.chat.butcher_request.no_hacksaw/1": "<yell>Blazes, you expect me to pry an iron golem apart with my fingernails? Fetch a hacksaw!</yell>",
+  "grumpy.dialogue.chat.butcher_request.no_cleaner/1": "<angry>A sponge, a rag, anything. Unless you fancy the smell of a slaughter floor. Which, knowing you, is possible.</angry>",
+  "grumpy.dialogue.chat.butcher_request.no_hammer/1": "<angry>Where is the hammer, blockhead? Skulls don't cave in on their own, and I'm fresh out of patience.</angry>"
 }

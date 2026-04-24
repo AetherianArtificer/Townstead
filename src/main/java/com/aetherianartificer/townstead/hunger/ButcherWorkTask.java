@@ -2,6 +2,9 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.butchery.ButcheryCompat;
+import com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask;
+import com.aetherianartificer.townstead.compat.butchery.GrinderWorkTask;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
 import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
 import com.aetherianartificer.townstead.ai.work.WorkTarget;
@@ -66,7 +69,16 @@ public class ButcherWorkTask extends ProducerWorkTask {
     @Override
     protected boolean isEligibleVillager(ServerLevel level, VillagerEntityMCA villager) {
         VillagerProfession profession = villager.getVillagerData().getProfession();
-        return profession == VillagerProfession.BUTCHER;
+        if (profession != VillagerProfession.BUTCHER) return false;
+        // Yield the smoker while there's higher-priority carcass OR grinder
+        // work pending. Without this, the smoker keeps WALK_TARGET held
+        // continuously and blocks those tasks (both require
+        // WALK_TARGET=VALUE_ABSENT) from ever starting even when a fresh
+        // kill is hanging next door or the grinder is ready to turn raw
+        // pork into sausages.
+        if (CarcassWorkTask.hasPendingWork(level, villager)) return false;
+        if (GrinderWorkTask.hasPendingWork(level, villager)) return false;
+        return true;
     }
 
     // ── Worksite ──
@@ -285,26 +297,42 @@ public class ButcherWorkTask extends ProducerWorkTask {
 
     @Override
     protected void storeOutputs(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (stationAnchor == null) return;
-        // Drain villager inventory into nearby storage (old ActionType.STOCK behavior).
-        ButcherSupplyManager.offloadOutput(level, villager, stationAnchor);
-
-        // Also offload any leftover output that still sits in the smoker's output slot (old STOCK_SMOKER_OUTPUT branch).
+        // Output stays in villager inventory; ButcherDeliveryTask walks it
+        // to storage. No more teleporty inventory-to-chest transfer from
+        // within the smoker task itself.
+        //
+        // If cooked output is still sitting in the smoker's slot 2 (e.g.
+        // the villager got interrupted before collecting), pull it into
+        // inventory now. The delivery task will move it onward.
         SmokerBlockEntity smoker = getSmoker(level);
         if (smoker == null) return;
         ItemStack leftover = smoker.getItem(2);
         if (leftover.isEmpty()) return;
         ItemStack moving = leftover.copy();
-        NearbyItemSources.insertIntoNearbyStorage(level, villager, moving, 16, 3, stationAnchor);
-        if (moving.getCount() != leftover.getCount()) {
-            smoker.setItem(2, moving);
+        ItemStack remaining = villager.getInventory().addItem(moving);
+        if (remaining.getCount() != leftover.getCount()) {
+            smoker.setItem(2, remaining);
             smoker.setChanged();
         }
     }
 
     @Override
     protected void awardProductionXp(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        // Butcher has no profession XP system (task #7 stripped it).
+        // XP only meaningful when Butchery is loaded; it gates the Butchery
+        // trade catalog. Without Butchery there are no Butchery-specific trades
+        // to unlock, so the data layer stays dormant.
+        if (!ButcheryCompat.isLoaded()) return;
+        //? if neoforge {
+        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        //?} else {
+        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
+        *///?}
+        ButcherProgressData.addXp(data, 1, gameTime);
+        //? if neoforge {
+        villager.setData(Townstead.HUNGER_DATA, data);
+        //?} else {
+        /*villager.getPersistentData().put("townstead_hunger", data);
+        *///?}
     }
 
     // ── Hooks ──

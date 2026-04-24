@@ -1,14 +1,19 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.butchery.GrinderStateMachine;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 //? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
 //?}
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -21,6 +26,20 @@ public final class ButcherSupplyManager {
     private static final int SEARCH_RADIUS = 16;
     private static final int VERTICAL_RADIUS = 3;
     private static final int FOOD_RESERVE_COUNT = 4;
+
+    // Cross-loader "cooked meat" tags. Present when Butchery (and other meat
+    // mods) publish them. Absent tags resolve to empty and are harmless.
+    //? if >=1.21 {
+    private static final TagKey<Item> COOKED_MEAT_TAG_C = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("c:cooked_meat"));
+    private static final TagKey<Item> COOKED_MEAT_TAG_FORGE = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("forge:cooked_meat"));
+    //?} else {
+    /*private static final TagKey<Item> COOKED_MEAT_TAG_C = TagKey.create(
+            Registries.ITEM, new ResourceLocation("c", "cooked_meat"));
+    private static final TagKey<Item> COOKED_MEAT_TAG_FORGE = TagKey.create(
+            Registries.ITEM, new ResourceLocation("forge", "cooked_meat"));
+    *///?}
 
     private ButcherSupplyManager() {}
 
@@ -90,6 +109,173 @@ public final class ButcherSupplyManager {
                 ButcherSupplyManager::fuelScore,
                 anchor
         );
+    }
+
+    /**
+     * Pull the first cleaver found in nearby storage into the butcher's
+     * inventory. Same search radius and anchor conventions as raw input /
+     * fuel sourcing. Returns true if a cleaver was pulled.
+     */
+    public static boolean pullCleaver(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.tick.WorkToolTicker::isCleaver,
+                ButcherSupplyManager::toolScore,
+                anchor
+        );
+    }
+
+    /**
+     * Pull the first skinning knife found in nearby storage into the
+     * butcher's inventory. Needed for the skin stage of drained carcasses.
+     */
+    public static boolean pullKnife(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.tick.WorkToolTicker::isKnife,
+                ButcherSupplyManager::toolScore,
+                anchor
+        );
+    }
+
+    /**
+     * Pull the first hacksaw found in nearby storage into the butcher's
+     * inventory. Needed to process iron golem bodies (hacksaw is the only
+     * tool Butchery's IronGolemCutUpProcedure accepts).
+     */
+    public static boolean pullHacksaw(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.tick.WorkToolTicker::isHacksaw,
+                ButcherSupplyManager::toolScore,
+                anchor
+        );
+    }
+
+    /**
+     * Pull a hammer from nearby storage. Used for breaking placed head /
+     * skull blocks into their component material drops.
+     */
+    public static boolean pullHammer(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.tick.WorkToolTicker::isHammer,
+                ButcherSupplyManager::toolScore,
+                anchor
+        );
+    }
+
+    /**
+     * Pull a sponge or rag from nearby storage. Prefers already-wet cloths
+     * so the butcher can clean right away without a detour to a cauldron
+     * or water source.
+     */
+    public static boolean pullCloth(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.compat.butchery.SpongeRagHelper::isCloth,
+                ButcherSupplyManager::clothScore,
+                anchor
+        );
+    }
+
+    /** Prefer wet cloths over dry; among equals, prefer higher wetness. */
+    private static int clothScore(ItemStack stack) {
+        int wetness = com.aetherianartificer.townstead.compat.butchery.SpongeRagHelper.readWetness(stack);
+        return wetness * 100 + stack.getCount();
+    }
+
+    /**
+     * Prefer the least-damaged tool so the villager doesn't burn through a
+     * nearly-broken blade first while a fresh one sits in the next chest.
+     */
+    private static int toolScore(ItemStack stack) {
+        if (!stack.isDamageableItem()) return 0;
+        return stack.getMaxDamage() - stack.getDamageValue();
+    }
+
+    // ── Grinder-specific pulls ──
+
+    public static boolean pullIntestines(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                GrinderStateMachine::isIntestines,
+                ItemStack::getCount,
+                anchor);
+    }
+
+    public static boolean pullSausageAttachment(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                GrinderStateMachine::isSausageAttachment,
+                ItemStack::getCount,
+                anchor);
+    }
+
+    public static boolean pullBloodBottle(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                GrinderStateMachine::isBloodBottle,
+                ItemStack::getCount,
+                anchor);
+    }
+
+    public static boolean pullGrinderInput(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor,
+            GrinderStateMachine.Recipe recipe
+    ) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                stack -> GrinderStateMachine.isInputForRecipe(stack, recipe),
+                ItemStack::getCount,
+                anchor);
+    }
+
+    /** True if the villager carries everything needed to stage the recipe. */
+    public static boolean hasRecipeInputs(SimpleContainer inv, GrinderStateMachine.Recipe recipe) {
+        boolean hasMeat = false;
+        boolean hasIntestines = !recipe.requiresCasings;
+        boolean hasAttachment = !recipe.requiresCasings;
+        boolean hasBlood = recipe != GrinderStateMachine.Recipe.BLOOD_SAUSAGE;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty()) continue;
+            if (!hasMeat && GrinderStateMachine.isInputForRecipe(stack, recipe)) hasMeat = true;
+            if (recipe.requiresCasings) {
+                if (!hasIntestines && GrinderStateMachine.isIntestines(stack)) hasIntestines = true;
+                if (!hasAttachment && GrinderStateMachine.isSausageAttachment(stack)) hasAttachment = true;
+            }
+            if (recipe == GrinderStateMachine.Recipe.BLOOD_SAUSAGE) {
+                if (!hasBlood && GrinderStateMachine.isBloodBottle(stack)) hasBlood = true;
+            }
+        }
+        return hasMeat && hasIntestines && hasAttachment && hasBlood;
     }
 
     public static boolean hasStockableOutput(SimpleContainer inv) {
@@ -187,13 +373,27 @@ public final class ButcherSupplyManager {
 
     public static boolean isButcherOutput(ItemStack stack) {
         if (stack.isEmpty()) return false;
-        return stack.is(Items.COOKED_BEEF)
+        if (stack.is(Items.COOKED_BEEF)
                 || stack.is(Items.COOKED_PORKCHOP)
                 || stack.is(Items.COOKED_MUTTON)
                 || stack.is(Items.COOKED_CHICKEN)
                 || stack.is(Items.COOKED_RABBIT)
                 || stack.is(Items.COOKED_COD)
-                || stack.is(Items.COOKED_SALMON);
+                || stack.is(Items.COOKED_SALMON)) return true;
+        // Butchery and any other mod publishing the common "cooked meat" tag.
+        if (stack.is(COOKED_MEAT_TAG_C) || stack.is(COOKED_MEAT_TAG_FORGE)) return true;
+        // Grinder terminal outputs: mince never gets smoked further, meat
+        // scraps are a finished good, and the final-stage returned glass
+        // bottle from blood sausage gets offloaded with everything else.
+        // Raw sausage / raw blood sausage are intentionally NOT listed here
+        // so the smoker's isRawInput still accepts them as smoker input.
+        ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id.equals(GrinderStateMachine.RAW_LAMB_MINCE_ID)
+                || id.equals(GrinderStateMachine.RAW_BEEF_MINCE_ID)
+                || id.equals(GrinderStateMachine.MEAT_SCRAPS_ID)) {
+            return true;
+        }
+        return false;
     }
 
     public static boolean isValidSmokerInput(ItemStack stack, ServerLevel level) {
@@ -255,13 +455,20 @@ public final class ButcherSupplyManager {
     }
 
     private static int fuelScore(ItemStack stack) {
-        int score = stack.getCount();
-        if (stack.is(Items.CHARCOAL)) return score + 500;
-        if (stack.is(Items.COAL)) return score + 450;
-        if (stack.is(Items.BLAZE_ROD)) return score + 300;
-        if (stack.is(Items.DRIED_KELP_BLOCK)) return score + 200;
-        if (stack.is(Items.COAL_BLOCK)) return score + 50;
-        return score;
+        // Tiered scoring so traditional fuels (coal family, blaze rod, kelp
+        // block) always beat count-only fuels like animal fats, regardless
+        // of stack size. Count is a within-tier tiebreaker: if the butcher
+        // has multiple coal stacks, pull the fullest one. The previous
+        // "count + small bonus" scheme got beaten by large stacks of
+        // secondary fuels like butchery's animal fat, which the player
+        // would rather save for other uses.
+        int count = stack.getCount();
+        if (stack.is(Items.CHARCOAL)) return 1_000_000 + count;
+        if (stack.is(Items.COAL)) return 900_000 + count;
+        if (stack.is(Items.COAL_BLOCK)) return 800_000 + count;
+        if (stack.is(Items.BLAZE_ROD)) return 500_000 + count;
+        if (stack.is(Items.DRIED_KELP_BLOCK)) return 400_000 + count;
+        return count;
     }
 
     private static int findBestFoodSlot(SimpleContainer inv, boolean excludeButcherOutput) {

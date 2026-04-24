@@ -1,4 +1,10 @@
 {
+  "relaxed.dialogue.chat.butcher_request.no_livestock/1": "<happy>No livestock today. No worries, I'll be here when there is.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_hook/1": "<happy>A hook would be nice. When you get around to it.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_basin/1": "<happy>Basin, basin. I'm patient. Drop one in sometime.</happy>",
+  "relaxed.dialogue.chat.village_life.butcher_shop/1": "<happy>The butcher takes their time. I respect that about them.</happy>",
+  "relaxed.dialogue.chat.village_life.smokehouse/1": "<happy>Smokehouse ham, a good seat, a quiet afternoon. Perfect.</happy>",
+  "relaxed.dialogue.chat.village_life.tannery/1": "<happy>Tanner's always working. Unlike me. Good thing, really.</happy>",
   "relaxed.dialogue.first.settling/2": "<sleepy>*yawns*</sleepy> Welcome, I guess. You gonna be our new neighbor or somethin'?",
   "relaxed.dialogue.first.spent_night.failed/1": "<sleepy>Uh, inn?</sleepy> Yeah, we're not exactly skilled in that department. Like, building stuff? Too much effort, man.",
   "relaxed.dialogue.hug.success/2": "Thanks for the hug, I guess. <happy>It kinda made my day a little less boring.</happy>",
@@ -71,5 +77,10 @@
   "relaxed.dialogue.kiss.slap/2": "<angry>Give it another shot, and you'll feel the wrath of my laziness,</angry> <sleepy>which might take a while!</sleepy>",
   "relaxed.dialogue.rock_paper_scissor.paper/1": "<sleepy>*Yawn* Paper, I guess. Can we finish this game already? I have a nap schedule to follow.</sleepy>",
   "relaxed.dialogue.chat.plains/4": "<sleepy>Ah, lazy evenings like this make me wanna just plop down and gaze at the sky and clouds. Don't really feel like doing anything else, to be honest.</sleepy>",
-  "relaxed.dialogue.chat.plains/8": "<happy>You ever catch the morning sunrise in the plains? It's, like, totally epic.</happy> <sleepy>You should totally drag yourself out of bed and witness it sometime. But, uh, no pressure or anything.</sleepy>"
+  "relaxed.dialogue.chat.plains/8": "<happy>You ever catch the morning sunrise in the plains? It's, like, totally epic.</happy> <sleepy>You should totally drag yourself out of bed and witness it sometime. But, uh, no pressure or anything.</sleepy>",
+  "relaxed.dialogue.chat.butcher_request.no_cleaver/1": "<happy>Cleaver when you can, no rush.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Skinning knife when you can, no rush.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>Hacksaw for the iron one, whenever you have a moment.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_cleaner/1": "<happy>Sponge or rag when you can. The puddles aren't going anywhere.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_hammer/1": "<happy>A hammer when you get a chance. The head's patient.</happy>"
 }

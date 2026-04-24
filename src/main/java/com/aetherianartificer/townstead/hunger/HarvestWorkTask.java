@@ -565,6 +565,25 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         } else {
             cachedGroomTarget = null;
         }
+        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            LOGGER.info(
+                    "Farmer {} target cache: snapshot[h={},p={},t={},w={},g={}] chosen[h={},p={},t={},w={},g={}] inv[seeds={},hoe={},waterBucket={}]",
+                    farmAnchor,
+                    snapshot.harvestTargetCount(),
+                    snapshot.plantTargetCount(),
+                    snapshot.tillTargetCount(),
+                    snapshot.waterTargetCount(),
+                    snapshot.groomTargetCount(),
+                    cachedHarvestTarget,
+                    cachedPlantTarget,
+                    cachedTillTarget,
+                    cachedWaterTarget,
+                    cachedGroomTarget,
+                    cachedSeedCount,
+                    cachedHasHoe,
+                    cachedHasWaterBucket
+            );
+        }
     }
 
     private void townstead$resetPathTracking() {

@@ -4,6 +4,8 @@ import com.aetherianartificer.townstead.Townstead;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
+import com.aetherianartificer.townstead.compat.butchery.ButcherSettings;
+import com.aetherianartificer.townstead.compat.butchery.ButcheryCompat;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
@@ -20,6 +22,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.npc.VillagerProfession;
 //? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
 //?}
@@ -51,6 +54,7 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique private boolean townstead$hungerDirty;
     @Unique private boolean townstead$thirstDirty;
     @Unique private boolean townstead$fatigueDirty;
+    @Unique private ButcherSettings.SlaughterOverride townstead$editorSlaughterOverride;
 
     @Inject(method = "setPage", remap = false, at = @At("TAIL"))
     private void townstead$addHungerDebug(String page, CallbackInfo ci) {
@@ -190,6 +194,24 @@ public abstract class VillagerEditorMixin extends Screen {
                     fatigueDisplay.setMessage(townstead$fatigueLabel());
                 }).pos(width / 2 + dataWidth - bw, fatigueY).size(bw, 20).build()
         );
+
+        // Butcher-only: per-villager slaughter toggle.
+        if (ButcheryCompat.isLoaded()
+                && villager.getVillagerData().getProfession() == VillagerProfession.BUTCHER) {
+            int slaughterY = fatigueY + 24;
+            townstead$editorSlaughterOverride = villagerData.contains(
+                    ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE)
+                    ? ButcherSettings.SlaughterOverride.fromCode(
+                            villagerData.getByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE))
+                    : ButcherSettings.SlaughterOverride.FOLLOW_CONFIG;
+            Button[] slaughterButton = new Button[1];
+            slaughterButton[0] = addRenderableWidget(
+                    Button.builder(townstead$slaughterLabel(), b -> {
+                        townstead$cycleSlaughterOverride();
+                        slaughterButton[0].setMessage(townstead$slaughterLabel());
+                    }).pos(width / 2, slaughterY).size(dataWidth, 20).build()
+            );
+        }
 
         // Register callback: when server sync arrives, update the display
         // (only if user hasn't manually edited yet)
@@ -334,6 +356,23 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique
     private Component townstead$fatigueLabel() {
         return Component.translatable("townstead.energy.editor", FatigueData.toEnergy(townstead$editorFatigue));
+    }
+
+    @Unique
+    private void townstead$cycleSlaughterOverride() {
+        townstead$editorSlaughterOverride = townstead$editorSlaughterOverride.next();
+        villagerData.putByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE,
+                townstead$editorSlaughterOverride.code);
+    }
+
+    @Unique
+    private Component townstead$slaughterLabel() {
+        String subKey = switch (townstead$editorSlaughterOverride) {
+            case FOLLOW_CONFIG -> "follow";
+            case ENABLED -> "enabled";
+            case DISABLED -> "disabled";
+        };
+        return Component.translatable("townstead.butchery.slaughter." + subKey);
     }
 
     @Unique

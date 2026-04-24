@@ -1,4 +1,10 @@
 {
+  "crabby.dialogue.chat.butcher_request.no_livestock/1": "<angry>Maybe bring me something to work on instead of wasting my time.</angry>",
+  "crabby.dialogue.chat.butcher_request.no_hook/1": "<angry>A hook. How hard can it be to set one up?</angry>",
+  "crabby.dialogue.chat.butcher_request.no_basin/1": "<angry>I'm not bleeding a carcass without a basin. Figure it out.</angry>",
+  "crabby.dialogue.chat.village_life.butcher_shop/1": "<angry>The butcher's line is always too long. Never on time.</angry>",
+  "crabby.dialogue.chat.village_life.slaughterhouse/1": "<angry>Slaughterhouse noise at dawn. Every day. I hate this.</angry>",
+  "crabby.dialogue.chat.village_life.tannery/1": "<angry>Smell from the tannery ruins my morning walk. Move it elsewhere.</angry>",
   "crabby.dialogue.main/1": "<angry>What do you want?</angry>",
   "crabby.dialogue.main/2": "<angry>What's your problem today?</angry>",
   "crabby.dialogue.main/3": "<angry>Oh, it's you again.</angry>",
@@ -110,5 +116,10 @@
   "crabby.dialogue.joke.monster.success/1": "<happy>Humph! That bonebag had it coming.</happy>",
   "crabby.dialogue.joke.monster.success/3": "<happy>Ha! You squashed that bug good!</happy>",
   "crabby.dialogue.joke.animal.failed/2": "<yell>Show some respect, that sheep's been through enough!</yell>",
-  "crabby.dialogue.joke.animal.failed/3": "<yell>Watch your mouth about my pig, will you?</yell>"
+  "crabby.dialogue.joke.animal.failed/3": "<yell>Watch your mouth about my pig, will you?</yell>",
+  "crabby.dialogue.chat.butcher_request.no_cleaver/1": "<angry>No cleaver. What am I supposed to use, my teeth?</angry>",
+  "crabby.dialogue.chat.butcher_request.no_skinning_knife/1": "<angry>No skinning knife. What, I tear the hide off with my teeth too?</angry>",
+  "crabby.dialogue.chat.butcher_request.no_hacksaw/1": "<angry>No hacksaw for the iron one. What do you think I am, a blacksmith?</angry>",
+  "crabby.dialogue.chat.butcher_request.no_cleaner/1": "<angry>No sponge, no rag, no clean floor. Figure it out.</angry>",
+  "crabby.dialogue.chat.butcher_request.no_hammer/1": "<angry>No hammer. Am I supposed to headbutt it open?</angry>"
 }

@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * where a village's buildings may have changed:
  * <ul>
  *   <li>{@code ReportBuildingMessageMixin} (player ADD/ADD_ROOM/REMOVE/FULL_SCAN)</li>
- *   <li>{@code DockBuildingSync.sync} (fisherman-triggered dock changes)</li>
+ *   <li>{@code DockBuildingSync.sync} (runs during blueprint refresh near a dock shape)</li>
  * </ul>
  */
 public final class SpiritReconciler {

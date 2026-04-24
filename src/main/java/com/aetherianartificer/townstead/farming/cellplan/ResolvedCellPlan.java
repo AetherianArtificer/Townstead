@@ -67,9 +67,12 @@ public final class ResolvedCellPlan implements CellPlanView {
             }
         }
         for (Integer xzKey : plan.seedPlan().keySet()) {
-            SoilType soilType = plan.soilPlan().get(xzKey);
+            SoilType soilType = plan.soilPlan().getOrDefault(xzKey, SoilType.FARMLAND);
             BlockPos cropPos = resolveCropPos(level, postPos, xzKey, soilType);
             if (cropPos == null) continue;
+            if (!plan.soilPlan().containsKey(xzKey)) {
+                soilByPos.put(cropPos.below().asLong(), soilType);
+            }
             // Seed override keyed by cropPos which equals soilPos for WATER cells.
             BlockPos seedKey = (soilType == SoilType.WATER) ? cropPos : cropPos;
             String assignment = plan.seedPlan().get(xzKey);

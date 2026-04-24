@@ -1,4 +1,10 @@
 {
+  "sensitive.dialogue.chat.butcher_request.no_livestock/1": "<sad>No animals to care for today. Means none need saying goodbye, at least.</sad>",
+  "sensitive.dialogue.chat.butcher_request.no_hook/1": "<nervous>Could you... could you place a hook? I can't do the work without it.</nervous>",
+  "sensitive.dialogue.chat.butcher_request.no_basin/1": "<nervous>A basin would help. I don't like the mess when there isn't one.</nervous>",
+  "sensitive.dialogue.chat.village_life.butcher_shop/1": "<happy>Our butcher treats the animals with respect. It matters, that.</happy>",
+  "sensitive.dialogue.chat.village_life.slaughterhouse/1": "<sad>I try not to think about the slaughterhouse. It feels important work, but... hard.</sad>",
+  "sensitive.dialogue.chat.village_life.smokehouse/1": "<happy>The smokehouse reminds me of my grandmother's cooking. Warm and good.</happy>",
   "sensitive.dialogue.main/2": "<happy>Hi... I hope you're doing well today.</happy>",
   "sensitive.dialogue.main/7": "<nervous>Oh, speaking of %supporter%, I heard they had a little encounter with a zombie... It was quite... um, interesting.</nervous> But, um, never mind that, <scared>I saw a zombie that kind of reminded me of %supporter% earlier... it was, um, quite strange.</scared>",
   "sensitive.dialogue.rumors.lore/2": "<scared>Oh, dear friend, we were once besieged by those dreadful Cyberdemons. They dared to infiltrate our peaceful realm through ghastly Portals.</scared> <happy>But thanks to the heroics of Sirben and the valiant Luke, they were swiftly vanquished, halting the invasion in its tracks.</happy>",
@@ -155,5 +161,10 @@
   "sensitive.dialogue.rock_paper_scissor.loose.rock/1": "<sad>Oh no, I picked rock! You win fair and square!</sad>",
   "sensitive.dialogue.rock_paper_scissor.win.rock/1": "<sad>Oh my, the scissor has been crushed by the unstoppable force of the rock. I've lost this round.</sad>",
   "sensitive.dialogue.rock_paper_scissor.win.paper/1": "<sad>Winning with rock? A distant dream for me. It's a constant reminder of my lack of fortune in this game.</sad>",
-  "_": ""
+  "_": "",
+  "sensitive.dialogue.chat.butcher_request.no_cleaver/1": "<nervous>I'd feel more confident with a cleaver in hand.</nervous>",
+  "sensitive.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>I'd feel awful ruining the hide. A skinning knife would help.</nervous>",
+  "sensitive.dialogue.chat.butcher_request.no_hacksaw/1": "<nervous>I'd hate to break a good cleaver on iron. A hacksaw would be kinder.</nervous>",
+  "sensitive.dialogue.chat.butcher_request.no_cleaner/1": "<nervous>It bothers me to leave blood everywhere. A sponge or rag would help.</nervous>",
+  "sensitive.dialogue.chat.butcher_request.no_hammer/1": "<nervous>I'd rather not improvise on a head. A hammer, please, if you can.</nervous>"
 }

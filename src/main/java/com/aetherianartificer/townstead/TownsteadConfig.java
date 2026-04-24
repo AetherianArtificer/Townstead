@@ -70,6 +70,11 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FISHERMAN_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
     public static final ModConfigSpec.IntValue FISHERMAN_INVENTORY_FULL_THRESHOLD;
+    public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_SLAUGHTER;
+    public static final ModConfigSpec.BooleanValue ALLOW_HUMANOID_SLAUGHTER;
+    public static final ModConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
+    public static final ModConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
+    public static final ModConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -136,6 +141,11 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue FISHERMAN_REQUEST_INTERVAL_TICKS;
     public static final ForgeConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
     public static final ForgeConfigSpec.IntValue FISHERMAN_INVENTORY_FULL_THRESHOLD;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_SLAUGHTER;
+    public static final ForgeConfigSpec.BooleanValue ALLOW_HUMANOID_SLAUGHTER;
+    public static final ForgeConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
+    public static final ForgeConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
+    public static final ForgeConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -377,6 +387,39 @@ public final class TownsteadConfig {
             COOK_REQUEST_INTERVAL_TICKS = null;
             ENABLE_BARISTA_REQUEST_CHAT = null;
             BARISTA_REQUEST_INTERVAL_TICKS = null;
+        }
+
+        // ── Butchery ──
+        if (ModCompat.isLoaded("butchery")) {
+            b.translation("townstead.configuration.butchery").push("butchery");
+            ENABLE_VILLAGER_SLAUGHTER = b
+                    .translation("townstead.configuration.butchery.enableVillagerSlaughter")
+                    .comment("Allow butchers to slaughter whitelisted livestock inside their shop bounds.")
+                    .define("enableVillagerSlaughter", true);
+            ALLOW_HUMANOID_SLAUGHTER = b
+                    .translation("townstead.configuration.butchery.allowHumanoidSlaughter")
+                    .comment("Permit villager-driven slaughter of humanoid carcasses (villagers, pillagers, witches).",
+                             "Off by default; the integration does not lean into this even when enabled.")
+                    .define("allowHumanoidSlaughter", false);
+            VILLAGER_SLAUGHTER_THROTTLE_TICKS = b
+                    .translation("townstead.configuration.butchery.villagerSlaughterThrottleTicks")
+                    .comment("Minimum ticks between kills for a single butcher villager.")
+                    .defineInRange("villagerSlaughterThrottleTicks", 2400, 200, 24000);
+            INCLUDE_EXOTIC_BUTCHERY_TRADES = b
+                    .translation("townstead.configuration.butchery.includeExoticTrades")
+                    .comment("Add a second Master-tier trade pool with exotic cuts (brain, tongue, kidney, sweetbread).")
+                    .define("includeExoticTrades", false);
+            HAMMER_TROPHY_HEADS = b
+                    .translation("townstead.configuration.butchery.hammerTrophyHeads")
+                    .comment("When true, the butcher auto-hammers rare / display-worthy heads (evoker, vindicator, pillager, warden, dragon, player, wither skull, ice skull) into their breakdown drops. Off by default so those heads stay whole for trophies and armor.")
+                    .define("hammerTrophyHeads", false);
+            b.pop();
+        } else {
+            ENABLE_VILLAGER_SLAUGHTER = null;
+            ALLOW_HUMANOID_SLAUGHTER = null;
+            VILLAGER_SLAUGHTER_THROTTLE_TICKS = null;
+            INCLUDE_EXOTIC_BUTCHERY_TRADES = null;
+            HAMMER_TROPHY_HEADS = null;
         }
 
         // ── Caregiving ──

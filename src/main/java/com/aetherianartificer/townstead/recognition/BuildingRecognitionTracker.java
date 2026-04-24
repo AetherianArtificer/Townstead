@@ -40,6 +40,12 @@ public final class BuildingRecognitionTracker {
 
     // Key: "<dim>|<villageId>". Value: Map<buildingId, typeName>.
     private static final Map<String, Map<Integer, String>> SNAPSHOT = new ConcurrentHashMap<>();
+    // Auxiliary snapshot of dock_* building bounds, keyed the same way.
+    // Docks can have their IDs churn (removal+resync, tier-ups that grow the
+    // footprint, dedupe swaps) while the structure is physically unchanged.
+    // We match by overlapping bounds across snapshots so we don't announce
+    // "Pier built!" on every resync.
+    private static final Map<String, Map<Integer, int[]>> DOCK_BOUNDS = new ConcurrentHashMap<>();
 
     private static final double ANNOUNCE_RADIUS = 64.0;
 
@@ -49,21 +55,53 @@ public final class BuildingRecognitionTracker {
         if (level == null || village == null) return;
         String key = keyOf(level, village);
         Map<Integer, String> current = snapshotCurrent(village);
+        Map<Integer, int[]> currentDockBounds = snapshotDockBounds(village);
         Map<Integer, String> prev = SNAPSHOT.get(key);
+        Map<Integer, int[]> prevDockBounds = DOCK_BOUNDS.getOrDefault(key, Map.of());
         if (prev == null) {
             SNAPSHOT.put(key, current);
+            DOCK_BOUNDS.put(key, currentDockBounds);
             return;
         }
         for (Map.Entry<Integer, String> e : current.entrySet()) {
             String prevType = prev.get(e.getKey());
             String curType = e.getValue();
             if (prevType == null) {
+                if (curType != null && curType.startsWith("dock_")
+                        && dockBoundsOverlappedPrev(currentDockBounds.get(e.getKey()), prevDockBounds)) {
+                    continue;
+                }
                 fireEstablished(level, village, e.getKey(), curType);
             } else if (!prevType.equals(curType)) {
                 fireUpgraded(level, village, e.getKey(), prevType, curType);
             }
         }
         SNAPSHOT.put(key, current);
+        DOCK_BOUNDS.put(key, currentDockBounds);
+    }
+
+    private static Map<Integer, int[]> snapshotDockBounds(Village village) {
+        Map<Integer, int[]> out = new HashMap<>();
+        for (Building b : village.getBuildings().values()) {
+            String t = b.getType();
+            if (t == null || !t.startsWith("dock_")) continue;
+            BlockPos p0 = b.getPos0();
+            BlockPos p1 = b.getPos1();
+            out.put(b.getId(), new int[] {p0.getX(), p0.getY(), p0.getZ(), p1.getX(), p1.getY(), p1.getZ()});
+        }
+        return out;
+    }
+
+    private static boolean dockBoundsOverlappedPrev(int[] bb, Map<Integer, int[]> prev) {
+        if (bb == null || prev.isEmpty()) return false;
+        for (int[] other : prev.values()) {
+            if (bb[0] <= other[3] && bb[3] >= other[0]
+                    && bb[1] <= other[4] && bb[4] >= other[1]
+                    && bb[2] <= other[5] && bb[5] >= other[2]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -73,7 +111,9 @@ public final class BuildingRecognitionTracker {
      */
     public static void seed(ServerLevel level, Village village) {
         if (level == null || village == null) return;
-        SNAPSHOT.put(keyOf(level, village), snapshotCurrent(village));
+        String key = keyOf(level, village);
+        SNAPSHOT.put(key, snapshotCurrent(village));
+        DOCK_BOUNDS.put(key, snapshotDockBounds(village));
     }
 
     private static String keyOf(ServerLevel level, Village village) {

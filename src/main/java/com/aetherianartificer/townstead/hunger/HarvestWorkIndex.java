@@ -473,6 +473,26 @@ public final class HarvestWorkIndex {
             return nearestTo(villager, waterTargets, filter);
         }
 
+        int harvestTargetCount() {
+            return harvestTargets.size();
+        }
+
+        int plantTargetCount() {
+            return plantTargets.size();
+        }
+
+        int tillTargetCount() {
+            return tillTargets.size();
+        }
+
+        int waterTargetCount() {
+            return waterTargets.size();
+        }
+
+        int groomTargetCount() {
+            return groomTargets.size();
+        }
+
         boolean hasWaterTargets() {
             return !waterTargets.isEmpty();
         }

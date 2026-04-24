@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:smoker",
+    {
+      "id": "butchery:wooden_spit_rotisserie",
+      "required": false
+    }
+  ]
+}
