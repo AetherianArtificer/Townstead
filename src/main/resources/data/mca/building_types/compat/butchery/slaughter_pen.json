@@ -5,8 +5,7 @@
   "icon": true,
   "iconU": 245,
   "iconV": 192,
-  "grouped": true,
-  "mergeRange": 0,
+  "townsteadEnclosure": { "minInterior": 4, "maxInterior": 1024 },
   "townsteadNodeItem": "butchery:blood_grate",
   "townsteadSpirit": { "pastoral": 4, "industrious": 2 },
   "blocks": {

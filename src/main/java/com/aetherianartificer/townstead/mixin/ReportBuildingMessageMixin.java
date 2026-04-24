@@ -4,6 +4,12 @@ import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBuildingSync;
 import com.aetherianartificer.townstead.dock.DockScanner;
 import com.aetherianartificer.townstead.dock.DockSuppression;
+import com.aetherianartificer.townstead.enclosure.Enclosure;
+import com.aetherianartificer.townstead.enclosure.EnclosureBuildingSync;
+import com.aetherianartificer.townstead.enclosure.EnclosureClassifier;
+import com.aetherianartificer.townstead.enclosure.EnclosureScanner;
+import com.aetherianartificer.townstead.enclosure.EnclosureSuppression;
+import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.spirit.SpiritReconciler;
 import com.aetherianartificer.townstead.upgrade.BuildingTierReconciler;
@@ -51,7 +57,12 @@ public abstract class ReportBuildingMessageMixin {
         if (act == ReportBuildingMessage.Action.REMOVE) {
             VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
                 Building dock = townstead$findDockAt(v, pos);
-                if (dock != null) DockSuppression.suppress(level, v, dock);
+                if (dock != null) {
+                    DockSuppression.suppress(level, v, dock);
+                    return;
+                }
+                Building enclosure = townstead$findEnclosureAt(v, pos);
+                if (enclosure != null) EnclosureSuppression.suppress(level, v, enclosure);
             });
             return;
         }
@@ -59,8 +70,9 @@ public abstract class ReportBuildingMessageMixin {
         if (act == ReportBuildingMessage.Action.ADD || act == ReportBuildingMessage.Action.ADD_ROOM) {
             // MCA's flood-fill validation fails on open-air structures and
             // shows "Building too small" before our TAIL hook runs. If the
-            // player is on a dock shape, do our synthetic sync ourselves
-            // and cancel so MCA never attempts flood-fill for this click.
+            // player is on a dock or inside a fenced enclosure, do our
+            // synthetic sync ourselves and cancel so MCA never attempts
+            // flood-fill for this click.
             Dock dock;
             try {
                 dock = DockScanner.scan(level, pos, TOWNSTEAD$REPORT_SCAN_RADIUS);
@@ -68,10 +80,39 @@ public abstract class ReportBuildingMessageMixin {
                 TOWNSTEAD$LOG.warn("Dock detection for ADD failed: {}", t.toString());
                 return;
             }
-            if (dock == null) return;
+            if (dock != null) {
+                VillageManager.get(level).findNearestVillage(player).ifPresent(v ->
+                        DockSuppression.clearAllOverlapping(level, v, dock.bounds()));
+                DockBuildingSync.sync(level, dock);
+                VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
+                    BuildingTierReconciler.reconcileVillage(v, level);
+                    BuildingRecognitionTracker.reconcile(level, v);
+                    SpiritReconciler.reconcileVillage(level, v);
+                });
+                ci.cancel();
+                return;
+            }
+
+            Enclosure enclosure;
+            EnclosureTypeIndex.Spec classified;
+            try {
+                enclosure = EnclosureScanner.scan(level, pos);
+                classified = enclosure != null ? EnclosureClassifier.classify(enclosure) : null;
+            } catch (Throwable t) {
+                TOWNSTEAD$LOG.warn("Enclosure detection for ADD failed: {}", t.toString());
+                return;
+            }
+            if (enclosure == null) return;
+            if (classified == null) {
+                TOWNSTEAD$LOG.info("Enclosure scanned at {} (interior={} fences={} gates={} walls={} content={}) but no registered type matched",
+                        pos, enclosure.interiorSize(), enclosure.fenceCount(),
+                        enclosure.fenceGateCount(), enclosure.wallCount(),
+                        enclosure.interiorContent());
+                return;
+            }
             VillageManager.get(level).findNearestVillage(player).ifPresent(v ->
-                    DockSuppression.clearAllOverlapping(level, v, dock.bounds()));
-            DockBuildingSync.sync(level, dock);
+                    EnclosureSuppression.clearAllOverlapping(level, v, enclosure.bounds()));
+            EnclosureBuildingSync.sync(level, enclosure, classified.buildingType());
             VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
                 BuildingTierReconciler.reconcileVillage(v, level);
                 BuildingRecognitionTracker.reconcile(level, v);
@@ -79,6 +120,15 @@ public abstract class ReportBuildingMessageMixin {
             });
             ci.cancel();
         }
+    }
+
+    private static Building townstead$findEnclosureAt(Village village, BlockPos pos) {
+        for (Building b : village.getBuildings().values()) {
+            String t = b.getType();
+            if (t == null || !EnclosureTypeIndex.isEnclosureType(t)) continue;
+            if (b.containsPos(pos)) return b;
+        }
+        return null;
     }
 
     private static Building townstead$findDockAt(Village village, BlockPos pos) {

@@ -5,8 +5,7 @@
   "icon": true,
   "iconU": 247,
   "iconV": 192,
-  "grouped": true,
-  "mergeRange": 0,
+  "townsteadEnclosure": { "minInterior": 4, "maxInterior": 1024 },
   "townsteadNodeItem": "minecraft:hay_block",
   "townsteadSpirit": { "pastoral": 6 },
   "blocks": {

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.catalog;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import com.aetherianartificer.townstead.spirit.BuildingSpiritIndex;
 import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import com.google.gson.Gson;
@@ -53,6 +54,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
             OVERRIDES.clear();
         }
         BuildingSpiritIndex.clear();
+        EnclosureTypeIndex.clear();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation location = entry.getKey();
@@ -154,10 +156,51 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     Map<String, Integer> spirit = parseSpiritMap(json.getAsJsonObject("townsteadSpirit"), location);
                     if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
                 }
+                if (json.has("townsteadEnclosure")) {
+                    parseEnclosureSpec(buildingType, json, location);
+                }
             } catch (Exception ex) {
                 LOGGER.debug("Skipped legacy building_type scan for '{}': {}", location, ex.getMessage());
             }
         }
+    }
+
+    /**
+     * Pull a {@code townsteadEnclosure} spec out of a building_type JSON and
+     * register it with {@link EnclosureTypeIndex}. Perimeter and interior
+     * requirements are derived from the sibling {@code blocks} map: fences /
+     * fence-gates / walls become perimeter requirements, everything else
+     * becomes interior signatures that drive classification.
+     */
+    private static void parseEnclosureSpec(String buildingType, JsonObject json, ResourceLocation source) {
+        JsonElement marker = json.get("townsteadEnclosure");
+        if (marker == null) return;
+        int minInterior = 4;
+        int maxInterior = 1024;
+        if (marker.isJsonObject()) {
+            JsonObject enc = marker.getAsJsonObject();
+            minInterior = GsonHelper.getAsInt(enc, "minInterior", minInterior);
+            maxInterior = GsonHelper.getAsInt(enc, "maxInterior", maxInterior);
+        }
+        Map<String, Integer> blocks = new HashMap<>();
+        if (json.has("blocks") && json.get("blocks").isJsonObject()) {
+            JsonObject b = json.getAsJsonObject("blocks");
+            for (Map.Entry<String, JsonElement> e : b.entrySet()) {
+                try {
+                    blocks.put(e.getKey(), e.getValue().getAsInt());
+                } catch (Exception ex) {
+                    LOGGER.warn("Invalid block count for '{}' in {}: {}", e.getKey(), source, ex.getMessage());
+                }
+            }
+        }
+        int priority = GsonHelper.getAsInt(json, "priority", 0);
+        EnclosureTypeIndex.Spec spec = EnclosureTypeIndex.parseSpec(
+                buildingType, priority, blocks, minInterior, maxInterior);
+        EnclosureTypeIndex.register(spec);
+        LOGGER.info("Registered enclosure type '{}' priority={} interior={}..{} fences>={} gates>={} walls>={} signatures={}",
+                buildingType, priority, minInterior, maxInterior,
+                spec.fencesRequired(), spec.fenceGatesRequired(), spec.wallsRequired(),
+                spec.interiorSignatures().size());
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
+import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -11,21 +12,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.Set;
 
 /**
- * Short-circuits {@link Building#validateBuilding} for the {@code dock_l*}
- * building types. Docks are open-air piers that would fail MCA's default
- * flood-fill-from-a-door-plus-roof validation, but unlike other open-air
- * buildings (livestock pens) docks have a companion synthesizer
- * ({@code DockBuildingSync}) that actively creates the Building instance
- * from a detected {@code Dock} shape. Using MCA's native grouped path for
- * docks would double-dip: MCA would auto-create its own Building from the
- * tracked planks in parallel with our synthetic, and every rescan would
- * multiply the instance count into a crash. So docks stay on this narrow
- * mixin, which only affects validation and lets our synthesizer own the
- * instance.
+ * Short-circuits {@link Building#validateBuilding} for open-air Townstead
+ * types: docks (prefix {@code dock_}) and any type registered via the
+ * data-driven enclosure index ({@code pen}, {@code compat/butchery/slaughter_pen},
+ * and anything else authors flag with {@code townsteadEnclosure}). These all
+ * have companion synthesizers (DockBuildingSync / EnclosureBuildingSync) that
+ * actively build the Building from the detected shape; MCA's default
+ * flood-fill-from-a-door-plus-roof would reject them as unroofed.
  *
- * <p>Other open-air types (pen, slaughter_pen, etc.) do not have a
- * synthesizer and use {@code "grouped": true} in their JSON to take
- * MCA's native grouped path instead.
+ * <p>Using MCA's native grouped path instead would double-dip: MCA would
+ * auto-create its own Building from the tracked blocks in parallel with our
+ * synthetic, and every rescan would multiply the instance count. So these
+ * types stay on this mixin and the synthesizers own the instance.
  *
  * <p>HEAD cancellable — per Townstead's mixin policy, vanilla and MCA
  * method call sites aren't stable targets across remap configs.
@@ -37,7 +35,9 @@ public abstract class BuildingValidateOpenAirMixin {
                                            CallbackInfoReturnable<Building.validationResult> cir) {
         Building self = (Building) (Object) this;
         String type = self.getType();
-        if (type == null || !type.startsWith("dock_")) return;
+        if (type == null) return;
+        boolean isOpenAir = type.startsWith("dock_") || EnclosureTypeIndex.isEnclosureType(type);
+        if (!isOpenAir) return;
         self.validateBlocks(world);
         Building.validationResult result = self.getBlockPosStream().findAny().isEmpty()
                 ? Building.validationResult.TOO_SMALL
