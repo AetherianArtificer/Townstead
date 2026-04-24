@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.client.gui.dialogue;
 
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
@@ -50,37 +51,43 @@ public class VillagerStatusBar {
     public void render(GuiGraphics graphics, int baseX, int baseY) {
         int iconX = baseX;
 
-        // Hunger icon
-        renderHungerIcon(graphics, iconX, baseY);
-        iconX += ICON_SPACING;
+        // Hunger icon (conditional)
+        if (TownsteadConfig.isVillagerHungerEnabled()) {
+            renderHungerIcon(graphics, iconX, baseY);
+            iconX += ICON_SPACING;
+        }
 
         // Thirst icon (conditional)
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
-        if (bridge != null) {
+        if (bridge != null && TownsteadConfig.isVillagerThirstEnabled()) {
             renderThirstIcon(graphics, iconX, baseY, bridge);
             iconX += ICON_SPACING;
         }
 
-        // Energy icon
-        renderEnergyIcon(graphics, iconX, baseY);
+        // Energy icon (conditional)
+        if (TownsteadConfig.isVillagerFatigueEnabled()) {
+            renderEnergyIcon(graphics, iconX, baseY);
+        }
     }
 
     public void renderTooltips(GuiGraphics graphics, Font font, int mouseX, int mouseY, int baseX, int baseY) {
         int iconX = baseX;
 
-        if (isHovering(mouseX, mouseY, iconX, baseY)) {
-            int hunger = HungerClientStore.get(entityId);
-            HungerData.HungerState state = HungerData.getState(hunger);
-            Component label = Component.translatable("townstead.hunger.icon.tooltip",
-                            Component.translatable(state.getTranslationKey()), hunger)
-                    .withStyle(Style.EMPTY.withColor(state.getColor()));
-            graphics.renderTooltip(font, label, mouseX, mouseY);
-            return;
+        if (TownsteadConfig.isVillagerHungerEnabled()) {
+            if (isHovering(mouseX, mouseY, iconX, baseY)) {
+                int hunger = HungerClientStore.get(entityId);
+                HungerData.HungerState state = HungerData.getState(hunger);
+                Component label = Component.translatable("townstead.hunger.icon.tooltip",
+                                Component.translatable(state.getTranslationKey()), hunger)
+                        .withStyle(Style.EMPTY.withColor(state.getColor()));
+                graphics.renderTooltip(font, label, mouseX, mouseY);
+                return;
+            }
+            iconX += ICON_SPACING;
         }
-        iconX += ICON_SPACING;
 
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
-        if (bridge != null) {
+        if (bridge != null && TownsteadConfig.isVillagerThirstEnabled()) {
             if (isHovering(mouseX, mouseY, iconX, baseY)) {
                 int thirst = ThirstClientStore.getThirst(entityId);
                 ThirstData.ThirstState thirstState = ThirstData.getState(thirst);
@@ -92,7 +99,7 @@ public class VillagerStatusBar {
             iconX += ICON_SPACING;
         }
 
-        if (isHovering(mouseX, mouseY, iconX, baseY)) {
+        if (TownsteadConfig.isVillagerFatigueEnabled() && isHovering(mouseX, mouseY, iconX, baseY)) {
             int fatigue = FatigueClientStore.getFatigue(entityId);
             int energy = FatigueData.toEnergy(fatigue);
             FatigueData.FatigueState fatigueState = FatigueData.getState(fatigue);

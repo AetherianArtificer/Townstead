@@ -59,6 +59,7 @@ public class SeekFoodTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
+        if (!TownsteadConfig.isVillagerHungerEnabled()) return false;
         if (VillagerEatingManager.isEating(villager) || VillagerDrinkingManager.isDrinking(villager)) return false;
         if (currentScheduleActivity(villager) == Activity.REST) return false;
 

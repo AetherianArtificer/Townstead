@@ -73,6 +73,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA caregiver) {
+        if (!TownsteadConfig.isVillagerHungerEnabled()) return false;
         if (!TownsteadConfig.ENABLE_FEEDING_YOUNG.get()) return false;
         if (currentScheduleActivity(caregiver) == Activity.REST) return false;
         if (cooldown > 0) {

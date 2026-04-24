@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
@@ -162,7 +163,7 @@ public abstract class InteractScreenMixin extends Screen {
             context.renderTooltip(font, scheduleLabel, 10, y);
         }
 
-        if (townstead$isHoveringHungerIcon()) {
+        if (TownsteadConfig.isVillagerHungerEnabled() && townstead$isHoveringHungerIcon()) {
             Component hungerLabel = Component.translatable(
                             "townstead.hunger.icon.tooltip",
                             Component.translatable(state.getTranslationKey()),
@@ -172,7 +173,7 @@ public abstract class InteractScreenMixin extends Screen {
             ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, hungerLabel, "hunger");
         }
 
-        if (ThirstBridgeResolver.isActive() && townstead$isHoveringThirstIcon()) {
+        if (ThirstBridgeResolver.isActive() && TownsteadConfig.isVillagerThirstEnabled() && townstead$isHoveringThirstIcon()) {
             int thirst = ThirstClientStore.getThirst(entityId);
             ThirstData.ThirstState thirstState = ThirstData.getState(thirst);
             Component thirstLabel = Component.translatable(
@@ -183,7 +184,7 @@ public abstract class InteractScreenMixin extends Screen {
             ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, thirstLabel, "thirst");
         }
 
-        if (townstead$isHoveringFatigueIcon()) {
+        if (TownsteadConfig.isVillagerFatigueEnabled() && townstead$isHoveringFatigueIcon()) {
             int fatigue = FatigueClientStore.getFatigue(entityId);
             int energy = FatigueData.toEnergy(fatigue);
             FatigueData.FatigueState fatigueState = FatigueData.getState(fatigue);
@@ -246,24 +247,27 @@ public abstract class InteractScreenMixin extends Screen {
 
     @Inject(method = "drawIcons", remap = false, at = @At("TAIL"))
     private void townstead$drawHungerIcon(GuiGraphics context, CallbackInfo ci) {
-        int hunger = HungerClientStore.get(villager.asEntity().getId());
-        int iconX = HUNGER_ICON_X + ((HUNGER_ICON_SIZE - 16) / 2);
-        int iconY = HUNGER_ICON_Y + ((HUNGER_ICON_SIZE - 16) / 2);
-
         var pose = context.pose();
-        pose.pushPose();
-        pose.translate(iconX, iconY, 0);
-        pose.scale(HUNGER_ICON_SCALE, HUNGER_ICON_SCALE, 1.0f);
-        //? if >=1.21 {
-        ResourceLocation sprite = townstead$hungerIconSprite(HungerData.getState(hunger));
-        context.blit(sprite, 0, 0, 0, 0, 9, 9, 9, 9);
-        //?} else {
-        /*int u = townstead$hungerIconU(HungerData.getState(hunger));
-        context.blit(ICONS, 0, 0, u, 27, 9, 9, 256, 256);
-        *///?}
-        pose.popPose();
+        if (TownsteadConfig.isVillagerHungerEnabled()) {
+            int hunger = HungerClientStore.get(villager.asEntity().getId());
+            int iconX = HUNGER_ICON_X + ((HUNGER_ICON_SIZE - 16) / 2);
+            int iconY = HUNGER_ICON_Y + ((HUNGER_ICON_SIZE - 16) / 2);
+
+            pose.pushPose();
+            pose.translate(iconX, iconY, 0);
+            pose.scale(HUNGER_ICON_SCALE, HUNGER_ICON_SCALE, 1.0f);
+            //? if >=1.21 {
+            ResourceLocation sprite = townstead$hungerIconSprite(HungerData.getState(hunger));
+            context.blit(sprite, 0, 0, 0, 0, 9, 9, 9, 9);
+            //?} else {
+            /*int u = townstead$hungerIconU(HungerData.getState(hunger));
+            context.blit(ICONS, 0, 0, u, 27, 9, 9, 256, 256);
+            *///?}
+            pose.popPose();
+        }
 
         // Draw energy bolt icon
+        if (TownsteadConfig.isVillagerFatigueEnabled()) {
         int fatigue = FatigueClientStore.getFatigue(villager.asEntity().getId());
         FatigueData.FatigueState fatigueState = FatigueData.getState(fatigue);
         int energyIconX = FATIGUE_ICON_X + ((FATIGUE_ICON_SIZE - 16) / 2);
@@ -275,9 +279,10 @@ public abstract class InteractScreenMixin extends Screen {
         ResourceLocation energySprite = townstead$energyIconSprite(fatigueState);
         context.blit(energySprite, 0, 0, 0, 0, 9, 9, 9, 9);
         pose.popPose();
+        }
 
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
-        if (bridge == null) return;
+        if (bridge == null || !TownsteadConfig.isVillagerThirstEnabled()) return;
 
         int thirst = ThirstClientStore.getThirst(villager.asEntity().getId());
         ThirstCompatBridge.ThirstIconInfo icon = bridge.iconInfo(thirst);
