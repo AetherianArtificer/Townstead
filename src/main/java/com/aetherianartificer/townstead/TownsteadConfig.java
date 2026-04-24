@@ -38,6 +38,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_CONTAINER_THIRST_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_CROP_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
+    public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
     public static final ModConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
     public static final ModConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
@@ -109,6 +110,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_CONTAINER_THIRST_SOURCING;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CROP_SOURCING;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
     public static final ForgeConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
     public static final ForgeConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
@@ -180,6 +182,10 @@ public final class TownsteadConfig {
         // ── Needs ──
         b.translation("townstead.configuration.needs").push("needs");
         b.translation("townstead.configuration.needs.hunger").push("hunger");
+        ENABLE_VILLAGER_HUNGER = b
+                .translation("townstead.configuration.needs.hunger.enableVillagerHunger")
+                .comment("Enable villager hunger simulation. When disabled, villagers skip all hunger decay, eating behaviors, and hunger-driven mood drift.")
+                .define("enableVillagerHunger", true);
         ENABLE_SELF_INVENTORY_EATING = b
                 .translation("townstead.configuration.needs.hunger.enableSelfInventoryEating")
                 .comment("Allow villagers to eat from their own inventory.")
@@ -574,6 +580,10 @@ public final class TownsteadConfig {
 
     public static boolean isCropThirstSourcingEnabled() {
         return ENABLE_CROP_THIRST_SOURCING != null && ENABLE_CROP_THIRST_SOURCING.get();
+    }
+
+    public static boolean isVillagerHungerEnabled() {
+        return ENABLE_VILLAGER_HUNGER.get();
     }
 
     public static boolean isVillagerThirstEnabled() {

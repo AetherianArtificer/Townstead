@@ -52,6 +52,10 @@ public final class HungerVillagerTicker {
 
     public static void tick(VillagerEntityMCA self) {
         if (!(self.level() instanceof ServerLevel level)) return;
+        if (!TownsteadConfig.isVillagerHungerEnabled()) {
+            removeSpeedModifier(self);
+            return;
+        }
 
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
         //? if neoforge {
@@ -276,6 +280,18 @@ public final class HungerVillagerTicker {
             }
             return;
         }
+        if (existing != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
+        *///?}
+    }
+
+    private static void removeSpeedModifier(VillagerEntityMCA self) {
+        AttributeInstance speedAttr = self.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (speedAttr == null) return;
+        //? if >=1.21 {
+        AttributeModifier existing = speedAttr.getModifier(TOWNSTEAD_SPEED_PENALTY);
+        if (existing != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY);
+        //?} else {
+        /*AttributeModifier existing = speedAttr.getModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
         if (existing != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
         *///?}
     }

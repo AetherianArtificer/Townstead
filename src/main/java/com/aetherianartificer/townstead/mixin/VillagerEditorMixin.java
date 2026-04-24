@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
@@ -73,7 +74,9 @@ public abstract class VillagerEditorMixin extends Screen {
 
         // Seed the editor from the villager's current data so first open does not
         // show client-store defaults before the refresh packet comes back.
-        boolean thirstAvailable = ThirstBridgeResolver.isActive();
+        boolean hungerAvailable = TownsteadConfig.isVillagerHungerEnabled();
+        boolean thirstAvailable = ThirstBridgeResolver.isActive() && TownsteadConfig.isVillagerThirstEnabled();
+        boolean fatigueAvailable = TownsteadConfig.isVillagerFatigueEnabled();
         townstead$editorHunger = villagerData.contains(HungerData.EDITOR_KEY_HUNGER)
                 ? villagerData.getInt(HungerData.EDITOR_KEY_HUNGER)
                 : HungerClientStore.get(villager.getId());
@@ -86,45 +89,52 @@ public abstract class VillagerEditorMixin extends Screen {
                 ? villagerData.getInt(FatigueData.EDITOR_KEY_FATIGUE)
                 : townstead$getCurrentFatigue();
 
-        // Position below the mood control (last widget on debug page)
-        int hungerY = height / 2 - 80 + 130;
-        int thirstY = hungerY + 24;
-        int fatigueY = thirstAvailable ? thirstY + 24 : hungerY + 24;
+        // Position below the mood control (last widget on debug page).
+        // Rows flow top-down, skipping disabled systems so there are no gaps.
+        int rowY = height / 2 - 80 + 130;
+        int hungerY = rowY;
         int bw = 22;
         int dataWidth = 175;
 
-        Button hungerDisplay = addRenderableWidget(
-                Button.builder(townstead$hungerLabel(), b -> {})
-                        .pos(width / 2 + bw * 2, hungerY)
-                        .size(dataWidth - bw * 4, 20)
-                        .build()
-        );
-        townstead$hungerDisplay = hungerDisplay;
+        if (hungerAvailable) {
+            Button hungerDisplay = addRenderableWidget(
+                    Button.builder(townstead$hungerLabel(), b -> {})
+                            .pos(width / 2 + bw * 2, hungerY)
+                            .size(dataWidth - bw * 4, 20)
+                            .build()
+            );
+            townstead$hungerDisplay = hungerDisplay;
 
-        addRenderableWidget(
-                Button.builder(Component.literal("-5"), b -> {
-                    townstead$modHunger(-5);
-                    hungerDisplay.setMessage(townstead$hungerLabel());
-                }).pos(width / 2, hungerY).size(bw, 20).build()
-        );
-        addRenderableWidget(
-                Button.builder(Component.literal("-50"), b -> {
-                    townstead$modHunger(-50);
-                    hungerDisplay.setMessage(townstead$hungerLabel());
-                }).pos(width / 2 + bw, hungerY).size(bw, 20).build()
-        );
-        addRenderableWidget(
-                Button.builder(Component.literal("+50"), b -> {
-                    townstead$modHunger(50);
-                    hungerDisplay.setMessage(townstead$hungerLabel());
-                }).pos(width / 2 + dataWidth - bw * 2, hungerY).size(bw, 20).build()
-        );
-        addRenderableWidget(
-                Button.builder(Component.literal("+5"), b -> {
-                    townstead$modHunger(5);
-                    hungerDisplay.setMessage(townstead$hungerLabel());
-                }).pos(width / 2 + dataWidth - bw, hungerY).size(bw, 20).build()
-        );
+            addRenderableWidget(
+                    Button.builder(Component.literal("-5"), b -> {
+                        townstead$modHunger(-5);
+                        hungerDisplay.setMessage(townstead$hungerLabel());
+                    }).pos(width / 2, hungerY).size(bw, 20).build()
+            );
+            addRenderableWidget(
+                    Button.builder(Component.literal("-50"), b -> {
+                        townstead$modHunger(-50);
+                        hungerDisplay.setMessage(townstead$hungerLabel());
+                    }).pos(width / 2 + bw, hungerY).size(bw, 20).build()
+            );
+            addRenderableWidget(
+                    Button.builder(Component.literal("+50"), b -> {
+                        townstead$modHunger(50);
+                        hungerDisplay.setMessage(townstead$hungerLabel());
+                    }).pos(width / 2 + dataWidth - bw * 2, hungerY).size(bw, 20).build()
+            );
+            addRenderableWidget(
+                    Button.builder(Component.literal("+5"), b -> {
+                        townstead$modHunger(5);
+                        hungerDisplay.setMessage(townstead$hungerLabel());
+                    }).pos(width / 2 + dataWidth - bw, hungerY).size(bw, 20).build()
+            );
+            rowY += 24;
+        }
+        int thirstY = rowY;
+        if (thirstAvailable) rowY += 24;
+        int fatigueY = rowY;
+        if (fatigueAvailable) rowY += 24;
 
         if (thirstAvailable) {
             Button thirstDisplay = addRenderableWidget(
@@ -162,43 +172,45 @@ public abstract class VillagerEditorMixin extends Screen {
         }
 
         // Fatigue editor controls
-        Button fatigueDisplay = addRenderableWidget(
-                Button.builder(townstead$fatigueLabel(), b -> {})
-                        .pos(width / 2 + bw * 2, fatigueY)
-                        .size(dataWidth - bw * 4, 20)
-                        .build()
-        );
-        townstead$fatigueDisplay = fatigueDisplay;
+        if (fatigueAvailable) {
+            Button fatigueDisplay = addRenderableWidget(
+                    Button.builder(townstead$fatigueLabel(), b -> {})
+                            .pos(width / 2 + bw * 2, fatigueY)
+                            .size(dataWidth - bw * 4, 20)
+                            .build()
+            );
+            townstead$fatigueDisplay = fatigueDisplay;
 
-        addRenderableWidget(
-                Button.builder(Component.literal("-1"), b -> {
-                    townstead$modFatigue(-1);
-                    fatigueDisplay.setMessage(townstead$fatigueLabel());
-                }).pos(width / 2, fatigueY).size(bw, 20).build()
-        );
-        addRenderableWidget(
-                Button.builder(Component.literal("-5"), b -> {
-                    townstead$modFatigue(-5);
-                    fatigueDisplay.setMessage(townstead$fatigueLabel());
-                }).pos(width / 2 + bw, fatigueY).size(bw, 20).build()
-        );
-        addRenderableWidget(
-                Button.builder(Component.literal("+5"), b -> {
-                    townstead$modFatigue(5);
-                    fatigueDisplay.setMessage(townstead$fatigueLabel());
-                }).pos(width / 2 + dataWidth - bw * 2, fatigueY).size(bw, 20).build()
-        );
-        addRenderableWidget(
-                Button.builder(Component.literal("+1"), b -> {
-                    townstead$modFatigue(1);
-                    fatigueDisplay.setMessage(townstead$fatigueLabel());
-                }).pos(width / 2 + dataWidth - bw, fatigueY).size(bw, 20).build()
-        );
+            addRenderableWidget(
+                    Button.builder(Component.literal("-1"), b -> {
+                        townstead$modFatigue(-1);
+                        fatigueDisplay.setMessage(townstead$fatigueLabel());
+                    }).pos(width / 2, fatigueY).size(bw, 20).build()
+            );
+            addRenderableWidget(
+                    Button.builder(Component.literal("-5"), b -> {
+                        townstead$modFatigue(-5);
+                        fatigueDisplay.setMessage(townstead$fatigueLabel());
+                    }).pos(width / 2 + bw, fatigueY).size(bw, 20).build()
+            );
+            addRenderableWidget(
+                    Button.builder(Component.literal("+5"), b -> {
+                        townstead$modFatigue(5);
+                        fatigueDisplay.setMessage(townstead$fatigueLabel());
+                    }).pos(width / 2 + dataWidth - bw * 2, fatigueY).size(bw, 20).build()
+            );
+            addRenderableWidget(
+                    Button.builder(Component.literal("+1"), b -> {
+                        townstead$modFatigue(1);
+                        fatigueDisplay.setMessage(townstead$fatigueLabel());
+                    }).pos(width / 2 + dataWidth - bw, fatigueY).size(bw, 20).build()
+            );
+        }
 
         // Butcher-only: per-villager slaughter toggle.
         if (ButcheryCompat.isLoaded()
                 && villager.getVillagerData().getProfession() == VillagerProfession.BUTCHER) {
-            int slaughterY = fatigueY + 24;
+            int slaughterY = rowY;
             townstead$editorSlaughterOverride = villagerData.contains(
                     ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE)
                     ? ButcherSettings.SlaughterOverride.fromCode(
@@ -215,12 +227,14 @@ public abstract class VillagerEditorMixin extends Screen {
 
         // Register callback: when server sync arrives, update the display
         // (only if user hasn't manually edited yet)
-        HungerClientStore.setOnChange(() -> {
-            if (!townstead$hungerDirty && townstead$hungerDisplay != null && "debug".equals(this.page)) {
-                townstead$editorHunger = HungerClientStore.get(villager.getId());
-                townstead$hungerDisplay.setMessage(townstead$hungerLabel());
-            }
-        });
+        if (hungerAvailable) {
+            HungerClientStore.setOnChange(() -> {
+                if (!townstead$hungerDirty && townstead$hungerDisplay != null && "debug".equals(this.page)) {
+                    townstead$editorHunger = HungerClientStore.get(villager.getId());
+                    townstead$hungerDisplay.setMessage(townstead$hungerLabel());
+                }
+            });
+        }
         if (thirstAvailable) {
             ThirstClientStore.setOnChange(() -> {
                 if (!townstead$thirstDirty && townstead$thirstDisplay != null && "debug".equals(this.page)) {
@@ -230,26 +244,36 @@ public abstract class VillagerEditorMixin extends Screen {
             });
         }
 
-        FatigueClientStore.setOnChange(() -> {
-            if (!townstead$fatigueDirty && townstead$fatigueDisplay != null && "debug".equals(this.page)) {
-                townstead$editorFatigue = townstead$getCurrentFatigue();
-                townstead$fatigueDisplay.setMessage(townstead$fatigueLabel());
-            }
-        });
+        if (fatigueAvailable) {
+            FatigueClientStore.setOnChange(() -> {
+                if (!townstead$fatigueDirty && townstead$fatigueDisplay != null && "debug".equals(this.page)) {
+                    townstead$editorFatigue = townstead$getCurrentFatigue();
+                    townstead$fatigueDisplay.setMessage(townstead$fatigueLabel());
+                }
+            });
+        }
 
         // Request fresh data from server
         //? if neoforge {
-        PacketDistributor.sendToServer(new HungerSetPayload(villager.getId(), -1));
+        if (hungerAvailable) {
+            PacketDistributor.sendToServer(new HungerSetPayload(villager.getId(), -1));
+        }
         if (thirstAvailable) {
             PacketDistributor.sendToServer(new ThirstSetPayload(villager.getId(), -1));
         }
-        PacketDistributor.sendToServer(new FatigueSetPayload(villager.getId(), -1));
+        if (fatigueAvailable) {
+            PacketDistributor.sendToServer(new FatigueSetPayload(villager.getId(), -1));
+        }
         //?} else if forge {
-        /*TownsteadNetwork.sendToServer(new HungerSetPayload(villager.getId(), -1));
+        /*if (hungerAvailable) {
+            TownsteadNetwork.sendToServer(new HungerSetPayload(villager.getId(), -1));
+        }
         if (thirstAvailable) {
             TownsteadNetwork.sendToServer(new ThirstSetPayload(villager.getId(), -1));
         }
-        TownsteadNetwork.sendToServer(new FatigueSetPayload(villager.getId(), -1));
+        if (fatigueAvailable) {
+            TownsteadNetwork.sendToServer(new FatigueSetPayload(villager.getId(), -1));
+        }
         *///?}
     }
 

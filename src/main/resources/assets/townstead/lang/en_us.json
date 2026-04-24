@@ -10,6 +10,8 @@
   "townstead.configuration.needs.tooltip": "Controls villager hunger and thirst systems.",
   "townstead.configuration.needs.hunger": "Hunger",
   "townstead.configuration.needs.hunger.tooltip": "Controls how villagers source and manage hunger.",
+  "townstead.configuration.needs.hunger.enableVillagerHunger": "Enable Villager Hunger",
+  "townstead.configuration.needs.hunger.enableVillagerHunger.tooltip": "Enable villager hunger simulation. When disabled, villagers skip hunger decay, eating behaviors, and hunger-driven mood drift.",
   "townstead.configuration.needs.hunger.enableSelfInventoryEating": "Eat From Own Inventory",
   "townstead.configuration.needs.hunger.enableSelfInventoryEating.tooltip": "Allow villagers to eat food they are already carrying.",
   "townstead.configuration.needs.hunger.enableGroundItemSourcing": "Pick Up Ground Food",
