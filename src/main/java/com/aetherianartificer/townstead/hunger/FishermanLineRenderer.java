@@ -53,7 +53,6 @@ public final class FishermanLineRenderer {
     private static final int SEGMENTS = 16;
     private static final double FALLBACK_BOB_AMPLITUDE = 0.055D;
     private static final double FALLBACK_BUBBLE_RADIUS = 0.34D;
-    private static final double VANILLA_LINE_BOBBER_Y_OFFSET = 0.25D;
     private static final double SYNC_LERP_MILLIS = 50.0D;
 
     // Anchor offsets for where the fishing line attaches on the villager.
@@ -70,6 +69,7 @@ public final class FishermanLineRenderer {
     // so the line meets the visible bobber sprite (vanilla's 0.25 attaches
     // at the top of the quad which looks a bit high).
     private static final double BOBBER_END_OFFSET = 0.10D;
+    private static final double ROD_END_OVERLAP = 0.06D;
 
     //? if >=1.21 {
     private static final ResourceLocation BOBBER_TEXTURE =
@@ -297,12 +297,13 @@ public final class FishermanLineRenderer {
                                             Vec3 hookPos, float partialTick) {
         Vec3 handPos = rodHandWorldPos(villager, partialTick);
         double hookX = hookPos.x;
-        double hookY = hookPos.y;
+        double hookY = hookPos.y + BOBBER_END_OFFSET;
         double hookZ = hookPos.z;
 
-        float dx = (float) (handPos.x - hookX);
-        float dy = (float) (handPos.y - (hookY + VANILLA_LINE_BOBBER_Y_OFFSET));
-        float dz = (float) (handPos.z - hookZ);
+        Vec3 endPos = lineEndWithRodOverlap(new Vec3(hookX, hookY, hookZ), handPos);
+        float dx = (float) (endPos.x - hookX);
+        float dy = (float) (endPos.y - hookY);
+        float dz = (float) (endPos.z - hookZ);
 
         poseStack.pushPose();
         try {
@@ -312,13 +313,14 @@ public final class FishermanLineRenderer {
             BufferBuilder builder = Tesselator.getInstance().getBuilder();
             RenderSystem.setShader(GameRenderer::getPositionColorShader);
             builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-            float prevX = 0F, prevY = (float) VANILLA_LINE_BOBBER_Y_OFFSET, prevZ = 0F;
+            float prevX = 0F, prevY = 0F, prevZ = 0F;
             for (int k = 1; k <= SEGMENTS; k++) {
                 float t = k / (float) SEGMENTS;
                 float x = dx * t;
-                float y = dy * (t * t + t) * 0.5F + (float) VANILLA_LINE_BOBBER_Y_OFFSET;
+                float y = dy * (t * t + t) * 0.5F;
                 float z = dz * t;
-                emitLineQuad(builder, matrix, prevX, prevY, prevZ, x, y, z, camPos, hookPos);
+                emitLineQuad(builder, matrix, prevX, prevY, prevZ, x, y, z, camPos,
+                        new Vec3(hookX, hookY, hookZ));
                 prevX = x;
                 prevY = y;
                 prevZ = z;
@@ -447,9 +449,10 @@ public final class FishermanLineRenderer {
         double hookY = hookPos.y + BOBBER_END_OFFSET;
         double hookZ = hookPos.z;
 
-        float dx = (float) (handPos.x - hookX);
-        float dy = (float) (handPos.y - hookY);
-        float dz = (float) (handPos.z - hookZ);
+        Vec3 endPos = lineEndWithRodOverlap(new Vec3(hookX, hookY, hookZ), handPos);
+        float dx = (float) (endPos.x - hookX);
+        float dy = (float) (endPos.y - hookY);
+        float dz = (float) (endPos.z - hookZ);
 
         poseStack.pushPose();
         try {
@@ -474,6 +477,14 @@ public final class FishermanLineRenderer {
         } finally {
             poseStack.popPose();
         }
+    }
+
+    private static Vec3 lineEndWithRodOverlap(Vec3 hookAttachPos, Vec3 handPos) {
+        Vec3 towardHand = handPos.subtract(hookAttachPos);
+        if (towardHand.lengthSqr() < 1.0e-6D) {
+            return handPos;
+        }
+        return handPos.add(towardHand.normalize().scale(ROD_END_OVERLAP));
     }
 
     /** World-space position where the fishing line attaches on the villager. */
