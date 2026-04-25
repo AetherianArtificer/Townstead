@@ -2,19 +2,29 @@ package com.aetherianartificer.townstead.dock;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,24 +40,22 @@ import java.util.concurrent.ConcurrentHashMap;
  * fisherman-specific requirements):
  *
  *   Tier 1 — Landing
- *     - 9+ horizontally connected {@code #minecraft:planks} at the same Y-level
- *     - 6+ of those planks horizontally adjacent to a water source block
- *     - 3+ planks with a water source directly below (the deck actually
- *       extends over water, not a shoreline patio next to it)
- *     - Perimeter planks mostly unwalled: a solid block above a perimeter
- *       plank is a house wall, so at most 30% may be walled. Decisive filter
- *       for plank houses (walls everywhere) vs decks (railings, not walls).
- *     - 70%+ of planks have open sky (no solid roof within 6 above), so
- *       boat-house-style fully covered structures don't register as docks
+ *     - 5+ horizontally connected crafted deck blocks at the same Y-level
+ *       (wooden surfaces, stone/brick surfaces, or similar built dock flooring)
+ *     - at least 1 deck block beside water or over/near water within a short drop
+ *     - Perimeter deck blocks cannot be almost fully walled; a solid block above
+ *       most perimeter blocks reads as a house wall, not a landing.
+ *     - 30%+ of deck blocks have open sky (no solid roof within 6 above), so
+ *       small roofed shoreline landings still count.
  *
  *   Tier 2 — Pier
- *     - 24+ planks
+ *     - 24+ deck blocks
  *     - 3+ light sources inside the bounds (lanterns or torches)
  *     - 6+ railing blocks inside the bounds ({@code #minecraft:fences} or
  *       {@code #minecraft:walls})
  *
  *   Tier 3 — Wharf
- *     - 48+ planks
+ *     - 48+ deck blocks
  *     - 6+ light sources
  *     - 12+ railing blocks
  *
@@ -60,25 +68,55 @@ import java.util.concurrent.ConcurrentHashMap;
  * next to or above the deck count.
  */
 public final class DockScanner {
+    private static final Logger LOG = LoggerFactory.getLogger("Townstead/DockScanner");
+    //? if >=1.21 {
+    private static final TagKey<Block> DOCK_SURFACES =
+            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:dock_surfaces"));
+    //?} else {
+    /*private static final TagKey<Block> DOCK_SURFACES =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "dock_surfaces"));
+    *///?}
+
+    private static final Set<String> WOOD_FAMILIES = Set.of(
+            "oak", "spruce", "birch", "jungle", "acacia", "dark_oak",
+            "mangrove", "cherry", "bamboo", "crimson", "warped");
+    private static final Set<String> MASONRY_SURFACES = Set.of(
+            "stone", "cobblestone", "mossy_cobblestone", "smooth_stone",
+            "stone_bricks", "mossy_stone_bricks", "cracked_stone_bricks", "chiseled_stone_bricks",
+            "bricks", "mud_bricks",
+            "andesite", "polished_andesite", "diorite", "polished_diorite",
+            "granite", "polished_granite",
+            "sandstone", "smooth_sandstone", "cut_sandstone", "chiseled_sandstone",
+            "red_sandstone", "smooth_red_sandstone", "cut_red_sandstone", "chiseled_red_sandstone",
+            "deepslate", "cobbled_deepslate", "polished_deepslate",
+            "deepslate_bricks", "cracked_deepslate_bricks",
+            "deepslate_tiles", "cracked_deepslate_tiles",
+            "blackstone", "polished_blackstone", "polished_blackstone_bricks", "cracked_polished_blackstone_bricks",
+            "prismarine", "prismarine_bricks", "dark_prismarine",
+            "quartz_block", "smooth_quartz", "quartz_bricks",
+            "nether_bricks", "cracked_nether_bricks", "chiseled_nether_bricks",
+            "red_nether_bricks", "end_stone_bricks");
+
     private static final int HORIZONTAL_RADIUS = 12;
     private static final int VERTICAL_RADIUS = 4;
 
-    private static final int T1_MIN_PLANKS = 9;
-    private static final int T1_MIN_WATER_TOUCH = 6;
+    private static final int T1_MIN_PLANKS = 5;
+    private static final int T1_MIN_WATER_TOUCH = 1;
     // Minimum fraction of deck planks that must have open sky overhead.
-    // 0.7 means a cabin with a small attached porch (majority roofed) still
-    // reads as a cabin, not a dock. A real pier should be mostly open-top.
-    private static final float T1_MIN_OPEN_SKY_RATIO = 0.7f;
+    // 0.3 keeps fully enclosed rooms out while allowing small roofed landings
+    // and shoreline decks that players naturally read as docks.
+    private static final float T1_MIN_OPEN_SKY_RATIO = 0.3f;
     private static final int ROOF_SCAN_HEIGHT = 6;
-    // A real dock extends OVER water. Require multiple planks with a water
-    // source directly below, not just one — a shoreline house with a single
-    // plank hanging over the edge shouldn't qualify.
-    private static final int T1_MIN_PLANKS_OVER_WATER = 3;
+    private static final int WATER_SCAN_DEPTH = 6;
+    private static final int REPORT_MAX_COMPONENT_DISTANCE = 1;
+    // Landing recognition should be player-friendly: a small shoreline deck
+    // beside water is enough. Higher tiers still reward larger, dressed docks.
+    private static final int T1_MIN_PLANKS_OVER_WATER = 0;
     // The decisive house-vs-dock filter: on a house the perimeter planks have
     // walls directly above (the outside walls sitting on the floor). A dock
     // has at most a few fence/wall railings, which aren't counted as walls.
     // Reject if more than this fraction of perimeter planks have a wall above.
-    private static final float T1_MAX_WALLED_PERIMETER_RATIO = 0.30f;
+    private static final float T1_MAX_WALLED_PERIMETER_RATIO = 0.70f;
 
     // Tier thresholds — deliberately mirror the dock_l2 / dock_l3 JSON recipes
     // block-for-block. Keeping DockScanner and the JSON requirements in lockstep
@@ -122,10 +160,15 @@ public final class DockScanner {
         if (cached != null && now <= cached.expiresAt) {
             return cached.dock;
         }
-        Dock dock = scanUncached(level, near, horizontalRadius);
+        Dock dock = scanUncached(level, near, horizontalRadius, false);
         long ttl = dock == null ? EMPTY_CACHE_TTL_TICKS : CACHE_TTL_TICKS;
         CACHE.put(key, new Entry(dock, now + ttl));
         return dock;
+    }
+
+    public static @Nullable Dock scanForReport(ServerLevel level, BlockPos near, int horizontalRadius) {
+        if (near == null) return null;
+        return scanUncached(level, near, horizontalRadius, true);
     }
 
     public static void invalidate(ServerLevel level, BlockPos near) {
@@ -135,26 +178,88 @@ public final class DockScanner {
         CACHE.keySet().removeIf(k -> k.dim.equals(dim) && k.posKey == posKey);
     }
 
-    private static @Nullable Dock scanUncached(ServerLevel level, BlockPos near, int horizontalRadius) {
+    private static @Nullable Dock scanUncached(ServerLevel level, BlockPos near, int horizontalRadius, boolean diagnostics) {
         Set<Long> planks = new HashSet<>();
         for (BlockPos p : BlockPos.betweenClosed(
                 near.offset(-horizontalRadius, -VERTICAL_RADIUS, -horizontalRadius),
                 near.offset(horizontalRadius, VERTICAL_RADIUS, horizontalRadius))) {
             BlockState s = level.getBlockState(p);
-            if (s.is(BlockTags.PLANKS)) {
+            if (isDockSurface(s)) {
                 planks.add(p.asLong());
             }
         }
-        if (planks.size() < T1_MIN_PLANKS) return null;
+        if (planks.size() < T1_MIN_PLANKS) {
+            if (diagnostics) logReject("not enough dock surfaces in scan box", near, horizontalRadius, planks.size(), 0, 0, 0, 0.0f, 0.0f, null);
+            return null;
+        }
 
-        Set<Long> best = largestHorizontalComponent(planks);
-        if (best.size() < T1_MIN_PLANKS) return null;
-        if (!meetsWaterTouch(level, best, T1_MIN_WATER_TOUCH)) return null;
-        if (!hasLowWalledPerimeter(level, best, T1_MAX_WALLED_PERIMETER_RATIO)) return null;
-        if (!meetsOpenSkyRatio(level, best, T1_MIN_OPEN_SKY_RATIO)) return null;
-        if (countPlanksOverWater(level, best) < T1_MIN_PLANKS_OVER_WATER) return null;
+        List<Set<Long>> components = horizontalComponents(planks);
+        components.removeIf(c -> c.size() < T1_MIN_PLANKS);
+        if (diagnostics) {
+            int maxDistanceSqr = REPORT_MAX_COMPONENT_DISTANCE * REPORT_MAX_COMPONENT_DISTANCE;
+            components.removeIf(c -> distanceToBoundsSqr(near, computeBounds(c)) > maxDistanceSqr);
+        }
+        components.sort(Comparator
+                .comparingDouble((Set<Long> c) -> distanceToBoundsSqr(near, computeBounds(c)))
+                .thenComparing(Comparator.comparingInt(Set<Long>::size).reversed()));
+        if (components.isEmpty()) {
+            if (diagnostics) logReject("no nearby connected dock surface large enough", near, horizontalRadius, planks.size(), 0, 0, 0, 0.0f, 0.0f, null);
+            return null;
+        }
 
-        BoundingBox bounds = computeBounds(best);
+        Set<Long> best = null;
+        BoundingBox bounds = null;
+        WaterCounts water = null;
+        float walledRatio = 0.0f;
+        float openSkyRatio = 0.0f;
+        String closestReject = "no qualifying component";
+        BoundingBox closestBounds = null;
+        int closestSize = 0;
+        int closestBeside = 0;
+        int closestOver = 0;
+        float closestWalled = 0.0f;
+        float closestOpenSky = 0.0f;
+
+        for (Set<Long> component : components) {
+            BoundingBox componentBounds = computeBounds(component);
+            WaterCounts componentWater = countWaterContacts(level, component);
+            float componentWalled = walledPerimeterRatio(level, component);
+            float componentOpenSky = openSkyRatio(level, component);
+            if (closestBounds == null) {
+                closestBounds = componentBounds;
+                closestSize = component.size();
+                closestBeside = componentWater.beside();
+                closestOver = componentWater.over();
+                closestWalled = componentWalled;
+                closestOpenSky = componentOpenSky;
+            }
+            if (!meetsWaterContact(componentWater, T1_MIN_WATER_TOUCH, T1_MIN_PLANKS_OVER_WATER)) {
+                if (closestBounds == componentBounds) closestReject = "no qualifying water contact";
+                continue;
+            }
+            if (componentWalled > T1_MAX_WALLED_PERIMETER_RATIO) {
+                if (closestBounds == componentBounds) closestReject = "too much walled perimeter";
+                continue;
+            }
+            if (componentOpenSky < T1_MIN_OPEN_SKY_RATIO) {
+                if (closestBounds == componentBounds) closestReject = "not enough open sky";
+                continue;
+            }
+            best = component;
+            bounds = componentBounds;
+            water = componentWater;
+            walledRatio = componentWalled;
+            openSkyRatio = componentOpenSky;
+            break;
+        }
+
+        if (best == null) {
+            if (diagnostics) {
+                logReject(closestReject, near, horizontalRadius, planks.size(), closestSize,
+                        closestBeside, closestOver, closestWalled, closestOpenSky, closestBounds);
+            }
+            return null;
+        }
 
         int tier = 1;
         if (best.size() >= T2_MIN_PLANKS && pierQualifies(level, best, bounds)) {
@@ -164,14 +269,41 @@ public final class DockScanner {
             }
         }
 
+        if (diagnostics) {
+            LOG.info("[DockScan] detected tier={} near={} radius={} surfaces={} component={} waterBeside={} waterOver={} walledRatio={} openSkyRatio={} bounds=[{},{},{}]..[{},{},{}]",
+                    tier, near, horizontalRadius, planks.size(), best.size(), water.beside(), water.over(), walledRatio, openSkyRatio,
+                    bounds.minX(), bounds.minY(), bounds.minZ(), bounds.maxX(), bounds.maxY(), bounds.maxZ());
+        }
         return new Dock(bounds, best.size(), tier);
+    }
+
+    private static void logReject(String reason, BlockPos near, int radius,
+                                  int surfaces, int component, int waterBeside, int waterOver,
+                                  float walledRatio, float openSkyRatio, @Nullable BoundingBox bounds) {
+        if (bounds == null) {
+            LOG.info("[DockScan] reject near={} radius={} reason='{}' surfaces={} component={} waterBeside={} waterOver={} walledRatio={} openSkyRatio={} bounds=<none>",
+                    near, radius, reason, surfaces, component, waterBeside, waterOver, walledRatio, openSkyRatio);
+        } else {
+            LOG.info("[DockScan] reject near={} radius={} reason='{}' surfaces={} component={} waterBeside={} waterOver={} walledRatio={} openSkyRatio={} bounds=[{},{},{}]..[{},{},{}]",
+                    near, radius, reason, surfaces, component, waterBeside, waterOver, walledRatio, openSkyRatio,
+                    bounds.minX(), bounds.minY(), bounds.minZ(), bounds.maxX(), bounds.maxY(), bounds.maxZ());
+        }
     }
 
     // ── Structural scan ──
 
     private static Set<Long> largestHorizontalComponent(Set<Long> planks) {
-        Set<Long> visited = new HashSet<>();
+        List<Set<Long>> components = horizontalComponents(planks);
         Set<Long> best = Collections.emptySet();
+        for (Set<Long> component : components) {
+            if (component.size() > best.size()) best = component;
+        }
+        return best;
+    }
+
+    private static List<Set<Long>> horizontalComponents(Set<Long> planks) {
+        Set<Long> visited = new HashSet<>();
+        List<Set<Long>> components = new ArrayList<>();
         for (long seedKey : planks) {
             if (visited.contains(seedKey)) continue;
             Set<Long> component = new HashSet<>();
@@ -191,9 +323,22 @@ public final class DockScanner {
                     queue.add(n);
                 }
             }
-            if (component.size() > best.size()) best = component;
+            components.add(component);
         }
-        return best;
+        return components;
+    }
+
+    private static double distanceToBoundsSqr(BlockPos pos, BoundingBox bb) {
+        double dx = axisDistance(pos.getX(), bb.minX(), bb.maxX());
+        double dy = axisDistance(pos.getY(), bb.minY(), bb.maxY());
+        double dz = axisDistance(pos.getZ(), bb.minZ(), bb.maxZ());
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    private static double axisDistance(int value, int min, int max) {
+        if (value < min) return min - value;
+        if (value > max) return value - max;
+        return 0.0;
     }
 
     /**
@@ -206,7 +351,11 @@ public final class DockScanner {
      * clear sky by this definition.
      */
     private static boolean meetsOpenSkyRatio(ServerLevel level, Set<Long> deck, float minRatio) {
-        if (deck.isEmpty()) return false;
+        return openSkyRatio(level, deck) >= minRatio;
+    }
+
+    private static float openSkyRatio(ServerLevel level, Set<Long> deck) {
+        if (deck.isEmpty()) return 0.0f;
         int openCount = 0;
         for (long k : deck) {
             BlockPos p = BlockPos.of(k);
@@ -220,7 +369,7 @@ public final class DockScanner {
             }
             if (!roofed) openCount++;
         }
-        return (float) openCount / deck.size() >= minRatio;
+        return (float) openCount / deck.size();
     }
 
     private static boolean isRoofBlock(BlockState state, ServerLevel level, BlockPos pos) {
@@ -250,6 +399,10 @@ public final class DockScanner {
      * planks with a wall block directly above stays below {@code maxRatio}.
      */
     private static boolean hasLowWalledPerimeter(ServerLevel level, Set<Long> deck, float maxRatio) {
+        return walledPerimeterRatio(level, deck) <= maxRatio;
+    }
+
+    private static float walledPerimeterRatio(ServerLevel level, Set<Long> deck) {
         int perimeterCount = 0;
         int walledCount = 0;
         for (long k : deck) {
@@ -268,42 +421,74 @@ public final class DockScanner {
                 walledCount++;
             }
         }
-        if (perimeterCount == 0) return true;
-        return (float) walledCount / perimeterCount <= maxRatio;
+        if (perimeterCount == 0) return 0.0f;
+        return (float) walledCount / perimeterCount;
     }
 
-    /**
-     * Count planks with a water source block directly below. These are the
-     * "over the water" parts of the dock. A pier on a shoreline has its
-     * inner-edge planks on dirt and its water-facing planks over water, so
-     * at least one will qualify. Pure land-side plank patches (a house, a
-     * beach patio) have dirt/sand below all their planks — never qualify.
-     */
-    private static int countPlanksOverWater(ServerLevel level, Set<Long> deck) {
-        int count = 0;
+    private static boolean meetsWaterContact(ServerLevel level, Set<Long> deck, int requiredBeside, int requiredOver) {
+        return meetsWaterContact(countWaterContacts(level, deck), requiredBeside, requiredOver);
+    }
+
+    private static boolean meetsWaterContact(WaterCounts counts, int requiredBeside, int requiredOver) {
+        return (requiredBeside > 0 && counts.beside() >= requiredBeside)
+                || (requiredOver > 0 && counts.over() >= requiredOver);
+    }
+
+    private static WaterCounts countWaterContacts(ServerLevel level, Set<Long> deck) {
+        int beside = 0;
+        int over = 0;
         for (long k : deck) {
             BlockPos p = BlockPos.of(k);
-            BlockState below = level.getBlockState(p.below());
-            if (below.getFluidState().isSource() && below.getFluidState().is(FluidTags.WATER)) {
-                count++;
-            }
+            WaterContact contact = waterContactBelowOrBeside(level, p);
+            if (contact.over) over++;
+            if (contact.beside) beside++;
         }
-        return count;
+        return new WaterCounts(beside, over);
     }
 
-    private static boolean meetsWaterTouch(ServerLevel level, Set<Long> deck, int required) {
-        int touching = 0;
-        for (long k : deck) {
-            BlockPos p = BlockPos.of(k);
+    private static WaterContact waterContactBelowOrBeside(ServerLevel level, BlockPos deckPos) {
+        boolean over = false;
+        boolean beside = false;
+        for (int dy = 0; dy <= WATER_SCAN_DEPTH; dy++) {
+            BlockPos base = deckPos.below(dy);
+            if (dy > 0 && isWaterSource(level, base)) {
+                over = true;
+            }
             for (Direction d : Direction.Plane.HORIZONTAL) {
-                BlockPos n = p.relative(d);
-                BlockState ns = level.getBlockState(n);
-                if (ns.getFluidState().isSource() && ns.getFluidState().is(FluidTags.WATER)) {
-                    touching++;
+                if (isWaterSource(level, base.relative(d))) {
+                    beside = true;
                     break;
                 }
             }
-            if (touching >= required) return true;
+            if (over || beside) return new WaterContact(over, beside);
+        }
+        return new WaterContact(false, false);
+    }
+
+    private static boolean isWaterSource(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return state.getFluidState().isSource() && state.getFluidState().is(FluidTags.WATER);
+    }
+
+    public static boolean isDockSurface(BlockState state) {
+        if (state.is(DOCK_SURFACES)) return true;
+        if (state.is(BlockTags.PLANKS)) return true;
+        ResourceLocation key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (key == null || !"minecraft".equals(key.getNamespace())) return false;
+        String path = key.getPath();
+        for (String family : WOOD_FAMILIES) {
+            if (path.equals(family + "_slab")
+                    || path.equals(family + "_stairs")
+                    || path.equals(family + "_trapdoor")) {
+                return true;
+            }
+        }
+        if (MASONRY_SURFACES.contains(path)) return true;
+        for (String material : MASONRY_SURFACES) {
+            if (path.equals(material + "_slab")
+                    || path.equals(material + "_stairs")) {
+                return true;
+            }
         }
         return false;
     }
@@ -374,4 +559,6 @@ public final class DockScanner {
 
     private record Key(String dim, long posKey, int radius) {}
     private record Entry(@Nullable Dock dock, long expiresAt) {}
+    private record WaterContact(boolean over, boolean beside) {}
+    private record WaterCounts(int beside, int over) {}
 }

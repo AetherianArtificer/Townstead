@@ -8,6 +8,6 @@
   "townsteadNodeItem": "minecraft:oak_boat",
   "townsteadSpirit": { "nautical": 5 },
   "blocks": {
-    "#minecraft:planks": 9
+    "#townstead:dock_surfaces": 5
   }
 }

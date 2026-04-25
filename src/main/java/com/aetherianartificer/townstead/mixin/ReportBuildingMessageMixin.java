@@ -79,7 +79,7 @@ public abstract class ReportBuildingMessageMixin {
             // let MCA continue so the auto-scan toggle/normal refresh works.
             Dock dock;
             try {
-                dock = DockScanner.scan(level, pos, TOWNSTEAD$REPORT_SCAN_RADIUS);
+                dock = DockScanner.scanForReport(level, pos, TOWNSTEAD$REPORT_SCAN_RADIUS);
             } catch (Throwable t) {
                 TOWNSTEAD$LOG.warn("Dock detection for ADD failed: {}", t.toString());
                 return;
@@ -87,7 +87,7 @@ public abstract class ReportBuildingMessageMixin {
             if (dock != null) {
                 VillageManager.get(level).findNearestVillage(player).ifPresent(v ->
                         DockSuppression.clearAllOverlapping(level, v, dock.bounds()));
-                DockBuildingSync.sync(level, dock);
+                DockBuildingSync.sync(level, dock, pos);
                 VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
                     BuildingTierReconciler.reconcileVillage(v, level);
                     BuildingRecognitionTracker.reconcile(level, v);
@@ -190,9 +190,9 @@ public abstract class ReportBuildingMessageMixin {
 
     private static void townstead$detectAndSyncDockFromReport(ServerLevel level, ServerPlayer player) {
         try {
-            Dock dock = DockScanner.scan(level, player.blockPosition(), TOWNSTEAD$REPORT_SCAN_RADIUS);
+            Dock dock = DockScanner.scanForReport(level, player.blockPosition(), TOWNSTEAD$REPORT_SCAN_RADIUS);
             if (dock != null) {
-                DockBuildingSync.sync(level, dock);
+                DockBuildingSync.sync(level, dock, player.blockPosition());
             }
         } catch (Throwable t) {
             TOWNSTEAD$LOG.warn("Dock detection from report-building failed: {}", t.toString());
