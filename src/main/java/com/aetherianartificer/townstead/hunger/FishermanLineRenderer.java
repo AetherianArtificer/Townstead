@@ -54,6 +54,7 @@ public final class FishermanLineRenderer {
     private static final double FALLBACK_BOB_AMPLITUDE = 0.055D;
     private static final double FALLBACK_BUBBLE_RADIUS = 0.34D;
     private static final double VANILLA_LINE_BOBBER_Y_OFFSET = 0.25D;
+    private static final double SYNC_LERP_MILLIS = 50.0D;
 
     // Anchor offsets for where the fishing line attaches on the villager.
     // Values tuned to land on the visible tip of the fishing-rod item as
@@ -154,7 +155,7 @@ public final class FishermanLineRenderer {
                 // point without falling back to per-frame eviction (which
                 // wiped the synced entry and stopped anything from rendering).
                 if (synced != null) {
-                    Vec3 hookPos = new Vec3(synced.x(), synced.y(), synced.z());
+                    Vec3 hookPos = interpolatedSyncedPosition(synced);
                     renderBobberAt(poseStack, bobberConsumer, camPos, hookPos, 15728880);
                     renderLineTo(poseStack, consumer, camPos, villager, hookPos, partialTick);
                     drawn++;
@@ -204,7 +205,7 @@ public final class FishermanLineRenderer {
                         Mth.lerp((double) partialTick, hook.zo, hook.getZ()));
             } else {
                 FishermanHookLinkStore.SyncedHook synced = FishermanHookLinkStore.syncedHook(hookId);
-                if (synced != null) hookPos = new Vec3(synced.x(), synced.y(), synced.z());
+                if (synced != null) hookPos = interpolatedSyncedPosition(synced);
             }
             if (hookPos == null) continue;
             hookPos = addFallbackBob(hookId, hookPos, partialTick);
@@ -360,6 +361,16 @@ public final class FishermanLineRenderer {
         builder.vertex(matrix, x1 - ox, y1 - oy, z1 - oz).color(r, g, b, a).endVertex();
     }
     *///?}
+
+    private static Vec3 interpolatedSyncedPosition(FishermanHookLinkStore.SyncedHook synced) {
+        double t = (System.currentTimeMillis() - synced.updatedAtMillis()) / SYNC_LERP_MILLIS;
+        if (t < 0.0D) t = 0.0D;
+        if (t > 1.0D) t = 1.0D;
+        double x = Mth.lerp(t, synced.previousX(), synced.x());
+        double y = Mth.lerp(t, synced.previousY(), synced.y());
+        double z = Mth.lerp(t, synced.previousZ(), synced.z());
+        return new Vec3(x, y, z);
+    }
 
     /**
      * Render a billboarded bobber quad at the hook's interpolated position.

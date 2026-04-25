@@ -103,7 +103,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int FETCH_ROD_TIMEOUT_TICKS = 200;
     private static final int GO_TO_WATER_TIMEOUT_TICKS = 300;
     private static final int CAST_COOLDOWN_TICKS = 40;
+    //? if forge {
+    /*private static final int HOOK_LINK_REFRESH_TICKS = 1;
+    *///?} else {
     private static final int HOOK_LINK_REFRESH_TICKS = 20;
+    //?}
     // Pre-cast wind-up: face water, shift weight, brief pause so cast feels
     // deliberate rather than drive-by.
     private static final int AIM_DURATION_TICKS = 24;

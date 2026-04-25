@@ -40,7 +40,14 @@ public final class FishermanHookLinkStore {
     public static void link(int hookEntityId, int villagerEntityId, double x, double y, double z) {
         link(hookEntityId, villagerEntityId);
         if (villagerEntityId >= 0) {
-            HOOK_POSITIONS.put(hookEntityId, new SyncedHook(x, y, z));
+            SyncedHook previous = HOOK_POSITIONS.get(hookEntityId);
+            long now = System.currentTimeMillis();
+            if (previous == null) {
+                HOOK_POSITIONS.put(hookEntityId, new SyncedHook(x, y, z, x, y, z, now));
+            } else {
+                HOOK_POSITIONS.put(hookEntityId,
+                        new SyncedHook(previous.x, previous.y, previous.z, x, y, z, now));
+            }
         }
     }
 
@@ -82,5 +89,9 @@ public final class FishermanHookLinkStore {
         CONFIRMED.clear();
     }
 
-    public record SyncedHook(double x, double y, double z) {}
+    public record SyncedHook(
+            double previousX, double previousY, double previousZ,
+            double x, double y, double z,
+            long updatedAtMillis
+    ) {}
 }
