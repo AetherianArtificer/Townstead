@@ -67,12 +67,16 @@ public abstract class ReportBuildingMessageMixin {
             return;
         }
 
-        if (act == ReportBuildingMessage.Action.ADD || act == ReportBuildingMessage.Action.ADD_ROOM) {
+        if (act == ReportBuildingMessage.Action.ADD
+                || act == ReportBuildingMessage.Action.ADD_ROOM
+                || act == ReportBuildingMessage.Action.AUTO_SCAN) {
             // MCA's flood-fill validation fails on open-air structures and
-            // shows "Building too small" before our TAIL hook runs. If the
-            // player is on a dock or inside a fenced enclosure, do our
-            // synthetic sync ourselves and cancel so MCA never attempts
-            // flood-fill for this click.
+            // shows "Building too small" before our TAIL hook runs. For
+            // direct Add/Add Room clicks, if the player is on a dock or
+            // inside a fenced enclosure, do our synthetic sync ourselves and
+            // cancel so MCA never attempts flood-fill for this click. For
+            // 1.20.1's AUTO_SCAN path, still sync open-air structures, but
+            // let MCA continue so the auto-scan toggle/normal refresh works.
             Dock dock;
             try {
                 dock = DockScanner.scan(level, pos, TOWNSTEAD$REPORT_SCAN_RADIUS);
@@ -89,7 +93,7 @@ public abstract class ReportBuildingMessageMixin {
                     BuildingRecognitionTracker.reconcile(level, v);
                     SpiritReconciler.reconcileVillage(level, v);
                 });
-                ci.cancel();
+                if (act != ReportBuildingMessage.Action.AUTO_SCAN) ci.cancel();
                 return;
             }
 
@@ -118,7 +122,7 @@ public abstract class ReportBuildingMessageMixin {
                 BuildingRecognitionTracker.reconcile(level, v);
                 SpiritReconciler.reconcileVillage(level, v);
             });
-            ci.cancel();
+            if (act != ReportBuildingMessage.Action.AUTO_SCAN) ci.cancel();
         }
     }
 
@@ -153,7 +157,7 @@ public abstract class ReportBuildingMessageMixin {
         /*ReportBuildingMessage.Action act = this.action;
         *///?}
         switch (act) {
-            case ADD, ADD_ROOM, REMOVE, FULL_SCAN -> {
+            case ADD, ADD_ROOM, REMOVE, FULL_SCAN, AUTO_SCAN -> {
                 ServerLevel level = player.serverLevel();
                 VillageManager.get(level)
                         .findNearestVillage(player)
