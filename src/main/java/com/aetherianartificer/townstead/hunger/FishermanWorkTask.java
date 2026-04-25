@@ -103,6 +103,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int FETCH_ROD_TIMEOUT_TICKS = 200;
     private static final int GO_TO_WATER_TIMEOUT_TICKS = 300;
     private static final int CAST_COOLDOWN_TICKS = 40;
+    private static final int HOOK_LINK_REFRESH_TICKS = 20;
     // Pre-cast wind-up: face water, shift weight, brief pause so cast feels
     // deliberate rather than drive-by.
     private static final int AIM_DURATION_TICKS = 24;
@@ -170,6 +171,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private long nextCastReadyTick;
     private @Nullable WeakReference<FishingHook> currentHook;
     private @Nullable ItemStack currentRod;
+    private long nextHookLinkSyncTick;
     // Set once per bite when NIBBLE_LEAD_TICKS remain — triggers the lean-in
     // look and plays a splash cue.
     private boolean nibbleTriggered;
@@ -591,9 +593,17 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         // now produces a correctly-aimed cast arc. Do not override position
         // or deltaMovement afterwards.
         FishingHook hook = new FishingHook(fakePlayer, level, luck, lure);
+        // Prime clients tracking the villager before the hook spawn packet can
+        // arrive. Use the intended water target as the first cosmetic
+        // position so the fallback renderer does not briefly draw a taut line
+        // through the villager from the fake player's launch point.
+        townstead$broadcastHookLink(level, hook, villager,
+                waterPos.getX() + 0.5D, waterPos.getY() + 0.5D, waterPos.getZ() + 0.5D);
         level.addFreshEntity(hook);
         currentHook = new WeakReference<>(hook);
-        townstead$broadcastHookLink(level, hook.getId(), villager.getId());
+        nextHookLinkSyncTick = level.getGameTime() + HOOK_LINK_REFRESH_TICKS;
+        townstead$broadcastHookLink(level, hook, villager,
+                waterPos.getX() + 0.5D, waterPos.getY() + 0.5D, waterPos.getZ() + 0.5D);
         if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
             LOGGER.info("[Fisherman] cast hook id={} from ({},{},{}) yaw={} pitch={} horizDist={} dy={} v={}",
                     hook.getId(), villager.getX(), villager.getY(), villager.getZ(),
@@ -688,15 +698,23 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
      * we only need to broadcast on link. Failures are swallowed: the line
      * is purely cosmetic.
      */
-    private static void townstead$broadcastHookLink(ServerLevel level, int hookEntityId, int villagerEntityId) {
+    private static void townstead$broadcastHookLink(ServerLevel level, FishingHook hook, VillagerEntityMCA villager) {
+        townstead$broadcastHookLink(level, hook, villager, hook.getX(), hook.getY(), hook.getZ());
+    }
+
+    private static void townstead$broadcastHookLink(ServerLevel level, FishingHook hook, VillagerEntityMCA villager,
+                                                    double visualX, double visualY, double visualZ) {
         try {
-            net.minecraft.world.entity.Entity hook = level.getEntity(hookEntityId);
-            if (hook == null) return;
-            FishermanHookLinkPayload payload = new FishermanHookLinkPayload(hookEntityId, villagerEntityId);
+            int hookEntityId = hook.getId();
+            int villagerEntityId = villager.getId();
+            FishermanHookLinkPayload payload = new FishermanHookLinkPayload(
+                    hookEntityId, villagerEntityId, visualX, visualY, visualZ);
             //? if neoforge {
             PacketDistributor.sendToPlayersTrackingEntity(hook, payload);
+            PacketDistributor.sendToPlayersTrackingEntity(villager, payload);
             //?} else if forge {
             /*TownsteadNetwork.sendToTrackingEntity(hook, payload);
+            TownsteadNetwork.sendToTrackingEntity(villager, payload);
             *///?}
             if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
                 LOGGER.info("[Fisherman] broadcast hook-link hookId={} villagerId={}", hookEntityId, villagerEntityId);
@@ -720,6 +738,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (fakePlayer == null) return;
         fakePlayer.setPos(villager.getX(), villager.getEyeY(), villager.getZ());
         fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, townstead$vanillaRodProxy());
+        FishingHook hook = currentHook == null ? null : currentHook.get();
+        if (hook != null && hook.isAlive() && level.getGameTime() >= nextHookLinkSyncTick) {
+            townstead$broadcastHookLink(level, hook, villager);
+            nextHookLinkSyncTick = level.getGameTime() + HOOK_LINK_REFRESH_TICKS;
+        }
     }
 
     /**
@@ -949,12 +972,41 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private void discardHook(ServerLevel level) {
         if (currentHook != null) {
             FishingHook hook = currentHook.get();
+            if (hook != null) {
+                townstead$broadcastHookUnlink(level, hook, hook.getId());
+            }
             if (hook != null && hook.isAlive()) {
-                // Client will evict the link once the entity despawns client-side;
-                // no unlink packet needed.
                 hook.discard();
             }
             currentHook = null;
+        }
+    }
+
+    private static void townstead$broadcastHookUnlink(ServerLevel level, FishingHook hook, int hookEntityId) {
+        try {
+            FishermanHookLinkPayload payload = new FishermanHookLinkPayload(
+                    hookEntityId, -1, hook.getX(), hook.getY(), hook.getZ());
+            //? if neoforge {
+            PacketDistributor.sendToPlayersTrackingEntity(hook, payload);
+            PacketDistributor.sendToPlayersTrackingEntity(hook.getOwner(), payload);
+            for (ServerPlayer player : level.players()) {
+                if (player.distanceToSqr(hook) <= 4096.0D) {
+                    PacketDistributor.sendToPlayer(player, payload);
+                }
+            }
+            //?} else if forge {
+            /*TownsteadNetwork.sendToTrackingEntity(hook, payload);
+            if (hook.getOwner() != null) {
+                TownsteadNetwork.sendToTrackingEntity(hook.getOwner(), payload);
+            }
+            for (ServerPlayer player : level.players()) {
+                if (player.distanceToSqr(hook) <= 4096.0D) {
+                    TownsteadNetwork.sendToPlayer(player, payload);
+                }
+            }
+            *///?}
+        } catch (Throwable ignored) {
+            // Cosmetic cleanup only; stale client links also clear on disconnect.
         }
     }
 

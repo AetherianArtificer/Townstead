@@ -25,6 +25,8 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 
 import javax.annotation.Nullable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -205,6 +207,26 @@ public final class CarcassStateMachine {
         be.setChanged();
         level.sendBlockUpdated(pos, current, current, 3);
         return true;
+    }
+
+    /**
+     * Butchery exposes this as a loader-specific config value and Townstead's
+     * compat remains optional, so read it reflectively instead of taking a
+     * compile-time dependency on Butchery classes.
+     */
+    public static boolean instantBleedEnabled() {
+        if (!ButcheryCompat.isLoaded()) return false;
+        try {
+            Class<?> config = Class.forName("net.mcreator.butchery.configuration.ButcheryconfigConfiguration");
+            Field field = config.getField("INSTANT_BLEED");
+            Object configValue = field.get(null);
+            if (configValue == null) return false;
+            Method get = configValue.getClass().getMethod("get");
+            Object value = get.invoke(configValue);
+            return Boolean.TRUE.equals(value);
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            return false;
+        }
     }
 
     /** Reads the drain-ready tick stored on the block entity, or 0 if unset. */

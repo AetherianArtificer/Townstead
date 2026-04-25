@@ -218,7 +218,8 @@ public final class TownsteadNetwork {
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {
-        com.aetherianartificer.townstead.hunger.FishermanHookLinkStore.link(payload.hookEntityId(), payload.villagerEntityId());
+        com.aetherianartificer.townstead.hunger.FishermanHookLinkStore.link(payload.hookEntityId(), payload.villagerEntityId(),
+                payload.x(), payload.y(), payload.z());
     }
 
     // ── Server-side handlers (C2S) ──

@@ -170,15 +170,19 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
             }
             long readyTick = CarcassStateMachine.readDrainReadyTick(level, targetCarcass);
             if (readyTick == 0L) {
-                // First-visit drain initiation: one opening cut, set the
-                // 900-tick timer, then release the task so the butcher can
-                // go do other work while the blood drains. The carcass
-                // won't reappear as processable until the timer ripens.
+                // First-visit drain initiation: one opening cut, then either
+                // respect Butchery's instant-bleed config or set the normal
+                // 900-tick timer and release the butcher while blood drains.
                 villager.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
                 playDrainSounds(level, targetCarcass);
                 ButcherToolDamage.consumeCleaverUse(villager);
                 CarcassStateMachine.initiateBleed(level, targetCarcass, gameTime);
                 awardXp(villager, CarcassStateMachine.BLEED_XP, gameTime);
+                if (CarcassStateMachine.instantBleedEnabled()) {
+                    CarcassStateMachine.bleed(level, targetCarcass);
+                    nextStageTick = gameTime + POST_DRAIN_PAUSE_TICKS;
+                    return;
+                }
                 targetCarcass = null; // end the task cleanly
                 return;
             }

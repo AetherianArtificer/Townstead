@@ -758,7 +758,8 @@ public class Townstead {
 
     private void handleFishermanHookLink(FishermanHookLinkPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
-            FishermanHookLinkStore.link(payload.hookEntityId(), payload.villagerEntityId());
+            FishermanHookLinkStore.link(payload.hookEntityId(), payload.villagerEntityId(),
+                    payload.x(), payload.y(), payload.z());
             if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
                 LOGGER.info("[Fisherman] client got hook-link hookId={} villagerId={}", payload.hookEntityId(), payload.villagerEntityId());
             }

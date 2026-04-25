@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class FishermanHookLinkStore {
     private static final Map<Integer, Integer> HOOK_TO_VILLAGER = new ConcurrentHashMap<>();
+    private static final Map<Integer, SyncedHook> HOOK_POSITIONS = new ConcurrentHashMap<>();
     /**
      * Hook ids we've seen exist as a live entity on the client at least once.
      * Used by the renderer to distinguish "link arrived before spawn packet"
@@ -30,15 +31,22 @@ public final class FishermanHookLinkStore {
 
     public static void link(int hookEntityId, int villagerEntityId) {
         if (villagerEntityId < 0) {
-            HOOK_TO_VILLAGER.remove(hookEntityId);
-            CONFIRMED.remove(hookEntityId);
+            unlink(hookEntityId);
             return;
         }
         HOOK_TO_VILLAGER.put(hookEntityId, villagerEntityId);
     }
 
+    public static void link(int hookEntityId, int villagerEntityId, double x, double y, double z) {
+        link(hookEntityId, villagerEntityId);
+        if (villagerEntityId >= 0) {
+            HOOK_POSITIONS.put(hookEntityId, new SyncedHook(x, y, z));
+        }
+    }
+
     public static void unlink(int hookEntityId) {
         HOOK_TO_VILLAGER.remove(hookEntityId);
+        HOOK_POSITIONS.remove(hookEntityId);
         CONFIRMED.remove(hookEntityId);
     }
 
@@ -48,6 +56,10 @@ public final class FishermanHookLinkStore {
 
     public static Map<Integer, Integer> snapshot() {
         return Collections.unmodifiableMap(HOOK_TO_VILLAGER);
+    }
+
+    public static SyncedHook syncedHook(int hookEntityId) {
+        return HOOK_POSITIONS.get(hookEntityId);
     }
 
     /**
@@ -66,6 +78,9 @@ public final class FishermanHookLinkStore {
 
     public static void clear() {
         HOOK_TO_VILLAGER.clear();
+        HOOK_POSITIONS.clear();
         CONFIRMED.clear();
     }
+
+    public record SyncedHook(double x, double y, double z) {}
 }

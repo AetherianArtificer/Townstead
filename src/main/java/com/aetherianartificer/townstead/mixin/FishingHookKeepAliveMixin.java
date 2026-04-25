@@ -7,10 +7,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-//? if neoforge {
 import org.spongepowered.asm.mixin.injection.Redirect;
-//?}
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Keep FishingHook entities alive on the client even when getPlayerOwner()
@@ -29,10 +27,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * behavior is preserved (the FakePlayer is a real ServerPlayer so null
  * owners server-side remain legitimately orphaned and still despawn).
  *
- * 1.20.1 Forge has no mixin refmap so the INVOKE target descriptors won't
- * remap from mojmap. Scoped to NeoForge 1.21.1 via stonecutter; the
- * annotations simply aren't compiled on 1.20.1 Forge and the hook stays
- * invisible there (same state as before this fix).
+ * The redirects are compiled with {@code remap = false} on Forge 1.20.1
+ * because that target has no mixin refmap in this project; the project uses
+ * official names there, so the named method targets still line up.
  */
 @Mixin(FishingHook.class)
 public abstract class FishingHookKeepAliveMixin {
@@ -58,10 +55,13 @@ public abstract class FishingHookKeepAliveMixin {
     //? if neoforge {
     @Inject(method = "lerpTo", at = @At("HEAD"), cancellable = true)
     //?} else {
-    /*@Inject(method = "lerpTo", remap = false, require = 0, at = @At("HEAD"), cancellable = true)
+    /*@Inject(method = "lerpTo(DDDFFIZ)V", remap = false, require = 0, at = @At("HEAD"), cancellable = true)
     *///?}
     private void townstead$lerpToForLinkedHooks(
             double x, double y, double z, float yaw, float pitch, int lerpSteps,
+            //? if forge {
+            /*boolean teleport,
+            *///?}
             CallbackInfo ci
     ) {
         try {
@@ -126,11 +126,20 @@ public abstract class FishingHookKeepAliveMixin {
             method = "recreateFromPacket",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/FishingHook;kill()V")
     )
+    //?} else {
+    /*@Redirect(
+            method = "recreateFromPacket",
+            remap = false,
+            require = 0,
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/FishingHook;kill()V")
+    )
+    *///?}
     private void townstead$suppressClientKillOnSpawn(FishingHook self) {
         // no-op: we'll render the bobber ourselves via FishingHookRendererMixin
         // and fish-line rendering via FishermanLineRenderer.
     }
 
+    //? if neoforge {
     @Redirect(
             method = "tick",
             at = @At(
@@ -139,6 +148,18 @@ public abstract class FishingHookKeepAliveMixin {
                     ordinal = 0
             )
     )
+    //?} else {
+    /*@Redirect(
+            method = "tick",
+            remap = false,
+            require = 0,
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/projectile/FishingHook;discard()V",
+                    ordinal = 0
+            )
+    )
+    *///?}
     private void townstead$suppressClientDiscardOnNullOwner(FishingHook self) {
         // The first discard() call in tick() corresponds to the
         // "if (player == null) discard();" path. Preserve it on the server
@@ -155,5 +176,4 @@ public abstract class FishingHookKeepAliveMixin {
             self.discard();
         }
     }
-    //?}
 }
