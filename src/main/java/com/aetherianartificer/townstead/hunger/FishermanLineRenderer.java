@@ -52,7 +52,6 @@ import java.util.Map;
 public final class FishermanLineRenderer {
     private static final int SEGMENTS = 16;
     private static final double FALLBACK_BOB_AMPLITUDE = 0.055D;
-    private static final double FALLBACK_BUBBLE_RADIUS = 0.34D;
     private static final double SYNC_LERP_MILLIS = 50.0D;
 
     // Anchor offsets for where the fishing line attaches on the villager.
@@ -211,7 +210,7 @@ public final class FishermanLineRenderer {
             hookPos = addFallbackBob(hookId, hookPos, partialTick);
 
             renderBobberImmediate(poseStack, camPos, hookPos);
-            renderBubblesImmediate(poseStack, camPos, hookPos, hookId, partialTick);
+            spawnVanillaBobberBubbles(hookPos, hookId);
             renderLineImmediate(poseStack, camPos, villager, hookPos, partialTick);
             drawn++;
         }
@@ -231,42 +230,51 @@ public final class FishermanLineRenderer {
         return hookPos.add(0.0D, Math.sin(phase) * FALLBACK_BOB_AMPLITUDE, 0.0D);
     }
 
-    private static void renderBubblesImmediate(PoseStack poseStack, Vec3 camPos, Vec3 hookPos,
-                                               int hookId, float partialTick) {
+    // The Forge 1.20.1 client kills our fake-player-owned hook on its spawn
+    // packet, so neither FishingHook.tick nor Entity.doWaterSplashEffect ever
+    // runs client-side. The bubbles you see around a vanilla idling bobber
+    // come from doWaterSplashEffect re-firing each time the bobbing motion
+    // crosses the water surface (bbWidth 0.25 -> 6 BUBBLE + 6 SPLASH per
+    // crossing). Roll for that effect periodically here, matching vanilla's
+    // burst geometry: scattered within a bbWidth box around the bobber, at
+    // floor(y)+1 (water surface), with downward velocity jitter.
+    private static final float HOOK_BB_WIDTH = 0.25F;
+    private static final java.util.Map<Integer, Long> LAST_BUBBLE_TICK = new java.util.HashMap<>();
+    private static long lastBubbleSweepTick;
+
+    private static void spawnVanillaBobberBubbles(Vec3 hookPos, int hookId) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
-        double t = mc.level.getGameTime() + partialTick + hookId * 13.0D;
-        // A subtle repeating bubble trail near the bobber. This is cosmetic;
-        // the actual bite timing remains server-owned.
-        for (int i = 0; i < 3; i++) {
-            double age = ((t * 0.075D) + i * 0.33D) % 1.0D;
-            double angle = t * 0.09D + i * 2.1D;
-            double radius = FALLBACK_BUBBLE_RADIUS * (0.35D + age * 0.65D);
-            double x = hookPos.x + Math.cos(angle) * radius;
-            double y = hookPos.y + 0.03D + age * 0.16D;
-            double z = hookPos.z + Math.sin(angle) * radius;
-            renderBubbleImmediate(poseStack, camPos, new Vec3(x, y, z), 0.035F + (float) age * 0.025F);
+        if (!mc.level.getFluidState(net.minecraft.core.BlockPos.containing(hookPos.x, hookPos.y, hookPos.z))
+                .is(net.minecraft.tags.FluidTags.WATER)) return;
+        long gameTime = mc.level.getGameTime();
+        Long last = LAST_BUBBLE_TICK.get(hookId);
+        if (last != null && last == gameTime) return;
+        LAST_BUBBLE_TICK.put(hookId, gameTime);
+        if (gameTime - lastBubbleSweepTick > 200L) {
+            lastBubbleSweepTick = gameTime;
+            LAST_BUBBLE_TICK.entrySet().removeIf(e -> gameTime - e.getValue() > 100L);
         }
-    }
-
-    private static void renderBubbleImmediate(PoseStack poseStack, Vec3 camPos, Vec3 bubblePos, float scale) {
-        poseStack.pushPose();
-        try {
-            poseStack.translate(bubblePos.x - camPos.x, bubblePos.y - camPos.y, bubblePos.z - camPos.z);
-            poseStack.scale(scale, scale, scale);
-            poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
-            Matrix4f matrix = poseStack.last().pose();
-
-            RenderSystem.setShader(GameRenderer::getPositionColorShader);
-            BufferBuilder builder = Tesselator.getInstance().getBuilder();
-            builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-            builder.vertex(matrix, -0.5F, -0.5F, 0.0F).color(170, 220, 255, 115).endVertex();
-            builder.vertex(matrix,  0.5F, -0.5F, 0.0F).color(210, 240, 255, 135).endVertex();
-            builder.vertex(matrix,  0.5F,  0.5F, 0.0F).color(210, 240, 255, 135).endVertex();
-            builder.vertex(matrix, -0.5F,  0.5F, 0.0F).color(170, 220, 255, 115).endVertex();
-            BufferUploader.drawWithShader(builder.end());
-        } finally {
-            poseStack.popPose();
+        net.minecraft.util.RandomSource rng = mc.level.random;
+        // Vanilla's surface crossings happen sporadically as the bobber bobs;
+        // observed cadence is roughly once every ~10-15 ticks. 8%/tick gives
+        // an average burst every ~12 ticks.
+        if (rng.nextFloat() >= 0.08F) return;
+        double surfaceY = Math.floor(hookPos.y) + 1.0D;
+        int count = (int) (1.0F + HOOK_BB_WIDTH * 20.0F);
+        for (int i = 0; i < count; i++) {
+            double ox = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            double oz = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            mc.level.addParticle(net.minecraft.core.particles.ParticleTypes.BUBBLE,
+                    hookPos.x + ox, surfaceY, hookPos.z + oz,
+                    0.0D, -rng.nextDouble() * 0.2D, 0.0D);
+        }
+        for (int i = 0; i < count; i++) {
+            double ox = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            double oz = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            mc.level.addParticle(net.minecraft.core.particles.ParticleTypes.SPLASH,
+                    hookPos.x + ox, surfaceY, hookPos.z + oz,
+                    0.0D, 0.0D, 0.0D);
         }
     }
 
