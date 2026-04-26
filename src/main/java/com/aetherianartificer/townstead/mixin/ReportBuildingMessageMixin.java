@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBuildingSync;
+import com.aetherianartificer.townstead.dock.DockLocationIndex;
 import com.aetherianartificer.townstead.dock.DockScanner;
 import com.aetherianartificer.townstead.dock.DockSuppression;
 import com.aetherianartificer.townstead.enclosure.Enclosure;
@@ -90,6 +91,7 @@ public abstract class ReportBuildingMessageMixin {
                 DockBuildingSync.sync(level, dock, pos);
                 VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
                     BuildingTierReconciler.reconcileVillage(v, level);
+                    DockLocationIndex.rebuildVillage(level, v);
                     BuildingRecognitionTracker.reconcile(level, v);
                     SpiritReconciler.reconcileVillage(level, v);
                 });
@@ -119,6 +121,7 @@ public abstract class ReportBuildingMessageMixin {
             EnclosureBuildingSync.sync(level, enclosure, classified.buildingType());
             VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
                 BuildingTierReconciler.reconcileVillage(v, level);
+                DockLocationIndex.rebuildVillage(level, v);
                 BuildingRecognitionTracker.reconcile(level, v);
                 SpiritReconciler.reconcileVillage(level, v);
             });
@@ -173,6 +176,7 @@ public abstract class ReportBuildingMessageMixin {
                             if (act != ReportBuildingMessage.Action.REMOVE) {
                                 townstead$detectAndSyncDockFromReport(level, player);
                             }
+                            DockLocationIndex.rebuildVillage(level, v);
                             BuildingRecognitionTracker.reconcile(level, v);
                             SpiritReconciler.reconcileVillage(level, v);
                         });

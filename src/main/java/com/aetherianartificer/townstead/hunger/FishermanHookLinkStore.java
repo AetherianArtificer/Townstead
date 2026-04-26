@@ -34,6 +34,12 @@ public final class FishermanHookLinkStore {
             unlink(hookEntityId);
             return;
         }
+        HOOK_TO_VILLAGER.entrySet().removeIf(entry ->
+                entry.getKey() != hookEntityId && entry.getValue() == villagerEntityId);
+        HOOK_POSITIONS.keySet().removeIf(hookId ->
+                hookId != hookEntityId && !HOOK_TO_VILLAGER.containsKey(hookId));
+        CONFIRMED.removeIf(hookId ->
+                hookId != hookEntityId && !HOOK_TO_VILLAGER.containsKey(hookId));
         HOOK_TO_VILLAGER.put(hookEntityId, villagerEntityId);
     }
 

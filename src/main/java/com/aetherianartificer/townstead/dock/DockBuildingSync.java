@@ -109,6 +109,7 @@ public final class DockBuildingSync {
         Building existing = village.getBuildings().get(id);
         boolean purged = purgeOverlappingStaleDocks(village, bb, id);
         if (existing != null && desiredType.equals(existing.getType()) && !purged) {
+            DockLocationIndex.rebuildVillage(level, village);
             return false;
         }
         // Don't let an auto-scan downgrade a dock. If a transient scan result
@@ -118,6 +119,7 @@ public final class DockBuildingSync {
         // planks pushes the dock below tier 1 and the Building validates to
         // TOO_SMALL via MCA's grouped-validation path, which removes it properly.
         if (existing != null && tierOf(existing.getType()) > dock.tier() && !purged) {
+            DockLocationIndex.rebuildVillage(level, village);
             return false;
         }
 
@@ -132,6 +134,7 @@ public final class DockBuildingSync {
                 bb.maxX(), bb.maxY(), bb.maxZ(), id);
         // Let the generic tracker pick up add/tier-up events and fire the
         // recognition effects + announcement.
+        DockLocationIndex.rebuildVillage(level, village);
         BuildingRecognitionTracker.reconcile(level, village);
         SpiritReconciler.reconcileVillage(level, village);
         return true;

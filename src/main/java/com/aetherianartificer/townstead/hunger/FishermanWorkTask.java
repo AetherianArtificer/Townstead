@@ -4,7 +4,7 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
-import com.aetherianartificer.townstead.dock.DockScanner;
+import com.aetherianartificer.townstead.dock.DockLocationIndex;
 import com.aetherianartificer.townstead.recognition.RecognitionEffects;
 import com.aetherianartificer.townstead.ai.work.WorkMovement;
 import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
@@ -556,6 +556,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
      */
     private boolean spawnHook(ServerLevel level, VillagerEntityMCA villager, BlockPos waterPos) {
         if (currentRod == null || currentRod.isEmpty()) return false;
+        if (!townstead$isValidCastFluid(level, waterPos)) return false;
         ServerPlayer fakePlayer = getFishingActor(level, villager);
         if (fakePlayer == null) return false;
 
@@ -641,9 +642,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         for (BlockPos p : BlockPos.betweenClosed(
                 center.offset(-CAST_TARGET_HORIZ_RADIUS, -CAST_TARGET_VERTICAL_RADIUS, -CAST_TARGET_HORIZ_RADIUS),
                 center.offset(CAST_TARGET_HORIZ_RADIUS, CAST_TARGET_VERTICAL_RADIUS, CAST_TARGET_HORIZ_RADIUS))) {
-            BlockState state = level.getBlockState(p);
-            if (!state.getFluidState().isSource()) continue;
-            if (!state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) continue;
+            if (!townstead$isValidCastFluid(level, p)) continue;
             BlockPos above = p.above();
             BlockState aboveState = level.getBlockState(above);
             // Need open sky above so the arc isn't blocked by stone/roofs.
@@ -663,6 +662,12 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         });
         int topHalf = Math.max(1, candidates.size() / 2);
         return candidates.get(level.random.nextInt(topHalf));
+    }
+
+    private static boolean townstead$isValidCastFluid(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!state.getFluidState().isSource()) return false;
+        return state.getFluidState().is(net.minecraft.tags.FluidTags.WATER);
     }
 
     /**
@@ -769,7 +774,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             // Hook went away (chunk unload, vanilla cleanup, owner distance). Respawn
             // without resetting biteDeadline — the villager's wait continues.
             if (currentWaterSpot != null) {
-                spawnHook(level, villager, currentWaterSpot.waterPos());
+                spawnHook(level, villager,
+                        townstead$pickCastTarget(level, villager, currentWaterSpot.waterPos()));
             }
             hook = currentHook == null ? null : currentHook.get();
             if (hook == null) {
@@ -1067,35 +1073,70 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private boolean acquireUnclaimedWaterSpot(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null) return false;
         long untilTick = gameTime + MAX_DURATION + 20L;
-        Dock detected = DockScanner.scan(level, stationAnchor);
-        Dock claimedDock = null;
-        if (detected != null && DockBerthClaims.tryClaim(level, detected, villager.getUUID(), untilTick)) {
-            claimedDock = detected;
+        if (tryAcquireIndexedDockWaterSpot(level, villager, untilTick)) {
+            return true;
         }
-        // Overflow fishermen (berth cap hit) fall back to the non-preferred water
-        // search so they don't crowd the deck with no bonus to show for it.
+
         FishingWaterIndex.FishingSpot spot = FishingWaterIndex.availableSpot(
                 level, villager, stationAnchor,
                 townstead$waterSearchRadius(),
                 WATER_VERTICAL_RADIUS_DOWN,
                 WATER_VERTICAL_RADIUS_UP,
-                townstead$waterFallbackRadius(),
-                claimedDock == null ? null : claimedDock.bounds());
+                townstead$waterFallbackRadius());
         if (spot == null) {
-            if (claimedDock != null) {
-                DockBerthClaims.release(level, claimedDock, villager.getUUID());
-            }
             return false;
         }
         if (!FishingSpotClaims.tryClaim(level, villager.getUUID(), spot.waterPos(), untilTick)) {
-            if (claimedDock != null) {
-                DockBerthClaims.release(level, claimedDock, villager.getUUID());
-            }
             return false;
         }
         currentWaterSpot = spot;
-        currentDock = claimedDock;
+        currentDock = null;
         return true;
+    }
+
+    private boolean tryAcquireIndexedDockWaterSpot(ServerLevel level, VillagerEntityMCA villager, long untilTick) {
+        List<Dock> nearbyDocks = new java.util.ArrayList<>(
+                DockLocationIndex.nearby(level, villager.blockPosition(), townstead$waterFallbackRadius()));
+        nearbyDocks.sort(java.util.Comparator.comparingDouble(dock -> townstead$distanceToDockSqr(villager, dock)));
+        for (Dock dock : nearbyDocks) {
+            if (dock == null || dock.bounds() == null) continue;
+            if (!DockBerthClaims.tryClaim(level, dock, villager.getUUID(), untilTick)) continue;
+            boolean keepDockClaim = false;
+            try {
+                FishingWaterIndex.FishingSpot dockSpot = FishingWaterIndex.availableSpotWithStandInBounds(
+                        level, villager, stationAnchor,
+                        townstead$waterSearchRadius(),
+                        WATER_VERTICAL_RADIUS_DOWN,
+                        WATER_VERTICAL_RADIUS_UP,
+                        townstead$waterFallbackRadius(),
+                        dock.bounds());
+                if (dockSpot != null && FishingSpotClaims.tryClaim(level, villager.getUUID(), dockSpot.waterPos(), untilTick)) {
+                    currentWaterSpot = dockSpot;
+                    currentDock = dock;
+                    keepDockClaim = true;
+                    return true;
+                }
+            } finally {
+                if (!keepDockClaim) {
+                    DockBerthClaims.release(level, dock, villager.getUUID());
+                }
+            }
+        }
+        return false;
+    }
+
+    private static double townstead$distanceToDockSqr(VillagerEntityMCA villager, Dock dock) {
+        net.minecraft.world.level.levelgen.structure.BoundingBox bb = dock.bounds();
+        double dx = townstead$axisDistance(villager.getX(), bb.minX(), bb.maxX());
+        double dy = townstead$axisDistance(villager.getY(), bb.minY(), bb.maxY());
+        double dz = townstead$axisDistance(villager.getZ(), bb.minZ(), bb.maxZ());
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    private static double townstead$axisDistance(double value, int min, int max) {
+        if (value < min) return min - value;
+        if (value > max) return value - max;
+        return 0.0D;
     }
 
     private void releaseCurrentWaterSpot(ServerLevel level, VillagerEntityMCA villager) {
@@ -1190,7 +1231,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private boolean townstead$dockBonusActive() {
         return currentDock != null
                 && currentWaterSpot != null
-                && currentDock.contains(currentWaterSpot.waterPos());
+                && currentDock.contains(currentWaterSpot.standPos());
     }
 
     /** Pier (tier 2) and Wharf (tier 3) each add +1 to Luck of the Sea. */
@@ -1401,7 +1442,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (currentDock == null) {
             dockInfo = "none";
         } else {
-            boolean inBounds = currentWaterSpot != null && currentDock.contains(currentWaterSpot.waterPos());
+            boolean inBounds = currentWaterSpot != null && currentDock.contains(currentWaterSpot.standPos());
             int occupancy = DockBerthClaims.occupancy(level, currentDock);
             dockInfo = "t" + currentDock.tier() + "(" + currentDock.plankCount() + "p)"
                     + (inBounds ? "*" : "")
