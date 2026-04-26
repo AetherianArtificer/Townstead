@@ -53,6 +53,7 @@ public final class FishermanLineRenderer {
     private static final int SEGMENTS = 16;
     private static final double FALLBACK_BOB_AMPLITUDE = 0.055D;
     private static final double SYNC_LERP_MILLIS = 50.0D;
+    private static final float HOOK_BB_WIDTH = 0.25F;
 
     // Anchor offsets for where the fishing line attaches on the villager.
     // Values tuned to land on the visible tip of the fishing-rod item as
@@ -81,6 +82,56 @@ public final class FishermanLineRenderer {
     private static int diagnosticTick;
 
     private FishermanLineRenderer() {}
+
+    /**
+     * Run once per client tick on the main thread. Spawns vanilla-bobber-style
+     * bubble + splash bursts at each linked hook in water. We do this here, not
+     * from the render hook, because mc.level.addParticle from the render thread
+     * during AFTER_ENTITIES did not reliably produce visible particles in
+     * 1.21.1 NeoForge — vanilla's own bobber particles arrive via packet
+     * (handled on the main thread), so matching that timing makes them work.
+     * addAlwaysVisibleParticle bypasses camera-distance and minimal-particle
+     * filters in case the player is far from the bobber.
+     */
+    public static void onClientTick() {
+        try {
+            tickBubblesImpl();
+        } catch (Throwable t) {
+            long now = System.currentTimeMillis();
+            if (now - lastErrorLogMs > 1000L) {
+                lastErrorLogMs = now;
+                Townstead.LOGGER.warn("[FishermanLine] tick-bubbles error swallowed: {}", t.toString());
+            }
+        }
+    }
+
+    private static void tickBubblesImpl() {
+        Map<Integer, Integer> links = FishermanHookLinkStore.snapshot();
+        if (links.isEmpty()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        for (Map.Entry<Integer, Integer> entry : links.entrySet()) {
+            int hookId = entry.getKey();
+            Vec3 hookPos = null;
+            Entity hookEntity = mc.level.getEntity(hookId);
+            if (hookEntity instanceof FishingHook hook && hook.isAlive()) {
+                hookPos = new Vec3(hook.getX(), hook.getY(), hook.getZ());
+            } else {
+                FishermanHookLinkStore.SyncedHook synced = FishermanHookLinkStore.syncedHook(hookId);
+                if (synced != null) hookPos = new Vec3(synced.x(), synced.y(), synced.z());
+            }
+            if (hookPos == null) continue;
+            // Match the 1.20.1 renderer's addFallbackBob oscillation: when the
+            // live hook sits at a steady Y near the surface, BlockPos.containing
+            // resolves to the air block above on most ticks and rejects the
+            // water check. Sweeping ±0.055 around the hook Y dips the emission
+            // position below the surface periodically, matching the cadence
+            // 1.20.1 produces by virtue of jittering its rendered bobber.
+            double phase = (mc.level.getGameTime() + hookId * 0.37D) * 0.18D;
+            double bobbedY = hookPos.y + Math.sin(phase) * FALLBACK_BOB_AMPLITUDE;
+            spawnVanillaBobberBubbles(new Vec3(hookPos.x, bobbedY, hookPos.z), hookId);
+        }
+    }
 
     public static void onRenderLevel(RenderLevelStageEvent event) {
         try {
@@ -165,6 +216,10 @@ public final class FishermanLineRenderer {
             FishermanHookLinkStore.markConfirmed(hookId);
 
             renderBobberFor(poseStack, bobberConsumer, camPos, hook, partialTick);
+            if (debug && diagnosticTick % 120 == 0) {
+                Townstead.LOGGER.info("[FishermanLine] alive-branch hook={} y={} xo={} x={}",
+                        hookId, hook.getY(), hook.xo, hook.getX());
+            }
             renderLineFor(poseStack, consumer, camPos, villager, hook, partialTick);
             drawn++;
         }
@@ -210,7 +265,6 @@ public final class FishermanLineRenderer {
             hookPos = addFallbackBob(hookId, hookPos, partialTick);
 
             renderBobberImmediate(poseStack, camPos, hookPos);
-            spawnVanillaBobberBubbles(hookPos, hookId);
             renderLineImmediate(poseStack, camPos, villager, hookPos, partialTick);
             drawn++;
         }
@@ -228,54 +282,6 @@ public final class FishermanLineRenderer {
         if (mc.level == null) return hookPos;
         double phase = (mc.level.getGameTime() + partialTick + hookId * 0.37D) * 0.18D;
         return hookPos.add(0.0D, Math.sin(phase) * FALLBACK_BOB_AMPLITUDE, 0.0D);
-    }
-
-    // The Forge 1.20.1 client kills our fake-player-owned hook on its spawn
-    // packet, so neither FishingHook.tick nor Entity.doWaterSplashEffect ever
-    // runs client-side. The bubbles you see around a vanilla idling bobber
-    // come from doWaterSplashEffect re-firing each time the bobbing motion
-    // crosses the water surface (bbWidth 0.25 -> 6 BUBBLE + 6 SPLASH per
-    // crossing). Roll for that effect periodically here, matching vanilla's
-    // burst geometry: scattered within a bbWidth box around the bobber, at
-    // floor(y)+1 (water surface), with downward velocity jitter.
-    private static final float HOOK_BB_WIDTH = 0.25F;
-    private static final java.util.Map<Integer, Long> LAST_BUBBLE_TICK = new java.util.HashMap<>();
-    private static long lastBubbleSweepTick;
-
-    private static void spawnVanillaBobberBubbles(Vec3 hookPos, int hookId) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
-        if (!mc.level.getFluidState(net.minecraft.core.BlockPos.containing(hookPos.x, hookPos.y, hookPos.z))
-                .is(net.minecraft.tags.FluidTags.WATER)) return;
-        long gameTime = mc.level.getGameTime();
-        Long last = LAST_BUBBLE_TICK.get(hookId);
-        if (last != null && last == gameTime) return;
-        LAST_BUBBLE_TICK.put(hookId, gameTime);
-        if (gameTime - lastBubbleSweepTick > 200L) {
-            lastBubbleSweepTick = gameTime;
-            LAST_BUBBLE_TICK.entrySet().removeIf(e -> gameTime - e.getValue() > 100L);
-        }
-        net.minecraft.util.RandomSource rng = mc.level.random;
-        // Vanilla's surface crossings happen sporadically as the bobber bobs;
-        // observed cadence is roughly once every ~10-15 ticks. 8%/tick gives
-        // an average burst every ~12 ticks.
-        if (rng.nextFloat() >= 0.08F) return;
-        double surfaceY = Math.floor(hookPos.y) + 1.0D;
-        int count = (int) (1.0F + HOOK_BB_WIDTH * 20.0F);
-        for (int i = 0; i < count; i++) {
-            double ox = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
-            double oz = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
-            mc.level.addParticle(net.minecraft.core.particles.ParticleTypes.BUBBLE,
-                    hookPos.x + ox, surfaceY, hookPos.z + oz,
-                    0.0D, -rng.nextDouble() * 0.2D, 0.0D);
-        }
-        for (int i = 0; i < count; i++) {
-            double ox = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
-            double oz = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
-            mc.level.addParticle(net.minecraft.core.particles.ParticleTypes.SPLASH,
-                    hookPos.x + ox, surfaceY, hookPos.z + oz,
-                    0.0D, 0.0D, 0.0D);
-        }
     }
 
     private static void renderBobberImmediate(PoseStack poseStack, Vec3 camPos, Vec3 hookPos) {
@@ -380,6 +386,51 @@ public final class FishermanLineRenderer {
         double y = Mth.lerp(t, synced.previousY(), synced.y());
         double z = Mth.lerp(t, synced.previousZ(), synced.z());
         return new Vec3(x, y, z);
+    }
+
+    // Townstead fishermen own their hook via a FakePlayer; on both Forge 1.20.1
+    // and NeoForge 1.21.1 the client-side keep-alive does not consistently keep
+    // FishingHook.tick (and Entity.doWaterSplashEffect) running, so the bubble
+    // burst you see at a vanilla bobber as it bobs through the water surface
+    // never appears on its own. Roll for that effect here once per game tick
+    // per hook, matching vanilla's burst geometry: scattered within a bbWidth
+    // box around the bobber at floor(y)+1 (water surface), with downward
+    // velocity jitter on the bubbles. ~8%/tick approximates the surface-
+    // crossing cadence of a real bobber (one burst every ~12 ticks).
+    // The Forge 1.20.1 client kills our fake-player-owned hook on its spawn
+    // packet, so neither FishingHook.tick nor Entity.doWaterSplashEffect ever
+    // runs client-side. The bubbles you see around a vanilla idling bobber
+    // come from doWaterSplashEffect re-firing each time the bobbing motion
+    // crosses the water surface (bbWidth 0.25 -> 6 BUBBLE + 6 SPLASH per
+    // crossing). Roll for that effect periodically here, matching vanilla's
+    // burst geometry: scattered within a bbWidth box around the bobber, at
+    // floor(y)+1 (water surface), with downward velocity jitter.
+    private static void spawnVanillaBobberBubbles(Vec3 hookPos, int hookId) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        if (!mc.level.getFluidState(net.minecraft.core.BlockPos.containing(hookPos.x, hookPos.y, hookPos.z))
+                .is(net.minecraft.tags.FluidTags.WATER)) return;
+        net.minecraft.util.RandomSource rng = mc.level.random;
+        // Vanilla's surface crossings happen sporadically as the bobber bobs;
+        // observed cadence is roughly once every ~10-15 ticks. 8%/tick gives
+        // an average burst every ~12 ticks.
+        if (rng.nextFloat() >= 0.08F) return;
+        double surfaceY = Math.floor(hookPos.y) + 1.0D;
+        int count = (int) (1.0F + HOOK_BB_WIDTH * 20.0F);
+        for (int i = 0; i < count; i++) {
+            double ox = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            double oz = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            mc.level.addAlwaysVisibleParticle(net.minecraft.core.particles.ParticleTypes.BUBBLE,
+                    hookPos.x + ox, surfaceY, hookPos.z + oz,
+                    0.0D, -rng.nextDouble() * 0.2D, 0.0D);
+        }
+        for (int i = 0; i < count; i++) {
+            double ox = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            double oz = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            mc.level.addAlwaysVisibleParticle(net.minecraft.core.particles.ParticleTypes.SPLASH,
+                    hookPos.x + ox, surfaceY, hookPos.z + oz,
+                    0.0D, 0.0D, 0.0D);
+        }
     }
 
     /**

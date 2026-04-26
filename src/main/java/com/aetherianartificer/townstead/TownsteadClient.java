@@ -111,11 +111,13 @@ public final class TownsteadClient {
     //? if neoforge {
     private static void onClientTick(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
         TownsteadKeybinds.onClientTick();
+        FishermanLineRenderer.onClientTick();
     }
     //?} else if forge {
     /*private static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
         if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         TownsteadKeybinds.onClientTick();
+        FishermanLineRenderer.onClientTick();
     }
     *///?}
 
