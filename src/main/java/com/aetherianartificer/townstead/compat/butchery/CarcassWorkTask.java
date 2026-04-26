@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
 import com.aetherianartificer.townstead.hunger.ButcherProgressData;
 import com.aetherianartificer.townstead.tick.WorkToolTicker;
 import com.google.common.collect.ImmutableMap;
@@ -78,6 +79,7 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     private enum Phase { PATH, PROCESS }
 
     @Nullable private BlockPos targetCarcass;
+    @Nullable private BlockPos claimedCarcass;
     @Nullable private BlockPos standPos;
     private Phase phase = Phase.PATH;
     private long startedTick;
@@ -96,14 +98,18 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
         if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
-        if (!ButcherToolDamage.hasCleaver(villager)) return false;
-        return findCarcassAcrossShops(level, villager) != null;
+        return findCarcassAcrossShops(level, villager, true) != null;
     }
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        targetCarcass = findCarcassAcrossShops(level, villager);
+        targetCarcass = findCarcassAcrossShops(level, villager, true);
         if (targetCarcass == null) return;
+        if (!ProducerStationClaims.tryClaim(level, villager.getUUID(), targetCarcass, gameTime + MAX_DURATION + 20L)) {
+            targetCarcass = null;
+            return;
+        }
+        claimedCarcass = targetCarcass;
         standPos = findStandPos(level, villager, targetCarcass);
         phase = Phase.PATH;
         startedTick = gameTime;
@@ -118,7 +124,9 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         if (targetCarcass == null) return false;
         BlockState state = level.getBlockState(targetCarcass);
         if (!CarcassStateMachine.isProcessable(level, state, targetCarcass)) return false;
-        if (!ButcherToolDamage.hasCleaver(villager)) return false;
+        if (!hasRequiredToolFor(level, villager, targetCarcass)) return false;
+        if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), targetCarcass)) return false;
+        ProducerStationClaims.tryClaim(level, villager.getUUID(), targetCarcass, gameTime + MAX_DURATION + 20L);
         if (gameTime - startedTick > MAX_DURATION) { stalled = true; return false; }
         if (phase == Phase.PATH && gameTime - lastPathTick > PATH_TIMEOUT_TICKS) {
             stalled = true;
@@ -155,6 +163,13 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         }
 
         // PROCESS phase
+        BlockPos anchor = standPos != null ? standPos : targetCarcass;
+        if (!isCloseEnoughToWork(villager, anchor)) {
+            phase = Phase.PATH;
+            lastPathTick = gameTime;
+            setWalkTarget(villager, anchor);
+            return;
+        }
         if (gameTime < nextStageTick) return;
         BlockState current = level.getBlockState(targetCarcass);
 
@@ -308,7 +323,11 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
             emitStuckChat(level, villager, gameTime);
         }
         stalled = false;
+        if (claimedCarcass != null) {
+            ProducerStationClaims.release(level, villager.getUUID(), claimedCarcass);
+        }
         targetCarcass = null;
+        claimedCarcass = null;
         standPos = null;
         phase = Phase.PATH;
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
@@ -342,8 +361,20 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
      */
     public static boolean hasPendingWork(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
-        if (!ButcherToolDamage.hasCleaver(villager)) return false;
-        return findCarcassAcrossShops(level, villager) != null;
+        return findCarcassAcrossShops(level, villager, false) != null;
+    }
+
+    public static boolean hasActionableWork(ServerLevel level, VillagerEntityMCA villager) {
+        if (!ButcheryCompat.isLoaded()) return false;
+        return findCarcassAcrossShops(level, villager, true) != null;
+    }
+
+    public static boolean hasPendingSkinningWithoutKnife(ServerLevel level, VillagerEntityMCA villager) {
+        if (!ButcheryCompat.isLoaded()) return false;
+        if (ButcherToolDamage.hasKnife(villager)) return false;
+        BlockPos carcass = findCarcassAcrossShops(level, villager, false);
+        return carcass != null
+                && requiredToolFor(level.getBlockState(carcass)) == RequiredTool.SKINNING_KNIFE;
     }
 
     /**
@@ -353,11 +384,20 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
      */
     @Nullable
     private static BlockPos findCarcassAcrossShops(ServerLevel level, VillagerEntityMCA villager) {
+        return findCarcassAcrossShops(level, villager, false);
+    }
+
+    @Nullable
+    private static BlockPos findCarcassAcrossShops(ServerLevel level, VillagerEntityMCA villager,
+            boolean requireAvailableTool) {
         BlockPos origin = villager.blockPosition();
+        BlockPos local = findCarcassInContainingShop(level, villager, origin, requireAvailableTool);
+        if (local != null) return local;
+
         BlockPos best = null;
         double bestDsq = Double.MAX_VALUE;
         for (ButcheryShopScanner.ShopRef ref : ButcheryShopScanner.carcassCapableShops(level, villager)) {
-            BlockPos candidate = findCarcassIn(level, origin, ref.building());
+            BlockPos candidate = findCarcassIn(level, villager, origin, ref.building(), requireAvailableTool);
             if (candidate == null) continue;
             double dsq = candidate.distSqr(origin);
             if (dsq < bestDsq) {
@@ -366,6 +406,17 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         return best;
+    }
+
+    @Nullable
+    private static BlockPos findCarcassInContainingShop(ServerLevel level, VillagerEntityMCA villager,
+            BlockPos origin, boolean requireAvailableTool) {
+        for (ButcheryShopScanner.ShopRef ref : ButcheryShopScanner.carcassCapableShops(level, villager)) {
+            if (!ref.building().containsPos(origin)) continue;
+            BlockPos candidate = findCarcassIn(level, villager, origin, ref.building(), requireAvailableTool);
+            if (candidate != null) return candidate;
+        }
+        return null;
     }
 
     /**
@@ -379,6 +430,12 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     @Nullable
     private static BlockPos findCarcassIn(ServerLevel level, BlockPos origin,
             net.conczin.mca.server.world.data.Building building) {
+        return findCarcassIn(level, null, origin, building, false);
+    }
+
+    @Nullable
+    private static BlockPos findCarcassIn(ServerLevel level, @Nullable VillagerEntityMCA villager, BlockPos origin,
+            net.conczin.mca.server.world.data.Building building, boolean requireAvailableTool) {
         List<BlockPos> hooks = building.getBlocks().get(HOOK_ID);
         if (hooks == null || hooks.isEmpty()) return null;
         BlockPos best = null;
@@ -387,6 +444,8 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
             BlockPos carcassPos = hook.below();
             BlockState state = level.getBlockState(carcassPos);
             if (!CarcassStateMachine.isProcessable(level, state, carcassPos)) continue;
+            if (villager != null && ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), carcassPos)) continue;
+            if (requireAvailableTool && (villager == null || !hasRequiredToolFor(state, villager))) continue;
             double dsq = carcassPos.distSqr(origin);
             if (dsq < bestDsq) {
                 bestDsq = dsq;
@@ -394,6 +453,29 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         return best;
+    }
+
+    private enum RequiredTool { CLEAVER, SKINNING_KNIFE }
+
+    private static boolean hasRequiredToolFor(ServerLevel level, VillagerEntityMCA villager, BlockPos carcass) {
+        return hasRequiredToolFor(level.getBlockState(carcass), villager);
+    }
+
+    private static boolean hasRequiredToolFor(BlockState state, VillagerEntityMCA villager) {
+        RequiredTool tool = requiredToolFor(state);
+        return switch (tool) {
+            case CLEAVER -> ButcherToolDamage.hasCleaver(villager);
+            case SKINNING_KNIFE -> ButcherToolDamage.hasKnife(villager);
+        };
+    }
+
+    private static RequiredTool requiredToolFor(BlockState state) {
+        if (CarcassStateMachine.isFreshCarcass(state)) return RequiredTool.CLEAVER;
+        CarcassStateMachine.Stage stage = CarcassStateMachine.Stage
+                .forCurrentState(CarcassStateMachine.currentState(state));
+        return stage == CarcassStateMachine.Stage.SKIN
+                ? RequiredTool.SKINNING_KNIFE
+                : RequiredTool.CLEAVER;
     }
 
     /**
@@ -459,6 +541,13 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         BlockState floor = level.getBlockState(pos.below());
         if (floor.isAir()) return false;
         return !floor.is(CarcassStateMachine.CARCASS_TAG);
+    }
+
+    private static boolean isCloseEnoughToWork(VillagerEntityMCA villager, BlockPos anchor) {
+        return villager.distanceToSqr(
+                anchor.getX() + 0.5,
+                anchor.getY(),
+                anchor.getZ() + 0.5) <= ARRIVAL_DISTANCE_SQ;
     }
 
     private static void setWalkTarget(VillagerEntityMCA villager, BlockPos target) {

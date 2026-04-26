@@ -3,6 +3,22 @@
   "values": [
     "minecraft:chest",
     "minecraft:barrel",
-    "minecraft:trapped_chest"
+    "minecraft:trapped_chest",
+    {
+      "id": "#c:chests",
+      "required": false
+    },
+    {
+      "id": "#c:barrels",
+      "required": false
+    },
+    {
+      "id": "#forge:chests",
+      "required": false
+    },
+    {
+      "id": "#forge:barrels",
+      "required": false
+    }
   ]
 }

@@ -151,6 +151,10 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         switch (phase) {
             case PATH, ATTACK -> {
                 if (target == null || !target.isAlive()) return false;
+                // Animal wandered out of the huntable building (e.g. a pen with
+                // no fence on one side). Abort rather than chase across the
+                // world or path-timeout standing in the doorway.
+                if (activeBuilding != null && !activeBuilding.containsPos(target.blockPosition())) return false;
                 if (phase == Phase.PATH && gameTime - lastPathTick > PATH_TIMEOUT_TICKS) return false;
             }
             case CARRY -> {
@@ -315,10 +319,12 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Nullable
     private static LivingEntity findTargetIn(ServerLevel level, VillagerEntityMCA villager, Building building) {
-        BlockPos origin = villager.blockPosition();
-        AABB search = AABB.ofSize(
-                new Vec3(origin.getX() + 0.5, origin.getY() + 0.5, origin.getZ() + 0.5),
-                24, 8, 24);
+        BlockPos p0 = building.getPos0();
+        BlockPos p1 = building.getPos1();
+        if (p0 == null || p1 == null) return null;
+        AABB search = new AABB(
+                Math.min(p0.getX(), p1.getX()), Math.min(p0.getY(), p1.getY()), Math.min(p0.getZ(), p1.getZ()),
+                Math.max(p0.getX(), p1.getX()) + 1, Math.max(p0.getY(), p1.getY()) + 1, Math.max(p0.getZ(), p1.getZ()) + 1);
         List<Animal> animals = level.getEntitiesOfClass(Animal.class, search,
                 a -> building.containsPos(a.blockPosition())
                         && SlaughterPolicy.canSlaughter(villager, a));
@@ -342,7 +348,7 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
      */
     private void onTargetKilled(ServerLevel level, VillagerEntityMCA villager,
                                 LivingEntity killed, long gameTime) {
-        BlockPos hook = selectFreeHook(level, villager);
+        BlockPos hook = selectFreeHook(level, villager, killed.blockPosition());
         if (hook == null) {
             // No available hook anywhere; drop the carcass item at the kill
             // site so the player can hang it manually. Better than losing
@@ -390,17 +396,27 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
      *  (in-shop kill) or in any carcass-capable shop in the village
      *  (pen kill). A "free" hook has air at hook.below(). */
     @Nullable
-    private BlockPos selectFreeHook(ServerLevel level, VillagerEntityMCA villager) {
+    private BlockPos selectFreeHook(ServerLevel level, VillagerEntityMCA villager, BlockPos origin) {
         if (activeBuilding != null) {
             BlockPos local = findFreeHookInBuilding(level, activeBuilding);
             if (local != null) return local;
         }
-        // Fall back to any butcher shop's free hook elsewhere in the village.
+        // Fall back to the nearest free hook elsewhere in the village. The
+        // scanner is tier-sorted, which is good for capability checks but
+        // makes pen kills cross town when a higher-tier shop happens to sort
+        // first. Distance keeps the carcass pipeline visually local.
+        BlockPos best = null;
+        double bestDsq = Double.MAX_VALUE;
         for (ButcheryShopScanner.ShopRef ref : ButcheryShopScanner.carcassCapableShops(level, villager)) {
             BlockPos hook = findFreeHookInBuilding(level, ref.building());
-            if (hook != null) return hook;
+            if (hook == null) continue;
+            double dsq = hook.distSqr(origin);
+            if (dsq < bestDsq) {
+                bestDsq = dsq;
+                best = hook;
+            }
         }
-        return null;
+        return best;
     }
 
     @Nullable

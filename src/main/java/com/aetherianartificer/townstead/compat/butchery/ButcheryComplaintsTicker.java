@@ -137,9 +137,13 @@ public final class ButcheryComplaintsTicker {
     @Nullable
     private static String pickReason(ServerLevel level, VillagerEntityMCA villager,
             List<ButcheryShopScanner.ShopRef> shops) {
-        // Priority: player-facing toggle first (global or per-villager), then tool, then infrastructure.
+        // Priority: player-facing toggle first (global or per-villager), then
+        // stage-specific carcass tools, then infrastructure.
         if (!SlaughterPolicy.slaughterEnabledFor(villager)) {
             return variant("dialogue.chat.butcher_request.slaughter_disabled", 3, level);
+        }
+        if (CarcassWorkTask.hasPendingSkinningWithoutKnife(level, villager)) {
+            return variant("dialogue.chat.butcher_request.no_skinning_knife", 3, level);
         }
         if (!ButcherToolDamage.hasCleaver(villager)) {
             return variant("dialogue.chat.butcher_request.no_cleaver", 3, level);

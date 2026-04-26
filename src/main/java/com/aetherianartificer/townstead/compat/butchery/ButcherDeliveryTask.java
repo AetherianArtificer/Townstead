@@ -22,6 +22,7 @@ import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -66,6 +67,8 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
             ResourceLocation.parse("butchery:skin_rack");
     private static final ResourceLocation PESTLE_ID =
             ResourceLocation.parse("butchery:pestle_and_mortar");
+    private static final TagKey<Block> BUTCHER_STORAGE_TAG = TagKey.create(
+            Registries.BLOCK, ResourceLocation.parse("townstead:compat/butchery/butcher_shop_storage"));
     private static final ResourceLocation SOUND_ITEM_PICKUP =
             ResourceLocation.parse("entity.item.pickup");
     //?} else {
@@ -77,6 +80,8 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
             new ResourceLocation("butchery", "skin_rack");
     private static final ResourceLocation PESTLE_ID =
             new ResourceLocation("butchery", "pestle_and_mortar");
+    private static final TagKey<Block> BUTCHER_STORAGE_TAG = TagKey.create(
+            Registries.BLOCK, new ResourceLocation("townstead", "compat/butchery/butcher_shop_storage"));
     private static final ResourceLocation SOUND_ITEM_PICKUP =
             new ResourceLocation("entity.item.pickup");
     *///?}
@@ -106,6 +111,7 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
         if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        if (CarcassWorkTask.hasActionableWork(level, villager)) return false;
         return planDelivery(level, villager) != null;
     }
 
@@ -128,7 +134,7 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
         if (targetPos == null || category == null) return false;
         if (!(level.getBlockEntity(targetPos) instanceof Container container)) return false;
         if (!hasDeliverableFor(villager, category)) return false;
-        if (!hasFreeSpace(container)) return false;
+        if (!canAcceptAnyDeliverable(container, villager, category)) return false;
         if (gameTime - startedTick > MAX_DURATION) return false;
         if (phase == Phase.PATH && gameTime - lastPathTick > PATH_TIMEOUT_TICKS) return false;
         return true;
@@ -184,7 +190,7 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
             if (deposited <= 0) continue;
             stack.shrink(deposited);
             movedAny = true;
-            if (!hasFreeSpace(container)) break;
+            if (!canAcceptAnyDeliverable(container, villager, category)) break;
         }
         if (!movedAny) return;
         container.setChanged();
@@ -228,11 +234,29 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
         return stack;
     }
 
-    private static boolean hasFreeSpace(Container container) {
+    private static boolean canAcceptAnyDeliverable(Container container, VillagerEntityMCA villager, Category category) {
+        SimpleContainer inv = villager.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty() || !matchesCategory(stack, category)) continue;
+            if (canAccept(container, stack)) return true;
+        }
+        return false;
+    }
+
+    private static boolean canAccept(Container container, ItemStack stack) {
+        if (stack.isEmpty()) return false;
         for (int i = 0; i < container.getContainerSize(); i++) {
-            ItemStack stack = container.getItem(i);
-            if (stack.isEmpty()) return true;
-            if (stack.getCount() < Math.min(stack.getMaxStackSize(), container.getMaxStackSize())) return true;
+            ItemStack existing = container.getItem(i);
+            if (existing.isEmpty()) return true;
+            //? if >=1.21 {
+            if (!ItemStack.isSameItemSameComponents(existing, stack)) continue;
+            //?} else {
+            /*if (!ItemStack.isSameItemSameTags(existing, stack)) continue;
+            *///?}
+            if (existing.getCount() < Math.min(existing.getMaxStackSize(), container.getMaxStackSize())) {
+                return true;
+            }
         }
         return false;
     }
@@ -247,11 +271,11 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
         boolean hasGeneric = inventoryHasGenericOutput(inv);
 
         if (hasSkins) {
-            BlockPos rack = findStationWithRoom(level, villager, SKIN_RACK_ID);
+            BlockPos rack = findStationWithRoom(level, villager, SKIN_RACK_ID, Category.SKINS);
             if (rack != null) return new Delivery(rack, Category.SKINS);
         }
         if (hasOrgans) {
-            BlockPos pestle = findStationWithRoom(level, villager, PESTLE_ID);
+            BlockPos pestle = findStationWithRoom(level, villager, PESTLE_ID, Category.ORGANS);
             if (pestle != null) return new Delivery(pestle, Category.ORGANS);
         }
         if (hasGeneric) {
@@ -262,7 +286,12 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
     }
 
     @Nullable
-    private static BlockPos findStationWithRoom(ServerLevel level, VillagerEntityMCA villager, ResourceLocation stationId) {
+    private static BlockPos findStationWithRoom(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            ResourceLocation stationId,
+            Category category
+    ) {
         BlockPos origin = villager.blockPosition();
         BlockPos best = null;
         double bestDsq = Double.MAX_VALUE;
@@ -272,7 +301,7 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
             if (stations == null) continue;
             for (BlockPos pos : stations) {
                 if (!(level.getBlockEntity(pos) instanceof Container container)) continue;
-                if (!hasFreeSpace(container)) continue;
+                if (!canAcceptAnyDeliverable(container, villager, category)) continue;
                 double dsq = pos.distSqr(origin);
                 if (dsq < bestDsq) {
                     bestDsq = dsq;
@@ -288,7 +317,7 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
         BlockPos origin = villager.blockPosition();
         BlockPos best = null;
         double bestDsq = Double.MAX_VALUE;
-        for (ButcheryShopScanner.ShopRef ref : ButcheryShopScanner.carcassCapableShops(level, villager)) {
+        for (ButcheryShopScanner.ShopRef ref : ButcheryShopScanner.finishedGoodsStorageShops(level, villager)) {
             Building building = ref.building();
             for (List<BlockPos> positions : building.getBlocks().values()) {
                 for (BlockPos pos : positions) {
@@ -302,8 +331,8 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
                             .getKey(level.getBlockState(pos).getBlock());
                     if (SKIN_RACK_ID.equals(blockId)) continue;
                     if (PESTLE_ID.equals(blockId)) continue;
-                    if (isProductionStation(blockId)) continue;
-                    if (!hasFreeSpace(container)) continue;
+                    if (!level.getBlockState(pos).is(BUTCHER_STORAGE_TAG)) continue;
+                    if (!canAcceptAnyDeliverable(container, villager, Category.GENERIC)) continue;
                     double dsq = pos.distSqr(origin);
                     if (dsq < bestDsq) {
                         bestDsq = dsq;
@@ -313,12 +342,6 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
             }
         }
         return best;
-    }
-
-    private static boolean isProductionStation(ResourceLocation blockId) {
-        return GrinderStateMachine.MEAT_GRINDER_ID.equals(blockId)
-                || ResourceLocation.tryParse("butchery:hook") != null
-                && ResourceLocation.tryParse("butchery:hook").equals(blockId);
     }
 
     private static boolean inventoryHasTag(SimpleContainer inv, TagKey<Item> tag) {
