@@ -442,6 +442,39 @@ public class Townstead {
                     FatigueData.FatigueState current = FatigueData.getState(f);
                     return townstead$fatigueAtLeast(current, state) ? 1.0f : 0.0f;
                 });
+        GiftPredicate.register("village_life", (json, name) ->
+                        GsonHelper.convertToString(json, name).toLowerCase(Locale.ROOT),
+                topic -> (villager, stack, player) ->
+                        townstead$villageHasLifeTopic(villager, topic) ? 1.0f : 0.0f);
+    }
+
+    private static boolean townstead$villageHasLifeTopic(VillagerEntityMCA villager, String topic) {
+        Optional<Village> village = villager.getResidency().getHomeVillage();
+        if (village.isEmpty() || !village.get().isWithinBorder(villager)) {
+            village = Village.findNearest(villager);
+        }
+        if (village.isEmpty() || !village.get().isWithinBorder(villager)) return false;
+
+        for (net.conczin.mca.server.world.data.Building building : village.get().getBuildings().values()) {
+            if (!building.isComplete()) continue;
+            String type = building.getType();
+            if (type == null) continue;
+            if (townstead$buildingMatchesLifeTopic(type, topic)) return true;
+        }
+        return false;
+    }
+
+    private static boolean townstead$buildingMatchesLifeTopic(String type, String topic) {
+        return switch (topic) {
+            case "butcher_shop" -> type.equals("butcher")
+                    || type.equals("compat/butchery/butcher_shop_l1")
+                    || type.equals("compat/butchery/butcher_shop_l2")
+                    || type.equals("compat/butchery/butcher_shop_l3");
+            case "slaughterhouse" -> type.equals("compat/butchery/slaughterhouse");
+            case "smokehouse" -> type.equals("compat/butchery/smokehouse");
+            case "tannery" -> type.equals("compat/butchery/tannery");
+            default -> false;
+        };
     }
 
     private static boolean townstead$hungerAtLeast(HungerData.HungerState current, String minimumState) {
