@@ -114,6 +114,7 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         if (!SlaughterPolicy.slaughterEnabledFor(villager)) return false;
         if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
         if (onThrottle(villager, level.getGameTime())) return false;
+        if (CarcassWorkTask.hasActionableWork(level, villager)) return false;
         return pickBuildingWithTarget(level, villager) != null;
     }
 

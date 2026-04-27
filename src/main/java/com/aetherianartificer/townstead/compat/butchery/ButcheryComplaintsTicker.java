@@ -16,7 +16,6 @@ import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -156,10 +155,12 @@ public final class ButcheryComplaintsTicker {
             if (hookPositions != null && !hookPositions.isEmpty()) {
                 anyHook = true;
             }
-            if (freshCarcassWithoutBasin(level, b)) {
+            if (CarcassWorkTask.hasFreshCarcassWithoutBasin(level, b)) {
                 return variant("dialogue.chat.butcher_request.no_basin", 4, level);
             }
         }
+
+        if (CarcassWorkTask.hasPendingWork(level, villager)) return null;
 
         if (!anyHook) return variant("dialogue.chat.butcher_request.no_hook", 4, level);
 
@@ -238,23 +239,6 @@ public final class ButcheryComplaintsTicker {
                 a -> building.containsPos(a.blockPosition())
                         && SlaughterPolicy.canSlaughter(villager, a));
         return !animals.isEmpty();
-    }
-
-    private static boolean freshCarcassWithoutBasin(ServerLevel level, Building building) {
-        // Carcass blocks aren't in any building type's block requirements, so
-        // they aren't indexed in building.getBlocks(). Check hook.below() for
-        // each tracked hook, which is where SlaughterWorkTask places them.
-        // Draining needs a blood grate in the column directly below the hook,
-        // matching Butchery's own FillbloodgrateProcedure scan.
-        List<BlockPos> hooks = building.getBlocks().get(HOOK_ID);
-        if (hooks == null) return false;
-        for (BlockPos hook : hooks) {
-            BlockPos pos = hook.below();
-            BlockState state = level.getBlockState(pos);
-            if (!CarcassStateMachine.isFreshCarcass(state)) continue;
-            if (!CarcassStateMachine.hasBloodGrateBelow(level, pos)) return true;
-        }
-        return false;
     }
 
     private static boolean onWorkShift(VillagerEntityMCA villager, ServerLevel level) {

@@ -98,6 +98,28 @@ public final class ButcherSupplyManager {
         );
     }
 
+    /**
+     * Non-mutating availability check: true if raw smoker input exists in the
+     * villager's inventory OR in nearby storage. Used by {@code ButcherWorkTask}
+     * to gate the smoker walk; without this the producer would path the
+     * villager all the way to the smoker before discovering it has no input
+     * (NO_RECIPE), creating a "stand at smoker, walk away, walk back" loop.
+     */
+    public static boolean hasRawInputAvailable(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor
+    ) {
+        if (hasRawInput(villager.getInventory(), level)) return true;
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        NearbyItemSources.ContainerSlot slot = NearbyItemSources.findBestNearbySlot(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                stack -> isRawInput(stack, level),
+                ButcherSupplyManager::rawInputScore,
+                anchor);
+        return slot != null;
+    }
+
     public static boolean pullFuel(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
         return NearbyItemSources.pullSingleToInventory(
