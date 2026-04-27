@@ -123,5 +123,10 @@
   "flirty.dialogue.chat.butcher_request.no_skinning_knife/1": "<flirty>Bring me a skinning knife, darling. This hide deserves a gentle touch.</flirty>",
   "flirty.dialogue.chat.butcher_request.no_hacksaw/1": "<flirty>Be a dear and fetch a hacksaw, sweetheart. This one's made of iron.</flirty>",
   "flirty.dialogue.chat.butcher_request.no_cleaner/1": "<flirty>Fetch me a damp sponge, darling. A lady can't work in all this mess.</flirty>",
-  "flirty.dialogue.chat.butcher_request.no_hammer/1": "<flirty>Bring me a hammer, sweetheart. I'll show you what I can do with it.</flirty>"
+  "flirty.dialogue.chat.butcher_request.no_hammer/1": "<flirty>Bring me a hammer, sweetheart. I'll show you what I can do with it.</flirty>",
+  "flirty.dialogue.chat.leatherworker_request.no_hide/1": "<flirty>Bring me a hide, darling. I'll make it into something soft.</flirty>",
+  "flirty.dialogue.chat.leatherworker_request.no_salt/1": "<flirty>Salt, my dear. Just a pinch and the magic begins.</flirty>",
+  "flirty.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<flirty>A wet sponge, sweetheart. The hide is positively craving it.</flirty>",
+  "flirty.dialogue.chat.leatherworker_request.no_storage/1": "<flirty>My pack is overflowing, dear. Find me a place to put all this leather.</flirty>",
+  "flirty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<flirty>Look at this leather, darling. Soft as a kiss.</flirty>"
 }

@@ -128,5 +128,10 @@
   "odd.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>The hide begs for the little knife. The little knife is elsewhere. Mystery!</excited>",
   "odd.dialogue.chat.butcher_request.no_hacksaw/1": "<excited>The iron beast whispers! It wants the teeth of the hacksaw. Who am I to refuse?</excited>",
   "odd.dialogue.chat.butcher_request.no_cleaner/1": "<excited>The blood puddles hum. They want a sponge. Or a rag. Bring them, %1$s!</excited>",
-  "odd.dialogue.chat.butcher_request.no_hammer/1": "<excited>The head is full of secrets! A hammer would let them out!</excited>"
+  "odd.dialogue.chat.butcher_request.no_hammer/1": "<excited>The head is full of secrets! A hammer would let them out!</excited>",
+  "odd.dialogue.chat.leatherworker_request.no_hide/1": "<excited>The rack mourns. It longs for a hide. Bring it a friend!</excited>",
+  "odd.dialogue.chat.leatherworker_request.no_salt/1": "<excited>The skin cries for salt! White grains, white grains, where are you hiding?</excited>",
+  "odd.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<excited>A wet thing! A sponge or a rag! The hide thirsts! It thirsts!</excited>",
+  "odd.dialogue.chat.leatherworker_request.no_storage/1": "<excited>The leather wants to roam! But my pack is its prison! Free it, %1$s!</excited>",
+  "odd.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured! From skin to leather, the hide became something new! Magic!</excited>"
 }

@@ -132,5 +132,10 @@
   "confident.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>A craftsman without a skinning knife ruins the hide. Fix it.</excited>",
   "confident.dialogue.chat.butcher_request.no_hacksaw/1": "<excited>A proper butcher uses the right tool. Hacksaw for iron. Fix it.</excited>",
   "confident.dialogue.chat.butcher_request.no_cleaner/1": "<excited>A clean shop is a working shop. Sponge or rag. Now.</excited>",
-  "confident.dialogue.chat.butcher_request.no_hammer/1": "<excited>A hammer for the head. Simple request. Deliver.</excited>"
+  "confident.dialogue.chat.butcher_request.no_hammer/1": "<excited>A hammer for the head. Simple request. Deliver.</excited>",
+  "confident.dialogue.chat.leatherworker_request.no_hide/1": "<excited>A leatherworker without a hide is a leatherworker in name only. Fix it.</excited>",
+  "confident.dialogue.chat.leatherworker_request.no_salt/1": "<excited>Salt cures. I'm out. Solve it.</excited>",
+  "confident.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<excited>A wet sponge or rag, ready when I am. That's the standard.</excited>",
+  "confident.dialogue.chat.leatherworker_request.no_storage/1": "<excited>Finished leather belongs in a chest, not on my back. Provide one.</excited>",
+  "confident.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured to perfection. As expected.</excited>"
 }

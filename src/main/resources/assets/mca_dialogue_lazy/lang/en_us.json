@@ -82,5 +82,10 @@
   "lazy.dialogue.chat.butcher_request.no_skinning_knife/1": "<sleepy>No skinning knife? Hide stays on. Less work for me.</sleepy>",
   "lazy.dialogue.chat.butcher_request.no_hacksaw/1": "<sleepy>No hacksaw? Iron golem waits. So do I. Forever.</sleepy>",
   "lazy.dialogue.chat.butcher_request.no_cleaner/1": "<sleepy>No sponge, no rag, no clean. Works for me.</sleepy>",
-  "lazy.dialogue.chat.butcher_request.no_hammer/1": "<sleepy>No hammer. Head stays whole. Less effort anyway.</sleepy>"
+  "lazy.dialogue.chat.butcher_request.no_hammer/1": "<sleepy>No hammer. Head stays whole. Less effort anyway.</sleepy>",
+  "lazy.dialogue.chat.leatherworker_request.no_hide/1": "<sleepy>No hide. Nothing to do. Excellent.</sleepy>",
+  "lazy.dialogue.chat.leatherworker_request.no_salt/1": "<sleepy>No salt. Skin sits. So do I.</sleepy>",
+  "lazy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<sleepy>No wet sponge. Hide can wait. I sure can.</sleepy>",
+  "lazy.dialogue.chat.leatherworker_request.no_storage/1": "<sleepy>Pack's full. Maybe I'll just lean against this rack a while.</sleepy>",
+  "lazy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<sleepy>Cured. Now I can finally rest. Earned it.</sleepy>"
 }

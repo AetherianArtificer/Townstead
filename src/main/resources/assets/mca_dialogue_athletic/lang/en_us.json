@@ -146,5 +146,10 @@
   "athletic.dialogue.chat.butcher_request.no_skinning_knife/1": "<excited>No skinning knife! A clean hide needs the right edge, %1$s!</excited>",
   "athletic.dialogue.chat.butcher_request.no_hacksaw/1": "<excited>Can't muscle through iron, %1$s! Toss me a hacksaw!</excited>",
   "athletic.dialogue.chat.butcher_request.no_cleaner/1": "<excited>No sponge, no rag, no clean! Give me something to work with, %1$s!</excited>",
-  "athletic.dialogue.chat.butcher_request.no_hammer/1": "<excited>Gimme a hammer, %1$s! I've been dying to crush something heavy!</excited>"
+  "athletic.dialogue.chat.butcher_request.no_hammer/1": "<excited>Gimme a hammer, %1$s! I've been dying to crush something heavy!</excited>",
+  "athletic.dialogue.chat.leatherworker_request.no_hide/1": "<excited>Send me a hide, %1$s! Let's get this rack working out!</excited>",
+  "athletic.dialogue.chat.leatherworker_request.no_salt/1": "<excited>Salt! Bring the salt! I can't cure without it!</excited>",
+  "athletic.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<excited>Wet sponge or rag, %1$s! The hide's primed and waiting!</excited>",
+  "athletic.dialogue.chat.leatherworker_request.no_storage/1": "<excited>My pack's stacked! I need a chest to drop this leather in!</excited>",
+  "athletic.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured it! Look at that leather, %1$s, top form!</excited>"
 }

@@ -916,5 +916,21 @@
 
   "villager.cant_find_bed/0": "<nervous>Hmm, I can't find the way home...</nervous>",
   "villager.cant_find_bed/1": "<nervous>I think I'm lost, I can't find a way home.</nervous>",
-  "villager.cant_find_bed/2": "<sad>Not again. I need a new home, I can't find my current one.</sad>"
+  "villager.cant_find_bed/2": "<sad>Not again. I need a new home, I can't find my current one.</sad>",
+
+  "dialogue.chat.leatherworker_request.no_hide/1": "I need a hide on the rack before I can do anything.",
+  "dialogue.chat.leatherworker_request.no_hide/2": "Bring me a skin, %1$s, and I'll start curing.",
+  "dialogue.chat.leatherworker_request.no_hide/3": "Empty rack. Empty hands. Empty leatherworker.",
+  "dialogue.chat.leatherworker_request.no_salt/1": "Salt the hide or it spoils. I'm out.",
+  "dialogue.chat.leatherworker_request.no_salt/2": "No salt, no cure. Find me some, please.",
+  "dialogue.chat.leatherworker_request.no_salt/3": "A fistful of salt would save this skin.",
+  "dialogue.chat.leatherworker_request.no_wet_sponge/1": "I need a wet sponge or rag to soak the salted hide.",
+  "dialogue.chat.leatherworker_request.no_wet_sponge/2": "Sponge or rag, soaked through. Either works.",
+  "dialogue.chat.leatherworker_request.no_wet_sponge/3": "The hide's salted and waiting on a wet cloth.",
+  "dialogue.chat.leatherworker_request.no_storage/1": "I've got finished leather and nowhere to put it.",
+  "dialogue.chat.leatherworker_request.no_storage/2": "A chest nearby would help. My pack is full.",
+  "dialogue.chat.leatherworker_request.no_storage/3": "More leather than I can carry, %1$s.",
+  "dialogue.chat.leatherworker_flavor.leather_cured/1": "Another fine cure. The hide's leather now.",
+  "dialogue.chat.leatherworker_flavor.leather_cured/2": "Soft, supple, ready for use. That's good leather.",
+  "dialogue.chat.leatherworker_flavor.leather_cured/3": "Patience pays. Leather, by my own hand."
 }

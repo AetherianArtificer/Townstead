@@ -82,5 +82,10 @@
   "relaxed.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Skinning knife when you can, no rush.</happy>",
   "relaxed.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>Hacksaw for the iron one, whenever you have a moment.</happy>",
   "relaxed.dialogue.chat.butcher_request.no_cleaner/1": "<happy>Sponge or rag when you can. The puddles aren't going anywhere.</happy>",
-  "relaxed.dialogue.chat.butcher_request.no_hammer/1": "<happy>A hammer when you get a chance. The head's patient.</happy>"
+  "relaxed.dialogue.chat.butcher_request.no_hammer/1": "<happy>A hammer when you get a chance. The head's patient.</happy>",
+  "relaxed.dialogue.chat.leatherworker_request.no_hide/1": "<happy>A hide when you find one. The rack's not going anywhere.</happy>",
+  "relaxed.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Salt when you can. The hide will keep a little while.</happy>",
+  "relaxed.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>A wet sponge or rag whenever you have one. No hurry.</happy>",
+  "relaxed.dialogue.chat.leatherworker_request.no_storage/1": "<happy>Pack's getting full. A chest, when it's convenient.</happy>",
+  "relaxed.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Came out nice. Worth the wait.</happy>"
 }
