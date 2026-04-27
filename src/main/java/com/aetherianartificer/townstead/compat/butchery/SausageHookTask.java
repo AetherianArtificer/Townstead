@@ -104,6 +104,7 @@ public class SausageHookTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
         if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        if (CarcassWorkTask.isBusyWithCarcassWork(level, villager)) return false;
         return findHangableHook(level, villager) != null;
     }
 

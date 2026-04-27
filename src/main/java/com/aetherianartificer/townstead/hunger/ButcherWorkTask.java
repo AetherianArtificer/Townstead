@@ -78,6 +78,17 @@ public class ButcherWorkTask extends ProducerWorkTask {
         // pork into sausages.
         if (CarcassWorkTask.hasPendingWork(level, villager)) return false;
         if (GrinderWorkTask.hasPendingWork(level, villager)) return false;
+        // Don't path to the smoker if there's nothing to smoke. selectStation
+        // returns the smoker before pickRecipe runs, so without this gate the
+        // butcher walks the full distance to the smoker, blocks NO_RECIPE,
+        // ping-pongs PATH_TO_STATION ↔ SELECT_RECIPE, and reads as "walking
+        // to the butcher shop and standing there" between other tasks.
+        BlockPos smoker = activeSmokerAnchor(level, villager);
+        if (smoker == null) return false;
+        if (!smokerNeedsAttention(level, smoker)
+                && !ButcherSupplyManager.hasRawInputAvailable(level, villager, smoker)) {
+            return false;
+        }
         return true;
     }
 
@@ -458,6 +469,16 @@ public class ButcherWorkTask extends ProducerWorkTask {
         if (stationAnchor == null) return null;
         if (!(level.getBlockEntity(stationAnchor) instanceof SmokerBlockEntity smoker)) return null;
         return smoker;
+    }
+
+    private boolean smokerNeedsAttention(ServerLevel level, BlockPos smokerPos) {
+        if (!(level.getBlockEntity(smokerPos) instanceof SmokerBlockEntity smoker)) return false;
+        ItemStack input = smoker.getItem(0);
+        ItemStack fuel = smoker.getItem(1);
+        ItemStack output = smoker.getItem(2);
+        if (!output.isEmpty()) return true;
+        if (!input.isEmpty()) return true;
+        return !fuel.isEmpty() && !ButcherSupplyManager.isFuel(fuel);
     }
 
     private ItemStack findInventoryRawInput(SimpleContainer inv, ServerLevel level) {

@@ -35,6 +35,7 @@ public final class ButcheryShopScanner {
     private static final String COMPAT_PREFIX = "compat/butchery/butcher_shop_l";
     private static final String SLAUGHTERHOUSE_TYPE = "compat/butchery/slaughterhouse";
     private static final String SLAUGHTER_PEN_TYPE = "compat/butchery/slaughter_pen";
+    private static final String SMOKEHOUSE_TYPE = "compat/butchery/smokehouse";
 
     //? if >=1.21 {
     private static final ResourceLocation HOOK_ID = ResourceLocation.parse("butchery:hook");
@@ -95,6 +96,29 @@ public final class ButcheryShopScanner {
             if (SLAUGHTERHOUSE_TYPE.equals(ref.building().getType())) continue;
             out.add(ref);
         }
+        return out;
+    }
+
+    /**
+     * Buildings that should receive finished cooked/smoked butcher goods.
+     * Slaughterhouses are intentionally excluded: their storage is for kill
+     * floor supplies and intermediate carcass outputs, not shop-ready food.
+     */
+    public static List<ShopRef> finishedGoodsStorageShops(ServerLevel level, VillagerEntityMCA villager) {
+        Optional<Village> villageOpt = resolveVillage(villager);
+        if (villageOpt.isEmpty()) return Collections.emptyList();
+        List<ShopRef> out = new ArrayList<>();
+        for (Building building : villageOpt.get().getBuildings().values()) {
+            if (!building.isComplete()) continue;
+            String type = building.getType();
+            int tier = tierFromType(type);
+            if (tier > 0 && !SLAUGHTERHOUSE_TYPE.equals(type)) {
+                out.add(new ShopRef(building, tier));
+            } else if (SMOKEHOUSE_TYPE.equals(type)) {
+                out.add(new ShopRef(building, 1));
+            }
+        }
+        out.sort((a, b) -> Integer.compare(b.tier(), a.tier()));
         return out;
     }
 

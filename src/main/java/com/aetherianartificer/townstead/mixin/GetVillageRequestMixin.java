@@ -28,7 +28,11 @@ import java.util.Optional;
  */
 @Mixin(GetVillageRequest.class)
 public abstract class GetVillageRequestMixin {
+    //? if neoforge {
     @Inject(method = "handleServer", at = @At("TAIL"), remap = false)
+    //?} else if forge {
+    /*@Inject(method = "receive", at = @At("TAIL"), remap = false)
+    *///?}
     private void townstead$sendSpiritSnapshot(ServerPlayer player, CallbackInfo ci) {
         if (!(player.level() instanceof ServerLevel level)) return;
         Optional<Village> village = Village.findNearest(player);

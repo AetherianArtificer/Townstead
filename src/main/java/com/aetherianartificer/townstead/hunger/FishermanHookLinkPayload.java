@@ -19,9 +19,9 @@ import net.minecraft.resources.ResourceLocation;
  * A villagerEntityId of -1 means "forget the link for this hook".
  */
 //? if neoforge {
-public record FishermanHookLinkPayload(int hookEntityId, int villagerEntityId) implements CustomPacketPayload {
+public record FishermanHookLinkPayload(int hookEntityId, int villagerEntityId, double x, double y, double z) implements CustomPacketPayload {
 //?} else {
-/*public record FishermanHookLinkPayload(int hookEntityId, int villagerEntityId) {
+/*public record FishermanHookLinkPayload(int hookEntityId, int villagerEntityId, double x, double y, double z) {
 *///?}
 
     //? if neoforge {
@@ -32,6 +32,9 @@ public record FishermanHookLinkPayload(int hookEntityId, int villagerEntityId) i
             StreamCodec.composite(
                     ByteBufCodecs.VAR_INT, FishermanHookLinkPayload::hookEntityId,
                     ByteBufCodecs.VAR_INT, FishermanHookLinkPayload::villagerEntityId,
+                    ByteBufCodecs.DOUBLE, FishermanHookLinkPayload::x,
+                    ByteBufCodecs.DOUBLE, FishermanHookLinkPayload::y,
+                    ByteBufCodecs.DOUBLE, FishermanHookLinkPayload::z,
                     FishermanHookLinkPayload::new
             );
 
@@ -51,10 +54,14 @@ public record FishermanHookLinkPayload(int hookEntityId, int villagerEntityId) i
     /*public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(hookEntityId);
         buf.writeVarInt(villagerEntityId);
+        buf.writeDouble(x);
+        buf.writeDouble(y);
+        buf.writeDouble(z);
     }
 
     public static FishermanHookLinkPayload read(FriendlyByteBuf buf) {
-        return new FishermanHookLinkPayload(buf.readVarInt(), buf.readVarInt());
+        return new FishermanHookLinkPayload(buf.readVarInt(), buf.readVarInt(),
+                buf.readDouble(), buf.readDouble(), buf.readDouble());
     }
     *///?}
 }

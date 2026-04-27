@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.ai.work.WorkPathing;
+import com.aetherianartificer.townstead.dock.DockScanner;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -70,18 +71,15 @@ public final class FishingWaterIndex {
             int verticalRadiusUp,
             int fallbackHorizontalRadius
     ) {
-        return availableSpot(level, villager, anchor, horizontalRadius, verticalRadiusDown,
-                verticalRadiusUp, fallbackHorizontalRadius, null);
+        FishingSpot chosen = pickUnclaimed(level, villager, anchor, horizontalRadius, verticalRadiusDown, verticalRadiusUp);
+        if (chosen != null) return chosen;
+        if (fallbackHorizontalRadius > horizontalRadius) {
+            return pickUnclaimed(level, villager, anchor, fallbackHorizontalRadius, verticalRadiusDown, verticalRadiusUp);
+        }
+        return null;
     }
 
-    /**
-     * As {@link #availableSpot}, but biased toward water spots whose
-     * {@code waterPos} falls inside {@code preferred}. If any unclaimed spot
-     * inside the preference box exists, one of those is returned; otherwise
-     * we fall back to any unclaimed spot in range. Used to make fishermen
-     * with a nearby dock prefer casting from the deck.
-     */
-    public static @Nullable FishingSpot availableSpot(
+    public static @Nullable FishingSpot availableSpotWithStandInBounds(
             ServerLevel level,
             VillagerEntityMCA villager,
             BlockPos anchor,
@@ -89,12 +87,14 @@ public final class FishingWaterIndex {
             int verticalRadiusDown,
             int verticalRadiusUp,
             int fallbackHorizontalRadius,
-            @Nullable BoundingBox preferred
+            BoundingBox standBounds
     ) {
-        FishingSpot chosen = pickUnclaimed(level, villager, anchor, horizontalRadius, verticalRadiusDown, verticalRadiusUp, preferred);
+        FishingSpot chosen = pickUnclaimed(level, villager, anchor, horizontalRadius,
+                verticalRadiusDown, verticalRadiusUp, standBounds);
         if (chosen != null) return chosen;
         if (fallbackHorizontalRadius > horizontalRadius) {
-            return pickUnclaimed(level, villager, anchor, fallbackHorizontalRadius, verticalRadiusDown, verticalRadiusUp, preferred);
+            return pickUnclaimed(level, villager, anchor, fallbackHorizontalRadius,
+                    verticalRadiusDown, verticalRadiusUp, standBounds);
         }
         return null;
     }
@@ -105,23 +105,39 @@ public final class FishingWaterIndex {
             BlockPos anchor,
             int horizontalRadius,
             int verticalRadiusDown,
-            int verticalRadiusUp,
-            @Nullable BoundingBox preferred
+            int verticalRadiusUp
     ) {
         WaterSnapshot snapshot = getOrBuildSnapshot(level, anchor, horizontalRadius, verticalRadiusDown, verticalRadiusUp);
         if (snapshot == null || snapshot.spots().isEmpty()) return null;
         java.util.UUID uuid = villager.getUUID();
-        List<FishingSpot> preferredPool = new ArrayList<>();
-        List<FishingSpot> fallbackPool = new ArrayList<>();
+        List<FishingSpot> pool = new ArrayList<>();
         for (FishingSpot spot : snapshot.spots()) {
             if (FishingSpotClaims.isClaimedByOther(level, uuid, spot.waterPos())) continue;
-            if (preferred != null && insideBounds(preferred, spot.waterPos())) {
-                preferredPool.add(spot);
-            } else {
-                fallbackPool.add(spot);
-            }
+            pool.add(spot);
         }
-        List<FishingSpot> pool = !preferredPool.isEmpty() ? preferredPool : fallbackPool;
+        if (pool.isEmpty()) return null;
+        return pool.get(level.random.nextInt(pool.size()));
+    }
+
+    private static @Nullable FishingSpot pickUnclaimed(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor,
+            int horizontalRadius,
+            int verticalRadiusDown,
+            int verticalRadiusUp,
+            BoundingBox standBounds
+    ) {
+        WaterSnapshot snapshot = getOrBuildSnapshot(level, anchor, horizontalRadius, verticalRadiusDown, verticalRadiusUp);
+        if (snapshot == null || snapshot.spots().isEmpty()) return null;
+        java.util.UUID uuid = villager.getUUID();
+        List<FishingSpot> pool = new ArrayList<>();
+        for (FishingSpot spot : snapshot.spots()) {
+            if (FishingSpotClaims.isClaimedByOther(level, uuid, spot.waterPos())) continue;
+            BlockPos dockStand = standInBoundsFor(level, villager, spot.waterPos(), standBounds);
+            if (dockStand == null) continue;
+            pool.add(new FishingSpot(spot.waterPos(), dockStand));
+        }
         if (pool.isEmpty()) return null;
         return pool.get(level.random.nextInt(pool.size()));
     }
@@ -130,6 +146,45 @@ public final class FishingWaterIndex {
         return pos.getX() >= bb.minX() && pos.getX() <= bb.maxX()
                 && pos.getY() >= bb.minY() && pos.getY() <= bb.maxY()
                 && pos.getZ() >= bb.minZ() && pos.getZ() <= bb.maxZ();
+    }
+
+    private static @Nullable BlockPos standInBoundsFor(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos waterPos,
+            BoundingBox standBounds
+    ) {
+        BlockPos best = null;
+        double bestDist = Double.MAX_VALUE;
+        int[] verticalChoices = {-1, 0, 1, 2, 3};
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                int manhattan = Math.abs(dx) + Math.abs(dz);
+                if (manhattan > 3) continue;
+                for (int yOffset : verticalChoices) {
+                    BlockPos stand = waterPos.offset(dx, yOffset, dz);
+                    if (!insideBounds(standBounds, stand)) continue;
+                    if (!WorkPathing.isSafeStandPosition(level, stand)) continue;
+                    // Dock bounds include a one-block margin around the planks
+                    // (so decorations next to the deck count toward tier
+                    // checks), which means a stand position one block off the
+                    // deck on shore terrain still passes the bounds check. Pin
+                    // the fisherman to the actual deck by requiring the block
+                    // under their feet to be a recognized dock surface.
+                    if (!DockScanner.isDockSurface(level.getBlockState(stand.below()))) continue;
+                    double dist = villager.distanceToSqr(
+                            stand.getX() + 0.5,
+                            stand.getY() + 0.5,
+                            stand.getZ() + 0.5);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = stand.immutable();
+                    }
+                }
+            }
+        }
+        return best;
     }
 
     private static @Nullable WaterSnapshot getOrBuildSnapshot(

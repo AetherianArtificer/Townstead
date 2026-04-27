@@ -2571,6 +2571,13 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$initSpiritPage() {
+        // Ask MCA for a fresh village snapshot; our GetVillageRequest mixin
+        // piggybacks the spirit snapshot onto the same server response.
+        //? if neoforge {
+        Network.sendToServer(new GetVillageRequest());
+        //?} else {
+        /*NetworkHandler.sendToServer(new GetVillageRequest());
+        *///?}
         // Restore per-village scroll position so re-opening the page lands
         // where the player left off.
         int saved = townstead$spiritScrollByVillage.getOrDefault(
@@ -2942,7 +2949,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         };
     }
 
+    //? if neoforge {
     @Inject(method = "render", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_88315_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$renderSpiritPage(GuiGraphics context, int mouseX, int mouseY, float partialTicks,
                                             CallbackInfo ci) {
         if (!TOWNSTEAD_SPIRIT_PAGE.equals(this.page)) return;

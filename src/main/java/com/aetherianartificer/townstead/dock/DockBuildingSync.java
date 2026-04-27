@@ -12,7 +12,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.slf4j.Logger;
@@ -46,9 +45,9 @@ import java.util.Optional;
  *    reload the Building is restored via NBT, and subsequent sync calls find
  *    it by ID and no-op unless tier has changed.
  *
- * Plank positions across the dock footprint are seeded into the building's
- * blocks map grouped by specific block id (oak_planks, birch_planks, etc.),
- * so {@code validateBlocks} can correctly prune entries when planks are
+ * Dock-surface positions across the footprint are seeded into the building's
+ * blocks map grouped by specific block id (oak_planks, oak_slab, etc.), so
+ * {@code validateBlocks} can correctly prune entries when dock blocks are
  * broken. If all tracked blocks disappear, MCA removes the building.
  */
 public final class DockBuildingSync {
@@ -61,6 +60,16 @@ public final class DockBuildingSync {
      * village, at the correct tier. Returns true if the village was modified.
      */
     public static boolean sync(ServerLevel level, Dock dock) {
+        return sync(level, dock, null);
+    }
+
+    /**
+     * Player-triggered reports can originate from the village edge while the
+     * detected dock's center sits just beyond MCA's merge margin. In that case
+     * prefer the dock center, but fall back to the report anchor so a dock the
+     * player adds from inside the village still attaches to that village.
+     */
+    public static boolean sync(ServerLevel level, Dock dock, BlockPos reportAnchor) {
         if (level == null || dock == null) return false;
         BoundingBox bb = dock.bounds();
         BlockPos center = new BlockPos(
@@ -69,11 +78,18 @@ public final class DockBuildingSync {
                 (bb.minZ() + bb.maxZ()) / 2);
         VillageManager manager = VillageManager.get(level);
         Optional<Village> villageOpt = manager.findNearestVillage(center, Village.MERGE_MARGIN);
+        if (villageOpt.isEmpty() && reportAnchor != null) {
+            int reportMargin = Math.max(Village.MERGE_MARGIN, Village.PLAYER_BORDER_MARGIN);
+            villageOpt = manager.findNearestVillage(reportAnchor, reportMargin);
+        }
         if (villageOpt.isEmpty()) {
             // No hosting village yet. Don't fabricate one — wait for MCA to
             // establish a village via normal building reports, then the dock
             // will sync the next time the player refreshes the blueprint
             // near these planks.
+            LOG.info("[DockSync] skipped dock at [{},{},{}]..[{},{},{}] — no hosting village near center {} or report anchor {}",
+                    bb.minX(), bb.minY(), bb.minZ(),
+                    bb.maxX(), bb.maxY(), bb.maxZ(), center, reportAnchor);
             return false;
         }
         Village village = villageOpt.get();
@@ -93,6 +109,7 @@ public final class DockBuildingSync {
         Building existing = village.getBuildings().get(id);
         boolean purged = purgeOverlappingStaleDocks(village, bb, id);
         if (existing != null && desiredType.equals(existing.getType()) && !purged) {
+            DockLocationIndex.rebuildVillage(level, village);
             return false;
         }
         // Don't let an auto-scan downgrade a dock. If a transient scan result
@@ -102,6 +119,7 @@ public final class DockBuildingSync {
         // planks pushes the dock below tier 1 and the Building validates to
         // TOO_SMALL via MCA's grouped-validation path, which removes it properly.
         if (existing != null && tierOf(existing.getType()) > dock.tier() && !purged) {
+            DockLocationIndex.rebuildVillage(level, village);
             return false;
         }
 
@@ -116,6 +134,7 @@ public final class DockBuildingSync {
                 bb.maxX(), bb.maxY(), bb.maxZ(), id);
         // Let the generic tracker pick up add/tier-up events and fire the
         // recognition effects + announcement.
+        DockLocationIndex.rebuildVillage(level, village);
         BuildingRecognitionTracker.reconcile(level, village);
         SpiritReconciler.reconcileVillage(level, village);
         return true;
@@ -195,24 +214,24 @@ public final class DockBuildingSync {
         v.putBoolean("isTypeForced", true);
         v.putString("type", type);
         v.putBoolean("strictScan", false);
-        v.put("blocks2", collectPlankBlocksNbt(level, bb));
+        v.put("blocks2", collectDockSurfaceBlocksNbt(level, bb));
         return v;
     }
 
     /**
-     * Scan the dock bounds for plank blocks and return a blocks-map NBT
+     * Scan the dock bounds for dock-surface blocks and return a blocks-map NBT
      * grouped by specific block id. This populates the Building's blocks
      * map so MCA's {@code validateBlocks} can correctly prune entries when
-     * planks are broken (the Building is then invalidated only once ALL its
-     * planks are gone).
+     * dock blocks are broken (the Building is then invalidated only once ALL
+     * its tracked deck blocks are gone).
      */
-    private static CompoundTag collectPlankBlocksNbt(ServerLevel level, BoundingBox bb) {
+    private static CompoundTag collectDockSurfaceBlocksNbt(ServerLevel level, BoundingBox bb) {
         Map<String, List<BlockPos>> byBlockId = new HashMap<>();
         for (BlockPos p : BlockPos.betweenClosed(
                 new BlockPos(bb.minX(), bb.minY(), bb.minZ()),
                 new BlockPos(bb.maxX(), bb.maxY(), bb.maxZ()))) {
             BlockState s = level.getBlockState(p);
-            if (!s.is(BlockTags.PLANKS)) continue;
+            if (!DockScanner.isDockSurface(s)) continue;
             ResourceLocation key = BuiltInRegistries.BLOCK.getKey(s.getBlock());
             byBlockId.computeIfAbsent(key.toString(), k -> new ArrayList<>()).add(p.immutable());
         }

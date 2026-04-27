@@ -2,8 +2,18 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+//? if forge {
+/*import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.renderer.GameRenderer;
+*///?}
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -15,6 +25,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.FishingHook;
 import net.minecraft.world.phys.Vec3;
+//? if forge {
+/*import org.joml.Matrix4f;
+*///?}
 //? if neoforge {
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 //?} else if forge {
@@ -38,6 +51,9 @@ import java.util.Map;
  */
 public final class FishermanLineRenderer {
     private static final int SEGMENTS = 16;
+    private static final double FALLBACK_BOB_AMPLITUDE = 0.055D;
+    private static final double SYNC_LERP_MILLIS = 50.0D;
+    private static final float HOOK_BB_WIDTH = 0.25F;
 
     // Anchor offsets for where the fishing line attaches on the villager.
     // Values tuned to land on the visible tip of the fishing-rod item as
@@ -53,6 +69,7 @@ public final class FishermanLineRenderer {
     // so the line meets the visible bobber sprite (vanilla's 0.25 attaches
     // at the top of the quad which looks a bit high).
     private static final double BOBBER_END_OFFSET = 0.10D;
+    private static final double ROD_END_OVERLAP = 0.06D;
 
     //? if >=1.21 {
     private static final ResourceLocation BOBBER_TEXTURE =
@@ -65,6 +82,56 @@ public final class FishermanLineRenderer {
     private static int diagnosticTick;
 
     private FishermanLineRenderer() {}
+
+    /**
+     * Run once per client tick on the main thread. Spawns vanilla-bobber-style
+     * bubble + splash bursts at each linked hook in water. We do this here, not
+     * from the render hook, because mc.level.addParticle from the render thread
+     * during AFTER_ENTITIES did not reliably produce visible particles in
+     * 1.21.1 NeoForge — vanilla's own bobber particles arrive via packet
+     * (handled on the main thread), so matching that timing makes them work.
+     * addAlwaysVisibleParticle bypasses camera-distance and minimal-particle
+     * filters in case the player is far from the bobber.
+     */
+    public static void onClientTick() {
+        try {
+            tickBubblesImpl();
+        } catch (Throwable t) {
+            long now = System.currentTimeMillis();
+            if (now - lastErrorLogMs > 1000L) {
+                lastErrorLogMs = now;
+                Townstead.LOGGER.warn("[FishermanLine] tick-bubbles error swallowed: {}", t.toString());
+            }
+        }
+    }
+
+    private static void tickBubblesImpl() {
+        Map<Integer, Integer> links = FishermanHookLinkStore.snapshot();
+        if (links.isEmpty()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        for (Map.Entry<Integer, Integer> entry : links.entrySet()) {
+            int hookId = entry.getKey();
+            Vec3 hookPos = null;
+            Entity hookEntity = mc.level.getEntity(hookId);
+            if (hookEntity instanceof FishingHook hook && hook.isAlive()) {
+                hookPos = new Vec3(hook.getX(), hook.getY(), hook.getZ());
+            } else {
+                FishermanHookLinkStore.SyncedHook synced = FishermanHookLinkStore.syncedHook(hookId);
+                if (synced != null) hookPos = new Vec3(synced.x(), synced.y(), synced.z());
+            }
+            if (hookPos == null) continue;
+            // Match the 1.20.1 renderer's addFallbackBob oscillation: when the
+            // live hook sits at a steady Y near the surface, BlockPos.containing
+            // resolves to the air block above on most ticks and rejects the
+            // water check. Sweeping ±0.055 around the hook Y dips the emission
+            // position below the surface periodically, matching the cadence
+            // 1.20.1 produces by virtue of jittering its rendered bobber.
+            double phase = (mc.level.getGameTime() + hookId * 0.37D) * 0.18D;
+            double bobbedY = hookPos.y + Math.sin(phase) * FALLBACK_BOB_AMPLITUDE;
+            spawnVanillaBobberBubbles(new Vec3(hookPos.x, bobbedY, hookPos.z), hookId);
+        }
+    }
 
     public static void onRenderLevel(RenderLevelStageEvent event) {
         try {
@@ -86,7 +153,11 @@ public final class FishermanLineRenderer {
     private static long lastErrorLogMs;
 
     private static void renderImpl(RenderLevelStageEvent event) {
+        //? if neoforge {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+        //?} else if forge {
+        /*if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
+        *///?}
 
         Map<Integer, Integer> links = FishermanHookLinkStore.snapshot();
         boolean debug = TownsteadConfig.DEBUG_VILLAGER_AI.get();
@@ -106,6 +177,11 @@ public final class FishermanLineRenderer {
         Camera camera = event.getCamera();
         Vec3 camPos = camera.getPosition();
         PoseStack poseStack = event.getPoseStack();
+        //? if forge {
+        /*renderImmediateForge(poseStack, camPos, partialTick, links, debug);
+        return;
+        *///?}
+        //? if neoforge {
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         VertexConsumer consumer = buffers.getBuffer(RenderType.lines());
 
@@ -115,28 +191,35 @@ public final class FishermanLineRenderer {
             int hookId = entry.getKey();
             int villagerId = entry.getValue();
             Entity hookEntity = mc.level.getEntity(hookId);
-            if (hookEntity == null) {
-                // Null entity. If we've never seen this hook alive, it's
-                // probably the spawn-packet race (link arrived first) — leave
-                // the link alone and retry next frame. If we HAVE seen it
-                // alive, the server has since removed it (reel, despawn,
-                // chunk unload) — evict so the cast-predicate wrapper can
-                // flip the rod back to its uncast model.
-                if (FishermanHookLinkStore.isConfirmed(hookId)) {
-                    FishermanHookLinkStore.unlink(hookId);
+            FishermanHookLinkStore.SyncedHook synced = FishermanHookLinkStore.syncedHook(hookId);
+            Entity villagerEntity = mc.level.getEntity(villagerId);
+            if (!(villagerEntity instanceof LivingEntity villager) || !villager.isAlive()) continue;
+            boolean hookUsable = hookEntity instanceof FishingHook h && h.isAlive() && h.getPlayerOwner() == null;
+            if (!hookUsable) {
+                // Forge 1.20.1 kills the fake-player-owned hook on the spawn
+                // packet (the keep-alive mixin's @Redirect/@Inject INVOKE
+                // targets silently no-op without a refmap), so hookEntity is
+                // either null or !isAlive() every frame. The server keeps
+                // this cosmetic position refreshed and sends an explicit
+                // unlink on reel/abort, so we can draw purely from the synced
+                // point without falling back to per-frame eviction (which
+                // wiped the synced entry and stopped anything from rendering).
+                if (synced != null) {
+                    Vec3 hookPos = interpolatedSyncedPosition(synced);
+                    renderBobberAt(poseStack, bobberConsumer, camPos, hookPos, 15728880);
+                    renderLineTo(poseStack, consumer, camPos, villager, hookPos, partialTick);
+                    drawn++;
                 }
                 continue;
             }
-            if (!(hookEntity instanceof FishingHook hook) || !hook.isAlive()) {
-                FishermanHookLinkStore.unlink(hookId);
-                continue;
-            }
+            FishingHook hook = (FishingHook) hookEntity;
             FishermanHookLinkStore.markConfirmed(hookId);
-            Entity villagerEntity = mc.level.getEntity(villagerId);
-            if (!(villagerEntity instanceof LivingEntity villager) || !villager.isAlive()) continue;
-            if (hook.getPlayerOwner() != null) continue;
 
             renderBobberFor(poseStack, bobberConsumer, camPos, hook, partialTick);
+            if (debug && diagnosticTick % 120 == 0) {
+                Townstead.LOGGER.info("[FishermanLine] alive-branch hook={} y={} xo={} x={}",
+                        hookId, hook.getY(), hook.xo, hook.getX());
+            }
             renderLineFor(poseStack, consumer, camPos, villager, hook, partialTick);
             drawn++;
         }
@@ -145,6 +228,208 @@ public final class FishermanLineRenderer {
         buffers.endBatch(RenderType.lines());
         if (debug && drawn > 0 && diagnosticTick % 40 == 0) {
             Townstead.LOGGER.info("[FishermanLine] drew {} line(s) this frame", drawn);
+        }
+        //?}
+    }
+
+    //? if forge {
+    /*private static void renderImmediateForge(PoseStack poseStack, Vec3 camPos, float partialTick,
+                                             Map<Integer, Integer> links, boolean debug) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableCull();
+
+        int drawn = 0;
+        for (Map.Entry<Integer, Integer> entry : links.entrySet()) {
+            int hookId = entry.getKey();
+            int villagerId = entry.getValue();
+            Entity villagerEntity = mc.level.getEntity(villagerId);
+            if (!(villagerEntity instanceof LivingEntity villager) || !villager.isAlive()) continue;
+
+            Vec3 hookPos = null;
+            Entity hookEntity = mc.level.getEntity(hookId);
+            if (hookEntity instanceof FishingHook hook && hook.isAlive() && hook.getPlayerOwner() == null) {
+                hookPos = new Vec3(
+                        Mth.lerp((double) partialTick, hook.xo, hook.getX()),
+                        Mth.lerp((double) partialTick, hook.yo, hook.getY()),
+                        Mth.lerp((double) partialTick, hook.zo, hook.getZ()));
+            } else {
+                FishermanHookLinkStore.SyncedHook synced = FishermanHookLinkStore.syncedHook(hookId);
+                if (synced != null) hookPos = interpolatedSyncedPosition(synced);
+            }
+            if (hookPos == null) continue;
+            hookPos = addFallbackBob(hookId, hookPos, partialTick);
+
+            renderBobberImmediate(poseStack, camPos, hookPos);
+            renderLineImmediate(poseStack, camPos, villager, hookPos, partialTick);
+            drawn++;
+        }
+
+        RenderSystem.enableCull();
+        RenderSystem.disableBlend();
+
+        if (debug && drawn > 0 && diagnosticTick % 40 == 0) {
+            Townstead.LOGGER.info("[FishermanLine] immediate drew {} line(s)", drawn);
+        }
+    }
+
+    private static Vec3 addFallbackBob(int hookId, Vec3 hookPos, float partialTick) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return hookPos;
+        double phase = (mc.level.getGameTime() + partialTick + hookId * 0.37D) * 0.18D;
+        return hookPos.add(0.0D, Math.sin(phase) * FALLBACK_BOB_AMPLITUDE, 0.0D);
+    }
+
+    private static void renderBobberImmediate(PoseStack poseStack, Vec3 camPos, Vec3 hookPos) {
+        poseStack.pushPose();
+        try {
+            poseStack.translate(hookPos.x - camPos.x, hookPos.y - camPos.y, hookPos.z - camPos.z);
+            poseStack.scale(0.5F, 0.5F, 0.5F);
+            poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
+            poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
+            Matrix4f matrix = poseStack.last().pose();
+
+            RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+            RenderSystem.setShaderTexture(0, BOBBER_TEXTURE);
+            BufferBuilder builder = Tesselator.getInstance().getBuilder();
+            builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+            builder.vertex(matrix, -0.5F, -0.5F, 0.0F).uv(0.0F, 1.0F).color(255, 255, 255, 255).endVertex();
+            builder.vertex(matrix,  0.5F, -0.5F, 0.0F).uv(1.0F, 1.0F).color(255, 255, 255, 255).endVertex();
+            builder.vertex(matrix,  0.5F,  0.5F, 0.0F).uv(1.0F, 0.0F).color(255, 255, 255, 255).endVertex();
+            builder.vertex(matrix, -0.5F,  0.5F, 0.0F).uv(0.0F, 0.0F).color(255, 255, 255, 255).endVertex();
+            BufferUploader.drawWithShader(builder.end());
+        } finally {
+            poseStack.popPose();
+        }
+    }
+
+    private static void renderLineImmediate(PoseStack poseStack, Vec3 camPos, LivingEntity villager,
+                                            Vec3 hookPos, float partialTick) {
+        Vec3 handPos = rodHandWorldPos(villager, partialTick);
+        double hookX = hookPos.x;
+        double hookY = hookPos.y + BOBBER_END_OFFSET;
+        double hookZ = hookPos.z;
+
+        Vec3 endPos = lineEndWithRodOverlap(new Vec3(hookX, hookY, hookZ), handPos);
+        float dx = (float) (endPos.x - hookX);
+        float dy = (float) (endPos.y - hookY);
+        float dz = (float) (endPos.z - hookZ);
+
+        poseStack.pushPose();
+        try {
+            poseStack.translate(hookX - camPos.x, hookY - camPos.y, hookZ - camPos.z);
+            Matrix4f matrix = poseStack.last().pose();
+
+            BufferBuilder builder = Tesselator.getInstance().getBuilder();
+            RenderSystem.setShader(GameRenderer::getPositionColorShader);
+            builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+            float prevX = 0F, prevY = 0F, prevZ = 0F;
+            for (int k = 1; k <= SEGMENTS; k++) {
+                float t = k / (float) SEGMENTS;
+                float x = dx * t;
+                float y = dy * (t * t + t) * 0.5F;
+                float z = dz * t;
+                emitLineQuad(builder, matrix, prevX, prevY, prevZ, x, y, z, camPos,
+                        new Vec3(hookX, hookY, hookZ));
+                prevX = x;
+                prevY = y;
+                prevZ = z;
+            }
+            BufferUploader.drawWithShader(builder.end());
+        } finally {
+            poseStack.popPose();
+        }
+    }
+
+    private static void emitLineQuad(BufferBuilder builder, Matrix4f matrix,
+                                     float x0, float y0, float z0,
+                                     float x1, float y1, float z1,
+                                     Vec3 camPos, Vec3 hookPos) {
+        double wx0 = hookPos.x + x0;
+        double wy0 = hookPos.y + y0;
+        double wz0 = hookPos.z + z0;
+        double wx1 = hookPos.x + x1;
+        double wy1 = hookPos.y + y1;
+        double wz1 = hookPos.z + z1;
+
+        Vec3 seg = new Vec3(wx1 - wx0, wy1 - wy0, wz1 - wz0);
+        Vec3 view = new Vec3((wx0 + wx1) * 0.5D - camPos.x,
+                (wy0 + wy1) * 0.5D - camPos.y,
+                (wz0 + wz1) * 0.5D - camPos.z);
+        Vec3 side = seg.cross(view);
+        if (side.lengthSqr() < 1.0e-8D) {
+            side = new Vec3(0.0D, 1.0D, 0.0D);
+        } else {
+            side = side.normalize().scale(0.0125D);
+        }
+
+        float ox = (float) side.x;
+        float oy = (float) side.y;
+        float oz = (float) side.z;
+        int r = 18, g = 18, b = 18, a = 255;
+        builder.vertex(matrix, x0 - ox, y0 - oy, z0 - oz).color(r, g, b, a).endVertex();
+        builder.vertex(matrix, x0 + ox, y0 + oy, z0 + oz).color(r, g, b, a).endVertex();
+        builder.vertex(matrix, x1 + ox, y1 + oy, z1 + oz).color(r, g, b, a).endVertex();
+        builder.vertex(matrix, x1 - ox, y1 - oy, z1 - oz).color(r, g, b, a).endVertex();
+    }
+    *///?}
+
+    private static Vec3 interpolatedSyncedPosition(FishermanHookLinkStore.SyncedHook synced) {
+        double t = (System.currentTimeMillis() - synced.updatedAtMillis()) / SYNC_LERP_MILLIS;
+        if (t < 0.0D) t = 0.0D;
+        if (t > 1.0D) t = 1.0D;
+        double x = Mth.lerp(t, synced.previousX(), synced.x());
+        double y = Mth.lerp(t, synced.previousY(), synced.y());
+        double z = Mth.lerp(t, synced.previousZ(), synced.z());
+        return new Vec3(x, y, z);
+    }
+
+    // Townstead fishermen own their hook via a FakePlayer; on both Forge 1.20.1
+    // and NeoForge 1.21.1 the client-side keep-alive does not consistently keep
+    // FishingHook.tick (and Entity.doWaterSplashEffect) running, so the bubble
+    // burst you see at a vanilla bobber as it bobs through the water surface
+    // never appears on its own. Roll for that effect here once per game tick
+    // per hook, matching vanilla's burst geometry: scattered within a bbWidth
+    // box around the bobber at floor(y)+1 (water surface), with downward
+    // velocity jitter on the bubbles. ~8%/tick approximates the surface-
+    // crossing cadence of a real bobber (one burst every ~12 ticks).
+    // The Forge 1.20.1 client kills our fake-player-owned hook on its spawn
+    // packet, so neither FishingHook.tick nor Entity.doWaterSplashEffect ever
+    // runs client-side. The bubbles you see around a vanilla idling bobber
+    // come from doWaterSplashEffect re-firing each time the bobbing motion
+    // crosses the water surface (bbWidth 0.25 -> 6 BUBBLE + 6 SPLASH per
+    // crossing). Roll for that effect periodically here, matching vanilla's
+    // burst geometry: scattered within a bbWidth box around the bobber, at
+    // floor(y)+1 (water surface), with downward velocity jitter.
+    private static void spawnVanillaBobberBubbles(Vec3 hookPos, int hookId) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        if (!mc.level.getFluidState(net.minecraft.core.BlockPos.containing(hookPos.x, hookPos.y, hookPos.z))
+                .is(net.minecraft.tags.FluidTags.WATER)) return;
+        net.minecraft.util.RandomSource rng = mc.level.random;
+        // Vanilla's surface crossings happen sporadically as the bobber bobs;
+        // observed cadence is roughly once every ~10-15 ticks. 8%/tick gives
+        // an average burst every ~12 ticks.
+        if (rng.nextFloat() >= 0.08F) return;
+        double surfaceY = Math.floor(hookPos.y) + 1.0D;
+        int count = (int) (1.0F + HOOK_BB_WIDTH * 20.0F);
+        for (int i = 0; i < count; i++) {
+            double ox = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            double oz = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            mc.level.addAlwaysVisibleParticle(net.minecraft.core.particles.ParticleTypes.BUBBLE,
+                    hookPos.x + ox, surfaceY, hookPos.z + oz,
+                    0.0D, -rng.nextDouble() * 0.2D, 0.0D);
+        }
+        for (int i = 0; i < count; i++) {
+            double ox = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            double oz = (rng.nextDouble() * 2.0D - 1.0D) * HOOK_BB_WIDTH;
+            mc.level.addAlwaysVisibleParticle(net.minecraft.core.particles.ParticleTypes.SPLASH,
+                    hookPos.x + ox, surfaceY, hookPos.z + oz,
+                    0.0D, 0.0D, 0.0D);
         }
     }
 
@@ -162,12 +447,16 @@ public final class FishermanLineRenderer {
 
         Minecraft mc = Minecraft.getInstance();
         int packedLight = mc.getEntityRenderDispatcher().getPackedLightCoords(hook, partialTick);
+        renderBobberAt(poseStack, consumer, camPos, new Vec3(hookX, hookY, hookZ), packedLight);
+    }
 
+    private static void renderBobberAt(PoseStack poseStack, VertexConsumer consumer,
+                                       Vec3 camPos, Vec3 hookPos, int packedLight) {
         poseStack.pushPose();
         try {
-            poseStack.translate(hookX - camPos.x, hookY - camPos.y, hookZ - camPos.z);
+            poseStack.translate(hookPos.x - camPos.x, hookPos.y - camPos.y, hookPos.z - camPos.z);
             poseStack.scale(0.5F, 0.5F, 0.5F);
-            poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
+            poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
             PoseStack.Pose pose = poseStack.last();
 
             emitBobberVertex(consumer, pose, packedLight, -0.5F, -0.5F, 0, 1);
@@ -205,14 +494,24 @@ public final class FishermanLineRenderer {
     private static void renderLineFor(PoseStack poseStack, VertexConsumer consumer,
                                       Vec3 camPos, LivingEntity villager, FishingHook hook,
                                       float partialTick) {
-        Vec3 handPos = rodHandWorldPos(villager, partialTick);
         double hookX = Mth.lerp((double) partialTick, hook.xo, hook.getX());
-        double hookY = Mth.lerp((double) partialTick, hook.yo, hook.getY()) + BOBBER_END_OFFSET;
+        double hookY = Mth.lerp((double) partialTick, hook.yo, hook.getY());
         double hookZ = Mth.lerp((double) partialTick, hook.zo, hook.getZ());
+        renderLineTo(poseStack, consumer, camPos, villager, new Vec3(hookX, hookY, hookZ), partialTick);
+    }
 
-        float dx = (float) (handPos.x - hookX);
-        float dy = (float) (handPos.y - hookY);
-        float dz = (float) (handPos.z - hookZ);
+    private static void renderLineTo(PoseStack poseStack, VertexConsumer consumer,
+                                     Vec3 camPos, LivingEntity villager, Vec3 hookPos,
+                                     float partialTick) {
+        Vec3 handPos = rodHandWorldPos(villager, partialTick);
+        double hookX = hookPos.x;
+        double hookY = hookPos.y + BOBBER_END_OFFSET;
+        double hookZ = hookPos.z;
+
+        Vec3 endPos = lineEndWithRodOverlap(new Vec3(hookX, hookY, hookZ), handPos);
+        float dx = (float) (endPos.x - hookX);
+        float dy = (float) (endPos.y - hookY);
+        float dz = (float) (endPos.z - hookZ);
 
         poseStack.pushPose();
         try {
@@ -237,6 +536,14 @@ public final class FishermanLineRenderer {
         } finally {
             poseStack.popPose();
         }
+    }
+
+    private static Vec3 lineEndWithRodOverlap(Vec3 hookAttachPos, Vec3 handPos) {
+        Vec3 towardHand = handPos.subtract(hookAttachPos);
+        if (towardHand.lengthSqr() < 1.0e-6D) {
+            return handPos;
+        }
+        return handPos.add(towardHand.normalize().scale(ROD_END_OVERLAP));
     }
 
     /** World-space position where the fishing line attaches on the villager. */
