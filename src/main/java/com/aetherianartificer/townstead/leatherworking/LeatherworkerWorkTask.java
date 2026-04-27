@@ -80,13 +80,23 @@ public class LeatherworkerWorkTask extends Behavior<VillagerEntityMCA> {
         plan = match.plan;
         claimedPos = match.plan.anchor();
         standPos = findStandPos(level, villager, claimedPos);
-        phase = Phase.PATH;
         startedTick = gameTime;
         lastPathTick = gameTime;
         executeAfterTick = gameTime + POST_ARRIVAL_PAUSE_TICKS;
-        setWalkTarget(villager, standPos != null ? standPos : claimedPos);
-        debug(level, villager, "start job={} anchor={} stand={}",
-                activeJob.getClass().getSimpleName(), claimedPos, standPos);
+
+        // If the villager is already in arm's reach of the target (e.g.
+        // vanilla WorkAtPoi just delivered them to their cauldron POI),
+        // skip the path phase so we don't compete with vanilla over
+        // WALK_TARGET for a journey that's already complete.
+        if (isCloseEnough(villager, claimedPos)) {
+            phase = Phase.PROCESS;
+            villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+        } else {
+            phase = Phase.PATH;
+            setWalkTarget(villager, standPos != null ? standPos : claimedPos);
+        }
+        debug(level, villager, "start job={} anchor={} stand={} phase={}",
+                activeJob.getClass().getSimpleName(), claimedPos, standPos, phase);
     }
 
     @Override

@@ -123,10 +123,18 @@ public final class SkinRackJob implements LeatherworkerJob {
         // villager carries any dry cloth and the village has a water
         // cauldron, walk to the cauldron and re-wet there. Next session
         // resumes the rack soak.
+        //
+        // Cauldron picking order:
+        //   1. The villager's own JOB_SITE cauldron, if it's a water
+        //      cauldron — vanilla's WorkAtPoi behavior is constantly
+        //      pulling them there anyway, so picking anything else creates
+        //      a tug-of-war over WALK_TARGET that reads as "wandering".
+        //   2. Otherwise the nearest indexed water cauldron in the village.
         if (best == null
                 && salteRackPendingNoWetCloth
                 && (supplyMask & MASK_CLOTH_DRY) != 0) {
-            BlockPos cauldron = findNearestWaterCauldron(level, village, origin);
+            BlockPos cauldron = jobSiteWaterCauldron(level, villager);
+            if (cauldron == null) cauldron = findNearestWaterCauldron(level, village, origin);
             if (cauldron != null) {
                 best = new Plan(cauldron, Action.WET_CLOTH);
             }
@@ -139,6 +147,24 @@ public final class SkinRackJob implements LeatherworkerJob {
         // Found work: clear the throttle so the next session re-evaluates promptly.
         NEXT_SCAN_TICK.remove(villager.getUUID());
         return Optional.of(best);
+    }
+
+    /**
+     * Resolve the villager's bound job-site block to a water cauldron, or
+     * {@code null} if there is no job site, the dimension differs, or the
+     * block at that position isn't a water cauldron right now (player may
+     * have drained or replaced it).
+     */
+    @Nullable
+    private static BlockPos jobSiteWaterCauldron(ServerLevel level, VillagerEntityMCA villager) {
+        var brain = villager.getBrain();
+        var memory = brain.getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE);
+        if (memory == null || memory.isEmpty()) return null;
+        net.minecraft.core.GlobalPos gp = memory.get();
+        if (!gp.dimension().equals(level.dimension())) return null;
+        BlockPos pos = gp.pos();
+        if (!level.getBlockState(pos).is(net.minecraft.world.level.block.Blocks.WATER_CAULDRON)) return null;
+        return pos;
     }
 
     @Nullable
