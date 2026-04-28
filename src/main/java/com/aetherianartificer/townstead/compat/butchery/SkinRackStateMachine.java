@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
+import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -207,29 +209,63 @@ public final class SkinRackStateMachine {
      * main hand, advance the blockstate, and replay the mod's sound. NBT
      * mutations on sponge/rag are delegated to {@link SpongeRagHelper}.
      */
-    public static void placeHide(ServerLevel level, BlockPos pos, ItemStack hideStack) {
+    /**
+     * Place a draped hide on an empty rack. Returns true if the rack
+     * actually advanced to the hide state, false otherwise (block isn't a
+     * rack, doesn't accept the target value, or the held stack isn't a
+     * recognized hide). Callers must treat a {@code false} return as
+     * "supply was NOT consumed" — the {@link ItemStack#shrink} happens
+     * only on success so a missed update can't make the hide vanish.
+     */
+    public static boolean placeHide(ServerLevel level, BlockPos pos, ItemStack hideStack) {
         int target = hideStateFor(hideStack);
-        if (target <= 0) return;
-        setBlockstate(level, pos, target);
+        BlockState before = level.getBlockState(pos);
+        log("placeHide enter pos={} hideItem={} hideCount={} target={} blockBefore={} curState={}",
+                pos, itemId(hideStack), hideStack.getCount(), target, blockId(before), currentState(before));
+        if (target <= 0) {
+            log("placeHide abort: target<=0 (hide not recognized) item={}", itemId(hideStack));
+            return false;
+        }
+        boolean ok = setBlockstate(level, pos, target);
+        BlockState after = level.getBlockState(pos);
+        log("placeHide setBlockstate ok={} blockAfter={} stateAfter={}",
+                ok, blockId(after), currentState(after));
+        if (!ok) return false;
+        int beforeCount = hideStack.getCount();
         hideStack.shrink(1);
         playSound(level, pos, SOUND_WOOL_PLACE, 1f);
+        log("placeHide success pos={} hideCount {}->{}",
+                pos, beforeCount, hideStack.getCount());
+        return true;
     }
 
-    public static void applySalt(ServerLevel level, BlockPos pos, ItemStack saltStack) {
-        setBlockstate(level, pos, STATE_SALTED);
+    public static boolean applySalt(ServerLevel level, BlockPos pos, ItemStack saltStack) {
+        BlockState before = level.getBlockState(pos);
+        log("applySalt enter pos={} saltItem={} saltCount={} blockBefore={} curState={}",
+                pos, itemId(saltStack), saltStack.getCount(), blockId(before), currentState(before));
+        boolean ok = setBlockstate(level, pos, STATE_SALTED);
+        log("applySalt setBlockstate ok={} stateAfter={}", ok, currentState(level.getBlockState(pos)));
+        if (!ok) return false;
+        int beforeCount = saltStack.getCount();
         saltStack.shrink(1);
         playSound(level, pos, SOUND_SAND_PLACE, 0.3f);
+        log("applySalt success saltCount {}->{}", beforeCount, saltStack.getCount());
+        return true;
     }
 
-    public static void applySoak(ServerLevel level, BlockPos pos, ItemStack clothStack) {
-        setBlockstate(level, pos, STATE_SOAKED);
+    public static boolean applySoak(ServerLevel level, BlockPos pos, ItemStack clothStack) {
+        BlockState before = level.getBlockState(pos);
+        int wetnessBefore = SpongeRagHelper.readWetness(clothStack);
+        log("applySoak enter pos={} clothItem={} wetness={} blockBefore={} curState={}",
+                pos, itemId(clothStack), wetnessBefore, blockId(before), currentState(before));
+        boolean ok = setBlockstate(level, pos, STATE_SOAKED);
+        log("applySoak setBlockstate ok={} stateAfter={}", ok, currentState(level.getBlockState(pos)));
+        if (!ok) return false;
         SpongeRagHelper.decrementWetness(clothStack);
         playSound(level, pos, SOUND_SPLASH, 0.3f);
-        // The mod's own RightClickBlock handler schedules the 1800-tick flip
-        // 27 → 30 via ButcheryMod.queueServerWork. We bypass that path, so
-        // the cure timer must be re-armed here. Use the mod's own queueing
-        // to keep behavior identical (same delay, same predicate).
         ButcheryServerWork.queueCure(level, pos);
+        log("applySoak success wetness {}->{}", wetnessBefore, SpongeRagHelper.readWetness(clothStack));
+        return true;
     }
 
     /**
@@ -300,11 +336,60 @@ public final class SkinRackStateMachine {
         return ItemStack.EMPTY;
     }
 
-    private static void setBlockstate(ServerLevel level, BlockPos pos, int value) {
+    /**
+     * Set the rack's {@code blockstate} property to {@code value}. Returns
+     * true on success, false when the block at {@code pos} isn't a rack
+     * (or, defensively, when its property doesn't accept the requested
+     * value). Used by transition helpers to gate supply consumption — only
+     * a confirmed block update should consume the held item.
+     */
+    private static boolean setBlockstate(ServerLevel level, BlockPos pos, int value) {
         BlockState bs = level.getBlockState(pos);
+        if (!isSkinRack(bs)) {
+            log("setBlockstate REJECT not-a-rack pos={} block={}", pos, blockId(bs));
+            return false;
+        }
         IntegerProperty prop = blockstateProperty(bs);
-        if (prop == null || !prop.getPossibleValues().contains(value)) return;
-        level.setBlock(pos, bs.setValue(prop, value), 3);
+        if (prop == null) {
+            log("setBlockstate REJECT no blockstate prop pos={} block={}", pos, blockId(bs));
+            return false;
+        }
+        if (!prop.getPossibleValues().contains(value)) {
+            log("setBlockstate REJECT value not allowed pos={} value={} possible={}",
+                    pos, value, prop.getPossibleValues());
+            return false;
+        }
+        boolean result = level.setBlock(pos, bs.setValue(prop, value), 3);
+        log("setBlockstate level.setBlock pos={} value={} result={}", pos, value, result);
+        return result;
+    }
+
+    // ── debug ──
+
+    private static boolean debugEnabled() {
+        try {
+            return TownsteadConfig.DEBUG_VILLAGER_AI.get();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static void log(String message, Object... args) {
+        if (!debugEnabled()) return;
+        String formatted = message;
+        for (Object arg : args) {
+            formatted = formatted.replaceFirst("\\{}",
+                    java.util.regex.Matcher.quoteReplacement(String.valueOf(arg)));
+        }
+        Townstead.LOGGER.info("[SkinRack] {}", formatted);
+    }
+
+    private static ResourceLocation itemId(ItemStack stack) {
+        return stack.isEmpty() ? null : BuiltInRegistries.ITEM.getKey(stack.getItem());
+    }
+
+    private static ResourceLocation blockId(BlockState state) {
+        return BuiltInRegistries.BLOCK.getKey(state.getBlock());
     }
 
     @Nullable

@@ -61,7 +61,16 @@ public class LeatherworkerWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (villager.getVillagerData().getProfession() != VillagerProfession.LEATHERWORKER) return false;
-        return findActionableJob(level, villager) != null;
+        Match match = findActionableJob(level, villager);
+        if (debugEnabled() && (level.getGameTime() & 127L) == 0L) {
+            // Log roughly once every 6 seconds per leatherworker so the
+            // operator can see whether the gate is evaluating jobs at all.
+            int jobs = LeatherworkerJobs.all().size();
+            Townstead.LOGGER.info("[Leatherworker] gate t={} villager={} jobsRegistered={} match={}",
+                    level.getGameTime(), villager.getStringUUID(), jobs,
+                    match == null ? "null" : (match.job.getClass().getSimpleName() + "@" + match.plan.anchor()));
+        }
+        return match != null;
     }
 
     @Override
@@ -180,34 +189,52 @@ public class LeatherworkerWorkTask extends Behavior<VillagerEntityMCA> {
         return null;
     }
 
+    /** How far below the target we'll drop looking for a floor to stand on. */
+    private static final int STAND_DROP_LIMIT = 6;
+    /** Horizontal radius around the target's column we'll consider for standing. */
+    private static final int STAND_HORIZONTAL_RADIUS = 2;
+
     /**
-     * Find a walkable cell adjacent to the target so the villager doesn't
-     * try to path inside a wall-mounted block. For Butchery skin racks the
-     * preferred side is the rack's {@code FACING} (the open face the hide
-     * hangs from); for other targets we scan the four cardinals plus
-     * diagonals at the same Y. Falls back to {@code null} when no neighbor
-     * is standable, in which case callers walk to the anchor itself and
-     * the pathfinder figures out what it can.
+     * Find a walkable cell near the target. For wall-mounted blocks like
+     * skin racks the rack itself is typically a couple of blocks above
+     * floor level, so the cell directly in front of the rack at the rack's
+     * Y has no floor under it. Drop down to actual floor level first and
+     * then pick the standable cell — preferring the rack's
+     * {@code HORIZONTAL_FACING} side (where a player would stand to use it).
+     * Falls back to {@code null} when nothing within
+     * {@link #STAND_HORIZONTAL_RADIUS} blocks is standable.
      */
     @Nullable
     private static BlockPos findStandPos(ServerLevel level, VillagerEntityMCA villager, BlockPos target) {
+        int floorY = findFloorY(level, target);
+        if (floorY == Integer.MIN_VALUE) return null;
+        int standY = floorY + 1;
+
         BlockState state = level.getBlockState(target);
-        BlockPos preferred = preferredSideFor(state, target);
-        if (preferred != null && isStandable(level, preferred)) return preferred;
+        Direction facing = facingOf(state);
+        if (facing != null) {
+            // The cell directly in front of the rack at floor level is the
+            // canonical "stand here and reach up" spot. Try that first.
+            BlockPos preferred = new BlockPos(target.getX() + facing.getStepX(),
+                    standY, target.getZ() + facing.getStepZ());
+            if (isStandable(level, preferred)) return preferred;
+        }
 
         BlockPos villagerPos = villager.blockPosition();
         BlockPos best = null;
-        double bestDsq = Double.MAX_VALUE;
-        // Iterate the 8 horizontal neighbors at the target's Y. Picking the
-        // closest standable cell to the villager keeps backtracking minimal.
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
+        double bestScore = Double.MAX_VALUE;
+        for (int dx = -STAND_HORIZONTAL_RADIUS; dx <= STAND_HORIZONTAL_RADIUS; dx++) {
+            for (int dz = -STAND_HORIZONTAL_RADIUS; dz <= STAND_HORIZONTAL_RADIUS; dz++) {
                 if (dx == 0 && dz == 0) continue;
-                BlockPos candidate = target.offset(dx, 0, dz);
+                BlockPos candidate = new BlockPos(target.getX() + dx, standY, target.getZ() + dz);
                 if (!isStandable(level, candidate)) continue;
-                double dsq = candidate.distSqr(villagerPos);
-                if (dsq < bestDsq) {
-                    bestDsq = dsq;
+                // Prefer cells aligned with the rack's facing (smaller XZ
+                // distance to the rack column), then closer to the villager.
+                double rackXz = (double) dx * dx + (double) dz * dz;
+                double villagerDs = candidate.distSqr(villagerPos);
+                double score = rackXz * 4.0 + villagerDs;
+                if (score < bestScore) {
+                    bestScore = score;
                     best = candidate;
                 }
             }
@@ -216,13 +243,28 @@ public class LeatherworkerWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     @Nullable
-    private static BlockPos preferredSideFor(BlockState state, BlockPos target) {
-        // Wall-mounted blocks (skin rack, etc.) carry HORIZONTAL_FACING. The
-        // rack's FACING points outward — that's the side the player stands.
+    private static Direction facingOf(BlockState state) {
         DirectionProperty prop = BlockStateProperties.HORIZONTAL_FACING;
-        if (!state.hasProperty(prop)) return null;
-        Direction facing = state.getValue(prop);
-        return target.relative(facing);
+        return state.hasProperty(prop) ? state.getValue(prop) : null;
+    }
+
+    /**
+     * Drop down from one block below the target until we hit a non-air
+     * solid block. Starting at {@code target - 1} avoids returning the
+     * target's own Y for wall-mounted blocks (where the target column
+     * itself isn't air). Returns the Y of the floor block, or
+     * {@link Integer#MIN_VALUE} if nothing was found within
+     * {@link #STAND_DROP_LIMIT} blocks.
+     */
+    private static int findFloorY(ServerLevel level, BlockPos target) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int dy = 1; dy <= STAND_DROP_LIMIT; dy++) {
+            cursor.set(target.getX(), target.getY() - dy, target.getZ());
+            BlockState s = level.getBlockState(cursor);
+            if (s.isAir() || s.canBeReplaced()) continue;
+            return cursor.getY();
+        }
+        return Integer.MIN_VALUE;
     }
 
     private static boolean isStandable(ServerLevel level, BlockPos pos) {

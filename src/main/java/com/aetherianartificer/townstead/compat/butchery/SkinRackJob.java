@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
+import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.leatherworking.LeatherworkerJob;
@@ -70,6 +71,48 @@ public final class SkinRackJob implements LeatherworkerJob {
         return ButcheryCompat.isLoaded();
     }
 
+    /**
+     * Collect every skin rack position inside a building's volume. We can't
+     * rely on {@link Building#getBlocks} alone because that map only keys
+     * blocks the building type explicitly declares — vanilla MCA's
+     * leatherworker building only declares cauldrons, so any rack placed
+     * inside it would never appear in the index. The volume scan is the
+     * authoritative path; the indexed lookup is just a fast prefix that
+     * covers building types (tannery, butcher_shop_l3) which already declare
+     * skin_rack.
+     */
+    private static List<BlockPos> rackPositionsIn(ServerLevel level, Building building) {
+        List<BlockPos> indexed = building.getBlocks().get(SkinRackStateMachine.SKIN_RACK_ID);
+        java.util.ArrayList<BlockPos> out = new java.util.ArrayList<>();
+        java.util.HashSet<Long> seen = new java.util.HashSet<>();
+        if (indexed != null) {
+            for (BlockPos p : indexed) {
+                if (SkinRackStateMachine.isSkinRack(level.getBlockState(p))) {
+                    if (seen.add(p.asLong())) out.add(p.immutable());
+                }
+            }
+        }
+        BlockPos p0 = building.getPos0();
+        BlockPos p1 = building.getPos1();
+        int minX = Math.min(p0.getX(), p1.getX());
+        int minY = Math.min(p0.getY(), p1.getY());
+        int minZ = Math.min(p0.getZ(), p1.getZ());
+        int maxX = Math.max(p0.getX(), p1.getX());
+        int maxY = Math.max(p0.getY(), p1.getY());
+        int maxZ = Math.max(p0.getZ(), p1.getZ());
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int y = minY; y <= maxY; y++) {
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    cursor.set(x, y, z);
+                    if (!SkinRackStateMachine.isSkinRack(level.getBlockState(cursor))) continue;
+                    if (seen.add(cursor.asLong())) out.add(cursor.immutable());
+                }
+            }
+        }
+        return out;
+    }
+
     @Override
     public Optional<LeatherworkerJob.Plan> findWork(ServerLevel level, VillagerEntityMCA villager) {
         long now = level.getGameTime();
@@ -91,15 +134,15 @@ public final class SkinRackJob implements LeatherworkerJob {
         outer:
         for (Building building : village.getBuildings().values()) {
             if (!building.isComplete()) continue;
-            List<BlockPos> racks = building.getBlocks().get(SkinRackStateMachine.SKIN_RACK_ID);
-            if (racks == null || racks.isEmpty()) continue;
+            List<BlockPos> racks = rackPositionsIn(level, building);
+            if (racks.isEmpty()) continue;
             for (BlockPos rackPos : racks) {
                 BlockState state = level.getBlockState(rackPos);
+                // rackPositionsIn already verifies isSkinRack at the snapshot
+                // time, but re-check here in case the brain re-eval is on
+                // the same tick the player removed the block.
                 if (!SkinRackStateMachine.isSkinRack(state)) continue;
 
-                // Track salted-rack-without-wet-cloth so we can fall back
-                // to a "wet the cloth at a cauldron" detour when the
-                // primary rack loop yields nothing actionable.
                 if (SkinRackStateMachine.currentState(state) == SkinRackStateMachine.STATE_SALTED
                         && (supplyMask & MASK_CLOTH_WET) == 0) {
                     salteRackPendingNoWetCloth = true;
@@ -113,7 +156,7 @@ public final class SkinRackJob implements LeatherworkerJob {
                     bestDsq = dsq;
                     best = new Plan(rackPos, action);
                     if (action == Action.COLLECT) {
-                        break outer; // collect outranks all other actions
+                        break outer;
                     }
                 }
             }
@@ -146,6 +189,8 @@ public final class SkinRackJob implements LeatherworkerJob {
         }
         // Found work: clear the throttle so the next session re-evaluates promptly.
         NEXT_SCAN_TICK.remove(villager.getUUID());
+        log(villager, "findWork picked action={} anchor={} mask={}",
+                best.action(), best.anchor(), Integer.toBinaryString(supplyMask));
         return Optional.of(best);
     }
 
@@ -206,6 +251,25 @@ public final class SkinRackJob implements LeatherworkerJob {
         NEXT_SCAN_TICK.remove(villager.getUUID());
     }
 
+    private static boolean debugEnabled() {
+        try {
+            return TownsteadConfig.DEBUG_VILLAGER_AI.get();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static void log(VillagerEntityMCA villager, String message, Object... args) {
+        if (!debugEnabled()) return;
+        String formatted = message;
+        for (Object arg : args) {
+            formatted = formatted.replaceFirst("\\{}",
+                    java.util.regex.Matcher.quoteReplacement(String.valueOf(arg)));
+        }
+        Townstead.LOGGER.info("[SkinRackJob] villager={} {}",
+                villager.getStringUUID(), formatted);
+    }
+
     private static int readSupplyMask(VillagerEntityMCA villager) {
         SimpleContainer inv = villager.getInventory();
         int mask = 0;
@@ -231,23 +295,29 @@ public final class SkinRackJob implements LeatherworkerJob {
         if (!(basePlan instanceof Plan plan)) return;
         BlockPos pos = plan.anchor();
         BlockState state = level.getBlockState(pos);
+        log(villager, "execute enter plannedAction={} pos={} liveBlock={} liveState={} villagerPos={}",
+                plan.action(), pos,
+                net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()),
+                SkinRackStateMachine.isSkinRack(state) ? SkinRackStateMachine.currentState(state) : -1,
+                villager.blockPosition());
 
         if (plan.action() == Action.WET_CLOTH) {
-            // Cauldron target — verify the block is still a water cauldron
-            // (player may have drained it, or another worker may have used
-            // the last layer in the meantime).
             if (state.is(net.minecraft.world.level.block.Blocks.WATER_CAULDRON)) {
                 doWetCloth(level, villager, pos);
+            } else {
+                log(villager, "execute WET_CLOTH abort: not a water cauldron at pos={}", pos);
             }
             return;
         }
 
-        if (!SkinRackStateMachine.isSkinRack(state)) return;
+        if (!SkinRackStateMachine.isSkinRack(state)) {
+            log(villager, "execute abort: anchor is not a skin rack pos={}", pos);
+            return;
+        }
 
-        // Re-pick the action against the live blockstate. Between findWork
-        // and execute, the mod's 1800-tick queue or another worker may have
-        // advanced the rack. Honor whatever the current state allows.
         Action action = pickAction(state, readSupplyMask(villager));
+        log(villager, "execute re-picked action={} (planned was {}) liveState={}",
+                action, plan.action(), SkinRackStateMachine.currentState(state));
         if (action == null) return;
 
         switch (action) {
@@ -280,9 +350,7 @@ public final class SkinRackJob implements LeatherworkerJob {
 
         for (Building building : village.getBuildings().values()) {
             if (!building.isComplete()) continue;
-            List<BlockPos> racks = building.getBlocks().get(SkinRackStateMachine.SKIN_RACK_ID);
-            if (racks == null) continue;
-            for (BlockPos rackPos : racks) {
+            for (BlockPos rackPos : rackPositionsIn(level, building)) {
                 BlockState state = level.getBlockState(rackPos);
                 if (!SkinRackStateMachine.isSkinRack(state)) continue;
                 int s = SkinRackStateMachine.currentState(state);
@@ -291,8 +359,6 @@ public final class SkinRackJob implements LeatherworkerJob {
                 } else if (SkinRackStateMachine.isRawHide(state)) {
                     if (!hasSaltInInventory(villager)) wantsSalt = true;
                 } else if (s == SkinRackStateMachine.STATE_SALTED) {
-                    // Need a cloth (any wetness): if dry, the WET_CLOTH
-                    // detour will rehydrate it at a cauldron later.
                     if (!hasAnyClothInInventory(villager)) wantsCloth = true;
                 }
             }
@@ -347,9 +413,7 @@ public final class SkinRackJob implements LeatherworkerJob {
 
         for (Building building : village.getBuildings().values()) {
             if (!building.isComplete()) continue;
-            List<BlockPos> racks = building.getBlocks().get(SkinRackStateMachine.SKIN_RACK_ID);
-            if (racks == null) continue;
-            for (BlockPos rackPos : racks) {
+            for (BlockPos rackPos : rackPositionsIn(level, building)) {
                 BlockState state = level.getBlockState(rackPos);
                 if (!SkinRackStateMachine.isSkinRack(state)) continue;
                 int s = SkinRackStateMachine.currentState(state);
@@ -399,29 +463,50 @@ public final class SkinRackJob implements LeatherworkerJob {
 
     private static void doPlace(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
         ItemStack hide = findFirstMatching(villager, SkinRackStateMachine::isHideItem);
+        log(villager, "doPlace pos={} foundHide={} count={} mainHandBefore={} invHideTotal={}",
+                pos,
+                hide.isEmpty() ? null : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(hide.getItem()),
+                hide.getCount(),
+                villager.getMainHandItem().isEmpty() ? null : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(villager.getMainHandItem().getItem()),
+                countMatching(villager, SkinRackStateMachine::isHideItem));
         if (hide.isEmpty()) return;
-        // Equip the hide so the swing visually carries the supply, then
-        // mutate it in place. shrink(1) inside placeHide removes the
-        // consumed unit from the live inventory slot.
-        equipMainHand(villager, hide);
         villager.swing(InteractionHand.MAIN_HAND, true);
-        SkinRackStateMachine.placeHide(level, pos, hide);
+        boolean ok = SkinRackStateMachine.placeHide(level, pos, hide);
+        log(villager, "doPlace result ok={} invHideAfter={} mainHandAfter={}",
+                ok,
+                countMatching(villager, SkinRackStateMachine::isHideItem),
+                villager.getMainHandItem().isEmpty() ? null : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(villager.getMainHandItem().getItem()));
+        if (ok) {
+            equipMainHand(villager, hide);
+        }
+    }
+
+    private static int countMatching(VillagerEntityMCA villager, java.util.function.Predicate<ItemStack> matcher) {
+        SimpleContainer inv = villager.getInventory();
+        int total = 0;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack s = inv.getItem(i);
+            if (matcher.test(s)) total += s.getCount();
+        }
+        return total;
     }
 
     private static void doSalt(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
         ItemStack salt = findFirstMatching(villager, SkinRackStateMachine::isSaltItem);
         if (salt.isEmpty()) return;
-        equipMainHand(villager, salt);
         villager.swing(InteractionHand.MAIN_HAND, true);
-        SkinRackStateMachine.applySalt(level, pos, salt);
+        if (SkinRackStateMachine.applySalt(level, pos, salt)) {
+            equipMainHand(villager, salt);
+        }
     }
 
     private static void doSoak(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
         ItemStack cloth = findFirstMatching(villager, SpongeRagHelper::isWet);
         if (cloth.isEmpty()) return;
-        equipMainHand(villager, cloth);
         villager.swing(InteractionHand.MAIN_HAND, true);
-        SkinRackStateMachine.applySoak(level, pos, cloth);
+        if (SkinRackStateMachine.applySoak(level, pos, cloth)) {
+            equipMainHand(villager, cloth);
+        }
     }
 
     private static void doCollect(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, BlockState state) {
@@ -466,8 +551,11 @@ public final class SkinRackJob implements LeatherworkerJob {
     private static void equipMainHand(VillagerEntityMCA villager, ItemStack stack) {
         if (stack.isEmpty()) return;
         if (villager.getMainHandItem() == stack) return;
-        // Display only: copy a single unit so the mutation we then perform
-        // on the inventory slot remains the source of truth.
+        // Display only: copy a single unit. The previously held item
+        // (always a 1-unit display copy we installed in a prior cycle, or
+        // empty) is discarded by setItemInHand; that's correct because the
+        // copy was never withdrawn from inventory in the first place.
+        // Recovering it would duplicate.
         //? if >=1.21 {
         ItemStack display = stack.copyWithCount(1);
         //?} else {

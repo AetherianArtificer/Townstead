@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.leatherworking;
 
+import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.Brain;
@@ -35,7 +37,21 @@ public final class LeatherworkerSupplyAcquisitionTicker {
 
         for (LeatherworkerJob job : LeatherworkerJobs.all()) {
             if (!job.isAvailable()) continue;
-            if (job.tryPullMissingSupply(level, villager)) return;
+            boolean pulled = job.tryPullMissingSupply(level, villager);
+            if (debugEnabled()) {
+                Townstead.LOGGER.info("[LeatherworkerSupply] t={} villager={} job={} pulled={}",
+                        level.getGameTime(), villager.getStringUUID(),
+                        job.getClass().getSimpleName(), pulled);
+            }
+            if (pulled) return;
+        }
+    }
+
+    private static boolean debugEnabled() {
+        try {
+            return TownsteadConfig.DEBUG_VILLAGER_AI.get();
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 
