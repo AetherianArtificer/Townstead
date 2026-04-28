@@ -192,6 +192,65 @@ public final class NearbyItemSources {
         return stack.isEmpty();
     }
 
+    /**
+     * Insert {@code stack} into any container located inside the given MCA
+     * Building's bounding box, ignoring blocks outside the building even
+     * when they fall inside the rectangular bounds (the bounding box can
+     * span multiple buildings; {@code containsPos} is the authoritative
+     * membership check). Mutates {@code stack} in place; returns true if
+     * the stack was fully consumed. Useful for production tasks that want
+     * outputs to land in storage owned by the same room as the workstation,
+     * not "anywhere within a 16-block radius."
+     */
+    public static boolean insertIntoBuildingStorage(ServerLevel level, VillagerEntityMCA villager,
+            ItemStack stack, net.conczin.mca.server.world.data.Building building) {
+        if (stack.isEmpty()) return true;
+        if (building == null) return false;
+        BlockPos p0 = building.getPos0();
+        BlockPos p1 = building.getPos1();
+        int minX = Math.min(p0.getX(), p1.getX());
+        int minY = Math.min(p0.getY(), p1.getY());
+        int minZ = Math.min(p0.getZ(), p1.getZ());
+        int maxX = Math.max(p0.getX(), p1.getX());
+        int maxY = Math.max(p0.getY(), p1.getY());
+        int maxZ = Math.max(p0.getZ(), p1.getZ());
+        StorageSearchContext searchContext = new StorageSearchContext(level);
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int y = minY; y <= maxY && !stack.isEmpty(); y++) {
+            for (int x = minX; x <= maxX && !stack.isEmpty(); x++) {
+                for (int z = minZ; z <= maxZ && !stack.isEmpty(); z++) {
+                    cursor.set(x, y, z);
+                    if (!building.containsPos(cursor)) continue;
+                    StorageSearchContext.ObservedBlock observed = searchContext.observe(cursor);
+                    if (observed.protectedStorage()) continue;
+                    BlockEntity be = observed.blockEntity();
+                    if (be == null) continue;
+                    if (isProcessingContainer(observed.state(), be)) continue;
+                    if (be instanceof Container container) {
+                        int beforeCount = stack.getCount();
+                        insertIntoContainer(container, stack);
+                        if (stack.getCount() != beforeCount) {
+                            NearbyStorageIndex.invalidate(level, observed.pos());
+                        }
+                        if (stack.isEmpty()) return true;
+                    }
+                    IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
+                    if (handler != null) {
+                        for (int i = 0; i < handler.getSlots(); i++) {
+                            int beforeCount = stack.getCount();
+                            stack = handler.insertItem(i, stack, false);
+                            if (stack.getCount() != beforeCount) {
+                                NearbyStorageIndex.invalidate(level, observed.pos());
+                            }
+                            if (stack.isEmpty()) return true;
+                        }
+                    }
+                }
+            }
+        }
+        return stack.isEmpty();
+    }
+
     public static boolean isProcessingContainer(ServerLevel level, BlockPos pos, BlockEntity be) {
         return isProcessingContainer(level.getBlockState(pos), be);
     }
@@ -208,6 +267,14 @@ public final class NearbyItemSources {
                     || "skillet".equals(path)
                     || "stove".equals(path)
                     || "cutting_board".equals(path);
+        }
+        if ("butchery".equals(ns)) {
+            // Butchery's MCreator-generated blocks all ship with internal
+            // item slots, regardless of whether the block actually uses
+            // them. Generic deposit scans treat those slots as bottomless
+            // sinks. Treat every block in the namespace as processing
+            // except the freezer, which is the one legitimate storage.
+            return !"freezer".equals(path);
         }
         // Exclude blocks that are clearly machines/devices, not storage
         if (path.contains("machine") || path.contains("vending")

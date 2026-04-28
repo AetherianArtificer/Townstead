@@ -166,5 +166,10 @@
   "sensitive.dialogue.chat.butcher_request.no_skinning_knife/1": "<nervous>I'd feel awful ruining the hide. A skinning knife would help.</nervous>",
   "sensitive.dialogue.chat.butcher_request.no_hacksaw/1": "<nervous>I'd hate to break a good cleaver on iron. A hacksaw would be kinder.</nervous>",
   "sensitive.dialogue.chat.butcher_request.no_cleaner/1": "<nervous>It bothers me to leave blood everywhere. A sponge or rag would help.</nervous>",
-  "sensitive.dialogue.chat.butcher_request.no_hammer/1": "<nervous>I'd rather not improvise on a head. A hammer, please, if you can.</nervous>"
+  "sensitive.dialogue.chat.butcher_request.no_hammer/1": "<nervous>I'd rather not improvise on a head. A hammer, please, if you can.</nervous>",
+  "sensitive.dialogue.chat.leatherworker_request.no_hide/1": "<nervous>I'd hate to waste a workday. A hide would let me start.</nervous>",
+  "sensitive.dialogue.chat.leatherworker_request.no_salt/1": "<nervous>Without salt the hide spoils. I'd really rather not let that happen.</nervous>",
+  "sensitive.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<nervous>A wet sponge or rag would mean so much. The hide is waiting.</nervous>",
+  "sensitive.dialogue.chat.leatherworker_request.no_storage/1": "<nervous>I'd hate for finished leather to sit in my pack. A chest, if you can.</nervous>",
+  "sensitive.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Look... it cured. Properly. I'm so relieved.</happy>"
 }

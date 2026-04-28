@@ -122,5 +122,10 @@
   "grumpy.dialogue.chat.butcher_request.no_skinning_knife/1": "<angry>A skinning knife. Not a butter knife, not a spoon, a skinning knife. Try to keep up.</angry>",
   "grumpy.dialogue.chat.butcher_request.no_hacksaw/1": "<yell>Blazes, you expect me to pry an iron golem apart with my fingernails? Fetch a hacksaw!</yell>",
   "grumpy.dialogue.chat.butcher_request.no_cleaner/1": "<angry>A sponge, a rag, anything. Unless you fancy the smell of a slaughter floor. Which, knowing you, is possible.</angry>",
-  "grumpy.dialogue.chat.butcher_request.no_hammer/1": "<angry>Where is the hammer, blockhead? Skulls don't cave in on their own, and I'm fresh out of patience.</angry>"
+  "grumpy.dialogue.chat.butcher_request.no_hammer/1": "<angry>Where is the hammer, blockhead? Skulls don't cave in on their own, and I'm fresh out of patience.</angry>",
+  "grumpy.dialogue.chat.leatherworker_request.no_hide/1": "<angry>A hide. The thing I work on. Have you forgotten what I do here?</angry>",
+  "grumpy.dialogue.chat.leatherworker_request.no_salt/1": "<angry>Salt. The white grainy stuff. Surely even you can find some.</angry>",
+  "grumpy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<angry>A wet sponge. Or a wet rag. Either. I'm not fussy. I'm just empty-handed.</angry>",
+  "grumpy.dialogue.chat.leatherworker_request.no_storage/1": "<angry>My pack is full of leather. Where's it supposed to go? Your pockets?</angry>",
+  "grumpy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<angry>Done. Leather. Don't touch it with sticky fingers.</angry>"
 }

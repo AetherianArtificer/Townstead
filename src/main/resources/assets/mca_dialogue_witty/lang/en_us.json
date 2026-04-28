@@ -147,5 +147,10 @@
   "witty.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Skinning with a cleaver: bold artistic choice. A proper knife would be saner.</happy>",
   "witty.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>A cleaver on iron is aspirational, not practical. Hacksaw, please.</happy>",
   "witty.dialogue.chat.butcher_request.no_cleaner/1": "<happy>The blood adds character. Still, a sponge would make it less character-building.</happy>",
-  "witty.dialogue.chat.butcher_request.no_hammer/1": "<happy>Cracking a skull with bare hands is a party trick, not a career. Hammer, please.</happy>"
+  "witty.dialogue.chat.butcher_request.no_hammer/1": "<happy>Cracking a skull with bare hands is a party trick, not a career. Hammer, please.</happy>",
+  "witty.dialogue.chat.leatherworker_request.no_hide/1": "<happy>An empty rack is just a sad coat hanger. Bring me a hide, %1$s.</happy>",
+  "witty.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Hide without salt is hide with ambition. Sadly, ambition isn't leather.</happy>",
+  "witty.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>I'd squeeze water from a stone, but a wet sponge would be considerably easier.</happy>",
+  "witty.dialogue.chat.leatherworker_request.no_storage/1": "<happy>I am, technically, a walking chest of leather. Untechnically, I am tired.</happy>",
+  "witty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Leather. Took its time. Most good things do.</happy>"
 }

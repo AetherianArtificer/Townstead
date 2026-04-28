@@ -10,6 +10,7 @@ import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.hunger.ButcherWorkTask;
 import com.aetherianartificer.townstead.hunger.FishermanWorkTask;
+import com.aetherianartificer.townstead.leatherworking.LeatherworkerWorkTask;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.BaristaWorkTask;
@@ -91,7 +92,8 @@ public abstract class VillagerHungerMixin extends Villager {
                         Pair.of(77, new com.aetherianartificer.townstead.compat.butchery.SausageHookTask()),
                         Pair.of(78, new com.aetherianartificer.townstead.compat.butchery.BloodCleanupTask()),
                         Pair.of(79, new com.aetherianartificer.townstead.compat.butchery.HeadHammeringTask()),
-                        Pair.of(80, new com.aetherianartificer.townstead.compat.butchery.SlaughterWorkTask())
+                        Pair.of(80, new com.aetherianartificer.townstead.compat.butchery.SlaughterWorkTask()),
+                        Pair.of(81, new LeatherworkerWorkTask())
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();

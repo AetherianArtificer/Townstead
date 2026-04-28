@@ -121,5 +121,10 @@
   "crabby.dialogue.chat.butcher_request.no_skinning_knife/1": "<angry>No skinning knife. What, I tear the hide off with my teeth too?</angry>",
   "crabby.dialogue.chat.butcher_request.no_hacksaw/1": "<angry>No hacksaw for the iron one. What do you think I am, a blacksmith?</angry>",
   "crabby.dialogue.chat.butcher_request.no_cleaner/1": "<angry>No sponge, no rag, no clean floor. Figure it out.</angry>",
-  "crabby.dialogue.chat.butcher_request.no_hammer/1": "<angry>No hammer. Am I supposed to headbutt it open?</angry>"
+  "crabby.dialogue.chat.butcher_request.no_hammer/1": "<angry>No hammer. Am I supposed to headbutt it open?</angry>",
+  "crabby.dialogue.chat.leatherworker_request.no_hide/1": "<angry>No hide on the rack. What exactly do you expect me to cure?</angry>",
+  "crabby.dialogue.chat.leatherworker_request.no_salt/1": "<angry>No salt. Brilliant. Just let it rot, I guess.</angry>",
+  "crabby.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<angry>Wet sponge. Wet rag. Pick one. Anything. Please.</angry>",
+  "crabby.dialogue.chat.leatherworker_request.no_storage/1": "<angry>Pack's full. Where's this leather supposed to go, my hat?</angry>",
+  "crabby.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Fine. Leather. Took long enough.</happy>"
 }

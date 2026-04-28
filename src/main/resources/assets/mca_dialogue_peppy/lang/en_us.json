@@ -120,5 +120,10 @@
   "peppy.dialogue.chat.butcher_request.no_skinning_knife/1": "<happy>Hey %1$s! Itty bitty problem, no skinning knife! Any chance you've got one?</happy>",
   "peppy.dialogue.chat.butcher_request.no_hacksaw/1": "<happy>Hey %1$s! Could I borrow a hacksaw? Iron golem on my to-do list!</happy>",
   "peppy.dialogue.chat.butcher_request.no_cleaner/1": "<happy>Hey %1$s! Tiny ask, a sponge or rag? Puddles to mop!</happy>",
-  "peppy.dialogue.chat.butcher_request.no_hammer/1": "<happy>Hey %1$s! Could really use a hammer! Head waits for no one!</happy>"
+  "peppy.dialogue.chat.butcher_request.no_hammer/1": "<happy>Hey %1$s! Could really use a hammer! Head waits for no one!</happy>",
+  "peppy.dialogue.chat.leatherworker_request.no_hide/1": "<happy>Hey %1$s! Got a hide for me? Rack's empty and I'm so ready!</happy>",
+  "peppy.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Tiny ask, %1$s, salt please! Cure waits for no one!</happy>",
+  "peppy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>Wet sponge! Or rag! Either's awesome! Bring one over!</happy>",
+  "peppy.dialogue.chat.leatherworker_request.no_storage/1": "<happy>Pack's stuffed, %1$s! A chest would seriously save my day!</happy>",
+  "peppy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Yay! Look at this leather! Soft, smooth, sooo nice!</happy>"
 }
