@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
-import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.leatherworking.LeatherworkerJob;
@@ -189,8 +188,6 @@ public final class SkinRackJob implements LeatherworkerJob {
         }
         // Found work: clear the throttle so the next session re-evaluates promptly.
         NEXT_SCAN_TICK.remove(villager.getUUID());
-        log(villager, "findWork picked action={} anchor={} mask={}",
-                best.action(), best.anchor(), Integer.toBinaryString(supplyMask));
         return Optional.of(best);
     }
 
@@ -251,25 +248,6 @@ public final class SkinRackJob implements LeatherworkerJob {
         NEXT_SCAN_TICK.remove(villager.getUUID());
     }
 
-    private static boolean debugEnabled() {
-        try {
-            return TownsteadConfig.DEBUG_VILLAGER_AI.get();
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static void log(VillagerEntityMCA villager, String message, Object... args) {
-        if (!debugEnabled()) return;
-        String formatted = message;
-        for (Object arg : args) {
-            formatted = formatted.replaceFirst("\\{}",
-                    java.util.regex.Matcher.quoteReplacement(String.valueOf(arg)));
-        }
-        Townstead.LOGGER.info("[SkinRackJob] villager={} {}",
-                villager.getStringUUID(), formatted);
-    }
-
     private static int readSupplyMask(VillagerEntityMCA villager) {
         SimpleContainer inv = villager.getInventory();
         int mask = 0;
@@ -295,29 +273,20 @@ public final class SkinRackJob implements LeatherworkerJob {
         if (!(basePlan instanceof Plan plan)) return;
         BlockPos pos = plan.anchor();
         BlockState state = level.getBlockState(pos);
-        log(villager, "execute enter plannedAction={} pos={} liveBlock={} liveState={} villagerPos={}",
-                plan.action(), pos,
-                net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()),
-                SkinRackStateMachine.isSkinRack(state) ? SkinRackStateMachine.currentState(state) : -1,
-                villager.blockPosition());
 
         if (plan.action() == Action.WET_CLOTH) {
             if (state.is(net.minecraft.world.level.block.Blocks.WATER_CAULDRON)) {
                 doWetCloth(level, villager, pos);
-            } else {
-                log(villager, "execute WET_CLOTH abort: not a water cauldron at pos={}", pos);
             }
             return;
         }
 
-        if (!SkinRackStateMachine.isSkinRack(state)) {
-            log(villager, "execute abort: anchor is not a skin rack pos={}", pos);
-            return;
-        }
+        if (!SkinRackStateMachine.isSkinRack(state)) return;
 
+        // Re-pick the action against the live blockstate. Between findWork
+        // and execute, the mod's 1800-tick queue or another worker may have
+        // advanced the rack. Honor whatever the current state allows.
         Action action = pickAction(state, readSupplyMask(villager));
-        log(villager, "execute re-picked action={} (planned was {}) liveState={}",
-                action, plan.action(), SkinRackStateMachine.currentState(state));
         if (action == null) return;
 
         switch (action) {
@@ -463,32 +432,14 @@ public final class SkinRackJob implements LeatherworkerJob {
 
     private static void doPlace(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
         ItemStack hide = findFirstMatching(villager, SkinRackStateMachine::isHideItem);
-        log(villager, "doPlace pos={} foundHide={} count={} mainHandBefore={} invHideTotal={}",
-                pos,
-                hide.isEmpty() ? null : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(hide.getItem()),
-                hide.getCount(),
-                villager.getMainHandItem().isEmpty() ? null : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(villager.getMainHandItem().getItem()),
-                countMatching(villager, SkinRackStateMachine::isHideItem));
         if (hide.isEmpty()) return;
         villager.swing(InteractionHand.MAIN_HAND, true);
-        boolean ok = SkinRackStateMachine.placeHide(level, pos, hide);
-        log(villager, "doPlace result ok={} invHideAfter={} mainHandAfter={}",
-                ok,
-                countMatching(villager, SkinRackStateMachine::isHideItem),
-                villager.getMainHandItem().isEmpty() ? null : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(villager.getMainHandItem().getItem()));
-        if (ok) {
+        // Mutate world + inventory atomically inside placeHide. Only on a
+        // confirmed block update do we touch main hand for visual sync, so
+        // a failed mutation never leaks the supply.
+        if (SkinRackStateMachine.placeHide(level, pos, hide)) {
             equipMainHand(villager, hide);
         }
-    }
-
-    private static int countMatching(VillagerEntityMCA villager, java.util.function.Predicate<ItemStack> matcher) {
-        SimpleContainer inv = villager.getInventory();
-        int total = 0;
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack s = inv.getItem(i);
-            if (matcher.test(s)) total += s.getCount();
-        }
-        return total;
     }
 
     private static void doSalt(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
@@ -522,12 +473,84 @@ public final class SkinRackJob implements LeatherworkerJob {
 
         ItemStack drop = SkinRackStateMachine.collectAndClear(level, pos, state);
         if (drop.isEmpty()) return;
-        ItemStack leftover = villager.getInventory().addItem(drop);
+        // Prefer a chest in the same building as the rack so cured leather
+        // lands in the leatherworker's own room, not wherever a 16-block
+        // radius scan happens to drift to. Inventory and rack-feet drop are
+        // last-resort fallbacks so leather never vanishes.
+        ItemStack remaining = drop.copy();
+        depositIntoSameBuilding(level, villager, remaining, pos);
+        if (remaining.isEmpty()) return;
+        ItemStack leftover = villager.getInventory().addItem(remaining);
         if (!leftover.isEmpty()) {
-            // Inventory full: drop at the rack so the player notices and so
-            // the workflow doesn't strand the leather inside a closed slot.
             SkinRackStateMachine.spawnDrop(level, pos, leftover);
         }
+    }
+
+    /**
+     * Insert {@code stack} into storage inside the same building as
+     * {@code anchor}. Falls through to the shared
+     * {@link NearbyItemSources#insertIntoBuildingStorage} which iterates the
+     * building's bounds and skips processing containers. Mutates the stack
+     * in place; on return the remaining count is whatever didn't fit.
+     */
+    private static void depositIntoSameBuilding(ServerLevel level, VillagerEntityMCA villager,
+            ItemStack stack, BlockPos anchor) {
+        if (stack.isEmpty()) return;
+        Building owner = findOwningBuilding(villager, anchor);
+        if (owner == null) return;
+        NearbyItemSources.insertIntoBuildingStorage(level, villager, stack, owner);
+    }
+
+    @Nullable
+    private static Building findOwningBuilding(VillagerEntityMCA villager, BlockPos anchor) {
+        Village village = resolveVillage(villager).orElse(null);
+        if (village == null) return null;
+        for (Building b : village.getBuildings().values()) {
+            if (!b.isComplete()) continue;
+            if (b.containsPos(anchor)) return b;
+        }
+        return null;
+    }
+
+    /**
+     * Push any leather currently in the villager's inventory into nearby
+     * storage. Called from the supply acquisition tick so leather doesn't
+     * pile up indefinitely when the rack-side {@code doCollect} couldn't
+     * find a chest in range at collection time. Returns true if at least
+     * one leather unit was moved.
+     */
+    public static boolean drainLeatherToStorage(ServerLevel level, VillagerEntityMCA villager) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) return false;
+        // Anchor the drain at the leatherworker's job-site cauldron, not at
+        // wherever they happen to be standing. Without this, leather lands
+        // in whatever random building the villager is wandering through
+        // (a barrel in the town center, a chest in the slaughterhouse,
+        // etc.). The job-site building is their stable workplace.
+        BlockPos anchor = jobSiteAnchor(level, villager);
+        if (anchor == null) return false;
+        SimpleContainer inv = villager.getInventory();
+        boolean moved = false;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty() || stack.getItem() != Items.LEATHER) continue;
+            ItemStack remaining = stack.copy();
+            depositIntoSameBuilding(level, villager, remaining, anchor);
+            if (remaining.getCount() != stack.getCount()) {
+                inv.setItem(i, remaining);
+                moved = true;
+            }
+        }
+        return moved;
+    }
+
+    @Nullable
+    private static BlockPos jobSiteAnchor(ServerLevel level, VillagerEntityMCA villager) {
+        var memory = villager.getBrain().getMemory(
+                net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE);
+        if (memory == null || memory.isEmpty()) return null;
+        net.minecraft.core.GlobalPos gp = memory.get();
+        if (!gp.dimension().equals(level.dimension())) return null;
+        return gp.pos();
     }
 
     private static void spawnAtFeet(ServerLevel level, VillagerEntityMCA villager, ItemStack stack) {

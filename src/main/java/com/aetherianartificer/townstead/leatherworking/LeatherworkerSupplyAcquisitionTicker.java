@@ -1,7 +1,5 @@
 package com.aetherianartificer.townstead.leatherworking;
 
-import com.aetherianartificer.townstead.Townstead;
-import com.aetherianartificer.townstead.TownsteadConfig;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.Brain;
@@ -35,23 +33,18 @@ public final class LeatherworkerSupplyAcquisitionTicker {
         if (next != null && gameTime < next) return;
         NEXT_PULL_TICK.put(villager.getUUID(), gameTime + PULL_INTERVAL_TICKS);
 
+        // Drain finished leather first: it accumulates fastest when racks
+        // cure faster than the leatherworker can deposit during COLLECT,
+        // and players expect storage to fill up rather than the villager's
+        // pack. Done before the per-job pull pass so even pull-throttled
+        // ticks still empty the leatherworker.
+        if (com.aetherianartificer.townstead.compat.butchery.ButcheryCompat.isLoaded()) {
+            com.aetherianartificer.townstead.compat.butchery.SkinRackJob.drainLeatherToStorage(level, villager);
+        }
+
         for (LeatherworkerJob job : LeatherworkerJobs.all()) {
             if (!job.isAvailable()) continue;
-            boolean pulled = job.tryPullMissingSupply(level, villager);
-            if (debugEnabled()) {
-                Townstead.LOGGER.info("[LeatherworkerSupply] t={} villager={} job={} pulled={}",
-                        level.getGameTime(), villager.getStringUUID(),
-                        job.getClass().getSimpleName(), pulled);
-            }
-            if (pulled) return;
-        }
-    }
-
-    private static boolean debugEnabled() {
-        try {
-            return TownsteadConfig.DEBUG_VILLAGER_AI.get();
-        } catch (Throwable ignored) {
-            return false;
+            if (job.tryPullMissingSupply(level, villager)) return;
         }
     }
 

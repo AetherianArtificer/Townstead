@@ -61,16 +61,7 @@ public class LeatherworkerWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (villager.getVillagerData().getProfession() != VillagerProfession.LEATHERWORKER) return false;
-        Match match = findActionableJob(level, villager);
-        if (debugEnabled() && (level.getGameTime() & 127L) == 0L) {
-            // Log roughly once every 6 seconds per leatherworker so the
-            // operator can see whether the gate is evaluating jobs at all.
-            int jobs = LeatherworkerJobs.all().size();
-            Townstead.LOGGER.info("[Leatherworker] gate t={} villager={} jobsRegistered={} match={}",
-                    level.getGameTime(), villager.getStringUUID(), jobs,
-                    match == null ? "null" : (match.job.getClass().getSimpleName() + "@" + match.plan.anchor()));
-        }
-        return match != null;
+        return findActionableJob(level, villager) != null;
     }
 
     @Override
