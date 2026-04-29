@@ -70,7 +70,9 @@ public final class WorkToolTicker {
     private static final List<Rule> RULES = List.of(
             new Rule(VillagerProfession.FARMER, stack -> stack.getItem() instanceof HoeItem),
             new Rule(VillagerProfession.FISHERMAN, FishermanSupplyManager::isFishingRod),
-            new Rule(VillagerProfession.BUTCHER, WorkToolTicker::isButcherTool)
+            new Rule(VillagerProfession.BUTCHER, WorkToolTicker::isButcherTool),
+            new Rule(VillagerProfession.SHEPHERD,
+                    com.aetherianartificer.townstead.shepherd.ShepherdShearToolCompatRegistry::isCompatibleShears)
     );
 
     /**
