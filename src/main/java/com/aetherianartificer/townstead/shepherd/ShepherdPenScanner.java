@@ -22,6 +22,7 @@ import java.util.Optional;
  */
 public final class ShepherdPenScanner {
     private static final String PEN_TYPE = "pen";
+    private static final String WOOL_SHED_TYPE = "wool_shed";
 
     private ShepherdPenScanner() {}
 
@@ -34,6 +35,22 @@ public final class ShepherdPenScanner {
         for (Building b : villageOpt.get().getBuildings().values()) {
             if (!b.isComplete()) continue;
             if (PEN_TYPE.equals(b.getType())) out.add(b);
+        }
+        return out;
+    }
+
+    /**
+     * Wool Sheds in the villager's village, in arbitrary order. Used as
+     * the preferred wool-deposit destination before falling back to any
+     * nearby storage.
+     */
+    public static List<Building> woolSheds(ServerLevel level, VillagerEntityMCA villager) {
+        Optional<Village> villageOpt = resolveVillage(villager);
+        if (villageOpt.isEmpty()) return Collections.emptyList();
+        List<Building> out = new ArrayList<>();
+        for (Building b : villageOpt.get().getBuildings().values()) {
+            if (!b.isComplete()) continue;
+            if (WOOL_SHED_TYPE.equals(b.getType())) out.add(b);
         }
         return out;
     }

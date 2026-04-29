@@ -1,0 +1,15 @@
+{
+  "color": "ffd9c89a",
+  "visible": true,
+  "priority": 2,
+  "icon": true,
+  "iconU": 240,
+  "iconV": 200,
+  "townsteadNodeItem": "minecraft:loom",
+  "townsteadSpirit": { "pastoral": 5, "industrious": 1 },
+  "blocks": {
+    "minecraft:loom": 1,
+    "#townstead:wool_shed_storage": 1,
+    "#minecraft:wool": 1
+  }
+}

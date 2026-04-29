@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.shepherd;
 
 import com.aetherianartificer.townstead.Townstead;
-import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -40,8 +39,6 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
      *  as a deliberate cut rather than a hold-to-shear. Vanilla shears are
      *  effectively instant; the cooldown is for animation cadence. */
     private static final int SHEAR_COOLDOWN_TICKS = 12;
-    private static final int STORAGE_DEPOSIT_RADIUS = 16;
-    private static final int STORAGE_DEPOSIT_VERTICAL = 3;
     private static final double WOOL_PICKUP_RADIUS = 2.5;
 
     private enum Phase {
@@ -68,6 +65,9 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (villager.getVillagerData().getProfession() != VillagerProfession.SHEPHERD) return false;
         if (!ShepherdToolDamage.hasShears(villager)) return false;
+        // If the villager has no room for more wool, yield to ShepherdDepositTask
+        // so they walk to the Wool Shed and unload before continuing.
+        if (!ShepherdInventory.hasRoomForWool(villager)) return false;
         return ShepherdPenScanner.pickShearable(level, villager) != null;
     }
 
@@ -143,16 +143,17 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
         // players can't immediately re-grab their own drops; that delay is
         // irrelevant when the villager absorbs the items directly, so we
         // skip the hasPickUpDelay() check.
+        // Vanilla Sheep#shear spawns wool as ItemEntities at the sheep's
+        // position. Sweep them into the villager's inventory; whatever
+        // doesn't fit stays on the ground for the player to deal with —
+        // physical delivery to the Wool Shed is handled by
+        // ShepherdDepositTask once the villager has wool to ferry.
         AABB pickup = sheep.getBoundingBox().inflate(WOOL_PICKUP_RADIUS);
         List<ItemEntity> drops = level.getEntitiesOfClass(ItemEntity.class, pickup,
                 ie -> ie.isAlive() && ie.getItem().is(ItemTags.WOOL));
         for (ItemEntity drop : drops) {
             ItemStack stack = drop.getItem().copy();
             ItemStack remainder = villager.getInventory().addItem(stack);
-            if (!remainder.isEmpty()) {
-                NearbyItemSources.insertIntoNearbyStorage(level, villager, remainder,
-                        STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
-            }
             if (remainder.isEmpty()) {
                 drop.discard();
             } else {
@@ -160,27 +161,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         villager.getInventory().setChanged();
-
-        deliverPendingWool(level, villager);
         awardXp(villager, 1, level.getGameTime());
-    }
-
-    /**
-     * Push any wool currently in the villager's inventory to nearby
-     * storage. Called after each shear so wool doesn't accumulate to the
-     * point of dropping freshly-cut stacks on the ground when inventory
-     * fills up. Silent no-op if no chest is in range.
-     */
-    private static void deliverPendingWool(ServerLevel level, VillagerEntityMCA villager) {
-        SimpleContainer inv = villager.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty() || !stack.is(ItemTags.WOOL)) continue;
-            NearbyItemSources.insertIntoNearbyStorage(level, villager, stack,
-                    STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
-            if (stack.isEmpty()) inv.setItem(i, ItemStack.EMPTY);
-        }
-        inv.setChanged();
     }
 
     private void equipShearsIfAvailable(VillagerEntityMCA villager) {

@@ -1,0 +1,6 @@
+{
+  "label": "Wool Sheds",
+  "match_prefix": "wool_shed",
+  "layout": "grid",
+  "priority": 6
+}
