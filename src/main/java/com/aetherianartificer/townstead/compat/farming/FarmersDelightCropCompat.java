@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.compat.farming;
 
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCompat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -55,6 +56,11 @@ public final class FarmersDelightCropCompat implements FarmerCropCompat {
         ResourceLocation key = state.getBlock().builtInRegistryHolder().key().location();
         // Tomato vine — partial harvest when ripe, resets to age 0.
         if (ModCompat.matchesLoadedModPath(key, MOD_ID, "tomatoes")) {
+            return isMatureAge(state);
+        }
+        // FD 1.3 split the rope-hung variant into its own block.
+        if (FarmersDelightCompat.isAtLeast13()
+                && ModCompat.matchesLoadedModPath(key, MOD_ID, "tomatoes_on_rope")) {
             return isMatureAge(state);
         }
         // Mushroom colonies — harvestable at any age > 0; each harvest yields one mushroom and

@@ -7,6 +7,7 @@ import com.aetherianartificer.townstead.ai.work.WorkPathing;
 import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
 import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions;
 import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
+import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
@@ -696,7 +697,9 @@ public final class StationHandler {
 
         BlockState state = level.getBlockState(stationAnchor);
         ServerPlayer actor = cuttingBoardActor(level);
-        if (actor != null) {
+        // FD 1.3 removed all off-hand interaction with cutting boards. The simulated-player path
+        // below relies on placing via off-hand, so on 1.3+ we go straight to the BE reflection path.
+        if (actor != null && !FarmersDelightCompat.isAtLeast13()) {
             ItemStack previousMain = actor.getMainHandItem().copy();
             ItemStack previousOff = actor.getOffhandItem().copy();
             try {
@@ -724,8 +727,9 @@ public final class StationHandler {
         if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
         try {
             Object placed = FD_CUTTING_BOARD_ADD_ITEM.invoke(be, inputStack);
-            if (!(placed instanceof Boolean b && b)) {
-                villager.getInventory().addItem(inputStack);
+            if (!cuttingBoardAddItemFullyPlaced(placed)) {
+                ItemStack leftover = placed instanceof ItemStack stack ? stack : inputStack;
+                if (!leftover.isEmpty()) villager.getInventory().addItem(leftover);
                 return false;
             }
             Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, cuttingBoardActor(level));
@@ -748,7 +752,8 @@ public final class StationHandler {
         if (stationAnchor == null || inputStack.isEmpty()) return false;
         BlockState state = level.getBlockState(stationAnchor);
         ServerPlayer actor = cuttingBoardActor(level);
-        if (actor != null) {
+        // FD 1.3 removed off-hand cutting-board interaction; skip the simulated path on 1.3+.
+        if (actor != null && !FarmersDelightCompat.isAtLeast13()) {
             ItemStack previousMain = actor.getMainHandItem().copy();
             ItemStack previousOff = actor.getOffhandItem().copy();
             try {
@@ -770,10 +775,18 @@ public final class StationHandler {
         if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
         try {
             Object placed = FD_CUTTING_BOARD_ADD_ITEM.invoke(be, inputStack);
-            return placed instanceof Boolean b && b;
+            return cuttingBoardAddItemFullyPlaced(placed);
         } catch (Throwable ignored) {
             return false;
         }
+    }
+
+    // FD <1.3 returned boolean (true = placed). FD 1.3+ returns the leftover ItemStack
+    // (empty = fully placed). Reflection callers must accept both shapes.
+    private static boolean cuttingBoardAddItemFullyPlaced(Object result) {
+        if (result instanceof Boolean b) return b;
+        if (result instanceof ItemStack stack) return stack.isEmpty();
+        return false;
     }
 
     public static boolean processCuttingBoardStoredItem(
@@ -785,7 +798,9 @@ public final class StationHandler {
 
         BlockState state = level.getBlockState(stationAnchor);
         ServerPlayer actor = cuttingBoardActor(level);
-        if (actor != null) {
+        // FD 1.3 reworked the cutting board (full-stack handling); go BE-direct on 1.3+ to avoid
+        // depending on block-use semantics that may have shifted.
+        if (actor != null && !FarmersDelightCompat.isAtLeast13()) {
             ItemStack previousMain = actor.getMainHandItem().copy();
             ItemStack previousOff = actor.getOffhandItem().copy();
             try {

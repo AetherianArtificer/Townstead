@@ -795,6 +795,10 @@ public class FieldPostScreen extends Screen {
         if (blockKey != null) {
             String ns = blockKey.getNamespace();
             String blockPath = blockKey.getPath();
+            // FD 1.3 split tomato vines into tomatoes (ground) and tomatoes_on_rope (hanging).
+            if ("farmersdelight".equals(ns) && "tomatoes_on_rope".equals(blockPath)) {
+                blockPath = "tomatoes";
+            }
             // Try several common naming patterns that mods use
             String[] candidates = {
                     blockPath,                                              // exact match
