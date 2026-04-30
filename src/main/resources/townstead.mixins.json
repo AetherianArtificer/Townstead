@@ -13,8 +13,10 @@
     "ReportBuildingMessageMixin",
     "TombstoneRevivalMixin",
     "VillagerEatSafetyMixin",
+    "PathNavigationFenceGateMixin",
     "VillagerHungerMixin",
-    "VillagerServerTickMixin"
+    "VillagerServerTickMixin",
+    "WalkNodeEvaluatorFenceGateMixin"
   ],
   "client": [
     "BlueprintScreenMixin",

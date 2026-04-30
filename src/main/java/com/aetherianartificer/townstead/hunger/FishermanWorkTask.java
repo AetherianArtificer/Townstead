@@ -725,13 +725,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             /*TownsteadNetwork.sendToTrackingEntity(hook, payload);
             TownsteadNetwork.sendToTrackingEntity(villager, payload);
             *///?}
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
-                LOGGER.info("[Fisherman] broadcast hook-link hookId={} villagerId={}", hookEntityId, villagerEntityId);
-            }
-        } catch (Throwable t) {
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
-                LOGGER.warn("[Fisherman] hook-link broadcast failed: {}", t.toString());
-            }
+        } catch (Throwable ignored) {
         }
     }
 
