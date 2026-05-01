@@ -31,6 +31,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/CatalogDataLoader");
     private static final Gson GSON = new Gson();
     private static final String DIRECTORY = "townstead/catalog";
+    private static final ResourceLocation CLIENT_THEME =
+            ResourceLocation.tryParse(Townstead.MOD_ID + ":" + DIRECTORY + "/theme.json");
 
     public record GroupDef(String id, String label, String matchPrefix, String layout, String tierPrefix, int priority) {
     }
@@ -39,8 +41,23 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         public static final BuildingOverride EMPTY = new BuildingOverride(Optional.empty(), false);
     }
 
+    public record Theme(Optional<ResourceLocation> backgroundTexture, int frameColor, int panelColor,
+            int titleBarColor, int graphBackgroundColor, int detailsBackgroundColor, int borderColor, int gridColor,
+            boolean showGrid, int nodeFillColor, int nodeHoverFillColor, int nodeSelectedFillColor,
+            int nodeBorderColor, int nodeHoverBorderColor, int nodeSelectedBorderColor, int builtNodeFillColor,
+            int builtNodeHoverFillColor, int builtNodeSelectedFillColor, int builtNodeBorderColor,
+            int builtNodeHoverBorderColor, int builtNodeSelectedBorderColor) {
+        public static final Theme DEFAULT = new Theme(Optional.empty(), 0xFFDEDEDE, 0xFF2B2F38,
+                0xFF3A3F47, 0xFF1B1E24, 0xFF232A36, 0xFF8CA2BF, 0x182A2F38, true,
+                0xFF2A3342, 0xFF34435A, 0xFF3A4D66, 0xFF6D7A8D, 0xFFB8C7DB, 0xFFD9E9FF,
+                0xFF1F4029, 0xFF295236, 0xFF2F5C3A, 0xFF5F9466, 0xFFA8D9AE, 0xFFCDEBD0);
+    }
+
     private static final List<GroupDef> GROUPS = new CopyOnWriteArrayList<>();
     private static final Map<String, BuildingOverride> OVERRIDES = new LinkedHashMap<>();
+    private static volatile Theme THEME = Theme.DEFAULT;
+    private static volatile Theme DATA_THEME = Theme.DEFAULT;
+    private static volatile ResourceManager CLIENT_THEME_RESOURCE_MANAGER = null;
 
     public CatalogDataLoader() {
         super(GSON, DIRECTORY);
@@ -53,6 +70,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         synchronized (OVERRIDES) {
             OVERRIDES.clear();
         }
+        THEME = Theme.DEFAULT;
         BuildingSpiritIndex.clear();
         EnclosureTypeIndex.clear();
 
@@ -67,6 +85,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 } else if (path.startsWith("buildings/")) {
                     String buildingType = path.substring("buildings/".length());
                     loadOverride(buildingType, json);
+                } else if ("theme".equals(path) && Townstead.MOD_ID.equals(location.getNamespace())) {
+                    loadTheme(json);
                 }
             } catch (Exception ex) {
                 LOGGER.warn("Rejected catalog entry '{}': {}", location, ex.getMessage());
@@ -75,6 +95,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
 
         scanLegacyBuildingTypes(resourceManager);
         scanSpiritCompanions(resourceManager);
+        DATA_THEME = THEME;
+        CLIENT_THEME_RESOURCE_MANAGER = null;
 
         GROUPS.sort(Comparator.comparingInt(GroupDef::priority).reversed()
                 .thenComparing(g -> -g.matchPrefix().length()));
@@ -113,6 +135,54 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         if (json.has("townsteadSpirit")) {
             Map<String, Integer> spirit = parseSpiritMap(json.getAsJsonObject("townsteadSpirit"), null);
             if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
+        }
+    }
+
+    private static void loadTheme(JsonObject json) {
+        Theme base = THEME;
+        Optional<ResourceLocation> backgroundTexture = base.backgroundTexture();
+        if (json.has("background_texture")) {
+            ResourceLocation parsed = ResourceLocation.tryParse(GsonHelper.getAsString(json, "background_texture"));
+            if (parsed != null)
+                backgroundTexture = Optional.of(parsed);
+        }
+        THEME = new Theme(backgroundTexture,
+                color(json, "frame_color", base.frameColor()),
+                color(json, "panel_color", base.panelColor()),
+                color(json, "title_bar_color", base.titleBarColor()),
+                color(json, "graph_background_color", base.graphBackgroundColor()),
+                color(json, "details_background_color", base.detailsBackgroundColor()),
+                color(json, "border_color", base.borderColor()),
+                color(json, "grid_color", base.gridColor()),
+                GsonHelper.getAsBoolean(json, "show_grid", base.showGrid()),
+                color(json, "node_fill_color", base.nodeFillColor()),
+                color(json, "node_hover_fill_color", base.nodeHoverFillColor()),
+                color(json, "node_selected_fill_color", base.nodeSelectedFillColor()),
+                color(json, "node_border_color", base.nodeBorderColor()),
+                color(json, "node_hover_border_color", base.nodeHoverBorderColor()),
+                color(json, "node_selected_border_color", base.nodeSelectedBorderColor()),
+                color(json, "built_node_fill_color", base.builtNodeFillColor()),
+                color(json, "built_node_hover_fill_color", base.builtNodeHoverFillColor()),
+                color(json, "built_node_selected_fill_color", base.builtNodeSelectedFillColor()),
+                color(json, "built_node_border_color", base.builtNodeBorderColor()),
+                color(json, "built_node_hover_border_color", base.builtNodeHoverBorderColor()),
+                color(json, "built_node_selected_border_color", base.builtNodeSelectedBorderColor()));
+    }
+
+    private static int color(JsonObject json, String key, int fallback) {
+        if (!json.has(key))
+            return fallback;
+        String raw = GsonHelper.getAsString(json, key).trim();
+        if (raw.startsWith("#"))
+            raw = raw.substring(1);
+        try {
+            long parsed = Long.parseLong(raw, 16);
+            if (raw.length() <= 6)
+                parsed |= 0xFF000000L;
+            return (int) parsed;
+        } catch (NumberFormatException ex) {
+            LOGGER.warn("Invalid catalog theme color '{}': '{}'", key, raw);
+            return fallback;
         }
     }
 
@@ -262,6 +332,28 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     public static BuildingOverride overrideFor(String buildingType) {
         synchronized (OVERRIDES) {
             return OVERRIDES.getOrDefault(buildingType, BuildingOverride.EMPTY);
+        }
+    }
+
+    public static Theme theme() {
+        return THEME;
+    }
+
+    public static void refreshClientTheme(ResourceManager resourceManager) {
+        if (resourceManager == null || resourceManager == CLIENT_THEME_RESOURCE_MANAGER)
+            return;
+        CLIENT_THEME_RESOURCE_MANAGER = resourceManager;
+        THEME = DATA_THEME;
+        Optional<Resource> resource = resourceManager.getResource(CLIENT_THEME);
+        if (resource.isEmpty())
+            return;
+        try (InputStream in = resource.get().open();
+                InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+            JsonObject json = GSON.fromJson(reader, JsonObject.class);
+            if (json != null)
+                loadTheme(json);
+        } catch (Exception ex) {
+            LOGGER.warn("Rejected client catalog theme '{}': {}", CLIENT_THEME, ex.getMessage());
         }
     }
 
