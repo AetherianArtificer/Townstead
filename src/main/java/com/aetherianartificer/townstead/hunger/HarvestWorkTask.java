@@ -766,10 +766,13 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private Iterable<BlockPos> townstead$harvestCandidatesNear(ServerLevel level, BlockPos cropPos) {
-        java.util.ArrayList<BlockPos> candidates = new java.util.ArrayList<>(6);
+        java.util.ArrayList<BlockPos> candidates = new java.util.ArrayList<>(8);
         candidates.add(cropPos);
-        // Stacked perennials: FD tomato vine sits one above the budding base; YH tea is double-tall.
+        // Stacked perennials: FD tomato vine sits one above the budding base, YH tea is double-tall,
+        // and Farm & Charm tomatoes can climb several blocks when rope-supported.
         candidates.add(cropPos.above());
+        candidates.add(cropPos.above(2));
+        candidates.add(cropPos.above(3));
         BlockState state = level.getBlockState(cropPos);
         if (state.getBlock() instanceof StemBlock || state.getBlock() instanceof AttachedStemBlock) {
             for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {

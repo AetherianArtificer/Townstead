@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.compat.farming;
 
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.farmandcharm.FarmAndCharmCropCompat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
@@ -11,6 +12,7 @@ import java.util.List;
 public final class FarmerCropCompatRegistry {
     private static final List<FarmerCropCompat> PROVIDERS = List.of(
             new FarmersDelightCropCompat(),
+            new FarmAndCharmCropCompat(),
             new YoukaiHomecomingCropCompat(),
             new PeruvianDelightCropCompat(),
             new VineryCropCompat(),
