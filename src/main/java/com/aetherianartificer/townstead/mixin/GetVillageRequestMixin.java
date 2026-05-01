@@ -38,11 +38,11 @@ public abstract class GetVillageRequestMixin {
         Optional<Village> village = Village.findNearest(player);
         if (village.isEmpty()) return;
         Village v = village.get();
-        // Recompute fresh before sending so the snapshot we ship is current,
-        // even if some building change path didn't route through one of the
-        // existing reconcile hooks.
-        SpiritReconciler.reconcileVillage(level, v);
         VillageSpiritCache.Entry entry = VillageSpiritCache.get(level, v.getId());
+        if (entry == null) {
+            SpiritReconciler.reconcileVillage(level, v);
+            entry = VillageSpiritCache.get(level, v.getId());
+        }
         if (entry == null) return;
         VillageSpiritSyncPayload payload = VillageSpiritSyncPayload.fromCache(v.getId(), entry);
         //? if neoforge {

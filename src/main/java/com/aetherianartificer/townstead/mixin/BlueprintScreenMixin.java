@@ -5,6 +5,7 @@ package com.aetherianartificer.townstead.mixin;
 *///?}
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.aetherianartificer.townstead.mixin.accessor.BlueprintScreenAccessor;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
@@ -13,8 +14,6 @@ import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import net.conczin.mca.MCA;
 import net.conczin.mca.client.gui.BlueprintScreen;
@@ -77,11 +76,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.net.URL;
-import java.util.Enumeration;
 
 @Mixin(BlueprintScreen.class)
 public abstract class BlueprintScreenMixin extends Screen {
@@ -203,10 +197,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     private double townstead$lastDragX = 0.0;
     @Unique
     private double townstead$lastDragY = 0.0;
-    @Unique
-    private final Map<String, Optional<ResourceLocation>> townstead$nodeItemIconCache = new HashMap<>();
-    @Unique
-    private final Map<Long, Optional<ResourceLocation>> townstead$iconUvItemCache = new HashMap<>();
     @Unique
     private int townstead$catalogNeedsPage = 0;
     @Unique
@@ -336,7 +326,6 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$setNavVisible(true);
         } else if (TOWNSTEAD_CATALOG_PAGE.equals(this.page)) {
             townstead$recomputeCatalogDims();
-            townstead$nodeItemIconCache.clear();
             townstead$buildCatalogEntries();
             townstead$buildCatalogNodes();
             townstead$addCatalogControls();
@@ -759,26 +748,7 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private Optional<ResourceLocation> townstead$nodeItemForIconUv(int u, int v) {
-        long key = (((long) u) << 32) ^ (v & 0xFFFFFFFFL);
-        return townstead$iconUvItemCache.computeIfAbsent(key, ignored -> {
-            ResourceLocation resolved = null;
-            for (BuildingType bt : BuildingTypes.getInstance()) {
-                if (bt.iconU() != u || bt.iconV() != v)
-                    continue;
-                Optional<ResourceLocation> candidate = townstead$nodeItemForType(bt.name());
-                if (candidate.isEmpty() || !BuiltInRegistries.ITEM.containsKey(candidate.get()))
-                    continue;
-                if (resolved == null) {
-                    resolved = candidate.get();
-                    continue;
-                }
-                if (!resolved.equals(candidate.get())) {
-                    // Ambiguous icon slot: do not override vanilla icon rendering.
-                    return Optional.empty();
-                }
-            }
-            return Optional.ofNullable(resolved);
-        });
+        return BuildingIconResolver.nodeItemForIconUv(u, v);
     }
 
     //? if neoforge {
@@ -1472,47 +1442,7 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private Optional<ResourceLocation> townstead$nodeItemForType(String buildingTypeName) {
-        Optional<ResourceLocation> cached = townstead$nodeItemIconCache.get(buildingTypeName);
-        if (cached != null && cached.isPresent()) {
-            return cached;
-        }
-        Optional<ResourceLocation> datapack =
-                com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.overrideFor(buildingTypeName).nodeItem();
-        if (datapack.isPresent()) {
-            townstead$nodeItemIconCache.put(buildingTypeName, datapack);
-            return datapack;
-        }
-        Optional<ResourceLocation> result = Optional.empty();
-        try {
-            String relPath = buildingTypeName.startsWith("compat/")
-                    ? "townstead_compat/building_types/" + buildingTypeName + ".json"
-                    : "data/mca/building_types/" + buildingTypeName + ".json";
-            ClassLoader cl = BlueprintScreenMixin.class.getClassLoader();
-            if (cl != null) {
-                Enumeration<URL> urls = cl.getResources(relPath);
-                while (urls.hasMoreElements()) {
-                    URL url = urls.nextElement();
-                    try (InputStream in = url.openStream();
-                            InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-                        JsonObject obj = JsonParser.parseReader(reader).getAsJsonObject();
-                        if (obj.has("townsteadNodeItem")) {
-                            //? if >=1.21 {
-                            result = Optional.of(ResourceLocation.parse(obj.get("townsteadNodeItem").getAsString()));
-                            //?} else {
-                            /*result = Optional.of(new ResourceLocation(obj.get("townsteadNodeItem").getAsString()));
-                            *///?}
-                            break;
-                        }
-                    }
-                }
-            }
-        } catch (Exception ignored) {
-            result = Optional.empty();
-        }
-        if (result.isPresent()) {
-            townstead$nodeItemIconCache.put(buildingTypeName, result);
-        }
-        return result;
+        return BuildingIconResolver.nodeItemForType(buildingTypeName);
     }
 
     @Unique

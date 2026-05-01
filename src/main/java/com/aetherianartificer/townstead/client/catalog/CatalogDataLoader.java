@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.catalog;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import com.aetherianartificer.townstead.spirit.BuildingSpiritIndex;
 import com.aetherianartificer.townstead.spirit.SpiritRegistry;
@@ -73,6 +74,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         THEME = Theme.DEFAULT;
         BuildingSpiritIndex.clear();
         EnclosureTypeIndex.clear();
+        BuildingIconResolver.invalidate();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation location = entry.getKey();
