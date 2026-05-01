@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.client.gui.dialogue;
 import com.aetherianartificer.townstead.client.gui.dialogue.DialogueAccessibility;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffects;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser;
+import net.conczin.mca.Config;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -36,23 +37,14 @@ public class TypewriterText {
     private EffectTagParser.ParseResult effectParseResult;
 
     public void setText(Component text, Font font, int maxWidth) {
-        String rawText = text.getString();
+        DisplayText displayText = resolveDisplayText(text);
 
-        // If the resolved text has no tags, check our emotion tag overrides
-        // (handles Forge 1.20.1 where lang merging across mods doesn't work)
-        if (!rawText.contains("<")) {
-            String tagged = EmotionTagOverrides.applyTagsToResolvedText(rawText);
-            if (tagged != null) {
-                rawText = tagged;
-            }
-        }
-
-        if (rawText.contains("<") && rawText.contains(">")) {
-            effectParseResult = EffectTagParser.parse(rawText);
+        if (displayText.hasEffectTags()) {
+            effectParseResult = EffectTagParser.parse(displayText.rawText());
             this.fullText = Component.literal(effectParseResult.cleanText());
         } else {
             effectParseResult = null;
-            this.fullText = text;
+            this.fullText = displayText.component();
         }
 
         // Wrap at full width — scissor clipping handles any scaled overflow
@@ -94,11 +86,33 @@ public class TypewriterText {
                 paused = true;
             }
         }
-        if (revealed > 0 && revealedChars % 3 == 0) {
+        if (revealed > 0 && revealedChars % 3 == 0 && !Config.getInstance().enableOnlineTTS) {
             float pitch = 1.5f + (revealedChars % 7) * 0.05f;
             Minecraft.getInstance().getSoundManager().play(
                     SimpleSoundInstance.forUI(SoundEvents.WOODEN_BUTTON_CLICK_ON, pitch, 0.15f));
         }
+    }
+
+    public static DisplayText resolveDisplayText(Component text) {
+        String rawText = text.getString();
+
+        // If the resolved text has no tags, check our emotion tag overrides
+        // (handles Forge 1.20.1 where lang merging across mods doesn't work)
+        if (!rawText.contains("<")) {
+            String tagged = EmotionTagOverrides.applyTagsToResolvedText(rawText);
+            if (tagged != null) {
+                rawText = tagged;
+            }
+        }
+
+        if (rawText.contains("<") && rawText.contains(">")) {
+            EffectTagParser.ParseResult parseResult = EffectTagParser.parse(rawText);
+            return new DisplayText(rawText, Component.literal(parseResult.cleanText()), true);
+        }
+        return new DisplayText(rawText, text, false);
+    }
+
+    public record DisplayText(String rawText, Component component, boolean hasEffectTags) {
     }
 
     /** Get the lines to display for the current page. */
