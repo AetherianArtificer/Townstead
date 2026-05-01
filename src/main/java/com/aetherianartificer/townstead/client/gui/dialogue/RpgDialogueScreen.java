@@ -36,7 +36,7 @@ import java.util.UUID;
  * dismisses the final line).</p>
  */
 public class RpgDialogueScreen extends Screen {
-    private static final int CONVERSATION_TIMEOUT_TICKS = 60;
+    private static final int CONVERSATION_TIMEOUT_TICKS = 20 * 20;
 
     private final VillagerLike<?> villager;
     private final UUID villagerUUID;
