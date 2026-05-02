@@ -100,6 +100,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int PATHFAIL_MAX_RETRIES = 3;
     private static final int IDLE_BACKOFF_TICKS = 60;
     private static final int REQUEST_RANGE = 24;
+    private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
     private static final int FETCH_ROD_TIMEOUT_TICKS = 200;
     private static final int GO_TO_WATER_TIMEOUT_TICKS = 300;
     private static final int CAST_COOLDOWN_TICKS = 40;
@@ -259,6 +260,9 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) {
+            townstead$depositCatchAtShiftEnd(level, villager);
+        }
         discardHook(level);
         releaseCurrentWaterSpot(level, villager);
         phase = Phase.IDLE;
@@ -1154,10 +1158,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 if (level.getBlockState(anchor).is(Blocks.BARREL)) return anchor.immutable();
             }
         }
-        // Fallback: scan for a nearby barrel. Cached briefly so start-condition checks
-        // don't re-scan every tick while the villager is idle.
+        // Fallback: keep the last known barrel as long as the block still exists. The villager
+        // may be at water, stuck short of the barrel, or otherwise outside the scan radius when
+        // this resolver runs; expiring a valid anchor by time alone makes the barrel look missing.
         long gameTime = level.getGameTime();
-        if (cachedBarrelAnchor != null && gameTime <= cachedBarrelUntilTick) {
+        if (cachedBarrelAnchor != null) {
             if (level.getBlockState(cachedBarrelAnchor).is(Blocks.BARREL)) return cachedBarrelAnchor;
             cachedBarrelAnchor = null;
         }
@@ -1342,7 +1347,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (reason == HungerData.FishermanBlockedReason.NONE) {
             nextRequestTick = 0;
         } else {
-            long soonest = level.getGameTime() + 40;
+            long soonest = level.getGameTime() + REQUEST_INITIAL_DELAY_TICKS;
             if (nextRequestTick < soonest) nextRequestTick = soonest;
         }
     }
@@ -1350,7 +1355,12 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (!TownsteadConfig.ENABLE_FISHERMAN_REQUEST_CHAT.get()) return;
         if (blockedReason == HungerData.FishermanBlockedReason.NONE) return;
+        if (townstead$suppressStaleRequest(level, villager, gameTime)) return;
         if (gameTime < nextRequestTick) return;
+        if (!townstead$isNearBarrel(villager)) {
+            nextRequestTick = gameTime + 200;
+            return;
+        }
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) {
             nextRequestTick = gameTime + 200;
             return;
@@ -1372,6 +1382,66 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
         int interval = Math.max(200, TownsteadConfig.FISHERMAN_REQUEST_INTERVAL_TICKS.get());
         nextRequestTick = gameTime + interval;
+    }
+
+    private boolean townstead$suppressStaleRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        boolean stale = switch (blockedReason) {
+            case NO_ROD -> townstead$rodAvailable(level, villager);
+            case NO_WATER -> currentWaterSpot != null || townstead$waterAvailable(level, villager);
+            case NO_STORAGE -> townstead$storageAvailable(level, villager);
+            case NO_BARREL -> townstead$resolveBarrelAnchor(level, villager) != null;
+            case NONE, UNREACHABLE -> false;
+        };
+        if (stale) {
+            townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NONE);
+            nextRequestTick = gameTime + 200;
+        }
+        return stale;
+    }
+
+    private boolean townstead$rodAvailable(ServerLevel level, VillagerEntityMCA villager) {
+        if (FishermanSupplyManager.findRodInInventory(villager.getInventory()) != null) return true;
+        if (stationAnchor == null) return false;
+        return NearbyItemSources.findBestNearbySlot(
+                level, villager,
+                STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL,
+                FishermanSupplyManager::isFishingRod,
+                FishermanSupplyManager::scoreRod,
+                stationAnchor) != null;
+    }
+
+    private boolean townstead$waterAvailable(ServerLevel level, VillagerEntityMCA villager) {
+        if (stationAnchor == null) return false;
+        return FishingWaterIndex.availableSpot(
+                level, villager, stationAnchor,
+                townstead$waterSearchRadius(),
+                WATER_VERTICAL_RADIUS_DOWN,
+                WATER_VERTICAL_RADIUS_UP,
+                townstead$waterFallbackRadius()) != null;
+    }
+
+    private boolean townstead$storageAvailable(ServerLevel level, VillagerEntityMCA villager) {
+        if (stationAnchor == null || countNonRodItems(villager.getInventory()) <= 0) return true;
+        FishermanSupplyManager.depositCatches(
+                level, villager, stationAnchor,
+                STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
+        return countNonRodItems(villager.getInventory()) == 0;
+    }
+
+    private void townstead$depositCatchAtShiftEnd(ServerLevel level, VillagerEntityMCA villager) {
+        if (countNonRodItems(villager.getInventory()) <= 0) return;
+        BlockPos anchor = stationAnchor != null ? stationAnchor : townstead$resolveBarrelAnchor(level, villager);
+        if (anchor == null) return;
+        FishermanSupplyManager.depositCatches(
+                level, villager, anchor,
+                STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
+    }
+
+    private boolean townstead$isNearBarrel(VillagerEntityMCA villager) {
+        if (stationAnchor == null) return false;
+        double dx = villager.getX() - (stationAnchor.getX() + 0.5);
+        double dz = villager.getZ() - (stationAnchor.getZ() + 0.5);
+        return dx * dx + dz * dz <= RETURN_TO_BARREL_ARRIVAL_RADIUS_SQ;
     }
 
     /**

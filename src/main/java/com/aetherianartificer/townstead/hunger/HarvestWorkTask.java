@@ -88,6 +88,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private static final int TARGET_STUCK_TICKS = 60;
     private static final int TARGET_BLACKLIST_TICKS = 200;
     private static final int REQUEST_RANGE = 24;
+    private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
     private static final int BLUEPRINT_REPLAN_INTERVAL = 1200;
     private static final int STOCK_MIN_INTERVAL_TICKS = 400;
 
@@ -1472,7 +1473,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private boolean townstead$hasPendingWork(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         BlockPos prevAnchor = farmAnchor;
         FarmBlueprint prevBlueprint = farmBlueprint;
+        com.aetherianartificer.townstead.block.FieldPostBlockEntity prevFieldPost = cachedFieldPost;
         long prevNextBlueprintPlanTick = nextBlueprintPlanTick;
+        long prevLastCellPlanSignature = lastCellPlanSignature;
         farmAnchor = anchor;
         try {
             SimpleContainer inv = villager.getInventory();
@@ -1494,7 +1497,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         } finally {
             farmAnchor = prevAnchor;
             farmBlueprint = prevBlueprint;
+            cachedFieldPost = prevFieldPost;
             nextBlueprintPlanTick = prevNextBlueprintPlanTick;
+            lastCellPlanSignature = prevLastCellPlanSignature;
         }
     }
 
@@ -1510,10 +1515,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                 com.aetherianartificer.townstead.block.FieldPostIndex.findBestForAnchor(level, farmAnchor);
         long currentPlanSig = peekPost != null ? peekPost.getCellPlan().signature() : 0L;
         boolean planChanged = currentPlanSig != lastCellPlanSignature;
+        cachedFieldPost = peekPost;
         if (!force && !anchorChanged && !planChanged && gameTime < nextBlueprintPlanTick) return;
         lastCellPlanSignature = currentPlanSig;
-
-        cachedFieldPost = peekPost;
 
         // The Field Post plan is the authoritative source of farm cells.
         // No post or empty plan → no farm work.
@@ -1636,8 +1640,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (reason == HungerData.FarmBlockedReason.NONE) {
             nextRequestTick = 0;
         } else {
-            // Delay first request slightly so transient states do not spam chat.
-            long soonest = level.getGameTime() + 40;
+            // Delay first request so transient states do not spam chat.
+            long soonest = level.getGameTime() + REQUEST_INITIAL_DELAY_TICKS;
             if (nextRequestTick < soonest) nextRequestTick = soonest;
         }
 
