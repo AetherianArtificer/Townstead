@@ -12,15 +12,14 @@ import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.Node;
 import net.minecraft.world.level.pathfinder.Path;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import javax.annotation.Nullable;
+import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -46,9 +45,16 @@ import java.util.Set;
  */
 @Mixin(PathNavigation.class)
 public abstract class PathNavigationFenceGateMixin {
-    @Shadow @Final protected Mob mob;
-    @Shadow protected Level level;
-    @Shadow @Nullable protected Path path;
+    @Unique
+    private Mob townstead$mob;
+    @Unique
+    private Level townstead$level;
+    @Unique
+    private static Field townstead$mobField;
+    @Unique
+    private static Field townstead$levelField;
+    @Unique
+    private static Field townstead$pathField;
 
     /** Gates this navigation has opened, closed once they're behind the villager. */
     @Unique
@@ -65,6 +71,12 @@ public abstract class PathNavigationFenceGateMixin {
     @Unique
     private static final double TOWNSTEAD_STANDING_IN_DISTANCE_SQ = 1.5 * 1.5;
 
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void townstead$captureNavigationContext(Mob mob, Level level, CallbackInfo ci) {
+        this.townstead$mob = mob;
+        this.townstead$level = level;
+    }
+
     //? if >=1.21 {
     @Inject(method = "followThePath", at = @At("RETURN"))
     private void townstead$handleFenceGatesOnAdvance(CallbackInfo ci) {
@@ -72,9 +84,10 @@ public abstract class PathNavigationFenceGateMixin {
     /*@Inject(method = "m_7636_", remap = false, at = @At("RETURN"))
     private void townstead$handleFenceGatesOnAdvance(CallbackInfo ci) {
     *///?}
-        if (!(this.mob instanceof VillagerEntityMCA)) return;
-        if (!(this.level instanceof ServerLevel serverLevel)) return;
-        Path p = this.path;
+        Mob mob = townstead$mob();
+        if (!(mob instanceof VillagerEntityMCA)) return;
+        if (!(townstead$level() instanceof ServerLevel serverLevel)) return;
+        Path p = townstead$path();
         if (p == null || p.isDone()) return;
         int idx = p.getNextNodeIndex();
         if (idx == this.townstead$lastNodeIndex) return;
@@ -94,13 +107,14 @@ public abstract class PathNavigationFenceGateMixin {
     /*@Inject(method = "m_26573_", remap = false, at = @At("HEAD"))
     private void townstead$closeOnNavStop(CallbackInfo ci) {
     *///?}
-        if (!(this.mob instanceof VillagerEntityMCA)) return;
+        Mob mob = townstead$mob();
+        if (!(mob instanceof VillagerEntityMCA)) return;
         if (this.townstead$openedGates == null || this.townstead$openedGates.isEmpty()) return;
-        if (!(this.level instanceof ServerLevel serverLevel)) return;
+        if (!(townstead$level() instanceof ServerLevel serverLevel)) return;
         for (BlockPos pos : this.townstead$openedGates) {
-            double dx = this.mob.getX() - (pos.getX() + 0.5);
-            double dy = this.mob.getY() - (pos.getY() + 0.5);
-            double dz = this.mob.getZ() - (pos.getZ() + 0.5);
+            double dx = mob.getX() - (pos.getX() + 0.5);
+            double dy = mob.getY() - (pos.getY() + 0.5);
+            double dz = mob.getZ() - (pos.getZ() + 0.5);
             // Don't shut a gate the villager is currently standing in.
             if (dx * dx + dy * dy + dz * dz > TOWNSTEAD_STANDING_IN_DISTANCE_SQ) {
                 townstead$closeFenceGate(serverLevel, pos);
@@ -127,15 +141,17 @@ public abstract class PathNavigationFenceGateMixin {
     @Unique
     private void townstead$closeFarGates(ServerLevel serverLevel, @Nullable Node prev, @Nullable Node next) {
         if (this.townstead$openedGates == null || this.townstead$openedGates.isEmpty()) return;
+        Mob mob = townstead$mob();
+        if (mob == null) return;
         Iterator<BlockPos> it = this.townstead$openedGates.iterator();
         while (it.hasNext()) {
             BlockPos pos = it.next();
             boolean stillOnPath = (prev != null && prev.asBlockPos().equals(pos))
                     || (next != null && next.asBlockPos().equals(pos));
             if (stillOnPath) continue;
-            double dx = this.mob.getX() - (pos.getX() + 0.5);
-            double dy = this.mob.getY() - (pos.getY() + 0.5);
-            double dz = this.mob.getZ() - (pos.getZ() + 0.5);
+            double dx = mob.getX() - (pos.getX() + 0.5);
+            double dy = mob.getY() - (pos.getY() + 0.5);
+            double dz = mob.getZ() - (pos.getZ() + 0.5);
             if (dx * dx + dy * dy + dz * dz > TOWNSTEAD_CLOSE_DISTANCE_SQ) {
                 townstead$closeFenceGate(serverLevel, pos);
                 it.remove();
@@ -153,5 +169,73 @@ public abstract class PathNavigationFenceGateMixin {
         serverLevel.playSound(null, pos,
                 SoundEvents.FENCE_GATE_CLOSE, SoundSource.BLOCKS,
                 1.0f, serverLevel.random.nextFloat() * 0.1f + 0.9f);
+    }
+
+    @Unique
+    private Mob townstead$mob() {
+        if (this.townstead$mob != null) return this.townstead$mob;
+        Object value = townstead$getField("mob", "f_26494_", townstead$mobField);
+        if (value instanceof Mob mob) {
+            this.townstead$mob = mob;
+            return mob;
+        }
+        return null;
+    }
+
+    @Unique
+    private Level townstead$level() {
+        if (this.townstead$level != null) return this.townstead$level;
+        Object value = townstead$getField("level", "f_26495_", townstead$levelField);
+        if (value instanceof Level level) {
+            this.townstead$level = level;
+            return level;
+        }
+        return null;
+    }
+
+    @Unique
+    private Path townstead$path() {
+        Path publicPath = ((PathNavigation) (Object) this).getPath();
+        if (publicPath != null) return publicPath;
+        Object value = townstead$getField("path", "f_26496_", townstead$pathField);
+        return value instanceof Path path ? path : null;
+    }
+
+    @Unique
+    private Object townstead$getField(String named, String srg, @Nullable Field cached) {
+        try {
+            Field field = cached;
+            if (field == null) {
+                field = townstead$findField(named, srg);
+                if (field == null) return null;
+                if ("mob".equals(named)) townstead$mobField = field;
+                else if ("level".equals(named)) townstead$levelField = field;
+                else if ("path".equals(named)) townstead$pathField = field;
+            }
+            return field.get(this);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    @Unique
+    private Field townstead$findField(String named, String srg) {
+        Class<?> type = PathNavigation.class;
+        while (type != null) {
+            try {
+                Field field = type.getDeclaredField(named);
+                field.setAccessible(true);
+                return field;
+            } catch (NoSuchFieldException ignored) {
+            }
+            try {
+                Field field = type.getDeclaredField(srg);
+                field.setAccessible(true);
+                return field;
+            } catch (NoSuchFieldException ignored) {
+            }
+            type = type.getSuperclass();
+        }
+        return null;
     }
 }
