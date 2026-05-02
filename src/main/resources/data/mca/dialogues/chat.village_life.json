@@ -1,0 +1,54 @@
+{
+  "silent": true,
+  "auto": true,
+  "answers": [
+    {
+      "results": [
+        {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 1, "village_life": "butcher_shop" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.village_life.butcher_shop",
+            "positive": 2
+          }
+        },
+        {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 1, "village_life": "slaughterhouse" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.village_life.slaughterhouse",
+            "positive": 2
+          }
+        },
+        {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 1, "village_life": "smokehouse" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.village_life.smokehouse",
+            "positive": 2
+          }
+        },
+        {
+          "baseChance": 0,
+          "conditions": [
+            { "chance": 1, "village_life": "tannery" }
+          ],
+          "actions": {
+            "next": "main",
+            "say": "chat.village_life.tannery",
+            "positive": 2
+          }
+        }
+      ]
+    }
+  ]
+}
