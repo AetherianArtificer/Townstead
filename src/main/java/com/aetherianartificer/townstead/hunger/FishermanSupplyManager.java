@@ -117,7 +117,10 @@ public final class FishermanSupplyManager {
 
             int before = stack.getCount();
             ItemStack working = stack;
-            NearbyItemSources.insertIntoNearbyStorage(level, villager, working, horizontalRadius, verticalRadius, barrelAnchor);
+            NearbyItemSources.insertIntoNearbyStorage(level, villager, working, 0, 0, barrelAnchor);
+            if (!working.isEmpty()) {
+                NearbyItemSources.insertIntoNearbyStorage(level, villager, working, horizontalRadius, verticalRadius, barrelAnchor);
+            }
             if (working.getCount() != before) {
                 movedAny = true;
                 if (working.isEmpty()) {

@@ -467,6 +467,13 @@ public class Townstead {
 
     private static boolean townstead$buildingMatchesLifeTopic(String type, String topic) {
         return switch (topic) {
+            case "butchery" -> type.equals("butcher")
+                    || type.equals("compat/butchery/butcher_shop_l1")
+                    || type.equals("compat/butchery/butcher_shop_l2")
+                    || type.equals("compat/butchery/butcher_shop_l3")
+                    || type.equals("compat/butchery/slaughterhouse")
+                    || type.equals("compat/butchery/smokehouse")
+                    || type.equals("compat/butchery/tannery");
             case "butcher_shop" -> type.equals("butcher")
                     || type.equals("compat/butchery/butcher_shop_l1")
                     || type.equals("compat/butchery/butcher_shop_l2")

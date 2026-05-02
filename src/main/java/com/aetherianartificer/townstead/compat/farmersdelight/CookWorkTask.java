@@ -49,6 +49,7 @@ import java.util.Set;
 public class CookWorkTask extends ProducerWorkTask {
 
     private static final int REQUEST_RANGE = 24;
+    private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
     private static final long ROOM_BOUNDS_CACHE_TICKS = 80L;
 
     // Subclass-only state
@@ -427,6 +428,11 @@ public class CookWorkTask extends ProducerWorkTask {
                                    ProducerBlockedReason reason, @Nullable String detail) {
         if (reason == ProducerBlockedReason.NONE || reason == ProducerBlockedReason.NO_RECIPE) return;
         if (!TownsteadConfig.ENABLE_COOK_REQUEST_CHAT.get()) return;
+        if (shouldSuppressStaleRequest(level, villager, reason)) return;
+        if (nextRequestTick == 0) {
+            nextRequestTick = gameTime + REQUEST_INITIAL_DELAY_TICKS;
+            return;
+        }
         if (gameTime < nextRequestTick) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
         if (reason == ProducerBlockedReason.UNREACHABLE
@@ -447,6 +453,20 @@ public class CookWorkTask extends ProducerWorkTask {
             default -> {}
         }
         nextRequestTick = gameTime + Math.max(200, TownsteadConfig.COOK_REQUEST_INTERVAL_TICKS.get());
+    }
+
+    private boolean shouldSuppressStaleRequest(
+            ServerLevel level, VillagerEntityMCA villager, ProducerBlockedReason reason) {
+        return switch (reason) {
+            case NO_WORKSITE -> !activeKitchenSnapshot(level, villager).stations().isEmpty();
+            case NO_INGREDIENTS -> {
+                DiscoveredRecipe recipe = fdRecipe();
+                String missing = recipe == null ? null : IngredientResolver.describeMissingRequirements(
+                        level, villager, recipe, stationAnchor, cachedKitchenWorkArea);
+                yield missing != null && missing.isBlank();
+            }
+            default -> false;
+        };
     }
 
     @Override

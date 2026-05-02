@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.client.gui.dialogue;
 import com.aetherianartificer.townstead.client.camera.DialogueCameraController;
 import com.aetherianartificer.townstead.client.gui.dialogue.DialogueAccessibility;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffects;
+import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerLike;
 import net.conczin.mca.entity.ai.Memories;
 //? if neoforge {
@@ -35,7 +36,7 @@ import java.util.UUID;
  * dismisses the final line).</p>
  */
 public class RpgDialogueScreen extends Screen {
-    private static final int CONVERSATION_TIMEOUT_TICKS = 60;
+    private static final int CONVERSATION_TIMEOUT_TICKS = 20 * 20;
 
     private final VillagerLike<?> villager;
     private final UUID villagerUUID;
@@ -365,6 +366,9 @@ public class RpgDialogueScreen extends Screen {
         choicePanel.setVisible(false);
         state = DialogueState.TYPEWRITER_PLAYING;
         awaitingResponseTimer = 0;
+        if (!silent) {
+            speakDisplayedText(text);
+        }
         narrateText(text);
     }
 
@@ -380,7 +384,14 @@ public class RpgDialogueScreen extends Screen {
         dialogAnswers = null;
         state = DialogueState.TYPEWRITER_PLAYING;
         awaitingResponseTimer = 0;
+        speakDisplayedText(message);
         narrateText(message);
+    }
+
+    private void speakDisplayedText(Component text) {
+        if (!(villager.asEntity() instanceof VillagerEntityMCA mca)) return;
+        TypewriterText.DisplayText displayText = TypewriterText.resolveDisplayText(text);
+        TownsteadLiteralTts.speak(displayText.component().getString(), mca);
     }
 
     private void narrateText(Component text) {

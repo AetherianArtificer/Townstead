@@ -39,6 +39,7 @@ import java.util.Set;
 
 public class BaristaWorkTask extends ProducerWorkTask {
 
+    private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
     private static final long ROOM_BOUNDS_CACHE_TICKS = 80L;
 
     // Subclass-only state
@@ -347,6 +348,11 @@ public class BaristaWorkTask extends ProducerWorkTask {
                                    ProducerBlockedReason reason, @Nullable String detail) {
         if (reason == ProducerBlockedReason.NONE || reason == ProducerBlockedReason.NO_RECIPE) return;
         if (!TownsteadConfig.isBaristaRequestChatEnabled()) return;
+        if (shouldSuppressStaleRequest(level, villager, reason)) return;
+        if (nextRequestTick == 0) {
+            nextRequestTick = gameTime + REQUEST_INITIAL_DELAY_TICKS;
+            return;
+        }
         if (gameTime < nextRequestTick) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
         if (reason == ProducerBlockedReason.UNREACHABLE
@@ -367,6 +373,20 @@ public class BaristaWorkTask extends ProducerWorkTask {
             default -> {}
         }
         nextRequestTick = gameTime + Math.max(200, TownsteadConfig.BARISTA_REQUEST_INTERVAL_TICKS.get());
+    }
+
+    private boolean shouldSuppressStaleRequest(
+            ServerLevel level, VillagerEntityMCA villager, ProducerBlockedReason reason) {
+        return switch (reason) {
+            case NO_WORKSITE -> !activeCafeSnapshot(level, villager).stations().isEmpty();
+            case NO_INGREDIENTS -> {
+                DiscoveredRecipe recipe = fdRecipe();
+                String missing = recipe == null ? null : IngredientResolver.describeMissingRequirements(
+                        level, villager, recipe, stationAnchor, cachedCafeNavigationArea);
+                yield missing != null && missing.isBlank();
+            }
+            default -> false;
+        };
     }
 
     // ── Subclass helpers ──

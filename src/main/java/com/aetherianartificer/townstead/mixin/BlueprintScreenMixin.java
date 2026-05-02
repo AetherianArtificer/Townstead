@@ -4,6 +4,8 @@ package com.aetherianartificer.townstead.mixin;
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.aetherianartificer.townstead.mixin.accessor.BlueprintScreenAccessor;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
@@ -12,8 +14,6 @@ import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import net.conczin.mca.MCA;
 import net.conczin.mca.client.gui.BlueprintScreen;
@@ -76,11 +76,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.net.URL;
-import java.util.Enumeration;
 
 @Mixin(BlueprintScreen.class)
 public abstract class BlueprintScreenMixin extends Screen {
@@ -140,6 +135,18 @@ public abstract class BlueprintScreenMixin extends Screen {
     private int CATALOG_DETAILS_W = 108;
     @Unique
     private static final ResourceLocation MCA_BUILDING_ICONS = MCA.locate("textures/buildings.png");
+    @Unique
+    private static final int TOWNSTEAD_CATALOG_BACKGROUND_TEX_W = 640;
+    @Unique
+    private static final int TOWNSTEAD_CATALOG_BACKGROUND_TEX_H = 380;
+    @Unique
+    //? if >=1.21 {
+    private static final ResourceLocation TOWNSTEAD_CATALOG_BACKGROUND =
+            ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "textures/gui/catalog_background.png");
+    //?} else {
+    /*private static final ResourceLocation TOWNSTEAD_CATALOG_BACKGROUND =
+            new ResourceLocation(Townstead.MOD_ID, "textures/gui/catalog_background.png");
+    *///?}
 
     @Unique
     private final List<Button> townstead$navButtons = new ArrayList<>();
@@ -190,10 +197,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     private double townstead$lastDragX = 0.0;
     @Unique
     private double townstead$lastDragY = 0.0;
-    @Unique
-    private final Map<String, Optional<ResourceLocation>> townstead$nodeItemIconCache = new HashMap<>();
-    @Unique
-    private final Map<Long, Optional<ResourceLocation>> townstead$iconUvItemCache = new HashMap<>();
     @Unique
     private int townstead$catalogNeedsPage = 0;
     @Unique
@@ -323,7 +326,6 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$setNavVisible(true);
         } else if (TOWNSTEAD_CATALOG_PAGE.equals(this.page)) {
             townstead$recomputeCatalogDims();
-            townstead$nodeItemIconCache.clear();
             townstead$buildCatalogEntries();
             townstead$buildCatalogNodes();
             townstead$addCatalogControls();
@@ -438,9 +440,18 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$recomputeCatalogDims();
         int windowX = townstead$catalogWindowX();
         int windowY = townstead$catalogWindowY();
-        context.fill(windowX, windowY, windowX + ADV_WINDOW_W, windowY + ADV_WINDOW_H, 0xFFDEDEDE);
-        context.fill(windowX + 1, windowY + 1, windowX + ADV_WINDOW_W - 1, windowY + ADV_WINDOW_H - 1, 0xFF2B2F38);
-        context.fill(windowX + 3, windowY + 3, windowX + ADV_WINDOW_W - 3, windowY + 14, 0xFF3A3F47);
+        if (this.minecraft != null) {
+            com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.refreshClientTheme(
+                    this.minecraft.getResourceManager());
+        }
+        com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.Theme theme =
+                com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.theme();
+        context.fill(windowX, windowY, windowX + ADV_WINDOW_W, windowY + ADV_WINDOW_H, theme.frameColor());
+        context.fill(windowX + 1, windowY + 1, windowX + ADV_WINDOW_W - 1, windowY + ADV_WINDOW_H - 1,
+                theme.panelColor());
+        townstead$drawCatalogBackgroundTexture(context, theme, windowX + 1, windowY + 1,
+                ADV_WINDOW_W - 2, ADV_WINDOW_H - 2);
+        context.fill(windowX + 3, windowY + 3, windowX + ADV_WINDOW_W - 3, windowY + 14, theme.titleBarColor());
 
         int insideX = windowX + ADV_INSIDE_X;
         int insideY = windowY + ADV_INSIDE_Y;
@@ -485,17 +496,18 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
 
         context.enableScissor(graphX, graphY, graphRight, insideBottom);
-        context.fill(graphX, graphY, graphRight, insideBottom, 0xFF1B1E24);
-        townstead$drawCatalogGrid(context, graphX, graphY, graphW, graphH);
+        context.fill(graphX, graphY, graphRight, insideBottom, theme.graphBackgroundColor());
+        if (theme.showGrid())
+            townstead$drawCatalogGrid(context, graphX, graphY, graphW, graphH, theme.gridColor());
         townstead$drawCatalogConnections(context, graphX, graphY, graphW, graphH);
-        townstead$drawCatalogNodes(context, graphX, graphY, graphW, graphH, mouseX, mouseY, partialTicks);
+        townstead$drawCatalogNodes(context, graphX, graphY, graphW, graphH, mouseX, mouseY, partialTicks, theme);
         context.disableScissor();
 
-        context.fill(detailsX, detailsY, detailsRight, detailsBottom, 0xFF232A36);
-        context.fill(detailsX, detailsY, detailsRight, detailsY + 1, 0xFF8CA2BF);
-        context.fill(detailsX, detailsBottom - 1, detailsRight, detailsBottom, 0xFF8CA2BF);
-        context.fill(detailsX, detailsY, detailsX + 1, detailsBottom, 0xFF8CA2BF);
-        context.fill(detailsRight - 1, detailsY, detailsRight, detailsBottom, 0xFF8CA2BF);
+        context.fill(detailsX, detailsY, detailsRight, detailsBottom, theme.detailsBackgroundColor());
+        context.fill(detailsX, detailsY, detailsRight, detailsY + 1, theme.borderColor());
+        context.fill(detailsX, detailsBottom - 1, detailsRight, detailsBottom, theme.borderColor());
+        context.fill(detailsX, detailsY, detailsX + 1, detailsBottom, theme.borderColor());
+        context.fill(detailsRight - 1, detailsY, detailsRight, detailsBottom, theme.borderColor());
         context.drawCenteredString(this.font, Component.literal("Catalog"), windowX + (ADV_WINDOW_W / 2), windowY + 6,
                 0xFFFFFF);
 
@@ -736,26 +748,7 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private Optional<ResourceLocation> townstead$nodeItemForIconUv(int u, int v) {
-        long key = (((long) u) << 32) ^ (v & 0xFFFFFFFFL);
-        return townstead$iconUvItemCache.computeIfAbsent(key, ignored -> {
-            ResourceLocation resolved = null;
-            for (BuildingType bt : BuildingTypes.getInstance()) {
-                if (bt.iconU() != u || bt.iconV() != v)
-                    continue;
-                Optional<ResourceLocation> candidate = townstead$nodeItemForType(bt.name());
-                if (candidate.isEmpty() || !BuiltInRegistries.ITEM.containsKey(candidate.get()))
-                    continue;
-                if (resolved == null) {
-                    resolved = candidate.get();
-                    continue;
-                }
-                if (!resolved.equals(candidate.get())) {
-                    // Ambiguous icon slot: do not override vanilla icon rendering.
-                    return Optional.empty();
-                }
-            }
-            return Optional.ofNullable(resolved);
-        });
+        return BuildingIconResolver.nodeItemForIconUv(u, v);
     }
 
     //? if neoforge {
@@ -1320,15 +1313,28 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     @Unique
-    private void townstead$drawCatalogGrid(GuiGraphics context, int insideX, int insideY, int insideW, int insideH) {
+    private void townstead$drawCatalogBackgroundTexture(GuiGraphics context,
+            com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.Theme theme,
+            int x, int y, int w, int h) {
+        ResourceLocation texture = theme.backgroundTexture().orElse(TOWNSTEAD_CATALOG_BACKGROUND);
+        if (this.minecraft == null || this.minecraft.getResourceManager().getResource(texture).isEmpty())
+            return;
+        context.blit(texture, x, y, w, h, 0, 0, TOWNSTEAD_CATALOG_BACKGROUND_TEX_W,
+                TOWNSTEAD_CATALOG_BACKGROUND_TEX_H, TOWNSTEAD_CATALOG_BACKGROUND_TEX_W,
+                TOWNSTEAD_CATALOG_BACKGROUND_TEX_H);
+    }
+
+    @Unique
+    private void townstead$drawCatalogGrid(GuiGraphics context, int insideX, int insideY, int insideW, int insideH,
+            int gridColor) {
         int spacing = Math.max(14, (int) Math.round(20 * townstead$catalogZoom));
         int offsetX = (int) Math.round((townstead$catalogPanX * townstead$catalogZoom) % spacing);
         int offsetY = (int) Math.round((townstead$catalogPanY * townstead$catalogZoom) % spacing);
         for (int x = insideX - spacing + offsetX; x <= insideX + insideW; x += spacing) {
-            context.fill(x, insideY, x + 1, insideY + insideH, 0x182A2F38);
+            context.fill(x, insideY, x + 1, insideY + insideH, gridColor);
         }
         for (int y = insideY - spacing + offsetY; y <= insideY + insideH; y += spacing) {
-            context.fill(insideX, y, insideX + insideW, y + 1, 0x182A2F38);
+            context.fill(insideX, y, insideX + insideW, y + 1, gridColor);
         }
     }
 
@@ -1378,7 +1384,8 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$drawCatalogNodes(GuiGraphics context, int insideX, int insideY, int insideW, int insideH,
-            int mouseX, int mouseY, float partialTicks) {
+            int mouseX, int mouseY, float partialTicks,
+            com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.Theme theme) {
         for (NodeData node : townstead$catalogNodes) {
             int screenX = insideX + (int) Math.round((node.worldX() + townstead$catalogPanX) * townstead$catalogZoom);
             int screenY = insideY + (int) Math.round((node.worldY() + townstead$catalogPanY) * townstead$catalogZoom);
@@ -1393,11 +1400,15 @@ public abstract class BlueprintScreenMixin extends Screen {
             int border;
             int fill;
             if (built) {
-                border = selected ? 0xFFCDEBD0 : (hovered ? 0xFFA8D9AE : 0xFF5F9466);
-                fill = selected ? 0xFF2F5C3A : (hovered ? 0xFF295236 : 0xFF1F4029);
+                border = selected ? theme.builtNodeSelectedBorderColor()
+                        : (hovered ? theme.builtNodeHoverBorderColor() : theme.builtNodeBorderColor());
+                fill = selected ? theme.builtNodeSelectedFillColor()
+                        : (hovered ? theme.builtNodeHoverFillColor() : theme.builtNodeFillColor());
             } else {
-                border = selected ? 0xFFD9E9FF : (hovered ? 0xFFB8C7DB : 0xFF6D7A8D);
-                fill = selected ? 0xFF3A4D66 : (hovered ? 0xFF34435A : 0xFF2A3342);
+                border = selected ? theme.nodeSelectedBorderColor()
+                        : (hovered ? theme.nodeHoverBorderColor() : theme.nodeBorderColor());
+                fill = selected ? theme.nodeSelectedFillColor()
+                        : (hovered ? theme.nodeHoverFillColor() : theme.nodeFillColor());
             }
             context.fill(screenX - 1, screenY - 1, screenX + nodeW + 1, screenY + nodeH + 1, border);
             context.fill(screenX, screenY, screenX + nodeW, screenY + nodeH, fill);
@@ -1431,47 +1442,7 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private Optional<ResourceLocation> townstead$nodeItemForType(String buildingTypeName) {
-        Optional<ResourceLocation> cached = townstead$nodeItemIconCache.get(buildingTypeName);
-        if (cached != null && cached.isPresent()) {
-            return cached;
-        }
-        Optional<ResourceLocation> datapack =
-                com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.overrideFor(buildingTypeName).nodeItem();
-        if (datapack.isPresent()) {
-            townstead$nodeItemIconCache.put(buildingTypeName, datapack);
-            return datapack;
-        }
-        Optional<ResourceLocation> result = Optional.empty();
-        try {
-            String relPath = buildingTypeName.startsWith("compat/")
-                    ? "townstead_compat/building_types/" + buildingTypeName + ".json"
-                    : "data/mca/building_types/" + buildingTypeName + ".json";
-            ClassLoader cl = BlueprintScreenMixin.class.getClassLoader();
-            if (cl != null) {
-                Enumeration<URL> urls = cl.getResources(relPath);
-                while (urls.hasMoreElements()) {
-                    URL url = urls.nextElement();
-                    try (InputStream in = url.openStream();
-                            InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-                        JsonObject obj = JsonParser.parseReader(reader).getAsJsonObject();
-                        if (obj.has("townsteadNodeItem")) {
-                            //? if >=1.21 {
-                            result = Optional.of(ResourceLocation.parse(obj.get("townsteadNodeItem").getAsString()));
-                            //?} else {
-                            /*result = Optional.of(new ResourceLocation(obj.get("townsteadNodeItem").getAsString()));
-                            *///?}
-                            break;
-                        }
-                    }
-                }
-            }
-        } catch (Exception ignored) {
-            result = Optional.empty();
-        }
-        if (result.isPresent()) {
-            townstead$nodeItemIconCache.put(buildingTypeName, result);
-        }
-        return result;
+        return BuildingIconResolver.nodeItemForType(buildingTypeName);
     }
 
     @Unique

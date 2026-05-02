@@ -46,6 +46,7 @@ public class ButcherWorkTask extends ProducerWorkTask {
     private static final int VERTICAL_RADIUS = 3;
     private static final int WORK_RADIUS = 12;
     private static final int REQUEST_RANGE = 24;
+    private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
     private static final int SMOKE_WAIT_TICKS = 20;
     private static final int VANILLA_SMOKER_COOK_TICKS = 100;
     private static final long SMOKER_ANCHOR_CACHE_TICKS = 40L;
@@ -374,6 +375,10 @@ public class ButcherWorkTask extends ProducerWorkTask {
 
         if (mapped == HungerData.ButcherBlockedReason.NONE) return;
         if (!TownsteadConfig.ENABLE_FARMER_REQUEST_CHAT.get()) return;
+        if (shouldSuppressStaleRequest(level, villager, mapped)) {
+            syncBlockedReasonIfChanged(level, villager, HungerData.ButcherBlockedReason.NONE);
+            return;
+        }
         if (gameTime < nextRequestTick) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) {
             nextRequestTick = gameTime + 200;
@@ -573,9 +578,30 @@ public class ButcherWorkTask extends ProducerWorkTask {
         if (mapped == HungerData.ButcherBlockedReason.NONE) {
             nextRequestTick = 0;
         } else {
-            long soonest = level.getGameTime() + 40;
+            long soonest = level.getGameTime() + REQUEST_INITIAL_DELAY_TICKS;
             if (nextRequestTick < soonest) nextRequestTick = soonest;
         }
+    }
+
+    private boolean shouldSuppressStaleRequest(
+            ServerLevel level, VillagerEntityMCA villager, HungerData.ButcherBlockedReason mapped) {
+        BlockPos smoker = activeSmokerAnchor(level, villager);
+        return switch (mapped) {
+            case NO_SMOKER -> smoker != null && level.getBlockState(smoker).is(Blocks.SMOKER);
+            case NO_INPUT -> smoker != null && ButcherSupplyManager.hasRawInputAvailable(level, villager, smoker);
+            case NO_FUEL -> smoker != null && hasFuelAvailable(level, villager, smoker);
+            default -> false;
+        };
+    }
+
+    private boolean hasFuelAvailable(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos anchor) {
+        if (ButcherSupplyManager.hasFuel(villager.getInventory())) return true;
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.findBestNearbySlot(
+                level, villager, 16, 3,
+                ButcherSupplyManager::isFuel,
+                ItemStack::getCount,
+                anchor) != null;
     }
 
     private static HungerData.ButcherBlockedReason toHungerReason(ProducerBlockedReason reason) {
