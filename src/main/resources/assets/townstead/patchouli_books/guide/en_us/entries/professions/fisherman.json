@@ -1,0 +1,23 @@
+{
+  "name": "townstead.guide.entry.professions.fisherman",
+  "icon": "minecraft:fishing_rod",
+  "category": "townstead:professions",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.fisherman.page1.title",
+      "text": "townstead.guide.entry.professions.fisherman.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.fisherman.page2.title",
+      "text": "townstead.guide.entry.professions.fisherman.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.fisherman.page3.title",
+      "text": "townstead.guide.entry.professions.fisherman.page3.body"
+    }
+  ]
+}

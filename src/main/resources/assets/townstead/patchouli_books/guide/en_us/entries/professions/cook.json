@@ -2,7 +2,7 @@
   "name": "townstead.guide.entry.professions.cook",
   "icon": "minecraft:campfire",
   "category": "townstead:professions",
-  "sortnum": 6,
+  "sortnum": 9,
   "flag": "mod:farmersdelight",
   "pages": [
     {

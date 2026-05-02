@@ -2,7 +2,7 @@
   "name": "townstead.guide.entry.professions.barista",
   "icon": "minecraft:flower_pot",
   "category": "townstead:professions",
-  "sortnum": 7,
+  "sortnum": 10,
   "flag": "mod:rusticdelight",
   "pages": [
     {

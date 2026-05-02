@@ -1,0 +1,14 @@
+{
+  "name": "townstead.guide.entry.integrations.starcatcher",
+  "icon": "minecraft:fishing_rod",
+  "category": "townstead:integrations",
+  "sortnum": 6,
+  "flag": "mod:starcatcher",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.integrations.starcatcher.page1.title",
+      "text": "townstead.guide.entry.integrations.starcatcher.page1.body"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "townstead.guide.entry.village.community_spirit",
+  "icon": "minecraft:bell",
+  "category": "townstead:village",
+  "priority": true,
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.village.community_spirit.page1.title",
+      "text": "townstead.guide.entry.village.community_spirit.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.village.community_spirit.page2.title",
+      "text": "townstead.guide.entry.village.community_spirit.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.village.community_spirit.page3.title",
+      "text": "townstead.guide.entry.village.community_spirit.page3.body"
+    }
+  ]
+}

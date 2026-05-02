@@ -1,0 +1,23 @@
+{
+  "name": "townstead.guide.entry.professions.leatherworker",
+  "icon": "minecraft:leather",
+  "category": "townstead:professions",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.leatherworker.page1.title",
+      "text": "townstead.guide.entry.professions.leatherworker.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.leatherworker.page2.title",
+      "text": "townstead.guide.entry.professions.leatherworker.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.leatherworker.page3.title",
+      "text": "townstead.guide.entry.professions.leatherworker.page3.body"
+    }
+  ]
+}
