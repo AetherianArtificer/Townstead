@@ -1,6 +1,6 @@
 {
   "name": "townstead.guide.entry.integrations.butchery",
-  "icon": "butchery:cleaver",
+  "icon": "butchery:iron_cleaver",
   "category": "townstead:integrations",
   "sortnum": 5,
   "flag": "mod:butchery",

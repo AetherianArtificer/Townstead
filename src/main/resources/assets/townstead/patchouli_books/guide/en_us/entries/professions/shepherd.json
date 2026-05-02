@@ -1,0 +1,23 @@
+{
+  "name": "townstead.guide.entry.professions.shepherd",
+  "icon": "minecraft:shears",
+  "category": "townstead:professions",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.shepherd.page1.title",
+      "text": "townstead.guide.entry.professions.shepherd.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.shepherd.page2.title",
+      "text": "townstead.guide.entry.professions.shepherd.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.shepherd.page3.title",
+      "text": "townstead.guide.entry.professions.shepherd.page3.body"
+    }
+  ]
+}
