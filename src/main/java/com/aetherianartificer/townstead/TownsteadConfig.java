@@ -200,8 +200,8 @@ public final class TownsteadConfig {
                 .define("enableContainerSourcing", true);
         ENABLE_CROP_SOURCING = b
                 .translation("townstead.configuration.needs.hunger.enableCropSourcing")
-                .comment("Allow villagers to harvest mature crops for food.")
-                .define("enableCropSourcing", true);
+                .comment("Allow villagers to harvest mature crops for food as an emergency fallback. Disabled by default to avoid broad crop scans.")
+                .define("enableCropSourcing", false);
         b.pop();
         if (ThirstBridgeResolver.anyThirstModLoaded()) {
             b.translation("townstead.configuration.needs.thirst").push("thirst");
@@ -219,8 +219,8 @@ public final class TownsteadConfig {
                     .define("enableContainerThirstSourcing", true);
             ENABLE_CROP_THIRST_SOURCING = b
                     .translation("townstead.configuration.needs.thirst.enableCropThirstSourcing")
-                    .comment("Allow villagers to harvest mature crops for thirst-restoring food/drink items.")
-                    .define("enableCropThirstSourcing", true);
+                    .comment("Allow villagers to harvest mature crops for thirst-restoring food/drink items as an emergency fallback. Disabled by default to avoid broad crop scans.")
+                    .define("enableCropThirstSourcing", false);
             ENABLE_VILLAGER_THIRST = b
                     .translation("townstead.configuration.needs.thirst.enableVillagerThirst")
                     .comment("Enable villager thirst simulation when Thirst Was Taken is installed.")
