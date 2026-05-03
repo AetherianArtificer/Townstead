@@ -35,9 +35,6 @@ import java.util.Set;
 import java.util.UUID;
 
 public final class CemAnimationProgram {
-    private static final ResourceLocation PLAYER_JEM =
-            ResourceLocation.fromNamespaceAndPath("minecraft", "emf/cem/player.jem");
-
     private final List<CemAssignment> assignments;
     private final Map<UUID, EntityVariables> entityVariables = new HashMap<>();
     private long lastVariablePruneTick;
@@ -46,21 +43,20 @@ public final class CemAnimationProgram {
         this.assignments = assignments;
     }
 
-    public static Optional<CemAnimationProgram> loadFreshPlayerProgram() {
+    public static Optional<CemAnimationProgram> load(ResourceLocation entryPoint) {
         try {
             List<CemAssignment> assignments = new ArrayList<>();
             Set<ResourceLocation> visited = new HashSet<>();
-            loadResource(PLAYER_JEM, assignments, visited);
+            loadResource(entryPoint, assignments, visited);
             if (assignments.isEmpty()) return Optional.empty();
             Townstead.LOGGER.info(
-                    "[AnimationBridge] loaded Fresh/EMF CEM program assignments={}",
-                    assignments.size());
-            Townstead.LOGGER.info(
-                    "[AnimationBridge] Fresh/EMF CEM assignment targets={}",
+                    "[AnimationBridge] loaded CEM program location={} assignments={} targets={}",
+                    entryPoint,
+                    assignments.size(),
                     targetSummary(assignments));
             return Optional.of(new CemAnimationProgram(assignments));
         } catch (Exception e) {
-            Townstead.LOGGER.warn("[AnimationBridge] failed to load Fresh/EMF CEM program", e);
+            Townstead.LOGGER.warn("[AnimationBridge] failed to load CEM program location={}", entryPoint, e);
             return Optional.empty();
         }
     }

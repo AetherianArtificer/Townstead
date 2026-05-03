@@ -7,23 +7,30 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
  * Source adapter for EMF (Entity Model Features) resource packs.
  *
- * <p>Currently scoped to Fresh Animations Player Extension's player CEM at
- * {@code minecraft:emf/cem/player.jem}; broader pack-format coverage (the
- * legacy {@code optifine/cem/} path, non-player CEM files, slim/baby variants,
- * {@code .properties} gating) is intentionally not yet handled.</p>
+ * <p>EMF accepts CEM ({@code .jem}) files at two locations within a pack, in
+ * this preference order: the modern {@code emf/cem/} path (used by Fresh
+ * Animations Player Extension) and the legacy {@code optifine/cem/} path
+ * (used by Fresh Moves and Fresh Animations itself). The adapter probes both
+ * and uses the first one that the resource manager has loaded.</p>
+ *
+ * <p>Currently scoped to the player CEM only ({@code player.jem}); non-player
+ * CEM files, slim/baby variants, and {@code .properties} gating are not yet
+ * handled.</p>
  */
 public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
     private static final String ID = "emf";
-    private static final ResourceLocation FRESH_PLAYER_CEM =
-            ResourceLocation.fromNamespaceAndPath("minecraft", "emf/cem/player.jem");
+    private static final List<ResourceLocation> PLAYER_CEM_CANDIDATES = List.of(
+            ResourceLocation.fromNamespaceAndPath("minecraft", "emf/cem/player.jem"),
+            ResourceLocation.fromNamespaceAndPath("minecraft", "optifine/cem/player.jem")
+    );
 
-    private boolean logged;
-    private boolean loadAttempted;
+    private ResourceLocation cachedLocation;
     private Optional<CemAnimationProgram> program = Optional.empty();
 
     @Override
@@ -33,33 +40,28 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
 
     @Override
     public boolean isAvailable() {
-        return isEmfLoaded() && hasFreshPlayerResources();
+        return isEmfLoaded() && resolvePlayerCem().isPresent();
     }
 
     @Override
     public List<AnimationTransform> collectTransforms(AnimationSourceContext context) {
-        logDiagnostics(context);
-        Optional<CemAnimationProgram> activeProgram = program();
+        Optional<CemAnimationProgram> activeProgram = program(context);
         return activeProgram.map(cemAnimationProgram -> cemAnimationProgram.evaluate(context)).orElseGet(List::of);
     }
 
     private void logDiagnostics(AnimationSourceContext context) {
-        if (logged) return;
-        logged = true;
-
         boolean emfLoaded = isEmfLoaded();
-        boolean freshResources = hasFreshPlayerResources();
         boolean apiPresent = hasEmfAnimationApi();
         boolean modelHasEmfRoot = modelHasEmfRoot(context.model());
         boolean emfRootHasAnimation = modelHasEmfRoot && emfRootHasAnimation(context.model());
-        boolean focusedEvaluatorAvailable = program().isPresent();
+        boolean focusedEvaluatorAvailable = program.isPresent();
         boolean evaluatedVectorAccess = modelHasEmfRoot && emfRootHasAnimation;
 
         Townstead.LOGGER.info(
-                "[AnimationBridge] source={} emfLoaded={} freshPlayerResources={} emfApiPresent={} modelHasEmfRoot={} emfRootHasAnimation={} focusedEvaluatorAvailable={} evaluatedVectorAccess={} action={}",
+                "[AnimationBridge] source={} emfLoaded={} playerCem={} emfApiPresent={} modelHasEmfRoot={} emfRootHasAnimation={} focusedEvaluatorAvailable={} evaluatedVectorAccess={} action={}",
                 ID,
                 emfLoaded,
-                freshResources,
+                cachedLocation == null ? "none" : cachedLocation.toString(),
                 apiPresent,
                 modelHasEmfRoot,
                 emfRootHasAnimation,
@@ -68,10 +70,15 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
                 focusedEvaluatorAvailable ? "apply_focused_evaluator" : "skip");
     }
 
-    private static boolean hasFreshPlayerResources() {
+    private static Optional<ResourceLocation> resolvePlayerCem() {
         Minecraft client = Minecraft.getInstance();
-        if (client == null || client.getResourceManager() == null) return false;
-        return client.getResourceManager().getResource(FRESH_PLAYER_CEM).isPresent();
+        if (client == null || client.getResourceManager() == null) return Optional.empty();
+        for (ResourceLocation candidate : PLAYER_CEM_CANDIDATES) {
+            if (client.getResourceManager().getResource(candidate).isPresent()) {
+                return Optional.of(candidate);
+            }
+        }
+        return Optional.empty();
     }
 
     private static boolean hasEmfAnimationApi() {
@@ -120,11 +127,12 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
         }
     }
 
-    private Optional<CemAnimationProgram> program() {
-        if (!loadAttempted) {
-            loadAttempted = true;
-            program = CemAnimationProgram.loadFreshPlayerProgram();
-        }
+    private Optional<CemAnimationProgram> program(AnimationSourceContext context) {
+        ResourceLocation resolved = resolvePlayerCem().orElse(null);
+        if (Objects.equals(resolved, cachedLocation)) return program;
+        cachedLocation = resolved;
+        program = resolved == null ? Optional.empty() : CemAnimationProgram.load(resolved);
+        logDiagnostics(context);
         return program;
     }
 }
