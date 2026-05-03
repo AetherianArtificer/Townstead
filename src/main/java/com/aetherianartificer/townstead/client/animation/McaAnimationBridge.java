@@ -11,7 +11,7 @@ import java.util.List;
 public final class McaAnimationBridge {
     private static final List<AnimationSourceAdapter> SOURCES = List.of(
             new DebugAnimationSourceAdapter(),
-            new FreshEmfAnimationSourceAdapter()
+            new EmfAnimationSourceAdapter()
     );
 
     private static boolean loggedNoSources;
@@ -63,7 +63,7 @@ public final class McaAnimationBridge {
             List<AnimationTransform> transforms,
             McaModelPartApplier.ApplyStats stats
     ) {
-        if (!"fresh_emf".equals(sourceId)) return;
+        if (!"emf".equals(sourceId)) return;
         long tick = entity.level().getGameTime();
         if (tick - lastDiagnosticTick < 120L) return;
         lastDiagnosticTick = tick;

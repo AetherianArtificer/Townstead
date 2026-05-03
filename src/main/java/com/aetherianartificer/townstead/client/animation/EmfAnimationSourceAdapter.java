@@ -10,14 +10,15 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * First source adapter for Fresh Animations Player Extension through EMF.
+ * Source adapter for EMF (Entity Model Features) resource packs.
  *
- * <p>EMF currently exposes detection/registration APIs, but this adapter does
- * not assume a stable public path for evaluated per-part vectors. Until that
- * path is proven, it reports diagnostics and returns no transforms.</p>
+ * <p>Currently scoped to Fresh Animations Player Extension's player CEM at
+ * {@code minecraft:emf/cem/player.jem}; broader pack-format coverage (the
+ * legacy {@code optifine/cem/} path, non-player CEM files, slim/baby variants,
+ * {@code .properties} gating) is intentionally not yet handled.</p>
  */
-public final class FreshEmfAnimationSourceAdapter implements AnimationSourceAdapter {
-    private static final String ID = "fresh_emf";
+public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
+    private static final String ID = "emf";
     private static final ResourceLocation FRESH_PLAYER_CEM =
             ResourceLocation.fromNamespaceAndPath("minecraft", "emf/cem/player.jem");
 
