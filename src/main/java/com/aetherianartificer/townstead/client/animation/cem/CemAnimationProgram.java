@@ -38,30 +38,26 @@ public final class CemAnimationProgram {
             ResourceLocation.fromNamespaceAndPath("minecraft", "emf/cem/player.jem");
 
     private final List<CemAssignment> assignments;
-    private final Map<String, String> invertAxes;
     private final Map<UUID, EntityVariables> entityVariables = new HashMap<>();
     private long lastVariablePruneTick;
 
-    private CemAnimationProgram(List<CemAssignment> assignments, Map<String, String> invertAxes) {
+    private CemAnimationProgram(List<CemAssignment> assignments) {
         this.assignments = assignments;
-        this.invertAxes = invertAxes;
     }
 
     public static Optional<CemAnimationProgram> loadFreshPlayerProgram() {
         try {
             List<CemAssignment> assignments = new ArrayList<>();
-            Map<String, String> invertAxes = new HashMap<>();
             Set<ResourceLocation> visited = new HashSet<>();
-            loadResource(PLAYER_JEM, assignments, invertAxes, visited);
+            loadResource(PLAYER_JEM, assignments, visited);
             if (assignments.isEmpty()) return Optional.empty();
             Townstead.LOGGER.info(
-                    "[AnimationBridge] loaded Fresh/EMF CEM program assignments={} axisMappings={}",
-                    assignments.size(),
-                    invertAxes.size());
+                    "[AnimationBridge] loaded Fresh/EMF CEM program assignments={}",
+                    assignments.size());
             Townstead.LOGGER.info(
                     "[AnimationBridge] Fresh/EMF CEM assignment targets={}",
                     targetSummary(assignments));
-            return Optional.of(new CemAnimationProgram(assignments, invertAxes));
+            return Optional.of(new CemAnimationProgram(assignments));
         } catch (Exception e) {
             Townstead.LOGGER.warn("[AnimationBridge] failed to load Fresh/EMF CEM program", e);
             return Optional.empty();
@@ -75,7 +71,7 @@ public final class CemAnimationProgram {
         entityState.lastSeenTick = gameTime;
         CemVariableStore variables = entityState.variables;
         variables.clearAssignments();
-        CemEvaluationContext<T> context = new CemEvaluationContext<>(source, variables, invertAxes);
+        CemEvaluationContext<T> context = new CemEvaluationContext<>(source, variables);
         for (CemAssignment assignment : assignments) {
             double value = assignment.expression().evaluate(context);
             if (Double.isFinite(value)) {
@@ -94,7 +90,6 @@ public final class CemAnimationProgram {
     private static void loadResource(
             ResourceLocation location,
             List<CemAssignment> assignments,
-            Map<String, String> invertAxes,
             Set<ResourceLocation> visited
     ) throws Exception {
         if (!visited.add(location)) return;
@@ -114,16 +109,14 @@ public final class CemAnimationProgram {
             for (JsonElement element : models) {
                 if (!element.isJsonObject()) continue;
                 JsonObject model = element.getAsJsonObject();
-                readAxisMapping(model, invertAxes);
                 if (model.has("model")) {
                     String child = model.get("model").getAsString();
-                    loadResource(sibling(location, child), assignments, invertAxes, visited);
+                    loadResource(sibling(location, child), assignments, visited);
                 }
                 readAnimations(model, assignments);
             }
         }
 
-        readAxisMapping(root, invertAxes);
         readAnimations(root, assignments);
     }
 
@@ -153,14 +146,6 @@ public final class CemAnimationProgram {
         }
     }
 
-    private static void readAxisMapping(JsonObject object, Map<String, String> invertAxes) {
-        String target = null;
-        if (object.has("part")) target = object.get("part").getAsString();
-        if (target == null && object.has("id")) target = object.get("id").getAsString();
-        if (target == null || !object.has("invertAxis")) return;
-        invertAxes.put(target.toLowerCase(Locale.ROOT), object.get("invertAxis").getAsString().toLowerCase(Locale.ROOT));
-    }
-
     private static String targetSummary(List<CemAssignment> assignments) {
         Set<String> targets = new HashSet<>();
         for (CemAssignment assignment : assignments) {
@@ -181,13 +166,11 @@ public final class CemAnimationProgram {
     static final class CemEvaluationContext<T extends LivingEntity> {
         private final AnimationSourceContext<T> source;
         private final CemVariableStore variables;
-        private final Map<String, String> invertAxes;
         private final Map<String, CemPartPose> baseline = new HashMap<>();
 
-        CemEvaluationContext(AnimationSourceContext<T> source, CemVariableStore variables, Map<String, String> invertAxes) {
+        CemEvaluationContext(AnimationSourceContext<T> source, CemVariableStore variables) {
             this.source = source;
             this.variables = variables;
-            this.invertAxes = invertAxes;
             seedRenderVariables();
             seedModelPart("root", source.model().body);
             seedModelPart("head", source.model().head);
@@ -360,23 +343,13 @@ public final class CemAnimationProgram {
         private Float mappedRotationValue(String target, String axis) {
             Float value = assignedFloat(target + "." + axis);
             if (value == null) return null;
-            return clampRotationValue(mapAxis(target, axis, value));
+            return clampRotationValue(value);
         }
 
         private Float mappedTranslationValue(String target, String axis) {
             Float value = assignedFloat(target + "." + axis);
             if (value == null) return null;
             return clampTranslationValue(value);
-        }
-
-        private float mapAxis(String target, String axis, float value) {
-            String inverted = invertAxes.getOrDefault(target.toLowerCase(Locale.ROOT), "");
-            if (("rx".equals(axis) && inverted.contains("x"))
-                    || ("ry".equals(axis) && inverted.contains("y"))
-                    || ("rz".equals(axis) && inverted.contains("z"))) {
-                return -value;
-            }
-            return value;
         }
 
         private static float clampRotationValue(float value) {
