@@ -50,10 +50,13 @@ public final class McaAnimationBridge {
         for (AnimationSourceAdapter source : SOURCES) {
             if (!source.isAvailable()) continue;
             anyAvailable = true;
+            float bodyXBefore = model.body.x;
+            float bodyYBefore = model.body.y;
+            float bodyZBefore = model.body.z;
             List<AnimationTransform> transforms = source.collectTransforms(context);
             McaModelPartApplier.ApplyStats stats = McaModelPartApplier.applyWithStats(source.id(), targets, transforms);
             logDiagnostic(entity, model, source.id(), transforms, stats);
-            syncMcaDependentParts(model);
+            syncMcaDependentParts(model, bodyXBefore, bodyYBefore, bodyZBefore);
         }
 
         if (!anyAvailable && !loggedNoSources) {
@@ -103,14 +106,28 @@ public final class McaAnimationBridge {
         return builder.append(']').toString();
     }
 
-    private static void syncMcaDependentParts(HumanoidModel<?> model) {
+    private static final float BREAST_BASE_X_ROT = (float) Math.PI * 0.3f;
+
+    private static void syncMcaDependentParts(
+            HumanoidModel<?> model,
+            float bodyXBefore,
+            float bodyYBefore,
+            float bodyZBefore
+    ) {
         model.hat.copyFrom(model.head);
+        float dx = model.body.x - bodyXBefore;
+        float dy = model.body.y - bodyYBefore;
+        float dz = model.body.z - bodyZBefore;
         if (model instanceof VillagerEntityModelMCA<?> villagerModel) {
             villagerModel.leftLegwear.copyFrom(villagerModel.leftLeg);
             villagerModel.rightLegwear.copyFrom(villagerModel.rightLeg);
             villagerModel.leftArmwear.copyFrom(villagerModel.leftArm);
             villagerModel.rightArmwear.copyFrom(villagerModel.rightArm);
             villagerModel.bodyWear.copyFrom(villagerModel.body);
+            villagerModel.breasts.xRot = BREAST_BASE_X_ROT + villagerModel.body.xRot;
+            villagerModel.breasts.x += dx;
+            villagerModel.breasts.y += dy;
+            villagerModel.breasts.z += dz;
             villagerModel.breastsWear.copyFrom(villagerModel.breasts);
         } else if (model instanceof PlayerEntityExtendedModel<?> playerModel) {
             playerModel.leftPants.copyFrom(playerModel.leftLeg);
@@ -118,6 +135,10 @@ public final class McaAnimationBridge {
             playerModel.leftSleeve.copyFrom(playerModel.leftArm);
             playerModel.rightSleeve.copyFrom(playerModel.rightArm);
             playerModel.jacket.copyFrom(playerModel.body);
+            playerModel.breasts.xRot = BREAST_BASE_X_ROT + playerModel.body.xRot;
+            playerModel.breasts.x += dx;
+            playerModel.breasts.y += dy;
+            playerModel.breasts.z += dz;
             playerModel.breastsWear.copyFrom(playerModel.breasts);
         }
     }
