@@ -9,15 +9,21 @@ import net.minecraft.world.entity.LivingEntity;
 import java.util.List;
 
 public final class McaAnimationBridge {
+    private static final EmfAnimationSourceAdapter EMF_ADAPTER = new EmfAnimationSourceAdapter();
     private static final List<AnimationSourceAdapter> SOURCES = List.of(
             new DebugAnimationSourceAdapter(),
-            new EmfAnimationSourceAdapter()
+            EMF_ADAPTER
     );
 
     private static boolean loggedNoSources;
     private static long lastDiagnosticTick = -200L;
 
     private McaAnimationBridge() {}
+
+    /** Drop cached CEM programs so the next render reloads from the current pack stack. */
+    public static void onResourcesReloaded() {
+        EMF_ADAPTER.invalidate();
+    }
 
     public static <T extends LivingEntity> void apply(
             T entity,

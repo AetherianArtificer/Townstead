@@ -4,20 +4,23 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.client.animation.cem.CemAnimationProgram;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.PackResources;
+import net.minecraft.server.packs.PackType;
 
 import java.lang.reflect.Method;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
  * Source adapter for EMF (Entity Model Features) resource packs.
  *
- * <p>EMF accepts CEM ({@code .jem}) files at two locations within a pack, in
- * this preference order: the modern {@code emf/cem/} path (used by Fresh
- * Animations Player Extension) and the legacy {@code optifine/cem/} path
- * (used by Fresh Moves and Fresh Animations itself). The adapter probes both
- * and uses the first one that the resource manager has loaded.</p>
+ * <p>EMF accepts CEM ({@code .jem}) files at two locations within a pack: the
+ * modern {@code emf/cem/} path (used by Fresh Animations Player Extension) and
+ * the legacy {@code optifine/cem/} path (used by Fresh Moves and Fresh
+ * Animations itself). Resolution walks the resource pack stack from top to
+ * bottom; within each pack the modern path is preferred, but a higher-priority
+ * pack always wins regardless of which path it uses, matching EMF's own
+ * resolution order and the player's drag-to-reorder mental model.</p>
  *
  * <p>Currently scoped to the player CEM only ({@code player.jem}); non-player
  * CEM files, slim/baby variants, and {@code .properties} gating are not yet
@@ -30,8 +33,16 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
             ResourceLocation.fromNamespaceAndPath("minecraft", "optifine/cem/player.jem")
     );
 
+    private boolean resolved;
     private ResourceLocation cachedLocation;
     private Optional<CemAnimationProgram> program = Optional.empty();
+
+    /** Drop the cached CEM program so the next render re-resolves and reloads. */
+    public void invalidate() {
+        resolved = false;
+        cachedLocation = null;
+        program = Optional.empty();
+    }
 
     @Override
     public String id() {
@@ -73,9 +84,16 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
     private static Optional<ResourceLocation> resolvePlayerCem() {
         Minecraft client = Minecraft.getInstance();
         if (client == null || client.getResourceManager() == null) return Optional.empty();
-        for (ResourceLocation candidate : PLAYER_CEM_CANDIDATES) {
-            if (client.getResourceManager().getResource(candidate).isPresent()) {
-                return Optional.of(candidate);
+        List<PackResources> packs = client.getResourceManager().listPacks().toList();
+        // listPacks() returns packs in load order; the topmost (highest-priority)
+        // pack is at the end. Walk in reverse so a higher pack's optifine/cem/
+        // beats a lower pack's emf/cem/.
+        for (int i = packs.size() - 1; i >= 0; i--) {
+            PackResources pack = packs.get(i);
+            for (ResourceLocation candidate : PLAYER_CEM_CANDIDATES) {
+                if (pack.getResource(PackType.CLIENT_RESOURCES, candidate) != null) {
+                    return Optional.of(candidate);
+                }
             }
         }
         return Optional.empty();
@@ -128,10 +146,10 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
     }
 
     private Optional<CemAnimationProgram> program(AnimationSourceContext context) {
-        ResourceLocation resolved = resolvePlayerCem().orElse(null);
-        if (Objects.equals(resolved, cachedLocation)) return program;
-        cachedLocation = resolved;
-        program = resolved == null ? Optional.empty() : CemAnimationProgram.load(resolved);
+        if (resolved) return program;
+        resolved = true;
+        cachedLocation = resolvePlayerCem().orElse(null);
+        program = cachedLocation == null ? Optional.empty() : CemAnimationProgram.load(cachedLocation);
         logDiagnostics(context);
         return program;
     }

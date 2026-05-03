@@ -283,6 +283,7 @@ public class Townstead {
         townstead$registerKeybinds(modBus);
         townstead$registerClientTooltipFactory(modBus);
         townstead$registerMenuScreens(modBus);
+        townstead$registerAnimationReloadListener(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
@@ -597,6 +598,26 @@ public class Townstead {
 
     // Screen is opened client-side directly via FieldPostScreenOpener (no menu registration needed)
     private static void townstead$registerMenuScreens(Object modBus) {}
+
+    //? if neoforge {
+    private static void townstead$registerAnimationReloadListener(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent event) ->
+                            event.registerReloadListener(
+                                    (net.minecraft.server.packs.resources.ResourceManagerReloadListener)
+                                            rm -> com.aetherianartificer.townstead.client.animation.McaAnimationBridge.onResourcesReloaded())
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no client resource pack stack to track.
+        }
+    }
+    //?} else {
+    /*private static void townstead$registerAnimationReloadListener(IEventBus modBus) {
+        // Forge 1.20.1: animation bridge cache invalidation not yet wired
+    }
+    *///?}
 
     private static void townstead$registerClientConfigScreen(ModContainer modContainer) {
         //? if neoforge {
