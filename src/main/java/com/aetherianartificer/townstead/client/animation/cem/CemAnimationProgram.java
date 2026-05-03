@@ -15,6 +15,7 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -65,13 +66,21 @@ public final class CemAnimationProgram {
     }
 
     public <T extends LivingEntity> List<AnimationTransform> evaluate(AnimationSourceContext<T> source) {
-        long gameTime = source.entity().level().getGameTime();
+        T entity = source.entity();
+        long gameTime = entity.level().getGameTime();
         pruneEntityVariables(gameTime);
-        EntityVariables entityState = entityVariables.computeIfAbsent(source.entity().getUUID(), ignored -> new EntityVariables());
+        EntityVariables entityState = entityVariables.computeIfAbsent(entity.getUUID(), ignored -> new EntityVariables());
         entityState.lastSeenTick = gameTime;
+        long nowMillis = Util.getMillis();
+        double frameTime = entityState.lastEvalMillis == 0L
+                ? 1.0D / 20.0D
+                : Math.min(0.25D, Math.max(0.0D, (nowMillis - entityState.lastEvalMillis) / 1000.0D));
+        entityState.lastEvalMillis = nowMillis;
+        entityState.frameCounter++;
+        float partialTick = (float) Mth.clamp(source.animationProgress() - entity.tickCount, 0.0D, 1.0D);
         CemVariableStore variables = entityState.variables;
         variables.clearAssignments();
-        CemEvaluationContext<T> context = new CemEvaluationContext<>(source, variables);
+        CemEvaluationContext<T> context = new CemEvaluationContext<>(source, variables, frameTime, partialTick, entityState.frameCounter);
         for (CemAssignment assignment : assignments) {
             double value = assignment.expression().evaluate(context);
             if (Double.isFinite(value)) {
@@ -161,16 +170,24 @@ public final class CemAnimationProgram {
     private static final class EntityVariables {
         private final CemVariableStore variables = new CemVariableStore();
         private long lastSeenTick;
+        private long lastEvalMillis;
+        private long frameCounter;
     }
 
     static final class CemEvaluationContext<T extends LivingEntity> {
         private final AnimationSourceContext<T> source;
         private final CemVariableStore variables;
+        private final double frameTime;
+        private final float partialTick;
+        private final long frameCounter;
         private final Map<String, CemPartPose> baseline = new HashMap<>();
 
-        CemEvaluationContext(AnimationSourceContext<T> source, CemVariableStore variables) {
+        CemEvaluationContext(AnimationSourceContext<T> source, CemVariableStore variables, double frameTime, float partialTick, long frameCounter) {
             this.source = source;
             this.variables = variables;
+            this.frameTime = frameTime;
+            this.partialTick = partialTick;
+            this.frameCounter = frameCounter;
             seedRenderVariables();
             seedModelPart("root", source.model().body);
             seedModelPart("head", source.model().head);
@@ -203,9 +220,11 @@ public final class CemAnimationProgram {
 
         private void seedRenderVariables() {
             T entity = source.entity();
-            variables.seed("age", source.animationProgress());
-            variables.seed("frame_time", frameTimeSeconds());
-            variables.seed("frame_counter", entity.tickCount);
+            float animationProgress = source.animationProgress();
+            variables.seed("age", animationProgress);
+            variables.seed("time", animationProgress);
+            variables.seed("frame_time", frameTime);
+            variables.seed("frame_counter", frameCounter);
             variables.seed("limb_swing", source.parameters().limbAngle());
             variables.seed("limb_speed", source.parameters().limbDistance());
             variables.seed("head_yaw", source.parameters().headYaw());
@@ -217,17 +236,20 @@ public final class CemAnimationProgram {
             variables.seed("rot_y", Math.toRadians(source.parameters().headYaw()));
             variables.seed("player_rot_x", Math.toRadians(source.headPitch()));
             variables.seed("player_rot_y", Math.toRadians(source.parameters().headYaw()));
-            variables.seed("pos_x", entity.getX());
-            variables.seed("pos_y", entity.getY());
-            variables.seed("pos_z", entity.getZ());
-            variables.seed("player_pos_x", entity.getX());
-            variables.seed("player_pos_y", entity.getY());
-            variables.seed("player_pos_z", entity.getZ());
+            double posX = Mth.lerp(partialTick, entity.xOld, entity.getX());
+            double posY = Mth.lerp(partialTick, entity.yOld, entity.getY());
+            double posZ = Mth.lerp(partialTick, entity.zOld, entity.getZ());
+            variables.seed("pos_x", posX);
+            variables.seed("pos_y", posY);
+            variables.seed("pos_z", posZ);
+            variables.seed("player_pos_x", posX);
+            variables.seed("player_pos_y", posY);
+            variables.seed("player_pos_z", posZ);
             variables.seed("health", entity.getHealth());
-            variables.seed("hurt_time", entity.hurtTime);
+            variables.seed("hurt_time", Mth.lerp(partialTick, (float) Math.max(0, entity.hurtTime - 1), (float) entity.hurtTime));
             variables.seed("death_time", entity.deathTime);
             variables.seed("max_health", entity.getMaxHealth());
-            variables.seed("distance", distanceFromClientPlayer(entity));
+            variables.seed("distance", distanceFromClientPlayer(entity, partialTick));
             variables.seed("height_above_ground", heightAboveGround(entity));
             FluidDepth fluidDepth = FluidDepth.from(entity);
             variables.seed("fluid_depth", fluidDepth.total());
@@ -281,7 +303,7 @@ public final class CemAnimationProgram {
             variables.seed("is_holding_item_left", (rightHanded ? entity.getOffhandItem() : entity.getMainHandItem()).isEmpty() ? 0.0D : 1.0D);
             variables.seed("is_paused", Minecraft.getInstance().isPaused() ? 1.0D : 0.0D);
             variables.seed("is_hovered", 0.0D);
-            variables.seed("swing_progress", entity.attackAnim);
+            variables.seed("swing_progress", entity.getAttackAnim(partialTick));
             variables.seed("rule_index", 1.0D);
             variables.seed("id", Math.abs(entity.getUUID().hashCode()));
             variables.seed("pi", Math.PI);
@@ -416,17 +438,19 @@ public final class CemAnimationProgram {
         }
     }
 
-    private static double frameTimeSeconds() {
-        Minecraft client = Minecraft.getInstance();
-        if (client == null || client.getTimer() == null) return 1.0D / 20.0D;
-        float deltaTicks = client.getTimer().getGameTimeDeltaTicks();
-        if (!Float.isFinite(deltaTicks) || deltaTicks <= 0.0F) return 1.0D / 20.0D;
-        return Math.min(0.25D, deltaTicks / 20.0D);
-    }
-
-    private static double distanceFromClientPlayer(LivingEntity entity) {
+    private static double distanceFromClientPlayer(LivingEntity entity, float partialTick) {
         net.minecraft.world.entity.player.Player player = Minecraft.getInstance().player;
-        return player == null ? 0.0D : player.distanceTo(entity);
+        if (player == null) return 0.0D;
+        double ex = Mth.lerp(partialTick, entity.xOld, entity.getX());
+        double ey = Mth.lerp(partialTick, entity.yOld, entity.getY());
+        double ez = Mth.lerp(partialTick, entity.zOld, entity.getZ());
+        double px = Mth.lerp(partialTick, player.xOld, player.getX());
+        double py = Mth.lerp(partialTick, player.yOld, player.getY());
+        double pz = Mth.lerp(partialTick, player.zOld, player.getZ());
+        double dx = ex - px;
+        double dy = ey - py;
+        double dz = ez - pz;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
     private static double heightAboveGround(LivingEntity entity) {
