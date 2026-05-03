@@ -98,6 +98,7 @@ public final class McaAnimationBridge {
     }
 
     private static void syncMcaDependentParts(HumanoidModel<?> model) {
+        model.hat.copyFrom(model.head);
         if (model instanceof VillagerEntityModelMCA<?> villagerModel) {
             villagerModel.leftLegwear.copyFrom(villagerModel.leftLeg);
             villagerModel.rightLegwear.copyFrom(villagerModel.rightLeg);
