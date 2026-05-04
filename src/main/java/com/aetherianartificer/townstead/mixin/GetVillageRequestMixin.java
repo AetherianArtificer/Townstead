@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
+import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.spirit.SpiritReconciler;
 import com.aetherianartificer.townstead.spirit.VillageSpiritCache;
 import com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload;
@@ -20,9 +21,10 @@ import java.util.Optional;
 /**
  * Piggybacks on MCA's "give me the nearest village's snapshot" request to
  * also send the village's current spirit state down to the client. After
- * MCA's own {@code GetVillageResponse} is dispatched, we reconcile the
- * village's spirits (cheap) and ship a {@link VillageSpiritSyncPayload} with
- * whatever the cache now holds. The client stashes it in
+ * MCA's own {@code GetVillageResponse} is dispatched, we ship a
+ * {@link VillageSpiritSyncPayload} from the already-seeded cache. If a village
+ * was created after server start and has no cache entry yet, we do one bounded
+ * reconcile pass using the preloaded spirit index. The client stashes it in
  * {@code ClientVillageSpiritStore}, where the blueprint Spirit page reads
  * from.
  */
@@ -34,21 +36,25 @@ public abstract class GetVillageRequestMixin {
     /*@Inject(method = "receive", at = @At("TAIL"), remap = false)
     *///?}
     private void townstead$sendSpiritSnapshot(ServerPlayer player, CallbackInfo ci) {
-        if (!(player.level() instanceof ServerLevel level)) return;
-        Optional<Village> village = Village.findNearest(player);
-        if (village.isEmpty()) return;
-        Village v = village.get();
-        VillageSpiritCache.Entry entry = VillageSpiritCache.get(level, v.getId());
-        if (entry == null) {
-            SpiritReconciler.reconcileVillage(level, v);
-            entry = VillageSpiritCache.get(level, v.getId());
+        try {
+            if (!(player.level() instanceof ServerLevel level)) return;
+            Optional<Village> village = Village.findNearest(player);
+            if (village.isEmpty()) return;
+            Village v = village.get();
+            VillageSpiritCache.Entry entry = VillageSpiritCache.get(level, v.getId());
+            if (entry == null) {
+                SpiritReconciler.reconcileVillage(level, v);
+                entry = VillageSpiritCache.get(level, v.getId());
+            }
+            if (entry == null) return;
+            VillageSpiritSyncPayload payload = VillageSpiritSyncPayload.fromCache(v.getId(), entry);
+            //? if neoforge {
+            PacketDistributor.sendToPlayer(player, payload);
+            //?} else if forge {
+            /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, payload);
+            *///?}
+        } catch (RuntimeException ex) {
+            Townstead.LOGGER.warn("Unable to send village spirit snapshot for {}", player.getName().getString(), ex);
         }
-        if (entry == null) return;
-        VillageSpiritSyncPayload payload = VillageSpiritSyncPayload.fromCache(v.getId(), entry);
-        //? if neoforge {
-        PacketDistributor.sendToPlayer(player, payload);
-        //?} else if forge {
-        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, payload);
-        *///?}
     }
 }
