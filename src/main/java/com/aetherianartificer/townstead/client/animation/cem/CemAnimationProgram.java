@@ -9,6 +9,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NumericTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.server.packs.resources.Resource;
@@ -34,6 +39,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public final class CemAnimationProgram {
     private final List<CemAssignment> assignments;
@@ -602,18 +609,125 @@ public final class CemAnimationProgram {
     static double nbt(String query, CemEvaluationContext<?> context) {
         String trimmed = query.trim();
         int comma = trimmed.indexOf(',');
-        String path = (comma >= 0 ? trimmed.substring(0, comma) : trimmed).trim().toLowerCase(Locale.ROOT);
-        String expected = comma >= 0 ? trimmed.substring(comma + 1).trim().toLowerCase(Locale.ROOT) : "";
+        String path = (comma >= 0 ? trimmed.substring(0, comma) : trimmed).trim();
+        String expected = comma >= 0 ? trimmed.substring(comma + 1).trim() : "";
 
-        if ("abilities.flying".equals(path) && context.source.entity() instanceof Player player) {
-            boolean flying = player.getAbilities().flying;
-            if (expected.isEmpty()) return bool(flying);
-            if ("1".equals(expected) || "true".equals(expected)) return bool(flying);
-            if ("0".equals(expected) || "false".equals(expected)) return bool(!flying);
-            return 0.0D;
+        NbtValue value = livePlayerNbtValue(path, context.source.entity()).orElseGet(() -> savedNbtValue(path, context.source.entity()));
+        if (!value.exists()) return bool(matchesMissing(expected));
+        if (expected.isEmpty()) return bool(value.truthy());
+        return bool(matchesNbtExpected(value, expected));
+    }
+
+    private static Optional<NbtValue> livePlayerNbtValue(String path, LivingEntity entity) {
+        if (!(entity instanceof Player player)) return Optional.empty();
+        String normalized = path.toLowerCase(Locale.ROOT);
+        if ("abilities.flying".equals(normalized)) {
+            return Optional.of(NbtValue.ofBoolean(player.getAbilities().flying));
+        }
+        if ("selecteditem.id".equals(normalized)) {
+            if (player.getMainHandItem().isEmpty()) return Optional.empty();
+            return Optional.of(NbtValue.ofString(BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString()));
+        }
+        return Optional.empty();
+    }
+
+    private static NbtValue savedNbtValue(String path, LivingEntity entity) {
+        try {
+            CompoundTag root = new CompoundTag();
+            entity.saveWithoutId(root);
+            Tag tag = findNbtPath(root, path);
+            return tag == null ? NbtValue.MISSING : NbtValue.ofTag(tag);
+        } catch (RuntimeException ignored) {
+            return NbtValue.MISSING;
+        }
+    }
+
+    private static Tag findNbtPath(CompoundTag root, String path) {
+        if (path.isEmpty()) return root;
+        Tag current = root;
+        for (String part : path.split("\\.")) {
+            if (part.isEmpty()) return null;
+            if (!(current instanceof CompoundTag compound) || !compound.contains(part)) return null;
+            current = compound.get(part);
+            if (current == null) return null;
+        }
+        return current;
+    }
+
+    private static boolean matchesMissing(String expected) {
+        String normalized = expected.trim().toLowerCase(Locale.ROOT);
+        return "exists:false".equals(normalized);
+    }
+
+    private static boolean matchesNbtExpected(NbtValue value, String expected) {
+        String normalized = expected.trim().toLowerCase(Locale.ROOT);
+        if ("exists:true".equals(normalized)) return value.exists();
+        if ("exists:false".equals(normalized)) return !value.exists();
+        if ("true".equals(normalized)) return value.asBoolean();
+        if ("false".equals(normalized)) return !value.asBoolean();
+        if (normalized.startsWith("raw:iregex:")) return matchesRegex(value.raw(), expected.substring("raw:iregex:".length()), true);
+        if (normalized.startsWith("raw:regex:")) return matchesRegex(value.raw(), expected.substring("raw:regex:".length()), false);
+        if (normalized.startsWith("iregex:")) return matchesRegex(value.string(), expected.substring("iregex:".length()), true);
+        if (normalized.startsWith("regex:")) return matchesRegex(value.string(), expected.substring("regex:".length()), false);
+
+        Double expectedNumber = parseDoubleOrNull(expected);
+        if (expectedNumber != null && value.number() != null) {
+            return Math.abs(value.number() - expectedNumber) < 0.00001D;
         }
 
-        return 0.0D;
+        return value.string().equals(expected) || value.string().equalsIgnoreCase(expected);
+    }
+
+    private static boolean matchesRegex(String value, String regex, boolean caseInsensitive) {
+        try {
+            int flags = caseInsensitive ? Pattern.CASE_INSENSITIVE : 0;
+            return Pattern.compile(regex, flags).matcher(value).find();
+        } catch (PatternSyntaxException ignored) {
+            return false;
+        }
+    }
+
+    private static Double parseDoubleOrNull(String value) {
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private record NbtValue(boolean exists, String string, String raw, Double number, Boolean bool) {
+        private static final NbtValue MISSING = new NbtValue(false, "", "", null, null);
+
+        private static NbtValue ofBoolean(boolean value) {
+            return new NbtValue(true, value ? "1" : "0", value ? "1b" : "0b", value ? 1.0D : 0.0D, value);
+        }
+
+        private static NbtValue ofString(String value) {
+            return new NbtValue(true, value, value, null, null);
+        }
+
+        private static NbtValue ofTag(Tag tag) {
+            if (tag instanceof NumericTag numeric) {
+                double value = numeric.getAsDouble();
+                return new NbtValue(true, Double.toString(value), tag.toString(), value, Math.abs(value) > 0.00001D);
+            }
+            if (tag instanceof StringTag stringTag) {
+                return ofString(stringTag.getAsString());
+            }
+            return new NbtValue(true, tag.getAsString(), tag.toString(), null, null);
+        }
+
+        private boolean truthy() {
+            if (bool != null) return bool;
+            if (number != null) return Math.abs(number) > 0.00001D;
+            return !string.isEmpty();
+        }
+
+        private boolean asBoolean() {
+            if (bool != null) return bool;
+            if (number != null) return Math.abs(number) > 0.00001D;
+            return "true".equalsIgnoreCase(string) || "1".equals(string);
+        }
     }
 
     private static double keyframe(List<Double> args, boolean loop) {
