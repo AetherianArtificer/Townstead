@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.Townstead;
-import com.aetherianartificer.townstead.spirit.SpiritReconciler;
 import com.aetherianartificer.townstead.spirit.VillageSpiritCache;
 import com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload;
 import net.conczin.mca.network.c2s.GetVillageRequest;
@@ -21,12 +20,10 @@ import java.util.Optional;
 /**
  * Piggybacks on MCA's "give me the nearest village's snapshot" request to
  * also send the village's current spirit state down to the client. After
- * MCA's own {@code GetVillageResponse} is dispatched, we ship a
- * {@link VillageSpiritSyncPayload} from the already-seeded cache. If a village
- * was created after server start and has no cache entry yet, we do one bounded
- * reconcile pass using the preloaded spirit index. The client stashes it in
- * {@code ClientVillageSpiritStore}, where the blueprint Spirit page reads
- * from.
+ * MCA's own {@code GetVillageResponse} is dispatched, we ship a cached
+ * {@link VillageSpiritSyncPayload} when one is already available. Cache misses
+ * deliberately do not reconcile here: the default blueprint load path is
+ * latency-sensitive, and the Spirit page has its own explicit query.
  */
 @Mixin(GetVillageRequest.class)
 public abstract class GetVillageRequestMixin {
@@ -42,10 +39,6 @@ public abstract class GetVillageRequestMixin {
             if (village.isEmpty()) return;
             Village v = village.get();
             VillageSpiritCache.Entry entry = VillageSpiritCache.get(level, v.getId());
-            if (entry == null) {
-                SpiritReconciler.reconcileVillage(level, v);
-                entry = VillageSpiritCache.get(level, v.getId());
-            }
             if (entry == null) return;
             VillageSpiritSyncPayload payload = VillageSpiritSyncPayload.fromCache(v.getId(), entry);
             //? if neoforge {

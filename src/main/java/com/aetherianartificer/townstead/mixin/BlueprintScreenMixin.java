@@ -45,6 +45,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.tags.TagKey;
@@ -178,6 +179,10 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private final List<NodeData> townstead$catalogNodes = new ArrayList<>();
     @Unique
+    private final Map<String, ItemStack> townstead$catalogIconCache = new HashMap<>();
+    @Unique
+    private CatalogDetailCache townstead$catalogDetailCache = null;
+    @Unique
     private final Set<String> townstead$builtTypes = new HashSet<>();
     @Unique
     private double townstead$catalogPanX = 0.0;
@@ -201,6 +206,18 @@ public abstract class BlueprintScreenMixin extends Screen {
     private int townstead$catalogNeedsPage = 0;
     @Unique
     private int townstead$catalogNeedsRowsPerPage = 1;
+    @Unique
+    private ResourceManager townstead$catalogBackgroundResourceManager = null;
+    @Unique
+    private ResourceLocation townstead$catalogBackgroundTexture = null;
+    @Unique
+    private boolean townstead$catalogBackgroundAvailable = false;
+    @Unique
+    private BlockPos townstead$cachedUpgradePlayerPos = null;
+    @Unique
+    private String townstead$cachedUpgradeTargetType = null;
+    @Unique
+    private long townstead$nextUpgradeScanGameTime = Long.MIN_VALUE;
 
     // --- Shift page state ---
     @Unique
@@ -286,6 +303,12 @@ public abstract class BlueprintScreenMixin extends Screen {
     private record RequirementRow(ResourceLocation id, String name, int qty) {
     }
 
+    @Unique
+    private record CatalogDetailCache(String buildingType, int textWidth, Component nameComponent, int nameHeight,
+            Component tierComponent, Component modComponent, Map<String, Integer> spiritPoints,
+            Component descComponent, List<RequirementRow> requirements) {
+    }
+
     private BlueprintScreenMixin() {
         super(Component.empty());
     }
@@ -343,6 +366,7 @@ public abstract class BlueprintScreenMixin extends Screen {
                 townstead$pendingCatalogBuildingType = null;
             }
         } else if ("map".equals(this.page)) {
+            townstead$invalidateUpgradeTargetCache();
             townstead$addUpgradeBuildingControl();
             townstead$setNavVisible(true);
         } else if ("rank".equals(this.page)) {
@@ -353,6 +377,8 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$setNavVisible(true);
         } else {
             townstead$catalogNodes.clear();
+            townstead$catalogIconCache.clear();
+            townstead$catalogDetailCache = null;
             townstead$catalogDragging = false;
             townstead$catalogDragArmed = false;
             townstead$catalogBackButton = null;
@@ -385,7 +411,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             CallbackInfo ci) {
         if (!"map".equals(this.page) || townstead$upgradeBuildingButton == null)
             return;
-        townstead$upgradeBuildingButton.active = townstead$upgradeTargetTypeAtPlayer() != null;
+        townstead$upgradeBuildingButton.active = townstead$cachedUpgradeTargetTypeAtPlayer() != null;
     }
 
     @Inject(method = "renderMap", remap = false, at = @At("TAIL"))
@@ -519,24 +545,22 @@ public abstract class BlueprintScreenMixin extends Screen {
 
         int detailsTextX = detailsX + 4;
         int detailsTextY = detailsY + 4;
-        Component nameComponent = Component.literal(townstead$displayBuildingName(selected.name()));
-        context.drawWordWrap(this.font, nameComponent, detailsTextX, detailsTextY, CATALOG_DETAILS_W - 8, 0xFFFFFF);
-        detailsTextY += Math.max(this.font.lineHeight + 2,
-                this.font.split(nameComponent, CATALOG_DETAILS_W - 8).size() * this.font.lineHeight + 2);
-        String tierLine = townstead$tierLine(selected.name());
-        if (tierLine != null) {
+        CatalogDetailCache detail = townstead$catalogDetailFor(selected, CATALOG_DETAILS_W - 8);
+        context.drawWordWrap(this.font, detail.nameComponent(), detailsTextX, detailsTextY,
+                detail.textWidth(), 0xFFFFFF);
+        detailsTextY += detail.nameHeight();
+        if (detail.tierComponent() != null) {
             context.pose().pushPose();
             context.pose().scale(0.68f, 0.68f, 1.0f);
-            context.drawString(this.font, Component.literal(tierLine), (int) Math.floor(detailsTextX / 0.68f),
+            context.drawString(this.font, detail.tierComponent(), (int) Math.floor(detailsTextX / 0.68f),
                     (int) Math.floor(detailsTextY / 0.68f), 0xE3D18A);
             context.pose().popPose();
             detailsTextY += (int) Math.ceil(this.font.lineHeight * 0.68f) + 1;
         }
-        String modLine = townstead$modLine(selected.name());
-        if (modLine != null) {
+        if (detail.modComponent() != null) {
             context.pose().pushPose();
             context.pose().scale(0.68f, 0.68f, 1.0f);
-            context.drawString(this.font, Component.literal(modLine), (int) Math.floor(detailsTextX / 0.68f),
+            context.drawString(this.font, detail.modComponent(), (int) Math.floor(detailsTextX / 0.68f),
                     (int) Math.floor(detailsTextY / 0.68f), 0x8FC1FF);
             context.pose().popPose();
             detailsTextY += (int) Math.ceil(this.font.lineHeight * 0.68f) + 2;
@@ -546,8 +570,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         // spirit (e.g., neutral housing types). Each chip pairs the spirit's
         // icon-item with a "+N" label tinted with the spirit color so the
         // building's identity is readable at a glance.
-        java.util.Map<String, Integer> spiritPts =
-                com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.contributionsFor(selected.name());
+        java.util.Map<String, Integer> spiritPts = detail.spiritPoints();
         if (!spiritPts.isEmpty()) {
             int chipY = detailsTextY;
             int chipX = detailsTextX;
@@ -606,24 +629,19 @@ public abstract class BlueprintScreenMixin extends Screen {
                 context.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
             }
         }
-        String descKey = "buildingType." + selected.name() + ".description";
-        String desc = Component.translatable(descKey).getString();
-        if (desc.equals(descKey))
-            desc = "No description.";
-        Component descComponent = Component.literal(desc);
         context.pose().pushPose();
         context.pose().scale(0.85f, 0.85f, 1.0f);
         int scaledDescX = (int) Math.floor(detailsTextX / 0.85f);
         int scaledDescY = (int) Math.floor(detailsTextY / 0.85f);
         int scaledDescW = (int) Math.floor((CATALOG_DETAILS_W - 8) / 0.85f);
-        context.drawWordWrap(this.font, descComponent, scaledDescX, scaledDescY, scaledDescW, 0xA8A8A8);
+        context.drawWordWrap(this.font, detail.descComponent(), scaledDescX, scaledDescY, scaledDescW, 0xA8A8A8);
         context.pose().popPose();
 
         int needsHeaderY = detailsMidY + 6;
         context.drawString(this.font, Component.literal("Needs"), detailsTextX, needsHeaderY, 0xD0D0D0);
         int needsListTop = needsHeaderY + this.font.lineHeight + 4;
         int needsListBottom = detailsBottom - 4;
-        List<RequirementRow> allRequirements = townstead$sortedRequirements(selected.getGroups());
+        List<RequirementRow> allRequirements = detail.requirements();
         int rowHeight = 12;
         int listHeight = Math.max(0, needsListBottom - needsListTop);
         int rowsPerPage = Math.max(1, listHeight / rowHeight);
@@ -1084,7 +1102,7 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$tryUpgradeCurrentBuilding() {
-        String nextType = townstead$upgradeTargetTypeAtPlayer();
+        String nextType = townstead$cachedUpgradeTargetTypeAtPlayer();
         if (nextType == null)
             return;
         //? if neoforge {
@@ -1095,7 +1113,30 @@ public abstract class BlueprintScreenMixin extends Screen {
         NetworkHandler.sendToServer(new GetVillageRequest());
         *///?}
         BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
+        townstead$invalidateUpgradeTargetCache();
         accessor.townstead$invokeSetPage("map");
+    }
+
+    @Unique
+    private String townstead$cachedUpgradeTargetTypeAtPlayer() {
+        if (this.minecraft == null || this.minecraft.player == null || this.minecraft.level == null)
+            return null;
+        BlockPos pos = this.minecraft.player.blockPosition();
+        long gameTime = this.minecraft.level.getGameTime();
+        if (pos.equals(townstead$cachedUpgradePlayerPos) && gameTime < townstead$nextUpgradeScanGameTime) {
+            return townstead$cachedUpgradeTargetType;
+        }
+        townstead$cachedUpgradePlayerPos = pos;
+        townstead$cachedUpgradeTargetType = townstead$upgradeTargetTypeAtPlayer();
+        townstead$nextUpgradeScanGameTime = gameTime + 5L;
+        return townstead$cachedUpgradeTargetType;
+    }
+
+    @Unique
+    private void townstead$invalidateUpgradeTargetCache() {
+        townstead$cachedUpgradePlayerPos = null;
+        townstead$cachedUpgradeTargetType = null;
+        townstead$nextUpgradeScanGameTime = Long.MIN_VALUE;
     }
 
     @Unique
@@ -1231,6 +1272,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private void townstead$buildCatalogEntries() {
         List<BuildingType> all = new ArrayList<>(BuildingTypes.getInstance().getBuildingTypes().values());
+        townstead$catalogIconCache.clear();
+        townstead$catalogDetailCache = null;
         townstead$builtTypes.clear();
         BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
         if (accessor.townstead$getVillage() != null) {
@@ -1317,11 +1360,25 @@ public abstract class BlueprintScreenMixin extends Screen {
             com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.Theme theme,
             int x, int y, int w, int h) {
         ResourceLocation texture = theme.backgroundTexture().orElse(TOWNSTEAD_CATALOG_BACKGROUND);
-        if (this.minecraft == null || this.minecraft.getResourceManager().getResource(texture).isEmpty())
+        if (!townstead$catalogBackgroundAvailable(texture))
             return;
         context.blit(texture, x, y, w, h, 0, 0, TOWNSTEAD_CATALOG_BACKGROUND_TEX_W,
                 TOWNSTEAD_CATALOG_BACKGROUND_TEX_H, TOWNSTEAD_CATALOG_BACKGROUND_TEX_W,
                 TOWNSTEAD_CATALOG_BACKGROUND_TEX_H);
+    }
+
+    @Unique
+    private boolean townstead$catalogBackgroundAvailable(ResourceLocation texture) {
+        if (this.minecraft == null || texture == null)
+            return false;
+        ResourceManager manager = this.minecraft.getResourceManager();
+        if (manager != townstead$catalogBackgroundResourceManager
+                || !texture.equals(townstead$catalogBackgroundTexture)) {
+            townstead$catalogBackgroundResourceManager = manager;
+            townstead$catalogBackgroundTexture = texture;
+            townstead$catalogBackgroundAvailable = manager.getResource(texture).isPresent();
+        }
+        return townstead$catalogBackgroundAvailable;
     }
 
     @Unique
@@ -1465,7 +1522,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             context.pose().popPose();
             return;
         }
-        ItemStack icon = townstead$resolveNodeIcon(type);
+        ItemStack icon = townstead$catalogIconCache.computeIfAbsent(type.name(), ignored -> townstead$resolveNodeIcon(type));
         if (icon.isEmpty())
             return;
         context.pose().pushPose();
@@ -1496,6 +1553,39 @@ public abstract class BlueprintScreenMixin extends Screen {
             return null;
         int idx = Math.max(0, Math.min(townstead$catalogSelected, townstead$catalogEntries.size() - 1));
         return townstead$catalogEntries.get(idx);
+    }
+
+    @Unique
+    private CatalogDetailCache townstead$catalogDetailFor(BuildingType selected, int textWidth) {
+        String buildingType = selected.name();
+        CatalogDetailCache cached = townstead$catalogDetailCache;
+        if (cached != null && cached.buildingType().equals(buildingType) && cached.textWidth() == textWidth) {
+            return cached;
+        }
+
+        Component nameComponent = Component.literal(townstead$displayBuildingName(buildingType));
+        int nameHeight = Math.max(this.font.lineHeight + 2,
+                this.font.split(nameComponent, textWidth).size() * this.font.lineHeight + 2);
+        String tierLine = townstead$tierLine(buildingType);
+        String modLine = townstead$modLine(buildingType);
+        String descKey = "buildingType." + buildingType + ".description";
+        String desc = Component.translatable(descKey).getString();
+        if (desc.equals(descKey))
+            desc = "No description.";
+
+        java.util.Map<String, Integer> spiritPts =
+                com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.contributionsFor(buildingType);
+        townstead$catalogDetailCache = new CatalogDetailCache(
+                buildingType,
+                textWidth,
+                nameComponent,
+                nameHeight,
+                tierLine != null ? Component.literal(tierLine) : null,
+                modLine != null ? Component.literal(modLine) : null,
+                spiritPts.isEmpty() ? Map.of() : Map.copyOf(spiritPts),
+                Component.literal(desc),
+                townstead$sortedRequirements(selected.getGroups()));
+        return townstead$catalogDetailCache;
     }
 
     @Unique
@@ -2542,13 +2632,19 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$initSpiritPage() {
-        // Ask MCA for a fresh village snapshot; our GetVillageRequest mixin
-        // piggybacks the spirit snapshot onto the same server response.
-        //? if neoforge {
-        Network.sendToServer(new GetVillageRequest());
-        //?} else {
-        /*NetworkHandler.sendToServer(new GetVillageRequest());
-        *///?}
+        // Ask MCA for a fresh snapshot only when the client does not already
+        // have spirit state for this village. Building changes still refresh
+        // via MCA's normal village requests after report/upgrade actions.
+        net.conczin.mca.server.world.data.Village currentVillage =
+                ((BlueprintScreenAccessor) (Object) this).townstead$getVillage();
+        if (currentVillage == null || com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore
+                .get(currentVillage.getId()).isEmpty()) {
+            //? if neoforge {
+            PacketDistributor.sendToServer(new com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload());
+            //?} else {
+            /*TownsteadNetwork.sendToServer(new com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload());
+            *///?}
+        }
         // Restore per-village scroll position so re-opening the page lands
         // where the player left off.
         int saved = townstead$spiritScrollByVillage.getOrDefault(

@@ -1,6 +1,16 @@
 package com.aetherianartificer.townstead.spirit;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Enumeration;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -23,7 +33,7 @@ public final class BuildingSpiritIndex {
     /** Returns an immutable map of spirit id → points for the given building type, or an empty map. */
     public static Map<String, Integer> contributionsFor(String buildingType) {
         if (buildingType == null) return Map.of();
-        return CONTRIBUTIONS.getOrDefault(buildingType, Map.of());
+        return CONTRIBUTIONS.computeIfAbsent(buildingType, BuildingSpiritIndex::scanForContributions);
     }
 
     /**
@@ -43,5 +53,70 @@ public final class BuildingSpiritIndex {
 
     public static int size() {
         return CONTRIBUTIONS.size();
+    }
+
+    private static Map<String, Integer> scanForContributions(String buildingType) {
+        Map<String, Integer> scanned = scanClasspathCompanion(buildingType);
+        if (scanned.isEmpty()) {
+            scanned = scanInlineBuildingType(buildingType);
+        }
+        return scanned.isEmpty() ? Map.of() : Map.copyOf(scanned);
+    }
+
+    private static Map<String, Integer> scanClasspathCompanion(String buildingType) {
+        try {
+            ClassLoader cl = BuildingSpiritIndex.class.getClassLoader();
+            if (cl == null) return Map.of();
+            String relPath = "data/townstead/spirit/" + buildingType + ".json";
+            Enumeration<URL> urls = cl.getResources(relPath);
+            while (urls.hasMoreElements()) {
+                URL url = urls.nextElement();
+                try (InputStream in = url.openStream();
+                        InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                    JsonObject obj = JsonParser.parseReader(reader).getAsJsonObject();
+                    if (obj == null || !obj.has("townsteadSpirit")) continue;
+                    return parseSpiritMap(obj.getAsJsonObject("townsteadSpirit"));
+                }
+            }
+        } catch (Exception ignored) {}
+        return Map.of();
+    }
+
+    private static Map<String, Integer> scanInlineBuildingType(String buildingType) {
+        String relPath = buildingType.startsWith("compat/")
+                ? "townstead_compat/building_types/" + buildingType + ".json"
+                : "data/mca/building_types/" + buildingType + ".json";
+        return scanInlineSpiritJson(relPath);
+    }
+
+    private static Map<String, Integer> scanInlineSpiritJson(String relPath) {
+        try {
+            ClassLoader cl = BuildingSpiritIndex.class.getClassLoader();
+            if (cl == null) return Map.of();
+            Enumeration<URL> urls = cl.getResources(relPath);
+            while (urls.hasMoreElements()) {
+                URL url = urls.nextElement();
+                try (InputStream in = url.openStream();
+                        InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                    JsonObject obj = JsonParser.parseReader(reader).getAsJsonObject();
+                    if (obj == null || !obj.has("townsteadSpirit")) continue;
+                    return parseSpiritMap(obj.getAsJsonObject("townsteadSpirit"));
+                }
+            }
+        } catch (Exception ignored) {}
+        return Map.of();
+    }
+
+    private static Map<String, Integer> parseSpiritMap(JsonObject spirit) {
+        if (spirit == null || spirit.size() == 0) return Map.of();
+        Map<String, Integer> out = new HashMap<>();
+        for (Map.Entry<String, JsonElement> e : spirit.entrySet()) {
+            if (!SpiritRegistry.contains(e.getKey())) continue;
+            try {
+                int pts = e.getValue().getAsInt();
+                if (pts > 0) out.put(e.getKey(), pts);
+            } catch (Exception ignored) {}
+        }
+        return out;
     }
 }

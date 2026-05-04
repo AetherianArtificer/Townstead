@@ -659,6 +659,11 @@ public class Townstead {
                 com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.STREAM_CODEC,
                 this::handleVillageSpiritSync
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.TYPE,
+                com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.STREAM_CODEC,
+                this::handleVillageSpiritQuery
+        );
         registrar.playToClient(
                 FishermanHookLinkPayload.TYPE,
                 FishermanHookLinkPayload.STREAM_CODEC,
@@ -795,6 +800,22 @@ public class Townstead {
     private void handleVillageSpiritSync(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload payload,
                                          IPayloadContext context) {
         context.enqueueWork(() -> com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.put(payload));
+    }
+
+    private void handleVillageSpiritQuery(com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload payload,
+                                          IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            Optional<Village> village = Village.findNearest(sp);
+            if (village.isEmpty()) return;
+            Village v = village.get();
+            com.aetherianartificer.townstead.spirit.SpiritReconciler.reconcileVillage(sp.serverLevel(), v);
+            com.aetherianartificer.townstead.spirit.VillageSpiritCache.Entry entry =
+                    com.aetherianartificer.townstead.spirit.VillageSpiritCache.get(sp.serverLevel(), v.getId());
+            if (entry == null) return;
+            PacketDistributor.sendToPlayer(sp,
+                    com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.fromCache(v.getId(), entry));
+        });
     }
 
     private void handleFishermanHookLink(FishermanHookLinkPayload payload, IPayloadContext context) {
