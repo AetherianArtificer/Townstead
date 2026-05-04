@@ -15,6 +15,7 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -273,6 +274,7 @@ public final class CemAnimationProgram {
             variables.seed("is_riding", entity.isPassenger() ? 1.0D : 0.0D);
             variables.seed("is_ridden", entity.isVehicle() ? 1.0D : 0.0D);
             variables.seed("is_gliding", entity.isFallFlying() ? 1.0D : 0.0D);
+            variables.seed("is_flying", entity instanceof Player player && player.getAbilities().flying ? 1.0D : 0.0D);
             variables.seed("is_on_ground", entity.onGround() ? 1.0D : 0.0D);
             variables.seed("is_on_head", 0.0D);
             variables.seed("is_on_shoulder", 0.0D);
@@ -281,11 +283,11 @@ public final class CemAnimationProgram {
             variables.seed("is_invisible", entity.isInvisible() ? 1.0D : 0.0D);
             variables.seed("is_sprinting", entity.isSprinting() ? 1.0D : 0.0D);
             variables.seed("is_swimming", entity.isSwimming() ? 1.0D : 0.0D);
-            variables.seed("is_sitting", 0.0D);
+            variables.seed("is_sitting", entity.isPassenger() || entity.getPose() == net.minecraft.world.entity.Pose.SITTING ? 1.0D : 0.0D);
             variables.seed("is_sneaking", entity.isCrouching() ? 1.0D : 0.0D);
             variables.seed("is_tamed", 0.0D);
             variables.seed("is_wet", entity.isInWaterRainOrBubble() ? 1.0D : 0.0D);
-            variables.seed("is_crawling", 0.0D);
+            variables.seed("is_crawling", entity.isVisuallyCrawling() ? 1.0D : 0.0D);
             variables.seed("is_climbing", entity.onClimbable() ? 1.0D : 0.0D);
             variables.seed("is_hurt", entity.hurtTime > 0 ? 1.0D : 0.0D);
             variables.seed("is_in_gui", 0.0D);
@@ -298,7 +300,7 @@ public final class CemAnimationProgram {
             variables.seed("is_holding_item_right", (rightHanded ? entity.getMainHandItem() : entity.getOffhandItem()).isEmpty() ? 0.0D : 1.0D);
             variables.seed("is_holding_item_left", (rightHanded ? entity.getOffhandItem() : entity.getMainHandItem()).isEmpty() ? 0.0D : 1.0D);
             variables.seed("is_paused", Minecraft.getInstance().isPaused() ? 1.0D : 0.0D);
-            variables.seed("is_hovered", 0.0D);
+            variables.seed("is_hovered", Minecraft.getInstance().crosshairPickEntity == entity ? 1.0D : 0.0D);
             variables.seed("swing_progress", entity.getAttackAnim(partialTick));
             variables.seed("rule_index", 1.0D);
             variables.seed("id", Math.abs(entity.getUUID().hashCode()));
@@ -595,6 +597,23 @@ public final class CemAnimationProgram {
             case "nbt" -> 0.0D;
             default -> 0.0D;
         };
+    }
+
+    static double nbt(String query, CemEvaluationContext<?> context) {
+        String trimmed = query.trim();
+        int comma = trimmed.indexOf(',');
+        String path = (comma >= 0 ? trimmed.substring(0, comma) : trimmed).trim().toLowerCase(Locale.ROOT);
+        String expected = comma >= 0 ? trimmed.substring(comma + 1).trim().toLowerCase(Locale.ROOT) : "";
+
+        if ("abilities.flying".equals(path) && context.source.entity() instanceof Player player) {
+            boolean flying = player.getAbilities().flying;
+            if (expected.isEmpty()) return bool(flying);
+            if ("1".equals(expected) || "true".equals(expected)) return bool(flying);
+            if ("0".equals(expected) || "false".equals(expected)) return bool(!flying);
+            return 0.0D;
+        }
+
+        return 0.0D;
     }
 
     private static double keyframe(List<Double> args, boolean loop) {

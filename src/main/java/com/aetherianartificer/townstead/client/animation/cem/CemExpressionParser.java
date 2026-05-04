@@ -144,12 +144,19 @@ final class CemExpressionParser {
         }
         if (peekNumber()) return parseNumber();
         String identifier = parseIdentifier();
+        // CEM treats `true`/`false` as boolean literals (1/0). Without this, packs
+        // like Better Animations that write `is_climbing == true` parse `true` as
+        // an unseeded variable (0), so the comparison passes when *not* climbing
+        // and the climbing arm pose latches on permanently.
+        String lowerId = identifier.toLowerCase(Locale.ROOT);
+        if ("true".equals(lowerId)) return context -> 1.0D;
+        if ("false".equals(lowerId)) return context -> 0.0D;
         skipWhitespace();
         if (match("(")) {
             String method = identifier.toLowerCase(Locale.ROOT);
             if ("nbt".equals(method)) {
-                skipRawCallBody();
-                return context -> 0.0D;
+                String query = readRawCallBody();
+                return context -> CemAnimationProgram.nbt(query, context);
             }
             List<CemExpression> args = new ArrayList<>();
             if (!peek(")")) {
@@ -206,7 +213,8 @@ final class CemExpressionParser {
         if (!match(token)) throw new IllegalArgumentException("Expected " + token + " at " + index);
     }
 
-    private void skipRawCallBody() {
+    private String readRawCallBody() {
+        int start = index;
         int depth = 1;
         while (!done() && depth > 0) {
             char c = input.charAt(index++);
@@ -217,6 +225,7 @@ final class CemExpressionParser {
             }
         }
         if (depth != 0) throw new IllegalArgumentException("Expected ) at " + index);
+        return input.substring(start, index - 1);
     }
 
     private boolean peek(String token) {
