@@ -285,6 +285,8 @@ public class Townstead {
         townstead$registerMenuScreens(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) ->
+                com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -319,6 +321,11 @@ public class Townstead {
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.TickEvent.ServerTickEvent e) -> {
+            if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
+                com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
+            }
+        });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -808,13 +815,8 @@ public class Townstead {
             if (!(context.player() instanceof ServerPlayer sp)) return;
             Optional<Village> village = Village.findNearest(sp);
             if (village.isEmpty()) return;
-            Village v = village.get();
-            com.aetherianartificer.townstead.spirit.SpiritReconciler.reconcileVillage(sp.serverLevel(), v);
-            com.aetherianartificer.townstead.spirit.VillageSpiritCache.Entry entry =
-                    com.aetherianartificer.townstead.spirit.VillageSpiritCache.get(sp.serverLevel(), v.getId());
-            if (entry == null) return;
-            PacketDistributor.sendToPlayer(sp,
-                    com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.fromCache(v.getId(), entry));
+            com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.enqueue(
+                    sp.serverLevel(), village.get(), sp);
         });
     }
 

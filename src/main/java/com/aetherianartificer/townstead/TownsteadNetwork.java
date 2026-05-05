@@ -226,12 +226,8 @@ public final class TownsteadNetwork {
             ServerPlayer sp) {
         Optional<Village> village = Village.findNearest(sp);
         if (village.isEmpty()) return;
-        Village v = village.get();
-        com.aetherianartificer.townstead.spirit.SpiritReconciler.reconcileVillage(sp.serverLevel(), v);
-        com.aetherianartificer.townstead.spirit.VillageSpiritCache.Entry entry =
-                com.aetherianartificer.townstead.spirit.VillageSpiritCache.get(sp.serverLevel(), v.getId());
-        if (entry == null) return;
-        sendToPlayer(sp, com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.fromCache(v.getId(), entry));
+        com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.enqueue(
+                sp.serverLevel(), village.get(), sp);
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {
