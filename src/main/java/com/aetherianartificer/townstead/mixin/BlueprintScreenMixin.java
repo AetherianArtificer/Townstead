@@ -1399,6 +1399,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         long t2 = System.nanoTime();
         com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.prewarmAsync(
                 all.stream().map(BuildingType::name).collect(Collectors.toList()));
+        // Belt-and-suspenders: if the player loaded into the world after the
+        // login-tick warm gave up, this is the next-best place to fire the
+        // requirement-name resolver warm. Idempotent (the resolver no-ops if
+        // already running) so this is cheap to call on every catalog open.
+        com.aetherianartificer.townstead.client.catalog.RequirementNameResolver.prewarmAllFromBuildingTypes();
         long t3 = System.nanoTime();
         townstead$catalogEntries = all;
         townstead$catalogSelected = Math.max(0, Math.min(townstead$catalogSelected, Math.max(0, all.size() - 1)));

@@ -34,12 +34,13 @@ import java.lang.reflect.Method;
 public final class TownsteadClient {
     private static boolean hooksRegistered;
     /**
-     * After connect, MCA's BuildingTypes registry only fills in once data-pack
-     * sync arrives. Counts the ticks remaining before we attempt the warm; -1
-     * once the warm has been dispatched (or skipped after timing out).
+     * Set true on connect; cleared once the warm fires successfully. We poll
+     * every client tick until BuildingTypes is non-empty rather than capping
+     * at a fixed deadline — a player can sit on the title or shader-warmup
+     * screen for many minutes before actually entering a world, and the warm
+     * needs to fire whenever that happens.
      */
-    private static int spiritIndexWarmTicksRemaining = -1;
-    private static final int SPIRIT_INDEX_WARM_TIMEOUT_TICKS = 200;
+    private static boolean spiritIndexWarmPending = false;
 
     private TownsteadClient() {}
 
@@ -88,7 +89,7 @@ public final class TownsteadClient {
         // model variant while their hook is in the water. Safe to call
         // every reconnect — the wrapper is idempotent.
         FishingRodCastPredicates.registerOnce();
-        spiritIndexWarmTicksRemaining = SPIRIT_INDEX_WARM_TIMEOUT_TICKS;
+        spiritIndexWarmPending = true;
     }
 
     /**
@@ -98,22 +99,16 @@ public final class TownsteadClient {
      * blueprint open.
      */
     private static void tryWarmSpiritIndex() {
-        if (spiritIndexWarmTicksRemaining < 0) return;
-        spiritIndexWarmTicksRemaining--;
+        if (!spiritIndexWarmPending) return;
         try {
             java.util.Set<String> types =
                     net.conczin.mca.resources.BuildingTypes.getInstance().getBuildingTypes().keySet();
-            if (!types.isEmpty()) {
-                com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.prewarmAsync(types);
-                com.aetherianartificer.townstead.client.catalog.RequirementNameResolver.prewarmAsync();
-                spiritIndexWarmTicksRemaining = -1;
-                return;
-            }
+            if (types.isEmpty()) return;
+            com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.prewarmAsync(types);
+            com.aetherianartificer.townstead.client.catalog.RequirementNameResolver.prewarmAllFromBuildingTypes();
+            spiritIndexWarmPending = false;
         } catch (Throwable ignored) {
-            // Registry not ready yet; keep polling.
-        }
-        if (spiritIndexWarmTicksRemaining <= 0) {
-            spiritIndexWarmTicksRemaining = -1;
+            // Registry not ready yet — keep polling on subsequent ticks.
         }
     }
 
