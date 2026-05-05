@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.spirit;
 import net.minecraft.server.level.ServerLevel;
 
 import javax.annotation.Nullable;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,7 +22,12 @@ public final class VillageSpiritCache {
     /** Key: "<dim>|<villageId>". */
     private static final Map<String, Entry> CACHE = new ConcurrentHashMap<>();
 
-    public record Entry(SpiritTotals totals, SpiritReadout readout) {}
+    public record Entry(SpiritTotals totals, SpiritReadout readout,
+                        Map<String, List<ContributorRow>> contributors) {
+        public Entry(SpiritTotals totals, SpiritReadout readout) {
+            this(totals, readout, Map.of());
+        }
+    }
 
     private VillageSpiritCache() {}
 

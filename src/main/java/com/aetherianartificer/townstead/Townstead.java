@@ -799,15 +799,32 @@ public class Townstead {
 
     private void handleVillageSpiritSync(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload payload,
                                          IPayloadContext context) {
-        context.enqueueWork(() -> com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.put(payload));
+        context.enqueueWork(() -> {
+            long t0 = System.nanoTime();
+            com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.put(payload);
+            LOGGER.info("[TS-Diag/Spirit] client received village={} totalPts={} spirits={} storeUs={}",
+                    payload.villageId(), payload.total(), payload.perSpirit().size(),
+                    (System.nanoTime() - t0) / 1_000L);
+        });
     }
 
     private void handleVillageSpiritQuery(com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload payload,
                                           IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer sp)) return;
+            long t0 = System.nanoTime();
+            if (!(context.player() instanceof ServerPlayer sp)) {
+                LOGGER.info("[TS-Diag/Spirit] handleQuery skip reason=notServerPlayer");
+                return;
+            }
             Optional<Village> village = Village.findNearest(sp);
-            if (village.isEmpty()) return;
+            long t1 = System.nanoTime();
+            if (village.isEmpty()) {
+                LOGGER.info("[TS-Diag/Spirit] handleQuery skip reason=noVillage player={} findUs={}",
+                        sp.getName().getString(), (t1 - t0) / 1_000L);
+                return;
+            }
+            LOGGER.info("[TS-Diag/Spirit] handleQuery player={} village={} findUs={}",
+                    sp.getName().getString(), village.get().getId(), (t1 - t0) / 1_000L);
             com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.enqueue(
                     sp.serverLevel(), village.get(), sp);
         });

@@ -1,9 +1,13 @@
 package com.aetherianartificer.townstead.spirit;
 
+import com.aetherianartificer.townstead.Townstead;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -49,11 +53,15 @@ public final class VillageSpiritAggregator {
 
     public static SpiritTotals totalsFor(Village village) {
         if (village == null) return SpiritTotals.empty();
+        long t0 = System.nanoTime();
         Map<String, Integer> perSpirit = new HashMap<>();
         int total = 0;
         int contributingBuildings = 0;
+        int scanned = 0;
+        int incomplete = 0;
         for (Building b : village.getBuildings().values()) {
-            if (!b.isComplete()) continue;
+            scanned++;
+            if (!b.isComplete()) { incomplete++; continue; }
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(b.getType());
             if (contributions.isEmpty()) continue;
             boolean anyAdded = false;
@@ -68,7 +76,100 @@ public final class VillageSpiritAggregator {
             }
             if (anyAdded) contributingBuildings++;
         }
+        long elapsed = System.nanoTime() - t0;
+        Townstead.LOGGER.info("[TS-Diag/Spirit] totalsFor village={} scanned={} incomplete={} contributing={} totalPts={} elapsedUs={}",
+                village.getId(), scanned, incomplete, contributingBuildings, total, elapsed / 1_000L);
         return new SpiritTotals(Map.copyOf(perSpirit), total, contributingBuildings);
+    }
+
+    /**
+     * Per-spirit contributor breakdown: spirit id → list of (buildingType,
+     * count, points) rows sorted by points descending. Computed in one pass
+     * so callers that need both totals and contributors should prefer
+     * {@link #snapshotFor}.
+     */
+    public static Map<String, List<ContributorRow>> contributorsFor(Village village) {
+        if (village == null) return Map.of();
+        Map<String, Map<String, int[]>> bySpirit = new HashMap<>();
+        for (Building b : village.getBuildings().values()) {
+            if (!b.isComplete()) continue;
+            String type = b.getType();
+            Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);
+            if (contributions.isEmpty()) continue;
+            for (Map.Entry<String, Integer> e : contributions.entrySet()) {
+                int pts = e.getValue() == null ? 0 : e.getValue();
+                if (pts <= 0) continue;
+                if (!SpiritRegistry.contains(e.getKey())) continue;
+                int[] agg = bySpirit
+                        .computeIfAbsent(e.getKey(), k -> new HashMap<>())
+                        .computeIfAbsent(type, k -> new int[]{0, 0});
+                agg[0]++;
+                agg[1] += pts;
+            }
+        }
+        Map<String, List<ContributorRow>> out = new HashMap<>();
+        for (Map.Entry<String, Map<String, int[]>> spiritEntry : bySpirit.entrySet()) {
+            List<ContributorRow> rows = new ArrayList<>(spiritEntry.getValue().size());
+            for (Map.Entry<String, int[]> typeEntry : spiritEntry.getValue().entrySet()) {
+                rows.add(new ContributorRow(typeEntry.getKey(),
+                        typeEntry.getValue()[0], typeEntry.getValue()[1]));
+            }
+            rows.sort(Comparator.comparingInt(ContributorRow::points).reversed());
+            out.put(spiritEntry.getKey(), List.copyOf(rows));
+        }
+        return Map.copyOf(out);
+    }
+
+    /** Combined snapshot: totals + per-spirit contributors in one pass. */
+    public static record Snapshot(SpiritTotals totals, Map<String, List<ContributorRow>> contributors) {}
+
+    public static Snapshot snapshotFor(Village village) {
+        if (village == null) return new Snapshot(SpiritTotals.empty(), Map.of());
+        long t0 = System.nanoTime();
+        Map<String, Integer> perSpirit = new HashMap<>();
+        Map<String, Map<String, int[]>> bySpirit = new HashMap<>();
+        int total = 0;
+        int contributingBuildings = 0;
+        int scanned = 0;
+        int incomplete = 0;
+        for (Building b : village.getBuildings().values()) {
+            scanned++;
+            if (!b.isComplete()) { incomplete++; continue; }
+            String type = b.getType();
+            Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);
+            if (contributions.isEmpty()) continue;
+            boolean anyAdded = false;
+            for (Map.Entry<String, Integer> e : contributions.entrySet()) {
+                int pts = e.getValue() == null ? 0 : e.getValue();
+                if (pts <= 0) continue;
+                if (!SpiritRegistry.contains(e.getKey())) continue;
+                perSpirit.merge(e.getKey(), pts, Integer::sum);
+                total += pts;
+                anyAdded = true;
+                int[] agg = bySpirit
+                        .computeIfAbsent(e.getKey(), k -> new HashMap<>())
+                        .computeIfAbsent(type, k -> new int[]{0, 0});
+                agg[0]++;
+                agg[1] += pts;
+            }
+            if (anyAdded) contributingBuildings++;
+        }
+        Map<String, List<ContributorRow>> contribOut = new HashMap<>();
+        for (Map.Entry<String, Map<String, int[]>> spiritEntry : bySpirit.entrySet()) {
+            List<ContributorRow> rows = new ArrayList<>(spiritEntry.getValue().size());
+            for (Map.Entry<String, int[]> typeEntry : spiritEntry.getValue().entrySet()) {
+                rows.add(new ContributorRow(typeEntry.getKey(),
+                        typeEntry.getValue()[0], typeEntry.getValue()[1]));
+            }
+            rows.sort(Comparator.comparingInt(ContributorRow::points).reversed());
+            contribOut.put(spiritEntry.getKey(), List.copyOf(rows));
+        }
+        SpiritTotals totals = new SpiritTotals(Map.copyOf(perSpirit), total, contributingBuildings);
+        long elapsed = System.nanoTime() - t0;
+        Townstead.LOGGER.info("[TS-Diag/Spirit] snapshotFor village={} scanned={} incomplete={} contributing={} totalPts={} contribGroups={} elapsedUs={}",
+                village.getId(), scanned, incomplete, contributingBuildings,
+                total, contribOut.size(), elapsed / 1_000L);
+        return new Snapshot(totals, Map.copyOf(contribOut));
     }
 
     public static SpiritReadout readoutFor(SpiritTotals totals) {

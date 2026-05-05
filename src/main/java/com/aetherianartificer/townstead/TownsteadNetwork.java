@@ -218,14 +218,26 @@ public final class TownsteadNetwork {
     }
 
     private static void handleVillageSpiritSync(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload payload) {
+        long t0 = System.nanoTime();
         com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.put(payload);
+        Townstead.LOGGER.info("[TS-Diag/Spirit] client received village={} totalPts={} spirits={} storeUs={}",
+                payload.villageId(), payload.total(), payload.perSpirit().size(),
+                (System.nanoTime() - t0) / 1_000L);
     }
 
     private static void handleVillageSpiritQuery(
             com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload payload,
             ServerPlayer sp) {
+        long t0 = System.nanoTime();
         Optional<Village> village = Village.findNearest(sp);
-        if (village.isEmpty()) return;
+        long t1 = System.nanoTime();
+        if (village.isEmpty()) {
+            Townstead.LOGGER.info("[TS-Diag/Spirit] handleQuery skip reason=noVillage player={} findUs={}",
+                    sp.getName().getString(), (t1 - t0) / 1_000L);
+            return;
+        }
+        Townstead.LOGGER.info("[TS-Diag/Spirit] handleQuery player={} village={} findUs={}",
+                sp.getName().getString(), village.get().getId(), (t1 - t0) / 1_000L);
         com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.enqueue(
                 sp.serverLevel(), village.get(), sp);
     }

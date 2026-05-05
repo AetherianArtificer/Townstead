@@ -8,8 +8,10 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 //?}
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -33,7 +35,8 @@ public record VillageSpiritSyncPayload(
         String classificationName,
         int tierIndex,
         Optional<String> primarySpiritId,
-        Optional<String> secondarySpiritId) implements CustomPacketPayload {
+        Optional<String> secondarySpiritId,
+        Map<String, List<ContributorRow>> contributors) implements CustomPacketPayload {
 //?} else {
 /*public record VillageSpiritSyncPayload(
         int villageId,
@@ -43,7 +46,8 @@ public record VillageSpiritSyncPayload(
         String classificationName,
         int tierIndex,
         Optional<String> primarySpiritId,
-        Optional<String> secondarySpiritId) {
+        Optional<String> secondarySpiritId,
+        Map<String, List<ContributorRow>> contributors) {
 *///?}
 
     //? if neoforge {
@@ -82,6 +86,17 @@ public record VillageSpiritSyncPayload(
         p.primarySpiritId.ifPresent(buf::writeUtf);
         buf.writeBoolean(p.secondarySpiritId.isPresent());
         p.secondarySpiritId.ifPresent(buf::writeUtf);
+        buf.writeVarInt(p.contributors.size());
+        for (Map.Entry<String, List<ContributorRow>> spiritEntry : p.contributors.entrySet()) {
+            buf.writeUtf(spiritEntry.getKey());
+            List<ContributorRow> rows = spiritEntry.getValue();
+            buf.writeVarInt(rows.size());
+            for (ContributorRow row : rows) {
+                buf.writeUtf(row.buildingType());
+                buf.writeVarInt(row.count());
+                buf.writeVarInt(row.points());
+            }
+        }
     }
 
     public static VillageSpiritSyncPayload read(FriendlyByteBuf buf) {
@@ -99,7 +114,22 @@ public record VillageSpiritSyncPayload(
         int tier = buf.readVarInt();
         Optional<String> p1 = buf.readBoolean() ? Optional.of(buf.readUtf()) : Optional.empty();
         Optional<String> p2 = buf.readBoolean() ? Optional.of(buf.readUtf()) : Optional.empty();
-        return new VillageSpiritSyncPayload(villageId, Map.copyOf(perSpirit), total, contrib, clsName, tier, p1, p2);
+        int spiritGroups = buf.readVarInt();
+        Map<String, List<ContributorRow>> contributors = new HashMap<>();
+        for (int i = 0; i < spiritGroups; i++) {
+            String spiritId = buf.readUtf();
+            int rowCount = buf.readVarInt();
+            List<ContributorRow> rows = new ArrayList<>(rowCount);
+            for (int r = 0; r < rowCount; r++) {
+                String type = buf.readUtf();
+                int count = buf.readVarInt();
+                int pts = buf.readVarInt();
+                rows.add(new ContributorRow(type, count, pts));
+            }
+            contributors.put(spiritId, List.copyOf(rows));
+        }
+        return new VillageSpiritSyncPayload(villageId, Map.copyOf(perSpirit), total, contrib, clsName, tier, p1, p2,
+                Map.copyOf(contributors));
     }
 
     /** Build a client-side payload from a server cache entry. */
@@ -120,7 +150,8 @@ public record VillageSpiritSyncPayload(
                 readout.classification().name(),
                 readout.tierIndex(),
                 Optional.ofNullable(readout.primarySpiritId()),
-                Optional.ofNullable(readout.secondarySpiritId()));
+                Optional.ofNullable(readout.secondarySpiritId()),
+                entry.contributors() == null ? Map.of() : entry.contributors());
     }
 
     /** Reconstruct a SpiritReadout from the wire fields (client side). */

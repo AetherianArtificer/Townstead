@@ -42,9 +42,18 @@ public final class SpiritReconciler {
      */
     public static void seed(ServerLevel level, Village village) {
         if (level == null || village == null) return;
-        SpiritTotals totals = VillageSpiritAggregator.totalsFor(village);
-        SpiritReadout readout = VillageSpiritAggregator.readoutFor(totals);
-        VillageSpiritCache.put(level, village.getId(), new VillageSpiritCache.Entry(totals, readout));
+        long t0 = System.nanoTime();
+        VillageSpiritAggregator.Snapshot snap = VillageSpiritAggregator.snapshotFor(village);
+        long t1 = System.nanoTime();
+        SpiritReadout readout = VillageSpiritAggregator.readoutFor(snap.totals());
+        long t2 = System.nanoTime();
+        VillageSpiritCache.put(level, village.getId(),
+                new VillageSpiritCache.Entry(snap.totals(), readout, snap.contributors()));
+        long t3 = System.nanoTime();
+        Townstead.LOGGER.info("[TS-Diag/Spirit] seed village={} buildings={} snapshotUs={} readoutUs={} putUs={} totalPts={} contributing={}",
+                village.getId(), village.getBuildings().size(),
+                (t1 - t0) / 1_000L, (t2 - t1) / 1_000L, (t3 - t2) / 1_000L,
+                snap.totals().total(), snap.totals().contributingBuildings());
     }
 
     /**
@@ -56,14 +65,24 @@ public final class SpiritReconciler {
      */
     public static void reconcileVillage(ServerLevel level, Village village) {
         if (level == null || village == null) return;
-        SpiritTotals totals = VillageSpiritAggregator.totalsFor(village);
-        SpiritReadout newReadout = VillageSpiritAggregator.readoutFor(totals);
+        long t0 = System.nanoTime();
+        VillageSpiritAggregator.Snapshot snap = VillageSpiritAggregator.snapshotFor(village);
+        long t1 = System.nanoTime();
+        SpiritReadout newReadout = VillageSpiritAggregator.readoutFor(snap.totals());
+        long t2 = System.nanoTime();
         VillageSpiritCache.Entry prev = VillageSpiritCache.get(level, village.getId());
-        VillageSpiritCache.put(level, village.getId(), new VillageSpiritCache.Entry(totals, newReadout));
+        VillageSpiritCache.put(level, village.getId(),
+                new VillageSpiritCache.Entry(snap.totals(), newReadout, snap.contributors()));
+        long t3 = System.nanoTime();
+        boolean structural = prev != null && newReadout.isStructuralChange(prev.readout());
+        Townstead.LOGGER.info("[TS-Diag/Spirit] reconcile village={} buildings={} snapshotUs={} readoutUs={} cacheUs={} totalUs={} prevCached={} structuralChange={}",
+                village.getId(), village.getBuildings().size(),
+                (t1 - t0) / 1_000L, (t2 - t1) / 1_000L, (t3 - t2) / 1_000L,
+                (t3 - t0) / 1_000L, prev != null, structural);
         if (prev == null) {
             return; // first observation, no event
         }
-        if (!newReadout.isStructuralChange(prev.readout())) {
+        if (!structural) {
             return; // readout unchanged
         }
         fireTierChange(level, village, prev.readout(), newReadout);

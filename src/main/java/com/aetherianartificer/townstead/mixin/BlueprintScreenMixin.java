@@ -179,9 +179,11 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private final List<NodeData> townstead$catalogNodes = new ArrayList<>();
     @Unique
+    private final List<int[]> townstead$catalogConnections = new ArrayList<>();
+    @Unique
     private final Map<String, ItemStack> townstead$catalogIconCache = new HashMap<>();
     @Unique
-    private CatalogDetailCache townstead$catalogDetailCache = null;
+    private final Map<String, CatalogDetailCache> townstead$catalogDetailCache = new HashMap<>();
     @Unique
     private final Map<String, String> townstead$translationTextCache = new HashMap<>();
     @Unique
@@ -222,6 +224,32 @@ public abstract class BlueprintScreenMixin extends Screen {
     private String townstead$cachedUpgradeTargetType = null;
     @Unique
     private long townstead$nextUpgradeScanGameTime = Long.MIN_VALUE;
+    @Unique
+    private long townstead$lastRenderLogNanos = 0L;
+    @Unique
+    private final java.util.Map<String, long[]> townstead$renderFrameSamples = new HashMap<>();
+    /**
+     * Resolved building-display-name cache. Keys are buildingType ids. Values
+     * survive across blueprint opens because the language manager is
+     * effectively read-only at runtime, so a name resolved once stays valid
+     * until language reload. Static so every BlueprintScreen instance shares
+     * the cache.
+     */
+    @Unique
+    private static final Map<String, String> TOWNSTEAD$BUILDING_NAME_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    @Unique
+    private static final Map<ResourceLocation, String> TOWNSTEAD$REQUIREMENT_NAME_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    @Unique
+    private static final Map<String, String> TOWNSTEAD$SORT_KEY_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    @Unique
+    private static final Map<String, String> TOWNSTEAD$COMPAT_GROUP_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    /**
+     * Memoized {@code autoTierPrefix} results. Key is the building-type name;
+     * the value is the prefix or "" for "no prefix" (ConcurrentHashMap rejects
+     * null values, so we sentinel with empty-string and translate back on read).
+     */
+    @Unique
+    private static final Map<String, String> TOWNSTEAD$AUTO_TIER_PREFIX_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
 
     // --- Shift page state ---
     @Unique
@@ -323,6 +351,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             return;
         if (!TownsteadConfig.USE_TOWNSTEAD_CATALOG.get())
             return;
+        long t0 = System.nanoTime();
         if (this.page != null && !this.page.isBlank() && !TOWNSTEAD_CATALOG_PAGE.equals(this.page)) {
             townstead$catalogReturnPage = this.page;
         } else {
@@ -331,11 +360,14 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$redirectingCatalog = true;
         setPage(TOWNSTEAD_CATALOG_PAGE);
         townstead$redirectingCatalog = false;
+        Townstead.LOGGER.info("[TS-Diag/BP] redirectCatalog returnPage={} totalUs={}",
+                townstead$catalogReturnPage, (System.nanoTime() - t0) / 1_000L);
         ci.cancel();
     }
 
     @Inject(method = "setPage", remap = false, at = @At("TAIL"))
     private void townstead$injectFarmingPage(String pageName, CallbackInfo ci) {
+        long t0 = System.nanoTime();
         townstead$collectNavButtons();
         townstead$applyNavScroll();
 
@@ -381,8 +413,9 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$setNavVisible(true);
         } else {
             townstead$catalogNodes.clear();
+            townstead$catalogConnections.clear();
             townstead$catalogIconCache.clear();
-            townstead$catalogDetailCache = null;
+            townstead$catalogDetailCache.clear();
             townstead$catalogDragging = false;
             townstead$catalogDragArmed = false;
             townstead$catalogBackButton = null;
@@ -404,6 +437,8 @@ public abstract class BlueprintScreenMixin extends Screen {
                 b.active = !TOWNSTEAD_CATALOG_PAGE.equals(this.page);
             }
         }
+        Townstead.LOGGER.info("[TS-Diag/BP] setPage TAIL page={} requested={} elapsedUs={}",
+                this.page, pageName, (System.nanoTime() - t0) / 1_000L);
     }
 
     //? if neoforge {
@@ -423,6 +458,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (!"map".equals(this.page) || this.village == null) {
             return;
         }
+        long townstead$mapBordersStart = System.nanoTime();
 
         int mapSize = 75;
         int y = this.height / 2 + 8;
@@ -456,6 +492,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
 
         context.pose().popPose();
+        townstead$logRenderFrame("mapBorders", townstead$mapBordersStart);
     }
 
     //? if neoforge {
@@ -467,6 +504,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             CallbackInfo ci) {
         if (!TOWNSTEAD_CATALOG_PAGE.equals(this.page))
             return;
+        long townstead$catalogRenderStart = System.nanoTime();
         townstead$recomputeCatalogDims();
         int windowX = townstead$catalogWindowX();
         int windowY = townstead$catalogWindowY();
@@ -733,6 +771,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (hovered != null) {
             context.renderTooltip(this.font, Component.literal(hovered), mouseX, mouseY);
         }
+        townstead$logRenderFrame("catalog", townstead$catalogRenderStart);
     }
 
     @Inject(method = "drawBuildingIcon", remap = false, at = @At("HEAD"), cancellable = true)
@@ -1106,9 +1145,15 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$tryUpgradeCurrentBuilding() {
+        long t0 = System.nanoTime();
         String nextType = townstead$cachedUpgradeTargetTypeAtPlayer();
-        if (nextType == null)
+        if (nextType == null) {
+            Townstead.LOGGER.info("[TS-Diag/BP] tryUpgrade abort reason=noTarget elapsedUs={}",
+                    (System.nanoTime() - t0) / 1_000L);
             return;
+        }
+        Townstead.LOGGER.info("[TS-Diag/BP] tryUpgrade target={} elapsedUs={}",
+                nextType, (System.nanoTime() - t0) / 1_000L);
         //? if neoforge {
         Network.sendToServer(new ReportBuildingMessage(ReportBuildingMessage.Action.FORCE_TYPE, nextType));
         Network.sendToServer(new GetVillageRequest());
@@ -1130,10 +1175,47 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (pos.equals(townstead$cachedUpgradePlayerPos) && gameTime < townstead$nextUpgradeScanGameTime) {
             return townstead$cachedUpgradeTargetType;
         }
+        long t0 = System.nanoTime();
+        boolean reasonPos = !pos.equals(townstead$cachedUpgradePlayerPos);
         townstead$cachedUpgradePlayerPos = pos;
         townstead$cachedUpgradeTargetType = townstead$upgradeTargetTypeAtPlayer();
-        townstead$nextUpgradeScanGameTime = gameTime + 5L;
+        // 60-tick TTL (3s). Block-walking inside `upgradeTargetTypeAtPlayer`
+        // and `highestSatisfiable` is the costly part; refreshing every 5
+        // ticks meant the cache was effectively bypassed every render frame.
+        // The cache is also explicitly invalidated when the player upgrades a
+        // building or switches to/from the map page.
+        townstead$nextUpgradeScanGameTime = gameTime + 60L;
+        Townstead.LOGGER.info("[TS-Diag/BP] upgradeScan miss target={} reason={} pos={} elapsedUs={}",
+                townstead$cachedUpgradeTargetType, reasonPos ? "playerMoved" : "ttlExpired",
+                pos, (System.nanoTime() - t0) / 1_000L);
         return townstead$cachedUpgradeTargetType;
+    }
+
+    /**
+     * Record a per-frame elapsed sample for {@code label}. Logs a one-second
+     * rolling summary (count / mean µs / max µs) so we can see stutters in
+     * frame budget without flooding the log at 60 fps. Slot 0 = count, 1 =
+     * sumNs, 2 = maxNs.
+     */
+    @Unique
+    private void townstead$logRenderFrame(String label, long startNanos) {
+        long elapsed = System.nanoTime() - startNanos;
+        long[] slot = townstead$renderFrameSamples.computeIfAbsent(label, k -> new long[3]);
+        slot[0]++;
+        slot[1] += elapsed;
+        if (elapsed > slot[2]) slot[2] = elapsed;
+        long now = System.nanoTime();
+        if (now - townstead$lastRenderLogNanos < 1_000_000_000L) return;
+        townstead$lastRenderLogNanos = now;
+        for (java.util.Map.Entry<String, long[]> e : townstead$renderFrameSamples.entrySet()) {
+            long[] s = e.getValue();
+            if (s[0] == 0) continue;
+            Townstead.LOGGER.info("[TS-Diag/BP] renderFrame label={} samples={} meanUs={} maxUs={}",
+                    e.getKey(), s[0], s[1] / Math.max(1L, s[0]) / 1_000L, s[2] / 1_000L);
+            s[0] = 0;
+            s[1] = 0;
+            s[2] = 0;
+        }
     }
 
     @Unique
@@ -1150,12 +1232,23 @@ public abstract class BlueprintScreenMixin extends Screen {
         BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
         if (accessor.townstead$getVillage() == null)
             return null;
+        long t0 = System.nanoTime();
         BlockPos pos = this.minecraft.player.blockPosition();
+        int scanned = 0;
         for (Building building : accessor.townstead$getVillage().getBuildings().values()) {
+            scanned++;
             if (!building.containsPos(pos))
                 continue;
-            return townstead$highestSatisfiableUpgradeType(building);
+            long t1 = System.nanoTime();
+            String result = townstead$highestSatisfiableUpgradeType(building);
+            long t2 = System.nanoTime();
+            Townstead.LOGGER.info("[TS-Diag/BP] upgradeTargetType matched scanned={} containsCheckUs={} highestUs={} totalUs={} target={}",
+                    scanned, (t1 - t0) / 1_000L, (t2 - t1) / 1_000L,
+                    (t2 - t0) / 1_000L, result);
+            return result;
         }
+        Townstead.LOGGER.info("[TS-Diag/BP] upgradeTargetType none scanned={} elapsedUs={}",
+                scanned, (System.nanoTime() - t0) / 1_000L);
         return null;
     }
 
@@ -1180,8 +1273,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         if (startTier <= 0)
             return null;
 
+        long t0 = System.nanoTime();
         String prefix = current.substring(0, idx + 2);
         String best = null;
+        int candidatesChecked = 0;
+        long blockScanNanos = 0;
         for (int tier = startTier + 1; tier < startTier + 20; tier++) {
             String candidateType = prefix + tier;
             if (!BuildingTypes.getInstance().getBuildingTypes().containsKey(candidateType))
@@ -1189,12 +1285,19 @@ public abstract class BlueprintScreenMixin extends Screen {
             BuildingType candidate = BuildingTypes.getInstance().getBuildingType(candidateType);
             if (candidate == null)
                 break;
-            if (townstead$buildingMeetsRequirements(building, candidate)) {
+            long s0 = System.nanoTime();
+            boolean met = townstead$buildingMeetsRequirements(building, candidate);
+            blockScanNanos += System.nanoTime() - s0;
+            candidatesChecked++;
+            if (met) {
                 best = candidateType;
             } else {
                 break;
             }
         }
+        Townstead.LOGGER.info("[TS-Diag/BP] highestSatisfiable current={} candidates={} blockScanUs={} totalUs={} best={}",
+                current, candidatesChecked, blockScanNanos / 1_000L,
+                (System.nanoTime() - t0) / 1_000L, best);
         return best;
     }
 
@@ -1275,9 +1378,11 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$buildCatalogEntries() {
+        long t0 = System.nanoTime();
         List<BuildingType> all = new ArrayList<>(BuildingTypes.getInstance().getBuildingTypes().values());
+        int rawCount = all.size();
         townstead$catalogIconCache.clear();
-        townstead$catalogDetailCache = null;
+        townstead$catalogDetailCache.clear();
         townstead$builtTypes.clear();
         BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
         if (accessor.townstead$getVillage() != null) {
@@ -1285,6 +1390,7 @@ public abstract class BlueprintScreenMixin extends Screen {
                 townstead$builtTypes.add(building.getType());
             }
         }
+        long t1 = System.nanoTime();
         all = all.stream()
                 .filter(BuildingType::visible)
                 .filter(bt -> ModCompat.isCompatAvailable(bt.name()))
@@ -1292,17 +1398,28 @@ public abstract class BlueprintScreenMixin extends Screen {
                         .overrideFor(bt.name()).hide())
                 .sorted(Comparator.comparing(this::townstead$catalogSortKey))
                 .collect(Collectors.toList());
-        com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.prewarm(
+        long t2 = System.nanoTime();
+        com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.prewarmAsync(
                 all.stream().map(BuildingType::name).collect(Collectors.toList()));
+        long t3 = System.nanoTime();
         townstead$catalogEntries = all;
         townstead$catalogSelected = Math.max(0, Math.min(townstead$catalogSelected, Math.max(0, all.size() - 1)));
+        Townstead.LOGGER.info("[TS-Diag/BP] buildCatalogEntries raw={} kept={} initUs={} filterSortUs={} prewarmUs={} totalUs={}",
+                rawCount, all.size(),
+                (t1 - t0) / 1_000L, (t2 - t1) / 1_000L, (t3 - t2) / 1_000L,
+                (t3 - t0) / 1_000L);
     }
 
     @Unique
     private void townstead$buildCatalogNodes() {
+        long t0 = System.nanoTime();
         townstead$catalogNodes.clear();
-        if (townstead$catalogEntries.isEmpty())
+        townstead$catalogConnections.clear();
+        if (townstead$catalogEntries.isEmpty()) {
+            Townstead.LOGGER.info("[TS-Diag/BP] buildCatalogNodes skip reason=noEntries elapsedUs={}",
+                    (System.nanoTime() - t0) / 1_000L);
             return;
+        }
 
         Map<String, List<Integer>> grouped = new LinkedHashMap<>();
         for (int i = 0; i < townstead$catalogEntries.size(); i++) {
@@ -1354,6 +1471,38 @@ public abstract class BlueprintScreenMixin extends Screen {
             }
             y = maxBottom + 26;
         }
+        // Pre-compute the tier-to-tier connection edges. drawCatalogConnections
+        // ran in O(prefixes × tiers × nodes) every frame; pre-resolving the
+        // node coordinates here makes the per-frame draw an O(edges) blit.
+        java.util.Map<String, NodeData> byName = new java.util.HashMap<>(townstead$catalogNodes.size() * 2);
+        java.util.LinkedHashSet<String> tierPrefixes = new java.util.LinkedHashSet<>();
+        for (NodeData node : townstead$catalogNodes) {
+            byName.put(node.type().name(), node);
+            String auto = townstead$autoTierPrefix(node.type().name());
+            if (auto != null) tierPrefixes.add(auto);
+        }
+        for (com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef g
+                : com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.groups()) {
+            if ("tiered".equals(g.layout()) && !g.tierPrefix().isEmpty()) {
+                tierPrefixes.add(g.tierPrefix());
+            }
+        }
+        for (String prefix : tierPrefixes) {
+            for (int tier = 1; tier < 5; tier++) {
+                NodeData from = byName.get(prefix + tier);
+                NodeData to = byName.get(prefix + (tier + 1));
+                if (from == null || to == null) continue;
+                // Store world coords plus the +26/+13 offsets the draw applies;
+                // pan and zoom are still applied per-frame so the line follows
+                // the camera. Layout: [fromWorldX+26, fromWorldY+13, toWorldX, toWorldY+13].
+                townstead$catalogConnections.add(new int[]{
+                        from.worldX() + 26, from.worldY() + 13,
+                        to.worldX(),         to.worldY() + 13});
+            }
+        }
+        Townstead.LOGGER.info("[TS-Diag/BP] buildCatalogNodes nodes={} groups={} connections={} elapsedUs={}",
+                townstead$catalogNodes.size(), grouped.size(),
+                townstead$catalogConnections.size(), (System.nanoTime() - t0) / 1_000L);
     }
 
     @Unique
@@ -1404,44 +1553,18 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private void townstead$drawCatalogConnections(GuiGraphics context, int insideX, int insideY, int insideW,
             int insideH) {
-        java.util.Set<String> tierPrefixes = new java.util.LinkedHashSet<>();
-        for (com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef g
-                : com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.groups()) {
-            if ("tiered".equals(g.layout()) && !g.tierPrefix().isEmpty())
-                tierPrefixes.add(g.tierPrefix());
-        }
-        // Auto-detect additional tier prefixes from node names. Handles any
-        // <family>_lN building type without needing an explicit group JSON.
-        for (NodeData node : townstead$catalogNodes) {
-            String auto = townstead$autoTierPrefix(node.type().name());
-            if (auto != null) tierPrefixes.add(auto);
-        }
-        for (String prefix : tierPrefixes) {
-            for (int tier = 1; tier < 5; tier++) {
-                NodeData from = null;
-                NodeData to = null;
-                String fromId = prefix + tier;
-                String toId = prefix + (tier + 1);
-                for (NodeData node : townstead$catalogNodes) {
-                    String name = node.type().name();
-                    if (fromId.equals(name))
-                        from = node;
-                    if (toId.equals(name))
-                        to = node;
-                }
-                if (from == null || to == null)
-                    continue;
-                int x1 = insideX
-                        + (int) Math.round((from.worldX() + 26 + townstead$catalogPanX) * townstead$catalogZoom);
-                int y1 = insideY
-                        + (int) Math.round((from.worldY() + 13 + townstead$catalogPanY) * townstead$catalogZoom);
-                int x2 = insideX + (int) Math.round((to.worldX() + townstead$catalogPanX) * townstead$catalogZoom);
-                int y2 = insideY
-                        + (int) Math.round((to.worldY() + 13 + townstead$catalogPanY) * townstead$catalogZoom);
-                int minY = Math.min(y1, y2);
-                int maxY = Math.max(y1, y2);
-                context.fill(Math.min(x1, x2), minY, Math.max(x1, x2) + 1, maxY + 1, 0xFFA6B6CC);
-            }
+        if (townstead$catalogConnections.isEmpty()) return;
+        double panX = townstead$catalogPanX;
+        double panY = townstead$catalogPanY;
+        double zoom = townstead$catalogZoom;
+        for (int[] edge : townstead$catalogConnections) {
+            int x1 = insideX + (int) Math.round((edge[0] + panX) * zoom);
+            int y1 = insideY + (int) Math.round((edge[1] + panY) * zoom);
+            int x2 = insideX + (int) Math.round((edge[2] + panX) * zoom);
+            int y2 = insideY + (int) Math.round((edge[3] + panY) * zoom);
+            int minY = Math.min(y1, y2);
+            int maxY = Math.max(y1, y2);
+            context.fill(Math.min(x1, x2), minY, Math.max(x1, x2) + 1, maxY + 1, 0xFFA6B6CC);
         }
     }
 
@@ -1564,11 +1687,12 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private CatalogDetailCache townstead$catalogDetailFor(BuildingType selected, int textWidth) {
         String buildingType = selected.name();
-        CatalogDetailCache cached = townstead$catalogDetailCache;
-        if (cached != null && cached.buildingType().equals(buildingType) && cached.textWidth() == textWidth) {
+        CatalogDetailCache cached = townstead$catalogDetailCache.get(buildingType);
+        if (cached != null && cached.textWidth() == textWidth) {
             return cached;
         }
 
+        long t0 = System.nanoTime();
         Component nameComponent = Component.literal(townstead$displayBuildingName(buildingType));
         int nameHeight = Math.max(this.font.lineHeight + 2,
                 this.font.split(nameComponent, textWidth).size() * this.font.lineHeight + 2);
@@ -1581,7 +1705,8 @@ public abstract class BlueprintScreenMixin extends Screen {
 
         java.util.Map<String, Integer> spiritPts =
                 com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.contributionsFor(buildingType);
-        townstead$catalogDetailCache = new CatalogDetailCache(
+        long t1 = System.nanoTime();
+        CatalogDetailCache built = new CatalogDetailCache(
                 buildingType,
                 textWidth,
                 nameComponent,
@@ -1591,18 +1716,35 @@ public abstract class BlueprintScreenMixin extends Screen {
                 spiritPts.isEmpty() ? Map.of() : Map.copyOf(spiritPts),
                 Component.literal(desc),
                 townstead$sortedRequirements(selected.getGroups()));
-        return townstead$catalogDetailCache;
+        townstead$catalogDetailCache.put(buildingType, built);
+        long t2 = System.nanoTime();
+        Townstead.LOGGER.info("[TS-Diag/BP] catalogDetailFor miss buildingType={} textWidth={} buildUs={} reqUs={} totalUs={}",
+                buildingType, textWidth, (t1 - t0) / 1_000L, (t2 - t1) / 1_000L,
+                (t2 - t0) / 1_000L);
+        return built;
     }
 
     @Unique
     private String townstead$catalogSortKey(BuildingType type) {
-        String group = townstead$compatGroupLabel(type.name());
-        String name = townstead$displayBuildingName(type.name());
-        return group + "|" + name;
+        String name = type.name();
+        String cached = TOWNSTEAD$SORT_KEY_CACHE.get(name);
+        if (cached != null) return cached;
+        String key = townstead$compatGroupLabel(name) + "|" + townstead$displayBuildingName(name);
+        TOWNSTEAD$SORT_KEY_CACHE.put(name, key);
+        return key;
     }
 
     @Unique
     private String townstead$compatGroupLabel(String name) {
+        String cached = TOWNSTEAD$COMPAT_GROUP_CACHE.get(name);
+        if (cached != null) return cached;
+        String result = townstead$resolveCompatGroupLabel(name);
+        TOWNSTEAD$COMPAT_GROUP_CACHE.put(name, result);
+        return result;
+    }
+
+    @Unique
+    private String townstead$resolveCompatGroupLabel(String name) {
         Optional<com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef> match =
                 com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.matchGroup(name);
         if (match.isPresent())
@@ -1644,11 +1786,22 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private static String townstead$autoTierPrefix(String name) {
         if (name == null) return null;
+        String cached = TOWNSTEAD$AUTO_TIER_PREFIX_CACHE.get(name);
+        if (cached != null) return cached.isEmpty() ? null : cached;
         int idx = name.lastIndexOf("_l");
-        if (idx <= 0 || idx >= name.length() - 2) return null;
-        String suffix = name.substring(idx + 2);
-        if (suffix.isEmpty() || !suffix.chars().allMatch(Character::isDigit)) return null;
-        return name.substring(0, idx + 2);
+        String result;
+        if (idx <= 0 || idx >= name.length() - 2) {
+            result = null;
+        } else {
+            String suffix = name.substring(idx + 2);
+            if (suffix.isEmpty() || !suffix.chars().allMatch(Character::isDigit)) {
+                result = null;
+            } else {
+                result = name.substring(0, idx + 2);
+            }
+        }
+        TOWNSTEAD$AUTO_TIER_PREFIX_CACHE.put(name, result == null ? "" : result);
+        return result;
     }
 
     @Unique
@@ -1693,26 +1846,42 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private String townstead$displayBuildingName(String buildingTypeId) {
+        String cached = TOWNSTEAD$BUILDING_NAME_CACHE.get(buildingTypeId);
+        if (cached != null) return cached;
         String key = "buildingType." + buildingTypeId;
         String translated = Component.translatable(key).getString();
-        if (!translated.equals(key))
-            return translated;
-        String[] parts = buildingTypeId.split("/");
-        String raw = parts[parts.length - 1];
-        String[] words = raw.split("_");
-        StringBuilder out = new StringBuilder();
-        for (String w : words) {
-            if (w.isEmpty())
-                continue;
-            if (!out.isEmpty())
-                out.append(' ');
-            out.append(w.substring(0, 1).toUpperCase(Locale.ROOT)).append(w.substring(1));
+        String result;
+        if (!translated.equals(key)) {
+            result = translated;
+        } else {
+            String[] parts = buildingTypeId.split("/");
+            String raw = parts[parts.length - 1];
+            String[] words = raw.split("_");
+            StringBuilder out = new StringBuilder();
+            for (String w : words) {
+                if (w.isEmpty())
+                    continue;
+                if (!out.isEmpty())
+                    out.append(' ');
+                out.append(w.substring(0, 1).toUpperCase(Locale.ROOT)).append(w.substring(1));
+            }
+            result = out.toString();
         }
-        return out.toString();
+        TOWNSTEAD$BUILDING_NAME_CACHE.put(buildingTypeId, result);
+        return result;
     }
 
     @Unique
     private String townstead$displayRequirementName(ResourceLocation id) {
+        String cached = TOWNSTEAD$REQUIREMENT_NAME_CACHE.get(id);
+        if (cached != null) return cached;
+        String result = townstead$resolveRequirementName(id);
+        TOWNSTEAD$REQUIREMENT_NAME_CACHE.put(id, result);
+        return result;
+    }
+
+    @Unique
+    private String townstead$resolveRequirementName(ResourceLocation id) {
         if (BuiltInRegistries.BLOCK.containsKey(id)) {
             Block block = BuiltInRegistries.BLOCK.get(id);
             return Component.translatable(block.getDescriptionId()).getString();
@@ -2638,19 +2807,27 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$initSpiritPage() {
+        long t0 = System.nanoTime();
         // Ask MCA for a fresh snapshot only when the client does not already
         // have spirit state for this village. Building changes still refresh
         // via MCA's normal village requests after report/upgrade actions.
         net.conczin.mca.server.world.data.Village currentVillage =
                 ((BlueprintScreenAccessor) (Object) this).townstead$getVillage();
-        if (currentVillage == null || com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore
-                .get(currentVillage.getId()).isEmpty()) {
+        boolean hasCache = currentVillage != null
+                && com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore
+                        .get(currentVillage.getId()).isPresent();
+        boolean sentQuery = false;
+        if (currentVillage == null || !hasCache) {
             //? if neoforge {
             PacketDistributor.sendToServer(new com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload());
             //?} else {
             /*TownsteadNetwork.sendToServer(new com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload());
             *///?}
+            sentQuery = true;
         }
+        Townstead.LOGGER.info("[TS-Diag/BP] initSpiritPage village={} hadClientCache={} sentQuery={} elapsedUs={}",
+                currentVillage != null ? currentVillage.getId() : -1, hasCache, sentQuery,
+                (System.nanoTime() - t0) / 1_000L);
         // Restore per-village scroll position so re-opening the page lands
         // where the player left off.
         int saved = townstead$spiritScrollByVillage.getOrDefault(
@@ -2741,15 +2918,46 @@ public abstract class BlueprintScreenMixin extends Screen {
             net.conczin.mca.server.world.data.Village village,
             com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload snapshot) {
         int vid = village.getId();
+        // Prefer the server-built contributor map riding on the payload — no
+        // render-thread iteration over the building list, no classpath JSON
+        // scans for spirit contributions.
+        java.util.Map<String, java.util.List<com.aetherianartificer.townstead.spirit.ContributorRow>> fromServer =
+                snapshot.contributors();
+        if (fromServer != null && !fromServer.isEmpty()) {
+            ContribCacheEntry cached = townstead$spiritContribCache.get(vid);
+            if (cached != null && cached.buildingCount() == snapshot.total()
+                    && cached.payloadTotal() == snapshot.total()
+                    && cached.serverSourced()) {
+                return cached.data();
+            }
+            java.util.Map<String, java.util.List<ContributorEntry>> projected = new java.util.HashMap<>();
+            for (java.util.Map.Entry<String, java.util.List<com.aetherianartificer.townstead.spirit.ContributorRow>>
+                    e : fromServer.entrySet()) {
+                java.util.List<ContributorEntry> rows = new java.util.ArrayList<>(e.getValue().size());
+                for (com.aetherianartificer.townstead.spirit.ContributorRow r : e.getValue()) {
+                    rows.add(new ContributorEntry(r.buildingType(), r.count(), r.points()));
+                }
+                projected.put(e.getKey(), rows);
+            }
+            townstead$spiritContribCache.put(vid,
+                    new ContribCacheEntry(snapshot.total(), snapshot.total(), projected, true));
+            return projected;
+        }
+        // Fallback: server didn't ship contributors (cache built before the
+        // payload was extended). Compute on the client and cache locally.
         int bct = village.getBuildings().size();
         int total = snapshot.total();
         ContribCacheEntry cached = townstead$spiritContribCache.get(vid);
-        if (cached != null && cached.buildingCount() == bct && cached.payloadTotal() == total) {
+        if (cached != null && cached.buildingCount() == bct && cached.payloadTotal() == total
+                && !cached.serverSourced()) {
             return cached.data();
         }
+        long t0 = System.nanoTime();
         java.util.Map<String, java.util.List<ContributorEntry>> fresh =
                 townstead$aggregateContributors(village);
-        townstead$spiritContribCache.put(vid, new ContribCacheEntry(bct, total, fresh));
+        townstead$spiritContribCache.put(vid, new ContribCacheEntry(bct, total, fresh, false));
+        Townstead.LOGGER.info("[TS-Diag/BP] contribsFor miss village={} buildings={} totalPts={} spiritGroups={} elapsedUs={}",
+                vid, bct, total, fresh.size(), (System.nanoTime() - t0) / 1_000L);
         return fresh;
     }
 
@@ -3041,9 +3249,13 @@ public abstract class BlueprintScreenMixin extends Screen {
     private void townstead$renderSpiritPage(GuiGraphics context, int mouseX, int mouseY, float partialTicks,
                                             CallbackInfo ci) {
         if (!TOWNSTEAD_SPIRIT_PAGE.equals(this.page)) return;
+        long townstead$spiritRenderStart = System.nanoTime();
         BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
         net.conczin.mca.server.world.data.Village village = accessor.townstead$getVillage();
-        if (village == null) return;
+        if (village == null) {
+            townstead$logRenderFrame("spirit", townstead$spiritRenderStart);
+            return;
+        }
 
         java.util.Optional<com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload> snapshotOpt =
                 com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.get(village.getId());
@@ -3285,6 +3497,7 @@ public abstract class BlueprintScreenMixin extends Screen {
                     * Math.round(townstead$spiritScrollCurrent) / Math.max(1, maxScroll);
             context.fill(trackLeft, thumbY, trackLeft + 2, thumbY + thumbH, 0xFF8A8A8A);
         }
+        townstead$logRenderFrame("spirit", townstead$spiritRenderStart);
     }
 
     @Unique
@@ -3292,7 +3505,8 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private record ContribCacheEntry(int buildingCount, int payloadTotal,
-            java.util.Map<String, java.util.List<ContributorEntry>> data) {}
+            java.util.Map<String, java.util.List<ContributorEntry>> data,
+            boolean serverSourced) {}
 
     @Unique
     private java.util.Map<String, java.util.List<ContributorEntry>> townstead$aggregateContributors(

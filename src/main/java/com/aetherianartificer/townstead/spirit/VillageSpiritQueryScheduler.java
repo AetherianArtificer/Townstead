@@ -38,22 +38,36 @@ public final class VillageSpiritQueryScheduler {
     public static void enqueue(ServerLevel level, Village village, ServerPlayer player) {
         if (level == null || village == null || player == null) return;
 
+        long t0 = System.nanoTime();
         VillageSpiritCache.Entry cached = VillageSpiritCache.get(level, village.getId());
         if (cached != null) {
             send(player, VillageSpiritSyncPayload.fromCache(village.getId(), cached));
+            Townstead.LOGGER.info("[TS-Diag/SpiritQ] enqueue cacheHit village={} player={} elapsedUs={}",
+                    village.getId(), player.getName().getString(), (System.nanoTime() - t0) / 1_000L);
             return;
         }
 
         String key = keyOf(level, village.getId(), player.getUUID());
-        if (!PENDING_KEYS.add(key)) return;
+        if (!PENDING_KEYS.add(key)) {
+            Townstead.LOGGER.info("[TS-Diag/SpiritQ] enqueue dedup village={} player={} queueDepth={}",
+                    village.getId(), player.getName().getString(), QUEUE.size());
+            return;
+        }
+        int buildings = village.getBuildings().size();
         QUEUE.add(new Job(key, level, village.getId(), player.getUUID(),
-                new ArrayList<>(village.getBuildings().values())));
+                new ArrayList<>(village.getBuildings().values()), System.nanoTime()));
+        Townstead.LOGGER.info("[TS-Diag/SpiritQ] enqueue queued village={} player={} buildings={} queueDepth={} setupUs={}",
+                village.getId(), player.getName().getString(), buildings, QUEUE.size(),
+                (System.nanoTime() - t0) / 1_000L);
     }
 
     public static void tick(MinecraftServer server) {
         if (server == null || QUEUE.isEmpty()) return;
-        long deadline = System.nanoTime() + MAX_NANOS_PER_TICK;
+        long tickStart = System.nanoTime();
+        long deadline = tickStart + MAX_NANOS_PER_TICK;
         int processed = 0;
+        int jobsCompleted = 0;
+        int queueDepthBefore = QUEUE.size();
 
         while (!QUEUE.isEmpty() && processed < MAX_BUILDINGS_PER_TICK && System.nanoTime() < deadline) {
             Job job = QUEUE.peek();
@@ -63,7 +77,13 @@ public final class VillageSpiritQueryScheduler {
             QUEUE.poll();
             PENDING_KEYS.remove(job.key);
             complete(server, job);
+            jobsCompleted++;
         }
+        long elapsed = System.nanoTime() - tickStart;
+        // Only log when we actually did work — silent ticks would flood logs.
+        Townstead.LOGGER.info("[TS-Diag/SpiritQ] tick buildingsProcessed={} jobsCompleted={} queueBefore={} queueAfter={} elapsedUs={} budgetUs={}",
+                processed, jobsCompleted, queueDepthBefore, QUEUE.size(),
+                elapsed / 1_000L, MAX_NANOS_PER_TICK / 1_000L);
     }
 
     public static void clear() {
@@ -72,17 +92,24 @@ public final class VillageSpiritQueryScheduler {
     }
 
     private static void complete(MinecraftServer server, Job job) {
+        long t0 = System.nanoTime();
         SpiritTotals totals = new SpiritTotals(Map.copyOf(job.perSpirit), job.total, job.contributingBuildings);
         SpiritReadout readout = VillageSpiritAggregator.readoutFor(totals);
-        VillageSpiritCache.Entry entry = new VillageSpiritCache.Entry(totals, readout);
+        java.util.Map<String, java.util.List<ContributorRow>> contributors = job.buildContributors();
+        VillageSpiritCache.Entry entry = new VillageSpiritCache.Entry(totals, readout, contributors);
         VillageSpiritCache.put(job.level, job.villageId, entry);
 
         ServerPlayer player = server.getPlayerList().getPlayer(job.playerUuid);
+        boolean delivered = false;
         if (player != null) {
             send(player, VillageSpiritSyncPayload.fromCache(job.villageId, entry));
+            delivered = true;
         }
-        Townstead.LOGGER.debug("[Spirit] completed queued spirit snapshot village={} buildings={}",
-                job.villageId, job.buildings.size());
+        long latency = System.nanoTime() - job.enqueuedAtNanos;
+        long completeTime = System.nanoTime() - t0;
+        Townstead.LOGGER.info("[TS-Diag/SpiritQ] complete village={} buildings={} contributing={} totalPts={} spirits={} latencyMs={} completeUs={} delivered={}",
+                job.villageId, job.buildings.size(), job.contributingBuildings, job.total,
+                job.perSpirit.size(), latency / 1_000_000L, completeTime / 1_000L, delivered);
     }
 
     private static void send(ServerPlayer player, VillageSpiritSyncPayload payload) {
@@ -104,16 +131,23 @@ public final class VillageSpiritQueryScheduler {
         final UUID playerUuid;
         final List<Building> buildings;
         final Map<String, Integer> perSpirit = new HashMap<>();
+        // spirit id -> (buildingType -> [count, totalPoints]). Aggregated as
+        // we walk the building list so the Spirit page's contributor view can
+        // be served from the cache without re-iterating.
+        final Map<String, Map<String, int[]>> contributors = new HashMap<>();
+        final long enqueuedAtNanos;
         int cursor = 0;
         int total = 0;
         int contributingBuildings = 0;
 
-        Job(String key, ServerLevel level, int villageId, UUID playerUuid, List<Building> buildings) {
+        Job(String key, ServerLevel level, int villageId, UUID playerUuid,
+                List<Building> buildings, long enqueuedAtNanos) {
             this.key = key;
             this.level = level;
             this.villageId = villageId;
             this.playerUuid = playerUuid;
             this.buildings = buildings;
+            this.enqueuedAtNanos = enqueuedAtNanos;
         }
 
         int process(int limit) {
@@ -131,7 +165,8 @@ public final class VillageSpiritQueryScheduler {
 
         private void process(Building building) {
             if (building == null || !building.isComplete()) return;
-            Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(building.getType());
+            String type = building.getType();
+            Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);
             if (contributions.isEmpty()) return;
             boolean anyAdded = false;
             for (Map.Entry<String, Integer> e : contributions.entrySet()) {
@@ -142,8 +177,28 @@ public final class VillageSpiritQueryScheduler {
                 perSpirit.merge(spirit, pts, Integer::sum);
                 total += pts;
                 anyAdded = true;
+                int[] agg = contributors
+                        .computeIfAbsent(spirit, k -> new HashMap<>())
+                        .computeIfAbsent(type, k -> new int[]{0, 0});
+                agg[0]++;
+                agg[1] += pts;
             }
             if (anyAdded) contributingBuildings++;
+        }
+
+        Map<String, java.util.List<ContributorRow>> buildContributors() {
+            if (contributors.isEmpty()) return Map.of();
+            Map<String, java.util.List<ContributorRow>> out = new HashMap<>();
+            for (Map.Entry<String, Map<String, int[]>> spiritEntry : contributors.entrySet()) {
+                java.util.List<ContributorRow> rows = new java.util.ArrayList<>(spiritEntry.getValue().size());
+                for (Map.Entry<String, int[]> typeEntry : spiritEntry.getValue().entrySet()) {
+                    rows.add(new ContributorRow(typeEntry.getKey(),
+                            typeEntry.getValue()[0], typeEntry.getValue()[1]));
+                }
+                rows.sort(java.util.Comparator.comparingInt(ContributorRow::points).reversed());
+                out.put(spiritEntry.getKey(), java.util.List.copyOf(rows));
+            }
+            return Map.copyOf(out);
         }
     }
 }
