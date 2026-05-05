@@ -3,7 +3,6 @@ package com.aetherianartificer.townstead;
 import com.aetherianartificer.townstead.block.FieldPostBlock;
 import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
 import com.aetherianartificer.townstead.block.FieldPostMenu;
-import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.compat.ConditionalCompatPack;
 import com.aetherianartificer.townstead.compat.DynamicFlowerPotTagPack;
 import com.aetherianartificer.townstead.compat.ModCompat;
@@ -285,6 +284,10 @@ public class Townstead {
         townstead$registerMenuScreens(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
+            com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
+            com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
+        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -319,6 +322,12 @@ public class Townstead {
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.TickEvent.ServerTickEvent e) -> {
+            if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
+                com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
+                com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
+            }
+        });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
@@ -392,16 +401,7 @@ public class Townstead {
      * emit events only for real adds/upgrades.
      */
     private static void townstead$seedBuildingRecognition(MinecraftServer server) {
-        for (ServerLevel level : server.getAllLevels()) {
-            net.conczin.mca.server.world.data.VillageManager manager =
-                    net.conczin.mca.server.world.data.VillageManager.get(level);
-            for (net.conczin.mca.server.world.data.Village v : manager) {
-                com.aetherianartificer.townstead.dock.DockDuplicatePurger.purgeAll(v);
-                com.aetherianartificer.townstead.dock.DockLocationIndex.rebuildVillage(level, v);
-                BuildingRecognitionTracker.seed(level, v);
-                com.aetherianartificer.townstead.spirit.SpiritReconciler.seed(level, v);
-            }
-        }
+        com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.enqueue(server);
     }
 
     private void registerDialogueConditions() {
@@ -659,6 +659,11 @@ public class Townstead {
                 com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.STREAM_CODEC,
                 this::handleVillageSpiritSync
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.TYPE,
+                com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.STREAM_CODEC,
+                this::handleVillageSpiritQuery
+        );
         registrar.playToClient(
                 FishermanHookLinkPayload.TYPE,
                 FishermanHookLinkPayload.STREAM_CODEC,
@@ -795,6 +800,17 @@ public class Townstead {
     private void handleVillageSpiritSync(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload payload,
                                          IPayloadContext context) {
         context.enqueueWork(() -> com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.put(payload));
+    }
+
+    private void handleVillageSpiritQuery(com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload payload,
+                                          IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            Optional<Village> village = Village.findNearest(sp);
+            if (village.isEmpty()) return;
+            com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.enqueue(
+                    sp.serverLevel(), village.get(), sp);
+        });
     }
 
     private void handleFishermanHookLink(FishermanHookLinkPayload payload, IPayloadContext context) {

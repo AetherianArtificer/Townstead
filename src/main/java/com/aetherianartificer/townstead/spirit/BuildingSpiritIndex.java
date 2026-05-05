@@ -33,17 +33,7 @@ public final class BuildingSpiritIndex {
     /** Returns an immutable map of spirit id → points for the given building type, or an empty map. */
     public static Map<String, Integer> contributionsFor(String buildingType) {
         if (buildingType == null) return Map.of();
-        Map<String, Integer> m = CONTRIBUTIONS.get(buildingType);
-        if (m != null) return m;
-        Map<String, Integer> scanned = scanClasspathCompanion(buildingType);
-        if (scanned.isEmpty()) {
-            scanned = scanInlineBuildingType(buildingType);
-        }
-        if (!scanned.isEmpty()) {
-            put(buildingType, scanned);
-            return CONTRIBUTIONS.getOrDefault(buildingType, Map.of());
-        }
-        return Map.of();
+        return CONTRIBUTIONS.computeIfAbsent(buildingType, BuildingSpiritIndex::scanForContributions);
     }
 
     /**
@@ -63,6 +53,21 @@ public final class BuildingSpiritIndex {
 
     public static int size() {
         return CONTRIBUTIONS.size();
+    }
+
+    public static void prewarm(Iterable<String> buildingTypes) {
+        if (buildingTypes == null) return;
+        for (String buildingType : buildingTypes) {
+            contributionsFor(buildingType);
+        }
+    }
+
+    private static Map<String, Integer> scanForContributions(String buildingType) {
+        Map<String, Integer> scanned = scanClasspathCompanion(buildingType);
+        if (scanned.isEmpty()) {
+            scanned = scanInlineBuildingType(buildingType);
+        }
+        return scanned.isEmpty() ? Map.of() : Map.copyOf(scanned);
     }
 
     private static Map<String, Integer> scanClasspathCompanion(String buildingType) {

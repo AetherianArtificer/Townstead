@@ -86,6 +86,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.write(buf, p),
                 com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload::read,
                 TownsteadNetwork::handleVillageSpiritSync);
+        registerC2S(com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload::read,
+                TownsteadNetwork::handleVillageSpiritQuery);
         registerS2C(FishermanHookLinkPayload.class, FishermanHookLinkPayload::write, FishermanHookLinkPayload::read,
                 TownsteadNetwork::handleFishermanHookLink);
 
@@ -215,6 +219,15 @@ public final class TownsteadNetwork {
 
     private static void handleVillageSpiritSync(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload payload) {
         com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.put(payload);
+    }
+
+    private static void handleVillageSpiritQuery(
+            com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload payload,
+            ServerPlayer sp) {
+        Optional<Village> village = Village.findNearest(sp);
+        if (village.isEmpty()) return;
+        com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.enqueue(
+                sp.serverLevel(), village.get(), sp);
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {
