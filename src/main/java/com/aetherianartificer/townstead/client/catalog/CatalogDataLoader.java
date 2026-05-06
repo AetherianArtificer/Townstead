@@ -56,6 +56,13 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
 
     private static final List<GroupDef> GROUPS = new CopyOnWriteArrayList<>();
     private static final Map<String, BuildingOverride> OVERRIDES = new LinkedHashMap<>();
+    /**
+     * Per-buildingType cache of {@link #matchGroup} results. Cleared whenever
+     * {@code GROUPS} is repopulated (data-pack reload). Negative results are
+     * cached as {@link Optional#empty()}.
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<String, Optional<GroupDef>> MATCH_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
     private static volatile Theme THEME = Theme.DEFAULT;
     private static volatile Theme DATA_THEME = Theme.DEFAULT;
     private static volatile ResourceManager CLIENT_THEME_RESOURCE_MANAGER = null;
@@ -68,6 +75,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resourceManager,
             ProfilerFiller profiler) {
         GROUPS.clear();
+        MATCH_CACHE.clear();
         synchronized (OVERRIDES) {
             OVERRIDES.clear();
         }
@@ -360,10 +368,17 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     }
 
     public static Optional<GroupDef> matchGroup(String buildingType) {
+        if (buildingType == null) return Optional.empty();
+        Optional<GroupDef> cached = MATCH_CACHE.get(buildingType);
+        if (cached != null) return cached;
+        Optional<GroupDef> resolved = Optional.empty();
         for (GroupDef g : GROUPS) {
-            if (!g.matchPrefix().isEmpty() && buildingType.startsWith(g.matchPrefix()))
-                return Optional.of(g);
+            if (!g.matchPrefix().isEmpty() && buildingType.startsWith(g.matchPrefix())) {
+                resolved = Optional.of(g);
+                break;
+            }
         }
-        return Optional.empty();
+        MATCH_CACHE.put(buildingType, resolved);
+        return resolved;
     }
 }

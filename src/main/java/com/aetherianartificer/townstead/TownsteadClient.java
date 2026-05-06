@@ -106,6 +106,7 @@ public final class TownsteadClient {
             if (types.isEmpty()) return;
             com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.prewarmAsync(types);
             com.aetherianartificer.townstead.client.catalog.RequirementNameResolver.prewarmAllFromBuildingTypes();
+            com.aetherianartificer.townstead.client.catalog.ModDisplayNameResolver.prewarmAllFromBuildingTypes();
             spiritIndexWarmPending = false;
         } catch (Throwable ignored) {
             // Registry not ready yet — keep polling on subsequent ticks.

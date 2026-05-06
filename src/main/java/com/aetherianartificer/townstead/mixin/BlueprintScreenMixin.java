@@ -1320,11 +1320,9 @@ public abstract class BlueprintScreenMixin extends Screen {
                 .collect(Collectors.toList());
         com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.prewarmAsync(
                 all.stream().map(BuildingType::name).collect(Collectors.toList()));
-        // Belt-and-suspenders: if the player loaded into the world after the
-        // login-tick warm gave up, this is the next-best place to fire the
-        // requirement-name resolver warm. Idempotent (the resolver no-ops if
-        // already running) so this is cheap to call on every catalog open.
+        // Belt-and-suspenders: idempotent warms (no-op once already-warmed).
         com.aetherianartificer.townstead.client.catalog.RequirementNameResolver.prewarmAllFromBuildingTypes();
+        com.aetherianartificer.townstead.client.catalog.ModDisplayNameResolver.prewarmAllFromBuildingTypes();
         townstead$catalogEntries = all;
         townstead$catalogSelected = Math.max(0, Math.min(townstead$catalogSelected, Math.max(0, all.size() - 1)));
     }
@@ -1731,9 +1729,22 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private String townstead$modLine(String buildingTypeId) {
-        if (!buildingTypeId.startsWith("compat/"))
-            return null;
-        return townstead$compatGroupLabel(buildingTypeId);
+        String group = com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
+                .matchGroup(buildingTypeId).map(g -> g.label()).orElse(null);
+        String mod = buildingTypeId.startsWith("compat/")
+                ? townstead$resolveModDisplayName(buildingTypeId)
+                : null;
+        if (group == null && mod == null) return null;
+        if (group == null) return mod;
+        if (mod == null || mod.equals(group)) return group;
+        return group + " · " + mod;
+    }
+
+    @Unique
+    private String townstead$resolveModDisplayName(String buildingTypeId) {
+        String[] parts = buildingTypeId.split("/");
+        if (parts.length < 2) return null;
+        return com.aetherianartificer.townstead.client.catalog.ModDisplayNameResolver.displayName(parts[1]);
     }
 
     @Unique
