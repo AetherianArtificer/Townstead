@@ -34,6 +34,9 @@ public final class McaAnimationBridge {
             float headYaw,
             float headPitch
     ) {
+        // Skip babies for now, since they have their own thing going on
+        if (entity.isBaby()) return;
+        
         McaAnimationParameters parameters = McaAnimationParameters.from(
                 entity,
                 model,
