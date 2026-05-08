@@ -25,6 +25,7 @@ public final class McaAnimationBridge {
     );
 
     private static final float BREAST_BASE_X_ROT = (float) Math.PI * 0.3f;
+    private static final float BREAST_TILT_DAMPING = 0.5f;
 
     private static boolean loggedNoSources;
     private static long lastDiagnosticTick = -200L;
@@ -196,7 +197,12 @@ public final class McaAnimationBridge {
         breasts.x = body.x + offset.x;
         breasts.y = body.y + offset.y;
         breasts.z = body.z + offset.z;
-        bodyRot.mul(new Quaternionf().rotationX(BREAST_BASE_X_ROT));
+        // Pure rigid attachment composes body.xRot with the local 0.3π forward tilt, but the
+        // chest cube extends further below its pivot than above, so heavy forward body lean
+        // reads as over-tilt. Damp the local tilt linearly with forward body lean — idle/walk
+        // (xRot ≈ 0) keep the full tilt, crouching/leaning ease it off.
+        float dampedTilt = Math.max(0f, BREAST_BASE_X_ROT - Math.max(0f, body.xRot) * BREAST_TILT_DAMPING);
+        bodyRot.mul(new Quaternionf().rotationX(dampedTilt));
         Vector3f euler = bodyRot.getEulerAnglesZYX(new Vector3f());
         breasts.xRot = euler.x;
         breasts.yRot = euler.y;
