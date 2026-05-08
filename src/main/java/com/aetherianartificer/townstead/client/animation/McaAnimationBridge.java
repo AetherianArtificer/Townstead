@@ -1,6 +1,10 @@
 package com.aetherianartificer.townstead.client.animation;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.client.animation.emote.EmoteRegistry;
+import com.aetherianartificer.townstead.client.animation.emote.EmotecraftAnimationSourceAdapter;
+import com.aetherianartificer.townstead.client.animation.emote.loader.EmoteReflection;
+import com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge;
 import net.conczin.mca.client.model.PlayerEntityExtendedModel;
 import net.conczin.mca.client.model.VillagerEntityModelMCA;
 import net.minecraft.client.model.HumanoidModel;
@@ -10,9 +14,11 @@ import java.util.List;
 
 public final class McaAnimationBridge {
     private static final EmfAnimationSourceAdapter EMF_ADAPTER = new EmfAnimationSourceAdapter();
+    private static final EmotecraftAnimationSourceAdapter EMOTE_ADAPTER = new EmotecraftAnimationSourceAdapter();
     private static final List<AnimationSourceAdapter> SOURCES = List.of(
             new DebugAnimationSourceAdapter(),
-            EMF_ADAPTER
+            EMF_ADAPTER,
+            EMOTE_ADAPTER
     );
 
     private static boolean loggedNoSources;
@@ -23,6 +29,10 @@ public final class McaAnimationBridge {
     /** Drop cached CEM programs so the next render reloads from the current pack stack. */
     public static void onResourcesReloaded() {
         EMF_ADAPTER.invalidate();
+        EmoteReflection.invalidate();
+        EMOTE_ADAPTER.invalidate();
+        EmoteRegistry.reload();
+        EmotecraftEventBridge.ensureRegistered();
     }
 
     public static <T extends LivingEntity> void apply(

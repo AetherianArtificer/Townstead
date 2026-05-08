@@ -296,8 +296,24 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) ->
                 ClientCapsStore.clear(e.getEntity().getUUID()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.emote.EmoteCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        townstead$registerEmotePlaybackClear();
         registerDialogueConditions();
         LOGGER.info("Townstead loaded");
+    }
+
+    private static void townstead$registerEmotePlaybackClear() {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            NeoForge.EVENT_BUS.addListener(
+                    (net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) ->
+                            com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear());
+        } catch (Exception ignored) {
+            // Dedicated server: no client-side playback registry to clear.
+        }
     }
     //?} else if forge {
     /*public Townstead() {
@@ -336,6 +352,18 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) ->
                 ClientCapsStore.clear(e.getEntity().getUUID()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.emote.EmoteCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            MinecraftForge.EVENT_BUS.addListener(
+                    (net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) ->
+                            com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear());
+        } catch (Exception ignored) {
+            // Dedicated server: no client-side playback registry to clear.
+        }
         registerDialogueConditions();
         LOGGER.info("Townstead loaded");
     }
@@ -769,6 +797,48 @@ public class Townstead {
                 VillageEnterTitlePayload.STREAM_CODEC,
                 this::handleVillageEnterTitle
         );
+        // Emotecraft animation triggers
+        registrar.playToClient(
+                com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload.TYPE,
+                com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload.STREAM_CODEC,
+                this::handleEmoteTriggerS2C
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload.TYPE,
+                com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload.STREAM_CODEC,
+                this::handleEmoteTriggerC2S
+        );
+    }
+
+    private void handleEmoteTriggerS2C(
+            com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.client.animation.emote.EmoteClientHandler.handle(payload));
+    }
+
+    private void handleEmoteTriggerC2S(
+            com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            Entity target = sp.serverLevel().getEntity(payload.targetEntityId());
+            if (!(target instanceof net.conczin.mca.entity.VillagerEntityMCA)
+                    && !(target instanceof net.minecraft.world.entity.player.Player)) return;
+            net.minecraft.resources.ResourceLocation id;
+            try {
+                id = net.minecraft.resources.ResourceLocation.parse(payload.emoteId());
+            } catch (Exception e) {
+                return;
+            }
+            com.aetherianartificer.townstead.emote.AiEmoteScheduler.playEmote(
+                    (net.minecraft.world.entity.LivingEntity) target,
+                    id,
+                    payload.loopOverride(),
+                    payload.speed());
+        });
     }
 
     private void handleClientCaps(ClientCapsPayload payload, IPayloadContext context) {
