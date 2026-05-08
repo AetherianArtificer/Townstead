@@ -8,7 +8,10 @@ import com.aetherianartificer.townstead.client.animation.emote.loader.Emotecraft
 import net.conczin.mca.client.model.PlayerEntityExtendedModel;
 import net.conczin.mca.client.model.VillagerEntityModelMCA;
 import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.world.entity.LivingEntity;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.List;
 
@@ -20,6 +23,8 @@ public final class McaAnimationBridge {
             EMF_ADAPTER,
             EMOTE_ADAPTER
     );
+
+    private static final float BREAST_BASE_X_ROT = (float) Math.PI * 0.3f;
 
     private static boolean loggedNoSources;
     private static long lastDiagnosticTick = -200L;
@@ -46,7 +51,7 @@ public final class McaAnimationBridge {
     ) {
         // Skip babies for now, since they have their own thing going on
         if (entity.isBaby()) return;
-        
+
         McaAnimationParameters parameters = McaAnimationParameters.from(
                 entity,
                 model,
@@ -58,19 +63,41 @@ public final class McaAnimationBridge {
         AnimationSourceContext<T> context = new AnimationSourceContext<>(
                 entity, model, parameters, rigScale, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
         AnimationTargetMap<T> targets = AnimationTargetMap.forMcaModel(model);
-        boolean anyAvailable = false;
 
+        // Capture breasts' rest-pose offset in body's LOCAL frame before any source mutates body.
+        // MCA's applyVillagerDimensions has just placed breasts at root-space coords meant to
+        // sit on the chest given body's CURRENT vanilla pose (e.g. crouching adds offsets to
+        // compensate for body.xRot=0.5 + body.y=3.2). Inverse-rotating that root-space offset
+        // through body's current rotation strips out the pose so the captured vector is
+        // pose-independent; we then re-rotate it by body's full rotation after sources apply.
+        ModelPart breasts = breastsPart(model);
+        float localOffsetX = 0f;
+        float localOffsetY = 0f;
+        float localOffsetZ = 0f;
+        if (breasts != null) {
+            Vector3f offset = new Vector3f(
+                    breasts.x - model.body.x,
+                    breasts.y - model.body.y,
+                    breasts.z - model.body.z);
+            new Quaternionf()
+                    .rotationZYX(model.body.zRot, model.body.yRot, model.body.xRot)
+                    .invert()
+                    .transform(offset);
+            localOffsetX = offset.x;
+            localOffsetY = offset.y;
+            localOffsetZ = offset.z;
+        }
+
+        boolean anyAvailable = false;
         for (AnimationSourceAdapter source : SOURCES) {
             if (!source.isAvailable()) continue;
             anyAvailable = true;
-            float bodyXBefore = model.body.x;
-            float bodyYBefore = model.body.y;
-            float bodyZBefore = model.body.z;
             List<AnimationTransform> transforms = source.collectTransforms(context);
             McaModelPartApplier.ApplyStats stats = McaModelPartApplier.applyWithStats(source.id(), targets, transforms);
             logDiagnostic(entity, model, source.id(), transforms, stats);
-            syncMcaDependentParts(model, bodyXBefore, bodyYBefore, bodyZBefore);
         }
+
+        syncMcaDependentParts(model, breasts, localOffsetX, localOffsetY, localOffsetZ);
 
         if (!anyAvailable && !loggedNoSources) {
             loggedNoSources = true;
@@ -119,28 +146,27 @@ public final class McaAnimationBridge {
         return builder.append(']').toString();
     }
 
-    private static final float BREAST_BASE_X_ROT = (float) Math.PI * 0.3f;
+    private static ModelPart breastsPart(HumanoidModel<?> model) {
+        if (model instanceof VillagerEntityModelMCA<?> villagerModel) return villagerModel.breasts;
+        if (model instanceof PlayerEntityExtendedModel<?> playerModel) return playerModel.breasts;
+        return null;
+    }
 
     private static void syncMcaDependentParts(
             HumanoidModel<?> model,
-            float bodyXBefore,
-            float bodyYBefore,
-            float bodyZBefore
+            ModelPart breasts,
+            float localOffsetX,
+            float localOffsetY,
+            float localOffsetZ
     ) {
         model.hat.copyFrom(model.head);
-        float dx = model.body.x - bodyXBefore;
-        float dy = model.body.y - bodyYBefore;
-        float dz = model.body.z - bodyZBefore;
         if (model instanceof VillagerEntityModelMCA<?> villagerModel) {
             villagerModel.leftLegwear.copyFrom(villagerModel.leftLeg);
             villagerModel.rightLegwear.copyFrom(villagerModel.rightLeg);
             villagerModel.leftArmwear.copyFrom(villagerModel.leftArm);
             villagerModel.rightArmwear.copyFrom(villagerModel.rightArm);
             villagerModel.bodyWear.copyFrom(villagerModel.body);
-            villagerModel.breasts.xRot = BREAST_BASE_X_ROT + villagerModel.body.xRot;
-            villagerModel.breasts.x += dx;
-            villagerModel.breasts.y += dy;
-            villagerModel.breasts.z += dz;
+            applyRigidBreastsAttachment(breasts, model.body, localOffsetX, localOffsetY, localOffsetZ);
             villagerModel.breastsWear.copyFrom(villagerModel.breasts);
         } else if (model instanceof PlayerEntityExtendedModel<?> playerModel) {
             playerModel.leftPants.copyFrom(playerModel.leftLeg);
@@ -148,11 +174,32 @@ public final class McaAnimationBridge {
             playerModel.leftSleeve.copyFrom(playerModel.leftArm);
             playerModel.rightSleeve.copyFrom(playerModel.rightArm);
             playerModel.jacket.copyFrom(playerModel.body);
-            playerModel.breasts.xRot = BREAST_BASE_X_ROT + playerModel.body.xRot;
-            playerModel.breasts.x += dx;
-            playerModel.breasts.y += dy;
-            playerModel.breasts.z += dz;
+            applyRigidBreastsAttachment(breasts, model.body, localOffsetX, localOffsetY, localOffsetZ);
             playerModel.breastsWear.copyFrom(playerModel.breasts);
         }
+    }
+
+    // Treats breasts as a virtual child of body. Body's rotation rotates the captured rest-pose
+    // local offset around body's pivot, and body's rotation composes with the chest's local
+    // forward tilt so the chest band stays glued to the rotated/twisted torso instead of
+    // floating in front of it.
+    private static void applyRigidBreastsAttachment(
+            ModelPart breasts,
+            ModelPart body,
+            float localOffsetX,
+            float localOffsetY,
+            float localOffsetZ
+    ) {
+        if (breasts == null) return;
+        Quaternionf bodyRot = new Quaternionf().rotationZYX(body.zRot, body.yRot, body.xRot);
+        Vector3f offset = bodyRot.transform(new Vector3f(localOffsetX, localOffsetY, localOffsetZ));
+        breasts.x = body.x + offset.x;
+        breasts.y = body.y + offset.y;
+        breasts.z = body.z + offset.z;
+        bodyRot.mul(new Quaternionf().rotationX(BREAST_BASE_X_ROT));
+        Vector3f euler = bodyRot.getEulerAnglesZYX(new Vector3f());
+        breasts.xRot = euler.x;
+        breasts.yRot = euler.y;
+        breasts.zRot = euler.z;
     }
 }
