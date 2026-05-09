@@ -74,28 +74,25 @@ public final class McaAnimationBridge {
                 entity, model, parameters, rigScale, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
         AnimationTargetMap<T> targets = AnimationTargetMap.forMcaModel(model);
 
-        // Capture breasts' rest-pose offset in body's LOCAL frame before any source mutates body.
-        // MCA's applyVillagerDimensions has just placed breasts at root-space coords meant to
-        // sit on the chest given body's CURRENT vanilla pose (e.g. crouching adds offsets to
-        // compensate for body.xRot=0.5 + body.y=3.2). Inverse-rotating that root-space offset
-        // through body's current rotation strips out the pose so the captured vector is
-        // pose-independent; we then re-rotate it by body's full rotation after sources apply.
+        // Capture breasts' rest-pose offset relative to body's rest pose. MCA's
+        // applyVillagerDimensions has just written breasts.xyz in absolute model
+        // coordinates assuming body is at rest (translation 0,0,0; rotation 0,0,0).
+        // We do NOT subtract model.body.xyz here: vanilla HumanoidModel.setupAnim
+        // does not reset body.x or body.z between frames (it only touches body.y
+        // for crouching and body rotations for active poses), so model.body.xyz
+        // retains stale translation from the previous frame's source (CEM keyframes
+        // body.x via translation channels). Subtracting that stale value gave a
+        // localOffset that drifts frame to frame, which the user observed as
+        // breasts floating left and right of the torso during walks. body's rest
+        // pose is the right reference frame here.
         ModelPart breasts = breastsPart(model);
         float localOffsetX = 0f;
         float localOffsetY = 0f;
         float localOffsetZ = 0f;
         if (breasts != null) {
-            Vector3f offset = new Vector3f(
-                    breasts.x - model.body.x,
-                    breasts.y - model.body.y,
-                    breasts.z - model.body.z);
-            new Quaternionf()
-                    .rotationZYX(model.body.zRot, model.body.yRot, model.body.xRot)
-                    .invert()
-                    .transform(offset);
-            localOffsetX = offset.x;
-            localOffsetY = offset.y;
-            localOffsetZ = offset.z;
+            localOffsetX = breasts.x;
+            localOffsetY = breasts.y;
+            localOffsetZ = breasts.z;
         }
 
         boolean anyAvailable = false;
