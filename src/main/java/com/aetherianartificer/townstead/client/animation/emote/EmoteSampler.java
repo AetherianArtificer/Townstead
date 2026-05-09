@@ -27,9 +27,6 @@ import java.util.Map;
  * being overwritten by it.</p>
  */
 public final class EmoteSampler {
-    private static final float TRANSLATION_CLAMP = 24.0F;
-    private static final float ROTATION_CLAMP = (float) (Math.PI * 0.75);
-
     private EmoteSampler() {}
 
     public static List<AnimationTransform> sample(
@@ -150,26 +147,18 @@ public final class EmoteSampler {
     }
 
     private static float sampleRot(List<ParsedKeyframe> keyframes, float restValue, float tick) {
-        return clamp(sampleRaw(keyframes, restValue, tick), ROTATION_CLAMP);
+        float v = sampleRaw(keyframes, restValue, tick);
+        return Float.isFinite(v) ? v : 0F;
     }
 
     private static float sampleTrans(List<ParsedKeyframe> keyframes, float restValue, float tick) {
-        return clamp(sampleRaw(keyframes, restValue, tick), TRANSLATION_CLAMP);
+        float v = sampleRaw(keyframes, restValue, tick);
+        return Float.isFinite(v) ? v : 0F;
     }
 
     private static float sampleScale(List<ParsedKeyframe> keyframes, float restValue, float tick) {
         float v = sampleRaw(keyframes, restValue, tick);
-        if (!Float.isFinite(v)) return restValue;
-        if (v < 0.01F) return 0.01F;
-        if (v > 16F) return 16F;
-        return v;
-    }
-
-    private static float clamp(float v, float bound) {
-        if (!Float.isFinite(v)) return 0F;
-        if (v > bound) return bound;
-        if (v < -bound) return -bound;
-        return v;
+        return Float.isFinite(v) ? v : restValue;
     }
 
     private static float sampleRaw(List<ParsedKeyframe> keyframes, float restValue, float tick) {
