@@ -9,13 +9,16 @@ import java.util.Map;
  * canonical {@link com.aetherianartificer.townstead.client.animation.AnimationTargetMap}
  * part names.
  *
- * <p>Most emote bones map to exactly one Townstead model part. The two virtual
- * parent bones — {@code torso} and {@code body} — propagate transforms to the
- * children that visually hang from them, because Minecraft's {@link
- * net.minecraft.client.model.HumanoidModel} stores all parts as flat siblings
- * (no parent-child rotation). Without propagation, leaning the {@code torso}
- * tilts only the visible body block while head/arms stay vertical, producing a
- * detached neck.</p>
+ * <p>The {@code torso} / {@code body} bones are deliberately <b>not</b> mapped
+ * at the model-part level. Emotecraft applies those bones' translation +
+ * rotation at the entity-render matrix stack (see {@code
+ * EmoteBodyTransformSampler} and {@code LivingEntityRendererEmoteMixin}), which
+ * rotates and translates the whole entity together — head, arms, legs, body
+ * cube all follow as one. Head/arm/leg keyframes then layer their per-part
+ * rotation on top of that whole-entity transform, exactly the way Emotecraft's
+ * native player pipeline composes them. Mapping {@code torso} or {@code body}
+ * to a model part here would compound with the matrix-stack rotation and tear
+ * the model apart (limbs flipping through the torso during a backflip).</p>
  *
  * <p>Bones with no MCA analogue ({@code leftItem}, {@code rightItem}, {@code
  * cape}) and {@code hat} (which {@code syncMcaDependentParts} resyncs to {@code
@@ -45,13 +48,10 @@ public final class EmoteBoneMapping {
             Map.entry("rightarm", new Targets("right_arm", List.of())),
             Map.entry("leftleg", new Targets("left_leg", List.of())),
             Map.entry("rightleg", new Targets("right_leg", List.of())),
-            Map.entry("waist", new Targets("body", List.of())),
-            // torso = upper-body parent: head + arms follow it.
-            Map.entry("torso", new Targets("body", List.of("head", "left_arm", "right_arm"))),
-            // body = full-body parent: everything follows it.
-            Map.entry("body", new Targets(
-                    "body",
-                    List.of("head", "left_arm", "right_arm", "left_leg", "right_leg")))
+            Map.entry("waist", new Targets("body", List.of()))
+            // "torso" and "body" intentionally absent: the entity-level matrix
+            // stack mixin applies their translation + rotation at world level so
+            // the whole model rotates together, the way Emotecraft does.
     );
 
     public static Targets mapTargets(String emoteBoneName) {

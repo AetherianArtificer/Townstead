@@ -88,7 +88,12 @@ public final class EmotecraftEmoteLoader {
             for (Map.Entry<String, Object> e : bodyParts.entrySet()) {
                 String key = normalizeKey(e.getKey());
                 if (key == null) continue;
-                if (EmoteBoneMapping.mapTargets(key).isEmpty()) continue;
+                // Keep "torso" / "body" even though EmoteBoneMapping treats them
+                // as empty at the model-part level — the entity-render matrix
+                // mixin needs to sample them. Other unmapped bones (e.g. cape,
+                // leftItem) are still dropped here.
+                boolean isVirtualParent = "torso".equals(key) || "body".equals(key);
+                if (!isVirtualParent && EmoteBoneMapping.mapTargets(key).isEmpty()) continue;
                 ParsedBoneAnimation pba = parseStateCollection(e.getValue());
                 if (pba == null || !pba.hasAnyKeyframes()) continue;
                 mapped.put(key, pba);

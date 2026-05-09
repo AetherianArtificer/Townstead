@@ -167,6 +167,9 @@ public final class EmoteSampler {
         ParsedKeyframe first = keyframes.get(0);
         if (tick <= 0F) return restValue;
         if (tick <= first.tick()) {
+            // Interpolating from the synthesized rest keyframe at tick 0 to the
+            // first authored keyframe — use the first authored keyframe's easing
+            // (the curve "into" it).
             return easeBetween(restValue, first.value(), 0F, first.tick(), tick, first.easing());
         }
 
@@ -174,7 +177,14 @@ public final class EmoteSampler {
             ParsedKeyframe prev = keyframes.get(i - 1);
             ParsedKeyframe next = keyframes.get(i);
             if (tick <= next.tick()) {
-                return easeBetween(prev.value(), next.value(), prev.tick(), next.tick(), tick, next.easing());
+                // Use the PREVIOUS keyframe's easing — Emotecraft's legacy default
+                // (isEasingBefore = false). This matters for snap-back keyframes
+                // like backflip's tick-70 CONSTANT -> tick-71 0: with prev's
+                // CONSTANT easing the value holds at the start until the end of
+                // the span, then jumps; with the next keyframe's LINEAR easing
+                // (what we used to do) the value lerps through 180° mid-tick and
+                // the entity visibly flashes upside-down at the end of the flip.
+                return easeBetween(prev.value(), next.value(), prev.tick(), next.tick(), tick, prev.easing());
             }
         }
         return keyframes.get(keyframes.size() - 1).value();

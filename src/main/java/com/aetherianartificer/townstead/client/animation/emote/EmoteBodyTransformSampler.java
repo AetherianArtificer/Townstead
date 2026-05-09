@@ -113,7 +113,10 @@ public final class EmoteBodyTransformSampler {
             ParsedKeyframe prev = keyframes.get(i - 1);
             ParsedKeyframe next = keyframes.get(i);
             if (tick <= next.tick()) {
-                return easeBetween(prev.value(), next.value(), prev.tick(), next.tick(), tick, next.easing());
+                // Match Emotecraft's legacy isEasingBefore=false semantics: the
+                // curve through the span is governed by the previous keyframe's
+                // easing (e.g. CONSTANT -> hold until the end, then snap).
+                return easeBetween(prev.value(), next.value(), prev.tick(), next.tick(), tick, prev.easing());
             }
         }
         return keyframes.get(keyframes.size() - 1).value();
