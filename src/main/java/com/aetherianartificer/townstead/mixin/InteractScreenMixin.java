@@ -1,7 +1,9 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.client.animation.emote.loader.EmoteReflection;
 import com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen;
+import com.aetherianartificer.townstead.client.gui.pose.PosePickerScreen;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerClientStore;
@@ -30,6 +32,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.npc.VillagerProfession;
@@ -94,22 +98,48 @@ public abstract class InteractScreenMixin extends Screen {
     //? if >=1.21 {
     @Inject(method = "buttonPressed", remap = false, at = @At("HEAD"), cancellable = true)
     private void townstead$interceptTalkButton(MCAButton button, CallbackInfo ci) {
-        if (!"gui.button.talk".equals(button.identifier())) return;
+        String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
-        ci.cancel();
-        townstead$transitioning = true;
-        Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
+        if ("gui.button.talk".equals(id)) {
+            ci.cancel();
+            townstead$transitioning = true;
+            Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
+        } else if ("gui.button.pose".equals(id)) {
+            ci.cancel();
+            townstead$transitioning = true;
+            PosePickerScreen.open(villager);
+        }
     }
     //?} else {
     /*@Inject(method = "buttonPressed", remap = false, at = @At("HEAD"), cancellable = true)
     private void townstead$interceptTalkButton(Button button, CallbackInfo ci) {
-        if (!"gui.button.talk".equals(button.identifier())) return;
+        String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
-        ci.cancel();
-        townstead$transitioning = true;
-        Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
+        if ("gui.button.talk".equals(id)) {
+            ci.cancel();
+            townstead$transitioning = true;
+            Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
+        } else if ("gui.button.pose".equals(id)) {
+            ci.cancel();
+            townstead$transitioning = true;
+            PosePickerScreen.open(villager);
+        }
     }
     *///?}
+
+    @Inject(method = "init", at = @At("TAIL"))
+    private void townstead$hidePoseButtonWhenNoEmoteSource(CallbackInfo ci) {
+        if (EmoteReflection.isAvailable()) return;
+        // No emote source loaded — hide Pose so the button doesn't dead-end.
+        // Quark/posing parity will go here when its loader is added.
+        for (GuiEventListener listener : this.children()) {
+            if (!(listener instanceof net.minecraft.client.gui.components.Button button)) continue;
+            if (!(button.getMessage().getContents() instanceof TranslatableContents tc)) continue;
+            if (!"gui.button.pose".equals(tc.getKey())) continue;
+            button.visible = false;
+            button.active = false;
+        }
+    }
 
     @Inject(method = "onClose", at = @At("HEAD"), cancellable = true)
     private void townstead$suppressCloseOnTransition(CallbackInfo ci) {

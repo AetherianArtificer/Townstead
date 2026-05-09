@@ -30,6 +30,7 @@ public final class EmoteReflection {
     static Field animStopTick;
     static Field animReturnToTick;
     static Field animIsInfinite;
+    static Field animExtraData;         // -> HashMap<String, Object>; "iconData" key holds a ByteBuffer of PNG bytes
 
     static Class<?> stateCollectionClass;
     static Field scX, scY, scZ;
@@ -53,6 +54,9 @@ public final class EmoteReflection {
     static Class<?> emoteStopEventInterface;
     static Class<?> playerAnimEventClass;
     static Method playerAnimEventRegister;
+
+    static Class<?> clientEmoteApiClass;
+    static Method clientEmoteApiList;
 
     private EmoteReflection() {}
 
@@ -88,6 +92,7 @@ public final class EmoteReflection {
             animStopTick = animationClass.getField("stopTick");
             animReturnToTick = animationClass.getField("returnToTick");
             animIsInfinite = animationClass.getField("isInfinite");
+            animExtraData = anyFieldOrNull(animationClass, "extraData");
 
             stateCollectionClass = Class.forName(
                     "dev.kosmx.playerAnim.core.data.KeyframeAnimation$StateCollection");
@@ -123,6 +128,10 @@ public final class EmoteReflection {
                     "io.github.kosmx.emotes.api.events.client.ClientEmoteEvents$EmoteStopEvent");
             playerAnimEventClass = Class.forName("dev.kosmx.playerAnim.core.impl.event.Event");
             playerAnimEventRegister = playerAnimEventClass.getMethod("register", Object.class);
+
+            clientEmoteApiClass = Class.forName(
+                    "io.github.kosmx.emotes.api.events.client.ClientEmoteAPI");
+            clientEmoteApiList = clientEmoteApiClass.getMethod("clientEmoteList");
 
             ok = true;
         } catch (Throwable ignored) {

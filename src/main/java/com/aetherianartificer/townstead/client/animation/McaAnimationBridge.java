@@ -7,6 +7,8 @@ import com.aetherianartificer.townstead.client.animation.emote.loader.EmoteRefle
 import com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge;
 import net.conczin.mca.client.model.PlayerEntityExtendedModel;
 import net.conczin.mca.client.model.VillagerEntityModelMCA;
+import net.conczin.mca.entity.VillagerLike;
+import net.conczin.mca.entity.ai.relationship.AgeState;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.world.entity.LivingEntity;
@@ -50,8 +52,15 @@ public final class McaAnimationBridge {
             float headYaw,
             float headPitch
     ) {
-        // Skip babies for now, since they have their own thing going on
-        if (entity.isBaby()) return;
+        // Skip MCA babies (their own swaying animation runs on a different code path).
+        // Vanilla isBaby() returns true for any MCA young (TODDLER/CHILD/TEEN) because
+        // they all have negative age, so check the MCA AgeState directly to keep
+        // emotes / CEM animations on teens and children.
+        if (entity instanceof VillagerLike<?> villagerLike) {
+            if (villagerLike.getAgeState() == AgeState.BABY) return;
+        } else if (entity.isBaby()) {
+            return;
+        }
 
         McaAnimationParameters parameters = McaAnimationParameters.from(
                 entity,

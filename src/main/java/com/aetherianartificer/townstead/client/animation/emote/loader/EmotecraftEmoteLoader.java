@@ -86,11 +86,12 @@ public final class EmotecraftEmoteLoader {
 
             Map<String, ParsedBoneAnimation> mapped = new HashMap<>();
             for (Map.Entry<String, Object> e : bodyParts.entrySet()) {
-                String target = EmoteBoneMapping.mapOrNull(e.getKey());
-                if (target == null) continue;
+                String key = normalizeKey(e.getKey());
+                if (key == null) continue;
+                if (EmoteBoneMapping.mapTargets(key).isEmpty()) continue;
                 ParsedBoneAnimation pba = parseStateCollection(e.getValue());
                 if (pba == null || !pba.hasAnyKeyframes()) continue;
-                mapped.merge(target, pba, EmotecraftEmoteLoader::mergeBones);
+                mapped.put(key, pba);
             }
             if (mapped.isEmpty()) return null;
 
@@ -180,11 +181,9 @@ public final class EmotecraftEmoteLoader {
         }
     }
 
-    private static ParsedBoneAnimation mergeBones(ParsedBoneAnimation a, ParsedBoneAnimation b) {
-        // If two emote bones map to the same Townstead target (e.g. body/torso both map
-        // to `body`), prefer whichever has actual keyframes; if both do, the second wins.
-        if (!a.hasAnyKeyframes()) return b;
-        if (!b.hasAnyKeyframes()) return a;
-        return b;
+    private static String normalizeKey(String raw) {
+        if (raw == null) return null;
+        String key = raw.trim().toLowerCase(java.util.Locale.ROOT).replace("_", "");
+        return key.isEmpty() ? null : key;
     }
 }

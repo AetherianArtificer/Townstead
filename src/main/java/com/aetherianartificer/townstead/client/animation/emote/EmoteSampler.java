@@ -11,19 +11,20 @@ import java.util.Map;
 
 /**
  * Stateless evaluator: turns a {@link ParsedEmote} sampled at tick {@code t} into a
- * list of {@link AnimationTransform}s using {@link AnimationTransform.Operation#SET}.
+ * list of {@link AnimationTransform}s.
  *
- * <p>SET semantics matter: the emote source runs after CEM/EMF in {@code
- * McaAnimationBridge.SOURCES}, so any bone the emote keyframes is fully owned by
- * the emote that frame; bones the emote doesn't reference get no transform emitted
- * and keep CEM's earlier SET. Defensive clamps protect against malformed emotes
- * from snapping the rig.</p>
+ * <p>Each emote bone is mapped through {@link EmoteBoneMapping} into a {@link
+ * EmoteBoneMapping.Targets#primary primary} part — receiving a SET that lerps from
+ * the part's current value (whatever CEM put there) toward the emote-sampled value
+ * by {@code blend} — and zero or more {@link EmoteBoneMapping.Targets#propagateTo
+ * propagation} parts that receive an ADD scaled by {@code blend}, simulating the
+ * parent-child relationships ({@code torso} parents head/arms, {@code body}
+ * parents everything) that vanilla {@code HumanoidModel}'s flat sibling layout
+ * doesn't otherwise express.</p>
  *
- * <p>The {@code blend} parameter linearly interpolates from the {@link ModelPart}'s
- * current value (set by an earlier source like CEM) toward the emote-sampled value
- * — {@code 1.0} = full emote, {@code 0.0} = no change. The adapter uses this for
- * fade-in at start of playback and fade-out at end / on cancel, so the bone
- * doesn't snap.</p>
+ * <p>The output is ordered: all SETs first, then all ADDs, so an ADD propagated
+ * onto a child that has its own SET keyframe lands on top of the SET rather than
+ * being overwritten by it.</p>
  */
 public final class EmoteSampler {
     private static final float TRANSLATION_CLAMP = 24.0F;
@@ -40,59 +41,112 @@ public final class EmoteSampler {
         if (blend <= 0F) return List.of();
         float clampedBlend = blend >= 1F ? 1F : blend;
 
-        List<AnimationTransform> out = new ArrayList<>();
+        List<AnimationTransform> setOps = new ArrayList<>();
+        List<AnimationTransform> addOps = new ArrayList<>();
+
         for (Map.Entry<String, ParsedBoneAnimation> entry : emote.bones().entrySet()) {
-            String target = entry.getKey();
+            String boneName = entry.getKey();
             ParsedBoneAnimation bone = entry.getValue();
             if (!bone.hasAnyKeyframes()) continue;
 
-            ModelPart part = targets.resolve(target).orElse(null);
-            if (part == null) continue;
+            EmoteBoneMapping.Targets mapping = EmoteBoneMapping.mapTargets(boneName);
+            if (mapping.isEmpty()) continue;
 
-            float emoteXRot = sampleRot(bone.xRot(), bone.xRotDefault(), tick);
-            float emoteYRot = sampleRot(bone.yRot(), bone.yRotDefault(), tick);
-            float emoteZRot = sampleRot(bone.zRot(), bone.zRotDefault(), tick);
-            float xRot = Mth.lerp(clampedBlend, part.xRot, emoteXRot);
-            float yRot = Mth.lerp(clampedBlend, part.yRot, emoteYRot);
-            float zRot = Mth.lerp(clampedBlend, part.zRot, emoteZRot);
+            BonePose pose = samplePose(bone, tick);
 
-            boolean translation = bone.translationKeyed();
-            float xPos = 0F, yPos = 0F, zPos = 0F;
-            if (translation) {
-                float ex = sampleTrans(bone.xPos(), bone.xPosDefault(), tick);
-                float ey = sampleTrans(bone.yPos(), bone.yPosDefault(), tick);
-                float ez = sampleTrans(bone.zPos(), bone.zPosDefault(), tick);
-                xPos = Mth.lerp(clampedBlend, part.x, ex);
-                yPos = Mth.lerp(clampedBlend, part.y, ey);
-                zPos = Mth.lerp(clampedBlend, part.z, ez);
+            if (mapping.primary() != null) {
+                ModelPart part = targets.resolve(mapping.primary()).orElse(null);
+                if (part != null) setOps.add(buildSetTransform(mapping.primary(), pose, part, clampedBlend));
             }
 
-            boolean scale = bone.scaleKeyed();
-            float xS = 1F, yS = 1F, zS = 1F;
-            if (scale) {
-                float ex = sampleScale(bone.xScale(), bone.xScaleDefault(), tick);
-                float ey = sampleScale(bone.yScale(), bone.yScaleDefault(), tick);
-                float ez = sampleScale(bone.zScale(), bone.zScaleDefault(), tick);
-                xS = Mth.lerp(clampedBlend, part.xScale, ex);
-                yS = Mth.lerp(clampedBlend, part.yScale, ey);
-                zS = Mth.lerp(clampedBlend, part.zScale, ez);
+            for (String childTarget : mapping.propagateTo()) {
+                ModelPart part = targets.resolve(childTarget).orElse(null);
+                if (part == null) continue;
+                addOps.add(buildAddTransform(childTarget, pose, clampedBlend));
             }
-
-            out.add(new AnimationTransform(
-                    target,
-                    translation ? xPos : null,
-                    translation ? yPos : null,
-                    translation ? zPos : null,
-                    xRot, yRot, zRot,
-                    scale ? xS : null,
-                    scale ? yS : null,
-                    scale ? zS : null,
-                    translation,
-                    scale,
-                    AnimationTransform.Operation.SET
-            ));
         }
-        return out;
+
+        if (addOps.isEmpty()) return setOps;
+        List<AnimationTransform> combined = new ArrayList<>(setOps.size() + addOps.size());
+        combined.addAll(setOps);
+        combined.addAll(addOps);
+        return combined;
+    }
+
+    private record BonePose(
+            float xRot, float yRot, float zRot,
+            boolean hasTranslation, float xPos, float yPos, float zPos,
+            boolean hasScale, float xScale, float yScale, float zScale
+    ) {}
+
+    private static BonePose samplePose(ParsedBoneAnimation bone, float tick) {
+        float xRot = sampleRot(bone.xRot(), bone.xRotDefault(), tick);
+        float yRot = sampleRot(bone.yRot(), bone.yRotDefault(), tick);
+        float zRot = sampleRot(bone.zRot(), bone.zRotDefault(), tick);
+
+        boolean translation = bone.translationKeyed();
+        float xPos = 0F, yPos = 0F, zPos = 0F;
+        if (translation) {
+            xPos = sampleTrans(bone.xPos(), bone.xPosDefault(), tick);
+            yPos = sampleTrans(bone.yPos(), bone.yPosDefault(), tick);
+            zPos = sampleTrans(bone.zPos(), bone.zPosDefault(), tick);
+        }
+
+        boolean scale = bone.scaleKeyed();
+        float xS = 1F, yS = 1F, zS = 1F;
+        if (scale) {
+            xS = sampleScale(bone.xScale(), bone.xScaleDefault(), tick);
+            yS = sampleScale(bone.yScale(), bone.yScaleDefault(), tick);
+            zS = sampleScale(bone.zScale(), bone.zScaleDefault(), tick);
+        }
+
+        return new BonePose(xRot, yRot, zRot, translation, xPos, yPos, zPos, scale, xS, yS, zS);
+    }
+
+    private static AnimationTransform buildSetTransform(String target, BonePose pose, ModelPart part, float blend) {
+        float xRot = Mth.lerp(blend, part.xRot, pose.xRot);
+        float yRot = Mth.lerp(blend, part.yRot, pose.yRot);
+        float zRot = Mth.lerp(blend, part.zRot, pose.zRot);
+
+        Float xPos = null, yPos = null, zPos = null;
+        if (pose.hasTranslation) {
+            xPos = Mth.lerp(blend, part.x, pose.xPos);
+            yPos = Mth.lerp(blend, part.y, pose.yPos);
+            zPos = Mth.lerp(blend, part.z, pose.zPos);
+        }
+
+        Float xS = null, yS = null, zS = null;
+        if (pose.hasScale) {
+            xS = Mth.lerp(blend, part.xScale, pose.xScale);
+            yS = Mth.lerp(blend, part.yScale, pose.yScale);
+            zS = Mth.lerp(blend, part.zScale, pose.zScale);
+        }
+
+        return new AnimationTransform(
+                target, xPos, yPos, zPos,
+                xRot, yRot, zRot,
+                xS, yS, zS,
+                pose.hasTranslation, pose.hasScale,
+                AnimationTransform.Operation.SET);
+    }
+
+    /**
+     * ADD with the bone's emote-space delta scaled by {@code blend}. Used for
+     * propagating a parent bone's transform onto its conceptual children. For
+     * scale, ADD on top of the rest value of {@code 1} would yield {@code 1 +
+     * deltaScale}, which is wrong; we don't propagate scale at all, only rotation
+     * and translation.
+     */
+    private static AnimationTransform buildAddTransform(String target, BonePose pose, float blend) {
+        return new AnimationTransform(
+                target,
+                pose.hasTranslation ? pose.xPos * blend : null,
+                pose.hasTranslation ? pose.yPos * blend : null,
+                pose.hasTranslation ? pose.zPos * blend : null,
+                pose.xRot * blend, pose.yRot * blend, pose.zRot * blend,
+                null, null, null,
+                pose.hasTranslation, false,
+                AnimationTransform.Operation.ADD);
     }
 
     private static float sampleRot(List<ParsedKeyframe> keyframes, float restValue, float tick) {
