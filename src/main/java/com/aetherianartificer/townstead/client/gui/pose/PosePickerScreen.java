@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.client.animation.emote.loader.Emotecraft
 import com.aetherianartificer.townstead.client.animation.emote.TownsteadEmoteApi;
 import com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload;
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.conczin.mca.entity.VillagerLike;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -26,18 +27,27 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Pose-picker overlay opened from the {@code Pose} button on MCA's interact
- * screen. Lists every Emotecraft animation the local player has loaded with
- * Emotecraft's per-emote icon, sends the chosen one to the server (so trackers
- * see the villager pose), and runs it locally so the host's view matches
- * without waiting for a round trip.
+ * screen. Renders Emotecraft's own {@code fastchoose_dark_new.png} atlas at
+ * the screen center and overlays our emote icons on top, mirroring the
+ * geometry of {@code ModernChooseWheel} 2.4.x exactly. The texture is loaded
+ * straight from the Emotecraft mod's resources at runtime — no compile-time
+ * binding — and the Pose button is hidden when Emotecraft isn't installed,
+ * so the texture is always available when this screen opens.
  */
 public class PosePickerScreen extends Screen {
-    private static final int BUTTON_W = 160;
-    private static final int BUTTON_H = 28;
-    private static final int COLUMNS = 2;
-    private static final int ROWS = 5;
-    private static final int PAGE_SIZE = COLUMNS * ROWS;
-    private static final int GAP = 4;
+    private static final int SLOTS_PER_PAGE = 8;
+    private static final int TEX_SIZE = 512;
+
+    //? if neoforge {
+    private static final ResourceLocation WHEEL_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "emotecraft", "textures/gui/fastchoose_light_new.png");
+    //?} else {
+    /*private static final ResourceLocation WHEEL_TEXTURE = new ResourceLocation(
+            "emotecraft", "textures/gui/fastchoose_light_new.png");
+    *///?}
+
+    /** Slot angles in Emotecraft's convention: 0° = bottom, increases clockwise. */
+    private static final float[] SLOT_ANGLE_DEG = {0F, 45F, 90F, 135F, 180F, 225F, 270F, 315F};
 
     private final VillagerLike<?> villager;
     private final LivingEntity villagerEntity;
@@ -45,6 +55,10 @@ public class PosePickerScreen extends Screen {
     private final Map<ResourceLocation, ResourceLocation> iconTextures = new HashMap<>();
     private final Map<ResourceLocation, DynamicTexture> ownedTextures = new HashMap<>();
     private int page;
+    private int hoveredSlot = -1;
+    private int widgetSize;
+    private int widgetX;
+    private int widgetY;
     private Button prevPage;
     private Button nextPage;
 
@@ -61,6 +75,11 @@ public class PosePickerScreen extends Screen {
             entries = EmotecraftEmoteList.snapshotAndRegister();
             registerIconTextures();
         }
+        // Match Emotecraft's FastMenuScreen.repositionElements: 80% of the
+        // smaller screen dimension, kept square.
+        widgetSize = (int) Math.min(width * 0.8, height * 0.8);
+        widgetX = width / 2 - widgetSize / 2;
+        widgetY = height / 2 - widgetSize / 2;
         layoutPage();
     }
 
@@ -101,48 +120,111 @@ public class PosePickerScreen extends Screen {
             return;
         }
 
-        int totalWidth = COLUMNS * BUTTON_W + (COLUMNS - 1) * GAP;
-        int totalHeight = ROWS * BUTTON_H + (ROWS - 1) * GAP;
-        int startX = (width - totalWidth) / 2;
-        int startY = (height - totalHeight) / 2;
+        int totalPages = totalPages();
+        int navY = widgetY + widgetSize + 4;
 
-        int from = page * PAGE_SIZE;
-        int to = Math.min(entries.size(), from + PAGE_SIZE);
-        for (int i = from; i < to; i++) {
-            int idx = i - from;
-            int col = idx % COLUMNS;
-            int row = idx / COLUMNS;
-            int bx = startX + col * (BUTTON_W + GAP);
-            int by = startY + row * (BUTTON_H + GAP);
-            EmotecraftEmoteList.Entry entry = entries.get(i);
-            ResourceLocation icon = iconTextures.get(entry.id());
-            addRenderableWidget(new PoseEntryButton(
-                    bx, by, BUTTON_W, BUTTON_H,
-                    Component.literal(entry.displayName()),
-                    b -> onPicked(entry),
-                    icon));
-        }
-
-        int navY = startY + totalHeight + GAP * 3;
-        int totalPages = (entries.size() + PAGE_SIZE - 1) / PAGE_SIZE;
         prevPage = Button.builder(Component.literal("<"), b -> {
                     if (page > 0) { page--; layoutPage(); }
                 })
-                .bounds(startX, navY, 24, 20).build();
+                .bounds(widgetX - 28, height / 2 - 10, 24, 20).build();
         nextPage = Button.builder(Component.literal(">"), b -> {
                     if (page + 1 < totalPages) { page++; layoutPage(); }
                 })
-                .bounds(startX + totalWidth - 24, navY, 24, 20).build();
+                .bounds(widgetX + widgetSize + 4, height / 2 - 10, 24, 20).build();
         prevPage.active = page > 0;
         nextPage.active = page + 1 < totalPages;
+        prevPage.visible = totalPages > 1;
+        nextPage.visible = totalPages > 1;
         addRenderableWidget(prevPage);
         addRenderableWidget(nextPage);
 
         addRenderableWidget(Button.builder(
                         Component.translatable("townstead.pose.picker.cancel"),
                         b -> onClose())
-                .bounds(width / 2 - 50, navY + 24, 100, 20)
+                .bounds(width / 2 - 50, navY, 100, 20)
                 .build());
+    }
+
+    private int totalPages() {
+        return Math.max(1, (entries.size() + SLOTS_PER_PAGE - 1) / SLOTS_PER_PAGE);
+    }
+
+    /**
+     * Hit-test in Emotecraft's coordinate convention: angle 0° = bottom, 90° =
+     * right, 180° = top, 270° = left, with each slot spanning ±22.5° around
+     * its centre.
+     */
+    private int slotAt(double mouseX, double mouseY) {
+        double cx = widgetX + widgetSize / 2.0;
+        double cy = widgetY + widgetSize / 2.0;
+        double dx = mouseX - cx;
+        double dy = mouseY - cy;
+        double dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < widgetSize * 0.17 || dist > widgetSize / 2.0) return -1;
+
+        // atan2(dx, dy) — by swapping the args we put 0° on the +y axis (bottom
+        // in screen coords, since y increases downward), matching Emotecraft.
+        double rad = Math.atan2(dx, dy);
+        double deg = Math.toDegrees(rad);
+        if (deg < 0) deg += 360;
+        deg = (deg + 22.5) % 360;
+        int slot = (int) (deg / 45.0);
+        if (slot < 0 || slot >= SLOTS_PER_PAGE) return -1;
+        return slot;
+    }
+
+    /** First entry shown at the TOP slot (Emotecraft slot 4), then clockwise. */
+    private static int slotForEntry(int entryIdx) {
+        return (4 - entryIdx + SLOTS_PER_PAGE) % SLOTS_PER_PAGE;
+    }
+
+    private static int entryForSlot(int slot) {
+        return (4 - slot + SLOTS_PER_PAGE) % SLOTS_PER_PAGE;
+    }
+
+    private int globalEntryIndexForSlot(int slot) {
+        if (slot < 0) return -1;
+        int idx = page * SLOTS_PER_PAGE + entryForSlot(slot);
+        return idx < entries.size() ? idx : -1;
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (button != 0 || entries.isEmpty()) return false;
+        int slot = slotAt(mouseX, mouseY);
+        int idx = globalEntryIndexForSlot(slot);
+        if (idx < 0) return false;
+        onPicked(entries.get(idx));
+        return true;
+    }
+
+    //? if neoforge {
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        return townstead$scroll(scrollY);
+    }
+    //?} else {
+    /*@Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scroll) {
+        return townstead$scroll(scroll);
+    }
+    *///?}
+
+    private boolean townstead$scroll(double delta) {
+        int totalPages = totalPages();
+        if (totalPages <= 1) return false;
+        if (delta > 0 && page > 0) {
+            page--;
+            layoutPage();
+            return true;
+        }
+        if (delta < 0 && page + 1 < totalPages) {
+            page++;
+            layoutPage();
+            return true;
+        }
+        return false;
     }
 
     private void onPicked(EmotecraftEmoteList.Entry entry) {
@@ -176,9 +258,125 @@ public class PosePickerScreen extends Screen {
                     Component.translatable("townstead.pose.picker.empty")
                             .withStyle(ChatFormatting.GRAY),
                     width / 2, height / 2, 0xCCCCCC);
+            super.render(graphics, mouseX, mouseY, partialTick);
+            return;
         }
 
         super.render(graphics, mouseX, mouseY, partialTick);
+        graphics.flush();
+
+        hoveredSlot = slotAt(mouseX, mouseY);
+        boolean hoveredHasEmote = globalEntryIndexForSlot(hoveredSlot) >= 0;
+
+        graphics.pose().pushPose();
+        graphics.pose().translate(0F, 0F, 400F);
+
+        renderWheel(graphics, hoveredHasEmote);
+
+        // Page indicator + hovered emote name above the wheel.
+        int totalPages = totalPages();
+        int idx = globalEntryIndexForSlot(hoveredSlot);
+        if (idx >= 0) {
+            EmotecraftEmoteList.Entry hovered = entries.get(idx);
+            graphics.drawCenteredString(font, Component.literal(hovered.displayName()),
+                    width / 2, widgetY - 14, 0xFFFFFFFF);
+        } else if (totalPages > 1) {
+            graphics.drawCenteredString(font,
+                    Component.literal((page + 1) + " / " + totalPages)
+                            .withStyle(ChatFormatting.GRAY),
+                    width / 2, height / 2 - font.lineHeight / 2, 0xCCCCCC);
+        }
+        graphics.pose().popPose();
+    }
+
+    private void renderWheel(GuiGraphics graphics, boolean hoveredHasEmote) {
+        // Texture has α=0.6 fills, α=1.0 lines, α=0 gaps baked in. Emotecraft
+        // renders at no modulation, so we do the same — enableBlend forces the
+        // per-pixel alpha to composite against whatever's behind the wheel.
+        RenderSystem.enableBlend();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        drawWheelTexture(graphics, 0, 0, 0F, 0F, 2);
+        if (hoveredHasEmote && hoveredSlot >= 0) {
+            renderHoverForSlot(graphics, hoveredSlot);
+        }
+        graphics.flush();
+
+        int from = page * SLOTS_PER_PAGE;
+        int available = Math.min(SLOTS_PER_PAGE, entries.size() - from);
+        for (int entryIdx = 0; entryIdx < available; entryIdx++) {
+            int slot = slotForEntry(entryIdx);
+            EmotecraftEmoteList.Entry entry = entries.get(from + entryIdx);
+            drawIcon(graphics, slot, entry);
+        }
+    }
+
+    /**
+     * Mirrors {@code ModernChooseWheel.drawTexture(matrices, t, x, y, u, v, s)}
+     * from Emotecraft 2.4.x. Renders an {@code (s*128) × (s*128)} pixel patch
+     * of the 512×512 atlas at texture-coords {@code (u, v)} into the widget
+     * area at logical coords {@code (x, y)} (where the widget's full size is
+     * 256 logical units and the texture patch is scaled to fill {@code s/2} of
+     * the widget's width and height).
+     */
+    private void drawWheelTexture(GuiGraphics graphics, int x, int y, float u, float v, int s) {
+        graphics.blit(
+                WHEEL_TEXTURE,
+                widgetX + x * widgetSize / 256,
+                widgetY + y * widgetSize / 256,
+                s * widgetSize / 2,
+                s * widgetSize / 2,
+                u, v,
+                s * 128, s * 128,
+                TEX_SIZE, TEX_SIZE);
+    }
+
+    /**
+     * Mirrors {@code ModernChooseWheel.drawTexture_select(matrices, t, x, y,
+     * u, v, w, h)} — the hover-overlay variant. The widget's logical grid is
+     * 512 units wide here (vs 256 for {@link #drawWheelTexture}) and the patch
+     * size is {@code (w*128) × (h*128)}.
+     */
+    private void drawWheelSelect(GuiGraphics graphics, int x, int y, float u, float v,
+                                 int w, int h) {
+        graphics.blit(
+                WHEEL_TEXTURE,
+                widgetX + x * widgetSize / 512,
+                widgetY + y * widgetSize / 512,
+                w * widgetSize / 2,
+                h * widgetSize / 2,
+                u, v,
+                w * 128, h * 128,
+                TEX_SIZE, TEX_SIZE);
+    }
+
+    private void renderHoverForSlot(GuiGraphics graphics, int slot) {
+        switch (slot) {
+            case 0 -> drawWheelSelect(graphics, 0,   256, 0F,   384F, 2, 1);
+            case 1 -> drawWheelSelect(graphics, 256, 256, 384F, 384F, 1, 1);
+            case 2 -> drawWheelSelect(graphics, 256, 0,   384F, 0F,   1, 2);
+            case 3 -> drawWheelSelect(graphics, 256, 0,   384F, 256F, 1, 1);
+            case 4 -> drawWheelSelect(graphics, 0,   0,   0F,   256F, 2, 1);
+            case 5 -> drawWheelSelect(graphics, 0,   0,   256F, 256F, 1, 1);
+            case 6 -> drawWheelSelect(graphics, 0,   0,   256F, 0F,   1, 2);
+            case 7 -> drawWheelSelect(graphics, 0,   256, 256F, 384F, 1, 1);
+            default -> { /* no overlay */ }
+        }
+    }
+
+    private void drawIcon(GuiGraphics graphics, int slot, EmotecraftEmoteList.Entry entry) {
+        ResourceLocation icon = iconTextures.get(entry.id());
+        double angleRad = Math.toRadians(SLOT_ANGLE_DEG[slot]);
+        int s = widgetSize / 10;
+        int iconX = (int) (widgetX + widgetSize / 2.0 + widgetSize * 0.36 * Math.sin(angleRad)) - s;
+        int iconY = (int) (widgetY + widgetSize / 2.0 + widgetSize * 0.36 * Math.cos(angleRad)) - s;
+        if (icon != null) {
+            graphics.blit(icon, iconX, iconY, 2 * s, 2 * s, 0F, 0F, 256, 256, 256, 256);
+        } else {
+            String fallback = entry.displayName();
+            if (fallback.length() > 3) fallback = fallback.substring(0, 3);
+            graphics.drawCenteredString(font, fallback,
+                    iconX + s, iconY + s - font.lineHeight / 2, 0xFFCCCCCC);
+        }
     }
 
     @Override

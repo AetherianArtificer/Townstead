@@ -72,11 +72,20 @@ public final class EmotecraftEmoteLoader {
             int returnToTick = EmoteReflection.animReturnToTick.getInt(animation);
             boolean isInfinite = EmoteReflection.animIsInfinite.getBoolean(animation);
 
+            // Read extraData["name"] directly: KeyframeAnimation.getName() calls
+            // .toLowerCase() on the JSON-authored name, which clobbers the
+            // original casing the author chose ("Back Off" -> "back off").
+            // extraData holds the raw value.
             String displayName = id.getPath();
-            try {
-                Object name = EmoteReflection.animGetName.invoke(animation);
-                if (name instanceof String s && !s.isBlank()) displayName = s;
-            } catch (Throwable ignored) {
+            if (EmoteReflection.animExtraData != null) {
+                try {
+                    Object extra = EmoteReflection.animExtraData.get(animation);
+                    if (extra instanceof java.util.Map<?, ?> map) {
+                        Object n = map.get("name");
+                        if (n instanceof String s && !s.isBlank()) displayName = s;
+                    }
+                } catch (Throwable ignored) {
+                }
             }
 
             @SuppressWarnings("unchecked")

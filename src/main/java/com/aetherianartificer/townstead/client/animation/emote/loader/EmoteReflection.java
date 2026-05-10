@@ -30,7 +30,7 @@ public final class EmoteReflection {
     static Field animStopTick;
     static Field animReturnToTick;
     static Field animIsInfinite;
-    static Field animExtraData;         // -> HashMap<String, Object>; "iconData" key holds a ByteBuffer of PNG bytes
+    static Field animExtraData;         // -> HashMap<String, Object>; holds JSON top-level fields like "name", "description", and "iconData" (ByteBuffer)
 
     static Class<?> stateCollectionClass;
     static Field scX, scY, scZ;
