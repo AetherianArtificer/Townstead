@@ -59,8 +59,6 @@ public class PosePickerScreen extends Screen {
     private int widgetSize;
     private int widgetX;
     private int widgetY;
-    private Button prevPage;
-    private Button nextPage;
 
     public PosePickerScreen(VillagerLike<?> villager) {
         super(Component.translatable("townstead.pose.picker.title"));
@@ -120,24 +118,7 @@ public class PosePickerScreen extends Screen {
             return;
         }
 
-        int totalPages = totalPages();
         int navY = widgetY + widgetSize + 4;
-
-        prevPage = Button.builder(Component.literal("<"), b -> {
-                    if (page > 0) { page--; layoutPage(); }
-                })
-                .bounds(widgetX - 28, height / 2 - 10, 24, 20).build();
-        nextPage = Button.builder(Component.literal(">"), b -> {
-                    if (page + 1 < totalPages) { page++; layoutPage(); }
-                })
-                .bounds(widgetX + widgetSize + 4, height / 2 - 10, 24, 20).build();
-        prevPage.active = page > 0;
-        nextPage.active = page + 1 < totalPages;
-        prevPage.visible = totalPages > 1;
-        nextPage.visible = totalPages > 1;
-        addRenderableWidget(prevPage);
-        addRenderableWidget(nextPage);
-
         addRenderableWidget(Button.builder(
                         Component.translatable("townstead.pose.picker.cancel"),
                         b -> onClose())
@@ -194,9 +175,36 @@ public class PosePickerScreen extends Screen {
         if (button != 0 || entries.isEmpty()) return false;
         int slot = slotAt(mouseX, mouseY);
         int idx = globalEntryIndexForSlot(slot);
-        if (idx < 0) return false;
-        onPicked(entries.get(idx));
-        return true;
+        if (idx >= 0) {
+            onPicked(entries.get(idx));
+            return true;
+        }
+        // Inner-hole click: the texture draws clickable `<` / `>` arrows in
+        // the central octagon. Left half → previous page, right half → next.
+        int pageDir = pageButtonAt(mouseX, mouseY);
+        if (pageDir != 0) {
+            int totalPages = totalPages();
+            if (totalPages > 1) {
+                page = (page + pageDir + totalPages) % totalPages;
+                layoutPage();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns {@code -1} for the left arrow (previous page), {@code +1} for
+     * the right arrow, or {@code 0} if the mouse isn't in the inner hole.
+     */
+    private int pageButtonAt(double mouseX, double mouseY) {
+        double cx = widgetX + widgetSize / 2.0;
+        double cy = widgetY + widgetSize / 2.0;
+        double dx = mouseX - cx;
+        double dy = mouseY - cy;
+        double dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > widgetSize * 0.17) return 0;
+        return dx < 0 ? -1 : 1;
     }
 
     //? if neoforge {
