@@ -1,19 +1,33 @@
 package com.aetherianartificer.townstead.client.animation;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.client.animation.emote.EmoteRegistry;
+import com.aetherianartificer.townstead.client.animation.emote.EmotecraftAnimationSourceAdapter;
+import com.aetherianartificer.townstead.client.animation.emote.loader.EmoteReflection;
+import com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge;
 import net.conczin.mca.client.model.PlayerEntityExtendedModel;
 import net.conczin.mca.client.model.VillagerEntityModelMCA;
+import net.conczin.mca.entity.VillagerLike;
+import net.conczin.mca.entity.ai.relationship.AgeState;
 import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.world.entity.LivingEntity;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.List;
 
 public final class McaAnimationBridge {
     private static final EmfAnimationSourceAdapter EMF_ADAPTER = new EmfAnimationSourceAdapter();
+    private static final EmotecraftAnimationSourceAdapter EMOTE_ADAPTER = new EmotecraftAnimationSourceAdapter();
     private static final List<AnimationSourceAdapter> SOURCES = List.of(
             new DebugAnimationSourceAdapter(),
-            EMF_ADAPTER
+            EMF_ADAPTER,
+            EMOTE_ADAPTER
     );
+
+    private static final float BREAST_BASE_X_ROT = (float) Math.PI * 0.3f;
+    private static final float BREAST_TILT_DAMPING = 0.5f;
 
     private static boolean loggedNoSources;
     private static long lastDiagnosticTick = -200L;
@@ -23,6 +37,10 @@ public final class McaAnimationBridge {
     /** Drop cached CEM programs so the next render reloads from the current pack stack. */
     public static void onResourcesReloaded() {
         EMF_ADAPTER.invalidate();
+        EmoteReflection.invalidate();
+        EMOTE_ADAPTER.invalidate();
+        EmoteRegistry.reload();
+        EmotecraftEventBridge.ensureRegistered();
     }
 
     public static <T extends LivingEntity> void apply(
@@ -34,6 +52,16 @@ public final class McaAnimationBridge {
             float headYaw,
             float headPitch
     ) {
+        // Skip MCA babies (their own swaying animation runs on a different code path).
+        // Vanilla isBaby() returns true for any MCA young (TODDLER/CHILD/TEEN) because
+        // they all have negative age, so check the MCA AgeState directly to keep
+        // emotes / CEM animations on teens and children.
+        if (entity instanceof VillagerLike<?> villagerLike) {
+            if (villagerLike.getAgeState() == AgeState.BABY) return;
+        } else if (entity.isBaby()) {
+            return;
+        }
+
         McaAnimationParameters parameters = McaAnimationParameters.from(
                 entity,
                 model,
@@ -45,19 +73,49 @@ public final class McaAnimationBridge {
         AnimationSourceContext<T> context = new AnimationSourceContext<>(
                 entity, model, parameters, rigScale, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
         AnimationTargetMap<T> targets = AnimationTargetMap.forMcaModel(model);
-        boolean anyAvailable = false;
 
+        // Capture breasts' rest-pose offset relative to body's rest pose. MCA's
+        // applyVillagerDimensions has just written breasts.xyz in absolute model
+        // coordinates assuming body is at rest (translation 0,0,0; rotation 0,0,0).
+        // We do NOT subtract model.body.xyz here: vanilla HumanoidModel.setupAnim
+        // does not reset body.x or body.z between frames (it only touches body.y
+        // for crouching and body rotations for active poses), so model.body.xyz
+        // retains stale translation from the previous frame's source (CEM keyframes
+        // body.x via translation channels). Subtracting that stale value gave a
+        // localOffset that drifts frame to frame, which the user observed as
+        // breasts floating left and right of the torso during walks. body's rest
+        // pose is the right reference frame here.
+        ModelPart breasts = breastsPart(model);
+        float localOffsetX = 0f;
+        float localOffsetY = 0f;
+        float localOffsetZ = 0f;
+        if (breasts != null) {
+            localOffsetX = breasts.x;
+            localOffsetY = breasts.y;
+            localOffsetZ = breasts.z;
+        }
+
+        boolean anyAvailable = false;
+        boolean anyBend = false;
         for (AnimationSourceAdapter source : SOURCES) {
             if (!source.isAvailable()) continue;
             anyAvailable = true;
-            float bodyXBefore = model.body.x;
-            float bodyYBefore = model.body.y;
-            float bodyZBefore = model.body.z;
             List<AnimationTransform> transforms = source.collectTransforms(context);
             McaModelPartApplier.ApplyStats stats = McaModelPartApplier.applyWithStats(source.id(), targets, transforms);
+            for (AnimationTransform t : transforms) {
+                if (t.applyBend() && t.bend() != null && t.bendDirection() != null) {
+                    BendStateRegistry.put(entity.getUUID(), t.target(),
+                            t.bendDirection(), t.bend());
+                    anyBend = true;
+                }
+            }
             logDiagnostic(entity, model, source.id(), transforms, stats);
-            syncMcaDependentParts(model, bodyXBefore, bodyYBefore, bodyZBefore);
         }
+        if (!anyBend) {
+            BendStateRegistry.clearEntity(entity.getUUID());
+        }
+
+        syncMcaDependentParts(model, breasts, localOffsetX, localOffsetY, localOffsetZ);
 
         if (!anyAvailable && !loggedNoSources) {
             loggedNoSources = true;
@@ -106,28 +164,27 @@ public final class McaAnimationBridge {
         return builder.append(']').toString();
     }
 
-    private static final float BREAST_BASE_X_ROT = (float) Math.PI * 0.3f;
+    private static ModelPart breastsPart(HumanoidModel<?> model) {
+        if (model instanceof VillagerEntityModelMCA<?> villagerModel) return villagerModel.breasts;
+        if (model instanceof PlayerEntityExtendedModel<?> playerModel) return playerModel.breasts;
+        return null;
+    }
 
     private static void syncMcaDependentParts(
             HumanoidModel<?> model,
-            float bodyXBefore,
-            float bodyYBefore,
-            float bodyZBefore
+            ModelPart breasts,
+            float localOffsetX,
+            float localOffsetY,
+            float localOffsetZ
     ) {
         model.hat.copyFrom(model.head);
-        float dx = model.body.x - bodyXBefore;
-        float dy = model.body.y - bodyYBefore;
-        float dz = model.body.z - bodyZBefore;
         if (model instanceof VillagerEntityModelMCA<?> villagerModel) {
             villagerModel.leftLegwear.copyFrom(villagerModel.leftLeg);
             villagerModel.rightLegwear.copyFrom(villagerModel.rightLeg);
             villagerModel.leftArmwear.copyFrom(villagerModel.leftArm);
             villagerModel.rightArmwear.copyFrom(villagerModel.rightArm);
             villagerModel.bodyWear.copyFrom(villagerModel.body);
-            villagerModel.breasts.xRot = BREAST_BASE_X_ROT + villagerModel.body.xRot;
-            villagerModel.breasts.x += dx;
-            villagerModel.breasts.y += dy;
-            villagerModel.breasts.z += dz;
+            applyRigidBreastsAttachment(breasts, model.body, localOffsetX, localOffsetY, localOffsetZ);
             villagerModel.breastsWear.copyFrom(villagerModel.breasts);
         } else if (model instanceof PlayerEntityExtendedModel<?> playerModel) {
             playerModel.leftPants.copyFrom(playerModel.leftLeg);
@@ -135,11 +192,37 @@ public final class McaAnimationBridge {
             playerModel.leftSleeve.copyFrom(playerModel.leftArm);
             playerModel.rightSleeve.copyFrom(playerModel.rightArm);
             playerModel.jacket.copyFrom(playerModel.body);
-            playerModel.breasts.xRot = BREAST_BASE_X_ROT + playerModel.body.xRot;
-            playerModel.breasts.x += dx;
-            playerModel.breasts.y += dy;
-            playerModel.breasts.z += dz;
+            applyRigidBreastsAttachment(breasts, model.body, localOffsetX, localOffsetY, localOffsetZ);
             playerModel.breastsWear.copyFrom(playerModel.breasts);
         }
+    }
+
+    // Treats breasts as a virtual child of body. Body's rotation rotates the captured rest-pose
+    // local offset around body's pivot, and body's rotation composes with the chest's local
+    // forward tilt so the chest band stays glued to the rotated/twisted torso instead of
+    // floating in front of it.
+    private static void applyRigidBreastsAttachment(
+            ModelPart breasts,
+            ModelPart body,
+            float localOffsetX,
+            float localOffsetY,
+            float localOffsetZ
+    ) {
+        if (breasts == null) return;
+        Quaternionf bodyRot = new Quaternionf().rotationZYX(body.zRot, body.yRot, body.xRot);
+        Vector3f offset = bodyRot.transform(new Vector3f(localOffsetX, localOffsetY, localOffsetZ));
+        breasts.x = body.x + offset.x;
+        breasts.y = body.y + offset.y;
+        breasts.z = body.z + offset.z;
+        // Pure rigid attachment composes body.xRot with the local 0.3π forward tilt, but the
+        // chest cube extends further below its pivot than above, so heavy forward body lean
+        // reads as over-tilt. Damp the local tilt linearly with forward body lean — idle/walk
+        // (xRot ≈ 0) keep the full tilt, crouching/leaning ease it off.
+        float dampedTilt = Math.max(0f, BREAST_BASE_X_ROT - Math.max(0f, body.xRot) * BREAST_TILT_DAMPING);
+        bodyRot.mul(new Quaternionf().rotationX(dampedTilt));
+        Vector3f euler = bodyRot.getEulerAnglesZYX(new Vector3f());
+        breasts.xRot = euler.x;
+        breasts.yRot = euler.y;
+        breasts.zRot = euler.z;
     }
 }

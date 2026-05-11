@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.animation;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.client.animation.emote.loader.EmoteReflection;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -37,6 +38,16 @@ public final class McaModelPartApplier {
             ApplyStats stats = apply(part, transform);
             if (stats.appliedParts() > 0) applied++;
             largest = Math.max(largest, stats.largestDelta());
+
+            // Bend the wear-layer companions (MCA's leftArmwear / rightArmwear /
+            // etc.) with the same bend value, so the outer wear mesh follows
+            // the inner limb's bend instead of staying straight and rendering
+            // as a duplicate "extra arm".
+            if (transform.applyBend()) {
+                for (ModelPart companion : targetMap.bendCompanionsFor(transform.target())) {
+                    invokeBend(companion, transform.bend(), transform.bendDirection());
+                }
+            }
         }
         return new ApplyStats(applied, largest);
     }
@@ -63,6 +74,9 @@ public final class McaModelPartApplier {
             part.yScale = apply(part.yScale, transform.yScale(), operation);
             part.zScale = apply(part.zScale, transform.zScale(), operation);
         }
+        if (transform.applyBend()) {
+            invokeBend(part, transform.bend(), transform.bendDirection());
+        }
 
         float largest = Math.max(
                 Math.max(Math.abs(part.xRot - beforeX), Math.abs(part.yRot - beforeY)),
@@ -78,6 +92,24 @@ public final class McaModelPartApplier {
         if (!Float.isFinite(value)) return current;
         if (Math.abs(value) > 100.0F) return current;
         return operation == AnimationTransform.Operation.ADD ? current + value : value;
+    }
+
+    /**
+     * Calls playerAnim's {@code IBendHelper.INSTANCE.bend(part, A, B)}
+     * reflectively, where the API expects {@code A = bendDirection (axis)}
+     * and {@code B = bend angle} — the opposite of the intuitive order.
+     * Confirmed against playerAnim's {@code BodyPart.getBend} which packs the
+     * Pair as {@code (bendAxis, bend)}.
+     *
+     * <p>This also matters because {@code BendHelper.bend} early-outs and
+     * <i>clears</i> the bend if {@code |secondArg| < 1e-4}. With the args in
+     * the wrong order, our actual bend angle ended up in the position the
+     * clear-check reads, so every frame zeroed the mutator.</p>
+     */
+    private static void invokeBend(ModelPart part, Float bend, Float bendDirection) {
+        if (bend == null || bendDirection == null) return;
+        if (!Float.isFinite(bend) || !Float.isFinite(bendDirection)) return;
+        EmoteReflection.applyBend(part, bendDirection, bend);
     }
 
     public record ApplyStats(int appliedParts, float largestDelta) {}

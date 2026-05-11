@@ -17,8 +17,11 @@ public record AnimationTransform(
         Float xScale,
         Float yScale,
         Float zScale,
+        Float bend,
+        Float bendDirection,
         boolean applyTranslation,
         boolean applyScale,
+        boolean applyBend,
         Operation operation
 ) {
     public enum Operation {
@@ -27,10 +30,10 @@ public record AnimationTransform(
     }
 
     public static AnimationTransform rotate(String target, float xRot, float yRot, float zRot, Operation operation) {
-        return new AnimationTransform(target, null, null, null, xRot, yRot, zRot, null, null, null, false, false, operation);
+        return new AnimationTransform(target, null, null, null, xRot, yRot, zRot, null, null, null, null, null, false, false, false, operation);
     }
 
     public static AnimationTransform translate(String target, float x, float y, float z, Operation operation) {
-        return new AnimationTransform(target, x, y, z, null, null, null, null, null, null, true, false, operation);
+        return new AnimationTransform(target, x, y, z, null, null, null, null, null, null, null, null, true, false, false, operation);
     }
 }

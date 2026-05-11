@@ -139,6 +139,39 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleClientCaps);
         registerS2C(VillageEnterTitlePayload.class, VillageEnterTitlePayload::write, VillageEnterTitlePayload::read,
                 TownsteadNetwork::handleVillageEnterTitle);
+
+        // Emotecraft animation triggers
+        registerS2C(com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload.class,
+                com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload::write,
+                com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload::read,
+                TownsteadNetwork::handleEmoteTriggerS2C);
+        registerC2S(com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload.class,
+                com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload::write,
+                com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload::read,
+                TownsteadNetwork::handleEmoteTriggerC2S);
+    }
+
+    private static void handleEmoteTriggerS2C(com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload payload) {
+        com.aetherianartificer.townstead.client.animation.emote.EmoteClientHandler.handle(payload);
+    }
+
+    private static void handleEmoteTriggerC2S(
+            com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload payload,
+            ServerPlayer sp
+    ) {
+        Entity target = sp.serverLevel().getEntity(payload.targetEntityId());
+        if (!(target instanceof VillagerEntityMCA) && !(target instanceof net.minecraft.world.entity.player.Player)) return;
+        ResourceLocation id;
+        try {
+            id = new ResourceLocation(payload.emoteId());
+        } catch (Exception e) {
+            return;
+        }
+        com.aetherianartificer.townstead.emote.AiEmoteScheduler.playEmote(
+                (net.minecraft.world.entity.LivingEntity) target,
+                id,
+                payload.loopOverride(),
+                payload.speed());
     }
 
     // ── Send helpers ──

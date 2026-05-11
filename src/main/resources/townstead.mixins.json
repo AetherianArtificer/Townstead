@@ -26,8 +26,11 @@
     "accessor.BlueprintScreenAccessor",
     "accessor.InteractScreenAccessor",
     "client.FishingHookRendererMixin",
+    "client.LivingEntityRendererEmoteMixin",
     "client.PlayerEntityExtendedModelAnimationMixin",
     "client.VillagerEntityBaseModelMcaAnimationMixin",
+    "client.VillagerEntityModelMcaCopyWearMixin",
+    "client.VillagerLayerBendMixin",
     "InteractScreenMixin",
     "VillagerEditorMixin"
   ],

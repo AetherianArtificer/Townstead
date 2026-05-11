@@ -79,5 +79,16 @@
     "notifyServer": false,
     "targetServer": false,
     "constraints": ""
+  },
+  {
+    "identifier": "gui.button.pose",
+    "x": -90,
+    "y": 10,
+    "row": 6,
+    "width": 80,
+    "height": 20,
+    "notifyServer": false,
+    "targetServer": false,
+    "constraints": "!baby"
   }
 ]
