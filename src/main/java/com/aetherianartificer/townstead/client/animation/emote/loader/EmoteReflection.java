@@ -267,8 +267,6 @@ public final class EmoteReflection {
 
             // Probe for bendylib's ModelPartAccessor. Present on 1.21.1's
             // player-animation-lib 1.1+ (bundled), absent on 1.20.1's 1.0.x.
-            // When absent, IBendHelper.bend / initBend would NoClassDefFoundError
-            // on first call, so we use a rotation-based fallback instead.
             try {
                 Class.forName("io.github.kosmx.bendylib.ModelPartAccessor");
                 bendylibAvailable = true;
