@@ -20,12 +20,16 @@ public record ParsedBoneAnimation(
         List<ParsedKeyframe> xScale, float xScaleDefault,
         List<ParsedKeyframe> yScale, float yScaleDefault,
         List<ParsedKeyframe> zScale, float zScaleDefault,
+        List<ParsedKeyframe> bend, float bendDefault,
+        List<ParsedKeyframe> bendDirection, float bendDirectionDefault,
         boolean translationKeyed,
-        boolean scaleKeyed
+        boolean scaleKeyed,
+        boolean bendKeyed
 ) {
     public boolean hasAnyKeyframes() {
         return !xPos.isEmpty() || !yPos.isEmpty() || !zPos.isEmpty()
                 || !xRot.isEmpty() || !yRot.isEmpty() || !zRot.isEmpty()
-                || !xScale.isEmpty() || !yScale.isEmpty() || !zScale.isEmpty();
+                || !xScale.isEmpty() || !yScale.isEmpty() || !zScale.isEmpty()
+                || !bend.isEmpty() || !bendDirection.isEmpty();
     }
 }

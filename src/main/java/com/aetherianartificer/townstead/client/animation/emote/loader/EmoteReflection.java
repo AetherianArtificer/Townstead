@@ -36,6 +36,9 @@ public final class EmoteReflection {
     static Field scX, scY, scZ;
     static Field scPitch, scYaw, scRoll;
     static Field scScaleX, scScaleY, scScaleZ;
+    static Field scBend;                          // bend angle keyframes
+    static Field scBendDirection;                 // bend axis angle keyframes
+    static Field scIsBendable;                    // boolean, true for arms/legs
 
     static Class<?> stateClass;
     static Method stateGetKeyFrames;    // -> List<KeyFrame>
@@ -62,6 +65,11 @@ public final class EmoteReflection {
     static Class<?> clientConfigClass;             // io.github.kosmx.emotes.main.config.ClientConfig
     static Field clientConfigFastMenuEmotes;       // -> UUID[][] (pages × 8 slots)
 
+    static Field bendHelperInstance;               // dev.kosmx.playerAnim.impl.animation.IBendHelper.INSTANCE (static)
+    static Method bendHelperBend;                  // void bend(ModelPart, float angle, float bendDirection)
+    static Method bendHelperInit;                  // void initBend(ModelPart, Direction)
+    static Object directionUp;                     // Direction.UP for re-init
+
     private EmoteReflection() {}
 
     public static synchronized boolean isAvailable() {
@@ -72,6 +80,64 @@ public final class EmoteReflection {
     public static synchronized void invalidate() {
         attempted = false;
         ok = false;
+    }
+
+    /**
+     * Reflectively invokes playerAnim's {@code
+     * IBendHelper.INSTANCE.bend(ModelPart, float, float)}. No-op when
+     * playerAnim isn't loaded (or reflection couldn't resolve it).
+     */
+    /**
+     * Calls {@code IBendHelper.INSTANCE.bend(part, bendAxis, bendAngle)}.
+     * <b>Parameter order is intentional and matches the upstream API</b>: see
+     * {@link com.aetherianartificer.townstead.client.animation.McaModelPartApplier}
+     * for the rationale (BendHelper's internal clear-check reads the second
+     * arg as the bend angle).
+     *
+     * <p>We call {@code initBend} on every invocation rather than caching the
+     * first-sight call. {@code BipedEntityModelMixin} attaches mutators to
+     * vanilla HumanoidModel children at model construction; MCA's wear layers
+     * ({@code leftArmwear}, etc.) and other extras are NOT covered, so we
+     * always re-attach. {@code initBend} is idempotent: re-attaching a
+     * mutator on a part that already has one is fast and simply replaces the
+     * cuboid wrappers — and crucially, it cannot leave the part with no
+     * mutator (which is what a cached "first sight" call could fail at,
+     * silently leaving the part forever un-bendable).</p>
+     */
+    /**
+     * Attaches playerAnim's bend mutator to a ModelPart by calling
+     * {@code IBendHelper.INSTANCE.initBend(part, Direction.UP)}. Idempotent.
+     * Crucially, this also flips the part's bendylib {@code
+     * hasMutatedCuboid} flag (via {@code getCuboids()} called inside
+     * {@code optionalGetCuboid}), so bendylib's render redirect fires when
+     * the part is drawn — without that flag, even a populated bend mutator
+     * goes unused at render time.
+     */
+    public static void attachBendMutator(Object modelPart) {
+        if (bendHelperInstance == null || bendHelperInit == null || directionUp == null) return;
+        try {
+            Object instance = bendHelperInstance.get(null);
+            if (instance == null) return;
+            bendHelperInit.invoke(instance, modelPart, directionUp);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    public static void applyBend(Object modelPart, float bendAxis, float bendAngle) {
+        if (bendHelperInstance == null || bendHelperBend == null) return;
+        try {
+            Object instance = bendHelperInstance.get(null);
+            if (instance == null) return;
+            if (bendHelperInit != null && directionUp != null) {
+                try {
+                    bendHelperInit.invoke(instance, modelPart, directionUp);
+                } catch (Throwable ignored) {
+                }
+            }
+            bendHelperBend.invoke(instance, modelPart, bendAxis, bendAngle);
+        } catch (Throwable ignored) {
+            // Single-frame failure — skip and let the next frame retry.
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -109,6 +175,9 @@ public final class EmoteReflection {
             scScaleX = anyFieldOrNull(stateCollectionClass, "scaleX");
             scScaleY = anyFieldOrNull(stateCollectionClass, "scaleY");
             scScaleZ = anyFieldOrNull(stateCollectionClass, "scaleZ");
+            scBend = anyFieldOrNull(stateCollectionClass, "bend");
+            scBendDirection = anyFieldOrNull(stateCollectionClass, "bendDirection");
+            scIsBendable = anyFieldOrNull(stateCollectionClass, "isBendable");
 
             stateClass = Class.forName(
                     "dev.kosmx.playerAnim.core.data.KeyframeAnimation$StateCollection$State");
@@ -149,6 +218,28 @@ public final class EmoteReflection {
             } catch (Throwable ignored) {
                 emoteInstanceConfig = null;
                 clientConfigFastMenuEmotes = null;
+            }
+
+            // playerAnim's IBendHelper — bundled with Emotecraft for arm/leg
+            // bending. Optional; if it's missing, the bridge just skips bend
+            // application and limbs render straight.
+            try {
+                Class<?> bendHelperClass = Class.forName(
+                        "dev.kosmx.playerAnim.impl.animation.IBendHelper");
+                bendHelperInstance = bendHelperClass.getField("INSTANCE");
+                Class<?> modelPartClass = Class.forName(
+                        "net.minecraft.client.model.geom.ModelPart");
+                bendHelperBend = bendHelperClass.getMethod(
+                        "bend", modelPartClass, float.class, float.class);
+                Class<?> directionClass = Class.forName("net.minecraft.core.Direction");
+                bendHelperInit = bendHelperClass.getMethod(
+                        "initBend", modelPartClass, directionClass);
+                directionUp = directionClass.getField("UP").get(null);
+            } catch (Throwable ignored) {
+                bendHelperInstance = null;
+                bendHelperBend = null;
+                bendHelperInit = null;
+                directionUp = null;
             }
 
             ok = true;

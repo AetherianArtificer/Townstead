@@ -128,9 +128,12 @@ public final class EmotecraftEmoteLoader {
         ParsedAxis scaleX = parseState(stateCollection, EmoteReflection.scScaleX, 1F);
         ParsedAxis scaleY = parseState(stateCollection, EmoteReflection.scScaleY, 1F);
         ParsedAxis scaleZ = parseState(stateCollection, EmoteReflection.scScaleZ, 1F);
+        ParsedAxis bend = parseState(stateCollection, EmoteReflection.scBend, 0F);
+        ParsedAxis bendDir = parseState(stateCollection, EmoteReflection.scBendDirection, 0F);
 
         boolean translationKeyed = !x.keyframes.isEmpty() || !y.keyframes.isEmpty() || !z.keyframes.isEmpty();
         boolean scaleKeyed = !scaleX.keyframes.isEmpty() || !scaleY.keyframes.isEmpty() || !scaleZ.keyframes.isEmpty();
+        boolean bendKeyed = !bend.keyframes.isEmpty() || !bendDir.keyframes.isEmpty();
 
         return new ParsedBoneAnimation(
                 x.keyframes, x.defaultValue,
@@ -142,8 +145,11 @@ public final class EmotecraftEmoteLoader {
                 scaleX.keyframes, scaleX.defaultValue,
                 scaleY.keyframes, scaleY.defaultValue,
                 scaleZ.keyframes, scaleZ.defaultValue,
+                bend.keyframes, bend.defaultValue,
+                bendDir.keyframes, bendDir.defaultValue,
                 translationKeyed,
-                scaleKeyed
+                scaleKeyed,
+                bendKeyed
         );
     }
 

@@ -360,9 +360,12 @@ public final class CemAnimationProgram {
                     null,
                     null,
                     null,
+                    null,
+                    null,
                     variables.wasAssigned(target + ".tx")
                             || variables.wasAssigned(target + ".ty")
                             || variables.wasAssigned(target + ".tz"),
+                    false,
                     false,
                     AnimationTransform.Operation.SET));
         }

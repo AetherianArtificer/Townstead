@@ -73,7 +73,8 @@ public final class EmoteSampler {
     private record BonePose(
             float xRot, float yRot, float zRot,
             boolean hasTranslation, float xPos, float yPos, float zPos,
-            boolean hasScale, float xScale, float yScale, float zScale
+            boolean hasScale, float xScale, float yScale, float zScale,
+            boolean hasBend, float bend, float bendDirection
     ) {}
 
     private static BonePose samplePose(ParsedBoneAnimation bone, float tick) {
@@ -97,7 +98,15 @@ public final class EmoteSampler {
             zS = sampleScale(bone.zScale(), bone.zScaleDefault(), tick);
         }
 
-        return new BonePose(xRot, yRot, zRot, translation, xPos, yPos, zPos, scale, xS, yS, zS);
+        boolean bendKeyed = bone.bendKeyed();
+        float bendVal = 0F, bendDirVal = 0F;
+        if (bendKeyed) {
+            bendVal = sampleRot(bone.bend(), bone.bendDefault(), tick);
+            bendDirVal = sampleRot(bone.bendDirection(), bone.bendDirectionDefault(), tick);
+        }
+
+        return new BonePose(xRot, yRot, zRot, translation, xPos, yPos, zPos,
+                scale, xS, yS, zS, bendKeyed, bendVal, bendDirVal);
     }
 
     private static AnimationTransform buildSetTransform(String target, BonePose pose, ModelPart part, float blend) {
@@ -119,11 +128,21 @@ public final class EmoteSampler {
             zS = Mth.lerp(blend, part.zScale, pose.zScale);
         }
 
+        Float bendVal = null, bendDirVal = null;
+        if (pose.hasBend) {
+            // Bend has no "current part value" to lerp from — the vanilla
+            // model carries no bend state. Scale by blend from zero so we
+            // ramp in cleanly during the fade-in window.
+            bendVal = pose.bend * blend;
+            bendDirVal = pose.bendDirection;
+        }
+
         return new AnimationTransform(
                 target, xPos, yPos, zPos,
                 xRot, yRot, zRot,
                 xS, yS, zS,
-                pose.hasTranslation, pose.hasScale,
+                bendVal, bendDirVal,
+                pose.hasTranslation, pose.hasScale, pose.hasBend,
                 AnimationTransform.Operation.SET);
     }
 
@@ -142,7 +161,8 @@ public final class EmoteSampler {
                 pose.hasTranslation ? pose.zPos * blend : null,
                 pose.xRot * blend, pose.yRot * blend, pose.zRot * blend,
                 null, null, null,
-                pose.hasTranslation, false,
+                null, null,
+                pose.hasTranslation, false, false,
                 AnimationTransform.Operation.ADD);
     }
 

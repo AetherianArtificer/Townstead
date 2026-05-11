@@ -96,12 +96,23 @@ public final class McaAnimationBridge {
         }
 
         boolean anyAvailable = false;
+        boolean anyBend = false;
         for (AnimationSourceAdapter source : SOURCES) {
             if (!source.isAvailable()) continue;
             anyAvailable = true;
             List<AnimationTransform> transforms = source.collectTransforms(context);
             McaModelPartApplier.ApplyStats stats = McaModelPartApplier.applyWithStats(source.id(), targets, transforms);
+            for (AnimationTransform t : transforms) {
+                if (t.applyBend() && t.bend() != null && t.bendDirection() != null) {
+                    BendStateRegistry.put(entity.getUUID(), t.target(),
+                            t.bendDirection(), t.bend());
+                    anyBend = true;
+                }
+            }
             logDiagnostic(entity, model, source.id(), transforms, stats);
+        }
+        if (!anyBend) {
+            BendStateRegistry.clearEntity(entity.getUUID());
         }
 
         syncMcaDependentParts(model, breasts, localOffsetX, localOffsetY, localOffsetZ);
