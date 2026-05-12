@@ -79,7 +79,16 @@ public abstract class VillagerLayerBendMixin<T extends LivingEntity, M extends H
     private static void applyStoredBend(LivingEntity entity, String partName, Object part) {
         if (part == null) return;
         BendStateRegistry.State state = BendStateRegistry.get(entity.getUUID(), partName);
-        if (state == null) return;
+        if (state == null) {
+            // No bend this frame — actively clear the layer model's bend mutator
+            // instead of leaving it stale. bendylib's copyTransformExtended
+            // doesn't reliably propagate cleared bend through copyPropertiesTo
+            // (same gap that made us re-apply bend here in the first place),
+            // so we clear explicitly. |angle|<1e-4 takes IBendHelper.bend's
+            // clear path.
+            EmoteReflection.applyBend(part, 0f, 0f);
+            return;
+        }
         EmoteReflection.applyBend(part, state.axis(), state.angle());
     }
 }
