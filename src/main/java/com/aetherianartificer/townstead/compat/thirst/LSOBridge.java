@@ -25,6 +25,8 @@ import net.minecraft.world.level.Level;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class LSOBridge implements ThirstCompatBridge {
     public static final LSOBridge INSTANCE = new LSOBridge();
@@ -38,6 +40,13 @@ public final class LSOBridge implements ThirstCompatBridge {
     *///?}
 
     private static final float LSO_NORMAL_TEMP = 20.0f;
+    // Temperature is biome-derived and largely chunk-coherent. Sharing one
+    // sample per chunk across all villagers in that chunk avoids the
+    // per-villager reflection cost without changing user-visible behavior.
+    private static final long BIOME_MODIFIER_CACHE_TTL_TICKS = 100L;
+    private static final Map<Long, ChunkTempEntry> CHUNK_TEMP_CACHE = new ConcurrentHashMap<>();
+
+    private record ChunkTempEntry(float modifier, long expiresAtTick, String dimensionId) {}
 
     private boolean initialized;
     private boolean active;
@@ -157,6 +166,15 @@ public final class LSOBridge implements ThirstCompatBridge {
 
         if (level.dimensionType().ultraWarm()) return 3.0f;
 
+        long chunkKey = (((long) (pos.getX() >> 4)) << 32) | ((pos.getZ() >> 4) & 0xFFFFFFFFL);
+        long gameTime = level.getGameTime();
+        String dimensionId = level.dimension().location().toString();
+        ChunkTempEntry cached = CHUNK_TEMP_CACHE.get(chunkKey);
+        if (cached != null && cached.expiresAtTick() > gameTime && cached.dimensionId().equals(dimensionId)) {
+            return cached.modifier();
+        }
+
+        float modifier = 1.0f;
         try {
             Object temp = getWorldTemperatureMethod.invoke(null, level, pos);
             if (temp instanceof Number n) {
@@ -166,14 +184,15 @@ public final class LSOBridge implements ThirstCompatBridge {
                 float offset = t - LSO_NORMAL_TEMP;
                 if (offset > 0) {
                     // Hot: up to 2x drain at temp 40
-                    return 1.0f + (offset / LSO_NORMAL_TEMP);
+                    modifier = 1.0f + (offset / LSO_NORMAL_TEMP);
                 } else {
                     // Cold: down to 0.5x drain at temp 0
-                    return Math.max(0.5f, 1.0f + (offset / (LSO_NORMAL_TEMP * 2)));
+                    modifier = Math.max(0.5f, 1.0f + (offset / (LSO_NORMAL_TEMP * 2)));
                 }
             }
         } catch (Exception ignored) {}
-        return 1.0f;
+        CHUNK_TEMP_CACHE.put(chunkKey, new ChunkTempEntry(modifier, gameTime + BIOME_MODIFIER_CACHE_TTL_TICKS, dimensionId));
+        return modifier;
     }
 
     @Override

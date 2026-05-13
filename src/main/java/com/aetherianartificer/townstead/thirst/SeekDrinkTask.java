@@ -214,21 +214,27 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
 
     private boolean findGroundDrink(ServerLevel level, VillagerEntityMCA villager, ThirstCompatBridge bridge) {
         AABB searchBox = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
-        List<ItemEntity> items = level.getEntitiesOfClass(ItemEntity.class, searchBox,
-                item -> thirstScore(item.getItem(), bridge) > 0 && !item.isRemoved());
-        if (items.isEmpty()) return false;
+        // Score each candidate exactly once. ThirstCompatBridge.itemRestoresThirst /
+        // quenched / hydration / purity are reflection-heavy on LSO; the previous
+        // sort comparator invoked them O(N log N) times per Seek call.
+        List<ScoredItem> scored = new ArrayList<>();
+        for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, searchBox, e -> !e.isRemoved())) {
+            int score = thirstScore(item.getItem(), bridge);
+            if (score > 0) scored.add(new ScoredItem(item, score));
+        }
+        if (scored.isEmpty()) return false;
 
         // Sort by thirst score descending, then distance ascending
-        items.sort(Comparator
-                .comparingInt((ItemEntity item) -> -thirstScore(item.getItem(), bridge))
-                .thenComparingDouble(villager::distanceToSqr));
+        scored.sort(Comparator
+                .comparingInt((ScoredItem s) -> -s.score)
+                .thenComparingDouble(s -> villager.distanceToSqr(s.item)));
 
         // Pick the best reachable item
         ItemEntity chosen = ReachableTargetSelector.chooseReachable(
                 level,
                 villager,
-                items.stream().filter(item -> !ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item))
-                        .map(item -> new ReachableTargetSelector.Candidate<>(item, item.blockPosition()))
+                scored.stream().filter(s -> !ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, s.item))
+                        .map(s -> new ReachableTargetSelector.Candidate<>(s.item, s.item.blockPosition()))
                         .toList(),
                 CLOSE_ENOUGH,
                 MAX_PATH_ATTEMPTS_PER_SEARCH,
@@ -307,6 +313,8 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
             villager.getInventory().addItem(remainder);
         }
     }
+
+    private record ScoredItem(ItemEntity item, int score) {}
 
     private int thirstScore(ItemStack stack, ThirstCompatBridge bridge) {
         if (stack.isEmpty() || !bridge.itemRestoresThirst(stack)) return 0;

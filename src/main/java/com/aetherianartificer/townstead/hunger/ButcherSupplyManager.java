@@ -16,16 +16,41 @@ import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
 //? if >=1.21 {
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 //?}
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public final class ButcherSupplyManager {
     private static final int SEARCH_RADIUS = 16;
     private static final int VERTICAL_RADIUS = 3;
     private static final int FOOD_RESERVE_COUNT = 4;
+
+    // Smoker recipes match by Item identity (no NBT / data components), so
+    // isRawInput / isSmokerBlockerInput are pure functions of Item once
+    // recipes are loaded. RecipeManager.getRecipeFor is a linear scan, and
+    // isRawInput is called for every slot in every nearby storage container
+    // every time ButcherWorkTask.isEligibleVillager runs (i.e. every tick
+    // per butcher). Memoize by Item, invalidating when the RecipeManager
+    // instance changes (a fresh ReloadableServerResources is built on every
+    // datapack reload, so identity comparison is sufficient).
+    private static final Map<Item, Boolean> RAW_INPUT_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Item, Boolean> SMOKER_BLOCKER_CACHE = new ConcurrentHashMap<>();
+    private static volatile RecipeManager cachedRecipeManager;
+
+    private static void ensureCacheFresh(ServerLevel level) {
+        RecipeManager rm = level.getRecipeManager();
+        if (rm != cachedRecipeManager) {
+            RAW_INPUT_CACHE.clear();
+            SMOKER_BLOCKER_CACHE.clear();
+            cachedRecipeManager = rm;
+        }
+    }
 
     // Cross-loader "cooked meat" tags. Present when Butchery (and other meat
     // mods) publish them. Absent tags resolve to empty and are harmless.
@@ -359,6 +384,15 @@ public final class ButcherSupplyManager {
 
     public static boolean isRawInput(ItemStack stack, ServerLevel level) {
         if (stack.isEmpty()) return false;
+        ensureCacheFresh(level);
+        Boolean cached = RAW_INPUT_CACHE.get(stack.getItem());
+        if (cached != null) return cached;
+        boolean result = computeIsRawInput(stack, level);
+        RAW_INPUT_CACHE.put(stack.getItem(), result);
+        return result;
+    }
+
+    private static boolean computeIsRawInput(ItemStack stack, ServerLevel level) {
         if (isButcherOutput(stack)) return false;
         //? if >=1.21 {
         var recipe = level.getRecipeManager().getRecipeFor(
@@ -425,19 +459,24 @@ public final class ButcherSupplyManager {
 
     public static boolean isSmokerBlockerInput(ItemStack stack, ServerLevel level) {
         if (stack.isEmpty()) return false;
+        ensureCacheFresh(level);
+        Boolean cached = SMOKER_BLOCKER_CACHE.get(stack.getItem());
+        if (cached != null) return cached;
         //? if >=1.21 {
-        return level.getRecipeManager().getRecipeFor(
+        boolean result = level.getRecipeManager().getRecipeFor(
                 RecipeType.SMOKING,
                 new SingleRecipeInput(stack),
                 level
         ).isEmpty();
         //?} else {
-        /*return level.getRecipeManager().getRecipeFor(
+        /*boolean result = level.getRecipeManager().getRecipeFor(
                 RecipeType.SMOKING,
                 new net.minecraft.world.SimpleContainer(stack),
                 level
         ).isEmpty();
         *///?}
+        SMOKER_BLOCKER_CACHE.put(stack.getItem(), result);
+        return result;
     }
 
     public static boolean hasUsableSmokingRecipe(ItemStack stack, ServerLevel level) {
