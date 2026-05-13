@@ -300,6 +300,10 @@ public class Townstead {
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.emote.EmoteCommand.register(
                                 e.getDispatcher(), e.getBuildContext()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
         townstead$registerEmotePlaybackClear();
         registerDialogueConditions();
         LOGGER.info("Townstead loaded");
@@ -355,6 +359,10 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.emote.EmoteCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
                                 e.getDispatcher(), e.getBuildContext()));
         try {
             Class.forName("net.minecraft.client.Minecraft");
@@ -415,10 +423,27 @@ public class Townstead {
             }
         });
         event.enqueueWork(RusticDelightThirstCompat::register);
+        event.enqueueWork(() -> {
+            com.aetherianartificer.townstead.reaction.backend.ReactionBackends.register(
+                    new com.aetherianartificer.townstead.reaction.backend.EmotecraftReactionBackend());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.PlayerGestureTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.TaskTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.ContextEnterTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.MirrorOfTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.IdleSpotTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.TimeTriggerType());
+        });
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new CatalogDataLoader());
+        event.addListener(new com.aetherianartificer.townstead.reaction.ReactionDataLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
@@ -838,6 +863,10 @@ public class Townstead {
                     id,
                     payload.loopOverride(),
                     payload.speed());
+            if (target instanceof net.conczin.mca.entity.VillagerEntityMCA) {
+                com.aetherianartificer.townstead.reaction.ReactionDispatcher.onPlayerGesture(
+                        sp.serverLevel(), sp, (net.minecraft.world.entity.LivingEntity) target, id.getPath());
+            }
         });
     }
 

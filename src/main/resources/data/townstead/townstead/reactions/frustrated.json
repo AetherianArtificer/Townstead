@@ -1,0 +1,27 @@
+{
+    "display_name": "Frustrated",
+    "tags": ["emotional", "negative"],
+    "cooldown_ticks": 300,
+    "chance": 0.8,
+    "triggers": [
+        { "type": "task", "task": "townstead:cook", "phase": "stop:give_up" },
+        { "type": "task", "task": "townstead:harvester", "phase": "stop:give_up" },
+        { "type": "task", "task": "townstead:butcher", "phase": "stop:give_up" }
+    ],
+    "bindings": [
+        {
+            "ref": "emotecraft:palm",
+            "weight": 1,
+            "personality_weights": {
+                "crabby": 3.0,
+                "gloomy": 2.0,
+                "odd": 1.5,
+                "sensitive": 1.8,
+                "peaceful": 0.5,
+                "upbeat": 0.4,
+                "default": 1.0
+            },
+            "sound": { "mca_voice": "angry", "volume": 0.7, "pitch_range": [0.95, 1.05] }
+        }
+    ]
+}

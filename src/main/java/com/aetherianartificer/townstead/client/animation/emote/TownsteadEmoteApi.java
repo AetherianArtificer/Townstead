@@ -33,7 +33,22 @@ public final class TownsteadEmoteApi {
     ) {
         if (entity == null || emoteId == null) return false;
         ParsedEmote emote = EmoteRegistry.get(emoteId).orElse(null);
-        if (emote == null) return false;
+        if (emote == null) {
+            // Reaction-system fallback: data packs reference emotes by lowercased
+            // name (e.g. "emotecraft:Wave" -> "wave") with a synthetic namespace.
+            // Find any loaded emote whose path matches, regardless of namespace.
+            String path = emoteId.getPath();
+            for (ResourceLocation candidate : EmoteRegistry.allIds()) {
+                if (candidate.getPath().equalsIgnoreCase(path)) {
+                    emote = EmoteRegistry.get(candidate).orElse(null);
+                    if (emote != null) {
+                        emoteId = candidate;
+                        break;
+                    }
+                }
+            }
+            if (emote == null) return false;
+        }
 
         ParsedEmote.LoopType loopType = loopOverride != null ? loopOverride : emote.loopType();
         float clampedSpeed = (speed > 0F && Float.isFinite(speed)) ? speed : 1.0F;

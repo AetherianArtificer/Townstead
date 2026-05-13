@@ -172,6 +172,10 @@ public final class TownsteadNetwork {
                 id,
                 payload.loopOverride(),
                 payload.speed());
+        if (target instanceof VillagerEntityMCA) {
+            com.aetherianartificer.townstead.reaction.ReactionDispatcher.onPlayerGesture(
+                    sp.serverLevel(), sp, (net.minecraft.world.entity.LivingEntity) target, id.getPath());
+        }
     }
 
     // ── Send helpers ──

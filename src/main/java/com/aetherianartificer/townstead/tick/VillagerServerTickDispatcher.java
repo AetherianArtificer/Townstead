@@ -59,5 +59,6 @@ public final class VillagerServerTickDispatcher {
         WorkToolTicker.tick(villager);
         ButcheryComplaintsTicker.tick(villager);
         LeatherworkerComplaintsTicker.tick(villager);
+        com.aetherianartificer.townstead.reaction.ReactionLockTracker.tickFreeze(villager, gameTime);
     }
 }
