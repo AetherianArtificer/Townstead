@@ -34,11 +34,19 @@ public abstract class VillagerLayerBendMixin<T extends LivingEntity, M extends H
 
     @Shadow(remap = false) @Final public M model;
 
+    //? if neoforge {
     @Inject(method = "render", remap = false, at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/model/HumanoidModel;copyPropertiesTo(Lnet/minecraft/client/model/HumanoidModel;)V",
             shift = At.Shift.AFTER
     ))
+    //?} else {
+    /*@Inject(method = "render", remap = false, at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/model/HumanoidModel;m_102872_(Lnet/minecraft/client/model/HumanoidModel;)V",
+            shift = At.Shift.AFTER
+    ))
+    *///?}
     private void townstead$reapplyBendToLayerModel(
             PoseStack poseStack,
             MultiBufferSource bufferSource,
@@ -53,10 +61,8 @@ public abstract class VillagerLayerBendMixin<T extends LivingEntity, M extends H
             CallbackInfo ci
     ) {
         if (!(model instanceof VillagerEntityModelMCA<?> mcaModel)) return;
-        // On 1.20.1's player-animation-lib 1.0.x (no bendylib), bend is applied
-        // as additive rotation on the part itself, which DOES survive
-        // copyPropertiesTo/copyFrom — the layer's parts already have the bent
-        // xRot/zRot. Re-applying here would double the rotation.
+        // Without bendylib on the classpath, EmoteReflection.applyBend no-ops
+        // — there's no real bend to re-apply, so skip the work.
         if (!EmoteReflection.isBendylibAvailable()) return;
         applyStoredBend(entity, "left_arm", mcaModel.leftArmwear);
         applyStoredBend(entity, "right_arm", mcaModel.rightArmwear);
@@ -73,7 +79,16 @@ public abstract class VillagerLayerBendMixin<T extends LivingEntity, M extends H
     private static void applyStoredBend(LivingEntity entity, String partName, Object part) {
         if (part == null) return;
         BendStateRegistry.State state = BendStateRegistry.get(entity.getUUID(), partName);
-        if (state == null) return;
+        if (state == null) {
+            // No bend this frame — actively clear the layer model's bend mutator
+            // instead of leaving it stale. bendylib's copyTransformExtended
+            // doesn't reliably propagate cleared bend through copyPropertiesTo
+            // (same gap that made us re-apply bend here in the first place),
+            // so we clear explicitly. |angle|<1e-4 takes IBendHelper.bend's
+            // clear path.
+            EmoteReflection.applyBend(part, 0f, 0f);
+            return;
+        }
         EmoteReflection.applyBend(part, state.axis(), state.angle());
     }
 }

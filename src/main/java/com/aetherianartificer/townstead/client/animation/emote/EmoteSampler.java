@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.client.animation.emote;
 
 import com.aetherianartificer.townstead.client.animation.AnimationTargetMap;
 import com.aetherianartificer.townstead.client.animation.AnimationTransform;
+import com.aetherianartificer.townstead.client.animation.emote.loader.EmoteReflection;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.util.Mth;
 

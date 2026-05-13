@@ -9,15 +9,18 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Applies the active emote's "body" bone translation and rotation at the entity
- * render level, mirroring Emotecraft's {@code PlayerRendererMixin.applyBodyTransforms}.
+ * Applies the active emote's {@code body} bone translation and rotation at the
+ * entity-render matrix stack, mirroring Emotecraft's {@code PlayerRendererMixin}
+ * which reads {@code get3DTransform("body", …)} and applies
+ * {@code poseStack.translate(body.x, body.y + 0.7, body.z)} plus axis rotations
+ * on the player.
  *
- * <p>Emotecraft's keyframe values for the body bone are interpreted in <b>block
- * units</b> at this layer, not model units. A value like {@code torso.y = 0.76}
- * becomes a 0.76-block jump (~3/4 of a block), which is the visible "lift" the
- * player sees during emotes like "Over here". The model-part-level translation
- * we apply elsewhere only adds a 0.76 / 16 ≈ 0.05-block intra-model shift, which
- * is invisible without the matrix-level translation here.</p>
+ * <p>The {@code body} bone is authored in <b>block units</b> (Emotecraft binary
+ * stores it that way; GeckoLib divides Bedrock-format body translation by 16).
+ * The sibling {@code torso} bone is a separate channel that targets the body
+ * ModelPart cube in pixel units via {@link EmoteSampler} / {@link
+ * EmoteBoneMapping}; reading {@code torso} as a matrix-level fallback would
+ * apply pixel values as blocks and launch the entity 16× too far.</p>
  *
  * <p>The {@code +0.7 / -0.7} pivot offset matches Emotecraft's approach: lift to
  * roughly the entity's center, rotate around that, then bring the matrix back so
@@ -36,8 +39,7 @@ public final class EmoteBodyTransformSampler {
         ParsedEmote emote = EmoteRegistry.get(playback.emoteId()).orElse(null);
         if (emote == null) return;
 
-        ParsedBoneAnimation bodyBone = emote.bones().get("torso");
-        if (bodyBone == null) bodyBone = emote.bones().get("body");
+        ParsedBoneAnimation bodyBone = emote.bones().get("body");
         if (bodyBone == null) return;
 
         long now = entity.level().getGameTime();

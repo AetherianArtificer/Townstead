@@ -97,11 +97,12 @@ public final class EmotecraftEmoteLoader {
             for (Map.Entry<String, Object> e : bodyParts.entrySet()) {
                 String key = normalizeKey(e.getKey());
                 if (key == null) continue;
-                // Keep "torso" / "body" even though EmoteBoneMapping treats them
-                // as empty at the model-part level — the entity-render matrix
-                // mixin needs to sample them. Other unmapped bones (e.g. cape,
-                // leftItem) are still dropped here.
-                boolean isVirtualParent = "torso".equals(key) || "body".equals(key);
+                // Keep "body" even though EmoteBoneMapping doesn't map it —
+                // EmoteBodyTransformSampler consumes it at the entity matrix
+                // stack. Other unmapped bones (cape, leftItem, …) are dropped.
+                // "torso" has a real mapping (→ "body" ModelPart) and goes
+                // through the normal mapping check.
+                boolean isVirtualParent = "body".equals(key);
                 if (!isVirtualParent && EmoteBoneMapping.mapTargets(key).isEmpty()) continue;
                 ParsedBoneAnimation pba = parseStateCollection(e.getValue());
                 if (pba == null || !pba.hasAnyKeyframes()) continue;

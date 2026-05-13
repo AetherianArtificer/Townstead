@@ -95,8 +95,16 @@ public final class McaAnimationBridge {
             localOffsetZ = breasts.z;
         }
 
+        // Clear last frame's bend on every bendable part before sources write
+        // this frame's bend. bendylib's bend mutator persists on the ModelPart
+        // until explicitly cleared, so without this the limb stays bent forever
+        // after an emote ends (and frame-to-frame within an emote, if a part
+        // toggles between bent and unbent poses). Clearing first matches
+        // setupAnim's "every frame is fresh" semantic for rotations.
+        clearStaleBend(targets);
+        BendStateRegistry.clearEntity(entity.getUUID());
+
         boolean anyAvailable = false;
-        boolean anyBend = false;
         for (AnimationSourceAdapter source : SOURCES) {
             if (!source.isAvailable()) continue;
             anyAvailable = true;
@@ -106,13 +114,9 @@ public final class McaAnimationBridge {
                 if (t.applyBend() && t.bend() != null && t.bendDirection() != null) {
                     BendStateRegistry.put(entity.getUUID(), t.target(),
                             t.bendDirection(), t.bend());
-                    anyBend = true;
                 }
             }
             logDiagnostic(entity, model, source.id(), transforms, stats);
-        }
-        if (!anyBend) {
-            BendStateRegistry.clearEntity(entity.getUUID());
         }
 
         syncMcaDependentParts(model, breasts, localOffsetX, localOffsetY, localOffsetZ);
@@ -130,7 +134,7 @@ public final class McaAnimationBridge {
             List<AnimationTransform> transforms,
             McaModelPartApplier.ApplyStats stats
     ) {
-        if (!"emf".equals(sourceId)) return;
+        if (!"emf".equals(sourceId) && !("emotes".equals(sourceId) && !transforms.isEmpty())) return;
         long tick = entity.level().getGameTime();
         if (tick - lastDiagnosticTick < 120L) return;
         lastDiagnosticTick = tick;
@@ -162,6 +166,19 @@ public final class McaAnimationBridge {
         }
         if (transforms.size() > limit) builder.append(", ...");
         return builder.append(']').toString();
+    }
+
+    private static final String[] BENDABLE_TARGETS = {"left_arm", "right_arm", "left_leg", "right_leg"};
+
+    private static <T extends LivingEntity> void clearStaleBend(AnimationTargetMap<T> targets) {
+        if (!EmoteReflection.isBendylibAvailable()) return;
+        for (String target : BENDABLE_TARGETS) {
+            ModelPart part = targets.resolve(target).orElse(null);
+            if (part != null) EmoteReflection.applyBend(part, 0f, 0f);
+            for (ModelPart companion : targets.bendCompanionsFor(target)) {
+                EmoteReflection.applyBend(companion, 0f, 0f);
+            }
+        }
     }
 
     private static ModelPart breastsPart(HumanoidModel<?> model) {
