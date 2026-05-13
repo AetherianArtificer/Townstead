@@ -10,6 +10,8 @@
     "compat.farmersdelight.StoveVillagerDamageMixin",
     "compat.mca.PlayerSaveDataWelcomeMixin",
     "GetVillageRequestMixin",
+    "GetVillageResponseLargePacketMixin",
+    "GetVillageResponseSlimPayloadMixin",
     "ReportBuildingMessageMixin",
     "TombstoneRevivalMixin",
     "VillagerEatSafetyMixin",
