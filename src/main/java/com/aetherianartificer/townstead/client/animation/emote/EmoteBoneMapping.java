@@ -9,16 +9,14 @@ import java.util.Map;
  * canonical {@link com.aetherianartificer.townstead.client.animation.AnimationTargetMap}
  * part names.
  *
- * <p>The {@code torso} / {@code body} bones are deliberately <b>not</b> mapped
- * at the model-part level. Emotecraft applies those bones' translation +
- * rotation at the entity-render matrix stack (see {@code
- * EmoteBodyTransformSampler} and {@code LivingEntityRendererEmoteMixin}), which
- * rotates and translates the whole entity together — head, arms, legs, body
- * cube all follow as one. Head/arm/leg keyframes then layer their per-part
- * rotation on top of that whole-entity transform, exactly the way Emotecraft's
- * native player pipeline composes them. Mapping {@code torso} or {@code body}
- * to a model part here would compound with the matrix-stack rotation and tear
- * the model apart (limbs flipping through the torso during a backflip).</p>
+ * <p>{@code torso} routes to the {@code body} ModelPart cube — that's the layer
+ * Emotecraft's {@code PlayerModelMixin} sends it to via {@code
+ * AnimationApplier.updatePart("torso", playerModel.body)}: pixel-unit
+ * translation, radian rotation, applied as a per-part SET. The {@code body}
+ * bone is a <b>separate</b> bone consumed at the entity-render matrix stack in
+ * block units by {@link EmoteBodyTransformSampler}; it is intentionally NOT in
+ * this map. Routing both to the same target would conflate two different
+ * authoring channels (intra-model body sway vs whole-entity lift).</p>
  *
  * <p>Bones with no MCA analogue ({@code leftItem}, {@code rightItem}, {@code
  * cape}) and {@code hat} (which {@code syncMcaDependentParts} resyncs to {@code
@@ -48,10 +46,12 @@ public final class EmoteBoneMapping {
             Map.entry("rightarm", new Targets("right_arm", List.of())),
             Map.entry("leftleg", new Targets("left_leg", List.of())),
             Map.entry("rightleg", new Targets("right_leg", List.of())),
+            Map.entry("torso", new Targets("body", List.of())),
             Map.entry("waist", new Targets("body", List.of()))
-            // "torso" and "body" intentionally absent: the entity-level matrix
-            // stack mixin applies their translation + rotation at world level so
-            // the whole model rotates together, the way Emotecraft does.
+            // "body" intentionally absent: that bone is consumed at the matrix
+            // stack by EmoteBodyTransformSampler in block units; sending it to
+            // the body ModelPart in pixel units would add a sub-pixel intra-model
+            // shift that compounds with the visible matrix-level lift.
     );
 
     public static Targets mapTargets(String emoteBoneName) {

@@ -49,6 +49,7 @@ public final class EmotecraftEventBridge {
             EmoteReflection.playerAnimEventRegister.invoke(stopEvent, stopProxy);
 
             registered = true;
+            Townstead.LOGGER.info("[AnimationBridge] Emotecraft event bridge registered");
         } catch (Throwable t) {
             Townstead.LOGGER.debug("[AnimationBridge] failed to bind Emotecraft event listeners ({})",
                     t.getMessage());
@@ -92,11 +93,21 @@ public final class EmotecraftEventBridge {
             ResourceLocation id = synthId(suffix);
 
             ParsedEmote parsed = EmotecraftEmoteLoader.parseAnimation(id, keyframeAnimation);
-            if (parsed == null) return;
+            if (parsed == null) {
+                Townstead.LOGGER.info("[AnimationBridge] EMOTE_PLAY parsed no mappable bones player={} emoteUuid={}",
+                        playerUuid, animUuid);
+                return;
+            }
             EmoteRegistry.putTransient(parsed);
 
             Player player = lookupPlayer(playerUuid);
-            if (player == null) return;
+            if (player == null) {
+                Townstead.LOGGER.info("[AnimationBridge] EMOTE_PLAY player not found player={} emote={} bones={}",
+                        playerUuid, id, parsed.bones().keySet());
+                return;
+            }
+            Townstead.LOGGER.info("[AnimationBridge] EMOTE_PLAY bridged player={} emote={} loop={} bones={}",
+                    playerUuid, id, parsed.loopType(), parsed.bones().keySet());
             TownsteadEmoteApi.trigger(player, id, parsed.loopType(), 1.0F);
         } catch (Throwable t) {
             Townstead.LOGGER.debug("[AnimationBridge] EMOTE_PLAY bridge failed ({})", t.getMessage());

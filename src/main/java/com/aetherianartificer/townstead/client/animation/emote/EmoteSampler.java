@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.client.animation.emote;
 
 import com.aetherianartificer.townstead.client.animation.AnimationTargetMap;
 import com.aetherianartificer.townstead.client.animation.AnimationTransform;
+import com.aetherianartificer.townstead.client.animation.emote.loader.EmoteReflection;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.util.Mth;
 
@@ -103,6 +104,13 @@ public final class EmoteSampler {
         if (bendKeyed) {
             bendVal = sampleRot(bone.bend(), bone.bendDefault(), tick);
             bendDirVal = sampleRot(bone.bendDirection(), bone.bendDirectionDefault(), tick);
+
+            if (!EmoteReflection.isBendylibAvailable()) {
+                float fallbackAxis = -bendDirVal;
+                xRot += bendVal * Mth.cos(fallbackAxis);
+                zRot += bendVal * Mth.sin(fallbackAxis);
+                bendKeyed = false;
+            }
         }
 
         return new BonePose(xRot, yRot, zRot, translation, xPos, yPos, zPos,

@@ -68,6 +68,7 @@ public final class EmoteReflection {
     static Field bendHelperInstance;               // dev.kosmx.playerAnim.impl.animation.IBendHelper.INSTANCE (static)
     static Method bendHelperBend;                  // void bend(ModelPart, float angle, float bendDirection)
     static Method bendHelperInit;                  // void initBend(ModelPart, Direction)
+    static Object bendHelperOverride;              // Real BendHelper when IBendHelper.INSTANCE was initialized as DummyBendable too early
     static Object directionUp;                     // Direction.UP for re-init
 
     /**
@@ -134,7 +135,7 @@ public final class EmoteReflection {
         if (!bendylibAvailable) return;
         if (bendHelperInstance == null || bendHelperInit == null || directionUp == null) return;
         try {
-            Object instance = bendHelperInstance.get(null);
+            Object instance = bendHelper();
             if (instance == null) return;
             bendHelperInit.invoke(instance, modelPart, directionUp);
         } catch (Throwable ignored) {
@@ -145,7 +146,7 @@ public final class EmoteReflection {
         if (!bendylibAvailable) return;
         if (bendHelperInstance == null || bendHelperBend == null) return;
         try {
-            Object instance = bendHelperInstance.get(null);
+            Object instance = bendHelper();
             if (instance == null) return;
             if (bendHelperInit != null && directionUp != null) {
                 try {
@@ -157,6 +158,11 @@ public final class EmoteReflection {
         } catch (Throwable ignored) {
             // Single-frame failure — skip and let the next frame retry.
         }
+    }
+
+    private static Object bendHelper() throws IllegalAccessException {
+        if (bendHelperOverride != null) return bendHelperOverride;
+        return bendHelperInstance == null ? null : bendHelperInstance.get(null);
     }
 
     @SuppressWarnings("unchecked")
@@ -243,6 +249,16 @@ public final class EmoteReflection {
                 clientConfigFastMenuEmotes = null;
             }
 
+            // Probe for bendylib's ModelPartAccessor. Present on 1.21.1's
+            // player-animation-lib 1.1+ (bundled), and in standalone bendy-lib
+            // on 1.20.1 when installed.
+            try {
+                Class.forName("io.github.kosmx.bendylib.ModelPartAccessor");
+                bendylibAvailable = true;
+            } catch (Throwable ignored) {
+                bendylibAvailable = false;
+            }
+
             // playerAnim's IBendHelper — bundled with Emotecraft for arm/leg
             // bending. Optional; if it's missing, the bridge just skips bend
             // application and limbs render straight.
@@ -258,20 +274,20 @@ public final class EmoteReflection {
                 bendHelperInit = bendHelperClass.getMethod(
                         "initBend", modelPartClass, directionClass);
                 directionUp = directionClass.getField("UP").get(null);
+                bendHelperOverride = null;
+                Object instance = bendHelperInstance.get(null);
+                if (bendylibAvailable && instance != null
+                        && instance.getClass().getName().contains("DummyBendable")) {
+                    Class<?> realHelperClass = Class.forName(
+                            "dev.kosmx.playerAnim.impl.animation.BendHelper");
+                    bendHelperOverride = realHelperClass.getDeclaredConstructor().newInstance();
+                }
             } catch (Throwable ignored) {
                 bendHelperInstance = null;
                 bendHelperBend = null;
                 bendHelperInit = null;
+                bendHelperOverride = null;
                 directionUp = null;
-            }
-
-            // Probe for bendylib's ModelPartAccessor. Present on 1.21.1's
-            // player-animation-lib 1.1+ (bundled), absent on 1.20.1's 1.0.x.
-            try {
-                Class.forName("io.github.kosmx.bendylib.ModelPartAccessor");
-                bendylibAvailable = true;
-            } catch (Throwable ignored) {
-                bendylibAvailable = false;
             }
 
             ok = true;

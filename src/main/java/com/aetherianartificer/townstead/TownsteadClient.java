@@ -143,6 +143,7 @@ public final class TownsteadClient {
         TownsteadKeybinds.onClientTick();
         FishermanLineRenderer.onClientTick();
         tryWarmSpiritIndex();
+        com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
     }
     //?} else if forge {
     /*private static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
@@ -150,6 +151,7 @@ public final class TownsteadClient {
         TownsteadKeybinds.onClientTick();
         FishermanLineRenderer.onClientTick();
         tryWarmSpiritIndex();
+        com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
     }
     *///?}
 
