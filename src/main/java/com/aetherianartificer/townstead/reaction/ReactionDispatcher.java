@@ -99,7 +99,7 @@ public final class ReactionDispatcher {
             return false;
         }
 
-        Optional<String> playedRef = backend.get().play(level, villager, chosen.refIds(), chosen.args(), context);
+        Optional<String> playedRef = backend.get().play(level, villager, chosen, context);
         if (playedRef.isEmpty()) return false;
 
         // Commit both cooldown stamps now that the fire is real.
@@ -111,9 +111,13 @@ public final class ReactionDispatcher {
         }
 
         ReactionSideEffects.emit(level, villager, chosen.sound(), chosen.particles());
-        int effectiveLock = computeLockTicks(reaction, chosen);
-        if (effectiveLock > 0) {
-            ReactionLockTracker.lock(villager, gameTime, effectiveLock, reaction.id());
+        // allow_movement bindings skip the lock entirely so the villager
+        // can keep walking while the animation plays on top.
+        if (!chosen.allowMovement()) {
+            int effectiveLock = computeLockTicks(reaction, chosen);
+            if (effectiveLock > 0) {
+                ReactionLockTracker.lock(villager, gameTime, effectiveLock, reaction.id());
+            }
         }
         MirrorPropagator.propagate(level, villager, reaction, playedRef.get(), context);
         return true;

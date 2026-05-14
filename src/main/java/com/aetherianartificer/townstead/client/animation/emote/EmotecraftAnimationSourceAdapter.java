@@ -55,7 +55,11 @@ public final class EmotecraftAnimationSourceAdapter implements AnimationSourceAd
         float partialTick = context.animationProgress() - context.entity().tickCount;
         AnimationTargetMap<?> targets = AnimationTargetMap.forMcaModel(context.model());
 
-        if (!playback.isFadingOut() && context.limbDistance() > MOVEMENT_LIMB_DISTANCE_THRESHOLD) {
+        // Mobile playbacks (allow_movement bindings) intentionally play
+        // through entity motion — skip the limb-distance cancel.
+        if (!playback.mobile()
+                && !playback.isFadingOut()
+                && context.limbDistance() > MOVEMENT_LIMB_DISTANCE_THRESHOLD) {
             float elapsedTicks = (now - playback.startGameTime()) * playback.speedMultiplier();
             if (elapsedTicks > FADE_IN_TICKS) {
                 // Player/villager started moving — quick fade-out so the legs
@@ -66,10 +70,25 @@ public final class EmotecraftAnimationSourceAdapter implements AnimationSourceAd
             }
         }
 
-        if (playback.isFadingOut()) {
-            return collectFadingOut(uuid, emote, playback, now, partialTick, targets);
+        List<AnimationTransform> raw = playback.isFadingOut()
+                ? collectFadingOut(uuid, emote, playback, now, partialTick, targets)
+                : collectActive(uuid, emote, playback, now, partialTick, targets);
+        return filterByMask(raw, playback.skippedBones());
+    }
+
+    /**
+     * Drop transforms whose {@code target} is in the playback's skipped
+     * set. Vanilla animation for those parts then shows through —
+     * legs walk while arms wave, etc.
+     */
+    private static List<AnimationTransform> filterByMask(List<AnimationTransform> transforms,
+            java.util.Set<String> skippedBones) {
+        if (skippedBones == null || skippedBones.isEmpty() || transforms.isEmpty()) return transforms;
+        List<AnimationTransform> out = new java.util.ArrayList<>(transforms.size());
+        for (AnimationTransform t : transforms) {
+            if (!skippedBones.contains(t.target())) out.add(t);
         }
-        return collectActive(uuid, emote, playback, now, partialTick, targets);
+        return out;
     }
 
     private static EmotePlayback startFadeOutFrom(

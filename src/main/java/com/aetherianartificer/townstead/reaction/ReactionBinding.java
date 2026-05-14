@@ -28,6 +28,8 @@ public record ReactionBinding(
         float chance,
         int shots,
         int cooldownTicks,
+        boolean allowMovement,
+        List<String> partsSkip,
         Map<String, Float> personalityWeights,
         List<String> requiredTags,
         Optional<SoundSpec> sound,
@@ -77,6 +79,14 @@ public record ReactionBinding(
         float chance = clamp01(GsonHelper.getAsFloat(json, "chance", 1.0F));
         int shots = Math.max(1, GsonHelper.getAsInt(json, "shots", 1));
         int cooldownTicks = Math.max(0, GsonHelper.getAsInt(json, "cooldown_ticks", 0));
+        boolean allowMovement = GsonHelper.getAsBoolean(json, "allow_movement", false);
+        List<String> partsSkip = ReactionConditions.parseStringArray(json, "parts_skip");
+        // When allow_movement is set without an explicit parts_skip,
+        // default to skipping legs + torso so vanilla walking shows
+        // through and only the arms / head animate on top.
+        if (allowMovement && partsSkip.isEmpty()) {
+            partsSkip = List.of("legs", "torso");
+        }
         Map<String, Float> personality = parsePersonalityWeights(json.has("personality_weights")
                 ? json.getAsJsonObject("personality_weights")
                 : null);
@@ -90,7 +100,7 @@ public record ReactionBinding(
         Optional<String> speechPool =
                 json.has("speech_pool") ? Optional.of(GsonHelper.getAsString(json, "speech_pool")) : Optional.empty();
         return new ReactionBinding(backendKey, Collections.unmodifiableList(ids), args, weight, chance, shots,
-                cooldownTicks, personality, requiredTags, sound, particles, speechPool);
+                cooldownTicks, allowMovement, partsSkip, personality, requiredTags, sound, particles, speechPool);
     }
 
     private static List<String> parseRefField(JsonElement ref) {

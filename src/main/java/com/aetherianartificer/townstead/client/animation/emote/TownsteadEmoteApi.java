@@ -16,20 +16,35 @@ public final class TownsteadEmoteApi {
     private TownsteadEmoteApi() {}
 
     public static boolean trigger(LivingEntity entity, ResourceLocation emoteId) {
-        return trigger(entity, emoteId, null, 1.0F);
+        return trigger(entity, emoteId, null, 1.0F, false, java.util.Set.of());
+    }
+
+    public static boolean trigger(
+            LivingEntity entity,
+            ResourceLocation emoteId,
+            ParsedEmote.LoopType loopOverride,
+            float speed
+    ) {
+        return trigger(entity, emoteId, loopOverride, speed, false, java.util.Set.of());
     }
 
     /**
-     * @param loopOverride if non-null, overrides the parsed emote's own {@code
-     *                     loopType} for this playback only.
-     * @param speed        speed multiplier; 1.0 plays at authored speed.
+     * @param loopOverride  if non-null, overrides the parsed emote's own
+     *                      {@code loopType} for this playback only.
+     * @param speed         speed multiplier; 1.0 plays at authored speed.
+     * @param mobile        if true, the animation source adapter skips its
+     *                      limb-distance movement-cancel for this playback.
+     * @param skippedBones  bone names whose transforms should not be applied
+     *                      (vanilla animation shows through). Empty = apply all.
      * @return true if a playback was scheduled; false if the emote isn't loaded.
      */
     public static boolean trigger(
             LivingEntity entity,
             ResourceLocation emoteId,
             ParsedEmote.LoopType loopOverride,
-            float speed
+            float speed,
+            boolean mobile,
+            java.util.Set<String> skippedBones
     ) {
         if (entity == null || emoteId == null) return false;
         ParsedEmote emote = EmoteRegistry.get(emoteId).orElse(null);
@@ -55,7 +70,7 @@ public final class TownsteadEmoteApi {
         long now = entity.level().getGameTime();
         EmotePlaybackRegistry.put(
                 entity.getUUID(),
-                EmotePlayback.fresh(emoteId, now, loopType, clampedSpeed));
+                EmotePlayback.fresh(emoteId, now, loopType, clampedSpeed, mobile, skippedBones));
         return true;
     }
 

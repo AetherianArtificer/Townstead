@@ -16,12 +16,21 @@ import net.minecraft.resources.ResourceLocation;
  * <p>{@code loopOverride} = -1 means "honor the parsed emote's own loopType";
  * otherwise the byte's value is the ordinal of {@link
  * com.aetherianartificer.townstead.client.animation.emote.ParsedEmote.LoopType}.</p>
+ *
+ * <p>{@code mobile} signals the receiver to skip the limb-distance cancel
+ * so the emote plays through entity movement. {@code skippedBones} is a
+ * comma-joined list of bone group names ({@code legs}, {@code arms},
+ * {@code head}, {@code torso}) or specific bone names that should not
+ * receive the emote's transforms (vanilla animation shows through
+ * underneath).</p>
  */
 //? if neoforge {
-public record EmoteTriggerS2CPayload(int entityId, String emoteId, byte loopOverride, float speed)
+public record EmoteTriggerS2CPayload(int entityId, String emoteId, byte loopOverride, float speed,
+                                     boolean mobile, String skippedBones)
         implements CustomPacketPayload {
 //?} else {
-/*public record EmoteTriggerS2CPayload(int entityId, String emoteId, byte loopOverride, float speed) {
+/*public record EmoteTriggerS2CPayload(int entityId, String emoteId, byte loopOverride, float speed,
+                                     boolean mobile, String skippedBones) {
 *///?}
 
     //? if neoforge {
@@ -34,6 +43,8 @@ public record EmoteTriggerS2CPayload(int entityId, String emoteId, byte loopOver
                     ByteBufCodecs.STRING_UTF8, EmoteTriggerS2CPayload::emoteId,
                     ByteBufCodecs.BYTE, EmoteTriggerS2CPayload::loopOverride,
                     ByteBufCodecs.FLOAT, EmoteTriggerS2CPayload::speed,
+                    ByteBufCodecs.BOOL, EmoteTriggerS2CPayload::mobile,
+                    ByteBufCodecs.STRING_UTF8, EmoteTriggerS2CPayload::skippedBones,
                     EmoteTriggerS2CPayload::new
             );
 
@@ -56,6 +67,8 @@ public record EmoteTriggerS2CPayload(int entityId, String emoteId, byte loopOver
         buf.writeUtf(emoteId);
         buf.writeByte(loopOverride);
         buf.writeFloat(speed);
+        buf.writeBoolean(mobile);
+        buf.writeUtf(skippedBones);
     }
 
     public static EmoteTriggerS2CPayload read(FriendlyByteBuf buf) {
@@ -63,7 +76,9 @@ public record EmoteTriggerS2CPayload(int entityId, String emoteId, byte loopOver
                 buf.readVarInt(),
                 buf.readUtf(),
                 buf.readByte(),
-                buf.readFloat());
+                buf.readFloat(),
+                buf.readBoolean(),
+                buf.readUtf());
     }
     *///?}
 }

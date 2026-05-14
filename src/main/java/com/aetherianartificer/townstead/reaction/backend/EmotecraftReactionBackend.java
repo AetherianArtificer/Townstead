@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.reaction.backend;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.emote.AiEmoteScheduler;
+import com.aetherianartificer.townstead.reaction.ReactionBinding;
 import com.aetherianartificer.townstead.reaction.ReactionContext;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
@@ -9,18 +10,16 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.LivingEntity;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
 /**
- * Resolves {@code emotecraft:<Name>} refs to Townstead's existing emote
- * pipeline. Picks one ref uniformly when multiple variants are listed,
- * lowercases the name to fit Minecraft {@link ResourceLocation} path
- * rules, builds a placeholder RL with the {@code townstead} namespace,
- * and ships via {@link AiEmoteScheduler}. The client's emote handler is
- * responsible for resolving the path case-insensitively against whatever
- * namespace the actual emote file lives under.
+ * Resolves {@code emotecraft:<Name>} refs through Townstead's existing
+ * emote pipeline. Picks one ref uniformly when multiple are listed,
+ * lowercases the name for {@link ResourceLocation} compatibility, and
+ * ships via {@link AiEmoteScheduler} along with the binding's
+ * {@code allow_movement} and {@code parts_skip} so the client adapter
+ * can render the emote in mobile mode.
  */
 public final class EmotecraftReactionBackend implements ReactionBackend {
     public static final String KEY = "emotecraft";
@@ -31,11 +30,13 @@ public final class EmotecraftReactionBackend implements ReactionBackend {
     }
 
     @Override
-    public Optional<String> play(ServerLevel level, LivingEntity villager, List<String> refIds,
-            Optional<JsonObject> args, ReactionContext context) {
-        if (refIds == null || refIds.isEmpty() || villager == null || level == null) return Optional.empty();
-        String chosen = refIds.size() == 1 ? refIds.get(0)
-                : refIds.get(level.getRandom().nextInt(refIds.size()));
+    public Optional<String> play(ServerLevel level, LivingEntity villager, ReactionBinding binding,
+            ReactionContext context) {
+        if (binding == null || binding.refIds().isEmpty() || villager == null || level == null) {
+            return Optional.empty();
+        }
+        String chosen = binding.refIds().size() == 1 ? binding.refIds().get(0)
+                : binding.refIds().get(level.getRandom().nextInt(binding.refIds().size()));
         String lowercase = chosen.toLowerCase(Locale.ROOT);
         ResourceLocation rl = ResourceLocation.tryParse(Townstead.MOD_ID + ":" + lowercase);
         if (rl == null) {
@@ -44,13 +45,14 @@ public final class EmotecraftReactionBackend implements ReactionBackend {
         }
         byte loopOverride = (byte) -1;
         float speed = 1.0F;
-        if (args.isPresent()) {
-            JsonObject obj = args.get();
+        if (binding.args().isPresent()) {
+            JsonObject obj = binding.args().get();
             loopOverride = (byte) GsonHelper.getAsInt(obj, "loop_override", -1);
             float parsedSpeed = GsonHelper.getAsFloat(obj, "speed", 1.0F);
             if (parsedSpeed > 0F && Float.isFinite(parsedSpeed)) speed = parsedSpeed;
         }
-        AiEmoteScheduler.playEmote(villager, rl, loopOverride, speed);
+        String skipped = String.join(",", binding.partsSkip());
+        AiEmoteScheduler.playEmote(villager, rl, loopOverride, speed, binding.allowMovement(), skipped);
         return Optional.of(lowercase);
     }
 }

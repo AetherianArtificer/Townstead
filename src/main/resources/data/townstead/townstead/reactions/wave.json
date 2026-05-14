@@ -11,6 +11,7 @@
         {
             "ref": "emotecraft:waving",
             "weight": 3,
+            "allow_movement": true,
             "personality_weights": {
                 "friendly": 2.0,
                 "extroverted": 2.0,

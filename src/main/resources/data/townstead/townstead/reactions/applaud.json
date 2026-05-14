@@ -12,6 +12,7 @@
         {
             "ref": "emotecraft:clap",
             "weight": 1,
+            "allow_movement": true,
             "personality_weights": {
                 "friendly": 2.0,
                 "upbeat": 1.8,
