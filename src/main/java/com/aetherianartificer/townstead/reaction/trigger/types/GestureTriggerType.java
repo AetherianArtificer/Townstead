@@ -10,13 +10,17 @@ import net.minecraft.util.GsonHelper;
 import java.util.Locale;
 
 /**
- * Fires when a player runs an emote with the named id near (and looking
- * at) a villager. The emote reference is keyed lowercased — same form as
- * binding refs — so authors can match the casing they see in their emote
- * folder.
+ * Fires when an emote with the named id plays near (and roughly in
+ * front of) a villager. The emote ref is keyed by its case-insensitive
+ * name so the same trigger matches whether the gesture came from a
+ * player running {@code /emote} or another villager's reaction that
+ * mirrored to nearby neighbors.
+ *
+ * <p>Replaces the prior {@code player_gesture} / {@code mirror_of}
+ * split: "wave happens nearby" is one signal source.</p>
  */
-public final class PlayerGestureTriggerType implements TriggerType {
-    public static final String KEY = "player_gesture";
+public final class GestureTriggerType implements TriggerType {
+    public static final String KEY = "gesture";
 
     @Override
     public String key() {
@@ -34,7 +38,7 @@ public final class PlayerGestureTriggerType implements TriggerType {
     public TriggerInstance parse(JsonObject json) {
         String raw = GsonHelper.getAsString(json, "emote", "");
         if (raw.isBlank()) return null;
-        // Accept either "emotecraft:Name" or bare "Name"; index by the trailing name only.
+        // Accept either "emotecraft:Name" or bare "Name"; index by the name stem only.
         int colon = raw.indexOf(':');
         String name = colon >= 0 ? raw.substring(colon + 1) : raw;
         if (name.isBlank()) return null;

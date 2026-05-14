@@ -5,8 +5,9 @@
     "chance": 0.8,
     "triggers": [
         { "type": "task", "task": "townstead:cook", "phase": "stop:give_up" },
-        { "type": "task", "task": "townstead:harvester", "phase": "stop:give_up" },
-        { "type": "task", "task": "townstead:butcher", "phase": "stop:give_up" }
+        { "type": "task", "task": "townstead:barista", "phase": "stop:give_up" },
+        { "type": "task", "task": "minecraft:farmer", "phase": "stop:give_up" },
+        { "type": "task", "task": "minecraft:butcher", "phase": "stop:give_up" }
     ],
     "bindings": [
         {

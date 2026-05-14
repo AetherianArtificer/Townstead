@@ -6,7 +6,7 @@
     "mirror_radius": 8,
     "mirror_chance": 0.4,
     "triggers": [
-        { "type": "mirror_of", "reaction": "townstead:celebrate", "require_tags_match": true }
+        { "type": "gesture", "emote": "emotecraft:backflip" }
     ],
     "bindings": [
         {

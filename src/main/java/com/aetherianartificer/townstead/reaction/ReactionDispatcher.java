@@ -6,15 +6,15 @@ import com.aetherianartificer.townstead.reaction.backend.EmotecraftReactionBacke
 import com.aetherianartificer.townstead.reaction.backend.ReactionBackend;
 import com.aetherianartificer.townstead.reaction.backend.ReactionBackends;
 import com.aetherianartificer.townstead.reaction.effect.ReactionSideEffects;
+import com.aetherianartificer.townstead.reaction.trigger.event.MirrorPropagator;
 import com.aetherianartificer.townstead.reaction.trigger.types.ContextEnterTriggerType;
+import com.aetherianartificer.townstead.reaction.trigger.types.ContextPresentTriggerType;
+import com.aetherianartificer.townstead.reaction.trigger.types.GestureTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.IdleSpotTriggerType;
-import com.aetherianartificer.townstead.reaction.trigger.types.MirrorOfTriggerType;
-import com.aetherianartificer.townstead.reaction.trigger.types.PlayerGestureTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.TaskTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.TimeTriggerType;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Personality;
-import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -52,20 +52,18 @@ public final class ReactionDispatcher {
         long gameTime = level.getGameTime();
         RandomSource random = level.getRandom();
 
-        if (context.source() != ReactionContext.TriggerSource.COMMAND
-                && ReactionLockTracker.isLocked(villager, gameTime)) {
-            return false;
+        if (context.source() != ReactionContext.TriggerSource.COMMAND) {
+            if (ReactionLockTracker.isLocked(villager, gameTime)) return false;
+            if (villager.isSleeping()) return false;
         }
-        if (!ReactionCooldownTracker.tryClaim(villager, reaction.id(), reaction.cooldownTicks(), gameTime)) {
+        String reactionKey = reaction.id().toString();
+        if (!ReactionCooldownTracker.canClaim(villager, reactionKey, reaction.cooldownTicks(), gameTime)) {
             return false;
         }
         if (reaction.chance() < 1.0F && random.nextFloat() >= reaction.chance()) {
             return false;
         }
 
-        // Tag-based gating: Phase 5 wires ContextResolver. Until then, accept any
-        // tags carried in the context (e.g., command-injected tags) and treat a
-        // missing context_tags set as "no tags resolved yet" rather than rejecting.
         if (!context.contextTags().containsAll(reaction.conditions().requiredTags())) {
             return false;
         }
@@ -75,6 +73,13 @@ public final class ReactionDispatcher {
         List<Double> weights = new ArrayList<>(reaction.bindings().size());
         for (ReactionBinding binding : reaction.bindings()) {
             if (!context.contextTags().containsAll(binding.requiredTags())) continue;
+            // Filter by per-binding cooldown before personality so a binding
+            // on cooldown is never picked.
+            if (binding.cooldownTicks() > 0
+                    && !ReactionCooldownTracker.canClaim(villager, bindingKey(reaction, binding),
+                            binding.cooldownTicks(), gameTime)) {
+                continue;
+            }
             float pm = binding.personalityMultiplier(personalityKey);
             double effective = (double) binding.weight() * pm;
             if (effective <= 0.0) continue;
@@ -94,33 +99,51 @@ public final class ReactionDispatcher {
             return false;
         }
 
-        boolean played = backend.get().play(level, villager, chosen.refIds(), chosen.args(), context);
-        if (!played) return false;
+        Optional<String> playedRef = backend.get().play(level, villager, chosen.refIds(), chosen.args(), context);
+        if (playedRef.isEmpty()) return false;
+
+        // Commit both cooldown stamps now that the fire is real.
+        if (reaction.cooldownTicks() > 0) {
+            ReactionCooldownTracker.claim(villager, reactionKey, gameTime);
+        }
+        if (chosen.cooldownTicks() > 0) {
+            ReactionCooldownTracker.claim(villager, bindingKey(reaction, chosen), gameTime);
+        }
 
         ReactionSideEffects.emit(level, villager, chosen.sound(), chosen.particles());
         int effectiveLock = computeLockTicks(reaction, chosen);
         if (effectiveLock > 0) {
-            ReactionLockTracker.lock(villager, gameTime, effectiveLock);
+            ReactionLockTracker.lock(villager, gameTime, effectiveLock, reaction.id());
         }
-        // Mirror fan-out lands in Phase 5; the field exists but is intentionally
-        // unused here so that adding MirrorPropagator later is a single hook.
+        MirrorPropagator.propagate(level, villager, reaction, playedRef.get(), context);
         return true;
+    }
+
+    /**
+     * Composite key for per-binding cooldown bookkeeping. Stable across
+     * reload because it's derived from the binding's content (backend +
+     * joined ref list), not its position in the bindings array.
+     */
+    private static String bindingKey(Reaction reaction, ReactionBinding binding) {
+        return reaction.id() + "@" + binding.backendKey() + "/" + String.join(",", binding.refIds());
     }
 
     // ─────────────────────────── trigger event API ───────────────────────────
 
     /**
-     * Invoked by the gesture event bridge after a player emote near a
-     * villager has been resolved. Looks up matching {@code player_gesture}
-     * triggers and fires their reactions on the villager.
+     * Invoked whenever an emote gesture happens near a villager: either
+     * from a player running {@code /emote} (depth 0, with the player
+     * causing it) or from another villager's reaction mirroring to its
+     * neighbors (depth 1, no player). Depth-1 events do not re-mirror.
      */
-    public static int onPlayerGesture(ServerLevel level, Player player, LivingEntity villager, String emoteName) {
+    public static int onGesture(ServerLevel level, Player playerCause, LivingEntity villager, String emoteName,
+            int depth) {
         if (villager == null || emoteName == null || emoteName.isBlank()) return 0;
         String key = emoteName.toLowerCase(Locale.ROOT);
-        List<ResourceLocation> matches = ReactionRegistry.triggers().matchesFor(PlayerGestureTriggerType.KEY, key);
+        List<ResourceLocation> matches = ReactionRegistry.triggers().matchesFor(GestureTriggerType.KEY, key);
         if (matches.isEmpty()) return 0;
-        ReactionContext ctx = new ReactionContext(ReactionContext.TriggerSource.GESTURE, player,
-                villager.blockPosition(), Set.of(), 0);
+        ReactionContext ctx = new ReactionContext(ReactionContext.TriggerSource.GESTURE, playerCause,
+                villager.blockPosition(), Set.of(), Math.max(0, depth));
         int fired = 0;
         for (ResourceLocation id : matches) if (fire(level, villager, id, ctx)) fired++;
         return fired;
@@ -170,20 +193,26 @@ public final class ReactionDispatcher {
     }
 
     /**
-     * Invoked by {@code MirrorPropagator} on each villager near the
-     * source villager. {@code depth} should be {@code 1}; further
-     * propagation is blocked by the dispatcher to avoid recursion.
+     * Invoked by the context tick hook on every stride with the full
+     * current tag set. Reactions whose {@code context_present} trigger
+     * lists any of these tags fire (subject to the dispatcher's
+     * cooldown, lock, and required-tag gates). Use this for "while X is
+     * true" reactions like dancing while music plays.
      */
-    public static int onMirror(ServerLevel level, LivingEntity villager, ResourceLocation sourceReactionId,
-            BlockPos location) {
-        if (villager == null || sourceReactionId == null) return 0;
-        List<ResourceLocation> matches = ReactionRegistry.triggers()
-                .matchesFor(MirrorOfTriggerType.KEY, sourceReactionId.toString());
-        if (matches.isEmpty()) return 0;
-        ReactionContext ctx = new ReactionContext(ReactionContext.TriggerSource.MIRROR, null,
-                location != null ? location : villager.blockPosition(), Set.of(), 1);
+    public static int onContextPresent(ServerLevel level, LivingEntity villager, Set<String> currentTags) {
+        if (villager == null || currentTags == null || currentTags.isEmpty()) return 0;
+        Set<ResourceLocation> seen = new HashSet<>();
+        for (String tag : currentTags) {
+            String key = tag.toLowerCase(Locale.ROOT);
+            for (ResourceLocation id : ReactionRegistry.triggers().matchesFor(ContextPresentTriggerType.KEY, key)) {
+                seen.add(id);
+            }
+        }
+        if (seen.isEmpty()) return 0;
+        ReactionContext ctx = new ReactionContext(ReactionContext.TriggerSource.CONTEXT, null,
+                villager.blockPosition(), Set.copyOf(currentTags), 0);
         int fired = 0;
-        for (ResourceLocation id : matches) if (fire(level, villager, id, ctx)) fired++;
+        for (ResourceLocation id : seen) if (fire(level, villager, id, ctx)) fired++;
         return fired;
     }
 
@@ -230,8 +259,6 @@ public final class ReactionDispatcher {
      */
     private static int computeLockTicks(Reaction reaction, ReactionBinding chosen) {
         if (EmotecraftReactionBackend.KEY.equals(chosen.backendKey())) {
-            // Pick the first ref's duration as the representative; for
-            // variant arrays they should be roughly equivalent in scale.
             String first = chosen.refIds().isEmpty() ? null : chosen.refIds().get(0);
             Optional<Integer> ticks = EmoteDurationIndex.ticksFor(first, chosen.shots());
             if (ticks.isPresent()) return ticks.get();

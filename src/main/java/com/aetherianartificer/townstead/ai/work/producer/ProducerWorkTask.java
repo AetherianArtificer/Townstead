@@ -225,6 +225,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         recipeAttempts = 0;
         abandonedUntilByStation.clear();
         resetWorksiteTargeting();
+        com.aetherianartificer.townstead.reaction.trigger.event.TaskEventBridge.onStart(level, villager);
     }
 
     @Override
@@ -241,8 +242,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         onStop(level, villager, gameTime);
         releaseStationClaim(level, villager, stationAnchor);
         onSessionRelease(level, villager, stationAnchor, gameTime);
+        String reactionStopReason = blocked != ProducerBlockedReason.NONE ? "give_up" : null;
         clearTransientState();
         state = ProducerState.PATH_TO_WORKSITE;
+        com.aetherianartificer.townstead.reaction.trigger.event.TaskEventBridge.onStop(level, villager, reactionStopReason);
     }
 
     @Override

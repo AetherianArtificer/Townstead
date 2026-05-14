@@ -427,17 +427,19 @@ public class Townstead {
             com.aetherianartificer.townstead.reaction.backend.ReactionBackends.register(
                     new com.aetherianartificer.townstead.reaction.backend.EmotecraftReactionBackend());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
-                    new com.aetherianartificer.townstead.reaction.trigger.types.PlayerGestureTriggerType());
+                    new com.aetherianartificer.townstead.reaction.trigger.types.GestureTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.TaskTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.ContextEnterTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
-                    new com.aetherianartificer.townstead.reaction.trigger.types.MirrorOfTriggerType());
+                    new com.aetherianartificer.townstead.reaction.trigger.types.ContextPresentTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.IdleSpotTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.TimeTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.event.MusicSourceProviders.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.event.JukeboxMusicSourceProvider());
         });
     }
 
@@ -833,6 +835,46 @@ public class Townstead {
                 com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload.STREAM_CODEC,
                 this::handleEmoteTriggerC2S
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload.TYPE,
+                com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload.STREAM_CODEC,
+                this::handleGestureNotifyC2S
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload.TYPE,
+                com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload.STREAM_CODEC,
+                this::handleDialogueStateC2S
+        );
+    }
+
+    private void handleDialogueStateC2S(
+            com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            Entity target = sp.serverLevel().getEntity(payload.villagerEntityId());
+            if (!(target instanceof net.minecraft.world.entity.LivingEntity villager)) return;
+            long gameTime = sp.serverLevel().getGameTime();
+            if (payload.isOpen()) {
+                com.aetherianartificer.townstead.reaction.trigger.event.DialogueStateTracker.onOpen(
+                        villager, sp.getUUID(), gameTime);
+            } else {
+                com.aetherianartificer.townstead.reaction.trigger.event.DialogueStateTracker.onClose(
+                        villager, gameTime);
+            }
+        });
+    }
+
+    private void handleGestureNotifyC2S(
+            com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
+                    sp.serverLevel(), sp, payload.emoteName());
+        });
     }
 
     private void handleEmoteTriggerS2C(
@@ -863,10 +905,8 @@ public class Townstead {
                     id,
                     payload.loopOverride(),
                     payload.speed());
-            if (target instanceof net.conczin.mca.entity.VillagerEntityMCA) {
-                com.aetherianartificer.townstead.reaction.ReactionDispatcher.onPlayerGesture(
-                        sp.serverLevel(), sp, (net.minecraft.world.entity.LivingEntity) target, id.getPath());
-            }
+            com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
+                    sp.serverLevel(), target, id.getPath());
         });
     }
 

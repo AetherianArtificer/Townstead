@@ -4,9 +4,8 @@
     "cooldown_ticks": 200,
     "chance": 0.9,
     "triggers": [
-        { "type": "player_gesture", "emote": "emotecraft:point", "max_distance": 8 },
-        { "type": "player_gesture", "emote": "emotecraft:here", "max_distance": 8 },
-        { "type": "mirror_of", "reaction": "townstead:beckon" }
+        { "type": "gesture", "emote": "emotecraft:point", "max_distance": 8 },
+        { "type": "gesture", "emote": "emotecraft:here", "max_distance": 8 }
     ],
     "bindings": [
         {

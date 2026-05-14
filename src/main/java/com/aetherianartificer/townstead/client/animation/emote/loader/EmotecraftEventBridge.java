@@ -109,9 +109,29 @@ public final class EmotecraftEventBridge {
             Townstead.LOGGER.info("[AnimationBridge] EMOTE_PLAY bridged player={} emote={} loop={} bones={}",
                     playerUuid, id, parsed.loopType(), parsed.bones().keySet());
             TownsteadEmoteApi.trigger(player, id, parsed.loopType(), 1.0F);
+
+            // When the local player plays a known emote, tell the server so
+            // it can broadcast a gesture event to nearby villagers. Resolved
+            // by UUID through EmoteNameIndex (populated from the same JSON
+            // files the resource pack stack loads); unknown UUIDs silently
+            // skip the broadcast.
+            net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
+            if (animUuid != null && client != null && client.player != null
+                    && client.player.getUUID().equals(playerUuid)) {
+                EmoteNameIndex.nameFor(animUuid).ifPresent(name -> sendGestureNotify(name));
+            }
         } catch (Throwable t) {
             Townstead.LOGGER.debug("[AnimationBridge] EMOTE_PLAY bridge failed ({})", t.getMessage());
         }
+    }
+
+    private static void sendGestureNotify(String emoteName) {
+        var payload = new com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload(emoteName);
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
+        *///?}
     }
 
     private static void handleStop(UUID playerUuid) {

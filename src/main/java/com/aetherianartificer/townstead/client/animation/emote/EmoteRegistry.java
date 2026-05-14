@@ -79,6 +79,8 @@ public final class EmoteRegistry {
             return path.endsWith(".json") || path.endsWith(".emotecraft");
         });
 
+        com.aetherianartificer.townstead.client.animation.emote.loader.EmoteNameIndex.clear();
+
         Map<ResourceLocation, ParsedEmote> loaded = new HashMap<>();
         for (Map.Entry<ResourceLocation, Resource> entry : builtIns.entrySet()) {
             loadOne(entry.getKey(), entry.getValue(), loaded);

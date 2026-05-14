@@ -52,6 +52,8 @@ public final class EmoteCommand {
         ResourceLocation id = parseId(source, idString);
         if (id == null) return 0;
         AiEmoteScheduler.playEmote(sp, id);
+        com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
+                sp.serverLevel(), sp, id.getPath());
         source.sendSuccess(() -> Component.literal("Playing emote " + id + " on yourself."), false);
         return 1;
     }
@@ -64,6 +66,10 @@ public final class EmoteCommand {
             return 0;
         }
         AiEmoteScheduler.playEmote((LivingEntity) target, id);
+        if (target.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
+                    level, target, id.getPath());
+        }
         source.sendSuccess(() ->
                 Component.literal("Playing emote " + id + " on " + target.getName().getString() + "."), false);
         return 1;

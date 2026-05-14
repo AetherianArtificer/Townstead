@@ -1,0 +1,25 @@
+{
+    "display_name": "Glare",
+    "tags": ["emotional", "negative", "social"],
+    "cooldown_ticks": 200,
+    "chance": 0.8,
+    "triggers": [
+        { "type": "context_present", "tags": ["near_player_disliked", "being_watched_by_player"] }
+    ],
+    "bindings": [
+        {
+            "ref": "emotecraft:point",
+            "weight": 1,
+            "personality_weights": {
+                "crabby": 3.0,
+                "gloomy": 2.0,
+                "odd": 1.5,
+                "extroverted": 1.2,
+                "peaceful": 0.4,
+                "friendly": 0.2,
+                "default": 1.0
+            },
+            "sound": { "mca_voice": "angry", "volume": 0.7, "pitch_range": [0.95, 1.05] }
+        }
+    ]
+}

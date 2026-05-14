@@ -6,9 +6,7 @@
     "mirror_radius": 8,
     "mirror_chance": 0.6,
     "triggers": [
-        { "type": "player_gesture", "emote": "emotecraft:clap", "max_distance": 8 },
-        { "type": "mirror_of", "reaction": "townstead:applaud" },
-        { "type": "mirror_of", "reaction": "townstead:dance" }
+        { "type": "gesture", "emote": "emotecraft:clap", "max_distance": 8 }
     ],
     "bindings": [
         {

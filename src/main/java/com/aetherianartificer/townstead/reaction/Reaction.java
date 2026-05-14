@@ -29,7 +29,50 @@ public record Reaction(
         int mirrorRadius,
         float mirrorChance,
         List<JsonObject> rawTriggers,
-        List<ReactionBinding> bindings) {
+        List<ReactionBinding> bindings,
+        boolean replace) {
+
+    /**
+     * Merge {@code prior} with {@code higherPriority}: tags / bindings /
+     * triggers concatenate (then dedup), scalars are taken from the
+     * higher-priority pack, conditions concatenate required tags. When
+     * {@code higherPriority.replace()} is true, {@code prior} is dropped
+     * and only {@code higherPriority} survives.
+     */
+    public static Reaction mergeFrom(Reaction prior, Reaction higherPriority) {
+        if (prior == null || higherPriority.replace()) return higherPriority;
+
+        java.util.LinkedHashSet<String> mergedTags = new java.util.LinkedHashSet<>(prior.tags());
+        mergedTags.addAll(higherPriority.tags());
+
+        java.util.LinkedHashSet<ReactionBinding> mergedBindings = new java.util.LinkedHashSet<>(prior.bindings());
+        mergedBindings.addAll(higherPriority.bindings());
+
+        java.util.LinkedHashSet<JsonObject> mergedTriggers = new java.util.LinkedHashSet<>(prior.rawTriggers());
+        mergedTriggers.addAll(higherPriority.rawTriggers());
+
+        java.util.LinkedHashSet<String> mergedRequiredTags =
+                new java.util.LinkedHashSet<>(prior.conditions().requiredTags());
+        mergedRequiredTags.addAll(higherPriority.conditions().requiredTags());
+        ReactionConditions mergedConditions = new ReactionConditions(
+                List.copyOf(mergedRequiredTags),
+                higherPriority.conditions().timePhase().or(prior.conditions()::timePhase),
+                higherPriority.conditions().weather().or(prior.conditions()::weather));
+
+        return new Reaction(
+                higherPriority.id(),
+                higherPriority.displayName().or(prior::displayName),
+                List.copyOf(mergedTags),
+                higherPriority.cooldownTicks(),
+                higherPriority.chance(),
+                higherPriority.lockTicks(),
+                mergedConditions,
+                higherPriority.mirrorRadius(),
+                higherPriority.mirrorChance(),
+                List.copyOf(mergedTriggers),
+                List.copyOf(mergedBindings),
+                false);
+    }
 
     public static Reaction parse(ResourceLocation id, JsonObject json) {
         Optional<String> displayName =
@@ -43,6 +86,7 @@ public record Reaction(
                 : ReactionConditions.EMPTY;
         int mirrorRadius = Math.max(0, GsonHelper.getAsInt(json, "mirror_radius", 0));
         float mirrorChance = clamp01(GsonHelper.getAsFloat(json, "mirror_chance", 0.0F));
+        boolean replace = GsonHelper.getAsBoolean(json, "replace", false);
 
         List<JsonObject> rawTriggers = new ArrayList<>();
         if (json.has("triggers") && json.get("triggers").isJsonArray()) {
@@ -58,13 +102,14 @@ public record Reaction(
                 if (b != null) bindings.add(b);
             }
         }
-        if (bindings.isEmpty()) {
-            Townstead.LOGGER.warn("Reaction '{}' has no usable bindings; will never fire", id);
-        }
+        // No "empty bindings" warning here — merge contributions may
+        // legitimately ship triggers-only or bindings-only fragments
+        // that compose with other packs.
         return new Reaction(id, displayName, tags, cooldownTicks, chance, lockTicks,
                 conditions, mirrorRadius, mirrorChance,
                 Collections.unmodifiableList(rawTriggers),
-                Collections.unmodifiableList(bindings));
+                Collections.unmodifiableList(bindings),
+                replace);
     }
 
     private static float clamp01(float value) {

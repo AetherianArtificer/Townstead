@@ -149,6 +149,38 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload::write,
                 com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload::read,
                 TownsteadNetwork::handleEmoteTriggerC2S);
+        registerC2S(com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload.class,
+                com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload::write,
+                com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload::read,
+                TownsteadNetwork::handleGestureNotifyC2S);
+        registerC2S(com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload.class,
+                com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload::write,
+                com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload::read,
+                TownsteadNetwork::handleDialogueStateC2S);
+    }
+
+    private static void handleDialogueStateC2S(
+            com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload payload,
+            ServerPlayer sp
+    ) {
+        Entity target = sp.serverLevel().getEntity(payload.villagerEntityId());
+        if (!(target instanceof net.minecraft.world.entity.LivingEntity villager)) return;
+        long gameTime = sp.serverLevel().getGameTime();
+        if (payload.isOpen()) {
+            com.aetherianartificer.townstead.reaction.trigger.event.DialogueStateTracker.onOpen(
+                    villager, sp.getUUID(), gameTime);
+        } else {
+            com.aetherianartificer.townstead.reaction.trigger.event.DialogueStateTracker.onClose(
+                    villager, gameTime);
+        }
+    }
+
+    private static void handleGestureNotifyC2S(
+            com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload payload,
+            ServerPlayer sp
+    ) {
+        com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
+                sp.serverLevel(), sp, payload.emoteName());
     }
 
     private static void handleEmoteTriggerS2C(com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload payload) {
@@ -172,10 +204,8 @@ public final class TownsteadNetwork {
                 id,
                 payload.loopOverride(),
                 payload.speed());
-        if (target instanceof VillagerEntityMCA) {
-            com.aetherianartificer.townstead.reaction.ReactionDispatcher.onPlayerGesture(
-                    sp.serverLevel(), sp, (net.minecraft.world.entity.LivingEntity) target, id.getPath());
-        }
+        com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
+                sp.serverLevel(), target, id.getPath());
     }
 
     // ── Send helpers ──

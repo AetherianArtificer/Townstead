@@ -27,6 +27,7 @@ public record ReactionBinding(
         float weight,
         float chance,
         int shots,
+        int cooldownTicks,
         Map<String, Float> personalityWeights,
         List<String> requiredTags,
         Optional<SoundSpec> sound,
@@ -75,6 +76,7 @@ public record ReactionBinding(
         float weight = Math.max(0.0F, GsonHelper.getAsFloat(json, "weight", 1.0F));
         float chance = clamp01(GsonHelper.getAsFloat(json, "chance", 1.0F));
         int shots = Math.max(1, GsonHelper.getAsInt(json, "shots", 1));
+        int cooldownTicks = Math.max(0, GsonHelper.getAsInt(json, "cooldown_ticks", 0));
         Map<String, Float> personality = parsePersonalityWeights(json.has("personality_weights")
                 ? json.getAsJsonObject("personality_weights")
                 : null);
@@ -88,7 +90,7 @@ public record ReactionBinding(
         Optional<String> speechPool =
                 json.has("speech_pool") ? Optional.of(GsonHelper.getAsString(json, "speech_pool")) : Optional.empty();
         return new ReactionBinding(backendKey, Collections.unmodifiableList(ids), args, weight, chance, shots,
-                personality, requiredTags, sound, particles, speechPool);
+                cooldownTicks, personality, requiredTags, sound, particles, speechPool);
     }
 
     private static List<String> parseRefField(JsonElement ref) {

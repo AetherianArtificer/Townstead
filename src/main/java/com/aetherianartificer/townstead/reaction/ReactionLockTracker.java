@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.reaction;
 
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -14,9 +15,15 @@ import java.util.WeakHashMap;
  * tight) and {@link #tickFreeze} keeps the villager stationary every tick
  * so the Emotecraft adapter doesn't fade the animation out on detected
  * limb movement. Stamps expire passively when {@code gameTime} crosses them.
+ *
+ * <p>Also remembers the reaction id whose lock is currently active, so
+ * {@link ContextResolver}-style proximity tags can ask
+ * "is anyone nearby mid-dance?".</p>
  */
 public final class ReactionLockTracker {
-    private static final WeakHashMap<LivingEntity, Long> LOCKED_UNTIL = new WeakHashMap<>();
+    private record Lock(long until, ResourceLocation reactionId) {}
+
+    private static final WeakHashMap<LivingEntity, Lock> LOCKED = new WeakHashMap<>();
     private static final Object LOCK = new Object();
 
     private ReactionLockTracker() {}
@@ -24,15 +31,27 @@ public final class ReactionLockTracker {
     public static boolean isLocked(LivingEntity entity, long gameTime) {
         if (entity == null) return false;
         synchronized (LOCK) {
-            Long until = LOCKED_UNTIL.get(entity);
-            return until != null && gameTime < until;
+            Lock l = LOCKED.get(entity);
+            return l != null && gameTime < l.until;
         }
     }
 
-    public static void lock(LivingEntity entity, long gameTime, int lockTicks) {
+    /**
+     * Reaction id currently locking this villager, or {@code null} when
+     * not locked or the lock has expired. Used by activity-proximity tags.
+     */
+    public static ResourceLocation activeReaction(LivingEntity entity, long gameTime) {
+        if (entity == null) return null;
+        synchronized (LOCK) {
+            Lock l = LOCKED.get(entity);
+            return (l != null && gameTime < l.until) ? l.reactionId : null;
+        }
+    }
+
+    public static void lock(LivingEntity entity, long gameTime, int lockTicks, ResourceLocation reactionId) {
         if (entity == null || lockTicks <= 0) return;
         synchronized (LOCK) {
-            LOCKED_UNTIL.put(entity, gameTime + lockTicks);
+            LOCKED.put(entity, new Lock(gameTime + lockTicks, reactionId));
         }
         freeze(entity);
     }

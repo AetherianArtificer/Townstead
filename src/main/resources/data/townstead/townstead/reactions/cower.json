@@ -1,0 +1,27 @@
+{
+    "display_name": "Cower",
+    "tags": ["emotional", "fear", "threat"],
+    "cooldown_ticks": 200,
+    "chance": 0.7,
+    "triggers": [
+        { "type": "context_present", "tags": ["near_zombie_villager"] },
+        { "type": "context_present", "tags": ["outsider_present"] },
+        { "type": "context_present", "tags": ["raid_active"] }
+    ],
+    "bindings": [
+        {
+            "ref": "emotecraft:palm",
+            "weight": 1,
+            "personality_weights": {
+                "anxious": 3.0,
+                "sensitive": 2.5,
+                "gloomy": 1.5,
+                "peaceful": 1.2,
+                "extroverted": 0.3,
+                "playful": 0.3,
+                "default": 1.0
+            },
+            "sound": { "mca_voice": "scream", "volume": 0.8, "pitch_range": [0.95, 1.1] }
+        }
+    ]
+}

@@ -1,14 +1,15 @@
 {
     "display_name": "Dance",
-    "tags": ["social", "celebration"],
+    "tags": ["social", "celebration", "dancing"],
     "cooldown_ticks": 600,
     "chance": 0.6,
     "mirror_radius": 5,
     "mirror_chance": 0.2,
     "triggers": [
-        { "type": "context_enter", "tags": ["in_enclosure:tavern"] },
-        { "type": "time", "phase": "night", "interval_ticks": 2400 },
-        { "type": "mirror_of", "reaction": "townstead:dance", "require_tags_match": true }
+        { "type": "context_present", "tags": ["near_music"] },
+        { "type": "gesture", "emote": "emotecraft:club_penguin_dance" },
+        { "type": "gesture", "emote": "emotecraft:kazotsky_kick" },
+        { "type": "gesture", "emote": "emotecraft:roblox_potion_dance" }
     ],
     "bindings": [
         {

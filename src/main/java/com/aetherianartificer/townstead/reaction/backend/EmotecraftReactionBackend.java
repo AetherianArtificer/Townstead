@@ -31,16 +31,16 @@ public final class EmotecraftReactionBackend implements ReactionBackend {
     }
 
     @Override
-    public boolean play(ServerLevel level, LivingEntity villager, List<String> refIds, Optional<JsonObject> args,
-            ReactionContext context) {
-        if (refIds == null || refIds.isEmpty() || villager == null || level == null) return false;
+    public Optional<String> play(ServerLevel level, LivingEntity villager, List<String> refIds,
+            Optional<JsonObject> args, ReactionContext context) {
+        if (refIds == null || refIds.isEmpty() || villager == null || level == null) return Optional.empty();
         String chosen = refIds.size() == 1 ? refIds.get(0)
                 : refIds.get(level.getRandom().nextInt(refIds.size()));
         String lowercase = chosen.toLowerCase(Locale.ROOT);
         ResourceLocation rl = ResourceLocation.tryParse(Townstead.MOD_ID + ":" + lowercase);
         if (rl == null) {
             Townstead.LOGGER.warn("Reaction emotecraft ref '{}' could not be normalized to a ResourceLocation", chosen);
-            return false;
+            return Optional.empty();
         }
         byte loopOverride = (byte) -1;
         float speed = 1.0F;
@@ -51,6 +51,6 @@ public final class EmotecraftReactionBackend implements ReactionBackend {
             if (parsedSpeed > 0F && Float.isFinite(parsedSpeed)) speed = parsedSpeed;
         }
         AiEmoteScheduler.playEmote(villager, rl, loopOverride, speed);
-        return true;
+        return Optional.of(lowercase);
     }
 }

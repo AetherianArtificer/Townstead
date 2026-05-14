@@ -8,9 +8,10 @@
     "triggers": [
         { "type": "task", "task": "townstead:cook", "phase": "stop:give_up" },
         { "type": "task", "task": "townstead:barista", "phase": "stop:give_up" },
-        { "type": "task", "task": "townstead:harvester", "phase": "stop:give_up" },
-        { "type": "task", "task": "townstead:fisherman", "phase": "stop:give_up" },
-        { "type": "mirror_of", "reaction": "townstead:sad", "require_tags_match": true }
+        { "type": "task", "task": "minecraft:farmer", "phase": "stop:give_up" },
+        { "type": "task", "task": "minecraft:fisherman", "phase": "stop:give_up" },
+        { "type": "task", "task": "minecraft:butcher", "phase": "stop:give_up" },
+        { "type": "gesture", "emote": "emotecraft:crying" }
     ],
     "bindings": [
         {
