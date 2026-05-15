@@ -53,13 +53,9 @@ public final class EmotecraftEmoteLoader {
                     // Register the animation's UUID -> file-stem name now,
                     // while we know the id is real (not the synthetic one
                     // the runtime EMOTE_PLAY bridge constructs).
-                    if (EmoteReflection.animGetUuid != null) {
-                        try {
-                            Object u = EmoteReflection.animGetUuid.invoke(animation);
-                            if (u instanceof java.util.UUID uuid) {
-                                EmoteNameIndex.register(uuid, id);
-                            }
-                        } catch (Throwable ignored) {}
+                    java.util.UUID uuid = EmoteReflection.readAnimationUuid(animation);
+                    if (uuid != null) {
+                        EmoteNameIndex.register(uuid, id);
                     }
                 }
             }

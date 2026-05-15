@@ -84,11 +84,7 @@ public final class EmotecraftEventBridge {
 
     private static void handlePlay(Object keyframeAnimation, UUID playerUuid) {
         try {
-            UUID animUuid = null;
-            if (EmoteReflection.animGetUuid != null) {
-                Object u = EmoteReflection.animGetUuid.invoke(keyframeAnimation);
-                if (u instanceof UUID uu) animUuid = uu;
-            }
+            UUID animUuid = EmoteReflection.readAnimationUuid(keyframeAnimation);
             String suffix = animUuid != null ? animUuid.toString() : Long.toHexString(System.nanoTime());
             ResourceLocation id = synthId(suffix);
 

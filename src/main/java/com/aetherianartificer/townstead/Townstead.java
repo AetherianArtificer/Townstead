@@ -339,6 +339,7 @@ public class Townstead {
         townstead$registerKeybinds(modBus);
         townstead$registerClientTooltipFactory(modBus);
         townstead$registerMenuScreens(modBus);
+        townstead$registerAnimationReloadListener(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -670,7 +671,17 @@ public class Townstead {
     }
     //?} else {
     /*private static void townstead$registerAnimationReloadListener(IEventBus modBus) {
-        // Forge 1.20.1: animation bridge cache invalidation not yet wired
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.minecraftforge.client.event.RegisterClientReloadListenersEvent event) ->
+                            event.registerReloadListener(
+                                    (net.minecraft.server.packs.resources.ResourceManagerReloadListener)
+                                            rm -> com.aetherianartificer.townstead.client.animation.McaAnimationBridge.onResourcesReloaded())
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no client resource pack stack to track.
+        }
     }
     *///?}
 

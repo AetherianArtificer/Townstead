@@ -24,7 +24,8 @@ public final class EmoteReflection {
     static Class<?> animationClass;     // dev.kosmx.playerAnim.core.data.KeyframeAnimation
     static Method animGetBodyParts;     // -> Map<String, StateCollection>
     static Method animGetName;          // -> String; absent on player-animation-lib 1.0.x (1.20.1) — optional
-    static Method animGetUuid;          // -> UUID
+    static Method animGetUuid;          // -> UUID; only on player-animation-lib 1.1+ (1.21.x)
+    static Field animUuidField;         // -> UUID; player-animation-lib 1.0.x (1.20.1) exposes uuid as a public field
     static Field animBeginTick;
     static Field animEndTick;
     static Field animStopTick;
@@ -170,6 +171,31 @@ public final class EmoteReflection {
         return (List<Object>) readData.invoke(null, stream, fileName);
     }
 
+    /**
+     * Resolves the {@code KeyframeAnimation}'s UUID via {@link #animGetUuid}
+     * (player-animation-lib 1.1+, 1.21.x) or {@link #animUuidField}
+     * (player-animation-lib 1.0.x, 1.20.1). Returns {@code null} when
+     * neither is available or the call fails.
+     */
+    public static java.util.UUID readAnimationUuid(Object keyframeAnimation) {
+        if (keyframeAnimation == null) return null;
+        if (animGetUuid != null) {
+            try {
+                Object u = animGetUuid.invoke(keyframeAnimation);
+                if (u instanceof java.util.UUID uu) return uu;
+            } catch (Throwable ignored) {
+            }
+        }
+        if (animUuidField != null) {
+            try {
+                Object u = animUuidField.get(keyframeAnimation);
+                if (u instanceof java.util.UUID uu) return uu;
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
+
     private static void tryResolve() {
         attempted = true;
         ok = false;
@@ -186,6 +212,7 @@ public final class EmoteReflection {
             // doesn't disable the whole loader on 1.20.1.
             animGetName = anyMethodOrNull(animationClass, "getName");
             animGetUuid = anyMethodOrNull(animationClass, "getUuid", "getUUID");
+            animUuidField = anyFieldOrNull(animationClass, "uuid");
             animBeginTick = animationClass.getField("beginTick");
             animEndTick = animationClass.getField("endTick");
             animStopTick = animationClass.getField("stopTick");
