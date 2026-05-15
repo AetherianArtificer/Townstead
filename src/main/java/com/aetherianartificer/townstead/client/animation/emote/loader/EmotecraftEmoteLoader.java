@@ -48,7 +48,16 @@ public final class EmotecraftEmoteLoader {
                     *///?}
                 }
                 ParsedEmote parsed = parseAnimation(id, animation);
-                if (parsed != null) out.add(parsed);
+                if (parsed != null) {
+                    out.add(parsed);
+                    // Register the animation's UUID -> file-stem name now,
+                    // while we know the id is real (not the synthetic one
+                    // the runtime EMOTE_PLAY bridge constructs).
+                    java.util.UUID uuid = EmoteReflection.readAnimationUuid(animation);
+                    if (uuid != null) {
+                        EmoteNameIndex.register(uuid, id);
+                    }
+                }
             }
             return out;
         } catch (Throwable t) {

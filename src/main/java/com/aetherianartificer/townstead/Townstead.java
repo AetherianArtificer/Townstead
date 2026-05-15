@@ -300,6 +300,10 @@ public class Townstead {
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.emote.EmoteCommand.register(
                                 e.getDispatcher(), e.getBuildContext()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
         townstead$registerEmotePlaybackClear();
         registerDialogueConditions();
         LOGGER.info("Townstead loaded");
@@ -335,6 +339,7 @@ public class Townstead {
         townstead$registerKeybinds(modBus);
         townstead$registerClientTooltipFactory(modBus);
         townstead$registerMenuScreens(modBus);
+        townstead$registerAnimationReloadListener(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -355,6 +360,10 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.emote.EmoteCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
                                 e.getDispatcher(), e.getBuildContext()));
         try {
             Class.forName("net.minecraft.client.Minecraft");
@@ -415,10 +424,29 @@ public class Townstead {
             }
         });
         event.enqueueWork(RusticDelightThirstCompat::register);
+        event.enqueueWork(() -> {
+            com.aetherianartificer.townstead.reaction.backend.ReactionBackends.register(
+                    new com.aetherianartificer.townstead.reaction.backend.EmotecraftReactionBackend());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.GestureTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.TaskTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.ContextEnterTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.ContextPresentTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.IdleSpotTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.TimeTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.event.MusicSourceProviders.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.event.JukeboxMusicSourceProvider());
+        });
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new CatalogDataLoader());
+        event.addListener(new com.aetherianartificer.townstead.reaction.ReactionDataLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
@@ -643,7 +671,17 @@ public class Townstead {
     }
     //?} else {
     /*private static void townstead$registerAnimationReloadListener(IEventBus modBus) {
-        // Forge 1.20.1: animation bridge cache invalidation not yet wired
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.minecraftforge.client.event.RegisterClientReloadListenersEvent event) ->
+                            event.registerReloadListener(
+                                    (net.minecraft.server.packs.resources.ResourceManagerReloadListener)
+                                            rm -> com.aetherianartificer.townstead.client.animation.McaAnimationBridge.onResourcesReloaded())
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no client resource pack stack to track.
+        }
     }
     *///?}
 
@@ -808,6 +846,46 @@ public class Townstead {
                 com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload.STREAM_CODEC,
                 this::handleEmoteTriggerC2S
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload.TYPE,
+                com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload.STREAM_CODEC,
+                this::handleGestureNotifyC2S
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload.TYPE,
+                com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload.STREAM_CODEC,
+                this::handleDialogueStateC2S
+        );
+    }
+
+    private void handleDialogueStateC2S(
+            com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            Entity target = sp.serverLevel().getEntity(payload.villagerEntityId());
+            if (!(target instanceof net.minecraft.world.entity.LivingEntity villager)) return;
+            long gameTime = sp.serverLevel().getGameTime();
+            if (payload.isOpen()) {
+                com.aetherianartificer.townstead.reaction.trigger.event.DialogueStateTracker.onOpen(
+                        villager, sp.getUUID(), gameTime);
+            } else {
+                com.aetherianartificer.townstead.reaction.trigger.event.DialogueStateTracker.onClose(
+                        villager, gameTime);
+            }
+        });
+    }
+
+    private void handleGestureNotifyC2S(
+            com.aetherianartificer.townstead.reaction.net.GestureNotifyC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
+                    sp.serverLevel(), sp, payload.emoteName());
+        });
     }
 
     private void handleEmoteTriggerS2C(
@@ -838,6 +916,8 @@ public class Townstead {
                     id,
                     payload.loopOverride(),
                     payload.speed());
+            com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
+                    sp.serverLevel(), target, id.getPath());
         });
     }
 

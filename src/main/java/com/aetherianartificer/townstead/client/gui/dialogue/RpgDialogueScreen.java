@@ -85,6 +85,7 @@ public class RpgDialogueScreen extends Screen {
             //?} else {
             /*NetworkHandler.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
             *///?}
+            sendDialogueState(true);
         }
     }
 
@@ -326,6 +327,19 @@ public class RpgDialogueScreen extends Screen {
         Network.sendToServer(new InteractionCloseRequest(villagerUUID));
         //?} else {
         /*NetworkHandler.sendToServer(new InteractionCloseRequest(villagerUUID));
+        *///?}
+        sendDialogueState(false);
+    }
+
+    private void sendDialogueState(boolean open) {
+        Entity entity = villager.asEntity();
+        if (entity == null) return;
+        var payload = new com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload(
+                entity.getId(), open);
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
         *///?}
     }
 

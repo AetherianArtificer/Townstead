@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.client.animation.emote;
 
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.Set;
+
 /**
  * One active emote playback for a single entity. Stored in the {@link
  * EmotePlaybackRegistry} keyed by entity UUID.
@@ -17,6 +19,12 @@ import net.minecraft.resources.ResourceLocation;
  *   <li>{@code frozenTick &lt; 0} → the adapter hasn't captured the freeze point yet
  *       and will compute it on the first fade-out frame.</li>
  * </ul>
+ *
+ * <p>{@code mobile} signals the source adapter to skip its movement-cancel
+ * detection so the emote plays through walking. {@code skippedBones} is
+ * the set of bone names whose transforms should NOT be applied to the
+ * model, letting vanilla animation show through underneath (typically
+ * legs and torso for arm-only reactions like wave).</p>
  */
 public record EmotePlayback(
         ResourceLocation emoteId,
@@ -25,7 +33,9 @@ public record EmotePlayback(
         float speedMultiplier,
         long fadingOutStartGameTime,
         float frozenTick,
-        float fadeOutDurationTicks
+        float fadeOutDurationTicks,
+        boolean mobile,
+        Set<String> skippedBones
 ) {
     public static EmotePlayback fresh(
             ResourceLocation emoteId,
@@ -33,7 +43,20 @@ public record EmotePlayback(
             ParsedEmote.LoopType loopType,
             float speedMultiplier
     ) {
-        return new EmotePlayback(emoteId, startGameTime, loopType, speedMultiplier, -1L, -1F, 0F);
+        return new EmotePlayback(emoteId, startGameTime, loopType, speedMultiplier, -1L, -1F, 0F,
+                false, Set.of());
+    }
+
+    public static EmotePlayback fresh(
+            ResourceLocation emoteId,
+            long startGameTime,
+            ParsedEmote.LoopType loopType,
+            float speedMultiplier,
+            boolean mobile,
+            Set<String> skippedBones
+    ) {
+        return new EmotePlayback(emoteId, startGameTime, loopType, speedMultiplier, -1L, -1F, 0F,
+                mobile, skippedBones == null ? Set.of() : skippedBones);
     }
 
     public boolean isFadingOut() {
@@ -42,12 +65,14 @@ public record EmotePlayback(
 
     public EmotePlayback startFadeOut(long fadingStart, float frozenTick, float durationTicks) {
         return new EmotePlayback(
-                emoteId, startGameTime, loopType, speedMultiplier, fadingStart, frozenTick, durationTicks);
+                emoteId, startGameTime, loopType, speedMultiplier, fadingStart, frozenTick, durationTicks,
+                mobile, skippedBones);
     }
 
     public EmotePlayback withFrozenTick(float frozenTick) {
         return new EmotePlayback(
                 emoteId, startGameTime, loopType, speedMultiplier,
-                fadingOutStartGameTime, frozenTick, fadeOutDurationTicks);
+                fadingOutStartGameTime, frozenTick, fadeOutDurationTicks,
+                mobile, skippedBones);
     }
 }

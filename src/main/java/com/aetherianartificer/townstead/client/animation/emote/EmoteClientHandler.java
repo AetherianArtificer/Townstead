@@ -29,7 +29,26 @@ public final class EmoteClientHandler {
         if (id == null) return;
 
         ParsedEmote.LoopType override = decodeLoopOverride(payload.loopOverride());
-        TownsteadEmoteApi.trigger(living, id, override, payload.speed());
+        java.util.Set<String> skippedBones = parseSkippedBones(payload.skippedBones());
+        TownsteadEmoteApi.trigger(living, id, override, payload.speed(), payload.mobile(), skippedBones);
+    }
+
+    private static java.util.Set<String> parseSkippedBones(String raw) {
+        if (raw == null || raw.isBlank()) return java.util.Set.of();
+        // Expand group names ("legs", "arms", etc.) to the concrete bone
+        // keys the EmotecraftAnimationSourceAdapter knows about.
+        java.util.Set<String> out = new java.util.HashSet<>();
+        for (String token : raw.split(",")) {
+            String t = token.trim().toLowerCase(java.util.Locale.ROOT);
+            if (t.isEmpty()) continue;
+            switch (t) {
+                case "legs" -> { out.add("left_leg"); out.add("right_leg"); }
+                case "arms" -> { out.add("left_arm"); out.add("right_arm"); }
+                case "torso" -> { out.add("body"); out.add("torso"); }
+                default -> out.add(t);
+            }
+        }
+        return java.util.Set.copyOf(out);
     }
 
     private static ResourceLocation parseId(String raw) {

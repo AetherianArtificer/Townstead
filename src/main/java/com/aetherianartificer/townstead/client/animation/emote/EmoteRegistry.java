@@ -27,6 +27,7 @@ import java.util.Optional;
  */
 public final class EmoteRegistry {
     private static final String SCAN_PATH = "townstead_emotes";
+    private static final String EMOTECRAFT_SCAN_PATH = "emotes";
     private static volatile Map<ResourceLocation, ParsedEmote> EMOTES = Map.of();
 
     private EmoteRegistry() {}
@@ -70,20 +71,22 @@ public final class EmoteRegistry {
             return path.endsWith(".json") || path.endsWith(".emotecraft");
         });
 
+        // Also pick up Emotecraft's built-in emotes at assets/emotecraft/emotes/*,
+        // so reactions can reference them by file stem (e.g. emotecraft:waving).
+        Map<ResourceLocation, Resource> builtIns = rm.listResources(EMOTECRAFT_SCAN_PATH, location -> {
+            if (!"emotecraft".equals(location.getNamespace())) return false;
+            String path = location.getPath();
+            return path.endsWith(".json") || path.endsWith(".emotecraft");
+        });
+
+        com.aetherianartificer.townstead.client.animation.emote.loader.EmoteNameIndex.clear();
+
         Map<ResourceLocation, ParsedEmote> loaded = new HashMap<>();
+        for (Map.Entry<ResourceLocation, Resource> entry : builtIns.entrySet()) {
+            loadOne(entry.getKey(), entry.getValue(), loaded);
+        }
         for (Map.Entry<ResourceLocation, Resource> entry : found.entrySet()) {
-            ResourceLocation file = entry.getKey();
-            Resource resource = entry.getValue();
-            ResourceLocation baseId = idFromResource(file);
-            try (InputStream stream = resource.open()) {
-                List<ParsedEmote> parsed = EmotecraftEmoteLoader.load(baseId, stream, file.getPath());
-                for (ParsedEmote pe : parsed) {
-                    loaded.put(pe.id(), pe);
-                }
-            } catch (Exception e) {
-                Townstead.LOGGER.debug("[AnimationBridge] emote loader: failed to read {} ({})",
-                        file, e.getMessage());
-            }
+            loadOne(entry.getKey(), entry.getValue(), loaded);
         }
 
         EMOTES = Map.copyOf(loaded);
@@ -92,9 +95,28 @@ public final class EmoteRegistry {
         }
     }
 
+    private static void loadOne(ResourceLocation file, Resource resource,
+            Map<ResourceLocation, ParsedEmote> sink) {
+        ResourceLocation baseId = idFromResource(file);
+        try (InputStream stream = resource.open()) {
+            List<ParsedEmote> parsed = EmotecraftEmoteLoader.load(baseId, stream, file.getPath());
+            for (ParsedEmote pe : parsed) {
+                sink.put(pe.id(), pe);
+            }
+        } catch (Exception e) {
+            Townstead.LOGGER.debug("[AnimationBridge] emote loader: failed to read {} ({})",
+                    file, e.getMessage());
+        }
+    }
+
     private static ResourceLocation idFromResource(ResourceLocation file) {
         String path = file.getPath();
-        String stripped = path.startsWith(SCAN_PATH + "/") ? path.substring(SCAN_PATH.length() + 1) : path;
+        String stripped = path;
+        if (stripped.startsWith(SCAN_PATH + "/")) {
+            stripped = stripped.substring(SCAN_PATH.length() + 1);
+        } else if (stripped.startsWith(EMOTECRAFT_SCAN_PATH + "/")) {
+            stripped = stripped.substring(EMOTECRAFT_SCAN_PATH.length() + 1);
+        }
         int dot = stripped.lastIndexOf('.');
         if (dot > 0) stripped = stripped.substring(0, dot);
         //? if neoforge {

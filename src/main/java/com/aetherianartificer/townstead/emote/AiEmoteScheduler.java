@@ -18,7 +18,11 @@ public final class AiEmoteScheduler {
     private AiEmoteScheduler() {}
 
     public static void playEmote(LivingEntity entity, ResourceLocation emoteId) {
-        playEmote(entity, emoteId, (byte) -1, 1.0F);
+        playEmote(entity, emoteId, (byte) -1, 1.0F, false, "");
+    }
+
+    public static void playEmote(LivingEntity entity, ResourceLocation emoteId, byte loopOverride, float speed) {
+        playEmote(entity, emoteId, loopOverride, speed, false, "");
     }
 
     /**
@@ -31,7 +35,7 @@ public final class AiEmoteScheduler {
         if (!(entity instanceof VillagerEntityMCA) && !(entity instanceof ServerPlayer)) return;
 
         EmoteTriggerS2CPayload payload = new EmoteTriggerS2CPayload(
-                entity.getId(), "", (byte) -1, 1.0F);
+                entity.getId(), "", (byte) -1, 1.0F, false, "");
 
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntityAndSelf(entity, payload);
@@ -47,14 +51,17 @@ public final class AiEmoteScheduler {
             LivingEntity entity,
             ResourceLocation emoteId,
             byte loopOverride,
-            float speed
+            float speed,
+            boolean mobile,
+            String skippedBones
     ) {
         if (entity == null || emoteId == null) return;
         if (entity.level().isClientSide()) return;
         if (!(entity instanceof VillagerEntityMCA) && !(entity instanceof ServerPlayer)) return;
 
         EmoteTriggerS2CPayload payload = new EmoteTriggerS2CPayload(
-                entity.getId(), emoteId.toString(), loopOverride, speed);
+                entity.getId(), emoteId.toString(), loopOverride, speed,
+                mobile, skippedBones == null ? "" : skippedBones);
 
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntityAndSelf(entity, payload);
