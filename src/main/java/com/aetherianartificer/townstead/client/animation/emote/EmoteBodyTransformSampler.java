@@ -51,19 +51,20 @@ public final class EmoteBodyTransformSampler {
         float blend = blend(playback, now, partialTick, elapsed);
         if (blend <= 0F) return;
 
+        boolean easingBefore = emote.easingBefore();
         float xPos = bodyBone.translationKeyed()
-                ? sample(bodyBone.xPos(), bodyBone.xPosDefault(), t) * blend
+                ? sample(bodyBone.xPos(), bodyBone.xPosDefault(), t, easingBefore) * blend
                 : 0F;
         float yPos = bodyBone.translationKeyed()
-                ? sample(bodyBone.yPos(), bodyBone.yPosDefault(), t) * blend
+                ? sample(bodyBone.yPos(), bodyBone.yPosDefault(), t, easingBefore) * blend
                 : 0F;
         float zPos = bodyBone.translationKeyed()
-                ? sample(bodyBone.zPos(), bodyBone.zPosDefault(), t) * blend
+                ? sample(bodyBone.zPos(), bodyBone.zPosDefault(), t, easingBefore) * blend
                 : 0F;
 
-        float xRot = sample(bodyBone.xRot(), bodyBone.xRotDefault(), t) * blend;
-        float yRot = sample(bodyBone.yRot(), bodyBone.yRotDefault(), t) * blend;
-        float zRot = sample(bodyBone.zRot(), bodyBone.zRotDefault(), t) * blend;
+        float xRot = sample(bodyBone.xRot(), bodyBone.xRotDefault(), t, easingBefore) * blend;
+        float yRot = sample(bodyBone.yRot(), bodyBone.yRotDefault(), t, easingBefore) * blend;
+        float zRot = sample(bodyBone.zRot(), bodyBone.zRotDefault(), t, easingBefore) * blend;
 
         boolean hasTrans = xPos != 0F || yPos != 0F || zPos != 0F;
         boolean hasRot = xRot != 0F || yRot != 0F || zRot != 0F;
@@ -104,30 +105,30 @@ public final class EmoteBodyTransformSampler {
         return elapsed;
     }
 
-    private static float sample(List<ParsedKeyframe> keyframes, float restValue, float tick) {
+    private static float sample(List<ParsedKeyframe> keyframes, float restValue, float tick, boolean easingBefore) {
         if (keyframes == null || keyframes.isEmpty()) return restValue;
         ParsedKeyframe first = keyframes.get(0);
         if (tick <= 0F) return restValue;
         if (tick <= first.tick()) {
-            return easeBetween(restValue, first.value(), 0F, first.tick(), tick, first.easing());
+            return easeBetween(restValue, first.value(), 0F, first.tick(), tick, first.easing(), first.easingArg());
         }
         for (int i = 1; i < keyframes.size(); i++) {
             ParsedKeyframe prev = keyframes.get(i - 1);
             ParsedKeyframe next = keyframes.get(i);
             if (tick <= next.tick()) {
-                // Match Emotecraft's legacy isEasingBefore=false semantics: the
-                // curve through the span is governed by the previous keyframe's
-                // easing (e.g. CONSTANT -> hold until the end, then snap).
-                return easeBetween(prev.value(), next.value(), prev.tick(), next.tick(), tick, prev.easing());
+                // Upstream KeyframeAnimationPlayer$Axis: pick prev when
+                // isEasingBefore=false (legacy default), next when true.
+                ParsedKeyframe carrier = easingBefore ? next : prev;
+                return easeBetween(prev.value(), next.value(), prev.tick(), next.tick(), tick, carrier.easing(), carrier.easingArg());
             }
         }
         return keyframes.get(keyframes.size() - 1).value();
     }
 
-    private static float easeBetween(float a, float b, float startTick, float endTick, float tick, EmoteEasing easing) {
+    private static float easeBetween(float a, float b, float startTick, float endTick, float tick, EmoteEasing easing, Float easingArg) {
         float span = endTick - startTick;
         if (span <= 0F) return b;
         float alpha = Mth.clamp((tick - startTick) / span, 0F, 1F);
-        return Mth.lerp(easing.apply(alpha), a, b);
+        return Mth.lerp(easing.apply(alpha, easingArg), a, b);
     }
 }

@@ -50,7 +50,7 @@ public final class EmoteSampler {
             EmoteBoneMapping.Targets mapping = EmoteBoneMapping.mapTargets(boneName);
             if (mapping.isEmpty()) continue;
 
-            BonePose pose = samplePose(bone, tick);
+            BonePose pose = samplePose(bone, tick, emote.easingBefore());
 
             if (mapping.primary() != null) {
                 ModelPart part = targets.resolve(mapping.primary()).orElse(null);
@@ -78,32 +78,32 @@ public final class EmoteSampler {
             boolean hasBend, float bend, float bendDirection
     ) {}
 
-    private static BonePose samplePose(ParsedBoneAnimation bone, float tick) {
-        float xRot = sampleRot(bone.xRot(), bone.xRotDefault(), tick);
-        float yRot = sampleRot(bone.yRot(), bone.yRotDefault(), tick);
-        float zRot = sampleRot(bone.zRot(), bone.zRotDefault(), tick);
+    private static BonePose samplePose(ParsedBoneAnimation bone, float tick, boolean easingBefore) {
+        float xRot = sampleRot(bone.xRot(), bone.xRotDefault(), tick, easingBefore);
+        float yRot = sampleRot(bone.yRot(), bone.yRotDefault(), tick, easingBefore);
+        float zRot = sampleRot(bone.zRot(), bone.zRotDefault(), tick, easingBefore);
 
         boolean translation = bone.translationKeyed();
         float xPos = 0F, yPos = 0F, zPos = 0F;
         if (translation) {
-            xPos = sampleTrans(bone.xPos(), bone.xPosDefault(), tick);
-            yPos = sampleTrans(bone.yPos(), bone.yPosDefault(), tick);
-            zPos = sampleTrans(bone.zPos(), bone.zPosDefault(), tick);
+            xPos = sampleTrans(bone.xPos(), bone.xPosDefault(), tick, easingBefore);
+            yPos = sampleTrans(bone.yPos(), bone.yPosDefault(), tick, easingBefore);
+            zPos = sampleTrans(bone.zPos(), bone.zPosDefault(), tick, easingBefore);
         }
 
         boolean scale = bone.scaleKeyed();
         float xS = 1F, yS = 1F, zS = 1F;
         if (scale) {
-            xS = sampleScale(bone.xScale(), bone.xScaleDefault(), tick);
-            yS = sampleScale(bone.yScale(), bone.yScaleDefault(), tick);
-            zS = sampleScale(bone.zScale(), bone.zScaleDefault(), tick);
+            xS = sampleScale(bone.xScale(), bone.xScaleDefault(), tick, easingBefore);
+            yS = sampleScale(bone.yScale(), bone.yScaleDefault(), tick, easingBefore);
+            zS = sampleScale(bone.zScale(), bone.zScaleDefault(), tick, easingBefore);
         }
 
         boolean bendKeyed = bone.bendKeyed();
         float bendVal = 0F, bendDirVal = 0F;
         if (bendKeyed) {
-            bendVal = sampleRot(bone.bend(), bone.bendDefault(), tick);
-            bendDirVal = sampleRot(bone.bendDirection(), bone.bendDirectionDefault(), tick);
+            bendVal = sampleRot(bone.bend(), bone.bendDefault(), tick, easingBefore);
+            bendDirVal = sampleRot(bone.bendDirection(), bone.bendDirectionDefault(), tick, easingBefore);
         }
 
         return new BonePose(xRot, yRot, zRot, translation, xPos, yPos, zPos,
@@ -167,54 +167,57 @@ public final class EmoteSampler {
                 AnimationTransform.Operation.ADD);
     }
 
-    private static float sampleRot(List<ParsedKeyframe> keyframes, float restValue, float tick) {
-        float v = sampleRaw(keyframes, restValue, tick);
+    private static float sampleRot(List<ParsedKeyframe> keyframes, float restValue, float tick, boolean easingBefore) {
+        float v = sampleRaw(keyframes, restValue, tick, easingBefore);
         return Float.isFinite(v) ? v : 0F;
     }
 
-    private static float sampleTrans(List<ParsedKeyframe> keyframes, float restValue, float tick) {
-        float v = sampleRaw(keyframes, restValue, tick);
+    private static float sampleTrans(List<ParsedKeyframe> keyframes, float restValue, float tick, boolean easingBefore) {
+        float v = sampleRaw(keyframes, restValue, tick, easingBefore);
         return Float.isFinite(v) ? v : 0F;
     }
 
-    private static float sampleScale(List<ParsedKeyframe> keyframes, float restValue, float tick) {
-        float v = sampleRaw(keyframes, restValue, tick);
+    private static float sampleScale(List<ParsedKeyframe> keyframes, float restValue, float tick, boolean easingBefore) {
+        float v = sampleRaw(keyframes, restValue, tick, easingBefore);
         return Float.isFinite(v) ? v : restValue;
     }
 
-    private static float sampleRaw(List<ParsedKeyframe> keyframes, float restValue, float tick) {
+    private static float sampleRaw(List<ParsedKeyframe> keyframes, float restValue, float tick, boolean easingBefore) {
         if (keyframes == null || keyframes.isEmpty()) return restValue;
 
         ParsedKeyframe first = keyframes.get(0);
         if (tick <= 0F) return restValue;
         if (tick <= first.tick()) {
-            // Interpolating from the synthesized rest keyframe at tick 0 to the
-            // first authored keyframe — use the first authored keyframe's easing
-            // (the curve "into" it).
-            return easeBetween(restValue, first.value(), 0F, first.tick(), tick, first.easing());
+            // Synthesized rest keyframe at tick 0 → first authored keyframe.
+            // Use the first authored keyframe's easing (the curve "into" it) —
+            // this matches upstream when easingBefore=true and is our chosen
+            // fade-in semantic when easingBefore=false (there is no real
+            // "prev" keyframe to inherit easing from).
+            return easeBetween(restValue, first.value(), 0F, first.tick(), tick, first.easing(), first.easingArg());
         }
 
         for (int i = 1; i < keyframes.size(); i++) {
             ParsedKeyframe prev = keyframes.get(i - 1);
             ParsedKeyframe next = keyframes.get(i);
             if (tick <= next.tick()) {
-                // Use the PREVIOUS keyframe's easing — Emotecraft's legacy default
-                // (isEasingBefore = false). This matters for snap-back keyframes
-                // like backflip's tick-70 CONSTANT -> tick-71 0: with prev's
-                // CONSTANT easing the value holds at the start until the end of
-                // the span, then jumps; with the next keyframe's LINEAR easing
-                // (what we used to do) the value lerps through 180° mid-tick and
-                // the entity visibly flashes upside-down at the end of the flip.
-                return easeBetween(prev.value(), next.value(), prev.tick(), next.tick(), tick, prev.easing());
+                // Upstream KeyframeAnimationPlayer$Axis: the span's easing is
+                // chosen by isEasingBefore — false picks prev, true picks next.
+                // Default (false) matters for snap-back keyframes like
+                // backflip's tick-70 CONSTANT -> tick-71 0: with prev's
+                // CONSTANT easing the value holds at the start until the end
+                // of the span, then jumps; using next's LINEAR easing would
+                // lerp through 180° mid-tick and visibly flash upside-down.
+                ParsedKeyframe carrier = easingBefore ? next : prev;
+                return easeBetween(prev.value(), next.value(), prev.tick(), next.tick(), tick, carrier.easing(), carrier.easingArg());
             }
         }
         return keyframes.get(keyframes.size() - 1).value();
     }
 
-    private static float easeBetween(float a, float b, float startTick, float endTick, float tick, EmoteEasing easing) {
+    private static float easeBetween(float a, float b, float startTick, float endTick, float tick, EmoteEasing easing, Float easingArg) {
         float span = endTick - startTick;
         if (span <= 0F) return b;
         float alpha = Mth.clamp((tick - startTick) / span, 0F, 1F);
-        return Mth.lerp(easing.apply(alpha), a, b);
+        return Mth.lerp(easing.apply(alpha, easingArg), a, b);
     }
 }

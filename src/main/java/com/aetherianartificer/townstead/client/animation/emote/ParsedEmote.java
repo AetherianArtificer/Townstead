@@ -21,6 +21,8 @@ public record ParsedEmote(
         int stopTick,
         int returnToTick,
         LoopType loopType,
+        boolean easingBefore,
+        boolean nsfw,
         Map<String, ParsedBoneAnimation> bones
 ) {
     /** Mirrors Emotecraft's notion of looping; {@link #LOOP} corresponds to {@code isInfinite=true}. */

@@ -31,6 +31,8 @@ public final class EmoteReflection {
     static Field animStopTick;
     static Field animReturnToTick;
     static Field animIsInfinite;
+    static Field animIsEasingBefore;    // -> boolean; when true, the SPAN's easing comes from the next keyframe (vs prev when false)
+    static Field animNsfw;              // -> boolean; content-filter tag. Preserved on ParsedEmote; no current consumer.
     static Field animExtraData;         // -> HashMap<String, Object>; holds JSON top-level fields like "name", "description", and "iconData" (ByteBuffer)
 
     static Class<?> stateCollectionClass;
@@ -50,6 +52,7 @@ public final class EmoteReflection {
     static Field kfTick;
     static Field kfValue;
     static Field kfEase;
+    static Field kfEasingArg;          // -> Float; nullable. Player-animation-lib 2.x; absent on older.
 
     static Class<?> clientEmoteEventsClass;
     static Field emotePlayEventField;
@@ -218,6 +221,8 @@ public final class EmoteReflection {
             animStopTick = animationClass.getField("stopTick");
             animReturnToTick = animationClass.getField("returnToTick");
             animIsInfinite = animationClass.getField("isInfinite");
+            animIsEasingBefore = anyFieldOrNull(animationClass, "isEasingBefore");
+            animNsfw = anyFieldOrNull(animationClass, "nsfw");
             animExtraData = anyFieldOrNull(animationClass, "extraData");
 
             stateCollectionClass = Class.forName(
@@ -246,6 +251,7 @@ public final class EmoteReflection {
             kfTick = keyframeClass.getField("tick");
             kfValue = keyframeClass.getField("value");
             kfEase = keyframeClass.getField("ease");
+            kfEasingArg = anyFieldOrNull(keyframeClass, "easingArg");
 
             clientEmoteEventsClass = Class.forName(
                     "io.github.kosmx.emotes.api.events.client.ClientEmoteEvents");

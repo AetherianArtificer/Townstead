@@ -120,7 +120,21 @@ public final class EmotecraftEmoteLoader {
             if (mapped.isEmpty()) return null;
 
             ParsedEmote.LoopType loop = isInfinite ? ParsedEmote.LoopType.LOOP : ParsedEmote.LoopType.PLAY_ONCE;
-            return new ParsedEmote(id, displayName, beginTick, endTick, stopTick, returnToTick, loop, mapped);
+            boolean easingBefore = false;
+            if (EmoteReflection.animIsEasingBefore != null) {
+                try {
+                    easingBefore = EmoteReflection.animIsEasingBefore.getBoolean(animation);
+                } catch (Throwable ignored) {
+                }
+            }
+            boolean nsfw = false;
+            if (EmoteReflection.animNsfw != null) {
+                try {
+                    nsfw = EmoteReflection.animNsfw.getBoolean(animation);
+                } catch (Throwable ignored) {
+                }
+            }
+            return new ParsedEmote(id, displayName, beginTick, endTick, stopTick, returnToTick, loop, easingBefore, nsfw, mapped);
         } catch (Throwable t) {
             Townstead.LOGGER.debug("[AnimationBridge] emote loader: animation parse failed for {} ({})",
                     id, t.getMessage());
@@ -205,7 +219,12 @@ public final class EmotecraftEmoteLoader {
             float value = EmoteReflection.kfValue.getFloat(kf);
             Object ease = EmoteReflection.kfEase.get(kf);
             EmoteEasing easing = EmoteEasing.fromNameOrLinear(ease == null ? null : ease.toString());
-            return new ParsedKeyframe(tick, value, easing);
+            Float easingArg = null;
+            if (EmoteReflection.kfEasingArg != null) {
+                Object raw = EmoteReflection.kfEasingArg.get(kf);
+                if (raw instanceof Float f) easingArg = f;
+            }
+            return new ParsedKeyframe(tick, value, easing, easingArg);
         } catch (Throwable t) {
             return null;
         }
