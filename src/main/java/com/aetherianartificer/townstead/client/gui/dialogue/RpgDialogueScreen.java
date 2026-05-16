@@ -59,9 +59,12 @@ public class RpgDialogueScreen extends Screen {
         TYPEWRITER_PLAYING,
         CHOICES_VISIBLE,
         AWAITING_RESPONSE,
+        AWAITING_LATE_CONTENT,
         ENDING,
         CLOSING
     }
+
+    private static final int LATE_CONTENT_TIMEOUT_TICKS = 40;
 
     public RpgDialogueScreen(VillagerLike<?> villager) {
         super(Component.literal("Dialogue"));
@@ -111,7 +114,7 @@ public class RpgDialogueScreen extends Screen {
                     }
                 }
             }
-            case AWAITING_RESPONSE -> {
+            case AWAITING_RESPONSE, AWAITING_LATE_CONTENT -> {
                 awaitingResponseTimer--;
                 if (awaitingResponseTimer <= 0) {
                     closeByUser();
@@ -308,11 +311,28 @@ public class RpgDialogueScreen extends Screen {
     @Override
     public void removed() {
         super.removed();
-        if (!userInitiatedClose) {
-            // Server closed us (stopInteracting → closeContainer → setScreen(null)).
-            // Re-open so the final dialogue line can display.
-            Minecraft mc = Minecraft.getInstance();
-            mc.tell(() -> mc.setScreen(this));
+        if (userInitiatedClose) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (state == DialogueState.TYPEWRITER_PLAYING || state == DialogueState.ENDING) {
+            // Content is rolling; re-open so the player can finish reading.
+            dialogAnswers = null;
+            choicePanel.setVisible(false);
+            mc.tell(() -> { if (mc.screen == null) mc.setScreen(this); });
+        } else if (state == DialogueState.AWAITING_RESPONSE) {
+            // Server closed before content arrived. Some MCA actions dispatch
+            // content asynchronously (e.g. rumors → command:location runs off
+            // the server thread and sends VillagerMessage after the close).
+            // Stay open briefly so a late message can be routed in.
+            state = DialogueState.AWAITING_LATE_CONTENT;
+            awaitingResponseTimer = LATE_CONTENT_TIMEOUT_TICKS;
+            mc.tell(() -> { if (mc.screen == null) mc.setScreen(this); });
+        } else {
+            // Nothing pending — accept the close.
+            userInitiatedClose = true;
+            mc.options.hideGui = false;
+            if (cameraController != null) cameraController.snapToOriginal();
+            sendDialogueState(false);
         }
     }
 
@@ -388,6 +408,27 @@ public class RpgDialogueScreen extends Screen {
 
     public boolean isVillager(UUID uuid) {
         return villagerUUID.equals(uuid);
+    }
+
+    // Match "§7<name>: §o<line>" and return the inner line, or null.
+    public Component tryExtractExternalVillagerLine(Component message) {
+        String full = message.getString();
+        if (full.isEmpty() || full.charAt(0) != '§') return null;
+        String name = villager.asEntity().getDisplayName().getString();
+        String prefix = "§7" + name + ": §o";
+        if (!full.startsWith(prefix)) return null;
+        String body = full.substring(prefix.length());
+        if (body.isEmpty()) return null;
+        return Component.literal(body);
+    }
+
+    public void setIncomingChatLine(Component line) {
+        dialogueBox.setText(line, font);
+        choicePanel.setVisible(false);
+        state = DialogueState.TYPEWRITER_PLAYING;
+        awaitingResponseTimer = 0;
+        speakDisplayedText(line);
+        narrateText(line);
     }
 
     public void setFinalPhrase(Component message) {

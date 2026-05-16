@@ -79,6 +79,19 @@ public class DialogueCameraController {
         return restoring && restoreTicks >= MAX_RESTORE_TICKS;
     }
 
+    /** Snap camera back to original orientation, no animation. */
+    public void snapToOriginal() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) return;
+        player.yRotO = originalYaw;
+        player.xRotO = originalPitch;
+        player.setYRot(originalYaw);
+        player.setXRot(originalPitch);
+        currentYaw = originalYaw;
+        currentPitch = originalPitch;
+        restoring = false;
+    }
+
     private void updateRestore(LocalPlayer player, float dt) {
         float lerpFactor = 1.0f - (float) Math.exp(-RESTORE_SPEED * dt);
         currentYaw = lerpAngle(lerpFactor, currentYaw, originalYaw);
