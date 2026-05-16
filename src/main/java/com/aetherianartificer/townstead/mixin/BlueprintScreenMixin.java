@@ -5,14 +5,12 @@ package com.aetherianartificer.townstead.mixin;
 *///?}
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.client.gui.shift.ShiftManagerScreen;
 import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.aetherianartificer.townstead.mixin.accessor.BlueprintScreenAccessor;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
 import com.aetherianartificer.townstead.profession.ProfessionSetPayload;
-import com.aetherianartificer.townstead.shift.ShiftClientStore;
-import com.aetherianartificer.townstead.shift.ShiftData;
-import com.aetherianartificer.townstead.shift.ShiftSetPayload;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import net.conczin.mca.MCA;
@@ -97,8 +95,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     private static final String TOWNSTEAD_CATALOG_PAGE = "townstead_catalog";
     @Unique
     private static final String TOWNSTEAD_SPIRIT_PAGE = "townstead_spirit";
-    @Unique
-    private static final String TOWNSTEAD_SHIFT_PAGE = "townstead_shift";
     @Unique
     private static final String TOWNSTEAD_PROFESSION_PAGE = "townstead_profession";
     @Unique
@@ -245,30 +241,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private static final Map<String, String> TOWNSTEAD$AUTO_TIER_PREFIX_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
 
-    // --- Shift page state ---
-    @Unique
-    private static final int SHIFT_ROWS_PER_PAGE = 7;
-    @Unique
-    private static final int SHIFT_CELL_H = 12;
-    @Unique
-    private static final int SHIFT_NAME_W = 50;
-    @Unique
-    private Button townstead$shiftNavButton;
-    @Unique
-    private int townstead$shiftPage = 0;
-    @Unique
-    private List<UUID> townstead$shiftVillagerUuids = List.of();
-    @Unique
-    private Map<UUID, String> townstead$shiftVillagerNames = new HashMap<>();
-    @Unique
-    private Map<UUID, Integer> townstead$shiftVillagerEntityIds = new HashMap<>();
-    @Unique
-    private final Map<UUID, int[]> townstead$shiftEdits = new HashMap<>();
-    @Unique
-    private boolean townstead$shiftQueried = false;
-    @Unique
-    private int townstead$shiftPaintOrdinal = -1; // -1 = cycle mode, 0-3 = paint mode
-
     // --- Profession page state ---
     @Unique
     private static final int PROF_ROWS_PER_PAGE = 7;
@@ -367,9 +339,6 @@ public abstract class BlueprintScreenMixin extends Screen {
             // so the spirit panel can own the screen width without the
             // nav buttons bleeding through.
             townstead$setNavVisible(false);
-        } else if (TOWNSTEAD_SHIFT_PAGE.equals(this.page)) {
-            townstead$initShiftPage();
-            townstead$setNavVisible(true);
         } else if (TOWNSTEAD_PROFESSION_PAGE.equals(this.page)) {
             townstead$initProfessionPage();
             townstead$setNavVisible(true);
@@ -415,8 +384,6 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$catalogNeedsNextButton = null;
             townstead$catalogNeedsPage = 0;
             townstead$upgradeBuildingButton = null;
-            townstead$shiftEdits.clear();
-            townstead$shiftQueried = false;
             townstead$profSelectedVillager = null;
             townstead$setNavVisible(true);
         }
@@ -815,8 +782,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private boolean townstead$dispatchScroll(double mouseX, double mouseY, double verticalAmount) {
         if (townstead$handleCatalogScroll(mouseX, mouseY, verticalAmount))
-            return true;
-        if (townstead$handleShiftScroll(mouseX, mouseY, verticalAmount))
             return true;
         if (townstead$handleProfessionScroll(mouseX, mouseY, verticalAmount))
             return true;
@@ -1925,7 +1890,7 @@ public abstract class BlueprintScreenMixin extends Screen {
 
 
     // =====================================================================
-    // Shift Manager page
+    // Villagers page controls (entry points for Shifts and Professions)
     // =====================================================================
 
     @Unique
@@ -1938,398 +1903,12 @@ public abstract class BlueprintScreenMixin extends Screen {
                 x, y, 96, 20,
                 Component.translatable("gui.blueprint.shifts"),
                 Component.empty(),
-                b -> setPage(TOWNSTEAD_SHIFT_PAGE)));
+                b -> net.minecraft.client.Minecraft.getInstance().setScreen(new ShiftManagerScreen((Screen) (Object) this))));
         addRenderableWidget(new TooltipButtonWidget(
                 x, y + 22, 96, 20,
                 Component.translatable("gui.blueprint.professions"),
                 Component.empty(),
                 b -> setPage(TOWNSTEAD_PROFESSION_PAGE)));
-    }
-
-    @Unique
-    private int townstead$shiftGridLeft() {
-        return this.width / 2 - 80 + SHIFT_NAME_W + 4;
-    }
-
-    @Unique
-    private int townstead$shiftGridRight() {
-        return this.width / 2 + 176;
-    }
-
-    @Unique
-    private int townstead$shiftCellW() {
-        return (townstead$shiftGridRight() - townstead$shiftGridLeft()) / ShiftData.HOURS_PER_DAY;
-    }
-
-    @Unique
-    private void townstead$initShiftPage() {
-        townstead$shiftPage = 0;
-        townstead$shiftEdits.clear();
-        townstead$shiftQueried = false;
-        townstead$shiftPaintOrdinal = -1;
-        townstead$refreshShiftVillagers();
-
-        // Controls row at the top
-        int topY = this.height / 2 - 74;
-        int leftX = this.width / 2 - 80;
-
-        // Back button
-        addRenderableWidget(new ButtonWidget(
-                leftX, topY, 40, 14,
-                Component.translatable("townstead.gui.back"),
-                b -> setPage("villagers")));
-
-        // Pagination buttons (right-aligned)
-        int rightEdge = townstead$shiftGridRight();
-        addRenderableWidget(new ButtonWidget(
-                rightEdge - 42, topY, 20, 14,
-                Component.literal(">"),
-                b -> townstead$shiftPageDelta(1)));
-        addRenderableWidget(new ButtonWidget(
-                rightEdge - 64, topY, 20, 14,
-                Component.literal("<"),
-                b -> townstead$shiftPageDelta(-1)));
-
-        // Reset all button — bottom-aligned with the Refresh nav button
-        int refreshBottom = this.height / 2 - 56 + 22 * 5 + 20;
-        addRenderableWidget(new ButtonWidget(
-                rightEdge - 60, refreshBottom - 14, 60, 14,
-                Component.translatable("townstead.shift.reset"),
-                b -> townstead$resetAllShifts()));
-
-        // Query shift data for visible villagers
-        townstead$queryShiftData();
-    }
-
-    @Unique
-    private void townstead$populateShiftVillagers() {
-        townstead$refreshShiftVillagers();
-    }
-
-    @Unique
-    private void townstead$refreshShiftVillagers() {
-        townstead$shiftVillagerUuids = new ArrayList<>();
-        townstead$shiftVillagerNames.clear();
-        townstead$shiftVillagerEntityIds.clear();
-
-        for (VillageResidentClientStore.Resident resident : VillageResidentClientStore.getResidents()) {
-            UUID uuid = resident.villagerUuid();
-            townstead$shiftVillagerUuids.add(uuid);
-            townstead$shiftVillagerNames.put(uuid, resident.name());
-            ShiftClientStore.set(uuid, resident.shifts());
-        }
-
-        townstead$shiftVillagerUuids.sort(Comparator.comparing(
-                uuid -> townstead$shiftVillagerNames.getOrDefault(uuid, uuid.toString())));
-        townstead$shiftPage = Math.max(0, Math.min(townstead$shiftPage, townstead$shiftTotalPages() - 1));
-    }
-
-    @Unique
-    private void townstead$queryShiftData() {
-        if (townstead$shiftQueried) return;
-        townstead$shiftQueried = true;
-        //? if neoforge {
-        PacketDistributor.sendToServer(new ProfessionQueryPayload());
-        //?} else if forge {
-        /*TownsteadNetwork.sendToServer(new ProfessionQueryPayload());
-        *///?}
-    }
-
-    @Unique
-    private void townstead$shiftPageDelta(int delta) {
-        int totalPages = townstead$shiftTotalPages();
-        townstead$shiftPage = Math.max(0, Math.min(townstead$shiftPage + delta, totalPages - 1));
-    }
-
-    @Unique
-    private int townstead$shiftTotalPages() {
-        int count = townstead$shiftVillagerUuids.size();
-        return Math.max(1, (int) Math.ceil(count / (double) SHIFT_ROWS_PER_PAGE));
-    }
-
-    @Unique
-    private void townstead$resetAllShifts() {
-        int[] defaults = ShiftData.getVanillaDefault();
-        for (UUID uuid : townstead$shiftVillagerUuids) {
-            townstead$shiftEdits.put(uuid, Arrays.copyOf(defaults, defaults.length));
-            //? if neoforge {
-            PacketDistributor.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(defaults, defaults.length)));
-            //?} else if forge {
-            /*TownsteadNetwork.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(defaults, defaults.length)));
-            *///?}
-        }
-    }
-
-    //? if neoforge {
-    @Inject(method = "render", at = @At("TAIL"))
-    //?} else {
-    /*@Inject(method = "m_88315_", remap = false, at = @At("TAIL"))
-    *///?}
-    private void townstead$renderShiftPage(GuiGraphics context, int mouseX, int mouseY, float partialTicks,
-            CallbackInfo ci) {
-        if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page))
-            return;
-        townstead$refreshShiftVillagers();
-
-        int leftX = this.width / 2 - 80;
-        int gridX = townstead$shiftGridLeft();
-        int gridRight = townstead$shiftGridRight();
-        int cellW = townstead$shiftCellW();
-        int titleY = this.height / 2 - 74;
-
-        // Title (centered between back button and pagination)
-        int titleCenterX = (leftX + 42 + gridRight - 66) / 2;
-        context.drawCenteredString(this.font, Component.translatable("townstead.shift.title"),
-                titleCenterX, titleY + 3, 0xFFFFFF);
-
-        // Page indicator (to the left of the < > buttons)
-        int totalPages = townstead$shiftTotalPages();
-        String pageText = String.format("%d/%d", townstead$shiftPage + 1, totalPages);
-        context.drawString(this.font, Component.literal(pageText),
-                gridRight - 66 - this.font.width(pageText) - 4, titleY + 4, 0xA0A0A0, false);
-
-        // Grid content Y
-        int gridY = this.height / 2 - 48;
-
-        // Draw hour labels (every hour, half-scale)
-        for (int h = 0; h < ShiftData.HOURS_PER_DAY; h++) {
-            int displayHour = ShiftData.toDisplayHour(h);
-            String label = String.valueOf(displayHour);
-            int lx = gridX + h * cellW;
-            context.pose().pushPose();
-            context.pose().translate(lx + cellW / 2.0f, gridY - 2, 0);
-            context.pose().scale(0.5f, 0.5f, 1.0f);
-            context.drawString(this.font, label, -this.font.width(label) / 2, -this.font.lineHeight, 0xC0C0C0, false);
-            context.pose().popPose();
-        }
-
-        // Draw villager rows
-        int startIdx = townstead$shiftPage * SHIFT_ROWS_PER_PAGE;
-        int endIdx = Math.min(startIdx + SHIFT_ROWS_PER_PAGE, townstead$shiftVillagerUuids.size());
-
-        for (int row = 0; row < endIdx - startIdx; row++) {
-            UUID uuid = townstead$shiftVillagerUuids.get(startIdx + row);
-            String name = townstead$shiftVillagerNames.getOrDefault(uuid, "???");
-            int rowY = gridY + row * (SHIFT_CELL_H + 2);
-
-            // Truncate name to fit
-            String truncated = name;
-            while (this.font.width(truncated) > SHIFT_NAME_W - 2 && truncated.length() > 1) {
-                truncated = truncated.substring(0, truncated.length() - 1);
-            }
-            if (!truncated.equals(name)) truncated += "..";
-
-            context.drawString(this.font, truncated,
-                    leftX, rowY + (SHIFT_CELL_H - this.font.lineHeight) / 2 + 1, 0xFFFFFF, false);
-
-            // Get shifts (prefer local edits, then client store)
-            int[] shifts = townstead$shiftEdits.containsKey(uuid)
-                    ? townstead$shiftEdits.get(uuid)
-                    : ShiftClientStore.get(uuid);
-
-            // Draw 24 colored cells (no text - colors are self-explanatory with legend)
-            for (int h = 0; h < ShiftData.HOURS_PER_DAY; h++) {
-                int cellX = gridX + h * cellW;
-                int cellY = rowY;
-                int ord = shifts[h];
-                if (ord < 0 || ord >= ShiftData.ORDINAL_COLORS.length) ord = ShiftData.ORD_IDLE;
-
-                int color = ShiftData.ORDINAL_COLORS[ord];
-                context.fill(cellX, cellY, cellX + cellW - 1, cellY + SHIFT_CELL_H - 1, color);
-
-                // Hover highlight
-                if (mouseX >= cellX && mouseX < cellX + cellW - 1
-                        && mouseY >= cellY && mouseY < cellY + SHIFT_CELL_H - 1) {
-                    context.fill(cellX, cellY, cellX + cellW - 1, cellY + SHIFT_CELL_H - 1, 0x40FFFFFF);
-                }
-            }
-        }
-
-        // Legend row — bottom-aligned with the Refresh nav button
-        // Clickable: select a legend to enter paint mode, click again to deselect
-        int refreshBottom = this.height / 2 - 56 + 22 * 5 + 20;
-        int legendY = refreshBottom - 11;
-        int legendX = leftX;
-        for (int i = 0; i < ShiftData.ORDINAL_COLORS.length; i++) {
-            int lx = legendX + i * 42;
-            boolean selected = townstead$shiftPaintOrdinal == i;
-            // Selection highlight: draw a border around the selected legend item
-            if (selected) {
-                context.fill(lx - 2, legendY - 2, lx + 40, legendY + 11, 0xFFFFFFFF);
-                context.fill(lx - 1, legendY - 1, lx + 39, legendY + 10, 0xFF000000);
-            }
-            context.fill(lx, legendY, lx + 8, legendY + 8, ShiftData.ORDINAL_COLORS[i]);
-            context.drawString(this.font, Component.translatable(ShiftData.ORDINAL_TO_KEY[i]),
-                    lx + 10, legendY, selected ? 0xFFFFFF : 0xC0C0C0, false);
-        }
-
-        // Tooltip for hovered villager name
-        for (int row = 0; row < endIdx - startIdx; row++) {
-            int rowY = gridY + row * (SHIFT_CELL_H + 2);
-            if (mouseX >= leftX && mouseX < gridX && mouseY >= rowY && mouseY < rowY + SHIFT_CELL_H) {
-                UUID uuid = townstead$shiftVillagerUuids.get(startIdx + row);
-                VillageResidentClientStore.Resident resident = VillageResidentClientStore.get(uuid);
-                if (resident != null) {
-                    String profName = townstead$profDisplayName(resident.professionId());
-                    int level = resident.professionLevel();
-                    String levelKey = "townstead.profession.level." + Math.min(Math.max(level, 1), 5);
-                    String levelName = Component.translatable(levelKey).getString();
-                    context.renderTooltip(this.font,
-                            Component.literal(profName + " - " + levelName),
-                            mouseX, mouseY);
-                }
-                break;
-            }
-        }
-
-        // Tooltip for hovered cell
-        int totalGridW = ShiftData.HOURS_PER_DAY * cellW;
-        if (mouseX >= gridX && mouseX < gridX + totalGridW) {
-            int h = (mouseX - gridX) / cellW;
-            if (h >= 0 && h < ShiftData.HOURS_PER_DAY) {
-                int hoveredRow = -1;
-                for (int row = 0; row < endIdx - startIdx; row++) {
-                    int rowY = gridY + row * (SHIFT_CELL_H + 2);
-                    if (mouseY >= rowY && mouseY < rowY + SHIFT_CELL_H) {
-                        hoveredRow = row;
-                        break;
-                    }
-                }
-                if (hoveredRow >= 0) {
-                    UUID uuid = townstead$shiftVillagerUuids.get(startIdx + hoveredRow);
-                    int[] shifts = townstead$shiftEdits.containsKey(uuid)
-                            ? townstead$shiftEdits.get(uuid)
-                            : ShiftClientStore.get(uuid);
-                    int displayHour = ShiftData.toDisplayHour(h);
-                    String hourStr = ShiftData.formatHour(displayHour);
-                    int ord = shifts[h];
-                    if (ord < 0 || ord >= ShiftData.ORDINAL_TO_KEY.length) ord = ShiftData.ORD_IDLE;
-                    String activityName = Component.translatable(ShiftData.ORDINAL_TO_KEY[ord]).getString();
-                    String villagerName = townstead$shiftVillagerNames.getOrDefault(uuid, "???");
-                    context.renderTooltip(this.font,
-                            Component.literal(villagerName + " @ " + hourStr + ": " + activityName),
-                            mouseX, mouseY);
-                }
-            }
-        }
-    }
-
-    //? if neoforge {
-    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    //?} else {
-    /*@Inject(method = "m_6375_", remap = false, at = @At("HEAD"), cancellable = true)
-    *///?}
-    private void townstead$shiftMouseClicked(double mouseX, double mouseY, int button,
-            CallbackInfoReturnable<Boolean> cir) {
-        if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page) || button != 0)
-            return;
-
-        // Check legend clicks (toggle paint mode)
-        int leftX = this.width / 2 - 80;
-        int refreshBottom = this.height / 2 - 56 + 22 * 5 + 20;
-        int legendY = refreshBottom - 11;
-        if (mouseY >= legendY - 2 && mouseY <= legendY + 11) {
-            for (int i = 0; i < ShiftData.ORDINAL_COLORS.length; i++) {
-                int lx = leftX + i * 42;
-                if (mouseX >= lx - 2 && mouseX <= lx + 40) {
-                    townstead$shiftPaintOrdinal = (townstead$shiftPaintOrdinal == i) ? -1 : i;
-                    cir.setReturnValue(true);
-                    cir.cancel();
-                    return;
-                }
-            }
-        }
-
-        // Grid cell click
-        if (townstead$shiftApplyCell(mouseX, mouseY)) {
-            cir.setReturnValue(true);
-            cir.cancel();
-        }
-    }
-
-    @Unique
-    private boolean townstead$shiftApplyCell(double mouseX, double mouseY) {
-        int gridX = townstead$shiftGridLeft();
-        int cellW = townstead$shiftCellW();
-        int gridY = this.height / 2 - 48;
-
-        if (mouseX < gridX || mouseX >= gridX + ShiftData.HOURS_PER_DAY * cellW)
-            return false;
-
-        int h = (int) ((mouseX - gridX) / cellW);
-        if (h < 0 || h >= ShiftData.HOURS_PER_DAY)
-            return false;
-
-        int startIdx = townstead$shiftPage * SHIFT_ROWS_PER_PAGE;
-        int endIdx = Math.min(startIdx + SHIFT_ROWS_PER_PAGE, townstead$shiftVillagerUuids.size());
-
-        for (int row = 0; row < endIdx - startIdx; row++) {
-            int rowY = gridY + row * (SHIFT_CELL_H + 2);
-            if (mouseY >= rowY && mouseY < rowY + SHIFT_CELL_H) {
-                UUID uuid = townstead$shiftVillagerUuids.get(startIdx + row);
-                int[] existing = townstead$shiftEdits.containsKey(uuid)
-                        ? townstead$shiftEdits.get(uuid)
-                        : ShiftClientStore.get(uuid);
-                int[] shifts = Arrays.copyOf(existing, existing.length);
-
-                if (townstead$shiftPaintOrdinal >= 0) {
-                    // Paint mode: set to selected activity
-                    if (shifts[h] == townstead$shiftPaintOrdinal) return true; // already painted
-                    shifts[h] = townstead$shiftPaintOrdinal;
-                } else {
-                    // Cycle mode: IDLE -> WORK -> MEET -> REST -> IDLE
-                    shifts[h] = (shifts[h] + 1) % ShiftData.ORDINAL_TO_ACTIVITY.length;
-                }
-
-                townstead$shiftEdits.put(uuid, shifts);
-                //? if neoforge {
-                PacketDistributor.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(shifts, shifts.length)));
-                //?} else if forge {
-                /*TownsteadNetwork.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(shifts, shifts.length)));
-                *///?}
-                return true;
-            }
-        }
-        return false;
-    }
-
-    //? if neoforge {
-    @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true)
-    //?} else {
-    /*@Inject(method = "m_7979_", remap = false, at = @At("HEAD"), cancellable = true)
-    *///?}
-    private void townstead$shiftMouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY,
-            CallbackInfoReturnable<Boolean> cir) {
-        if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page) || button != 0)
-            return;
-        // Only paint while dragging if in paint mode
-        if (townstead$shiftPaintOrdinal < 0)
-            return;
-        if (townstead$shiftApplyCell(mouseX, mouseY)) {
-            cir.setReturnValue(true);
-            cir.cancel();
-        }
-    }
-
-    @Unique
-    private boolean townstead$handleShiftScroll(double mouseX, double mouseY, double verticalAmount) {
-        if (!TOWNSTEAD_SHIFT_PAGE.equals(this.page))
-            return false;
-        int gridX = townstead$shiftGridLeft();
-        int cellW = townstead$shiftCellW();
-        int gridY = this.height / 2 - 48;
-        int gridRight = gridX + ShiftData.HOURS_PER_DAY * cellW;
-        int gridBottom = gridY + SHIFT_ROWS_PER_PAGE * (SHIFT_CELL_H + 2);
-        if (mouseX < gridX || mouseX > gridRight || mouseY < gridY || mouseY > gridBottom)
-            return false;
-        if (verticalAmount < 0) {
-            townstead$shiftPageDelta(1);
-        } else if (verticalAmount > 0) {
-            townstead$shiftPageDelta(-1);
-        } else {
-            return false;
-        }
-        return true;
     }
 
     // =====================================================================

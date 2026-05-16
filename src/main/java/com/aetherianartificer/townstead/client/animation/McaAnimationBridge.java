@@ -5,10 +5,13 @@ import com.aetherianartificer.townstead.client.animation.emote.EmoteRegistry;
 import com.aetherianartificer.townstead.client.animation.emote.EmotecraftAnimationSourceAdapter;
 import com.aetherianartificer.townstead.client.animation.emote.loader.EmoteReflection;
 import com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge;
+import net.conczin.mca.client.gui.VillagerEditorScreen;
 import net.conczin.mca.client.model.PlayerEntityExtendedModel;
 import net.conczin.mca.client.model.VillagerEntityModelMCA;
 import net.conczin.mca.entity.VillagerLike;
 import net.conczin.mca.entity.ai.relationship.AgeState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.world.entity.LivingEntity;
@@ -52,6 +55,23 @@ public final class McaAnimationBridge {
             float headYaw,
             float headPitch
     ) {
+        // MCA's editor stomps tickCount to wall-clock, breaking CEM time.
+        // Skip sources, reset body translation, re-attach wear layers.
+        if (isEditorPreview(entity)) {
+            model.body.x = 0f;
+            model.body.y = 0f;
+            model.body.z = 0f;
+            ModelPart editorBreasts = breastsPart(model);
+            float ox = 0f, oy = 0f, oz = 0f;
+            if (editorBreasts != null) {
+                ox = editorBreasts.x;
+                oy = editorBreasts.y;
+                oz = editorBreasts.z;
+            }
+            syncMcaDependentParts(model, editorBreasts, ox, oy, oz);
+            return;
+        }
+
         // Skip MCA babies (their own swaying animation runs on a different code path).
         // Vanilla isBaby() returns true for any MCA young (TODDLER/CHILD/TEEN) because
         // they all have negative age, so check the MCA AgeState directly to keep
@@ -179,6 +199,13 @@ public final class McaAnimationBridge {
                 EmoteReflection.applyBend(companion, 0f, 0f);
             }
         }
+    }
+
+    private static boolean isEditorPreview(LivingEntity entity) {
+        Minecraft client = Minecraft.getInstance();
+        if (client == null) return false;
+        Screen screen = client.screen;
+        return screen instanceof VillagerEditorScreen editor && editor.getVillager() == entity;
     }
 
     private static ModelPart breastsPart(HumanoidModel<?> model) {
