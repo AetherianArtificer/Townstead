@@ -52,11 +52,16 @@ versionRange = "[0,)"
 ordering = "NONE"
 side = "CLIENT"
 
-# Butchery integration targets 4.8+ (1.21.1). Older builds predate
-# the item tag structure the carcass driver keys off.
 [[dependencies.townstead]]
 modId = "butchery"
 type = "optional"
 versionRange = "[4.8,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies.townstead]]
+modId = "emotecraft"
+type = "optional"
+versionRange = "[2.4.12,)"
+ordering = "NONE"
+side = "CLIENT"

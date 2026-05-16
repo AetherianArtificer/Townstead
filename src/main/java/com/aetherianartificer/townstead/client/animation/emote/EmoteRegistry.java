@@ -20,10 +20,11 @@ import java.util.Optional;
  * com.aetherianartificer.townstead.client.animation.McaAnimationBridge#onResourcesReloaded()}.
  *
  * <p>Walks the active resource manager for files under {@code
- * assets/<namespace>/townstead_emotes/} ending in {@code .json} or {@code
- * .emotecraft}, and loads each via {@link EmotecraftEmoteLoader}. If Emotecraft
- * isn't installed, every load returns empty and the registry stays empty — no
- * log noise.</p>
+ * assets/<namespace>/townstead_emotes/} ending in {@code .json}, {@code
+ * .emotecraft}, or {@code .emote} (Quark-format text animations — Emotecraft's
+ * {@code UniversalEmoteSerializer} dispatches to the right reader by filename).
+ * Loads each via {@link EmotecraftEmoteLoader}. If Emotecraft isn't installed,
+ * every load returns empty and the registry stays empty — no log noise.</p>
  */
 public final class EmoteRegistry {
     private static final String SCAN_PATH = "townstead_emotes";
@@ -68,7 +69,7 @@ public final class EmoteRegistry {
 
         Map<ResourceLocation, Resource> found = rm.listResources(SCAN_PATH, location -> {
             String path = location.getPath();
-            return path.endsWith(".json") || path.endsWith(".emotecraft");
+            return path.endsWith(".json") || path.endsWith(".emotecraft") || path.endsWith(".emote");
         });
 
         // Also pick up Emotecraft's built-in emotes at assets/emotecraft/emotes/*,
@@ -76,7 +77,7 @@ public final class EmoteRegistry {
         Map<ResourceLocation, Resource> builtIns = rm.listResources(EMOTECRAFT_SCAN_PATH, location -> {
             if (!"emotecraft".equals(location.getNamespace())) return false;
             String path = location.getPath();
-            return path.endsWith(".json") || path.endsWith(".emotecraft");
+            return path.endsWith(".json") || path.endsWith(".emotecraft") || path.endsWith(".emote");
         });
 
         com.aetherianartificer.townstead.client.animation.emote.loader.EmoteNameIndex.clear();

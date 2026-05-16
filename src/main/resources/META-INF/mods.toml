@@ -59,10 +59,30 @@ versionRange = "[0,)"
 ordering = "NONE"
 side = "CLIENT"
 
-# Butchery integration targets 4.8+ (1.20.1 Forge).
 [[dependencies.townstead]]
 modId = "butchery"
 mandatory = false
 versionRange = "[4.8,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies.townstead]]
+modId = "bendylib"
+mandatory = false
+versionRange = "[4.0.0,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.townstead]]
+modId = "playeranimator"
+mandatory = false
+versionRange = "[1.0.2-rc1,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.townstead]]
+modId = "emotecraft"
+mandatory = false
+versionRange = "[2.2.7-b.build.50,)"
+ordering = "NONE"
+side = "CLIENT"
