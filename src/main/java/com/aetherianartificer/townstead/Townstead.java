@@ -33,6 +33,15 @@ import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
 import com.aetherianartificer.townstead.shift.ShiftSyncPayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplate;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateApplyPayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateClientStore;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateDeletePayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateJsonLoader;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateSavePayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateSavedData;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateSyncPayload;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.aetherianartificer.townstead.village.VillageResidentRoster;
 import com.aetherianartificer.townstead.village.VillageResidentsSyncPayload;
@@ -291,6 +300,16 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
+                ShiftTemplateRegistry.setServer(e.getServer()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) ->
+                ShiftTemplateRegistry.clearServer());
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
+            if (e.getEntity() instanceof ServerPlayer sp) {
+                townstead$sendShiftTemplateSync(sp);
+            }
+        });
+        ShiftTemplateRegistry.setChangeListener(Townstead::townstead$broadcastShiftTemplateSync);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
@@ -352,6 +371,16 @@ public class Townstead {
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
+                ShiftTemplateRegistry.setServer(e.getServer()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) ->
+                ShiftTemplateRegistry.clearServer());
+        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
+            if (e.getEntity() instanceof ServerPlayer sp) {
+                TownsteadNetwork.sendShiftTemplateSync(sp);
+            }
+        });
+        ShiftTemplateRegistry.setChangeListener(TownsteadNetwork::broadcastShiftTemplateSync);
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
@@ -447,6 +476,7 @@ public class Townstead {
     private void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new CatalogDataLoader());
         event.addListener(new com.aetherianartificer.townstead.reaction.ReactionDataLoader());
+        event.addListener(new ShiftTemplateJsonLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
@@ -778,6 +808,26 @@ public class Townstead {
                 ShiftSetPayload.STREAM_CODEC,
                 this::handleShiftSet
         );
+        registrar.playToClient(
+                ShiftTemplateSyncPayload.TYPE,
+                ShiftTemplateSyncPayload.STREAM_CODEC,
+                this::handleShiftTemplateSync
+        );
+        registrar.playToServer(
+                ShiftTemplateSavePayload.TYPE,
+                ShiftTemplateSavePayload.STREAM_CODEC,
+                this::handleShiftTemplateSave
+        );
+        registrar.playToServer(
+                ShiftTemplateDeletePayload.TYPE,
+                ShiftTemplateDeletePayload.STREAM_CODEC,
+                this::handleShiftTemplateDelete
+        );
+        registrar.playToServer(
+                ShiftTemplateApplyPayload.TYPE,
+                ShiftTemplateApplyPayload.STREAM_CODEC,
+                this::handleShiftTemplateApply
+        );
         registrar.playToServer(
                 ProfessionQueryPayload.TYPE,
                 ProfessionQueryPayload.STREAM_CODEC,
@@ -1084,19 +1134,136 @@ public class Townstead {
 
             // Validate and apply
             if (payload.shifts().length != ShiftData.HOURS_PER_DAY) return;
-
-            CompoundTag shiftTag = villager.getData(SHIFT_DATA);
-            ShiftData.setShifts(shiftTag, payload.shifts());
-            villager.setData(SHIFT_DATA, shiftTag);
-
-            // Apply schedule to the brain immediately
-            ShiftScheduleApplier.apply(villager);
-
-            // Sync back to all tracking players
-            ShiftSyncPayload sync = new ShiftSyncPayload(payload.villagerUuid(), payload.shifts());
-            PacketDistributor.sendToPlayer(sp, sync);
-            PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+            townstead$writeVillagerShifts(villager, payload.shifts(), sp, true);
         });
+    }
+
+    private static void townstead$writeVillagerShifts(VillagerEntityMCA villager, int[] shifts,
+                                                       ServerPlayer originator, boolean echoToOriginator) {
+        townstead$writeVillagerShifts(villager, shifts, originator, echoToOriginator, "");
+    }
+
+    private static void townstead$writeVillagerShifts(VillagerEntityMCA villager, int[] shifts,
+                                                       ServerPlayer originator, boolean echoToOriginator,
+                                                       String templateId) {
+        CompoundTag shiftTag = villager.getData(SHIFT_DATA);
+        ShiftData.setShifts(shiftTag, shifts);
+        ShiftData.setTemplateId(shiftTag, templateId);
+        villager.setData(SHIFT_DATA, shiftTag);
+        ShiftScheduleApplier.apply(villager);
+
+        ShiftSyncPayload sync = new ShiftSyncPayload(villager.getUUID(), shifts);
+        if (echoToOriginator && originator != null) PacketDistributor.sendToPlayer(originator, sync);
+        PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+
+        // Resident roster carries the assignment too; resync so clients see the new label.
+        if (originator != null) {
+            VillageResidentsSyncPayload roster =
+                    new VillageResidentsSyncPayload(VillageResidentRoster.snapshot(originator));
+            PacketDistributor.sendToPlayer(originator, roster);
+        }
+    }
+
+    private void handleShiftTemplateSync(ShiftTemplateSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ShiftTemplateClientStore.set(payload.templates()));
+    }
+
+    private void handleShiftTemplateSave(ShiftTemplateSavePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            MinecraftServer server = sp.getServer();
+            if (server == null) return;
+            ShiftTemplate template = townstead$buildUserTemplate(payload);
+            if (template == null) return;
+            ShiftTemplateSavedData.get(server).put(template);
+            townstead$broadcastShiftTemplateSync(server);
+        });
+    }
+
+    private void handleShiftTemplateDelete(ShiftTemplateDeletePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            MinecraftServer server = sp.getServer();
+            if (server == null) return;
+            if (!ShiftTemplate.USER_NAMESPACE.equals(payload.id().getNamespace())) return; // refuse built-ins
+            boolean removed = ShiftTemplateSavedData.get(server).remove(payload.id());
+            if (removed) townstead$broadcastShiftTemplateSync(server);
+        });
+    }
+
+    private void handleShiftTemplateApply(ShiftTemplateApplyPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            MinecraftServer server = sp.getServer();
+            if (server == null) return;
+            ShiftTemplate template = ShiftTemplateRegistry.resolve(server, payload.templateId()).orElse(null);
+            if (template == null) {
+                LOGGER.warn("Apply requested for unknown shift template {}", payload.templateId());
+                return;
+            }
+            int[] shifts = template.copyShifts();
+            String templateIdStr = template.id().toString();
+            for (java.util.UUID uuid : payload.villagerUuids()) {
+                VillagerEntityMCA villager = null;
+                for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+                    Entity entity = level.getEntity(uuid);
+                    if (entity instanceof VillagerEntityMCA v) { villager = v; break; }
+                }
+                if (villager == null) continue;
+                townstead$writeVillagerShifts(villager, shifts, sp, true, templateIdStr);
+            }
+        });
+    }
+
+    private static ShiftTemplate townstead$buildUserTemplate(ShiftTemplateSavePayload payload) {
+        if (payload.shifts() == null || payload.shifts().length != ShiftData.HOURS_PER_DAY) return null;
+        for (int s : payload.shifts()) {
+            if (s < 0 || s >= ShiftData.ORDINAL_TO_ACTIVITY.length) return null;
+        }
+        String name = payload.name() != null && !payload.name().isBlank() ? payload.name().trim() : "Untitled";
+        if (name.length() > 64) name = name.substring(0, 64);
+        net.minecraft.resources.ResourceLocation id;
+        String idStr = payload.id();
+        if (idStr == null || idStr.isBlank() || !idStr.startsWith(ShiftTemplate.USER_NAMESPACE + ":")) {
+            String slug = "u_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            //? if >=1.21 {
+            id = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(ShiftTemplate.USER_NAMESPACE, slug);
+            //?} else {
+            /*id = new net.minecraft.resources.ResourceLocation(ShiftTemplate.USER_NAMESPACE, slug);
+            *///?}
+        } else {
+            try {
+                //? if >=1.21 {
+                id = net.minecraft.resources.ResourceLocation.parse(idStr);
+                //?} else {
+                /*id = new net.minecraft.resources.ResourceLocation(idStr);
+                *///?}
+            } catch (Exception ex) { return null; }
+            if (!ShiftTemplate.USER_NAMESPACE.equals(id.getNamespace())) return null;
+        }
+        java.util.Optional<com.aetherianartificer.townstead.shift.template.Chronotype> chrono =
+                payload.chronotypeName().map(com.aetherianartificer.townstead.shift.template.Chronotype::fromName);
+        try {
+            return new ShiftTemplate(id, name, payload.shifts(), chrono, false);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private static void townstead$sendShiftTemplateSync(ServerPlayer sp) {
+        MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        java.util.List<ShiftTemplate> all = ShiftTemplateRegistry.combinedFor(server);
+        PacketDistributor.sendToPlayer(sp, new ShiftTemplateSyncPayload(all));
+    }
+
+    private static void townstead$broadcastShiftTemplateSync(MinecraftServer server) {
+        if (server == null) return;
+        java.util.List<ShiftTemplate> all = ShiftTemplateRegistry.combinedFor(server);
+        ShiftTemplateSyncPayload payload = new ShiftTemplateSyncPayload(all);
+        for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(sp, payload);
+        }
     }
 
     private void handleProfessionQuery(ProfessionQueryPayload payload, IPayloadContext context) {

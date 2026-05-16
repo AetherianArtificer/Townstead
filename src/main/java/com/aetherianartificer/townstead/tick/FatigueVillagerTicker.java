@@ -11,6 +11,7 @@ import com.aetherianartificer.townstead.fatigue.RestCoordinator;
 import com.aetherianartificer.townstead.fatigue.RestDebugData;
 import com.aetherianartificer.townstead.fatigue.RestDecision;
 import com.aetherianartificer.townstead.fatigue.SleepReason;
+import com.aetherianartificer.townstead.shift.template.Chronotype;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.Personality;
@@ -308,17 +309,14 @@ public final class FatigueVillagerTicker {
     }
 
     private static boolean isNocturnal(VillagerEntityMCA self) {
-        VillagerBrain<?> brain = self.getVillagerBrain();
-        Personality personality = brain.getPersonality();
-        //? if neoforge {
-        return personality == Personality.ODD
-                || personality == Personality.GLOOMY
-                || personality == Personality.INTROVERTED;
-        //?} else {
-        /*return personality == Personality.ODD
-                || personality == Personality.GLOOMY
-                || personality == Personality.SHY;
-        *///?}
+        Personality personality = null;
+        try {
+            VillagerBrain<?> brain = self.getVillagerBrain();
+            personality = brain.getPersonality();
+        } catch (Throwable ignored) {}
+        // Unified with the schedule UI's Chronotype mapping so fatigue-alignment
+        // matches the per-villager band shown on the shift screen.
+        return Chronotype.fromPersonality(personality) == Chronotype.NIGHT_OWL;
     }
 
     /**

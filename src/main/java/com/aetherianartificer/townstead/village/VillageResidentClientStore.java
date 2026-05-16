@@ -10,20 +10,32 @@ public final class VillageResidentClientStore {
 
     private VillageResidentClientStore() {}
 
-    public record Resident(UUID villagerUuid, String name, String professionId, int professionLevel, int[] shifts) {
+    public record Resident(UUID villagerUuid, String name, String professionId, int professionLevel, int[] shifts,
+                           String chronotype, String templateId) {
         public Resident {
             name = name != null ? name : "???";
             professionId = professionId != null ? professionId : "minecraft:none";
             professionLevel = Math.max(1, professionLevel);
             shifts = shifts != null ? shifts.clone() : new int[0];
+            chronotype = chronotype != null ? chronotype : "STANDARD";
+            templateId = templateId != null ? templateId : "";
+        }
+
+        public Resident(UUID villagerUuid, String name, String professionId, int professionLevel, int[] shifts) {
+            this(villagerUuid, name, professionId, professionLevel, shifts, "STANDARD", "");
+        }
+
+        public Resident(UUID villagerUuid, String name, String professionId, int professionLevel, int[] shifts,
+                        String chronotype) {
+            this(villagerUuid, name, professionId, professionLevel, shifts, chronotype, "");
         }
 
         public Resident withShifts(int[] updatedShifts) {
-            return new Resident(villagerUuid, name, professionId, professionLevel, updatedShifts);
+            return new Resident(villagerUuid, name, professionId, professionLevel, updatedShifts, chronotype, templateId);
         }
 
         public Resident withProfession(String updatedProfessionId, int updatedLevel) {
-            return new Resident(villagerUuid, name, updatedProfessionId, updatedLevel, shifts);
+            return new Resident(villagerUuid, name, updatedProfessionId, updatedLevel, shifts, chronotype, templateId);
         }
     }
 

@@ -1,0 +1,5 @@
+{
+  "name_key": "townstead.shift.template.night_owl_default.name",
+  "chronotype": "night_owl",
+  "shifts": [3, 3, 3, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3]
+}

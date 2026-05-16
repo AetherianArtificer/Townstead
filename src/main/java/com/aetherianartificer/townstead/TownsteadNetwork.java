@@ -28,6 +28,15 @@ import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
 import com.aetherianartificer.townstead.shift.ShiftSyncPayload;
+import com.aetherianartificer.townstead.shift.template.Chronotype;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplate;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateApplyPayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateClientStore;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateDeletePayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateSavePayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateSavedData;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateSyncPayload;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.aetherianartificer.townstead.village.VillageResidentRoster;
 import com.aetherianartificer.townstead.village.VillageResidentsSyncPayload;
@@ -115,6 +124,16 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleShiftSync);
         registerC2S(ShiftSetPayload.class, ShiftSetPayload::write, ShiftSetPayload::read,
                 TownsteadNetwork::handleShiftSet);
+
+        // Shift templates
+        registerS2C(ShiftTemplateSyncPayload.class, ShiftTemplateSyncPayload::write, ShiftTemplateSyncPayload::read,
+                TownsteadNetwork::handleShiftTemplateSync);
+        registerC2S(ShiftTemplateSavePayload.class, ShiftTemplateSavePayload::write, ShiftTemplateSavePayload::read,
+                TownsteadNetwork::handleShiftTemplateSave);
+        registerC2S(ShiftTemplateDeletePayload.class, ShiftTemplateDeletePayload::write, ShiftTemplateDeletePayload::read,
+                TownsteadNetwork::handleShiftTemplateDelete);
+        registerC2S(ShiftTemplateApplyPayload.class, ShiftTemplateApplyPayload::write, ShiftTemplateApplyPayload::read,
+                TownsteadNetwork::handleShiftTemplateApply);
 
         // Profession management
         registerC2S(ProfessionQueryPayload.class, ProfessionQueryPayload::write, ProfessionQueryPayload::read,
@@ -410,15 +429,109 @@ public final class TownsteadNetwork {
 
         if (payload.shifts().length != ShiftData.HOURS_PER_DAY) return;
 
+        writeVillagerShifts(villager, payload.shifts(), sp);
+    }
+
+    private static void writeVillagerShifts(VillagerEntityMCA villager, int[] shifts, ServerPlayer originator) {
+        writeVillagerShifts(villager, shifts, originator, "");
+    }
+
+    private static void writeVillagerShifts(VillagerEntityMCA villager, int[] shifts, ServerPlayer originator,
+                                            String templateId) {
         CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
-        ShiftData.setShifts(shiftTag, payload.shifts());
+        ShiftData.setShifts(shiftTag, shifts);
+        ShiftData.setTemplateId(shiftTag, templateId);
         villager.getPersistentData().put("townstead_shift", shiftTag);
 
         ShiftScheduleApplier.apply(villager);
 
-        ShiftSyncPayload sync = new ShiftSyncPayload(payload.villagerUuid(), payload.shifts());
-        sendToPlayer(sp, sync);
+        ShiftSyncPayload sync = new ShiftSyncPayload(villager.getUUID(), shifts);
+        if (originator != null) sendToPlayer(originator, sync);
         sendToTrackingEntity(villager, sync);
+
+        if (originator != null) {
+            sendToPlayer(originator,
+                    new VillageResidentsSyncPayload(VillageResidentRoster.snapshot(originator)));
+        }
+    }
+
+    private static void handleShiftTemplateSync(ShiftTemplateSyncPayload payload) {
+        ShiftTemplateClientStore.set(payload.templates());
+    }
+
+    private static void handleShiftTemplateSave(ShiftTemplateSavePayload payload, ServerPlayer sp) {
+        net.minecraft.server.MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        if (payload.shifts() == null || payload.shifts().length != ShiftData.HOURS_PER_DAY) return;
+        for (int s : payload.shifts()) {
+            if (s < 0 || s >= ShiftData.ORDINAL_TO_ACTIVITY.length) return;
+        }
+        String name = payload.name() != null && !payload.name().isBlank() ? payload.name().trim() : "Untitled";
+        if (name.length() > 64) name = name.substring(0, 64);
+        ResourceLocation id;
+        String idStr = payload.id();
+        if (idStr == null || idStr.isBlank() || !idStr.startsWith(ShiftTemplate.USER_NAMESPACE + ":")) {
+            String slug = "u_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            id = new ResourceLocation(ShiftTemplate.USER_NAMESPACE, slug);
+        } else {
+            try {
+                id = new ResourceLocation(idStr);
+            } catch (Exception ex) { return; }
+            if (!ShiftTemplate.USER_NAMESPACE.equals(id.getNamespace())) return;
+        }
+        java.util.Optional<Chronotype> chrono = payload.chronotypeName().map(Chronotype::fromName);
+        ShiftTemplate template;
+        try {
+            template = new ShiftTemplate(id, name, payload.shifts(), chrono, false);
+        } catch (IllegalArgumentException ex) { return; }
+        ShiftTemplateSavedData.get(server).put(template);
+        broadcastShiftTemplateSync(server);
+    }
+
+    private static void handleShiftTemplateDelete(ShiftTemplateDeletePayload payload, ServerPlayer sp) {
+        net.minecraft.server.MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        if (!ShiftTemplate.USER_NAMESPACE.equals(payload.id().getNamespace())) return;
+        if (ShiftTemplateSavedData.get(server).remove(payload.id())) {
+            broadcastShiftTemplateSync(server);
+        }
+    }
+
+    private static void handleShiftTemplateApply(ShiftTemplateApplyPayload payload, ServerPlayer sp) {
+        net.minecraft.server.MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        ShiftTemplate template = ShiftTemplateRegistry.resolve(server, payload.templateId()).orElse(null);
+        if (template == null) {
+            Townstead.LOGGER.warn("Apply requested for unknown shift template {}", payload.templateId());
+            return;
+        }
+        int[] shifts = template.copyShifts();
+        String templateIdStr = template.id().toString();
+        for (java.util.UUID uuid : payload.villagerUuids()) {
+            VillagerEntityMCA villager = null;
+            for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+                Entity entity = level.getEntity(uuid);
+                if (entity instanceof VillagerEntityMCA v) { villager = v; break; }
+            }
+            if (villager == null) continue;
+            writeVillagerShifts(villager, shifts, sp, templateIdStr);
+        }
+    }
+
+    public static void sendShiftTemplateSync(ServerPlayer sp) {
+        net.minecraft.server.MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        java.util.List<ShiftTemplate> all = ShiftTemplateRegistry.combinedFor(server);
+        sendToPlayer(sp, new ShiftTemplateSyncPayload(all));
+    }
+
+    public static void broadcastShiftTemplateSync(net.minecraft.server.MinecraftServer server) {
+        if (server == null) return;
+        java.util.List<ShiftTemplate> all = ShiftTemplateRegistry.combinedFor(server);
+        ShiftTemplateSyncPayload payload = new ShiftTemplateSyncPayload(all);
+        for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            sendToPlayer(sp, payload);
+        }
     }
 
     private static void handleProfessionQuery(ProfessionQueryPayload payload, ServerPlayer sp) {

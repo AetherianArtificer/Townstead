@@ -2,8 +2,10 @@ package com.aetherianartificer.townstead.village;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.shift.ShiftData;
+import com.aetherianartificer.townstead.shift.template.Chronotype;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.AgeState;
+import net.conczin.mca.entity.ai.relationship.Personality;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -36,16 +38,24 @@ public final class VillageResidentRoster {
             VillagerEntityMCA villager = findResident(player, residentUuid);
             if (villager == null) continue;
             if (AgeState.byCurrentAge(villager.getAge()) != AgeState.ADULT) continue;
+            Personality personality = null;
+            try {
+                personality = villager.getVillagerBrain().getPersonality();
+            } catch (Throwable ignored) {}
+            Chronotype chronotype = Chronotype.fromPersonality(personality);
+            //? if neoforge {
+            net.minecraft.nbt.CompoundTag shiftTag = villager.getData(Townstead.SHIFT_DATA);
+            //?} else if forge {
+            /*net.minecraft.nbt.CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
+            *///?}
             residents.add(new VillageResidentClientStore.Resident(
                     villager.getUUID(),
                     villager.getDisplayName().getString(),
                     professionKey(villager.getVillagerData().getProfession()),
                     villager.getVillagerData().getLevel(),
-                    //? if neoforge {
-                    ShiftData.getShifts(villager.getData(Townstead.SHIFT_DATA))
-                    //?} else if forge {
-                    /*ShiftData.getShifts(villager.getPersistentData().getCompound("townstead_shift"))
-                    *///?}
+                    ShiftData.getShifts(shiftTag),
+                    chronotype.name(),
+                    ShiftData.getTemplateId(shiftTag)
             ));
         }
         residents.sort(Comparator.comparing(VillageResidentClientStore.Resident::name, String.CASE_INSENSITIVE_ORDER));

@@ -36,6 +36,7 @@ public final class ShiftData {
     public static final String[] ORDINAL_LABELS = { "I", "W", "M", "R" };
 
     private static final String KEY_SHIFTS = "shifts";
+    private static final String KEY_TEMPLATE_ID = "template_id";
 
     // Default schedule matching vanilla VILLAGER_DEFAULT:
     // Tick hour 0 = 6 AM. The vanilla schedule is:
@@ -84,6 +85,18 @@ public final class ShiftData {
 
     public static boolean hasCustomShifts(CompoundTag tag) {
         return tag.contains(KEY_SHIFTS);
+    }
+
+    public static String getTemplateId(CompoundTag tag) {
+        return tag.contains(KEY_TEMPLATE_ID) ? tag.getString(KEY_TEMPLATE_ID) : "";
+    }
+
+    public static void setTemplateId(CompoundTag tag, String id) {
+        if (id == null || id.isEmpty()) {
+            tag.remove(KEY_TEMPLATE_ID);
+        } else {
+            tag.putString(KEY_TEMPLATE_ID, id);
+        }
     }
 
     public static boolean isDefault(CompoundTag tag) {
