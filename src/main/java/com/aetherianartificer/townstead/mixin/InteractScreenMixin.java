@@ -342,6 +342,65 @@ public abstract class InteractScreenMixin extends Screen {
                 && my >= FATIGUE_ICON_Y && my <= FATIGUE_ICON_Y + FATIGUE_ICON_SIZE;
     }
 
+    /**
+     * Hover-flip on the name chip: swap the Component MCA passes to
+     * {@code renderTooltip} for the name (ordinal 1 in {@code drawTextPopups})
+     * so the chip natively shows "Born 22 Frostturn 1002 (age 24)" when the
+     * cursor is over it. No second chip, no overlay z-fight.
+     *
+     * Ordinal 0 is MCA's gift-mode chip in the {@code inGiftMode} branch;
+     * ordinal 1 is the name chip in the else branch. Targeting ordinal 1
+     * leaves gift mode untouched.
+     *
+     * Hover bounds cover MCA's visible footprint (chip is at roughly
+     * x=22..22+textW, y=14..26 because {@code renderTooltip} anchors
+     * above-right of the (10, 28) point). Wider Born-text bounds are used
+     * so the hover persists once the chip widens after the flip.
+     */
+    //? if >=1.21 {
+    @ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderTooltip(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V",
+                    ordinal = 1),
+            index = 1)
+    //?} else {
+    /*@ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;m_280557_(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V",
+                    ordinal = 1),
+            index = 1)
+    *///?}
+    private Component townstead$swapNameOnHover(Component originalName) {
+        com.aetherianartificer.townstead.calendar.LifeClientStore.Snapshot life =
+                com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.asEntity().getId());
+        if (life == null) return originalName;
+
+        Component month = life.birthMonthComponent();
+        if (month.getString().isEmpty()) {
+            month = Component.translatable("townstead.calendar.inspector.month_fallback", life.birthMonthIndex());
+        }
+        Component born = Component.translatable("townstead.calendar.inspector.born",
+                life.birthDayOfMonth(), month, life.birthYear(), life.ageYears());
+
+        int nameW = font.width(originalName);
+        int bornW = font.width(born);
+        int hoverLeft = 8;
+        int hoverTop = 8;
+        int hoverRight = 24 + Math.max(nameW, bornW) + 8;
+        int hoverBottom = 30;
+        if (!townstead$isHoveringRect(hoverLeft, hoverTop, hoverRight - hoverLeft, hoverBottom - hoverTop)) {
+            return originalName;
+        }
+        return born;
+    }
+
+    private boolean townstead$isHoveringRect(int x, int y, int w, int h) {
+        if (minecraft == null) return false;
+        double mx = minecraft.mouseHandler.xpos() * width / minecraft.getWindow().getScreenWidth();
+        double my = minecraft.mouseHandler.ypos() * height / minecraft.getWindow().getScreenHeight();
+        return mx >= x && mx <= x + w && my >= y && my <= y + h;
+    }
+
     //? if >=1.21 {
     private ResourceLocation townstead$hungerIconSprite(HungerData.HungerState state) {
         return switch (state) {
