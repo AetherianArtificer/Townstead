@@ -71,17 +71,17 @@ public class ShiftManagerScreen extends Screen {
     private int cellW;
     private int gridTop;
     private int gridBottom;
-    private int rowsPerPage = 1;
     private int legendY;
     private int legendStep;
 
-    private Button prevPageButton;
-    private Button nextPageButton;
     private Button selectAllButton;
     private Button applyToSelectedButton;
+    private EditBox searchBox;
+    private String searchQuery = "";
+    private int rowScroll = 0; // pixels
 
-    private int shiftPage = 0;
     private List<UUID> shiftVillagerUuids = List.of();
+    private List<UUID> filteredUuids = List.of();
     private final Map<UUID, String> shiftVillagerNames = new HashMap<>();
     private final Map<UUID, Chronotype> shiftVillagerChronotypes = new HashMap<>();
     private final Map<UUID, String> shiftVillagerTemplateIds = new HashMap<>();
@@ -100,6 +100,17 @@ public class ShiftManagerScreen extends Screen {
     private ResourceLocation modalSelectedId = null;
     private int modalListScroll = 0;
     private boolean modalSaveAsActive = false;
+    private boolean modalRenamingTitle = false;
+    private EditBox modalRenameInput;
+    // Per-template local edits to user-template shifts (synced on each click)
+    private final Map<ResourceLocation, int[]> modalTemplateEdits = new HashMap<>();
+    // Last-known preview-area bounds; used by mouseClicked to hit-test the preview cells & title
+    private int previewX, previewY, previewW, previewH;
+    private int previewTitleX, previewTitleY, previewTitleW, previewTitleH;
+    private int previewGridX, previewGridY, previewGridCellW, previewGridH;
+    private final int[] summaryHitX = new int[ShiftData.ORDINAL_COLORS.length];
+    private final int[] summaryHitW = new int[ShiftData.ORDINAL_COLORS.length];
+    private int summaryHitY = 0, summaryHitH = 0;
     private EditBox modalSaveAsInput;
     private Button modalLoadButton;
     private Button modalDuplicateButton;
@@ -128,9 +139,7 @@ public class ShiftManagerScreen extends Screen {
         int footerBtnY = height - EDGE - 20;
         legendY = footerBtnY - 18;
 
-        int availableH = legendY - gridTop - 8;
-        rowsPerPage = Math.max(1, availableH / (CELL_H + CELL_GAP));
-        gridBottom = gridTop + rowsPerPage * (CELL_H + CELL_GAP);
+        gridBottom = legendY - 8;
 
         refreshShiftVillagers();
         pruneStateAgainstResidents();
@@ -139,7 +148,7 @@ public class ShiftManagerScreen extends Screen {
         int headerY = EDGE;
         selectAllButton = addRenderableWidget(Button.builder(
                 Component.translatable("townstead.shift.select_all"),
-                b -> toggleSelectAllOnPage())
+                b -> toggleSelectAllOnVisible())
                 .bounds(EDGE, headerY, 56, 20)
                 .build());
 
@@ -150,17 +159,18 @@ public class ShiftManagerScreen extends Screen {
                 .build());
         applyToSelectedButton.visible = false;
 
-        prevPageButton = addRenderableWidget(Button.builder(
-                Component.literal("<"),
-                b -> pageDelta(-1))
-                .bounds(gridRight - 44, headerY, 20, 20)
-                .build());
-
-        nextPageButton = addRenderableWidget(Button.builder(
-                Component.literal(">"),
-                b -> pageDelta(1))
-                .bounds(gridRight - 22, headerY, 20, 20)
-                .build());
+        int searchW = 100;
+        searchBox = new EditBox(this.font, width - EDGE - searchW, headerY + 2, searchW, 16,
+                Component.translatable("townstead.shift.search"));
+        searchBox.setHint(Component.translatable("townstead.shift.search"));
+        searchBox.setMaxLength(64);
+        searchBox.setValue(searchQuery);
+        searchBox.setResponder(v -> {
+            searchQuery = v;
+            rowScroll = 0;
+            rebuildFilteredList();
+        });
+        addRenderableWidget(searchBox);
 
         // Footer
         addRenderableWidget(Button.builder(
@@ -179,7 +189,6 @@ public class ShiftManagerScreen extends Screen {
                 (width - EDGE - 80 - (EDGE + 64)) / Math.max(1, ShiftData.ORDINAL_COLORS.length));
 
         queryShiftData();
-        updatePageButtons();
     }
 
     // ---------------------------------------------------------------- Render
@@ -190,15 +199,12 @@ public class ShiftManagerScreen extends Screen {
 
         refreshShiftVillagers();
         pruneStateAgainstResidents();
-        updatePageButtons();
+        updateHeaderButtons();
+        clampRowScroll();
 
-        // Title + page indicator
+        // Title
         g.drawCenteredString(this.font, getTitle(),
                 width / 2, EDGE + 6, 0xFFFFFFFF);
-        int totalPages = totalPages();
-        String pageText = String.format("%d/%d", shiftPage + 1, totalPages);
-        g.drawString(this.font, Component.literal(pageText),
-                gridRight - 44 - this.font.width(pageText) - 6, EDGE + 6, 0xFFA0A0A0, false);
 
         // Hour labels above the grid
         for (int h = 0; h < ShiftData.HOURS_PER_DAY; h++) {
@@ -212,15 +218,18 @@ public class ShiftManagerScreen extends Screen {
             g.pose().popPose();
         }
 
-        int startIdx = shiftPage * rowsPerPage;
-        int endIdx = Math.min(startIdx + rowsPerPage, shiftVillagerUuids.size());
+        // Scrollable row viewport — scissor-clip to the grid area
+        g.enableScissor(EDGE - 2, gridTop, width - EDGE + 2, gridBottom);
+        int visibleCount = 0;
+        for (int idx = 0; idx < filteredUuids.size(); idx++) {
+            int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+            if (rowY + CELL_H < gridTop) continue;
+            if (rowY > gridBottom) break;
+            visibleCount++;
+            UUID uuid = filteredUuids.get(idx);
 
-        for (int row = 0; row < endIdx - startIdx; row++) {
-            UUID uuid = shiftVillagerUuids.get(startIdx + row);
-            int rowY = gridTop + row * (CELL_H + CELL_GAP);
-
-            // Row hover highlight
-            if (mouseY >= rowY && mouseY < rowY + CELL_H) {
+            if (mouseY >= rowY && mouseY < rowY + CELL_H
+                    && mouseY >= gridTop && mouseY < gridBottom) {
                 g.fill(EDGE - 2, rowY - 1, width - EDGE + 2, rowY + CELL_H, ROW_HOVER);
             }
 
@@ -229,16 +238,18 @@ public class ShiftManagerScreen extends Screen {
             renderGridRow(g, uuid, rowY, mouseX, mouseY);
             renderTemplateButton(g, uuid, rowY, mouseX, mouseY);
         }
+        g.disableScissor();
+
+        // Scrollbar
+        renderRowScrollbar(g);
 
         // Now-line — drawn last over cells so it's visible
-        if (minecraft != null && minecraft.level != null && endIdx > startIdx) {
+        if (minecraft != null && minecraft.level != null && visibleCount > 0) {
             long dayTime = minecraft.level.getDayTime() % HOURS_PER_DAY_TICKS;
             int nowX = gridLeft + (int) ((dayTime * (long) cellW) / ShiftData.TICKS_PER_HOUR);
-            int lineTop = gridTop - 6;
-            int lineBottom = gridTop + rowsPerPage * (CELL_H + CELL_GAP) - CELL_GAP + 2;
-            g.fill(nowX, lineTop, nowX + 1, lineBottom, NOW_LINE_COLOR);
-            g.fill(nowX - 2, lineTop, nowX + 3, lineTop + 2, NOW_LINE_COLOR);
-            g.fill(nowX - 1, lineTop + 2, nowX + 2, lineTop + 3, NOW_LINE_COLOR);
+            g.fill(nowX, gridTop - 6, nowX + 1, gridBottom, NOW_LINE_COLOR);
+            g.fill(nowX - 2, gridTop - 6, nowX + 3, gridTop - 4, NOW_LINE_COLOR);
+            g.fill(nowX - 1, gridTop - 4, nowX + 2, gridTop - 3, NOW_LINE_COLOR);
         }
 
         // Legend (paint mode)
@@ -255,7 +266,7 @@ public class ShiftManagerScreen extends Screen {
         }
 
         // Tooltips suppressed while modal is open (they otherwise stack on top of it)
-        if (!modalActive) renderHoverTooltips(g, mouseX, mouseY, startIdx, endIdx);
+        if (!modalActive) renderHoverTooltips(g, mouseX, mouseY);
 
         // Modal: translate to z=400 so it sits on top of the rest of the GUI,
         // the same trick vanilla uses for tooltip rendering. Higher z in MC's
@@ -351,13 +362,16 @@ public class ShiftManagerScreen extends Screen {
         }
     }
 
-    private void renderHoverTooltips(GuiGraphics g, int mouseX, int mouseY, int startIdx, int endIdx) {
+    private void renderHoverTooltips(GuiGraphics g, int mouseX, int mouseY) {
+        if (mouseY < gridTop || mouseY > gridBottom) return;
         // Name tooltip
-        for (int row = 0; row < endIdx - startIdx; row++) {
-            int rowY = gridTop + row * (CELL_H + CELL_GAP);
+        for (int idx = 0; idx < filteredUuids.size(); idx++) {
+            int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+            if (rowY + CELL_H < gridTop) continue;
+            if (rowY > gridBottom) break;
             if (mouseX >= nameLeft && mouseX < gridLeft - 4
                     && mouseY >= rowY && mouseY < rowY + CELL_H) {
-                UUID uuid = shiftVillagerUuids.get(startIdx + row);
+                UUID uuid = filteredUuids.get(idx);
                 VillageResidentClientStore.Resident resident = VillageResidentClientStore.get(uuid);
                 if (resident != null) {
                     String profName = profDisplayName(resident.professionId());
@@ -379,10 +393,12 @@ public class ShiftManagerScreen extends Screen {
         if (mouseX >= gridLeft && mouseX < gridLeft + totalGridW) {
             int h = (int) ((mouseX - gridLeft) / cellW);
             if (h >= 0 && h < ShiftData.HOURS_PER_DAY) {
-                for (int row = 0; row < endIdx - startIdx; row++) {
-                    int rowY = gridTop + row * (CELL_H + CELL_GAP);
+                for (int idx = 0; idx < filteredUuids.size(); idx++) {
+                    int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+                    if (rowY + CELL_H < gridTop) continue;
+                    if (rowY > gridBottom) break;
                     if (mouseY >= rowY && mouseY < rowY + CELL_H) {
-                        UUID uuid = shiftVillagerUuids.get(startIdx + row);
+                        UUID uuid = filteredUuids.get(idx);
                         int[] shifts = shiftEdits.containsKey(uuid) ? shiftEdits.get(uuid) : ShiftClientStore.get(uuid);
                         int displayHour = ShiftData.toDisplayHour(h);
                         String hourStr = ShiftData.formatHour(displayHour);
@@ -440,7 +456,7 @@ public class ShiftManagerScreen extends Screen {
         drawBorder(g, rightX, rightY, rightW, listH - 32, MODAL_BORDER);
 
         renderModalList(g, listX, listY, listW, listH, mouseX, mouseY);
-        renderModalPreview(g, rightX, rightY, rightW, listH - 32);
+        renderModalPreview(g, rightX, rightY, rightW, listH - 32, mouseX, mouseY, partialTicks);
 
         // Close button (X)
         if (modalCloseButton != null) modalCloseButton.render(g, mouseX, mouseY, partialTicks);
@@ -454,100 +470,224 @@ public class ShiftManagerScreen extends Screen {
         }
     }
 
+    private static final int LIST_ENTRY_H = 18;
+    private static final int LIST_DIVIDER_GAP = 10;
+
     private void renderModalList(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY) {
         List<ShiftTemplate> templates = ShiftTemplateClientStore.all();
-        int entryH = 18;
         int innerX = x + 2;
-        int innerY = y + 2;
+        int innerY = y + 4;
         int innerR = x + w - 2;
         int innerB = y + h - 2;
-
-        int dy = innerY - modalListScroll;
         String assignedId = modalTarget != null ? shiftVillagerTemplateIds.get(modalTarget) : null;
 
+        int dy = innerY - modalListScroll;
+        boolean sawBuiltIn = false;
+        boolean dividerDrawn = false;
         for (ShiftTemplate t : templates) {
-            if (dy + entryH >= innerY && dy <= innerB) {
+            if (sawBuiltIn && !t.builtIn() && !dividerDrawn) {
+                int divY = dy + LIST_DIVIDER_GAP / 2;
+                if (divY > innerY && divY < innerB) {
+                    g.fill(innerX + 6, divY, innerR - 6, divY + 1, 0xFF455565);
+                }
+                dy += LIST_DIVIDER_GAP;
+                dividerDrawn = true;
+            }
+
+            if (dy + LIST_ENTRY_H >= innerY && dy <= innerB) {
                 int yT = Math.max(dy, innerY);
-                int yB = Math.min(dy + entryH - 1, innerB);
+                int yB = Math.min(dy + LIST_ENTRY_H - 1, innerB);
                 boolean selected = t.id().equals(modalSelectedId);
                 boolean hovered = mouseX >= innerX && mouseX < innerR && mouseY >= yT && mouseY <= yB;
                 if (selected) g.fill(innerX, yT, innerR, yB, LIST_SELECTED_BG);
                 else if (hovered) g.fill(innerX, yT, innerR, yB, LIST_HOVER_BG);
 
-                // Assigned indicator (•)
-                int dotX = innerX + 4;
-                int dotY = dy + entryH / 2 - 2;
+                int dotX = innerX + 6;
+                int dotY = dy + LIST_ENTRY_H / 2 - 2;
                 if (t.id().toString().equals(assignedId)) {
                     g.fill(dotX, dotY, dotX + 4, dotY + 4, LIST_ASSIGNED_TAG);
                 }
 
                 String label = t.displayName();
                 int textX = dotX + 8;
-                int maxNameW = (innerR - 4) - textX;
+                int maxNameW = (innerR - 6) - textX;
                 String trunc = label;
                 while (this.font.width(trunc) > maxNameW && trunc.length() > 1) {
                     trunc = trunc.substring(0, trunc.length() - 1);
                 }
                 if (!trunc.equals(label)) trunc += "..";
-                int textColor = t.builtIn() ? 0xFFE0E0E0 : 0xFFC9F0FF;
-                g.drawString(this.font, trunc, textX, dy + (entryH - this.font.lineHeight) / 2 + 1, textColor, false);
+                g.drawString(this.font, trunc, textX,
+                        dy + (LIST_ENTRY_H - this.font.lineHeight) / 2 + 1,
+                        0xFFE0E0E0, false);
             }
-            dy += entryH;
-        }
-
-        // Built-in vs user divider
-        int builtInCount = 0;
-        for (ShiftTemplate t : templates) if (t.builtIn()) builtInCount++;
-        if (builtInCount > 0 && builtInCount < templates.size()) {
-            int divY = innerY + builtInCount * entryH - modalListScroll;
-            if (divY > innerY && divY < innerB) {
-                g.fill(innerX + 4, divY, innerR - 4, divY + 1, 0xFF455565);
-            }
+            dy += LIST_ENTRY_H;
+            if (t.builtIn()) sawBuiltIn = true;
         }
     }
 
-    private void renderModalPreview(GuiGraphics g, int x, int y, int w, int h) {
+    /** Total height the list's content occupies, including the built-in/user divider gap. */
+    private int modalListContentHeight() {
+        List<ShiftTemplate> templates = ShiftTemplateClientStore.all();
+        int h = 0;
+        boolean sawBuiltIn = false;
+        boolean dividerAdded = false;
+        for (ShiftTemplate t : templates) {
+            if (sawBuiltIn && !t.builtIn() && !dividerAdded) {
+                h += LIST_DIVIDER_GAP;
+                dividerAdded = true;
+            }
+            h += LIST_ENTRY_H;
+            if (t.builtIn()) sawBuiltIn = true;
+        }
+        return h;
+    }
+
+    /** Convert a click y inside the list area to a template, accounting for the divider gap. */
+    private ShiftTemplate hitTestListEntry(double mouseY, int innerY) {
+        List<ShiftTemplate> templates = ShiftTemplateClientStore.all();
+        int dy = innerY - modalListScroll;
+        boolean sawBuiltIn = false;
+        boolean dividerAdded = false;
+        for (ShiftTemplate t : templates) {
+            if (sawBuiltIn && !t.builtIn() && !dividerAdded) {
+                dy += LIST_DIVIDER_GAP;
+                dividerAdded = true;
+            }
+            if (mouseY >= dy && mouseY < dy + LIST_ENTRY_H) return t;
+            dy += LIST_ENTRY_H;
+            if (t.builtIn()) sawBuiltIn = true;
+        }
+        return null;
+    }
+
+    private void renderModalPreview(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY, float partialTicks) {
+        previewX = x; previewY = y; previewW = w; previewH = h;
         ShiftTemplate t = ShiftTemplateClientStore.find(modalSelectedId);
-        int padding = 8;
         if (t == null) {
             String prompt = Component.translatable("townstead.shift.template.unassigned").getString();
             g.drawCenteredString(this.font, Component.literal(prompt), x + w / 2, y + h / 2 - 4, 0xFF808080);
+            previewTitleW = 0;
+            previewGridCellW = 0;
             return;
         }
+        int padding = 10;
 
-        // Name
-        g.drawString(this.font, Component.literal(t.displayName()), x + padding, y + padding, 0xFFFFFFFF, false);
-        String tag = Component.translatable(
-                t.builtIn() ? "townstead.shift.template.builtin_tag" : "townstead.shift.template.unassigned"
-        ).getString();
-        if (!t.builtIn()) tag = "Custom";
-        g.drawString(this.font, Component.literal(tag), x + padding,
-                y + padding + this.font.lineHeight + 2, 0xFFA0A0A0, false);
-
-        // Preview grid — same cell height as the outside grid
-        int gx = x + padding;
-        int gy = y + padding + (this.font.lineHeight + 2) * 2 + 4;
-        int gw = w - padding * 2;
-        int gh = CELL_H;
-        int pcell = Math.max(2, gw / ShiftData.HOURS_PER_DAY);
-        int[] shifts = t.copyShifts();
-        for (int h2 = 0; h2 < ShiftData.HOURS_PER_DAY; h2++) {
-            int cx = gx + h2 * pcell;
-            int ord = shifts[h2];
-            if (ord < 0 || ord >= ShiftData.ORDINAL_COLORS.length) ord = ShiftData.ORD_IDLE;
-            g.fill(cx, gy, cx + pcell - 1, gy + gh, ShiftData.ORDINAL_COLORS[ord]);
+        // Title (clickable on user templates for inline rename) / EditBox when renaming
+        int titleX = x + padding;
+        int titleY = y + padding;
+        if (modalRenamingTitle && !t.builtIn() && modalRenameInput != null) {
+            modalRenameInput.setX(titleX);
+            modalRenameInput.setY(titleY - 2);
+            modalRenameInput.render(g, mouseX, mouseY, partialTicks);
+            previewTitleX = titleX; previewTitleY = titleY;
+            previewTitleW = modalRenameInput.getWidth();
+            previewTitleH = modalRenameInput.getHeight();
+        } else {
+            g.drawString(this.font, Component.literal(t.displayName()), titleX, titleY, 0xFFFFFFFF, false);
+            previewTitleX = titleX; previewTitleY = titleY;
+            previewTitleW = this.font.width(t.displayName());
+            previewTitleH = this.font.lineHeight;
         }
 
-        // Hour ticks
-        for (int h2 = 0; h2 < ShiftData.HOURS_PER_DAY; h2 += 3) {
-            int cx = gx + h2 * pcell;
-            String label = String.valueOf(ShiftData.toDisplayHour(h2));
+        String tag = t.builtIn() ? "Built-in" : "Custom";
+        int tagY = titleY + this.font.lineHeight + 3;
+        g.drawString(this.font, Component.literal(tag), titleX, tagY, 0xFFA0A0A0, false);
+
+        // Preview grid — matches the outside grid (CELL_H, same cell colors, same cellW math)
+        int gridY = tagY + this.font.lineHeight + 8;
+        int gridX = titleX;
+        int gridW = w - padding * 2;
+        int pcell = Math.max(4, gridW / ShiftData.HOURS_PER_DAY);
+        int gridActualW = pcell * ShiftData.HOURS_PER_DAY;
+
+        previewGridX = gridX;
+        previewGridY = gridY;
+        previewGridCellW = pcell;
+        previewGridH = CELL_H;
+
+        // Hour labels above
+        for (int h2 = 0; h2 < ShiftData.HOURS_PER_DAY; h2++) {
+            int displayHour = ShiftData.toDisplayHour(h2);
+            String label = String.valueOf(displayHour);
+            int lx = gridX + h2 * pcell;
             g.pose().pushPose();
-            g.pose().translate(cx + pcell / 2.0f, gy + gh + 2, 0);
+            g.pose().translate(lx + pcell / 2.0f, gridY - 2, 0);
             g.pose().scale(0.5f, 0.5f, 1f);
-            g.drawString(this.font, label, -this.font.width(label) / 2, 0, 0xFFB0B0B0, false);
+            g.drawString(this.font, label, -this.font.width(label) / 2, -this.font.lineHeight, 0xFFC0C0C0, false);
             g.pose().popPose();
         }
+
+        int[] shifts = effectiveTemplateShifts(t);
+        boolean editable = !t.builtIn();
+        for (int h2 = 0; h2 < ShiftData.HOURS_PER_DAY; h2++) {
+            int cx = gridX + h2 * pcell;
+            int ord = shifts[h2];
+            if (ord < 0 || ord >= ShiftData.ORDINAL_COLORS.length) ord = ShiftData.ORD_IDLE;
+            g.fill(cx, gridY, cx + pcell - 1, gridY + CELL_H - 1, ShiftData.ORDINAL_COLORS[ord]);
+            // Hover affordance on user templates
+            if (editable && mouseX >= cx && mouseX < cx + pcell - 1
+                    && mouseY >= gridY && mouseY < gridY + CELL_H - 1) {
+                g.fill(cx, gridY, cx + pcell - 1, gridY + CELL_H - 1, 0x40FFFFFF);
+            }
+        }
+
+        // Activity summary — clickable like the bottom legend; the swatch sits next
+        // to the label with its bottom on the same baseline as the text.
+        int sumY = gridY + CELL_H + 10;
+        int swatchSize = 9;
+        int textOffsetY = swatchSize - this.font.lineHeight + 1; // align text bottom to swatch bottom
+        int[] counts = new int[ShiftData.ORDINAL_COLORS.length];
+        for (int v : shifts) {
+            if (v >= 0 && v < counts.length) counts[v]++;
+        }
+        summaryHitY = sumY - 2;
+        summaryHitH = swatchSize + 4;
+        int sx = gridX;
+        for (int i = 0; i < counts.length; i++) {
+            String label = Component.translatable(ShiftData.ORDINAL_TO_KEY[i]).getString() + " " + counts[i] + "h";
+            int entryW = swatchSize + 3 + this.font.width(label);
+            boolean active = shiftPaintOrdinal == i;
+            if (active) {
+                g.fill(sx - 2, summaryHitY, sx + entryW + 2, summaryHitY + summaryHitH, 0xFFFFFFFF);
+                g.fill(sx - 1, summaryHitY + 1, sx + entryW + 1, summaryHitY + summaryHitH - 1, 0xFF000000);
+            }
+            g.fill(sx, sumY, sx + swatchSize, sumY + swatchSize, ShiftData.ORDINAL_COLORS[i]);
+            g.drawString(this.font, label, sx + swatchSize + 3, sumY + textOffsetY,
+                    active ? 0xFFFFFFFF : 0xFFE0E0E0, false);
+            summaryHitX[i] = sx;
+            summaryHitW[i] = entryW;
+            sx += entryW + 12;
+        }
+
+        // Assigned-to count
+        int used = countAssignedTo(t);
+        int usedY = sumY + this.font.lineHeight + 6;
+        String usedText = used == 0
+                ? Component.translatable("townstead.shift.template.used_none").getString()
+                : Component.translatable("townstead.shift.template.used_by", used).getString();
+        g.drawString(this.font, usedText, gridX, usedY, 0xFFA0A0A0, false);
+
+        // Editable hint
+        if (editable) {
+            String hint = Component.translatable("townstead.shift.template.edit_hint").getString();
+            int hintW = this.font.width(hint);
+            g.drawString(this.font, hint, gridX + gridActualW - hintW, usedY, 0xFF707070, false);
+        }
+    }
+
+    private int[] effectiveTemplateShifts(ShiftTemplate t) {
+        int[] edited = modalTemplateEdits.get(t.id());
+        if (edited != null) return edited;
+        return t.copyShifts();
+    }
+
+    private int countAssignedTo(ShiftTemplate t) {
+        String idStr = t.id().toString();
+        int n = 0;
+        for (String assigned : shiftVillagerTemplateIds.values()) {
+            if (idStr.equals(assigned)) n++;
+        }
+        return n;
     }
 
     private void renderSaveAsOverlay(GuiGraphics g, int mouseX, int mouseY, float partialTicks) {
@@ -675,14 +815,92 @@ public class ShiftManagerScreen extends Screen {
     }
 
     private void closeModal() {
+        if (modalRenamingTitle) cancelRename();
         modalActive = false;
         modalBulkMode = false;
         modalTarget = null;
         modalBulkTargets = List.of();
         modalSelectedId = null;
         modalSaveAsActive = false;
+        modalTemplateEdits.clear();
         clearModalWidgets();
         setFocused(null);
+    }
+
+    // -- Inline rename ------------------------------------------------------
+
+    private void startRename(ShiftTemplate t) {
+        if (t == null || t.builtIn()) return;
+        modalRenamingTitle = true;
+        int titleW = Math.max(120, previewW - 40);
+        modalRenameInput = new EditBox(this.font, previewTitleX, previewTitleY - 2, titleW, 14,
+                Component.translatable("townstead.shift.template.save_prompt"));
+        modalRenameInput.setMaxLength(64);
+        modalRenameInput.setValue(t.displayName());
+        //? if >=1.21 {
+        modalRenameInput.moveCursorToEnd(false);
+        //?} else {
+        /*modalRenameInput.moveCursorToEnd();
+        *///?}
+        modalRenameInput.setHighlightPos(0);
+        modalRenameInput.setFocused(true);
+        setFocused(modalRenameInput);
+    }
+
+    private void commitRename() {
+        if (!modalRenamingTitle || modalRenameInput == null) return;
+        ShiftTemplate t = ShiftTemplateClientStore.find(modalSelectedId);
+        if (t == null || t.builtIn()) { cancelRename(); return; }
+        String name = modalRenameInput.getValue().trim();
+        if (name.isEmpty() || name.equals(t.displayName())) { cancelRename(); return; }
+        // Upsert by id; the server keeps the same id and replaces the name.
+        java.util.Optional<String> chrono = t.chronotype().map(Enum::name);
+        ShiftTemplateSavePayload payload = new ShiftTemplateSavePayload(
+                t.id().toString(), name, effectiveTemplateShifts(t),
+                chrono.isPresent() ? chrono : java.util.Optional.empty());
+        //? if neoforge {
+        PacketDistributor.sendToServer(payload);
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(payload);
+        *///?}
+        cancelRename();
+    }
+
+    private void cancelRename() {
+        modalRenamingTitle = false;
+        modalRenameInput = null;
+        setFocused(null);
+    }
+
+    // -- Inline edit of user template ---------------------------------------
+
+    private boolean paintPreviewCell(double mouseX, double mouseY, ShiftTemplate t) {
+        if (t == null || t.builtIn() || previewGridCellW <= 0) return false;
+        if (mouseX < previewGridX || mouseX >= previewGridX + previewGridCellW * ShiftData.HOURS_PER_DAY) return false;
+        if (mouseY < previewGridY || mouseY >= previewGridY + previewGridH) return false;
+        int h = (int) ((mouseX - previewGridX) / previewGridCellW);
+        if (h < 0 || h >= ShiftData.HOURS_PER_DAY) return false;
+
+        int[] base = effectiveTemplateShifts(t);
+        int[] next = Arrays.copyOf(base, base.length);
+        if (shiftPaintOrdinal >= 0) {
+            if (next[h] == shiftPaintOrdinal) return true;
+            next[h] = shiftPaintOrdinal;
+        } else {
+            next[h] = (next[h] + 1) % ShiftData.ORDINAL_TO_ACTIVITY.length;
+        }
+        modalTemplateEdits.put(t.id(), next);
+        // Send save: same id, same name, new shifts; server upserts in place.
+        java.util.Optional<String> chrono = t.chronotype().map(Enum::name);
+        ShiftTemplateSavePayload payload = new ShiftTemplateSavePayload(
+                t.id().toString(), t.displayName(), next,
+                chrono.isPresent() ? chrono : java.util.Optional.empty());
+        //? if neoforge {
+        PacketDistributor.sendToServer(payload);
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(payload);
+        *///?}
+        return true;
     }
 
     private void openSaveAsOverlay() {
@@ -747,7 +965,7 @@ public class ShiftManagerScreen extends Screen {
         else return;
         if (targets.isEmpty()) return;
 
-        int[] shifts = t.copyShifts();
+        int[] shifts = effectiveTemplateShifts(t);
         for (UUID uuid : targets) {
             ShiftClientStore.set(uuid, shifts);
             VillageResidentClientStore.updateShifts(uuid, shifts);
@@ -796,16 +1014,18 @@ public class ShiftManagerScreen extends Screen {
         if (modalActive) return modalMouseClicked(mouseX, mouseY, button);
 
         if (button == 0) {
-            int startIdx = shiftPage * rowsPerPage;
-            int endIdx = Math.min(startIdx + rowsPerPage, shiftVillagerUuids.size());
+            // Clicks outside the grid viewport ignore row hit-testing
+            boolean inViewport = mouseY >= gridTop && mouseY <= gridBottom;
 
             // Checkbox
-            for (int row = 0; row < endIdx - startIdx; row++) {
-                int rowY = gridTop + row * (CELL_H + CELL_GAP);
+            if (inViewport) for (int idx = 0; idx < filteredUuids.size(); idx++) {
+                int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+                if (rowY + CELL_H < gridTop) continue;
+                if (rowY > gridBottom) break;
                 int cbY = rowY + (CELL_H - CHECKBOX_SIZE) / 2;
                 if (mouseX >= EDGE && mouseX <= EDGE + CHECKBOX_SIZE
                         && mouseY >= cbY && mouseY <= cbY + CHECKBOX_SIZE) {
-                    UUID uuid = shiftVillagerUuids.get(startIdx + row);
+                    UUID uuid = filteredUuids.get(idx);
                     if (hasShiftDown() && lastToggledOn != null) {
                         rangeSelect(lastToggledOn, uuid);
                     } else if (selectedVillagers.contains(uuid)) {
@@ -821,12 +1041,14 @@ public class ShiftManagerScreen extends Screen {
             }
 
             // Template button
-            for (int row = 0; row < endIdx - startIdx; row++) {
-                int rowY = gridTop + row * (CELL_H + CELL_GAP);
+            if (inViewport) for (int idx = 0; idx < filteredUuids.size(); idx++) {
+                int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+                if (rowY + CELL_H < gridTop) continue;
+                if (rowY > gridBottom) break;
                 int btnY = rowY + (CELL_H - 14) / 2;
                 if (mouseX >= templateBtnLeft && mouseX <= templateBtnLeft + TEMPLATE_BTN_W
                         && mouseY >= btnY && mouseY <= btnY + 14) {
-                    UUID uuid = shiftVillagerUuids.get(startIdx + row);
+                    UUID uuid = filteredUuids.get(idx);
                     focusedVillager = uuid;
                     openTemplateModal(uuid);
                     return true;
@@ -845,11 +1067,13 @@ public class ShiftManagerScreen extends Screen {
             }
 
             // Grid cell paint
-            if (applyCell(mouseX, mouseY)) {
-                for (int row = 0; row < endIdx - startIdx; row++) {
-                    int rowY = gridTop + row * (CELL_H + CELL_GAP);
+            if (inViewport && applyCell(mouseX, mouseY)) {
+                for (int idx = 0; idx < filteredUuids.size(); idx++) {
+                    int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+                    if (rowY + CELL_H < gridTop) continue;
+                    if (rowY > gridBottom) break;
                     if (mouseY >= rowY && mouseY < rowY + CELL_H) {
-                        focusedVillager = shiftVillagerUuids.get(startIdx + row);
+                        focusedVillager = filteredUuids.get(idx);
                         break;
                     }
                 }
@@ -866,11 +1090,41 @@ public class ShiftManagerScreen extends Screen {
             if (modalSaveAsInput != null && modalSaveAsInput.mouseClicked(mouseX, mouseY, button)) return true;
             return true;
         }
+        if (modalRenamingTitle && modalRenameInput != null) {
+            if (modalRenameInput.mouseClicked(mouseX, mouseY, button)) return true;
+            // Click anywhere else commits the rename.
+            commitRename();
+            // Fall through so the click can also trigger e.g. selecting a different entry
+        }
         if (modalCloseButton != null && modalCloseButton.mouseClicked(mouseX, mouseY, button)) return true;
         if (modalLoadButton != null && modalLoadButton.mouseClicked(mouseX, mouseY, button)) return true;
         if (modalDuplicateButton != null && modalDuplicateButton.mouseClicked(mouseX, mouseY, button)) return true;
         if (modalDeleteButton != null && modalDeleteButton.mouseClicked(mouseX, mouseY, button)) return true;
         if (modalSaveAsButton != null && modalSaveAsButton.mouseClicked(mouseX, mouseY, button)) return true;
+
+        // Preview-pane interactions
+        ShiftTemplate selected = ShiftTemplateClientStore.find(modalSelectedId);
+        if (selected != null) {
+            // Click on the title to rename, on user templates
+            if (!selected.builtIn() && !modalRenamingTitle
+                    && mouseX >= previewTitleX && mouseX <= previewTitleX + previewTitleW
+                    && mouseY >= previewTitleY && mouseY <= previewTitleY + previewTitleH) {
+                startRename(selected);
+                return true;
+            }
+            // Click on a summary entry toggles paint mode (like the bottom legend)
+            if (button == 0 && summaryHitH > 0
+                    && mouseY >= summaryHitY && mouseY <= summaryHitY + summaryHitH) {
+                for (int i = 0; i < summaryHitX.length; i++) {
+                    if (mouseX >= summaryHitX[i] && mouseX <= summaryHitX[i] + summaryHitW[i]) {
+                        shiftPaintOrdinal = (shiftPaintOrdinal == i) ? -1 : i;
+                        return true;
+                    }
+                }
+            }
+            // Click on a preview cell to paint (user templates only)
+            if (button == 0 && paintPreviewCell(mouseX, mouseY, selected)) return true;
+        }
 
         // List click
         int mw = Math.min(560, width - 60);
@@ -882,16 +1136,16 @@ public class ShiftManagerScreen extends Screen {
         int listW = (mw - 30) / 2;
         int listH = mh - 60;
         if (mouseX >= listX && mouseX <= listX + listW && mouseY >= listY && mouseY <= listY + listH) {
-            int entryH = 18;
-            int dy = listY + 2 - modalListScroll;
-            for (ShiftTemplate t : ShiftTemplateClientStore.all()) {
-                if (mouseY >= dy && mouseY < dy + entryH
-                        && dy + entryH > listY + 2 && dy < listY + listH - 2) {
-                    modalSelectedId = t.id().equals(modalSelectedId) ? null : t.id();
-                    updateModalActionStates();
-                    return true;
+            int innerY = listY + 4;
+            ShiftTemplate hit = hitTestListEntry(mouseY, innerY);
+            if (hit != null) {
+                ResourceLocation newId = hit.id().equals(modalSelectedId) ? null : hit.id();
+                if (!java.util.Objects.equals(newId, modalSelectedId)) {
+                    modalSelectedId = newId;
+                    shiftPaintOrdinal = -1;
+                    if (modalRenamingTitle) cancelRename();
                 }
-                dy += entryH;
+                updateModalActionStates();
             }
             return true;
         }
@@ -900,7 +1154,13 @@ public class ShiftManagerScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (modalActive) return true;
+        if (modalActive) {
+            if (button == 0 && shiftPaintOrdinal >= 0) {
+                ShiftTemplate selected = ShiftTemplateClientStore.find(modalSelectedId);
+                if (selected != null) paintPreviewCell(mouseX, mouseY, selected);
+            }
+            return true;
+        }
         if (button == 0 && shiftPaintOrdinal >= 0 && applyCell(mouseX, mouseY)) {
             return true;
         }
@@ -924,19 +1184,19 @@ public class ShiftManagerScreen extends Screen {
             int listW = (mw - 30) / 2;
             int listH = mh - 60;
             if (mouseX >= listX && mouseX <= listX + listW && mouseY >= listY && mouseY <= listY + listH) {
-                int entryH = 18;
-                int listSize = ShiftTemplateClientStore.all().size() * entryH;
-                int visible = listH - 4;
+                int listSize = modalListContentHeight();
+                int visible = listH - 8;
                 int maxScroll = Math.max(0, listSize - visible);
                 modalListScroll = (int) Math.max(0, Math.min(maxScroll, modalListScroll - scrollY * 12));
             }
             return true;
         }
 
-        if (mouseX >= gridLeft && mouseX <= gridLeft + ShiftData.HOURS_PER_DAY * cellW
-                && mouseY >= gridTop && mouseY <= gridBottom) {
-            if (scrollY < 0) { pageDelta(1); return true; }
-            if (scrollY > 0) { pageDelta(-1); return true; }
+        if (mouseY >= gridTop && mouseY <= gridBottom
+                && mouseX >= EDGE && mouseX <= width - EDGE) {
+            rowScroll = (int) Math.max(0, rowScroll - scrollY * 16);
+            clampRowScroll();
+            return true;
         }
         return super.mouseScrolled(mouseX, mouseY,
                 //? if >=1.21 {
@@ -955,6 +1215,12 @@ public class ShiftManagerScreen extends Screen {
                 if (modalSaveAsInput != null && modalSaveAsInput.keyPressed(keyCode, scanCode, modifiers)) return true;
                 return super.keyPressed(keyCode, scanCode, modifiers);
             }
+            if (modalRenamingTitle) {
+                if (keyCode == 256) { cancelRename(); return true; }
+                if (keyCode == 257 || keyCode == 335) { commitRename(); return true; }
+                if (modalRenameInput != null && modalRenameInput.keyPressed(keyCode, scanCode, modifiers)) return true;
+                return super.keyPressed(keyCode, scanCode, modifiers);
+            }
             if (keyCode == 256) { closeModal(); return true; }
             return super.keyPressed(keyCode, scanCode, modifiers);
         }
@@ -963,6 +1229,7 @@ public class ShiftManagerScreen extends Screen {
 
     @Override
     public boolean charTyped(char chr, int modifiers) {
+        if (modalRenamingTitle && modalRenameInput != null && modalRenameInput.charTyped(chr, modifiers)) return true;
         if (modalSaveAsActive && modalSaveAsInput != null && modalSaveAsInput.charTyped(chr, modifiers)) return true;
         return super.charTyped(chr, modifiers);
     }
@@ -981,15 +1248,13 @@ public class ShiftManagerScreen extends Screen {
 
     // -------------------------------------------------------- State helpers
 
-    private void toggleSelectAllOnPage() {
-        int startIdx = shiftPage * rowsPerPage;
-        int endIdx = Math.min(startIdx + rowsPerPage, shiftVillagerUuids.size());
+    private void toggleSelectAllOnVisible() {
+        if (filteredUuids.isEmpty()) return;
         boolean anyUnselected = false;
-        for (int i = startIdx; i < endIdx; i++) {
-            if (!selectedVillagers.contains(shiftVillagerUuids.get(i))) { anyUnselected = true; break; }
+        for (UUID uuid : filteredUuids) {
+            if (!selectedVillagers.contains(uuid)) { anyUnselected = true; break; }
         }
-        for (int i = startIdx; i < endIdx; i++) {
-            UUID uuid = shiftVillagerUuids.get(i);
+        for (UUID uuid : filteredUuids) {
             if (anyUnselected) {
                 if (selectedVillagers.add(uuid)) lastToggledOn = uuid;
             } else {
@@ -1004,12 +1269,12 @@ public class ShiftManagerScreen extends Screen {
     }
 
     private void rangeSelect(UUID anchor, UUID target) {
-        int aIdx = shiftVillagerUuids.indexOf(anchor);
-        int bIdx = shiftVillagerUuids.indexOf(target);
+        int aIdx = filteredUuids.indexOf(anchor);
+        int bIdx = filteredUuids.indexOf(target);
         if (aIdx < 0 || bIdx < 0) return;
         int lo = Math.min(aIdx, bIdx);
         int hi = Math.max(aIdx, bIdx);
-        for (int i = lo; i <= hi; i++) selectedVillagers.add(shiftVillagerUuids.get(i));
+        for (int i = lo; i <= hi; i++) selectedVillagers.add(filteredUuids.get(i));
         lastToggledOn = target;
         focusedVillager = target;
     }
@@ -1031,7 +1296,56 @@ public class ShiftManagerScreen extends Screen {
 
         shiftVillagerUuids.sort(Comparator.comparing(
                 uuid -> shiftVillagerNames.getOrDefault(uuid, uuid.toString())));
-        shiftPage = Math.max(0, Math.min(shiftPage, totalPages() - 1));
+        rebuildFilteredList();
+    }
+
+    private void rebuildFilteredList() {
+        String q = foldForSearch(searchQuery);
+        if (q.isEmpty()) {
+            filteredUuids = new ArrayList<>(shiftVillagerUuids);
+            return;
+        }
+        List<UUID> out = new ArrayList<>();
+        for (UUID uuid : shiftVillagerUuids) {
+            String name = shiftVillagerNames.getOrDefault(uuid, "");
+            if (foldForSearch(name).contains(q)) out.add(uuid);
+        }
+        filteredUuids = out;
+    }
+
+    /**
+     * Lowercase + diacritic-fold so typing "Petris" matches "Pēteris",
+     * "Pavels" matches "Pāvels", and so on. Decomposes characters into base
+     * letter + combining marks (NFD) and strips the marks.
+     */
+    private static String foldForSearch(String s) {
+        if (s == null || s.isEmpty()) return "";
+        String decomposed = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD);
+        return decomposed.replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .toLowerCase(Locale.ROOT)
+                .trim();
+    }
+
+    private void clampRowScroll() {
+        int contentH = filteredUuids.size() * (CELL_H + CELL_GAP);
+        int viewport = gridBottom - gridTop;
+        int max = Math.max(0, contentH - viewport);
+        if (rowScroll < 0) rowScroll = 0;
+        if (rowScroll > max) rowScroll = max;
+    }
+
+    private void renderRowScrollbar(GuiGraphics g) {
+        int contentH = filteredUuids.size() * (CELL_H + CELL_GAP);
+        int viewport = gridBottom - gridTop;
+        if (contentH <= viewport) return;
+        int barX = width - EDGE + 2;
+        int barW = 3;
+        if (barX + barW > width - 2) { barX = width - 2 - barW; }
+        g.fill(barX, gridTop, barX + barW, gridBottom, 0x40FFFFFF);
+        int thumbH = Math.max(20, (int) ((long) viewport * viewport / contentH));
+        int maxScroll = contentH - viewport;
+        int thumbY = gridTop + (int) ((long) (gridBottom - gridTop - thumbH) * rowScroll / Math.max(1, maxScroll));
+        g.fill(barX, thumbY, barX + barW, thumbY + thumbH, 0xA0FFFFFF);
     }
 
     private void pruneStateAgainstResidents() {
@@ -1051,20 +1365,7 @@ public class ShiftManagerScreen extends Screen {
         *///?}
     }
 
-    private void pageDelta(int delta) {
-        int totalPages = totalPages();
-        shiftPage = Math.max(0, Math.min(shiftPage + delta, totalPages - 1));
-        updatePageButtons();
-    }
-
-    private int totalPages() {
-        int count = shiftVillagerUuids.size();
-        return Math.max(1, (int) Math.ceil(count / (double) rowsPerPage));
-    }
-
-    private void updatePageButtons() {
-        if (prevPageButton != null) prevPageButton.active = shiftPage > 0;
-        if (nextPageButton != null) nextPageButton.active = shiftPage < totalPages() - 1;
+    private void updateHeaderButtons() {
         if (applyToSelectedButton != null) {
             int n = selectedVillagers.size();
             applyToSelectedButton.visible = n > 0;
@@ -1087,7 +1388,7 @@ public class ShiftManagerScreen extends Screen {
 
     private void resetAllShifts() {
         int[] defaults = ShiftData.getVanillaDefault();
-        for (UUID uuid : shiftVillagerUuids) {
+        for (UUID uuid : filteredUuids) {
             shiftEdits.put(uuid, Arrays.copyOf(defaults, defaults.length));
             shiftVillagerTemplateIds.put(uuid, "");
             //? if neoforge {
@@ -1100,16 +1401,16 @@ public class ShiftManagerScreen extends Screen {
 
     private boolean applyCell(double mouseX, double mouseY) {
         if (mouseX < gridLeft || mouseX >= gridLeft + ShiftData.HOURS_PER_DAY * cellW) return false;
+        if (mouseY < gridTop || mouseY > gridBottom) return false;
         int h = (int) ((mouseX - gridLeft) / cellW);
         if (h < 0 || h >= ShiftData.HOURS_PER_DAY) return false;
 
-        int startIdx = shiftPage * rowsPerPage;
-        int endIdx = Math.min(startIdx + rowsPerPage, shiftVillagerUuids.size());
-
-        for (int row = 0; row < endIdx - startIdx; row++) {
-            int rowY = gridTop + row * (CELL_H + CELL_GAP);
+        for (int idx = 0; idx < filteredUuids.size(); idx++) {
+            int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+            if (rowY + CELL_H < gridTop) continue;
+            if (rowY > gridBottom) break;
             if (mouseY >= rowY && mouseY < rowY + CELL_H) {
-                UUID uuid = shiftVillagerUuids.get(startIdx + row);
+                UUID uuid = filteredUuids.get(idx);
                 int[] existing = shiftEdits.containsKey(uuid)
                         ? shiftEdits.get(uuid)
                         : ShiftClientStore.get(uuid);
