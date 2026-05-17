@@ -210,13 +210,21 @@ public class WorldCalendarSavedData extends SavedData {
     }
 
     /**
-     * Initialize the last-sample baseline without advancing the counter.
-     * Used on first tick after world load to avoid a phantom day jump.
+     * Initialize the last-sample baseline without advancing the counter going
+     * forward. On the very first prime (no prior sample AND counter still at
+     * its default 0), retroactively seed the counter to {@code sample / 24000}
+     * so saves that existed before Townstead was installed get credited the
+     * vanilla days elapsed since world creation. Fresh worlds (sample=0) seed
+     * to 0, a no-op. Once {@code hasLastSample} is true, the delta-based
+     * ticker takes over and stays Time-Control-safe.
      */
     public void primeSample(long sample) {
         if (!hasLastSample) {
             this.lastDayTimeSample = sample;
             this.hasLastSample = true;
+            if (this.worldDayCounter == 0L) {
+                this.worldDayCounter = Math.max(0L, sample / 24000L);
+            }
             setDirty();
         }
     }
