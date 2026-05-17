@@ -297,6 +297,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
             com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
             com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
+            com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer());
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
@@ -322,6 +323,10 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.CalendarCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         townstead$registerEmotePlaybackClear();
         registerDialogueConditions();
@@ -367,6 +372,7 @@ public class Townstead {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
                 com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
+                com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer());
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
@@ -393,6 +399,10 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.CalendarCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         try {
             Class.forName("net.minecraft.client.Minecraft");
@@ -477,6 +487,7 @@ public class Townstead {
         event.addListener(new CatalogDataLoader());
         event.addListener(new com.aetherianartificer.townstead.reaction.ReactionDataLoader());
         event.addListener(new ShiftTemplateJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.calendar.CalendarProfileJsonLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 

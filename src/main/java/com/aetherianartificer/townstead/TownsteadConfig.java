@@ -98,6 +98,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
+    public static final ModConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
     //?} else if forge {
     /*public static final ForgeConfigSpec SERVER_SPEC;
     public static final ForgeConfigSpec CLIENT_SPEC;
@@ -170,6 +171,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
+    public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
     *///?}
 
     static {
@@ -486,6 +488,17 @@ public final class TownsteadConfig {
             ENABLE_TOWNSTEAD_COOK = null;
         }
 
+        // ── Calendar ──
+        b.translation("townstead.configuration.calendar").push("calendar");
+        CALENDAR_PROFILE = b
+                .translation("townstead.configuration.calendar.profile")
+                .comment("Active calendar profile. Use \"auto\" to detect seasonal mods (TFC > Serene Seasons > Ecliptic Seasons > Vanilla).",
+                         "Or pin a specific profile by id: townstead:vanilla, townstead:realtime, townstead:localtime, townstead:serene, townstead:tfc, townstead:ecliptic.",
+                         "Profiles are defined in data packs at data/<ns>/calendar_profile/*.json so any pack can add or replace one.",
+                         "Admin override via /townstead calendar set-profile takes precedence over this value at runtime.")
+                .define("profile", "auto");
+        b.pop();
+
         // ── Debug ──
         b.translation("townstead.configuration.debug").push("debug");
         DEBUG_VILLAGER_AI = b
@@ -624,6 +637,10 @@ public final class TownsteadConfig {
 
     public static boolean isVillagerSleepDebugEnabled() {
         return DEBUG_VILLAGER_SLEEP.get();
+    }
+
+    public static String getCalendarProfile() {
+        return CALENDAR_PROFILE.get();
     }
 
     public static boolean isProtectedStorage(BlockState state) {

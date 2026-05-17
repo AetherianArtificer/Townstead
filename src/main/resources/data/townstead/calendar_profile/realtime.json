@@ -1,0 +1,19 @@
+{
+  "type": "townstead:realtime_math",
+  "display_name": { "translate": "calendar.townstead.realtime.name" },
+  "days_per_week": 7,
+  "months": [
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.frostturn" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.whiskerchill" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.honeydawn" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.springleap" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.strongbloom" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.slowsun" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.foxfire" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.duskglow" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.harvestwatch" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.sporefall" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.darkfall" } },
+    { "days": 30, "common_name": { "translate": "calendar.townstead.month.winterflame" } }
+  ]
+}
