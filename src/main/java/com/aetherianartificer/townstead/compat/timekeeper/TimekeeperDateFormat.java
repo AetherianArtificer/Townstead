@@ -1,4 +1,4 @@
-package com.aetherianartificer.townstead.compat.calendar.timekeeper;
+package com.aetherianartificer.townstead.compat.timekeeper;
 
 import com.aetherianartificer.townstead.calendar.CalendarClientStore;
 import com.aetherianartificer.townstead.calendar.CalendarDate;

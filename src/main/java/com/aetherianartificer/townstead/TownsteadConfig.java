@@ -99,6 +99,9 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
+    public static final ModConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
+    public static final ModConfigSpec.IntValue CALENDAR_START_YEAR_MIN;
+    public static final ModConfigSpec.IntValue CALENDAR_START_YEAR_MAX;
     //?} else if forge {
     /*public static final ForgeConfigSpec SERVER_SPEC;
     public static final ForgeConfigSpec CLIENT_SPEC;
@@ -172,6 +175,9 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
+    public static final ForgeConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
+    public static final ForgeConfigSpec.IntValue CALENDAR_START_YEAR_MIN;
+    public static final ForgeConfigSpec.IntValue CALENDAR_START_YEAR_MAX;
     *///?}
 
     static {
@@ -492,11 +498,28 @@ public final class TownsteadConfig {
         b.translation("townstead.configuration.calendar").push("calendar");
         CALENDAR_PROFILE = b
                 .translation("townstead.configuration.calendar.profile")
-                .comment("Active calendar profile. Use \"auto\" to detect seasonal mods (TFC > Serene Seasons > Ecliptic Seasons > Vanilla).",
-                         "Or pin a specific profile by id: townstead:vanilla, townstead:realtime, townstead:localtime, townstead:serene, townstead:tfc, townstead:ecliptic.",
-                         "Profiles are defined in data packs at data/<ns>/calendar_profile/*.json so any pack can add or replace one.",
+                .comment("Active calendar profile. Use \"auto\" to detect seasonal mods (TFC > Serene Seasons > Ecliptic Seasons > Default).",
+                         "Or pin a specific profile by id: townstead_calendar:default, townstead_calendar:realtime, townstead_calendar:localtime, townstead_calendar:serene, townstead_calendar:tfc, townstead_calendar:ecliptic.",
+                         "Profiles are defined in data packs at data/<ns>/calendar_profile/<name>.json so any pack can add a new one in its own namespace.",
+                         "In-game: run /townstead calendar set-profile <id> for tab-completed picking.",
                          "Admin override via /townstead calendar set-profile takes precedence over this value at runtime.")
                 .define("profile", "auto");
+        CALENDAR_RANDOMIZE_START = b
+                .translation("townstead.configuration.calendar.randomizeStart")
+                .comment("APPLIES ONLY TO NEW WORLDS. Editing this on an existing save has no effect.",
+                         "When true and the world is freshly created (no admin/datapack set dayTime forward),",
+                         "roll a random starting year and day-of-year. Disable to always start at",
+                         "(start year minimum) day 1. Seasonal mods will still drive their own season.")
+                .define("randomizeStart", true);
+        CALENDAR_START_YEAR_MIN = b
+                .translation("townstead.configuration.calendar.startYearMin")
+                .comment("APPLIES ONLY TO NEW WORLDS. Lower bound (inclusive) for the rolled starting display year.")
+                .defineInRange("startYearMin", 1500, 0, 100000);
+        CALENDAR_START_YEAR_MAX = b
+                .translation("townstead.configuration.calendar.startYearMax")
+                .comment("APPLIES ONLY TO NEW WORLDS. Upper bound (inclusive) for the rolled starting display year.",
+                         "If <= min, only min is used.")
+                .defineInRange("startYearMax", 2200, 0, 100000);
         b.pop();
 
         // ── Debug ──
@@ -641,6 +664,18 @@ public final class TownsteadConfig {
 
     public static String getCalendarProfile() {
         return CALENDAR_PROFILE.get();
+    }
+
+    public static boolean isCalendarRandomizeStartEnabled() {
+        return CALENDAR_RANDOMIZE_START.get();
+    }
+
+    public static int getCalendarStartYearMin() {
+        return CALENDAR_START_YEAR_MIN.get();
+    }
+
+    public static int getCalendarStartYearMax() {
+        return CALENDAR_START_YEAR_MAX.get();
     }
 
     public static boolean isProtectedStorage(BlockState state) {

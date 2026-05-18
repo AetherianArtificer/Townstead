@@ -21,14 +21,14 @@ import java.util.Map;
 
 /**
  * Loads {@link CalendarProfile}s from
- * {@code data/<ns>/calendar_profile/*.json}. Each file shape:
+ * {@code data/<ns>/calendar_profile/<path>.json}. Each file shape:
  * <pre>{@code
  * {
  *   "type": "townstead:vanilla_math",
- *   "display_name": { "translate": "calendar.townstead.vanilla.name" },
+ *   "display_name": { "translate": "calendar_profile.townstead_calendar.default.name", "fallback": "Default" },
  *   "days_per_week": 7,
  *   "months": [
- *     { "days": 30, "common_name": { "translate": "calendar.townstead.month.frostturn" } },
+ *     { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.axolen", "fallback": "Axolen" } },
  *     ...
  *   ]
  * }
@@ -36,11 +36,16 @@ import java.util.Map;
  *
  * {@code display_name} and {@code common_name} accept any of:
  * <ul>
- *   <li>literal string: {@code "Frostturn"}</li>
- *   <li>{@code { "text": "Frostturn" }}</li>
- *   <li>{@code { "translate": "calendar.foo.month.frostturn" }}</li>
- *   <li>{@code { "translate": "calendar.foo.month.frostturn", "fallback": "Frostturn" }}</li>
+ *   <li>literal string: {@code "Axolen"}</li>
+ *   <li>{@code { "text": "Axolen" }}</li>
+ *   <li>{@code { "translate": "calendar_profile.foo.bar.month.axolen" }}</li>
+ *   <li>{@code { "translate": "calendar_profile.foo.bar.month.axolen", "fallback": "Axolen" }}</li>
  * </ul>
+ *
+ * Recommended lang key convention mirrors the profile's resource path so the
+ * key is a deterministic transform of the id:
+ * {@code <namespace>:<path>} → {@code calendar_profile.<namespace>.<path-with-dots>}.
+ * For months inside a profile: append {@code .month.<short_name>}.
  * The {@code fallback} form is recommended for data-pack-distributed profiles:
  * they read as English on any client that doesn't have a matching resource
  * pack, while still localizable when one is present. Full
@@ -91,7 +96,10 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
                     months.add(new MonthDef(commonName, days));
                 }
                 if (bad || months.isEmpty()) continue;
-                parsed.put(file, new CalendarProfile(file, displayName, typeId, daysPerWeek, months));
+                Component yearSuffix = obj.has("year_suffix")
+                        ? parseComponent(obj.get("year_suffix"), file + ".year_suffix")
+                        : null;
+                parsed.put(file, new CalendarProfile(file, displayName, typeId, daysPerWeek, months, yearSuffix));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse calendar profile {}: {}", file, ex.getMessage());
             }

@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.mixin.compat.timekeeper;
 
-import com.aetherianartificer.townstead.compat.calendar.timekeeper.TimekeeperDateFormat;
+import com.aetherianartificer.townstead.compat.timekeeper.TimekeeperDateFormat;
 import net.minecraft.world.level.LevelAccessor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;

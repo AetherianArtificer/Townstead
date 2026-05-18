@@ -46,6 +46,7 @@ public final class TownsteadCalendar {
 
     public static void setEpochYearOffset(MinecraftServer server, int offset) {
         WorldCalendarSavedData.get(server).setEpochYearOffset(offset);
+        rebroadcastAfterCalendarChange(server);
     }
 
     /**
@@ -62,10 +63,23 @@ public final class TownsteadCalendar {
         if (type == null) return;
         CalendarDate now = type.compute(server, profile, data.worldDayCounter(), 0);
         data.setEpochYearOffset(displayYear - now.year());
+        rebroadcastAfterCalendarChange(server);
     }
 
     public static void setProfileOverride(MinecraftServer server, @Nullable ResourceLocation id) {
         WorldCalendarSavedData.get(server).setActiveProfileOverride(id);
+        rebroadcastAfterCalendarChange(server);
+    }
+
+    /**
+     * Push fresh calendar + villager-life payloads to clients whenever the
+     * displayed date shape changes. Villager birth dates are pre-resolved
+     * server-side, so without this clients keep their cached snapshots from
+     * the previous profile and the inspector shows stale dates.
+     */
+    private static void rebroadcastAfterCalendarChange(MinecraftServer server) {
+        com.aetherianartificer.townstead.Townstead.townstead$broadcastCalendarSync(server);
+        com.aetherianartificer.townstead.Townstead.townstead$broadcastAllVillagerLifeSync(server);
     }
 
     @Nullable
@@ -73,21 +87,34 @@ public final class TownsteadCalendar {
         WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
         ResourceLocation override = data.activeProfileOverride();
         if (override != null) {
-            CalendarProfile p = CalendarProfileRegistry.byId(override);
+            CalendarProfile p = resolveProfileById(override);
             if (p != null) return p;
         }
         String configChoice = TownsteadConfig.getCalendarProfile();
         if (configChoice != null && !configChoice.isBlank() && !configChoice.equalsIgnoreCase("auto")) {
             ResourceLocation parsed = tryParse(configChoice);
             if (parsed != null) {
-                CalendarProfile p = CalendarProfileRegistry.byId(parsed);
+                CalendarProfile p = resolveProfileById(parsed);
                 if (p != null) return p;
             }
         }
         ResourceLocation autoId = CalendarCompat.resolveAutoId();
-        CalendarProfile resolved = CalendarProfileRegistry.byId(autoId);
+        CalendarProfile resolved = resolveProfileById(autoId);
         if (resolved != null) return resolved;
         return CalendarProfileRegistry.byId(CalendarCompat.vanillaId());
+    }
+
+    /**
+     * Resolve a profile id by consulting registered
+     * {@link DynamicProfileSource}s first (runtime-synthesized profiles that
+     * have no JSON entry), then falling back to the data-pack-loaded
+     * {@link CalendarProfileRegistry}.
+     */
+    @Nullable
+    private static CalendarProfile resolveProfileById(ResourceLocation id) {
+        CalendarProfile dynamic = DynamicProfileSources.tryBuild(id).orElse(null);
+        if (dynamic != null) return dynamic;
+        return CalendarProfileRegistry.byId(id);
     }
 
     // ---- Lifespan API ----

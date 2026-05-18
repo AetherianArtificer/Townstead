@@ -1,0 +1,19 @@
+{
+  "type": "townstead:tfc_math",
+  "display_name": { "translate": "calendar_profile.townstead_calendar.tfc.name" },
+  "days_per_week": 8,
+  "months": [
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.january"   } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.february"  } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.march"     } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.april"     } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.may"       } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.june"      } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.july"      } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.august"    } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.september" } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.october"   } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.november"  } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.tfc.month.december"  } }
+  ]
+}

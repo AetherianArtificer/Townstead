@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.mixin.compat.timekeeper;
 
-import com.aetherianartificer.townstead.compat.calendar.timekeeper.TimekeeperDateFormat;
+import com.aetherianartificer.townstead.compat.timekeeper.TimekeeperDateFormat;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;

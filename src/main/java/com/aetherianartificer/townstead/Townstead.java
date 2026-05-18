@@ -1751,4 +1751,31 @@ public class Townstead {
         *///?}
     }
 
+    /**
+     * Re-broadcast {@link com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload}
+     * for every loaded VillagerEntityMCA to its tracking players. Used when
+     * the calendar profile or epoch changes — birth-date strings are
+     * pre-resolved server-side, so without a re-broadcast clients keep
+     * showing the previous calendar's date.
+     *
+     * Cost: O(loaded villagers × tracking players per villager). Profile
+     * changes are rare, so the one-shot cost is fine.
+     */
+    public static void townstead$broadcastAllVillagerLifeSync(MinecraftServer server) {
+        if (server == null) return;
+        for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+            for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+                if (!(entity instanceof VillagerEntityMCA villager)) continue;
+                com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload payload =
+                        townstead$lifeSync(villager);
+                if (payload == null) continue;
+                //? if neoforge {
+                PacketDistributor.sendToPlayersTrackingEntity(villager, payload);
+                //?} else if forge {
+                /*TownsteadNetwork.sendToTrackingEntity(villager, payload);
+                *///?}
+            }
+        }
+    }
+
 }

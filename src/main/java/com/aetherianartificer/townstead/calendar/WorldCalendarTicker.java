@@ -1,8 +1,11 @@
 package com.aetherianartificer.townstead.calendar;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+
+import java.util.Random;
 
 /**
  * Drives {@link WorldCalendarSavedData#worldDayCounter} forward from the
@@ -27,6 +30,66 @@ public final class WorldCalendarTicker {
 
     private WorldCalendarTicker() {}
 
+    /**
+     * Run once per save when {@code calendarInitialized} is false. Decides
+     * the starting state of the calendar:
+     *
+     * <ul>
+     *   <li>Wizard / admin pre-set values (calendarInitialized=true on disk)
+     *       — never reach this method.</li>
+     *   <li>Fresh world ({@code dayTime &lt; 24000}) with randomization
+     *       enabled — roll a year in the configured range and a day-of-year
+     *       in {@code [0, profile.daysPerYear)}, push {@code dayTime}
+     *       forward (time-of-day preserved) so seasonal mods pick the season
+     *       too, set the epoch offset, seed the counter.</li>
+     *   <li>Existing save ({@code dayTime &gt;= 24000}) OR randomization
+     *       disabled — seed {@code worldDayCounter} from
+     *       {@code dayTime / 24000} so saves predating Townstead get
+     *       credited the vanilla days they've already elapsed.</li>
+     * </ul>
+     *
+     * Returns the (possibly mutated) dayTime value to use as the prime
+     * baseline.
+     */
+    private static long initializeCalendar(MinecraftServer server, ServerLevel overworld,
+                                           WorldCalendarSavedData data, long current) {
+        CalendarProfile profile = TownsteadCalendar.activeProfile(server);
+        int dpy = (profile != null && profile.daysPerYear() > 0) ? profile.daysPerYear() : 360;
+
+        boolean wantsRandom = TownsteadConfig.isCalendarRandomizeStartEnabled()
+                && current < TICKS_PER_DAY;
+
+        if (wantsRandom) {
+            int min = TownsteadConfig.getCalendarStartYearMin();
+            int max = TownsteadConfig.getCalendarStartYearMax();
+            if (max < min) max = min;
+
+            Random rng = new Random();
+            int year = (max == min) ? min : min + rng.nextInt(max - min + 1);
+            int dayOfYear = rng.nextInt(dpy);
+
+            long timeOfDay = Math.floorMod(current, TICKS_PER_DAY);
+            long newDayTime = (long) dayOfYear * TICKS_PER_DAY + timeOfDay;
+            overworld.setDayTime(newDayTime);
+            data.setWorldDayCounter(dayOfYear);
+            data.setEpochYearOffset(year);
+
+            Townstead.LOGGER.info("[Calendar] Fresh world: rolled start = year {}, day-of-year {} (dpy={})",
+                    year, dayOfYear + 1, dpy);
+            return newDayTime;
+        }
+
+        // Seed from elapsed dayTime so existing saves get retroactive credit
+        // for the days they've already lived. Brand-new worlds with
+        // randomization disabled seed to 0, which is correct.
+        long elapsedDays = Math.max(0L, current / TICKS_PER_DAY);
+        if (elapsedDays > 0L && data.worldDayCounter() == 0L) {
+            data.setWorldDayCounter(elapsedDays);
+            Townstead.LOGGER.info("[Calendar] Seeded worldDayCounter to {} from existing dayTime", elapsedDays);
+        }
+        return current;
+    }
+
     public static void tick(MinecraftServer server) {
         if (server == null) return;
         ServerLevel overworld = server.overworld();
@@ -34,6 +97,11 @@ public final class WorldCalendarTicker {
 
         WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
         long current = overworld.getDayTime();
+
+        if (!data.calendarInitialized()) {
+            current = initializeCalendar(server, overworld, data, current);
+            data.markCalendarInitialized();
+        }
 
         if (!data.hasLastSample()) {
             data.primeSample(current);

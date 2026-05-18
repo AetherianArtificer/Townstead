@@ -2,7 +2,9 @@ package com.aetherianartificer.townstead.commands;
 
 import com.aetherianartificer.townstead.calendar.CalendarDate;
 import com.aetherianartificer.townstead.calendar.CalendarProfile;
+import com.aetherianartificer.townstead.calendar.CalendarProfileChoices;
 import com.aetherianartificer.townstead.calendar.CalendarProfileRegistry;
+import com.aetherianartificer.townstead.calendar.DynamicProfileSources;
 import com.aetherianartificer.townstead.calendar.TownsteadCalendar;
 import com.aetherianartificer.townstead.calendar.WorldCalendarSavedData;
 import com.mojang.brigadier.CommandDispatcher;
@@ -50,8 +52,9 @@ public final class CalendarCommands {
             (ctx, builder) -> suggestProfiles(builder);
 
     private static CompletableFuture<Suggestions> suggestProfiles(SuggestionsBuilder builder) {
-        builder.suggest("auto");
-        for (String id : CalendarProfileRegistry.idStrings()) builder.suggest(id);
+        // Includes "auto", all JSON-registered profiles, and every id any
+        // DynamicProfileSource currently advertises. De-duplicated, stable order.
+        for (String id : CalendarProfileChoices.listAll()) builder.suggest(id);
         return builder.buildFuture();
     }
 
@@ -97,10 +100,14 @@ public final class CalendarCommands {
             source.sendFailure(Component.literal("Invalid profile id: " + idString));
             return 0;
         }
-        CalendarProfile profile = CalendarProfileRegistry.byId(id);
-        if (profile == null) {
+        // Accept either a JSON-registered profile or one currently supplied
+        // by a DynamicProfileSource. Without this second check, set-profile
+        // would reject every runtime-synthesized id.
+        boolean known = CalendarProfileRegistry.byId(id) != null
+                || DynamicProfileSources.listKnownIds().contains(id);
+        if (!known) {
             source.sendFailure(Component.literal("Unknown profile: " + id
-                    + " (loaded profiles: " + String.join(", ", CalendarProfileRegistry.idStrings()) + ")"));
+                    + " (available: " + String.join(", ", CalendarProfileChoices.listAll()) + ")"));
             return 0;
         }
         TownsteadCalendar.setProfileOverride(server, id);

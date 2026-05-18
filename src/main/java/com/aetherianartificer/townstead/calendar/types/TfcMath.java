@@ -22,7 +22,7 @@ import java.util.Optional;
  *
  * Live data is queried only for today's date. Historical lookups (DOB,
  * village establishment) fall back to the vanilla structural math against
- * the {@code townstead:tfc} profile — accurate enough as "X years ago in
+ * the {@code townstead_calendar:tfc} profile — accurate enough as "X years ago in
  * TFC terms" without requiring a snapshot of TFC's past state.
  *
  * If TFC isn't loaded or the reflection probe fails, the bridge returns

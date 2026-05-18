@@ -45,12 +45,16 @@ public class WorldCalendarSavedData extends SavedData {
     private static final String KEY_VB_ID = "id";
     private static final String KEY_VB_DAY = "day";
     private static final String KEY_VB_PLAYER = "playerFounded";
+    private static final String KEY_INITIALIZED = "calendarInitialized";
+
+    public static final int DEFAULT_EPOCH_YEAR_OFFSET = 1000;
 
     private long worldDayCounter = 0L;
     private long subDayResidueTicks = 0L;
     private long lastDayTimeSample = 0L;
     private boolean hasLastSample = false;
-    private int epochYearOffset = 1000;
+    private int epochYearOffset = DEFAULT_EPOCH_YEAR_OFFSET;
+    private boolean calendarInitialized = false;
     @Nullable
     private ResourceLocation activeProfileOverride = null;
     private final Map<VillageKey, VillageBirth> villageBirths = new HashMap<>();
@@ -95,6 +99,7 @@ public class WorldCalendarSavedData extends SavedData {
         if (tag.contains(KEY_LAST_SAMPLE)) data.lastDayTimeSample = tag.getLong(KEY_LAST_SAMPLE);
         if (tag.contains(KEY_HAS_SAMPLE)) data.hasLastSample = tag.getBoolean(KEY_HAS_SAMPLE);
         if (tag.contains(KEY_EPOCH)) data.epochYearOffset = tag.getInt(KEY_EPOCH);
+        if (tag.contains(KEY_INITIALIZED)) data.calendarInitialized = tag.getBoolean(KEY_INITIALIZED);
         if (tag.contains(KEY_PROFILE_OVERRIDE)) {
             String s = tag.getString(KEY_PROFILE_OVERRIDE);
             if (!s.isBlank()) {
@@ -142,6 +147,7 @@ public class WorldCalendarSavedData extends SavedData {
         tag.putLong(KEY_LAST_SAMPLE, lastDayTimeSample);
         tag.putBoolean(KEY_HAS_SAMPLE, hasLastSample);
         tag.putInt(KEY_EPOCH, epochYearOffset);
+        tag.putBoolean(KEY_INITIALIZED, calendarInitialized);
         if (activeProfileOverride != null) {
             tag.putString(KEY_PROFILE_OVERRIDE, activeProfileOverride.toString());
         }
@@ -177,8 +183,16 @@ public class WorldCalendarSavedData extends SavedData {
     public boolean hasLastSample() { return hasLastSample; }
     public long lastDayTimeSample() { return lastDayTimeSample; }
     public int epochYearOffset() { return epochYearOffset; }
+    public boolean calendarInitialized() { return calendarInitialized; }
     @Nullable
     public ResourceLocation activeProfileOverride() { return activeProfileOverride; }
+
+    public void markCalendarInitialized() {
+        if (!this.calendarInitialized) {
+            this.calendarInitialized = true;
+            setDirty();
+        }
+    }
 
     public void setEpochYearOffset(int offset) {
         if (this.epochYearOffset != offset) {
@@ -210,21 +224,14 @@ public class WorldCalendarSavedData extends SavedData {
     }
 
     /**
-     * Initialize the last-sample baseline without advancing the counter going
-     * forward. On the very first prime (no prior sample AND counter still at
-     * its default 0), retroactively seed the counter to {@code sample / 24000}
-     * so saves that existed before Townstead was installed get credited the
-     * vanilla days elapsed since world creation. Fresh worlds (sample=0) seed
-     * to 0, a no-op. Once {@code hasLastSample} is true, the delta-based
-     * ticker takes over and stays Time-Control-safe.
+     * Initialize the last-sample baseline without advancing the counter. Used
+     * on first tick after world load to avoid a phantom day jump. Cheap and
+     * idempotent: only writes on the very first call.
      */
     public void primeSample(long sample) {
         if (!hasLastSample) {
             this.lastDayTimeSample = sample;
             this.hasLastSample = true;
-            if (this.worldDayCounter == 0L) {
-                this.worldDayCounter = Math.max(0L, sample / 24000L);
-            }
             setDirty();
         }
     }

@@ -1,0 +1,19 @@
+{
+  "type": "townstead:realtime_math",
+  "display_name": { "translate": "calendar_profile.townstead_calendar.realtime.name" },
+  "days_per_week": 7,
+  "months": [
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.axolen"  } },
+    { "days": 28, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.mautep"  } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.melitar" } },
+    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.cwynen"  } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.maizar"  } },
+    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.kamiro"  } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.renaud"  } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.heelan"  } },
+    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.ulfar"   } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.moguan"  } },
+    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.jemar"   } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.nagari"  } }
+  ]
+}

@@ -18,20 +18,36 @@ public final class CalendarCompat {
     public static final String TFC_MOD_ID = "terrafirmacraft";
     public static final String ECLIPTIC_MOD_ID = "eclipticseasons";
 
+    /**
+     * Namespace housing Townstead's bundled calendar data + lang strings.
+     * Separate from the {@code townstead} mod namespace so calendar additions
+     * (new profiles, translations) don't clash with the rest of the mod's
+     * registries — modpack authors adding their own calendars use their own
+     * namespace, and translation packs override only what they target.
+     */
+    public static final String CALENDAR_NAMESPACE = "townstead_calendar";
+
     //? if >=1.21 {
-    private static final ResourceLocation VANILLA_ID = ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "vanilla");
-    private static final ResourceLocation SERENE_ID = ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "serene");
-    private static final ResourceLocation TFC_ID = ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "tfc");
-    private static final ResourceLocation ECLIPTIC_ID = ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "ecliptic");
+    private static final ResourceLocation VANILLA_ID = ResourceLocation.fromNamespaceAndPath(CALENDAR_NAMESPACE, "default");
+    private static final ResourceLocation SERENE_ID = ResourceLocation.fromNamespaceAndPath(CALENDAR_NAMESPACE, "serene");
+    private static final ResourceLocation TFC_ID = ResourceLocation.fromNamespaceAndPath(CALENDAR_NAMESPACE, "tfc");
+    private static final ResourceLocation ECLIPTIC_ID = ResourceLocation.fromNamespaceAndPath(CALENDAR_NAMESPACE, "ecliptic");
     //?} else {
-    /*private static final ResourceLocation VANILLA_ID = new ResourceLocation(Townstead.MOD_ID, "vanilla");
-    private static final ResourceLocation SERENE_ID = new ResourceLocation(Townstead.MOD_ID, "serene");
-    private static final ResourceLocation TFC_ID = new ResourceLocation(Townstead.MOD_ID, "tfc");
-    private static final ResourceLocation ECLIPTIC_ID = new ResourceLocation(Townstead.MOD_ID, "ecliptic");
+    /*private static final ResourceLocation VANILLA_ID = new ResourceLocation(CALENDAR_NAMESPACE, "default");
+    private static final ResourceLocation SERENE_ID = new ResourceLocation(CALENDAR_NAMESPACE, "serene");
+    private static final ResourceLocation TFC_ID = new ResourceLocation(CALENDAR_NAMESPACE, "tfc");
+    private static final ResourceLocation ECLIPTIC_ID = new ResourceLocation(CALENDAR_NAMESPACE, "ecliptic");
     *///?}
 
     private CalendarCompat() {}
 
+    /**
+     * Auto-detection priority: TFC > Serene > Ecliptic > Default.
+     *
+     * Seasonal mods rank above Default because they bring authoritative
+     * seasons (and Townstead's Serene/TFC/Ecliptic profiles already match
+     * their day-length conventions).
+     */
     public static ResourceLocation resolveAutoId() {
         if (ModCompat.isLoaded(TFC_MOD_ID)) return TFC_ID;
         if (ModCompat.isLoaded(SERENE_MOD_ID)) return SERENE_ID;
@@ -40,4 +56,7 @@ public final class CalendarCompat {
     }
 
     public static ResourceLocation vanillaId() { return VANILLA_ID; }
+    public static ResourceLocation sereneId() { return SERENE_ID; }
+    public static ResourceLocation tfcId() { return TFC_ID; }
+    public static ResourceLocation eclipticId() { return ECLIPTIC_ID; }
 }
