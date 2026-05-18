@@ -26,12 +26,14 @@ public class CalendarScreen extends Screen {
     private static final int INNER_PADDING = 8;
     private static final int HEADER_H = 18;
     private static final int WEEKDAY_H = 14;
-    private static final int FOOTER_H = 18; // bottom action row (Today button)
+    // Footer holds the Today button. Sized so the button sits with roughly
+    // equal padding above (to the last grid row) and below (to the parchment
+    // inner edge, which extends INNER_PADDING beyond the content area).
+    private static final int FOOTER_H = 26;
     private static final int CELL_SIZE = 22;
     private static final int CELL_GAP = 2;
     private static final int NAV_BTN_W = 18;
     private static final int NAV_BTN_H = 18;
-    private static final int TODAY_BTN_H = 14;
     private static final int MAX_PANEL_W_MARGIN = 40;
 
     // ── Palette ────────────────────────────────────────────────────────────
@@ -57,11 +59,6 @@ public class CalendarScreen extends Screen {
     private static final int TEXT_TODAY      = 0xFF1F1305;
     private static final int TEXT_NAV        = 0xFF3E2510;
     private static final int TEXT_NAV_DIS    = 0xFF8B6F47;
-    // Today button: warm gold accent matching the today-cell theme
-    private static final int TODAY_BTN_FILL  = 0xFFFFB347;
-    private static final int TODAY_BTN_HOVER = 0xFFFFD27A;
-    private static final int TODAY_BTN_BORDER = 0xFF8C4A0E;
-    private static final int TODAY_BTN_TEXT  = 0xFF1F1305;
 
     // ── State ──────────────────────────────────────────────────────────────
     private int viewYear;
@@ -287,10 +284,10 @@ public class CalendarScreen extends Screen {
     }
 
     /**
-     * Right-anchored gold pill in the bottom footer row of the parchment.
+     * Right-anchored Today button. Same fill/border palette as the header nav
+     * arrows so all the interactive parchment chrome reads as one family.
      * Shown only when the viewed month isn't the current one. Footer height
-     * is constant so showing/hiding the pill doesn't shift the rest of the
-     * layout, and "snap back to today" reads naturally as a footer action.
+     * is constant so showing/hiding the button doesn't shift layout.
      */
     private void renderTodayButton(GuiGraphics g, CalendarClientStore.Snapshot snap, int mouseX, int mouseY) {
         boolean isCurrent = (viewYear == snap.year() && viewMonth == snap.monthIndex());
@@ -299,16 +296,24 @@ public class CalendarScreen extends Screen {
         String label = Component.translatableWithFallback(
                 "gui.townstead_calendar.button.today", "Today").getString();
         int btnW = font.width(label) + 14;
-        int btnH = TODAY_BTN_H;
+        int btnH = NAV_BTN_H;
         int btnX = contentX + contentW - btnW;
-        int btnY = contentY + contentH - FOOTER_H + (FOOTER_H - btnH) / 2;
+        // Center vertically in the full strip from grid bottom to the parchment
+        // inner edge (which sits INNER_PADDING below contentY+contentH), so the
+        // gap above and below the button is roughly equal.
+        int gridBottom = contentY + contentH - FOOTER_H;
+        int parchmentBottom = contentY + contentH + INNER_PADDING;
+        int btnY = gridBottom + ((parchmentBottom - gridBottom) - btnH) / 2;
 
         boolean hover = mouseX >= btnX && mouseX < btnX + btnW
                 && mouseY >= btnY && mouseY < btnY + btnH;
-        int bg = hover ? TODAY_BTN_HOVER : TODAY_BTN_FILL;
+        int bg = hover ? NAV_BG_HOVER : NAV_BG;
         g.fill(btnX, btnY, btnX + btnW, btnY + btnH, bg);
-        drawRectBorder(g, btnX, btnY, btnW, btnH, TODAY_BTN_BORDER);
-        drawCenteredNoShadow(g, label, btnX + btnW / 2, btnY + (btnH - font.lineHeight) / 2 + 1, TODAY_BTN_TEXT);
+        drawRectBorder(g, btnX, btnY, btnW, btnH, NAV_BORDER);
+        g.drawString(font, label,
+                btnX + (btnW - font.width(label)) / 2,
+                btnY + (btnH - font.lineHeight) / 2 + 1,
+                TEXT_NAV, false);
         hits.add(new HitRect(btnX, btnY, btnW, btnH, this::jumpToToday));
     }
 
