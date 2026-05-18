@@ -1,9 +1,11 @@
 package com.aetherianartificer.townstead.client.gui.calendar;
 
 import com.aetherianartificer.townstead.calendar.CalendarClientStore;
+import com.aetherianartificer.townstead.client.gui.fieldpost.FrameRenderer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -21,8 +23,25 @@ import java.util.List;
  */
 public class CalendarScreen extends Screen {
 
+    // ── Background ─────────────────────────────────────────────────────────
+    // Vanilla empty-map texture: 64×64, with a 7-pixel wood-look frame on all
+    // sides and a 50×50 parchment interior. 9-sliced so corners stay crisp
+    // while the interior stretches to fit our panel.
+    //? if neoforge {
+    private static final ResourceLocation MAP_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath("minecraft", "textures/map/map_background.png");
+    //?} else {
+    /*private static final ResourceLocation MAP_TEXTURE =
+            new ResourceLocation("minecraft", "textures/map/map_background.png");
+    *///?}
+    private static final int MAP_TEX_SIZE = 64;
+    private static final int MAP_FRAME    = 7;
+    // Outer wood-plank frame around the map background. Matches the Field Post
+    // UI's plank framing so all Townstead GUIs read as one family.
+    private static final int WOOD_FRAME_THICKNESS = 7;
+
     // ── Layout ─────────────────────────────────────────────────────────────
-    private static final int FRAME_THICKNESS = 6;
+    private static final int FRAME_THICKNESS = MAP_FRAME;
     private static final int INNER_PADDING = 8;
     private static final int HEADER_H = 18;
     private static final int WEEKDAY_H = 14;
@@ -37,12 +56,6 @@ public class CalendarScreen extends Screen {
     private static final int MAX_PANEL_W_MARGIN = 40;
 
     // ── Palette ────────────────────────────────────────────────────────────
-    private static final int FRAME_OUTER     = 0xFF3E2510;
-    private static final int FRAME_MID       = 0xFF6B4422;
-    private static final int FRAME_HIGHLIGHT = 0xFF9B7140;
-    private static final int FRAME_INSET     = 0xFF2A1808;
-    private static final int PARCHMENT       = 0xFFE8D5A8;
-    private static final int PARCHMENT_EDGE  = 0xFFC9B07C;
     private static final int CELL_FILL       = 0xFFF0DDA8;
     private static final int CELL_BORDER     = 0xFFB8985C;
     private static final int CELL_HOVER      = 0xFFFFF0C0;
@@ -58,7 +71,6 @@ public class CalendarScreen extends Screen {
     private static final int TEXT_DAY_DIM    = 0xFF6E5430;
     private static final int TEXT_TODAY      = 0xFF1F1305;
     private static final int TEXT_NAV        = 0xFF3E2510;
-    private static final int TEXT_NAV_DIS    = 0xFF8B6F47;
 
     // ── State ──────────────────────────────────────────────────────────────
     private int viewYear;
@@ -110,7 +122,8 @@ public class CalendarScreen extends Screen {
         // capped — clipping rows is a real bug; better to let the panel be
         // tall and trust the player's window to accommodate. Tiny windows
         // would need vertical scroll which is future work.
-        int maxContentW = Math.max(160, width - MAX_PANEL_W_MARGIN - 2 * (FRAME_THICKNESS + INNER_PADDING));
+        int chromeW = 2 * (FRAME_THICKNESS + INNER_PADDING + WOOD_FRAME_THICKNESS);
+        int maxContentW = Math.max(160, width - MAX_PANEL_W_MARGIN - chromeW);
         contentW = Math.min(contentW, maxContentW);
 
         // Enforce a minimum width so the header text + nav buttons fit
@@ -119,8 +132,10 @@ public class CalendarScreen extends Screen {
 
         panelW = contentW + 2 * (FRAME_THICKNESS + INNER_PADDING);
         panelH = contentH + 2 * (FRAME_THICKNESS + INNER_PADDING);
-        panelX = (width - panelW) / 2;
-        panelY = (height - panelH) / 2;
+        int totalW = panelW + 2 * WOOD_FRAME_THICKNESS;
+        int totalH = panelH + 2 * WOOD_FRAME_THICKNESS;
+        panelX = (width - totalW) / 2 + WOOD_FRAME_THICKNESS;
+        panelY = (height - totalH) / 2 + WOOD_FRAME_THICKNESS;
         contentX = panelX + FRAME_THICKNESS + INNER_PADDING;
         contentY = panelY + FRAME_THICKNESS + INNER_PADDING;
 
@@ -210,7 +225,8 @@ public class CalendarScreen extends Screen {
         hoverDay = -1;
         hoverDow = -1;
 
-        renderFrame(g);
+        FrameRenderer.drawWoodenFrame(g, panelX, panelY, panelW, panelH, WOOD_FRAME_THICKNESS);
+        renderMapBackground(g);
 
         CalendarClientStore.Snapshot snap = CalendarClientStore.get();
         if (snap == null) {
@@ -225,29 +241,39 @@ public class CalendarScreen extends Screen {
         renderHoverTooltip(g, snap, mouseX, mouseY);
     }
 
-    private void renderFrame(GuiGraphics g) {
-        int x0 = panelX, y0 = panelY, x1 = panelX + panelW, y1 = panelY + panelH;
-        g.fill(x0, y0, x1, y0 + 1, FRAME_OUTER);
-        g.fill(x0, y1 - 1, x1, y1, FRAME_OUTER);
-        g.fill(x0, y0, x0 + 1, y1, FRAME_OUTER);
-        g.fill(x1 - 1, y0, x1, y1, FRAME_OUTER);
-        g.fill(x0 + 1, y0 + 1, x1 - 1, y1 - 1, FRAME_MID);
-        int hx0 = x0 + FRAME_THICKNESS - 2;
-        int hy0 = y0 + FRAME_THICKNESS - 2;
-        int hx1 = x1 - FRAME_THICKNESS + 2;
-        int hy1 = y1 - FRAME_THICKNESS + 2;
-        g.fill(hx0, hy0, hx1, hy0 + 1, FRAME_HIGHLIGHT);
-        g.fill(hx0, hy0, hx0 + 1, hy1, FRAME_HIGHLIGHT);
-        g.fill(hx0, hy1 - 1, hx1, hy1, FRAME_INSET);
-        g.fill(hx1 - 1, hy0, hx1, hy1, FRAME_INSET);
-        int px0 = x0 + FRAME_THICKNESS;
-        int py0 = y0 + FRAME_THICKNESS;
-        int px1 = x1 - FRAME_THICKNESS;
-        int py1 = y1 - FRAME_THICKNESS;
-        g.fill(px0, py0, px1, py1, FRAME_INSET);
-        g.fill(px0 + 1, py0 + 1, px1 - 1, py1 - 1, PARCHMENT);
-        g.fill(px0 + 1, py0 + 1, px1 - 1, py0 + 2, PARCHMENT_EDGE);
-        g.fill(px0 + 1, py0 + 1, px0 + 2, py1 - 1, PARCHMENT_EDGE);
+    /**
+     * 9-slice the vanilla empty-map texture across the panel. Corners are
+     * blitted at native pixel size so the wood-grain frame doesn't distort;
+     * the four edges and the parchment interior stretch to fit.
+     */
+    private void renderMapBackground(GuiGraphics g) {
+        final int x = panelX, y = panelY;
+        final int w = panelW, h = panelH;
+        final int f = MAP_FRAME;
+        final int t = MAP_TEX_SIZE;
+        final int srcInner = t - 2 * f;   // 50: width/height of the texture's parchment strip
+        final int dstInnerW = w - 2 * f;
+        final int dstInnerH = h - 2 * f;
+
+        // Corners (1:1)
+        blitSlice(g, x,         y,         f, f,        0,        0,        f,        f);
+        blitSlice(g, x + w - f, y,         f, f,        t - f,    0,        f,        f);
+        blitSlice(g, x,         y + h - f, f, f,        0,        t - f,    f,        f);
+        blitSlice(g, x + w - f, y + h - f, f, f,        t - f,    t - f,    f,        f);
+
+        // Edges (stretch the middle strip of the texture along one axis)
+        blitSlice(g, x + f,     y,         dstInnerW, f, f,        0,        srcInner, f);
+        blitSlice(g, x + f,     y + h - f, dstInnerW, f, f,        t - f,    srcInner, f);
+        blitSlice(g, x,         y + f,     f, dstInnerH, 0,        f,        f,        srcInner);
+        blitSlice(g, x + w - f, y + f,     f, dstInnerH, t - f,    f,        f,        srcInner);
+
+        // Parchment interior (stretch both axes)
+        blitSlice(g, x + f, y + f, dstInnerW, dstInnerH, f, f, srcInner, srcInner);
+    }
+
+    private void blitSlice(GuiGraphics g, int x, int y, int dw, int dh,
+                           int u, int v, int sw, int sh) {
+        g.blit(MAP_TEXTURE, x, y, dw, dh, (float) u, (float) v, sw, sh, MAP_TEX_SIZE, MAP_TEX_SIZE);
     }
 
     private void renderHeader(GuiGraphics g, CalendarClientStore.Snapshot snap, int mouseX, int mouseY) {
