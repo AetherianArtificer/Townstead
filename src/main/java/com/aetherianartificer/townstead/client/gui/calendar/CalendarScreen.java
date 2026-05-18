@@ -49,8 +49,12 @@ public class CalendarScreen extends Screen {
     // equal padding above (to the last grid row) and below (to the parchment
     // inner edge, which extends INNER_PADDING beyond the content area).
     private static final int FOOTER_H = 26;
-    private static final int CELL_SIZE = 22;
+    // Cells are sized to leave room for a day number (top-left) plus future
+    // content underneath — birthday-villager faces, anniversary glyphs, etc.
+    private static final int CELL_SIZE = 32;
     private static final int CELL_GAP = 2;
+    // Inset for the day number from the cell's top-left corner.
+    private static final int DAY_NUM_PAD = 3;
     private static final int NAV_BTN_W = 18;
     private static final int NAV_BTN_H = 18;
     private static final int MAX_PANEL_W_MARGIN = 40;
@@ -225,7 +229,7 @@ public class CalendarScreen extends Screen {
         hoverDay = -1;
         hoverDow = -1;
 
-        FrameRenderer.drawWoodenFrame(g, panelX, panelY, panelW, panelH, WOOD_FRAME_THICKNESS);
+        renderPlankFrame(g);
         renderMapBackground(g);
 
         CalendarClientStore.Snapshot snap = CalendarClientStore.get();
@@ -239,6 +243,33 @@ public class CalendarScreen extends Screen {
         renderWeekdayLabels(g, snap);
         renderGrid(g, snap, mouseX, mouseY);
         renderHoverTooltip(g, snap, mouseX, mouseY);
+    }
+
+    /**
+     * Wood-plank frame that wraps the map panel. Same plank texture and outer
+     * bevel as Field Post's {@link FrameRenderer#drawWoodenFrame}, but with no
+     * inner shadow line — the map texture already has a baked wood-frame edge,
+     * and a black 1px stroke against it reads as an ugly seam. The full outer
+     * rect is tiled with planks so any halo around the map's transparent
+     * edges blends into wood rather than the screen dim.
+     */
+    private void renderPlankFrame(GuiGraphics g) {
+        int outX = panelX - WOOD_FRAME_THICKNESS;
+        int outY = panelY - WOOD_FRAME_THICKNESS;
+        int outW = panelW + 2 * WOOD_FRAME_THICKNESS;
+        int outH = panelH + 2 * WOOD_FRAME_THICKNESS;
+
+        FrameRenderer.tileTexture(g, FrameRenderer.PLANK_DARK, outX, outY, outW, outH);
+
+        // Outer shadow line — separates the frame from the screen dim.
+        g.fill(outX - 1, outY - 1, outX + outW + 1, outY,          FrameRenderer.FRAME_SHADOW);
+        g.fill(outX - 1, outY + outH, outX + outW + 1, outY + outH + 1, FrameRenderer.FRAME_SHADOW);
+        g.fill(outX - 1, outY, outX, outY + outH,                  FrameRenderer.FRAME_SHADOW);
+        g.fill(outX + outW, outY, outX + outW + 1, outY + outH,    FrameRenderer.FRAME_SHADOW);
+
+        // Top/left highlight for the bevel.
+        g.fill(outX, outY, outX + outW, outY + 1, FrameRenderer.FRAME_HIGHLIGHT);
+        g.fill(outX, outY, outX + 1, outY + outH, FrameRenderer.FRAME_HIGHLIGHT);
     }
 
     /**
@@ -397,8 +428,8 @@ public class CalendarScreen extends Screen {
 
             String num = Integer.toString(d);
             g.drawString(font, num,
-                    cellX + (CELL_SIZE - font.width(num)) / 2,
-                    cellY + (CELL_SIZE - font.lineHeight) / 2 + 1,
+                    cellX + DAY_NUM_PAD,
+                    cellY + DAY_NUM_PAD,
                     textColor, false);
         }
         g.disableScissor();
