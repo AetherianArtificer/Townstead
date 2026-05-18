@@ -1,8 +1,7 @@
 package com.aetherianartificer.townstead.compat.timekeeper;
 
 import com.aetherianartificer.townstead.calendar.CalendarClientStore;
-import com.aetherianartificer.townstead.calendar.CalendarDate;
-import com.aetherianartificer.townstead.calendar.CalendarProfile;
+import com.aetherianartificer.townstead.calendar.CalendarDateFormatter;
 import com.aetherianartificer.townstead.calendar.TownsteadCalendar;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -18,54 +17,33 @@ import net.minecraft.server.MinecraftServer;
  *     {@code QueryProc*Procedure.execute} which displays a Component to the
  *     right-clicking player.</li>
  * </ul>
+ *
+ * Both delegate to {@link CalendarDateFormatter} so date order is
+ * locale-controlled via lang positional args.
  */
 public final class TimekeeperDateFormat {
     private TimekeeperDateFormat() {}
 
     /**
-     * Two locale-aware lines: date and year. Format args are positional
-     * (%1$s = day, %2$s = month) so each lang file controls ordering
-     * (en_us inverts to "Month Day"). Returns empty string if no snapshot is
-     * available yet. The block splits on {@code "\n"}, so we resolve each
-     * line to its localized String here on the client.
+     * Two lines for the calendar-block tooltip: full date on top, raw year
+     * below. Each line is resolved to its localized form here on the client
+     * since the block splits on {@code "\n"}.
      */
     public static String tooltipString() {
         CalendarClientStore.Snapshot snap = CalendarClientStore.get();
         if (snap == null) return "";
-        Component month = snap.monthComponent();
-        if (month.getString().isEmpty()) {
-            month = Component.literal("Month " + snap.monthIndex());
-        }
-        Component dateLine = Component.translatableWithFallback(
-                "townstead.calendar.timekeeper.tooltip.date",
-                "%1$s %2$s",
-                snap.dayOfMonth(), month);
+        Component date = CalendarDateFormatter.formatClient(snap,
+                CalendarDateFormatter.Style.MEDIUM,
+                snap.year(), snap.monthIndex(), snap.dayOfMonth(), snap.dayOfWeek());
         Component yearLine = Component.translatableWithFallback(
                 "townstead.calendar.timekeeper.tooltip.year",
                 "Year %s",
                 snap.year());
-        return dateLine.getString() + "\n" + yearLine.getString();
+        return date.getString() + "\n" + yearLine.getString();
     }
 
-    /**
-     * "{day} {month}, Year {year}" sent server-side as a translatable
-     * component. Positional args (%1$s = day, %2$s = month, %3$s = year) so
-     * en_us can reorder to "Month Day, Year".
-     */
+    /** Date Component for the calendar-block right-click chat. */
     public static Component chatComponent(MinecraftServer server) {
-        CalendarDate today = TownsteadCalendar.today(server);
-        CalendarProfile profile = TownsteadCalendar.activeProfile(server);
-        Component month;
-        if (profile != null
-                && today.monthIndex() >= 1
-                && today.monthIndex() <= profile.months().size()) {
-            month = profile.months().get(today.monthIndex() - 1).commonName();
-        } else {
-            month = Component.literal("Month " + today.monthIndex());
-        }
-        return Component.translatableWithFallback(
-                "townstead.calendar.timekeeper.chat",
-                "%1$s %2$s, Year %3$s",
-                today.dayOfMonth(), month, today.year());
+        return CalendarDateFormatter.formatToday(server, CalendarDateFormatter.Style.MEDIUM);
     }
 }

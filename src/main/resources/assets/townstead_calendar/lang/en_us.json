@@ -1,4 +1,28 @@
 {
+  "gui.townstead_calendar.title": "Calendar",
+  "gui.townstead_calendar.no_data": "Loading calendar…",
+  "gui.townstead_calendar.header.year_with_suffix": "%s %s",
+
+  "townstead.calendar.format.long":         "%2$s %1$s, %3$s",
+  "townstead.calendar.format.medium":       "%2$s %1$s, %3$s",
+  "townstead.calendar.format.short":        "%6$s/%1$s/%3$s",
+  "townstead.calendar.format.with_weekday": "%4$s, %2$s %1$s, %3$s",
+
+  "calendar_profile.townstead_calendar.default.weekday.monday": "Monday",
+  "calendar_profile.townstead_calendar.default.weekday.monday.short": "Mon",
+  "calendar_profile.townstead_calendar.default.weekday.tuesday": "Tuesday",
+  "calendar_profile.townstead_calendar.default.weekday.tuesday.short": "Tue",
+  "calendar_profile.townstead_calendar.default.weekday.wednesday": "Wednesday",
+  "calendar_profile.townstead_calendar.default.weekday.wednesday.short": "Wed",
+  "calendar_profile.townstead_calendar.default.weekday.thursday": "Thursday",
+  "calendar_profile.townstead_calendar.default.weekday.thursday.short": "Thu",
+  "calendar_profile.townstead_calendar.default.weekday.friday": "Friday",
+  "calendar_profile.townstead_calendar.default.weekday.friday.short": "Fri",
+  "calendar_profile.townstead_calendar.default.weekday.saturday": "Saturday",
+  "calendar_profile.townstead_calendar.default.weekday.saturday.short": "Sat",
+  "calendar_profile.townstead_calendar.default.weekday.sunday": "Sunday",
+  "calendar_profile.townstead_calendar.default.weekday.sunday.short": "Sun",
+
   "calendar_profile.townstead_calendar.default.name": "Default",
   "calendar_profile.townstead_calendar.realtime.name": "Realtime",
   "calendar_profile.townstead_calendar.localtime.name": "Localtime",

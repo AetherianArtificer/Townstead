@@ -242,6 +242,19 @@ public class Townstead {
         }
     }
 
+    // ── Calendar block ──
+
+    public static final Supplier<Block> CALENDAR_BLOCK = BLOCKS.register("calendar",
+            () -> new com.aetherianartificer.townstead.block.CalendarBlock(
+                    BlockBehaviour.Properties.of()
+                            .strength(0.5f)
+                            .sound(SoundType.WOOD)
+                            .noOcclusion()
+                            .noCollission()));
+
+    public static final Supplier<Item> CALENDAR_ITEM = ITEMS.register("calendar",
+            () -> new BlockItem(CALENDAR_BLOCK.get(), new Item.Properties()));
+
     public static final Supplier<BlockEntityType<FieldPostBlockEntity>> FIELD_POST_BE =
             BLOCK_ENTITY_TYPES.register("field_post",
                     () -> {
@@ -263,6 +276,7 @@ public class Townstead {
                                 for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
                                     output.accept(variant.get());
                                 }
+                                output.accept(CALENDAR_ITEM.get());
                             })
                             .build());
 
@@ -1706,11 +1720,66 @@ public class Townstead {
                 ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(profile.displayName())
                 : new String[] { "", "" };
         String seasonKey = today.season() != null ? today.season().translationKey() : "";
+
+        // Profile shape — packed for the client calendar UI so it can render
+        // arbitrary months/years without further round-trips.
+        int dpw = profile != null ? profile.daysPerWeek() : 7;
+        int epoch = data.epochYearOffset();
+        String[] suffix = (profile != null && profile.yearSuffix() != null)
+                ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(profile.yearSuffix())
+                : new String[] { "", "" };
+        java.util.List<String> monthKeys = new java.util.ArrayList<>();
+        java.util.List<String> monthFallbacks = new java.util.ArrayList<>();
+        java.util.List<Integer> monthDays = new java.util.ArrayList<>();
+        if (profile != null) {
+            for (com.aetherianartificer.townstead.calendar.MonthDef m : profile.months()) {
+                String[] mk = com.aetherianartificer.townstead.calendar.ComponentSync.extract(m.commonName());
+                monthKeys.add(mk[0]);
+                monthFallbacks.add(mk[1]);
+                monthDays.add(m.days());
+            }
+        }
+
+        java.util.List<String> wdLongKeys = new java.util.ArrayList<>();
+        java.util.List<String> wdLongFallbacks = new java.util.ArrayList<>();
+        java.util.List<String> wdShortKeys = new java.util.ArrayList<>();
+        java.util.List<String> wdShortFallbacks = new java.util.ArrayList<>();
+        if (profile != null && profile.weekdays() != null) {
+            for (com.aetherianartificer.townstead.calendar.WeekdayDef w : profile.weekdays()) {
+                String[] lk = com.aetherianartificer.townstead.calendar.ComponentSync.extract(w.longName());
+                String[] sk = com.aetherianartificer.townstead.calendar.ComponentSync.extract(w.shortName());
+                wdLongKeys.add(lk[0]);
+                wdLongFallbacks.add(lk[1]);
+                wdShortKeys.add(sk[0]);
+                wdShortFallbacks.add(sk[1]);
+            }
+        }
+
+        java.util.List<String> eraNameKeys = new java.util.ArrayList<>();
+        java.util.List<String> eraNameFallbacks = new java.util.ArrayList<>();
+        java.util.List<Integer> eraStartYears = new java.util.ArrayList<>();
+        java.util.List<Integer> eraFirstYearDisplayedAs = new java.util.ArrayList<>();
+        java.util.List<Integer> eraDirections = new java.util.ArrayList<>();
+        if (profile != null && profile.eras() != null) {
+            for (com.aetherianartificer.townstead.calendar.Era era : profile.eras()) {
+                String[] nk = com.aetherianartificer.townstead.calendar.ComponentSync.extract(era.name());
+                eraNameKeys.add(nk[0]);
+                eraNameFallbacks.add(nk[1]);
+                eraStartYears.add(era.startYear());
+                eraFirstYearDisplayedAs.add(era.firstYearDisplayedAs());
+                eraDirections.add(era.direction() == com.aetherianartificer.townstead.calendar.Era.Direction.DESCENDING ? 1 : 0);
+            }
+        }
+
         return new com.aetherianartificer.townstead.calendar.CalendarSyncPayload(
                 data.worldDayCounter(),
                 today.year(), today.monthIndex(), today.dayOfMonth(),
                 today.dayOfYear(), today.dayOfWeek(),
-                month[0], month[1], prof[0], prof[1], seasonKey
+                month[0], month[1], prof[0], prof[1], seasonKey,
+                dpw, epoch, suffix[0], suffix[1],
+                monthKeys, monthFallbacks, monthDays,
+                wdLongKeys, wdLongFallbacks, wdShortKeys, wdShortFallbacks,
+                eraNameKeys, eraNameFallbacks, eraStartYears, eraFirstYearDisplayedAs, eraDirections
         );
     }
 

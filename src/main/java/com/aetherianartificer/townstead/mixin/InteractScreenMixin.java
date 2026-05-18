@@ -375,12 +375,26 @@ public abstract class InteractScreenMixin extends Screen {
                 com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.asEntity().getId());
         if (life == null) return originalName;
 
-        Component month = life.birthMonthComponent();
-        if (month.getString().isEmpty()) {
-            month = Component.translatable("townstead.calendar.inspector.month_fallback", life.birthMonthIndex());
+        com.aetherianartificer.townstead.calendar.CalendarClientStore.Snapshot calSnap =
+                com.aetherianartificer.townstead.calendar.CalendarClientStore.get();
+        Component date;
+        if (calSnap != null) {
+            date = com.aetherianartificer.townstead.calendar.CalendarDateFormatter.formatClient(
+                    calSnap,
+                    com.aetherianartificer.townstead.calendar.CalendarDateFormatter.Style.LONG,
+                    life.birthYear(), life.birthMonthIndex(), life.birthDayOfMonth(), 0);
+        } else {
+            // Pre-sync fallback: use the snapshot we have on the LifeData
+            Component month = life.birthMonthComponent();
+            if (month.getString().isEmpty()) {
+                month = Component.translatable("townstead.calendar.inspector.month_fallback", life.birthMonthIndex());
+            }
+            date = Component.literal(life.birthDayOfMonth() + " " + month.getString() + " " + life.birthYear());
         }
-        Component born = Component.translatable("townstead.calendar.inspector.born",
-                life.birthDayOfMonth(), month, life.birthYear(), life.ageYears());
+        Component born = Component.translatableWithFallback(
+                "townstead.calendar.inspector.born_with_age",
+                "Born %1$s (age %2$s)",
+                date, life.ageYears());
 
         int nameW = font.width(originalName);
         int bornW = font.width(born);

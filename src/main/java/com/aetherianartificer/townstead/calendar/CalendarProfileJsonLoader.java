@@ -99,7 +99,48 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
                 Component yearSuffix = obj.has("year_suffix")
                         ? parseComponent(obj.get("year_suffix"), file + ".year_suffix")
                         : null;
-                parsed.put(file, new CalendarProfile(file, displayName, typeId, daysPerWeek, months, yearSuffix));
+
+                List<WeekdayDef> weekdays = null;
+                if (obj.has("weekdays")) {
+                    JsonArray wdArr = GsonHelper.getAsJsonArray(obj, "weekdays");
+                    if (wdArr.size() != daysPerWeek) {
+                        LOGGER.warn("Skipping {} — weekdays length {} != days_per_week {}",
+                                file, wdArr.size(), daysPerWeek);
+                        continue;
+                    }
+                    weekdays = new ArrayList<>(wdArr.size());
+                    for (int i = 0; i < wdArr.size(); i++) {
+                        JsonObject wo = GsonHelper.convertToJsonObject(wdArr.get(i),
+                                file + ".weekdays[" + i + "]");
+                        Component longName = parseComponent(wo.get("long"),
+                                file + ".weekdays[" + i + "].long");
+                        Component shortName = wo.has("short")
+                                ? parseComponent(wo.get("short"), file + ".weekdays[" + i + "].short")
+                                : longName;
+                        weekdays.add(new WeekdayDef(longName, shortName));
+                    }
+                }
+
+                List<Era> eras = null;
+                if (obj.has("eras")) {
+                    JsonArray eraArr = GsonHelper.getAsJsonArray(obj, "eras");
+                    eras = new ArrayList<>(eraArr.size());
+                    for (int i = 0; i < eraArr.size(); i++) {
+                        JsonObject eo = GsonHelper.convertToJsonObject(eraArr.get(i),
+                                file + ".eras[" + i + "]");
+                        Component name = parseComponent(eo.get("name"),
+                                file + ".eras[" + i + "].name");
+                        int startYear = GsonHelper.getAsInt(eo, "start_year");
+                        int firstYearDisplayedAs = GsonHelper.getAsInt(eo, "first_year_displayed_as", 1);
+                        String dirStr = GsonHelper.getAsString(eo, "direction", "ascending");
+                        Era.Direction direction = "descending".equalsIgnoreCase(dirStr)
+                                ? Era.Direction.DESCENDING
+                                : Era.Direction.ASCENDING;
+                        eras.add(new Era(name, startYear, firstYearDisplayedAs, direction));
+                    }
+                }
+
+                parsed.put(file, new CalendarProfile(file, displayName, typeId, daysPerWeek, months, yearSuffix, weekdays, eras));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse calendar profile {}: {}", file, ex.getMessage());
             }
