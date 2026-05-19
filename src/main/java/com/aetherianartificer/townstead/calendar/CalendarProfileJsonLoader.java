@@ -74,6 +74,25 @@ import java.util.Map;
  * the map falls back to the global
  * {@code townstead.calendar.format.<style>} key.</p>
  *
+ * <p><b>Optional leap rules.</b> A profile may include a {@code leap_rules}
+ * array. Each entry has a {@code when} predicate (modular arithmetic on the
+ * year number) and one action key:
+ * <ul>
+ *   <li>{@code add_day_to_month: <int>} — extend month at 1-based base index by 1 day</li>
+ *   <li>{@code subtract_day_from_month: <int>} — shrink by 1 day</li>
+ *   <li>{@code insert_month_after: <int>} + {@code month: { days, common_name }} — insert after base index</li>
+ *   <li>{@code insert_month_at_end: true} + {@code month: { ... }} — append</li>
+ * </ul>
+ * Predicate forms:
+ * <pre>{@code
+ *   { "year_mod": 4, "equals": 0 }
+ *   { "year_mod": 19, "in": [3, 6, 8, 11, 14, 17, 0] }
+ *   { "all_of": [ <predicate>, <predicate>, ... ] }
+ *   { "any_of": [ <predicate>, <predicate>, ... ] }
+ * }</pre>
+ * Rules apply top-to-bottom and all matching rules contribute. Gregorian's
+ * 4/100/400 cascade is three rules with deltas +1 / -1 / +1.</p>
+ *
  * <p><b>Named placeholders in pattern strings.</b> When a sidecar lang value
  * contains tokens like {@code {day}} or {@code {month}}, the loader rewrites
  * them to MC's positional format args before constructing the Component. Pack
@@ -191,13 +210,141 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
                     if (formats.isEmpty()) formats = null;
                 }
 
-                parsed.put(file, new CalendarProfile(file, displayName, daysPerWeek, months, yearSuffix, weekdays, eras, formats));
+                List<LeapRule> leapRules = null;
+                if (obj.has("leap_rules")) {
+                    JsonArray lrArr = GsonHelper.getAsJsonArray(obj, "leap_rules");
+                    leapRules = new ArrayList<>(lrArr.size());
+                    boolean badLeap = false;
+                    for (int i = 0; i < lrArr.size(); i++) {
+                        JsonObject lo = GsonHelper.convertToJsonObject(lrArr.get(i),
+                                file + ".leap_rules[" + i + "]");
+                        LeapRule.Predicate pred;
+                        try {
+                            pred = parsePredicate(GsonHelper.getAsJsonObject(lo, "when"),
+                                    file + ".leap_rules[" + i + "].when");
+                        } catch (Exception ex) {
+                            LOGGER.warn("Skipping {} — leap_rules[{}].when invalid: {}", file, i, ex.getMessage());
+                            badLeap = true; break;
+                        }
+                        LeapRule.Action act;
+                        try {
+                            act = parseLeapAction(lo, file + ".leap_rules[" + i + "]", months.size(), langIndex);
+                        } catch (Exception ex) {
+                            LOGGER.warn("Skipping {} — leap_rules[{}] action invalid: {}", file, i, ex.getMessage());
+                            badLeap = true; break;
+                        }
+                        leapRules.add(new LeapRule(pred, act));
+                    }
+                    if (badLeap) continue;
+                    if (leapRules.isEmpty()) leapRules = null;
+                }
+
+                parsed.put(file, new CalendarProfile(file, displayName, daysPerWeek, months, yearSuffix, weekdays, eras, formats, leapRules));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse calendar profile {}: {}", file, ex.getMessage());
             }
         }
         CalendarProfileRegistry.replaceAll(parsed);
+        LeapEngine.clearCache();
         LOGGER.info("Loaded {} calendar profiles ({} sidecar lang entries)", parsed.size(), langIndex.size());
+    }
+
+    /**
+     * Parse a {@code when} predicate object. Recursive: {@code all_of} and
+     * {@code any_of} take arrays of nested predicate objects.
+     */
+    private static LeapRule.Predicate parsePredicate(JsonObject obj, String context) {
+        if (obj.has("all_of")) {
+            JsonArray arr = GsonHelper.getAsJsonArray(obj, "all_of");
+            List<LeapRule.Predicate> parts = new ArrayList<>(arr.size());
+            for (int i = 0; i < arr.size(); i++) {
+                parts.add(parsePredicate(GsonHelper.convertToJsonObject(arr.get(i), context + ".all_of[" + i + "]"),
+                        context + ".all_of[" + i + "]"));
+            }
+            return new LeapRule.AllOf(parts);
+        }
+        if (obj.has("any_of")) {
+            JsonArray arr = GsonHelper.getAsJsonArray(obj, "any_of");
+            List<LeapRule.Predicate> parts = new ArrayList<>(arr.size());
+            for (int i = 0; i < arr.size(); i++) {
+                parts.add(parsePredicate(GsonHelper.convertToJsonObject(arr.get(i), context + ".any_of[" + i + "]"),
+                        context + ".any_of[" + i + "]"));
+            }
+            return new LeapRule.AnyOf(parts);
+        }
+        if (obj.has("year_mod")) {
+            int mod = GsonHelper.getAsInt(obj, "year_mod");
+            if (obj.has("in")) {
+                JsonArray arr = GsonHelper.getAsJsonArray(obj, "in");
+                int[] residues = new int[arr.size()];
+                for (int i = 0; i < arr.size(); i++) residues[i] = arr.get(i).getAsInt();
+                return new LeapRule.In(mod, residues);
+            }
+            if (obj.has("equals")) {
+                return new LeapRule.Equals(mod, GsonHelper.getAsInt(obj, "equals"));
+            }
+            throw new IllegalArgumentException(context + " — year_mod requires 'equals' or 'in'");
+        }
+        throw new IllegalArgumentException(context + " — predicate must have 'year_mod', 'all_of', or 'any_of'");
+    }
+
+    /**
+     * Parse the action half of a leap rule. Exactly one action key must
+     * appear ({@code add_day_to_month}, {@code subtract_day_from_month},
+     * {@code insert_month_after}, or {@code insert_month_at_end}).
+     */
+    private static LeapRule.Action parseLeapAction(JsonObject lo, String context, int baseMonthCount,
+                                                   Map<String, String> langIndex) {
+        if (lo.has("add_day_to_month")) {
+            int idx = GsonHelper.getAsInt(lo, "add_day_to_month");
+            validateBaseMonthIndex(idx, baseMonthCount, context, "add_day_to_month");
+            return new LeapRule.AdjustDays(idx, +1);
+        }
+        if (lo.has("subtract_day_from_month")) {
+            int idx = GsonHelper.getAsInt(lo, "subtract_day_from_month");
+            validateBaseMonthIndex(idx, baseMonthCount, context, "subtract_day_from_month");
+            return new LeapRule.AdjustDays(idx, -1);
+        }
+        if (lo.has("rename_month")) {
+            int idx = GsonHelper.getAsInt(lo, "rename_month");
+            validateBaseMonthIndex(idx, baseMonthCount, context, "rename_month");
+            if (!lo.has("name")) {
+                throw new IllegalArgumentException(context + " — rename_month requires 'name'");
+            }
+            Component newName = parseComponent(lo.get("name"), context + ".name", langIndex);
+            return new LeapRule.RenameMonth(idx, newName);
+        }
+        if (lo.has("insert_month_at_end") && lo.get("insert_month_at_end").getAsBoolean()) {
+            MonthDef m = parseInsertedMonth(lo, context, langIndex);
+            return new LeapRule.InsertMonth(null, m);
+        }
+        if (lo.has("insert_month_after")) {
+            int afterIdx = GsonHelper.getAsInt(lo, "insert_month_after");
+            if (afterIdx < 0 || afterIdx > baseMonthCount) {
+                throw new IllegalArgumentException(context + " — insert_month_after out of range: " + afterIdx);
+            }
+            MonthDef m = parseInsertedMonth(lo, context, langIndex);
+            return new LeapRule.InsertMonth(afterIdx, m);
+        }
+        throw new IllegalArgumentException(context + " — must have add_day_to_month, subtract_day_from_month, rename_month, insert_month_after, or insert_month_at_end");
+    }
+
+    private static void validateBaseMonthIndex(int idx, int baseMonthCount, String context, String key) {
+        if (idx < 1 || idx > baseMonthCount) {
+            throw new IllegalArgumentException(context + " — " + key + " out of range: " + idx
+                    + " (profile has " + baseMonthCount + " base months)");
+        }
+    }
+
+    private static MonthDef parseInsertedMonth(JsonObject lo, String context, Map<String, String> langIndex) {
+        if (!lo.has("month")) {
+            throw new IllegalArgumentException(context + " — insertion action missing 'month' object");
+        }
+        JsonObject mo = GsonHelper.getAsJsonObject(lo, "month");
+        int days = GsonHelper.getAsInt(mo, "days");
+        if (days <= 0) throw new IllegalArgumentException(context + ".month.days must be > 0");
+        Component name = parseComponent(mo.get("common_name"), context + ".month", langIndex);
+        return new MonthDef(name, days);
     }
 
     /**

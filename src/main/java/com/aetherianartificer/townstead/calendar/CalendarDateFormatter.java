@@ -67,7 +67,7 @@ public final class CalendarDateFormatter {
         if (date == CalendarDate.UNKNOWN) return Component.empty();
         CalendarProfile profile = TownsteadCalendar.activeProfile(server);
         if (profile == null) return Component.empty();
-        Component month = monthName(profile, date.monthIndex());
+        Component month = monthName(profile, date.year(), date.monthIndex());
         Component weekday = weekdayLong(profile, date.dayOfWeek());
 
         // Era resolution takes precedence over yearSuffix. If no era, fall
@@ -95,7 +95,7 @@ public final class CalendarDateFormatter {
     public static Component formatClient(CalendarClientStore.Snapshot snap, Style style,
                                           int year, int monthIndex, int dayOfMonth, int dayOfWeek) {
         if (snap == null) return Component.empty();
-        Component month = clientMonthName(snap, monthIndex);
+        Component month = clientMonthName(snap, year, monthIndex);
         Component weekday = clientWeekdayLong(snap, dayOfWeek);
 
         int displayedYear = year;
@@ -137,9 +137,10 @@ public final class CalendarDateFormatter {
         return Component.translatableWithFallback(style.key, style.fallback, args);
     }
 
-    private static Component monthName(CalendarProfile profile, int monthIndex) {
-        if (monthIndex >= 1 && monthIndex <= profile.months().size()) {
-            return profile.months().get(monthIndex - 1).commonName();
+    private static Component monthName(CalendarProfile profile, int year, int monthIndex) {
+        java.util.List<MonthDef> ms = profile.monthsForYear(year);
+        if (monthIndex >= 1 && monthIndex <= ms.size()) {
+            return ms.get(monthIndex - 1).commonName();
         }
         return Component.literal("Month " + monthIndex);
     }
@@ -151,9 +152,10 @@ public final class CalendarDateFormatter {
         return profile.weekdays().get(dayOfWeek).longName();
     }
 
-    private static Component clientMonthName(CalendarClientStore.Snapshot snap, int monthIndex) {
-        if (monthIndex >= 1 && monthIndex <= snap.months().size()) {
-            return snap.months().get(monthIndex - 1).nameComponent();
+    private static Component clientMonthName(CalendarClientStore.Snapshot snap, int year, int monthIndex) {
+        java.util.List<MonthDef> ms = snap.monthsForYear(year);
+        if (monthIndex >= 1 && monthIndex <= ms.size()) {
+            return ms.get(monthIndex - 1).commonName();
         }
         return Component.literal("Month " + monthIndex);
     }

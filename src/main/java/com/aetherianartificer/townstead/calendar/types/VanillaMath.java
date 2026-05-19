@@ -4,11 +4,9 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.calendar.CalendarDate;
 import com.aetherianartificer.townstead.calendar.CalendarProfile;
 import com.aetherianartificer.townstead.calendar.CalendarType;
-import com.aetherianartificer.townstead.calendar.MonthDef;
+import com.aetherianartificer.townstead.calendar.LeapEngine;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-
-import java.util.List;
 
 /**
  * Drives the date off Townstead's monotonic worldDay counter and the profile's
@@ -27,28 +25,12 @@ public class VanillaMath implements CalendarType {
 
     @Override
     public CalendarDate compute(MinecraftServer server, CalendarProfile profile, long worldDay, int epochYearOffset) {
-        int dpy = profile.daysPerYear();
-        if (dpy <= 0) return CalendarDate.UNKNOWN;
+        if (profile.months().isEmpty()) return CalendarDate.UNKNOWN;
         int dpw = profile.daysPerWeek();
-        long yearsElapsed = Math.floorDiv(worldDay, (long) dpy);
-        int dayInYear = (int) Math.floorMod(worldDay, (long) dpy);
-
-        int monthIndex = 1;
-        int dayOfMonth = dayInYear + 1;
-        int acc = 0;
-        List<MonthDef> months = profile.months();
-        for (int i = 0; i < months.size(); i++) {
-            int days = months.get(i).days();
-            if (dayInYear < acc + days) {
-                monthIndex = i + 1;
-                dayOfMonth = dayInYear - acc + 1;
-                break;
-            }
-            acc += days;
-        }
-
+        LeapEngine.Split split = LeapEngine.splitWorldDay(profile.months(), profile.leapRules(),
+                worldDay, epochYearOffset);
         int dayOfWeek = (int) Math.floorMod(worldDay, (long) dpw);
-        int year = (int) (yearsElapsed + epochYearOffset);
-        return new CalendarDate(year, monthIndex, dayOfMonth, dayOfWeek, dayInYear + 1, null);
+        return new CalendarDate(split.year(), split.monthIndex(), split.dayOfMonth(),
+                dayOfWeek, split.dayOfYear(), null);
     }
 }

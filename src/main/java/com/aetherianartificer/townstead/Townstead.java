@@ -1760,11 +1760,13 @@ public class Townstead {
                 com.aetherianartificer.townstead.calendar.TownsteadCalendar.activeProfile(server);
         com.aetherianartificer.townstead.calendar.CalendarDate today =
                 com.aetherianartificer.townstead.calendar.TownsteadCalendar.today(server);
+        java.util.List<com.aetherianartificer.townstead.calendar.MonthDef> todayYearMonths =
+                profile != null ? profile.monthsForYear(today.year()) : java.util.List.of();
         String[] month = (profile != null
                 && today.monthIndex() >= 1
-                && today.monthIndex() <= profile.months().size())
+                && today.monthIndex() <= todayYearMonths.size())
                 ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(
-                        profile.months().get(today.monthIndex() - 1).commonName())
+                        todayYearMonths.get(today.monthIndex() - 1).commonName())
                 : new String[] { "", "" };
         String[] prof = profile != null
                 ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(profile.displayName())
@@ -1821,6 +1823,9 @@ public class Townstead {
             }
         }
 
+        java.util.List<com.aetherianartificer.townstead.calendar.LeapRule> leapRules =
+                profile != null && profile.leapRules() != null ? profile.leapRules() : java.util.List.of();
+
         return new com.aetherianartificer.townstead.calendar.CalendarSyncPayload(
                 data.worldDayCounter(),
                 today.year(), today.monthIndex(), today.dayOfMonth(),
@@ -1829,7 +1834,8 @@ public class Townstead {
                 dpw, epoch, suffix[0], suffix[1],
                 monthKeys, monthFallbacks, monthDays,
                 wdLongKeys, wdLongFallbacks, wdShortKeys, wdShortFallbacks,
-                eraNameKeys, eraNameFallbacks, eraStartYears, eraFirstYearDisplayedAs, eraDirections
+                eraNameKeys, eraNameFallbacks, eraStartYears, eraFirstYearDisplayedAs, eraDirections,
+                leapRules
         );
     }
 
@@ -1845,11 +1851,13 @@ public class Townstead {
         int ageYears = com.aetherianartificer.townstead.calendar.TownsteadCalendar.ageYears(server, villager);
         com.aetherianartificer.townstead.calendar.CalendarProfile profile =
                 com.aetherianartificer.townstead.calendar.TownsteadCalendar.activeProfile(server);
+        java.util.List<com.aetherianartificer.townstead.calendar.MonthDef> birthYearMonths =
+                profile != null ? profile.monthsForYear(birth.year()) : java.util.List.of();
         String[] month = (profile != null
                 && birth.monthIndex() >= 1
-                && birth.monthIndex() <= profile.months().size())
+                && birth.monthIndex() <= birthYearMonths.size())
                 ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(
-                        profile.months().get(birth.monthIndex() - 1).commonName())
+                        birthYearMonths.get(birth.monthIndex() - 1).commonName())
                 : new String[] { "", "" };
         return new com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload(
                 villager.getId(),

@@ -154,8 +154,10 @@ public class CalendarScreen extends Screen {
 
     private int computeRowCount(@Nullable CalendarClientStore.Snapshot snap) {
         if (snap == null || snap.months().isEmpty()) return 1;
-        int monthIdx = Math.max(0, Math.min(viewMonth - 1, snap.months().size() - 1));
-        int monthDays = snap.months().get(monthIdx).days();
+        java.util.List<com.aetherianartificer.townstead.calendar.MonthDef> yearMonths = snap.monthsForYear(viewYear);
+        if (yearMonths.isEmpty()) return 1;
+        int monthIdx = Math.max(0, Math.min(viewMonth - 1, yearMonths.size() - 1));
+        int monthDays = yearMonths.get(monthIdx).days();
         int dpw = Math.max(1, snap.daysPerWeek());
         int startDow = startDayOfWeek(snap, viewYear, monthIdx);
         return Math.max(1, (startDow + monthDays + dpw - 1) / dpw);
@@ -164,10 +166,22 @@ public class CalendarScreen extends Screen {
     private void navigateMonth(int delta) {
         CalendarClientStore.Snapshot snap = CalendarClientStore.get();
         if (snap == null || snap.months().isEmpty()) return;
-        int monthCount = snap.months().size();
+        int monthCount = snap.monthsForYear(viewYear).size();
+        if (monthCount == 0) return;
         int next = viewMonth + delta;
-        while (next < 1) { next += monthCount; viewYear = Math.max(1, viewYear - 1); }
-        while (next > monthCount) { next -= monthCount; viewYear = viewYear + 1; }
+        while (next < 1) {
+            viewYear = Math.max(1, viewYear - 1);
+            int prevCount = snap.monthsForYear(viewYear).size();
+            if (prevCount <= 0) break;
+            next += prevCount;
+            monthCount = snap.monthsForYear(viewYear).size();
+        }
+        while (next > monthCount) {
+            next -= monthCount;
+            viewYear = viewYear + 1;
+            monthCount = snap.monthsForYear(viewYear).size();
+            if (monthCount <= 0) break;
+        }
         viewMonth = next;
         relayout();
     }
@@ -412,9 +426,10 @@ public class CalendarScreen extends Screen {
 
     private void renderGrid(GuiGraphics g, CalendarClientStore.Snapshot snap, int mouseX, int mouseY) {
         int dpw = Math.max(1, snap.daysPerWeek());
-        if (snap.months().isEmpty()) return;
-        int safeMonthIdx = Math.max(0, Math.min(viewMonth - 1, snap.months().size() - 1));
-        int monthDays = snap.months().get(safeMonthIdx).days();
+        java.util.List<com.aetherianartificer.townstead.calendar.MonthDef> yearMonths = snap.monthsForYear(viewYear);
+        if (yearMonths.isEmpty()) return;
+        int safeMonthIdx = Math.max(0, Math.min(viewMonth - 1, yearMonths.size() - 1));
+        int monthDays = yearMonths.get(safeMonthIdx).days();
         int startDow = startDayOfWeek(snap, viewYear, safeMonthIdx);
 
         int gridTop = contentY + HEADER_H + WEEKDAY_H;
@@ -519,22 +534,18 @@ public class CalendarScreen extends Screen {
 
     private int startDayOfWeek(CalendarClientStore.Snapshot snap, int displayYear, int monthIdx) {
         int dpw = Math.max(1, snap.daysPerWeek());
-        int dpy = Math.max(1, snap.daysPerYear());
-        long yearsElapsed = (long) displayYear - snap.epochYearOffset();
-        long startOfYear = yearsElapsed * dpy;
-        int daysBefore = 0;
-        for (int i = 0; i < monthIdx && i < snap.months().size(); i++) {
-            daysBefore += snap.months().get(i).days();
-        }
+        long startOfYear = snap.worldDayAtYearStart(displayYear);
+        int daysBefore = snap.daysBeforeMonth(displayYear, monthIdx + 1);
         long startWorldDay = startOfYear + daysBefore;
         return (int) Math.floorMod(startWorldDay, (long) dpw);
     }
 
     private Component monthNameFor(CalendarClientStore.Snapshot snap, int monthIdxZeroBased) {
-        if (monthIdxZeroBased < 0 || monthIdxZeroBased >= snap.months().size()) {
+        java.util.List<com.aetherianartificer.townstead.calendar.MonthDef> yearMonths = snap.monthsForYear(viewYear);
+        if (monthIdxZeroBased < 0 || monthIdxZeroBased >= yearMonths.size()) {
             return Component.literal("?");
         }
-        return snap.months().get(monthIdxZeroBased).nameComponent();
+        return yearMonths.get(monthIdxZeroBased).commonName();
     }
 
     @Override

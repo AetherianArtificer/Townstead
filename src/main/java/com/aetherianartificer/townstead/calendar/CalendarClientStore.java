@@ -54,7 +54,8 @@ public final class CalendarClientStore {
             String yearSuffixFallback,
             List<MonthSpec> months,
             List<WeekdaySpec> weekdays,
-            List<EraSpec> eras
+            List<EraSpec> eras,
+            List<LeapRule> leapRules
     ) {
 
         public Component monthComponent() { return ComponentSync.reconstruct(monthKey, monthFallback); }
@@ -69,7 +70,11 @@ public final class CalendarClientStore {
             return (yearSuffixKey != null && !yearSuffixKey.isEmpty())
                     || (yearSuffixFallback != null && !yearSuffixFallback.isEmpty());
         }
-        /** Sum of all months' day counts — total days in a year. */
+        /**
+         * Nominal days per year (sum of base months). Same as the server's
+         * {@code CalendarProfile.daysPerYear()} — ignores leap rules. Use
+         * {@link #daysInYear(int)} for leap-aware year length.
+         */
         public int daysPerYear() {
             int total = 0;
             for (MonthSpec m : months) total += m.days();
@@ -78,6 +83,43 @@ public final class CalendarClientStore {
 
         public boolean hasWeekdays() { return weekdays != null && !weekdays.isEmpty(); }
         public boolean hasEras() { return eras != null && !eras.isEmpty(); }
+        public boolean hasLeapRules() { return leapRules != null && !leapRules.isEmpty(); }
+
+        /**
+         * Convert this snapshot's month specs into engine {@link MonthDef}s
+         * so the client can use {@link LeapEngine}. Memoized by snapshot
+         * identity in {@link CalendarClientStore#engineMonthsFor} since
+         * records can't hold mutable cache fields and rebuilding is cheap
+         * but not free.
+         */
+        public List<MonthDef> engineMonths() {
+            return engineMonthsFor(this);
+        }
+
+        /** Days in {@code year}, accounting for any leap rules. */
+        public int daysInYear(int year) {
+            return LeapEngine.daysInYear(engineMonths(), leapRules, year);
+        }
+
+        /** Days in the given 1-based month of {@code year}. */
+        public int daysInMonth(int year, int monthIndex) {
+            return LeapEngine.daysInMonth(engineMonths(), leapRules, year, monthIndex);
+        }
+
+        /** Effective month list for {@code year} (with leap insertions). */
+        public List<MonthDef> monthsForYear(int year) {
+            return LeapEngine.layoutForYear(engineMonths(), leapRules, year).months();
+        }
+
+        /** Days in the year before the start of 1-based {@code monthIndex}. */
+        public int daysBeforeMonth(int year, int monthIndex) {
+            return LeapEngine.daysBeforeMonth(engineMonths(), leapRules, year, monthIndex);
+        }
+
+        /** Absolute worldDay at the start of the given display year. */
+        public long worldDayAtYearStart(int displayYear) {
+            return LeapEngine.worldDayAtYearStart(engineMonths(), leapRules, displayYear, epochYearOffset);
+        }
 
         /**
          * Find which era an absolute year belongs to and what era-relative
@@ -105,6 +147,22 @@ public final class CalendarClientStore {
     }
 
     private static volatile @Nullable Snapshot current;
+
+    // Identity-keyed weak cache so a long-lived snapshot doesn't rebuild the
+    // engine month list on every UI tick. Dropped when the snapshot itself
+    // becomes unreferenced.
+    private static final java.util.Map<Snapshot, List<MonthDef>> ENGINE_MONTHS_CACHE =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+    static List<MonthDef> engineMonthsFor(Snapshot snap) {
+        List<MonthDef> cached = ENGINE_MONTHS_CACHE.get(snap);
+        if (cached != null) return cached;
+        List<MonthDef> built = new java.util.ArrayList<>(snap.months().size());
+        for (MonthSpec m : snap.months()) built.add(new MonthDef(m.nameComponent(), m.days()));
+        cached = List.copyOf(built);
+        ENGINE_MONTHS_CACHE.put(snap, cached);
+        return cached;
+    }
 
     private CalendarClientStore() {}
 
@@ -151,7 +209,8 @@ public final class CalendarClientStore {
                 payload.yearSuffixFallback(),
                 months,
                 weekdays,
-                eras
+                eras,
+                payload.leapRules() != null ? payload.leapRules() : List.of()
         );
     }
 

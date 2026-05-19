@@ -45,7 +45,8 @@ public record CalendarProfile(
         @Nullable Component yearSuffix,
         @Nullable List<WeekdayDef> weekdays,
         @Nullable List<Era> eras,
-        @Nullable Map<CalendarDateFormatter.Style, Component> formats
+        @Nullable Map<CalendarDateFormatter.Style, Component> formats,
+        @Nullable List<LeapRule> leapRules
 ) {
     public CalendarProfile {
         if (daysPerWeek <= 0) throw new IllegalArgumentException("daysPerWeek must be > 0");
@@ -71,19 +72,24 @@ public record CalendarProfile(
             copy.putAll(formats);
             formats = java.util.Collections.unmodifiableMap(copy);
         }
+        if (leapRules != null && leapRules.isEmpty()) {
+            leapRules = null;
+        } else if (leapRules != null) {
+            leapRules = List.copyOf(leapRules);
+        }
     }
 
-    /** Backwards-compatible constructor: no suffix, no weekdays, no eras, no formats. */
+    /** Backwards-compatible constructor: no suffix, no weekdays, no eras, no formats, no leap rules. */
     public CalendarProfile(
             ResourceLocation id,
             Component displayName,
             int daysPerWeek,
             List<MonthDef> months
     ) {
-        this(id, displayName, daysPerWeek, months, null, null, null, null);
+        this(id, displayName, daysPerWeek, months, null, null, null, null, null);
     }
 
-    /** Backwards-compatible constructor: with suffix, no weekdays, no eras, no formats. */
+    /** Backwards-compatible constructor: with suffix, no weekdays, no eras, no formats, no leap rules. */
     public CalendarProfile(
             ResourceLocation id,
             Component displayName,
@@ -91,10 +97,10 @@ public record CalendarProfile(
             List<MonthDef> months,
             @Nullable Component yearSuffix
     ) {
-        this(id, displayName, daysPerWeek, months, yearSuffix, null, null, null);
+        this(id, displayName, daysPerWeek, months, yearSuffix, null, null, null, null);
     }
 
-    /** Backwards-compatible constructor: no eras, no formats. */
+    /** Backwards-compatible constructor: no eras, no formats, no leap rules. */
     public CalendarProfile(
             ResourceLocation id,
             Component displayName,
@@ -103,10 +109,10 @@ public record CalendarProfile(
             @Nullable Component yearSuffix,
             @Nullable List<WeekdayDef> weekdays
     ) {
-        this(id, displayName, daysPerWeek, months, yearSuffix, weekdays, null, null);
+        this(id, displayName, daysPerWeek, months, yearSuffix, weekdays, null, null, null);
     }
 
-    /** Backwards-compatible constructor: no formats. */
+    /** Backwards-compatible constructor: no formats, no leap rules. */
     public CalendarProfile(
             ResourceLocation id,
             Component displayName,
@@ -116,7 +122,21 @@ public record CalendarProfile(
             @Nullable List<WeekdayDef> weekdays,
             @Nullable List<Era> eras
     ) {
-        this(id, displayName, daysPerWeek, months, yearSuffix, weekdays, eras, null);
+        this(id, displayName, daysPerWeek, months, yearSuffix, weekdays, eras, null, null);
+    }
+
+    /** Backwards-compatible constructor: no leap rules. */
+    public CalendarProfile(
+            ResourceLocation id,
+            Component displayName,
+            int daysPerWeek,
+            List<MonthDef> months,
+            @Nullable Component yearSuffix,
+            @Nullable List<WeekdayDef> weekdays,
+            @Nullable List<Era> eras,
+            @Nullable Map<CalendarDateFormatter.Style, Component> formats
+    ) {
+        this(id, displayName, daysPerWeek, months, yearSuffix, weekdays, eras, formats, null);
     }
 
     /**
@@ -161,10 +181,41 @@ public record CalendarProfile(
         return new Era.Resolved(chosen, displayed);
     }
 
-    /** Sum of {@code months[].days}. */
+    /**
+     * Nominal year length: sum of {@code months[].days} on the base month
+     * list, ignoring any {@link LeapRule}s. Suitable for randomization seeds
+     * and DOB fabrication where ~1-day-per-cycle drift is acceptable. For
+     * exact year math, prefer {@link #daysInYear(int)}.
+     */
     public int daysPerYear() {
         int total = 0;
         for (MonthDef m : months) total += m.days();
         return total;
+    }
+
+    /**
+     * Days in the given absolute {@code year}, accounting for leap rules.
+     * Equal to {@link #daysPerYear()} when no leap rules are defined.
+     */
+    public int daysInYear(int year) {
+        return LeapEngine.daysInYear(months, leapRules, year);
+    }
+
+    /**
+     * Days in the given 1-based month of {@code year}. {@code monthIndex}
+     * indexes into the post-leap-rule month list (so leap years that insert
+     * a 13th month make 13 a valid index for those years).
+     */
+    public int daysInMonth(int year, int monthIndex) {
+        return LeapEngine.daysInMonth(months, leapRules, year, monthIndex);
+    }
+
+    /**
+     * The effective month list for {@code year}. With no leap rules, returns
+     * the base list. With leap rules, returns a fresh list with day-count
+     * adjustments and inserted months applied for that year.
+     */
+    public List<MonthDef> monthsForYear(int year) {
+        return LeapEngine.layoutForYear(months, leapRules, year).months();
     }
 }

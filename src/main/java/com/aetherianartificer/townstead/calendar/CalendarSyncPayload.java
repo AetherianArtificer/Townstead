@@ -65,7 +65,11 @@ public record CalendarSyncPayload(
         List<String> eraNameFallbacks,
         List<Integer> eraStartYears,
         List<Integer> eraFirstYearDisplayedAs,
-        List<Integer> eraDirections
+        List<Integer> eraDirections,
+        // Optional leap rules. Empty list = profile has no leap rules and
+        // every year has the same month layout. Wire format handled by
+        // LeapRuleCodec so this payload doesn't bake the rule schema in.
+        List<LeapRule> leapRules
 //? if neoforge {
 ) implements CustomPacketPayload {
 //?} else {
@@ -131,6 +135,7 @@ public record CalendarSyncPayload(
             buf.writeVarInt(eraFirstYearDisplayedAs.get(i));
             buf.writeVarInt(eraDirections.get(i));
         }
+        LeapRuleCodec.writeList(buf, leapRules);
     }
 
     public static CalendarSyncPayload read(FriendlyByteBuf buf) {
@@ -182,13 +187,15 @@ public record CalendarSyncPayload(
             eraFirstYearDisplayedAs.add(buf.readVarInt());
             eraDirections.add(buf.readVarInt());
         }
+        List<LeapRule> leapRules = LeapRuleCodec.readList(buf);
         return new CalendarSyncPayload(
                 worldDay, year, monthIndex, dayOfMonth, dayOfYear, dayOfWeek,
                 monthKey, monthFallback, profileKey, profileFallback, seasonKey,
                 daysPerWeek, epochYearOffset, yearSuffixKey, yearSuffixFallback,
                 monthKeys, monthFallbacks, monthDays,
                 wdLongKeys, wdLongFallbacks, wdShortKeys, wdShortFallbacks,
-                eraNameKeys, eraNameFallbacks, eraStartYears, eraFirstYearDisplayedAs, eraDirections
+                eraNameKeys, eraNameFallbacks, eraStartYears, eraFirstYearDisplayedAs, eraDirections,
+                leapRules
         );
     }
 }

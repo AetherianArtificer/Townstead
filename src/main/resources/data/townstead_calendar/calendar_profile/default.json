@@ -30,5 +30,10 @@
     { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.moguan"  } },
     { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.jemar"   } },
     { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.nagari"  } }
+  ],
+  "leap_rules": [
+    { "when": { "year_mod": 4,   "equals": 0 }, "add_day_to_month":      2 },
+    { "when": { "year_mod": 100, "equals": 0 }, "subtract_day_from_month": 2 },
+    { "when": { "year_mod": 400, "equals": 0 }, "add_day_to_month":      2 }
   ]
 }
