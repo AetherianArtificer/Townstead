@@ -256,6 +256,13 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         }
         if (gameTime < idleUntilTick) return;
 
+        if (isVillagerAtWorksite(level, villager)
+                && com.aetherianartificer.townstead.profession.PoilessTradingProfessions
+                        .contains(villager.getVillagerData().getProfession())
+                && villager.shouldRestock()) {
+            villager.restock();
+        }
+
         debugTick(level, villager, gameTime);
 
         int timeout = stateTimeoutTicks(state);

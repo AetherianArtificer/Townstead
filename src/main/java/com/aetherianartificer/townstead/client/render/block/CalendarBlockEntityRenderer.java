@@ -162,8 +162,8 @@ public class CalendarBlockEntityRenderer implements BlockEntityRenderer<Calendar
 
     /**
      * After {@code translate(0.5, 0.5, 0.5)}, align pose +Z with the visible
-     * face's outward direction and step the matrix to just outside the inset's
-     * front plane. Subtleties recorded the hard way:
+     * face's outward direction and step the matrix to just outside the
+     * banner/tile front plane. Subtleties recorded the hard way:
      * <ul>
      *   <li>Yaw is {@code facing.toYRot()} (not its 180° complement), so the
      *       glyph quads' default +Z normal ends up pointing toward the viewer,
@@ -172,19 +172,26 @@ public class CalendarBlockEntityRenderer implements BlockEntityRenderer<Calendar
      *       centre (the panel hangs against the wall opposite the viewer), so
      *       the depth step is in pose {@code -Z}; overshooting puts text into
      *       the panel volume where the block model hides it.</li>
-     *   <li>{@code 0.435} lands a hair outside the parchment inset's front
-     *       plane (which is at 7/16 = 0.4375 from centre); {@code 0.42} clears
-     *       the recessed inset by half a pixel.</li>
+     *   <li>Wall variant: banner/tile front faces protrude to model z=14.5,
+     *       which is (14.5-8)/16 = 0.40625 blocks south of block centre. We
+     *       land the text plane exactly there, then {@link #TEXT_Z_OFFSET}
+     *       nudges the glyphs a hair forward so the text reads as painted
+     *       onto the banner/tile, not floating in front of them.</li>
+     *   <li>Floor variant: parchment top sits at model y=0.5, so the offset
+     *       from centre is (8-0.5)/16 = 0.46875.</li>
      * </ul>
      */
+    private static final float WALL_FACE_DEPTH  = -0.40625f;
+    private static final float FLOOR_FACE_DEPTH = -0.46875f;
+
     private static void orientToFace(PoseStack poseStack, AttachFace face, Direction facing) {
         poseStack.mulPose(Axis.YP.rotationDegrees(facing.toYRot()));
 
         if (face == AttachFace.WALL) {
-            poseStack.translate(0.0, 0.0, -0.39);
+            poseStack.translate(0.0, 0.0, WALL_FACE_DEPTH);
         } else {
             poseStack.mulPose(Axis.XP.rotationDegrees(-90.0f));
-            poseStack.translate(0.0, 0.0, -0.39);
+            poseStack.translate(0.0, 0.0, FLOOR_FACE_DEPTH);
         }
     }
 }

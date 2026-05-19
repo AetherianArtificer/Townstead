@@ -490,6 +490,7 @@ public class Townstead {
             /*ProfessionsMCA.isImportant.add(cook);
             ProfessionsMCA.canNotTrade.remove(cook);
             *///?}
+            com.aetherianartificer.townstead.profession.PoilessTradingProfessions.register(COOK_PROFESSION);
 
             if (ModCompat.isLoaded("rusticdelight")) {
                 VillagerProfession barista = BARISTA_PROFESSION.get();
@@ -500,6 +501,7 @@ public class Townstead {
                 /*ProfessionsMCA.isImportant.add(barista);
                 ProfessionsMCA.canNotTrade.remove(barista);
                 *///?}
+                com.aetherianartificer.townstead.profession.PoilessTradingProfessions.register(BARISTA_PROFESSION);
             }
         });
         event.enqueueWork(RusticDelightThirstCompat::register);
