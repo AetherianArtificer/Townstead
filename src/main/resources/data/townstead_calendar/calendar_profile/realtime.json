@@ -1,5 +1,4 @@
 {
-  "type": "townstead:realtime_math",
   "display_name": { "translate": "calendar_profile.townstead_calendar.realtime.name" },
   "days_per_week": 7,
   "weekdays": [

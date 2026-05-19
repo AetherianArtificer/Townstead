@@ -56,6 +56,7 @@ public final class CalendarClientStore {
             List<WeekdaySpec> weekdays,
             List<EraSpec> eras
     ) {
+
         public Component monthComponent() { return ComponentSync.reconstruct(monthKey, monthFallback); }
         public Component profileComponent() { return ComponentSync.reconstruct(profileKey, profileFallback); }
         public Component yearSuffixComponent() { return ComponentSync.reconstruct(yearSuffixKey, yearSuffixFallback); }

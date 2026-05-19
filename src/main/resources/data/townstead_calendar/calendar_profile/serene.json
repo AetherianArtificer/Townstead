@@ -1,5 +1,4 @@
 {
-  "type": "townstead:serene_math",
   "display_name": { "translate": "calendar_profile.townstead_calendar.serene.name" },
   "days_per_week": 6,
   "months": [

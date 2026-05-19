@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,9 +61,34 @@ import java.util.Map;
  * the translate key for non-English locales — the sidecar only populates the
  * fallback that shows when no client-side translation is available.</p>
  *
- * <p>The mod's own bundled profiles do not need a sidecar because the mod jar
- * itself ships an {@code assets/<ns>/lang/en_us.json} that every client has;
- * the sidecar mechanism is additive for packs that don't have that guarantee.</p>
+ * <p>The mod's own bundled profiles use the same sidecar mechanism: their
+ * {@code calendar_profile.*} strings live in
+ * {@code data/townstead_calendar/lang/en_us.json}, alongside the JSONs they
+ * describe. Pure client-side strings (GUI titles, date-format patterns) stay
+ * in {@code assets/townstead_calendar/lang/en_us.json}.</p>
+ *
+ * <p><b>Optional per-profile date format override.</b> A profile may include
+ * a {@code formats} object whose keys are style names ({@code long},
+ * {@code medium}, {@code short}, {@code with_weekday}) and values are
+ * translate-key Components carrying a format pattern. Any style omitted from
+ * the map falls back to the global
+ * {@code townstead.calendar.format.<style>} key.</p>
+ *
+ * <p><b>Named placeholders in pattern strings.</b> When a sidecar lang value
+ * contains tokens like {@code {day}} or {@code {month}}, the loader rewrites
+ * them to MC's positional format args before constructing the Component. Pack
+ * authors can write
+ * {@code "{weekday}, {day} of {month}, {era} {year}"} instead of
+ * {@code "%4$s, %1$s of %2$s, %5$s %3$s"}. Supported tokens:
+ * <ul>
+ *   <li>{@code {day}} → {@code %1$s} day-of-month</li>
+ *   <li>{@code {month}} → {@code %2$s} month name</li>
+ *   <li>{@code {year}} → {@code %3$s} display year</li>
+ *   <li>{@code {weekday}} → {@code %4$s} weekday name (WITH_WEEKDAY only)</li>
+ *   <li>{@code {era}} → {@code %5$s} era abbreviation / year suffix</li>
+ *   <li>{@code {month_index}} → {@code %6$s} month index (numeric)</li>
+ * </ul>
+ * Already-positional patterns pass through unchanged.</p>
  */
 public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadListener {
 
@@ -84,11 +110,6 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
-                ResourceLocation typeId = parseResourceLocation(GsonHelper.getAsString(obj, "type"));
-                if (CalendarTypes.byId(typeId) == null) {
-                    LOGGER.warn("Skipping calendar profile {} — unknown type {}", file, typeId);
-                    continue;
-                }
                 Component displayName = parseComponent(obj.get("display_name"), file.toString(), langIndex);
                 int daysPerWeek = GsonHelper.getAsInt(obj, "days_per_week", 7);
                 if (daysPerWeek <= 0) {
@@ -154,7 +175,23 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
                     }
                 }
 
-                parsed.put(file, new CalendarProfile(file, displayName, typeId, daysPerWeek, months, yearSuffix, weekdays, eras));
+                Map<CalendarDateFormatter.Style, Component> formats = null;
+                if (obj.has("formats")) {
+                    JsonObject fmtObj = GsonHelper.getAsJsonObject(obj, "formats");
+                    formats = new EnumMap<>(CalendarDateFormatter.Style.class);
+                    for (Map.Entry<String, JsonElement> fe : fmtObj.entrySet()) {
+                        CalendarDateFormatter.Style style = CalendarDateFormatter.Style.byJsonKey(fe.getKey());
+                        if (style == null) {
+                            LOGGER.warn("Skipping {} — formats has unknown style {}", file, fe.getKey());
+                            continue;
+                        }
+                        formats.put(style, parseComponent(fe.getValue(),
+                                file + ".formats." + fe.getKey(), langIndex));
+                    }
+                    if (formats.isEmpty()) formats = null;
+                }
+
+                parsed.put(file, new CalendarProfile(file, displayName, daysPerWeek, months, yearSuffix, weekdays, eras, formats));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse calendar profile {}: {}", file, ex.getMessage());
             }
@@ -166,8 +203,10 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
     /**
      * Scan every namespace for {@code data/<ns>/lang/en_us.json} and merge the
      * (key, English-string) entries into one map. Same JSON shape as a standard
-     * Minecraft lang file. Silently skips namespaces without a sidecar and
-     * malformed files (warns).
+     * Minecraft lang file. Each value also runs through
+     * {@link #convertNamedPlaceholders(String)} so authors can write tokens
+     * like {@code {day}} instead of {@code %1$s}. Silently skips namespaces
+     * without a sidecar and malformed files (warns).
      */
     private static Map<String, String> loadLangIndex(ResourceManager rm) {
         Map<String, String> out = new HashMap<>();
@@ -181,7 +220,7 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
                     for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
                         JsonElement v = e.getValue();
                         if (v != null && v.isJsonPrimitive()) {
-                            out.put(e.getKey(), v.getAsString());
+                            out.put(e.getKey(), convertNamedPlaceholders(v.getAsString()));
                         }
                     }
                 } catch (Exception ex) {
@@ -190,6 +229,22 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
             });
         }
         return out;
+    }
+
+    /**
+     * Rewrite named placeholders to MC's positional format args. Idempotent on
+     * already-positional patterns. See class Javadoc for the supported token
+     * vocabulary.
+     */
+    static String convertNamedPlaceholders(String s) {
+        if (s == null || s.indexOf('{') < 0) return s;
+        return s
+                .replace("{day}",         "%1$s")
+                .replace("{month}",       "%2$s")
+                .replace("{year}",        "%3$s")
+                .replace("{weekday}",     "%4$s")
+                .replace("{era}",         "%5$s")
+                .replace("{month_index}", "%6$s");
     }
 
     private static Component parseComponent(JsonElement el, String context, Map<String, String> langIndex) {

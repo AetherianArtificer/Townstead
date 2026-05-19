@@ -43,7 +43,11 @@ public class CalendarScreen extends Screen {
     // ── Layout ─────────────────────────────────────────────────────────────
     private static final int FRAME_THICKNESS = MAP_FRAME;
     private static final int INNER_PADDING = 8;
-    private static final int HEADER_H = 18;
+    // Header packs three things: a small year/era subtitle, a 2×-scaled month
+    // name underneath, and nav arrows flanking. Sized to fit both text lines
+    // plus a touch of breathing room above/below.
+    private static final int MONTH_SCALE = 2;
+    private static final int HEADER_H = 34;
     private static final int WEEKDAY_H = 14;
     // Footer holds the Today button. Sized so the button sits with roughly
     // equal padding above (to the last grid row) and below (to the parchment
@@ -130,8 +134,8 @@ public class CalendarScreen extends Screen {
         int maxContentW = Math.max(160, width - MAX_PANEL_W_MARGIN - chromeW);
         contentW = Math.min(contentW, maxContentW);
 
-        // Enforce a minimum width so the header text + nav buttons fit
-        int minHeaderW = 2 * NAV_BTN_W + 2 * NAV_BTN_W + 16 + font.width("MMMMMMMMMMMM");
+        // Enforce a minimum width so the 2× month name + nav button cluster fit
+        int minHeaderW = 4 * NAV_BTN_W + 8 + font.width("MMMMMMMMMMMM") * MONTH_SCALE + 16;
         if (contentW < minHeaderW) contentW = minHeaderW;
 
         panelW = contentW + 2 * (FRAME_THICKNESS + INNER_PADDING);
@@ -310,18 +314,6 @@ public class CalendarScreen extends Screen {
     private void renderHeader(GuiGraphics g, CalendarClientStore.Snapshot snap, int mouseX, int mouseY) {
         int headerY = contentY;
 
-        // Nav buttons: «  ‹  ...  ›  »
-        int btnY = headerY;
-        drawNavButton(g, contentX, btnY, "<<", mouseX, mouseY, () -> {
-            viewYear = Math.max(1, viewYear - 1); relayout();
-        });
-        drawNavButton(g, contentX + NAV_BTN_W + 2, btnY, "<", mouseX, mouseY, () -> navigateMonth(-1));
-        drawNavButton(g, contentX + contentW - NAV_BTN_W, btnY, ">>", mouseX, mouseY, () -> {
-            viewYear = viewYear + 1; relayout();
-        });
-        drawNavButton(g, contentX + contentW - 2 * NAV_BTN_W - 2, btnY, ">", mouseX, mouseY, () -> navigateMonth(1));
-
-        // Month + year title
         Component monthName = monthNameFor(snap, viewMonth - 1);
         int displayYear = viewYear;
         Component yearLabel = Component.empty();
@@ -332,12 +324,41 @@ public class CalendarScreen extends Screen {
         } else if (snap.hasYearSuffix()) {
             yearLabel = snap.yearSuffixComponent();
         }
+
+        // Year subtitle on top, small.
         String suffixStr = yearLabel.getString();
-        String headerStr = monthName.getString() + "  " + displayYear
-                + (suffixStr.isEmpty() ? "" : " " + suffixStr);
-        int textY = headerY + (HEADER_H - font.lineHeight) / 2;
-        // Single draw with vanilla MC shadow — crisp pixel-font readability
-        drawCenteredNoShadow(g, headerStr, contentX + contentW / 2, textY, TEXT_HEADER);
+        String yearStr = displayYear + (suffixStr.isEmpty() ? "" : " " + suffixStr);
+        int yearY = headerY + 2;
+        drawCenteredNoShadow(g, yearStr, contentX + contentW / 2, yearY, TEXT_HEADER);
+
+        // Month name underneath, 2× scaled via the pose matrix so it reads as
+        // the dominant heading. Scaling happens around (0,0), so draw coords
+        // are divided by MONTH_SCALE to land at the intended screen position.
+        String monthStr = monthName.getString();
+        int monthScaledW = font.width(monthStr) * MONTH_SCALE;
+        int monthScaledH = font.lineHeight * MONTH_SCALE;
+        int monthScreenX = contentX + (contentW - monthScaledW) / 2;
+        int monthScreenY = yearY + font.lineHeight + 2;
+        g.pose().pushPose();
+        g.pose().scale(MONTH_SCALE, MONTH_SCALE, 1.0f);
+        g.drawString(font, monthStr,
+                monthScreenX / MONTH_SCALE,
+                monthScreenY / MONTH_SCALE,
+                TEXT_HEADER, false);
+        g.pose().popPose();
+
+        // Nav buttons sit flush with the bottom of the (scaled) month name —
+        // they navigate the month, so visually anchoring them to its baseline
+        // reads more intentionally than centering on the whole header.
+        int navY = monthScreenY + monthScaledH - NAV_BTN_H;
+        drawNavButton(g, contentX, navY, "<<", mouseX, mouseY, () -> {
+            viewYear = Math.max(1, viewYear - 1); relayout();
+        });
+        drawNavButton(g, contentX + NAV_BTN_W + 2, navY, "<", mouseX, mouseY, () -> navigateMonth(-1));
+        drawNavButton(g, contentX + contentW - NAV_BTN_W, navY, ">>", mouseX, mouseY, () -> {
+            viewYear = viewYear + 1; relayout();
+        });
+        drawNavButton(g, contentX + contentW - 2 * NAV_BTN_W - 2, navY, ">", mouseX, mouseY, () -> navigateMonth(1));
     }
 
     /**

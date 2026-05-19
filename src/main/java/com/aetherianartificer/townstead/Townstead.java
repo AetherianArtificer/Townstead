@@ -266,6 +266,12 @@ public class Townstead {
                         return BlockEntityType.Builder.of(FieldPostBlockEntity::new, blocks).build(null);
                     });
 
+    public static final Supplier<BlockEntityType<com.aetherianartificer.townstead.block.CalendarBlockEntity>> CALENDAR_BE =
+            BLOCK_ENTITY_TYPES.register("calendar",
+                    () -> BlockEntityType.Builder.of(
+                            com.aetherianartificer.townstead.block.CalendarBlockEntity::new,
+                            CALENDAR_BLOCK.get()).build(null));
+
     public static final Supplier<net.minecraft.world.item.CreativeModeTab> TOWNSTEAD_TAB =
             CREATIVE_MODE_TABS.register("main",
                     () -> net.minecraft.world.item.CreativeModeTab.builder()
@@ -312,12 +318,18 @@ public class Townstead {
         townstead$registerClientTooltipFactory(modBus);
         townstead$registerMenuScreens(modBus);
         townstead$registerAnimationReloadListener(modBus);
+        townstead$registerBlockEntityRenderers(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
             com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
             com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
             com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer());
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityJoinLevelEvent e) -> {
+            if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
+                com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
+            }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
@@ -385,6 +397,7 @@ public class Townstead {
         townstead$registerClientTooltipFactory(modBus);
         townstead$registerMenuScreens(modBus);
         townstead$registerAnimationReloadListener(modBus);
+        townstead$registerBlockEntityRenderers(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -394,6 +407,11 @@ public class Townstead {
                 com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
                 com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer());
+            }
+        });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityJoinLevelEvent e) -> {
+            if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
+                com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
@@ -717,6 +735,36 @@ public class Townstead {
 
     // Screen is opened client-side directly via FieldPostScreenOpener (no menu registration needed)
     private static void townstead$registerMenuScreens(Object modBus) {}
+
+    //? if neoforge {
+    private static void townstead$registerBlockEntityRenderers(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) ->
+                            event.registerBlockEntityRenderer(
+                                    CALENDAR_BE.get(),
+                                    com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new)
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no renderers to register.
+        }
+    }
+    //?} else {
+    /*private static void townstead$registerBlockEntityRenderers(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) ->
+                            event.registerBlockEntityRenderer(
+                                    CALENDAR_BE.get(),
+                                    com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new)
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no renderers to register.
+        }
+    }
+    *///?}
 
     //? if neoforge {
     private static void townstead$registerAnimationReloadListener(IEventBus modBus) {

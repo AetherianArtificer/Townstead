@@ -40,16 +40,24 @@ public final class CalendarDateFormatter {
     private CalendarDateFormatter() {}
 
     public enum Style {
-        LONG("townstead.calendar.format.long", "%2$s %1$s, %3$s"),
-        MEDIUM("townstead.calendar.format.medium", "%2$s %1$s, %3$s"),
-        SHORT("townstead.calendar.format.short", "%1$s/%6$s/%3$s"),
-        WITH_WEEKDAY("townstead.calendar.format.with_weekday", "%4$s, %2$s %1$s, %3$s");
+        LONG("long", "townstead.calendar.format.long", "%2$s %1$s, %3$s"),
+        MEDIUM("medium", "townstead.calendar.format.medium", "%2$s %1$s, %3$s"),
+        SHORT("short", "townstead.calendar.format.short", "%1$s/%6$s/%3$s"),
+        WITH_WEEKDAY("with_weekday", "townstead.calendar.format.with_weekday", "%4$s, %2$s %1$s, %3$s");
 
-        final String key;
-        final String fallback;
-        Style(String key, String fallback) {
+        public final String jsonKey;
+        public final String key;
+        public final String fallback;
+        Style(String jsonKey, String key, String fallback) {
+            this.jsonKey = jsonKey;
             this.key = key;
             this.fallback = fallback;
+        }
+
+        @org.jetbrains.annotations.Nullable
+        public static Style byJsonKey(String s) {
+            for (Style v : values()) if (v.jsonKey.equals(s)) return v;
+            return null;
         }
     }
 
@@ -74,7 +82,7 @@ public final class CalendarDateFormatter {
             yearLabel = profile.yearSuffix() != null ? profile.yearSuffix() : Component.empty();
         }
 
-        return Component.translatableWithFallback(style.key, style.fallback,
+        return buildFormat(profile.format(style), style,
                 date.dayOfMonth(), month, displayedYear, weekday, yearLabel, date.monthIndex());
     }
 
@@ -100,8 +108,33 @@ public final class CalendarDateFormatter {
             yearLabel = snap.hasYearSuffix() ? snap.yearSuffixComponent() : Component.empty();
         }
 
-        return Component.translatableWithFallback(style.key, style.fallback,
+        // Client snapshots don't carry per-profile format overrides; the lang
+        // file's positional format strings are the single source of truth.
+        return buildFormat(null, style,
                 dayOfMonth, month, displayedYear, weekday, yearLabel, monthIndex);
+    }
+
+    /**
+     * Build the formatted Component, preferring the per-profile override when
+     * present. The override may itself carry a translate key (so it remains
+     * locale-overridable via resource packs); we extract its (key, fallback)
+     * and feed args, since {@code Component.translatableWithFallback(Component, args)}
+     * doesn't exist as an API.
+     */
+    private static Component buildFormat(@Nullable Component override, Style style, Object... args) {
+        if (override != null) {
+            String[] kf = ComponentSync.extract(override);
+            String key = kf[0];
+            String fb = kf[1];
+            if (!key.isEmpty()) {
+                return Component.translatableWithFallback(key,
+                        fb.isEmpty() ? style.fallback : fb, args);
+            }
+            if (!fb.isEmpty()) {
+                return Component.translatableWithFallback(style.key, fb, args);
+            }
+        }
+        return Component.translatableWithFallback(style.key, style.fallback, args);
     }
 
     private static Component monthName(CalendarProfile profile, int monthIndex) {

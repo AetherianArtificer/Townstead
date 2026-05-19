@@ -24,6 +24,13 @@ import java.util.List;
  * pre-resolved strings so each client resolves to its own locale. Months are
  * a parallel-array bundle: {@code monthKeys[i]}, {@code monthFallbacks[i]},
  * {@code monthDays[i]} describe month index {@code i}.
+ *
+ * Per-profile format overrides are <em>not</em> carried in this payload — the
+ * client-side calendar UI uses the global
+ * {@code townstead.calendar.format.<style>} keys so locale handling stays
+ * client-driven. Profile-specific format overrides only affect dates rendered
+ * server-side (commands, tooltips) where the active profile is directly
+ * available.
  */
 public record CalendarSyncPayload(
         long worldDay,

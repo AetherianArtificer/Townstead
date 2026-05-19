@@ -99,6 +99,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
+    public static final ModConfigSpec.ConfigValue<String> CALENDAR_TIME_MODE;
     public static final ModConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
     public static final ModConfigSpec.IntValue CALENDAR_START_YEAR_MIN;
     public static final ModConfigSpec.IntValue CALENDAR_START_YEAR_MAX;
@@ -175,6 +176,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
+    public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_TIME_MODE;
     public static final ForgeConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
     public static final ForgeConfigSpec.IntValue CALENDAR_START_YEAR_MIN;
     public static final ForgeConfigSpec.IntValue CALENDAR_START_YEAR_MAX;
@@ -499,11 +501,26 @@ public final class TownsteadConfig {
         CALENDAR_PROFILE = b
                 .translation("townstead.configuration.calendar.profile")
                 .comment("Active calendar profile. Use \"auto\" to detect seasonal mods (TFC > Serene Seasons > Ecliptic Seasons > Default).",
-                         "Or pin a specific profile by id: townstead_calendar:default, townstead_calendar:realtime, townstead_calendar:localtime, townstead_calendar:serene, townstead_calendar:tfc, townstead_calendar:ecliptic.",
+                         "Or pin a specific profile by id, e.g., townstead_calendar:default, townstead_calendar:serene, townstead_calendar:tfc, townstead_calendar:ecliptic, or any data-pack-supplied profile.",
                          "Profiles are defined in data packs at data/<ns>/calendar_profile/<name>.json so any pack can add a new one in its own namespace.",
                          "In-game: run /townstead calendar set-profile <id> for tab-completed picking.",
                          "Admin override via /townstead calendar set-profile takes precedence over this value at runtime.")
                 .define("profile", "auto");
+        CALENDAR_TIME_MODE = b
+                .translation("townstead.configuration.calendar.timeMode")
+                .comment("How the calendar advances over time.",
+                         "  normal       - Calendar tracks Minecraft's day counter directly. Pairs cleanly",
+                         "                 with Time Control and other day-cycle mods (the calendar rides",
+                         "                 whatever MC time those mods produce - no extra integration needed).",
+                         "                 Default. Use this for vanilla pacing or for 1 MC day = 1 real day",
+                         "                 pacing via a day-stretching mod.",
+                         "  real_clock   - Same as normal during play, but on world load Townstead also adds",
+                         "                 the real-world days that elapsed since the world was last saved.",
+                         "                 Villagers visibly age while you're away; the calendar advances even",
+                         "                 when the game is off. Year-rollover-safe (doesn't depend on Time",
+                         "                 Control's sync mode). Compatible with day-cycle mods on top.")
+                .define("timeMode", "normal",
+                        o -> o instanceof String s && (s.equals("normal") || s.equals("real_clock")));
         CALENDAR_RANDOMIZE_START = b
                 .translation("townstead.configuration.calendar.randomizeStart")
                 .comment("APPLIES ONLY TO NEW WORLDS. Editing this on an existing save has no effect.",
@@ -664,6 +681,14 @@ public final class TownsteadConfig {
 
     public static String getCalendarProfile() {
         return CALENDAR_PROFILE.get();
+    }
+
+    public static String getCalendarTimeMode() {
+        return CALENDAR_TIME_MODE.get();
+    }
+
+    public static boolean isCalendarRealClockMode() {
+        return "real_clock".equals(CALENDAR_TIME_MODE.get());
     }
 
     public static boolean isCalendarRandomizeStartEnabled() {

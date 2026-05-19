@@ -1,5 +1,4 @@
 {
-  "type": "townstead:tfc_math",
   "display_name": { "translate": "calendar_profile.townstead_calendar.tfc.name" },
   "days_per_week": 8,
   "months": [

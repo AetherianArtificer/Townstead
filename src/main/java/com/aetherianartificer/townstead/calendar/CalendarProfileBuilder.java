@@ -21,14 +21,11 @@ public final class CalendarProfileBuilder {
 
     /**
      * Build a profile with uniform days per month. Used when the source mod
-     * only exposes a single {@code daysPerMonth} value (e.g., Timeline's
-     * {@code CalendarDefinition} model).
+     * only exposes a single {@code daysPerMonth} value.
      *
      * @param id            profile id (e.g., {@code townstead_calendar:default})
      * @param displayKey    lang key for the profile's display name
      * @param displayFallback fallback text if no translation is loaded
-     * @param typeId        which {@link CalendarType} drives date math
-     *                      (typically {@code VanillaMath.ID})
      * @param daysPerWeek   weekday cycle length
      * @param monthNames    array of month display names (literal text);
      *                      empty / null name slots get "Month" placeholder
@@ -39,7 +36,6 @@ public final class CalendarProfileBuilder {
             ResourceLocation id,
             String displayKey,
             String displayFallback,
-            ResourceLocation typeId,
             int daysPerWeek,
             String[] monthNames,
             int daysPerMonth,
@@ -56,6 +52,6 @@ public final class CalendarProfileBuilder {
         Component displayName = Component.translatableWithFallback(displayKey, displayFallback);
         Component suffixComponent = (yearSuffix == null || yearSuffix.isBlank())
                 ? null : Component.literal(yearSuffix);
-        return new CalendarProfile(id, displayName, typeId, daysPerWeek, months, suffixComponent);
+        return new CalendarProfile(id, displayName, daysPerWeek, months, suffixComponent);
     }
 }

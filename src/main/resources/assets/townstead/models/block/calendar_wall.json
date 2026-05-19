@@ -1,21 +1,85 @@
 {
+  "_comment": "Wood plank frame around two 3D protruding elements: a crimson banner strip at the top (red_terracotta) and a parchment-toned day tile below (stripped_birch_log_top). Both protrude 0.5 px past the wood frame's front face so they read as real objects on the panel, not painted-on rectangles. Together they fill the full 11x11 inset area, no parchment background showing through.",
   "parent": "block/block",
   "textures": {
-    "particle": "minecraft:block/oak_planks",
-    "frame": "minecraft:block/oak_planks",
-    "face": "minecraft:item/paper"
+    "particle": "minecraft:block/dark_oak_planks",
+    "frame": "minecraft:block/dark_oak_planks",
+    "banner": "minecraft:block/red_terracotta",
+    "tile": "minecraft:block/white_concrete"
   },
   "elements": [
     {
-      "from": [0.5, 0.5, 15],
-      "to": [15.5, 15.5, 16],
+      "name": "frame_top",
+      "from": [0.5, 13.5, 15],
+      "to":   [15.5, 15.5, 16],
       "faces": {
-        "north": { "uv": [0.5, 0.5, 15.5, 15.5], "texture": "#face" },
-        "south": { "uv": [0.5, 0.5, 15.5, 15.5], "texture": "#frame" },
-        "east":  { "uv": [15, 0.5, 16, 15.5], "texture": "#frame" },
-        "west":  { "uv": [15, 0.5, 16, 15.5], "texture": "#frame" },
-        "up":    { "uv": [0.5, 15, 15.5, 16], "texture": "#frame" },
-        "down":  { "uv": [0.5, 15, 15.5, 16], "texture": "#frame" }
+        "north": { "texture": "#frame" },
+        "south": { "texture": "#frame" },
+        "east":  { "texture": "#frame" },
+        "west":  { "texture": "#frame" },
+        "up":    { "texture": "#frame" },
+        "down":  { "texture": "#frame" }
+      }
+    },
+    {
+      "name": "frame_bottom",
+      "from": [0.5, 0.5, 15],
+      "to":   [15.5, 2.5, 16],
+      "faces": {
+        "north": { "texture": "#frame" },
+        "south": { "texture": "#frame" },
+        "east":  { "texture": "#frame" },
+        "west":  { "texture": "#frame" },
+        "up":    { "texture": "#frame" },
+        "down":  { "texture": "#frame" }
+      }
+    },
+    {
+      "name": "frame_left",
+      "from": [0.5, 2.5, 15],
+      "to":   [2.5, 13.5, 16],
+      "faces": {
+        "north": { "texture": "#frame" },
+        "south": { "texture": "#frame" },
+        "east":  { "texture": "#frame" },
+        "west":  { "texture": "#frame" }
+      }
+    },
+    {
+      "name": "frame_right",
+      "from": [13.5, 2.5, 15],
+      "to":   [15.5, 13.5, 16],
+      "faces": {
+        "north": { "texture": "#frame" },
+        "south": { "texture": "#frame" },
+        "east":  { "texture": "#frame" },
+        "west":  { "texture": "#frame" }
+      }
+    },
+    {
+      "name": "banner_3d",
+      "from": [2.5, 10.5, 14.5],
+      "to":   [13.5, 13.5, 15.5],
+      "faces": {
+        "north": { "texture": "#banner" },
+        "south": { "texture": "#banner" },
+        "east":  { "texture": "#banner" },
+        "west":  { "texture": "#banner" },
+        "up":    { "texture": "#banner" },
+        "down":  { "texture": "#banner" }
+      }
+    },
+    {
+      "name": "tile_3d",
+      "from": [2.5, 2.5, 14.5],
+      "to":   [13.5, 10.5, 15.5],
+      "faces": {
+        "north": { "texture": "#tile" },
+        "south": { "texture": "#tile" },
+        "east":  { "texture": "#tile" },
+        "west":  { "texture": "#tile" },
+        "up":    { "texture": "#tile" },
+        "down":  { "texture": "#tile" }
       }
     }
   ]

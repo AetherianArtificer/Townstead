@@ -31,7 +31,7 @@ public final class TownsteadCalendar {
         WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
         CalendarProfile profile = activeProfile(server);
         if (profile == null) return CalendarDate.UNKNOWN;
-        CalendarType type = CalendarTypes.byId(profile.typeId());
+        CalendarType type = CalendarTypes.resolveDriverFor(profile.id());
         if (type == null) return CalendarDate.UNKNOWN;
         return type.compute(server, profile, worldDay, data.epochYearOffset());
     }
@@ -59,10 +59,33 @@ public final class TownsteadCalendar {
         WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
         CalendarProfile profile = activeProfile(server);
         if (profile == null) return;
-        CalendarType type = CalendarTypes.byId(profile.typeId());
+        CalendarType type = CalendarTypes.resolveDriverFor(profile.id());
         if (type == null) return;
         CalendarDate now = type.compute(server, profile, data.worldDayCounter(), 0);
         data.setEpochYearOffset(displayYear - now.year());
+        rebroadcastAfterCalendarChange(server);
+    }
+
+    /**
+     * Currently effective calendar time mode: world override if set, otherwise
+     * the {@code townstead.calendar.timeMode} config value. Returns
+     * {@code "normal"} or {@code "real_clock"}.
+     */
+    public static String activeTimeMode(MinecraftServer server) {
+        if (server != null) {
+            String override = WorldCalendarSavedData.get(server).timeModeOverride();
+            if (override != null) return override;
+        }
+        return TownsteadConfig.getCalendarTimeMode();
+    }
+
+    /** True when the effective time mode is {@code real_clock}. */
+    public static boolean isRealClockMode(MinecraftServer server) {
+        return "real_clock".equals(activeTimeMode(server));
+    }
+
+    public static void setTimeModeOverride(MinecraftServer server, @Nullable String mode) {
+        WorldCalendarSavedData.get(server).setTimeModeOverride(mode);
         rebroadcastAfterCalendarChange(server);
     }
 

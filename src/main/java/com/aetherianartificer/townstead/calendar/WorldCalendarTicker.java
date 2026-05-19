@@ -104,6 +104,20 @@ public final class WorldCalendarTicker {
         }
 
         if (!data.hasLastSample()) {
+            // First tick after world load. If the player picked the real-clock
+            // time mode, add the real-world days that elapsed since the world
+            // was last saved before priming the dayTime baseline. Runs at
+            // most once per world load (next tick takes the hasLastSample
+            // branch above).
+            if (TownsteadCalendar.isRealClockMode(server)) {
+                int catchupDays = data.applyRealClockCatchup();
+                if (catchupDays > 0) {
+                    Townstead.LOGGER.info("[Calendar] Real-clock catch-up: advanced worldDayCounter by {} real day{}",
+                            catchupDays, catchupDays == 1 ? "" : "s");
+                    AgeableCatchup.applyBulkCatchup(server, catchupDays);
+                    Townstead.townstead$broadcastCalendarSync(server);
+                }
+            }
             data.primeSample(current);
             return;
         }
@@ -126,6 +140,10 @@ public final class WorldCalendarTicker {
         // we computed against the previous residue.
         data.advance(current, delta, daysAdvanced);
         if (daysAdvanced > 0) {
+            // Keep AgeableMob.lastSeenWorldDay stamps current so autosaves
+            // between sessions persist the latest value (otherwise the next
+            // load would see a stale stamp and incorrectly catch up).
+            AgeableCatchup.refreshLastSeenStamps(server);
             Townstead.townstead$broadcastCalendarSync(server);
         }
     }

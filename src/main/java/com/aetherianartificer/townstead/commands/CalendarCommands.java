@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.commands;
 
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.calendar.CalendarDate;
 import com.aetherianartificer.townstead.calendar.CalendarProfile;
 import com.aetherianartificer.townstead.calendar.CalendarProfileChoices;
@@ -45,7 +46,18 @@ public final class CalendarCommands {
                         .then(Commands.literal("set-day")
                                 .requires(s -> s.hasPermission(2))
                                 .then(Commands.argument("worldDay", IntegerArgumentType.integer())
-                                        .executes(c -> setDay(c.getSource(), IntegerArgumentType.getInteger(c, "worldDay")))))));
+                                        .executes(c -> setDay(c.getSource(), IntegerArgumentType.getInteger(c, "worldDay")))))
+                        .then(Commands.literal("time-mode")
+                                .executes(c -> getTimeMode(c.getSource()))
+                                .then(Commands.literal("normal")
+                                        .requires(s -> s.hasPermission(2))
+                                        .executes(c -> setTimeMode(c.getSource(), "normal")))
+                                .then(Commands.literal("real_clock")
+                                        .requires(s -> s.hasPermission(2))
+                                        .executes(c -> setTimeMode(c.getSource(), "real_clock")))
+                                .then(Commands.literal("default")
+                                        .requires(s -> s.hasPermission(2))
+                                        .executes(c -> setTimeMode(c.getSource(), null))))));
     }
 
     private static final SuggestionProvider<CommandSourceStack> PROFILE_SUGGESTIONS =
@@ -123,6 +135,30 @@ public final class CalendarCommands {
                 "World day counter set to " + worldDay + ". Displayed date is now "
                         + formatShortDate(today) + "."),
                 true);
+        return 1;
+    }
+
+    private static int getTimeMode(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
+        String override = data.timeModeOverride();
+        String configMode = TownsteadConfig.getCalendarTimeMode();
+        String effective = override != null ? override : configMode;
+        String msg = override != null
+                ? "Calendar time mode: " + effective + " (world override; config default: " + configMode + ")"
+                : "Calendar time mode: " + effective + " (from config)";
+        source.sendSuccess(() -> Component.literal(msg), false);
+        return 1;
+    }
+
+    private static int setTimeMode(CommandSourceStack source, String mode) {
+        MinecraftServer server = source.getServer();
+        TownsteadCalendar.setTimeModeOverride(server, mode);
+        String msg = mode == null
+                ? "Calendar time-mode override cleared. Now using config default: "
+                        + TownsteadConfig.getCalendarTimeMode() + "."
+                : "Calendar time mode set to: " + mode + " (saved with this world).";
+        source.sendSuccess(() -> Component.literal(msg), true);
         return 1;
     }
 

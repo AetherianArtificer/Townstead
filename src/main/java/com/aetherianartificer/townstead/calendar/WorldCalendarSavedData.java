@@ -46,8 +46,12 @@ public class WorldCalendarSavedData extends SavedData {
     private static final String KEY_VB_DAY = "day";
     private static final String KEY_VB_PLAYER = "playerFounded";
     private static final String KEY_INITIALIZED = "calendarInitialized";
+    private static final String KEY_LAST_REAL_MILLIS = "lastRealMillisAtSave";
+    private static final String KEY_HAS_LAST_REAL_MILLIS = "hasLastRealMillis";
+    private static final String KEY_TIME_MODE_OVERRIDE = "timeModeOverride";
 
     public static final int DEFAULT_EPOCH_YEAR_OFFSET = 1000;
+    private static final long MILLIS_PER_DAY = 86_400_000L;
 
     private long worldDayCounter = 0L;
     private long subDayResidueTicks = 0L;
@@ -55,6 +59,10 @@ public class WorldCalendarSavedData extends SavedData {
     private boolean hasLastSample = false;
     private int epochYearOffset = DEFAULT_EPOCH_YEAR_OFFSET;
     private boolean calendarInitialized = false;
+    private long lastRealMillisAtSave = 0L;
+    private boolean hasLastRealMillis = false;
+    @Nullable
+    private String timeModeOverride = null;
     @Nullable
     private ResourceLocation activeProfileOverride = null;
     private final Map<VillageKey, VillageBirth> villageBirths = new HashMap<>();
@@ -100,6 +108,12 @@ public class WorldCalendarSavedData extends SavedData {
         if (tag.contains(KEY_HAS_SAMPLE)) data.hasLastSample = tag.getBoolean(KEY_HAS_SAMPLE);
         if (tag.contains(KEY_EPOCH)) data.epochYearOffset = tag.getInt(KEY_EPOCH);
         if (tag.contains(KEY_INITIALIZED)) data.calendarInitialized = tag.getBoolean(KEY_INITIALIZED);
+        if (tag.contains(KEY_LAST_REAL_MILLIS)) data.lastRealMillisAtSave = tag.getLong(KEY_LAST_REAL_MILLIS);
+        if (tag.contains(KEY_HAS_LAST_REAL_MILLIS)) data.hasLastRealMillis = tag.getBoolean(KEY_HAS_LAST_REAL_MILLIS);
+        if (tag.contains(KEY_TIME_MODE_OVERRIDE)) {
+            String s = tag.getString(KEY_TIME_MODE_OVERRIDE);
+            if (!s.isBlank()) data.timeModeOverride = s;
+        }
         if (tag.contains(KEY_PROFILE_OVERRIDE)) {
             String s = tag.getString(KEY_PROFILE_OVERRIDE);
             if (!s.isBlank()) {
@@ -148,6 +162,18 @@ public class WorldCalendarSavedData extends SavedData {
         tag.putBoolean(KEY_HAS_SAMPLE, hasLastSample);
         tag.putInt(KEY_EPOCH, epochYearOffset);
         tag.putBoolean(KEY_INITIALIZED, calendarInitialized);
+        // Stamp current wall-clock millis at save time so Animal Crossing mode
+        // can compute real-days-elapsed on the next load. Always written
+        // (regardless of time_mode) so the timestamp is available if the user
+        // switches modes between sessions.
+        long nowMillis = System.currentTimeMillis();
+        this.lastRealMillisAtSave = nowMillis;
+        this.hasLastRealMillis = true;
+        tag.putLong(KEY_LAST_REAL_MILLIS, nowMillis);
+        tag.putBoolean(KEY_HAS_LAST_REAL_MILLIS, true);
+        if (timeModeOverride != null) {
+            tag.putString(KEY_TIME_MODE_OVERRIDE, timeModeOverride);
+        }
         if (activeProfileOverride != null) {
             tag.putString(KEY_PROFILE_OVERRIDE, activeProfileOverride.toString());
         }
@@ -186,6 +212,18 @@ public class WorldCalendarSavedData extends SavedData {
     public boolean calendarInitialized() { return calendarInitialized; }
     @Nullable
     public ResourceLocation activeProfileOverride() { return activeProfileOverride; }
+    @Nullable
+    public String timeModeOverride() { return timeModeOverride; }
+
+    /**
+     * Set the world-level time-mode override. Null clears the override and
+     * falls back to the {@code townstead.calendar.timeMode} config value.
+     */
+    public void setTimeModeOverride(@Nullable String mode) {
+        if (java.util.Objects.equals(this.timeModeOverride, mode)) return;
+        this.timeModeOverride = mode;
+        setDirty();
+    }
 
     public void markCalendarInitialized() {
         if (!this.calendarInitialized) {
@@ -242,5 +280,34 @@ public class WorldCalendarSavedData extends SavedData {
             this.worldDayCounter = day;
             setDirty();
         }
+    }
+
+    /**
+     * Advance {@link #worldDayCounter} by the number of whole real-world days
+     * that have passed since {@link #lastRealMillisAtSave}. Used by the
+     * {@code real_clock} time mode on world load: villagers visibly age and
+     * the calendar moves forward to "today" even though no Minecraft time
+     * passed while the world was off.
+     *
+     * <p>Returns the number of days added (0 if no timestamp recorded yet,
+     * or fewer than 24 real hours elapsed, or the system clock moved
+     * backward). Caller is responsible for any sync-broadcast.</p>
+     *
+     * <p>The timestamp is advanced by exactly {@code daysAdded × 86_400_000ms}
+     * so the sub-day remainder carries forward — if you load 1.5 days after
+     * the last save, this adds 1 day now and leaves 0.5 day in the bank for
+     * a subsequent load.</p>
+     */
+    public int applyRealClockCatchup() {
+        if (!hasLastRealMillis) return 0;
+        long now = System.currentTimeMillis();
+        long elapsed = now - lastRealMillisAtSave;
+        if (elapsed <= 0L) return 0;
+        long days = elapsed / MILLIS_PER_DAY;
+        if (days <= 0L) return 0;
+        this.worldDayCounter += days;
+        this.lastRealMillisAtSave += days * MILLIS_PER_DAY;
+        setDirty();
+        return (int) Math.min(days, Integer.MAX_VALUE);
     }
 }
