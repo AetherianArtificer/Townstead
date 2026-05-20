@@ -91,6 +91,10 @@ public class ShiftManagerScreen extends Screen {
     private final Set<UUID> weekQueried = new HashSet<>();
     private Button weeklyCopyButton, weeklyPasteButton;
     private Button weeklyApplyPlanButton, weeklySavePlanButton;
+    // Responsive widths for the weekly toolbar clusters, computed in init() and
+    // reused by the helper-text gap math so the two never disagree.
+    private int weeklyEditW = 92, weeklyPlanW = 130;
+    private static final int WEEKLY_TOOL_GAP = 6;
     private Button resetButton;
 
     // -- Day-assign modal (reuses the template modal in a different mode) ----
@@ -110,6 +114,9 @@ public class ShiftManagerScreen extends Screen {
     private EditBox weekPlanSaveInput;
     private Button weekPlanApplyButton, weekPlanDeleteButton, weekPlanSaveButton, weekPlanCloseButton;
     private Button weekPlanSaveConfirm, weekPlanSaveCancel;
+    private boolean weekPlanRenaming = false;
+    private EditBox weekPlanRenameInput;
+    private int wpTitleX, wpTitleY, wpTitleW, wpTitleH;
 
     private int nameLeft;
     private int gridLeft;
@@ -250,15 +257,23 @@ public class ShiftManagerScreen extends Screen {
         // row-level edit (Copy/Paste week); right = Week Plans. Hidden in daily.
         int toolY = legendY - 2;
         int toolH = 16;
-        int toolGap = 6;
-        int editW = 92;
+        int toolGap = WEEKLY_TOOL_GAP;
+        // Two clusters pinned to the left and right edges. Cap each button at its
+        // natural width on wide screens, but shrink both (keeping a center gap
+        // for the clipboard hint) when the window is too narrow, so Paste week
+        // and Save Plan can't collide.
+        int centerGap = 16;
+        int clusterMax = (width - 2 * EDGE - centerGap) / 2;
+        int editW = Math.max(40, Math.min(92, (clusterMax - toolGap) / 2));
+        int planW = Math.max(40, Math.min(130, (clusterMax - toolGap) / 2));
+        weeklyEditW = editW;
+        weeklyPlanW = planW;
         weeklyCopyButton = addRenderableWidget(Button.builder(
                 Component.translatable("townstead.shift.weekly.copy_day"), b -> weeklyCopyWeek())
                 .bounds(EDGE, toolY, editW, toolH).build());
         weeklyPasteButton = addRenderableWidget(Button.builder(
                 Component.translatable("townstead.shift.weekly.paste_day"), b -> weeklyPasteWeek())
                 .bounds(EDGE + editW + toolGap, toolY, editW, toolH).build());
-        int planW = 130;
         weeklyApplyPlanButton = addRenderableWidget(Button.builder(
                 Component.translatable("townstead.weekplan.apply_short"), b -> openWeekPlanModalApply())
                 .bounds(width - EDGE - planW, toolY, planW, toolH).build());
@@ -1462,6 +1477,12 @@ public class ShiftManagerScreen extends Screen {
                 if (weekPlanSaveInput != null && weekPlanSaveInput.keyPressed(keyCode, scanCode, modifiers)) return true;
                 return super.keyPressed(keyCode, scanCode, modifiers);
             }
+            if (weekPlanRenaming) {
+                if (keyCode == 256) { cancelWeekPlanRename(); return true; }
+                if (keyCode == 257 || keyCode == 335) { commitWeekPlanRename(); return true; }
+                if (weekPlanRenameInput != null && weekPlanRenameInput.keyPressed(keyCode, scanCode, modifiers)) return true;
+                return super.keyPressed(keyCode, scanCode, modifiers);
+            }
             if (keyCode == 256) { closeWeekPlanModal(); return true; }
             return super.keyPressed(keyCode, scanCode, modifiers);
         }
@@ -1473,6 +1494,7 @@ public class ShiftManagerScreen extends Screen {
         if (modalRenamingTitle && modalRenameInput != null && modalRenameInput.charTyped(chr, modifiers)) return true;
         if (modalSaveAsActive && modalSaveAsInput != null && modalSaveAsInput.charTyped(chr, modifiers)) return true;
         if (weekPlanSaveActive && weekPlanSaveInput != null && weekPlanSaveInput.charTyped(chr, modifiers)) return true;
+        if (weekPlanRenaming && weekPlanRenameInput != null && weekPlanRenameInput.charTyped(chr, modifiers)) return true;
         return super.charTyped(chr, modifiers);
     }
 
@@ -1841,8 +1863,8 @@ public class ShiftManagerScreen extends Screen {
         } else {
             help = Component.translatable("townstead.shift.weekly.copy_none").getString();
         }
-        int gapStart = EDGE + 2 * 92 + 6 + 8;        // right of the Paste button
-        int gapEnd = width - EDGE - 130 * 2 - 6 - 8; // left of the Save Plan button
+        int gapStart = EDGE + 2 * weeklyEditW + WEEKLY_TOOL_GAP + 8;        // right of the Paste button
+        int gapEnd = width - EDGE - weeklyPlanW * 2 - WEEKLY_TOOL_GAP - 8;  // left of the Save Plan button
         int textW = this.font.width(help);
         if (gapEnd - gapStart >= textW) {
             g.drawString(this.font, help, (gapStart + gapEnd - textW) / 2, legendY + 2, 0xFF9098A2, false);
@@ -2196,6 +2218,8 @@ public class ShiftManagerScreen extends Screen {
         weekPlanTarget = null;
         weekPlanBulkTargets = List.of();
         weekPlanSelectedId = null;
+        weekPlanRenaming = false;
+        weekPlanRenameInput = null;
         clearWeekPlanWidgets();
         setFocused(null);
     }
@@ -2230,7 +2254,7 @@ public class ShiftManagerScreen extends Screen {
         drawBorder(g, rightX, listY, rightW, listH - 32, MODAL_BORDER);
 
         renderWeekPlanList(g, listX, listY, listW, listH, mouseX, mouseY);
-        renderWeekPlanPreview(g, rightX, listY, rightW, listH - 32);
+        renderWeekPlanPreview(g, rightX, listY, rightW, listH - 32, mouseX, mouseY, partialTicks);
 
         if (weekPlanApplyButton != null) weekPlanApplyButton.render(g, mouseX, mouseY, partialTicks);
         if (weekPlanDeleteButton != null) weekPlanDeleteButton.render(g, mouseX, mouseY, partialTicks);
@@ -2280,25 +2304,61 @@ public class ShiftManagerScreen extends Screen {
         }
     }
 
-    private void renderWeekPlanPreview(GuiGraphics g, int x, int y, int w, int h) {
+    private void renderWeekPlanPreview(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY, float pt) {
         WeekPlan p = WeekPlanClientStore.find(weekPlanSelectedId);
         int pad = 8;
         if (p == null) {
             g.drawCenteredString(this.font, Component.translatable("townstead.shift.template.unassigned"),
                     x + w / 2, y + h / 2 - 4, 0xFF808080);
+            wpTitleW = 0;
             return;
         }
-        g.drawString(this.font, Component.literal(p.displayName()), x + pad, y + pad, 0xFFFFFFFF, false);
+
+        int titleX = x + pad;
+        int titleY = y + pad;
+        if (weekPlanRenaming && !p.builtIn() && weekPlanRenameInput != null) {
+            weekPlanRenameInput.setX(titleX);
+            weekPlanRenameInput.setY(titleY - 2);
+            weekPlanRenameInput.render(g, mouseX, mouseY, pt);
+            wpTitleX = titleX; wpTitleY = titleY;
+            wpTitleW = weekPlanRenameInput.getWidth();
+            wpTitleH = weekPlanRenameInput.getHeight();
+        } else {
+            g.drawString(this.font, Component.literal(p.displayName()), titleX, titleY, 0xFFFFFFFF, false);
+            wpTitleX = titleX; wpTitleY = titleY;
+            wpTitleW = this.font.width(p.displayName());
+            wpTitleH = this.font.lineHeight;
+        }
         String tag = p.builtIn()
                 ? Component.translatable("townstead.weekplan.builtin_tag").getString() : "Custom";
-        g.drawString(this.font, tag, x + pad, y + pad + this.font.lineHeight + 2, 0xFFA0A0A0, false);
+        g.drawString(this.font, tag, titleX, titleY + this.font.lineHeight + 2, 0xFFA0A0A0, false);
 
-        // Mini week preview: one row of day strips
+        // Mini week preview: one row of day strips, with an hour-label header.
         List<String> days = p.dayTemplates();
         int rows = days.size();
-        int gridY = y + pad + this.font.lineHeight * 2 + 8;
-        int rowH = 12;
+        int sx0 = x + pad + 40;
         int stripW = w - pad * 2 - 70;
+        int labelsY = titleY + this.font.lineHeight * 2 + 8;
+        // The modal strip is much narrower than the main weekly grid, so all 24
+        // hour ticks would collide (the "9101234" mush). Thin them to a stride
+        // that keeps ~9px between labels (half-scale 2-digit width plus a gap),
+        // rounded up to a clean divisor of the day so the scale reads evenly.
+        int slotPx = Math.max(1, stripW / ShiftData.HOURS_PER_DAY);
+        int stride = Math.max(1, (int) Math.ceil(9.0 / slotPx));
+        for (int candidate : new int[] { 1, 2, 3, 4, 6, 8, 12 }) {
+            if (candidate >= stride) { stride = candidate; break; }
+        }
+        for (int hh = 0; hh < ShiftData.HOURS_PER_DAY; hh += stride) {
+            int cx = sx0 + (int) ((hh + 0.5) * stripW / ShiftData.HOURS_PER_DAY);
+            String hl = String.valueOf(ShiftData.toDisplayHour(hh));
+            g.pose().pushPose();
+            g.pose().translate(cx, labelsY, 0);
+            g.pose().scale(0.5f, 0.5f, 1f);
+            g.drawString(this.font, hl, -this.font.width(hl) / 2, 0, 0xFFA0A0A0, false);
+            g.pose().popPose();
+        }
+        int gridY = labelsY + 8;
+        int rowH = 12;
         for (int d = 0; d < rows; d++) {
             int ry = gridY + d * (rowH + 2);
             if (ry + rowH > y + h - 2) break;
@@ -2306,13 +2366,52 @@ public class ShiftManagerScreen extends Screen {
             g.drawString(this.font, label, x + pad, ry + 2, 0xFFC0C0C0, false);
             String id = days.get(d);
             ShiftTemplate t = (id == null || id.isEmpty()) ? null : ShiftTemplateClientStore.find(id);
-            int sx = x + pad + 40;
             if (t != null) {
-                drawMiniStrip(g, sx, ry, stripW, rowH, t.copyShifts(), true);
+                drawMiniStrip(g, sx0, ry, stripW, rowH, t.copyShifts(), true);
             } else {
-                g.fill(sx, ry, sx + stripW, ry + rowH, WEEK_FALLBACK_FILL);
+                g.fill(sx0, ry, sx0 + stripW, ry + rowH, WEEK_FALLBACK_FILL);
             }
+            drawCellBorder(g, sx0, ry, stripW, rowH, 0x66000000);
         }
+    }
+
+    private void startWeekPlanRename(WeekPlan p) {
+        if (p == null || p.builtIn()) return;
+        weekPlanRenaming = true;
+        int titleW = Math.max(140, wpTitleW + 40);
+        weekPlanRenameInput = new EditBox(this.font, wpTitleX, wpTitleY - 2, titleW, 14,
+                Component.translatable("townstead.weekplan.save_prompt"));
+        weekPlanRenameInput.setMaxLength(64);
+        weekPlanRenameInput.setValue(p.displayName());
+        //? if >=1.21 {
+        weekPlanRenameInput.moveCursorToEnd(false);
+        //?} else {
+        /*weekPlanRenameInput.moveCursorToEnd();
+        *///?}
+        weekPlanRenameInput.setHighlightPos(0);
+        weekPlanRenameInput.setFocused(true);
+        setFocused(weekPlanRenameInput);
+    }
+
+    private void commitWeekPlanRename() {
+        if (!weekPlanRenaming || weekPlanRenameInput == null) return;
+        WeekPlan p = WeekPlanClientStore.find(weekPlanSelectedId);
+        if (p == null || p.builtIn()) { cancelWeekPlanRename(); return; }
+        String name = weekPlanRenameInput.getValue().trim();
+        if (name.isEmpty() || name.equals(p.displayName())) { cancelWeekPlanRename(); return; }
+        WeekPlanSavePayload payload = new WeekPlanSavePayload(p.id().toString(), name, p.copyDays());
+        //? if neoforge {
+        PacketDistributor.sendToServer(payload);
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(payload);
+        *///?}
+        cancelWeekPlanRename();
+    }
+
+    private void cancelWeekPlanRename() {
+        weekPlanRenaming = false;
+        weekPlanRenameInput = null;
+        setFocused(null);
     }
 
     private void renderWeekPlanSaveOverlay(GuiGraphics g, int mouseX, int mouseY, float partialTicks) {
@@ -2405,6 +2504,18 @@ public class ShiftManagerScreen extends Screen {
             if (weekPlanSaveConfirm != null && weekPlanSaveConfirm.mouseClicked(mouseX, mouseY, button)) return true;
             if (weekPlanSaveCancel != null && weekPlanSaveCancel.mouseClicked(mouseX, mouseY, button)) return true;
             if (weekPlanSaveInput != null && weekPlanSaveInput.mouseClicked(mouseX, mouseY, button)) return true;
+            return true;
+        }
+        if (weekPlanRenaming && weekPlanRenameInput != null) {
+            if (weekPlanRenameInput.mouseClicked(mouseX, mouseY, button)) return true;
+            commitWeekPlanRename(); // click elsewhere commits
+        }
+        // Click the preview title (custom plans) to rename in place.
+        WeekPlan sel = WeekPlanClientStore.find(weekPlanSelectedId);
+        if (sel != null && !sel.builtIn() && !weekPlanRenaming && wpTitleW > 0
+                && mouseX >= wpTitleX && mouseX <= wpTitleX + wpTitleW
+                && mouseY >= wpTitleY && mouseY <= wpTitleY + wpTitleH) {
+            startWeekPlanRename(sel);
             return true;
         }
         if (weekPlanCloseButton != null && weekPlanCloseButton.mouseClicked(mouseX, mouseY, button)) return true;

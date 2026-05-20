@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
@@ -357,23 +358,30 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
      */
     private static Map<String, String> loadLangIndex(ResourceManager rm) {
         Map<String, String> out = new HashMap<>();
-        for (String ns : rm.getNamespaces()) {
-            ResourceLocation loc = parseResourceLocation(ns + ":" + LANG_SIDECAR_PATH);
-            rm.getResource(loc).ifPresent(res -> {
-                try (Reader r = res.openAsReader()) {
-                    JsonElement el = GSON.fromJson(r, JsonElement.class);
-                    if (el == null || !el.isJsonObject()) return;
-                    JsonObject obj = el.getAsJsonObject();
-                    for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
-                        JsonElement v = e.getValue();
-                        if (v != null && v.isJsonPrimitive()) {
-                            out.put(e.getKey(), convertNamedPlaceholders(v.getAsString()));
-                        }
+        // Enumerate every data/<ns>/lang/en_us.json directly via listResources
+        // (the same scan the parent listener uses to find the profiles) rather
+        // than iterating getNamespaces(). On 1.20.1 Forge a data-only namespace
+        // (one with no registered registry content, like townstead_calendar)
+        // can be absent from getNamespaces(), which silently dropped this mod's
+        // own calendar sidecar and left every built-in profile name unresolved
+        // on the client. listResources walks the actual pack tree, so it sees
+        // the sidecar regardless of namespace enumeration quirks.
+        Map<ResourceLocation, Resource> sidecars =
+                rm.listResources("lang", loc -> loc.getPath().equals(LANG_SIDECAR_PATH));
+        for (Map.Entry<ResourceLocation, Resource> sidecar : sidecars.entrySet()) {
+            try (Reader r = sidecar.getValue().openAsReader()) {
+                JsonElement el = GSON.fromJson(r, JsonElement.class);
+                if (el == null || !el.isJsonObject()) continue;
+                JsonObject obj = el.getAsJsonObject();
+                for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
+                    JsonElement v = e.getValue();
+                    if (v != null && v.isJsonPrimitive()) {
+                        out.put(e.getKey(), convertNamedPlaceholders(v.getAsString()));
                     }
-                } catch (Exception ex) {
-                    LOGGER.warn("Failed to read calendar lang sidecar {}: {}", loc, ex.getMessage());
                 }
-            });
+            } catch (Exception ex) {
+                LOGGER.warn("Failed to read calendar lang sidecar {}: {}", sidecar.getKey(), ex.getMessage());
+            }
         }
         return out;
     }
@@ -410,13 +418,5 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
             if (obj.has("text")) return Component.literal(obj.get("text").getAsString());
         }
         return Component.literal(context);
-    }
-
-    private static ResourceLocation parseResourceLocation(String s) {
-        //? if >=1.21 {
-        return ResourceLocation.parse(s);
-        //?} else {
-        /*return new ResourceLocation(s);
-        *///?}
     }
 }
