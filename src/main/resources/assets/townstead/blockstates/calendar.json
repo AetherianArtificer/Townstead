@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "face=wall,facing=north": { "model": "townstead:block/calendar_wall" },
+    "face=wall,facing=south": { "model": "townstead:block/calendar_wall", "y": 180 },
+    "face=wall,facing=west":  { "model": "townstead:block/calendar_wall", "y": 270 },
+    "face=wall,facing=east":  { "model": "townstead:block/calendar_wall", "y": 90 },
+    "face=floor,facing=north": { "model": "townstead:block/calendar_floor" },
+    "face=floor,facing=south": { "model": "townstead:block/calendar_floor", "y": 180 },
+    "face=floor,facing=west":  { "model": "townstead:block/calendar_floor", "y": 270 },
+    "face=floor,facing=east":  { "model": "townstead:block/calendar_floor", "y": 90 },
+    "face=ceiling,facing=north": { "model": "townstead:block/calendar_floor", "x": 180 },
+    "face=ceiling,facing=south": { "model": "townstead:block/calendar_floor", "x": 180, "y": 180 },
+    "face=ceiling,facing=west":  { "model": "townstead:block/calendar_floor", "x": 180, "y": 270 },
+    "face=ceiling,facing=east":  { "model": "townstead:block/calendar_floor", "x": 180, "y": 90 }
+  }
+}

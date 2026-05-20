@@ -1,0 +1,18 @@
+{
+  "display_name": { "translate": "calendar_profile.townstead_calendar.serene.name" },
+  "days_per_week": 6,
+  "months": [
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.early_spring"  } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.mid_spring"    } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.late_spring"   } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.early_summer"  } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.mid_summer"    } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.late_summer"   } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.early_autumn"  } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.mid_autumn"    } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.late_autumn"   } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.early_winter"  } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.mid_winter"    } },
+    { "days": 8, "common_name": { "translate": "calendar_profile.townstead_calendar.serene.month.late_winter"   } }
+  ]
+}

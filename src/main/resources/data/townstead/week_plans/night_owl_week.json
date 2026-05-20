@@ -1,0 +1,12 @@
+{
+  "name_key": "townstead.weekplan.night_owl_week.name",
+  "days": [
+    "townstead:night_owl_default",
+    "townstead:night_owl_default",
+    "townstead:night_owl_default",
+    "townstead:night_owl_default",
+    "townstead:night_owl_default",
+    "townstead:day_off",
+    "townstead:day_off"
+  ]
+}

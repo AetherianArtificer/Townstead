@@ -1,0 +1,30 @@
+{
+  "display_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.name" },
+  "days_per_week": 7,
+  "months": [
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.1"  } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.2"  } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.3"  } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.4"  } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.5"  } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.6"  } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.7"  } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.8"  } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.9"  } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.10" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.11" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.12" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.13" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.14" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.15" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.16" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.17" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.18" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.19" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.20" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.21" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.22" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.23" } },
+    { "days": 15, "common_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.term.24" } }
+  ]
+}

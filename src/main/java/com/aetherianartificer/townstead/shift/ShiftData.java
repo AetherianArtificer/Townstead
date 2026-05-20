@@ -1,8 +1,14 @@
 package com.aetherianartificer.townstead.shift;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.schedule.Schedule;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class ShiftData {
 
@@ -36,6 +42,13 @@ public final class ShiftData {
     public static final String[] ORDINAL_LABELS = { "I", "W", "M", "R" };
 
     private static final String KEY_SHIFTS = "shifts";
+    private static final String KEY_TEMPLATE_ID = "template_id";
+    private static final String KEY_MODE = "mode";
+    private static final String KEY_WEEK_DAYS = "week_days";
+
+    /** Schedule modes stored under {@link #KEY_MODE}. */
+    public static final String MODE_DAILY = "daily";
+    public static final String MODE_WEEKLY = "weekly";
 
     // Default schedule matching vanilla VILLAGER_DEFAULT:
     // Tick hour 0 = 6 AM. The vanilla schedule is:
@@ -86,6 +99,18 @@ public final class ShiftData {
         return tag.contains(KEY_SHIFTS);
     }
 
+    public static String getTemplateId(CompoundTag tag) {
+        return tag.contains(KEY_TEMPLATE_ID) ? tag.getString(KEY_TEMPLATE_ID) : "";
+    }
+
+    public static void setTemplateId(CompoundTag tag, String id) {
+        if (id == null || id.isEmpty()) {
+            tag.remove(KEY_TEMPLATE_ID);
+        } else {
+            tag.putString(KEY_TEMPLATE_ID, id);
+        }
+    }
+
     public static boolean isDefault(CompoundTag tag) {
         if (!tag.contains(KEY_SHIFTS)) return true;
         int[] stored = tag.getIntArray(KEY_SHIFTS);
@@ -98,6 +123,76 @@ public final class ShiftData {
 
     public static int[] getVanillaDefault() {
         return VANILLA_DEFAULT.clone();
+    }
+
+    // ---- Schedule mode (daily vs weekly) ----
+
+    /** Stored schedule mode; defaults to {@link #MODE_DAILY} when absent. */
+    public static String getMode(CompoundTag tag) {
+        if (!tag.contains(KEY_MODE)) return MODE_DAILY;
+        String mode = tag.getString(KEY_MODE);
+        return MODE_WEEKLY.equals(mode) ? MODE_WEEKLY : MODE_DAILY;
+    }
+
+    public static void setMode(CompoundTag tag, String mode) {
+        if (MODE_WEEKLY.equals(mode)) {
+            tag.putString(KEY_MODE, MODE_WEEKLY);
+        } else {
+            // Daily is the implicit default; don't bloat the tag with it.
+            tag.remove(KEY_MODE);
+        }
+    }
+
+    public static boolean isWeekly(CompoundTag tag) {
+        return MODE_WEEKLY.equals(getMode(tag));
+    }
+
+    // ---- Weekly per-day template references ----
+
+    /**
+     * The stored per-weekday template-id list. Entries are template ids
+     * ({@code "namespace:path"}); an empty string means "fall back to the
+     * daily schedule" for that day. The list length is whatever was last
+     * written (typically the calendar's daysPerWeek); callers must index
+     * defensively via {@link #getWeekDayTemplate}.
+     */
+    public static List<String> getWeekDayTemplates(CompoundTag tag) {
+        List<String> out = new ArrayList<>();
+        if (!tag.contains(KEY_WEEK_DAYS, Tag.TAG_LIST)) return out;
+        ListTag list = tag.getList(KEY_WEEK_DAYS, Tag.TAG_STRING);
+        for (int i = 0; i < list.size(); i++) out.add(list.getString(i));
+        return out;
+    }
+
+    /** Template id for the given 0-based day-of-week, or {@code ""} if unset/out of range. */
+    public static String getWeekDayTemplate(CompoundTag tag, int dayOfWeek) {
+        if (dayOfWeek < 0) return "";
+        if (!tag.contains(KEY_WEEK_DAYS, Tag.TAG_LIST)) return "";
+        ListTag list = tag.getList(KEY_WEEK_DAYS, Tag.TAG_STRING);
+        if (dayOfWeek >= list.size()) return "";
+        return list.getString(dayOfWeek);
+    }
+
+    public static void setWeekDayTemplates(CompoundTag tag, List<String> templateIds) {
+        if (templateIds == null || templateIds.isEmpty()) {
+            tag.remove(KEY_WEEK_DAYS);
+            return;
+        }
+        ListTag list = new ListTag();
+        for (String id : templateIds) list.add(StringTag.valueOf(id == null ? "" : id));
+        tag.put(KEY_WEEK_DAYS, list);
+    }
+
+    /**
+     * Set a single weekday slot, growing the stored list to {@code daysPerWeek}
+     * (padding new slots with {@code ""}). No-op if the index is out of range.
+     */
+    public static void setWeekDayTemplate(CompoundTag tag, int dayOfWeek, int daysPerWeek, String templateId) {
+        if (dayOfWeek < 0 || daysPerWeek <= 0 || dayOfWeek >= daysPerWeek) return;
+        List<String> days = getWeekDayTemplates(tag);
+        while (days.size() < daysPerWeek) days.add("");
+        days.set(dayOfWeek, templateId == null ? "" : templateId);
+        setWeekDayTemplates(tag, days);
     }
 
     /**

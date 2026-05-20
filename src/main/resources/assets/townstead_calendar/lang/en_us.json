@@ -1,0 +1,11 @@
+{
+  "gui.townstead_calendar.title": "Calendar",
+  "gui.townstead_calendar.no_data": "Loading calendar…",
+  "gui.townstead_calendar.header.year_with_suffix": "%s %s",
+  "gui.townstead_calendar.button.today": "Today",
+
+  "townstead.calendar.format.long":         "%2$s %1$s, %3$s",
+  "townstead.calendar.format.medium":       "%2$s %1$s, %3$s",
+  "townstead.calendar.format.short":        "%6$s/%1$s/%3$s",
+  "townstead.calendar.format.with_weekday": "%4$s, %2$s %1$s, %3$s"
+}

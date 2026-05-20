@@ -1,0 +1,12 @@
+{
+  "name_key": "townstead.weekplan.standard_week.name",
+  "days": [
+    "townstead:standard_default",
+    "townstead:standard_default",
+    "townstead:standard_default",
+    "townstead:standard_default",
+    "townstead:standard_default",
+    "townstead:day_off",
+    "townstead:day_off"
+  ]
+}

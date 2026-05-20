@@ -9,6 +9,7 @@
     "FishingHookKeepAliveMixin",
     "compat.farmersdelight.StoveVillagerDamageMixin",
     "compat.mca.PlayerSaveDataWelcomeMixin",
+    "compat.timekeeper.TimekeeperQueryProcMixin",
     "GetVillageRequestMixin",
     "GetVillageResponseLargePacketMixin",
     "GetVillageResponseSlimPayloadMixin",
@@ -21,6 +22,8 @@
     "WalkNodeEvaluatorFenceGateMixin"
   ],
   "client": [
+    "compat.stardewhud.StardewHudSeasonMixin",
+    "compat.timekeeper.TimekeeperReturnTimeMixin",
     "BlueprintScreenMixin",
     "ChatListenerMixin",
     "ClientHandlerImplMixin",

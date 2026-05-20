@@ -23,6 +23,16 @@
       "type": "patchouli:text",
       "title": "townstead.guide.entry.professions.shifts.page4.title",
       "text": "townstead.guide.entry.professions.shifts.page4.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.shifts.page5.title",
+      "text": "townstead.guide.entry.professions.shifts.page5.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.shifts.page6.title",
+      "text": "townstead.guide.entry.professions.shifts.page6.body"
     }
   ]
 }

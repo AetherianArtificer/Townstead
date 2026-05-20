@@ -11,6 +11,7 @@ import com.aetherianartificer.townstead.fatigue.RestCoordinator;
 import com.aetherianartificer.townstead.fatigue.RestDebugData;
 import com.aetherianartificer.townstead.fatigue.RestDecision;
 import com.aetherianartificer.townstead.fatigue.SleepReason;
+import com.aetherianartificer.townstead.shift.template.Chronotype;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.Personality;
@@ -84,13 +85,19 @@ public final class FatigueVillagerTicker {
         long dayTime = level.getDayTime();
         if (state.lastFatigueDayTime < 0) state.lastFatigueDayTime = dayTime;
 
-        boolean isNocturnal = isNocturnal(self);
+        Chronotype chronotype = chronotypeOf(self);
+        boolean isNocturnal = chronotype == Chronotype.NIGHT_OWL;
         boolean inBed = self.isSleeping();
         Activity activity = currentScheduleActivity(self);
         boolean inCombat = self.getVillagerBrain().isPanicking()
                 || self.getLastHurtByMob() != null;
         long timeOfDay = dayTime % 24000L;
         boolean isCycleAligned = isCycleAligned(isNocturnal, timeOfDay);
+        // Precise chronotype sleep window governs BED recovery: sleeping inside
+        // the villager's assigned hours recovers fully, off-window naps recover
+        // slowly. tick-hour 0 == 6 AM == dayTime 0, matching Chronotype + the UI.
+        int tickHour = (int) (timeOfDay / 1000L);
+        boolean inSleepWindow = chronotype.isPreferredSleepHour(tickHour);
 
         int fatigueIterations = 0;
         while (dayTime - state.lastFatigueDayTime >= FatigueData.ACCUMULATION_INTERVAL && fatigueIterations < 100) {
@@ -102,7 +109,9 @@ public final class FatigueVillagerTicker {
                 // doDaylightCycle=false and time-scaling mods. Skip here.
                 continue;
             } else if (inBed) {
-                float recovery = isCycleAligned
+                // Sleeping inside the chronotype window = full recovery; an
+                // off-window nap recovers at the reduced rate.
+                float recovery = inSleepWindow
                         ? FatigueData.RECOVERY_BED_ALIGNED
                         : FatigueData.RECOVERY_BED_MISALIGNED;
                 applyFatigueDelta(fatigue, state, recovery);
@@ -307,18 +316,15 @@ public final class FatigueVillagerTicker {
         }
     }
 
-    private static boolean isNocturnal(VillagerEntityMCA self) {
-        VillagerBrain<?> brain = self.getVillagerBrain();
-        Personality personality = brain.getPersonality();
-        //? if neoforge {
-        return personality == Personality.ODD
-                || personality == Personality.GLOOMY
-                || personality == Personality.INTROVERTED;
-        //?} else {
-        /*return personality == Personality.ODD
-                || personality == Personality.GLOOMY
-                || personality == Personality.SHY;
-        *///?}
+    private static Chronotype chronotypeOf(VillagerEntityMCA self) {
+        Personality personality = null;
+        try {
+            VillagerBrain<?> brain = self.getVillagerBrain();
+            personality = brain.getPersonality();
+        } catch (Throwable ignored) {}
+        // Unified with the schedule UI's Chronotype mapping so fatigue-alignment
+        // matches the per-villager band shown on the shift screen.
+        return Chronotype.fromPersonality(personality);
     }
 
     /**

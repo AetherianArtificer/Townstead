@@ -33,6 +33,26 @@ import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
 import com.aetherianartificer.townstead.shift.ShiftSyncPayload;
+import com.aetherianartificer.townstead.shift.ShiftWeekSetPayload;
+import com.aetherianartificer.townstead.shift.ShiftWeekSyncPayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlan;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanApplyPayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanClientStore;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanDeletePayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanJsonLoader;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanRegistry;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSavePayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSavedData;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSyncPayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplate;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateApplyPayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateClientStore;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateDeletePayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateJsonLoader;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateSavePayload;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateSavedData;
+import com.aetherianartificer.townstead.shift.template.ShiftTemplateSyncPayload;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.aetherianartificer.townstead.village.VillageResidentRoster;
 import com.aetherianartificer.townstead.village.VillageResidentsSyncPayload;
@@ -168,6 +188,12 @@ public class Townstead {
                     .serialize(net.minecraft.nbt.CompoundTag.CODEC)
                     .build()
     );
+    public static final Supplier<AttachmentType<CompoundTag>> LIFE_DATA = ATTACHMENTS.register(
+            "life_data",
+            () -> AttachmentType.builder(() -> new CompoundTag())
+                    .serialize(net.minecraft.nbt.CompoundTag.CODEC)
+                    .build()
+    );
     //?}
 
     public static final Supplier<VillagerProfession> COOK_PROFESSION = PROFESSIONS.register(
@@ -227,6 +253,19 @@ public class Townstead {
         }
     }
 
+    // ── Calendar block ──
+
+    public static final Supplier<Block> CALENDAR_BLOCK = BLOCKS.register("calendar",
+            () -> new com.aetherianartificer.townstead.block.CalendarBlock(
+                    BlockBehaviour.Properties.of()
+                            .strength(0.5f)
+                            .sound(SoundType.WOOD)
+                            .noOcclusion()
+                            .noCollission()));
+
+    public static final Supplier<Item> CALENDAR_ITEM = ITEMS.register("calendar",
+            () -> new BlockItem(CALENDAR_BLOCK.get(), new Item.Properties()));
+
     public static final Supplier<BlockEntityType<FieldPostBlockEntity>> FIELD_POST_BE =
             BLOCK_ENTITY_TYPES.register("field_post",
                     () -> {
@@ -238,6 +277,12 @@ public class Townstead {
                         return BlockEntityType.Builder.of(FieldPostBlockEntity::new, blocks).build(null);
                     });
 
+    public static final Supplier<BlockEntityType<com.aetherianartificer.townstead.block.CalendarBlockEntity>> CALENDAR_BE =
+            BLOCK_ENTITY_TYPES.register("calendar",
+                    () -> BlockEntityType.Builder.of(
+                            com.aetherianartificer.townstead.block.CalendarBlockEntity::new,
+                            CALENDAR_BLOCK.get()).build(null));
+
     public static final Supplier<net.minecraft.world.item.CreativeModeTab> TOWNSTEAD_TAB =
             CREATIVE_MODE_TABS.register("main",
                     () -> net.minecraft.world.item.CreativeModeTab.builder()
@@ -248,6 +293,7 @@ public class Townstead {
                                 for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
                                     output.accept(variant.get());
                                 }
+                                output.accept(CALENDAR_ITEM.get());
                             })
                             .build());
 
@@ -283,14 +329,38 @@ public class Townstead {
         townstead$registerClientTooltipFactory(modBus);
         townstead$registerMenuScreens(modBus);
         townstead$registerAnimationReloadListener(modBus);
+        townstead$registerBlockEntityRenderers(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
             com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
             com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
+            com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer());
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityJoinLevelEvent e) -> {
+            if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
+                com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
+            }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
+                ShiftTemplateRegistry.setServer(e.getServer()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) ->
+                ShiftTemplateRegistry.clearServer());
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
+                WeekPlanRegistry.setServer(e.getServer()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) ->
+                WeekPlanRegistry.clearServer());
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
+            if (e.getEntity() instanceof ServerPlayer sp) {
+                townstead$sendShiftTemplateSync(sp);
+                townstead$sendWeekPlanSync(sp);
+                PacketDistributor.sendToPlayer(sp, townstead$calendarSync(sp.serverLevel().getServer()));
+            }
+        });
+        ShiftTemplateRegistry.setChangeListener(Townstead::townstead$broadcastShiftTemplateSync);
+        WeekPlanRegistry.setChangeListener(Townstead::townstead$broadcastWeekPlanSync);
         NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
@@ -303,6 +373,10 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.CalendarCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         townstead$registerEmotePlaybackClear();
         registerDialogueConditions();
@@ -340,6 +414,7 @@ public class Townstead {
         townstead$registerClientTooltipFactory(modBus);
         townstead$registerMenuScreens(modBus);
         townstead$registerAnimationReloadListener(modBus);
+        townstead$registerBlockEntityRenderers(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -348,10 +423,33 @@ public class Townstead {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
                 com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
+                com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer());
+            }
+        });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityJoinLevelEvent e) -> {
+            if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
+                com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
+                ShiftTemplateRegistry.setServer(e.getServer()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) ->
+                ShiftTemplateRegistry.clearServer());
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
+                WeekPlanRegistry.setServer(e.getServer()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) ->
+                WeekPlanRegistry.clearServer());
+        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
+            if (e.getEntity() instanceof ServerPlayer sp) {
+                TownsteadNetwork.sendShiftTemplateSync(sp);
+                TownsteadNetwork.sendWeekPlanSync(sp);
+                TownsteadNetwork.sendToPlayer(sp, townstead$calendarSync(sp.serverLevel().getServer()));
+            }
+        });
+        ShiftTemplateRegistry.setChangeListener(TownsteadNetwork::broadcastShiftTemplateSync);
+        WeekPlanRegistry.setChangeListener(TownsteadNetwork::broadcastWeekPlanSync);
         MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
@@ -364,6 +462,10 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.CalendarCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         try {
             Class.forName("net.minecraft.client.Minecraft");
@@ -411,6 +513,7 @@ public class Townstead {
             /*ProfessionsMCA.isImportant.add(cook);
             ProfessionsMCA.canNotTrade.remove(cook);
             *///?}
+            com.aetherianartificer.townstead.profession.PoilessTradingProfessions.register(COOK_PROFESSION);
 
             if (ModCompat.isLoaded("rusticdelight")) {
                 VillagerProfession barista = BARISTA_PROFESSION.get();
@@ -421,6 +524,7 @@ public class Townstead {
                 /*ProfessionsMCA.isImportant.add(barista);
                 ProfessionsMCA.canNotTrade.remove(barista);
                 *///?}
+                com.aetherianartificer.townstead.profession.PoilessTradingProfessions.register(BARISTA_PROFESSION);
             }
         });
         event.enqueueWork(RusticDelightThirstCompat::register);
@@ -447,6 +551,9 @@ public class Townstead {
     private void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new CatalogDataLoader());
         event.addListener(new com.aetherianartificer.townstead.reaction.ReactionDataLoader());
+        event.addListener(new ShiftTemplateJsonLoader());
+        event.addListener(new WeekPlanJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.calendar.CalendarProfileJsonLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
@@ -656,6 +763,36 @@ public class Townstead {
     private static void townstead$registerMenuScreens(Object modBus) {}
 
     //? if neoforge {
+    private static void townstead$registerBlockEntityRenderers(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) ->
+                            event.registerBlockEntityRenderer(
+                                    CALENDAR_BE.get(),
+                                    com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new)
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no renderers to register.
+        }
+    }
+    //?} else {
+    /*private static void townstead$registerBlockEntityRenderers(IEventBus modBus) {
+        try {
+            Class.forName("net.minecraft.client.Minecraft");
+            modBus.addListener(
+                    (net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) ->
+                            event.registerBlockEntityRenderer(
+                                    CALENDAR_BE.get(),
+                                    com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new)
+            );
+        } catch (Exception ignored) {
+            // Dedicated server: no renderers to register.
+        }
+    }
+    *///?}
+
+    //? if neoforge {
     private static void townstead$registerAnimationReloadListener(IEventBus modBus) {
         try {
             Class.forName("net.minecraft.client.Minecraft");
@@ -778,6 +915,56 @@ public class Townstead {
                 ShiftSetPayload.STREAM_CODEC,
                 this::handleShiftSet
         );
+        registrar.playToClient(
+                ShiftTemplateSyncPayload.TYPE,
+                ShiftTemplateSyncPayload.STREAM_CODEC,
+                this::handleShiftTemplateSync
+        );
+        registrar.playToServer(
+                ShiftTemplateSavePayload.TYPE,
+                ShiftTemplateSavePayload.STREAM_CODEC,
+                this::handleShiftTemplateSave
+        );
+        registrar.playToServer(
+                ShiftTemplateDeletePayload.TYPE,
+                ShiftTemplateDeletePayload.STREAM_CODEC,
+                this::handleShiftTemplateDelete
+        );
+        registrar.playToServer(
+                ShiftTemplateApplyPayload.TYPE,
+                ShiftTemplateApplyPayload.STREAM_CODEC,
+                this::handleShiftTemplateApply
+        );
+        registrar.playToClient(
+                ShiftWeekSyncPayload.TYPE,
+                ShiftWeekSyncPayload.STREAM_CODEC,
+                this::handleShiftWeekSync
+        );
+        registrar.playToServer(
+                ShiftWeekSetPayload.TYPE,
+                ShiftWeekSetPayload.STREAM_CODEC,
+                this::handleShiftWeekSet
+        );
+        registrar.playToClient(
+                WeekPlanSyncPayload.TYPE,
+                WeekPlanSyncPayload.STREAM_CODEC,
+                this::handleWeekPlanSync
+        );
+        registrar.playToServer(
+                WeekPlanSavePayload.TYPE,
+                WeekPlanSavePayload.STREAM_CODEC,
+                this::handleWeekPlanSave
+        );
+        registrar.playToServer(
+                WeekPlanDeletePayload.TYPE,
+                WeekPlanDeletePayload.STREAM_CODEC,
+                this::handleWeekPlanDelete
+        );
+        registrar.playToServer(
+                WeekPlanApplyPayload.TYPE,
+                WeekPlanApplyPayload.STREAM_CODEC,
+                this::handleWeekPlanApply
+        );
         registrar.playToServer(
                 ProfessionQueryPayload.TYPE,
                 ProfessionQueryPayload.STREAM_CODEC,
@@ -856,6 +1043,30 @@ public class Townstead {
                 com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload.STREAM_CODEC,
                 this::handleDialogueStateC2S
         );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.calendar.CalendarSyncPayload.TYPE,
+                com.aetherianartificer.townstead.calendar.CalendarSyncPayload.STREAM_CODEC,
+                this::handleCalendarSync
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload.TYPE,
+                com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload.STREAM_CODEC,
+                this::handleVillagerLifeSync
+        );
+    }
+
+    private void handleCalendarSync(
+            com.aetherianartificer.townstead.calendar.CalendarSyncPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> com.aetherianartificer.townstead.calendar.CalendarClientStore.setFrom(payload));
+    }
+
+    private void handleVillagerLifeSync(
+            com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> com.aetherianartificer.townstead.calendar.LifeClientStore.setFrom(payload));
     }
 
     private void handleDialogueStateC2S(
@@ -1074,29 +1285,277 @@ public class Townstead {
             }
             if (villager == null) return;
 
-            // Query mode: empty shifts array
+            // Query mode: empty shifts array. Reply with both the daily array
+            // and the weekly state so the editor has everything in one round-trip.
             if (payload.shifts().length == 0) {
                 CompoundTag shiftTag = villager.getData(SHIFT_DATA);
                 PacketDistributor.sendToPlayer(sp, new ShiftSyncPayload(
                         payload.villagerUuid(), ShiftData.getShifts(shiftTag)));
+                PacketDistributor.sendToPlayer(sp, new ShiftWeekSyncPayload(
+                        payload.villagerUuid(), ShiftData.getMode(shiftTag),
+                        ShiftData.getWeekDayTemplates(shiftTag)));
                 return;
             }
 
             // Validate and apply
             if (payload.shifts().length != ShiftData.HOURS_PER_DAY) return;
-
-            CompoundTag shiftTag = villager.getData(SHIFT_DATA);
-            ShiftData.setShifts(shiftTag, payload.shifts());
-            villager.setData(SHIFT_DATA, shiftTag);
-
-            // Apply schedule to the brain immediately
-            ShiftScheduleApplier.apply(villager);
-
-            // Sync back to all tracking players
-            ShiftSyncPayload sync = new ShiftSyncPayload(payload.villagerUuid(), payload.shifts());
-            PacketDistributor.sendToPlayer(sp, sync);
-            PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+            townstead$writeVillagerShifts(villager, payload.shifts(), sp, true);
         });
+    }
+
+    private static void townstead$writeVillagerShifts(VillagerEntityMCA villager, int[] shifts,
+                                                       ServerPlayer originator, boolean echoToOriginator) {
+        townstead$writeVillagerShifts(villager, shifts, originator, echoToOriginator, "");
+    }
+
+    private static void townstead$writeVillagerShifts(VillagerEntityMCA villager, int[] shifts,
+                                                       ServerPlayer originator, boolean echoToOriginator,
+                                                       String templateId) {
+        CompoundTag shiftTag = villager.getData(SHIFT_DATA);
+        ShiftData.setShifts(shiftTag, shifts);
+        ShiftData.setTemplateId(shiftTag, templateId);
+        villager.setData(SHIFT_DATA, shiftTag);
+        ShiftScheduleApplier.apply(villager);
+
+        ShiftSyncPayload sync = new ShiftSyncPayload(villager.getUUID(), shifts);
+        if (echoToOriginator && originator != null) PacketDistributor.sendToPlayer(originator, sync);
+        PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+
+        // Resident roster carries the assignment too; resync so clients see the new label.
+        if (originator != null) {
+            VillageResidentsSyncPayload roster =
+                    new VillageResidentsSyncPayload(VillageResidentRoster.snapshot(originator));
+            PacketDistributor.sendToPlayer(originator, roster);
+        }
+    }
+
+    private void handleShiftTemplateSync(ShiftTemplateSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ShiftTemplateClientStore.set(payload.templates()));
+    }
+
+    private void handleShiftTemplateSave(ShiftTemplateSavePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            MinecraftServer server = sp.getServer();
+            if (server == null) return;
+            ShiftTemplate template = townstead$buildUserTemplate(payload);
+            if (template == null) return;
+            ShiftTemplateSavedData.get(server).put(template);
+            townstead$broadcastShiftTemplateSync(server);
+        });
+    }
+
+    private void handleShiftTemplateDelete(ShiftTemplateDeletePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            MinecraftServer server = sp.getServer();
+            if (server == null) return;
+            if (!ShiftTemplate.USER_NAMESPACE.equals(payload.id().getNamespace())) return; // refuse built-ins
+            boolean removed = ShiftTemplateSavedData.get(server).remove(payload.id());
+            if (removed) townstead$broadcastShiftTemplateSync(server);
+        });
+    }
+
+    private void handleShiftTemplateApply(ShiftTemplateApplyPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            MinecraftServer server = sp.getServer();
+            if (server == null) return;
+            ShiftTemplate template = ShiftTemplateRegistry.resolve(server, payload.templateId()).orElse(null);
+            if (template == null) {
+                LOGGER.warn("Apply requested for unknown shift template {}", payload.templateId());
+                return;
+            }
+            int[] shifts = template.copyShifts();
+            String templateIdStr = template.id().toString();
+            for (java.util.UUID uuid : payload.villagerUuids()) {
+                VillagerEntityMCA villager = null;
+                for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+                    Entity entity = level.getEntity(uuid);
+                    if (entity instanceof VillagerEntityMCA v) { villager = v; break; }
+                }
+                if (villager == null) continue;
+                townstead$writeVillagerShifts(villager, shifts, sp, true, templateIdStr);
+            }
+        });
+    }
+
+    private static ShiftTemplate townstead$buildUserTemplate(ShiftTemplateSavePayload payload) {
+        if (payload.shifts() == null || payload.shifts().length != ShiftData.HOURS_PER_DAY) return null;
+        for (int s : payload.shifts()) {
+            if (s < 0 || s >= ShiftData.ORDINAL_TO_ACTIVITY.length) return null;
+        }
+        String name = payload.name() != null && !payload.name().isBlank() ? payload.name().trim() : "Untitled";
+        if (name.length() > 64) name = name.substring(0, 64);
+        net.minecraft.resources.ResourceLocation id;
+        String idStr = payload.id();
+        if (idStr == null || idStr.isBlank() || !idStr.startsWith(ShiftTemplate.USER_NAMESPACE + ":")) {
+            String slug = "u_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            //? if >=1.21 {
+            id = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(ShiftTemplate.USER_NAMESPACE, slug);
+            //?} else {
+            /*id = new net.minecraft.resources.ResourceLocation(ShiftTemplate.USER_NAMESPACE, slug);
+            *///?}
+        } else {
+            try {
+                //? if >=1.21 {
+                id = net.minecraft.resources.ResourceLocation.parse(idStr);
+                //?} else {
+                /*id = new net.minecraft.resources.ResourceLocation(idStr);
+                *///?}
+            } catch (Exception ex) { return null; }
+            if (!ShiftTemplate.USER_NAMESPACE.equals(id.getNamespace())) return null;
+        }
+        java.util.Optional<com.aetherianartificer.townstead.shift.template.Chronotype> chrono =
+                payload.chronotypeName().map(com.aetherianartificer.townstead.shift.template.Chronotype::fromName);
+        try {
+            return new ShiftTemplate(id, name, payload.shifts(), chrono, false);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private static void townstead$sendShiftTemplateSync(ServerPlayer sp) {
+        MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        java.util.List<ShiftTemplate> all = ShiftTemplateRegistry.combinedFor(server);
+        PacketDistributor.sendToPlayer(sp, new ShiftTemplateSyncPayload(all));
+    }
+
+    private static void townstead$broadcastShiftTemplateSync(MinecraftServer server) {
+        if (server == null) return;
+        java.util.List<ShiftTemplate> all = ShiftTemplateRegistry.combinedFor(server);
+        ShiftTemplateSyncPayload payload = new ShiftTemplateSyncPayload(all);
+        for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(sp, payload);
+        }
+    }
+
+    // ---- Weekly schedule + week plan handlers ----
+
+    private void handleShiftWeekSync(ShiftWeekSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() ->
+                ShiftClientStore.setWeek(payload.villagerUuid(), payload.mode(), payload.weekDays()));
+    }
+
+    private void handleShiftWeekSet(ShiftWeekSetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            VillagerEntityMCA villager = townstead$findVillager(sp.getServer(), payload.villagerUuid());
+            if (villager == null) return;
+            townstead$writeVillagerWeek(villager, payload.mode(), payload.weekDays(), sp);
+        });
+    }
+
+    private void handleWeekPlanSync(WeekPlanSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> WeekPlanClientStore.set(payload.plans()));
+    }
+
+    private void handleWeekPlanSave(WeekPlanSavePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            MinecraftServer server = sp.getServer();
+            if (server == null) return;
+            WeekPlan plan = townstead$buildUserWeekPlan(payload);
+            if (plan == null) return;
+            WeekPlanSavedData.get(server).put(plan);
+            townstead$broadcastWeekPlanSync(server);
+        });
+    }
+
+    private void handleWeekPlanDelete(WeekPlanDeletePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            MinecraftServer server = sp.getServer();
+            if (server == null) return;
+            if (!WeekPlan.USER_NAMESPACE.equals(payload.id().getNamespace())) return; // refuse built-ins
+            if (WeekPlanSavedData.get(server).remove(payload.id())) townstead$broadcastWeekPlanSync(server);
+        });
+    }
+
+    private void handleWeekPlanApply(WeekPlanApplyPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            MinecraftServer server = sp.getServer();
+            if (server == null) return;
+            WeekPlan plan = WeekPlanRegistry.resolve(server, payload.planId()).orElse(null);
+            if (plan == null) {
+                LOGGER.warn("Apply requested for unknown week plan {}", payload.planId());
+                return;
+            }
+            java.util.List<String> days = plan.copyDays();
+            for (java.util.UUID uuid : payload.villagerUuids()) {
+                VillagerEntityMCA villager = townstead$findVillager(server, uuid);
+                if (villager == null) continue;
+                townstead$writeVillagerWeek(villager, ShiftData.MODE_WEEKLY, days, sp);
+            }
+        });
+    }
+
+    private static VillagerEntityMCA townstead$findVillager(MinecraftServer server, java.util.UUID uuid) {
+        if (server == null) return null;
+        for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+            Entity entity = level.getEntity(uuid);
+            if (entity instanceof VillagerEntityMCA v) return v;
+        }
+        return null;
+    }
+
+    private static void townstead$writeVillagerWeek(VillagerEntityMCA villager, String mode,
+                                                    java.util.List<String> weekDays, ServerPlayer originator) {
+        CompoundTag shiftTag = villager.getData(SHIFT_DATA);
+        ShiftData.setMode(shiftTag, mode);
+        ShiftData.setWeekDayTemplates(shiftTag, weekDays);
+        villager.setData(SHIFT_DATA, shiftTag);
+        ShiftScheduleApplier.apply(villager);
+
+        ShiftWeekSyncPayload sync = new ShiftWeekSyncPayload(
+                villager.getUUID(), ShiftData.getMode(shiftTag), ShiftData.getWeekDayTemplates(shiftTag));
+        if (originator != null) PacketDistributor.sendToPlayer(originator, sync);
+        PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+    }
+
+    private static WeekPlan townstead$buildUserWeekPlan(WeekPlanSavePayload payload) {
+        String name = payload.name() != null && !payload.name().isBlank() ? payload.name().trim() : "Untitled";
+        if (name.length() > 64) name = name.substring(0, 64);
+        net.minecraft.resources.ResourceLocation id;
+        String idStr = payload.id();
+        if (idStr == null || idStr.isBlank() || !idStr.startsWith(WeekPlan.USER_NAMESPACE + ":")) {
+            String slug = "u_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            //? if >=1.21 {
+            id = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(WeekPlan.USER_NAMESPACE, slug);
+            //?} else {
+            /*id = new net.minecraft.resources.ResourceLocation(WeekPlan.USER_NAMESPACE, slug);
+            *///?}
+        } else {
+            try {
+                //? if >=1.21 {
+                id = net.minecraft.resources.ResourceLocation.parse(idStr);
+                //?} else {
+                /*id = new net.minecraft.resources.ResourceLocation(idStr);
+                *///?}
+            } catch (Exception ex) { return null; }
+            if (!WeekPlan.USER_NAMESPACE.equals(id.getNamespace())) return null;
+        }
+        try {
+            return new WeekPlan(id, name, payload.days() == null ? java.util.List.of() : payload.days(), false);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private static void townstead$sendWeekPlanSync(ServerPlayer sp) {
+        MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        PacketDistributor.sendToPlayer(sp, new WeekPlanSyncPayload(WeekPlanRegistry.combinedFor(server)));
+    }
+
+    private static void townstead$broadcastWeekPlanSync(MinecraftServer server) {
+        if (server == null) return;
+        WeekPlanSyncPayload payload = new WeekPlanSyncPayload(WeekPlanRegistry.combinedFor(server));
+        for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(sp, payload);
+        }
     }
 
     private void handleProfessionQuery(ProfessionQueryPayload payload, IPayloadContext context) {
@@ -1421,6 +1880,8 @@ public class Townstead {
             PacketDistributor.sendToPlayer(sp, new ShiftSyncPayload(
                     villager.getUUID(), ShiftData.getShifts(shift)));
         }
+        com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload lifeSync = townstead$lifeSync(villager);
+        if (lifeSync != null) PacketDistributor.sendToPlayer(sp, lifeSync);
         //?} else if forge {
         /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
         TownsteadNetwork.sendToPlayer(sp, townstead$hungerSync(villager, hunger));
@@ -1443,6 +1904,8 @@ public class Townstead {
             TownsteadNetwork.sendToPlayer(sp, new ShiftSyncPayload(
                     villager.getUUID(), ShiftData.getShifts(shift)));
         }
+        com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload lifeSync = townstead$lifeSync(villager);
+        if (lifeSync != null) TownsteadNetwork.sendToPlayer(sp, lifeSync);
         *///?}
     }
 
@@ -1473,6 +1936,158 @@ public class Townstead {
                 FatigueData.getFatigue(fatigue),
                 FatigueData.isCollapsed(fatigue)
         );
+    }
+
+    public static com.aetherianartificer.townstead.calendar.CalendarSyncPayload townstead$calendarSync(MinecraftServer server) {
+        com.aetherianartificer.townstead.calendar.WorldCalendarSavedData data =
+                com.aetherianartificer.townstead.calendar.WorldCalendarSavedData.get(server);
+        com.aetherianartificer.townstead.calendar.CalendarProfile profile =
+                com.aetherianartificer.townstead.calendar.TownsteadCalendar.activeProfile(server);
+        com.aetherianartificer.townstead.calendar.CalendarDate today =
+                com.aetherianartificer.townstead.calendar.TownsteadCalendar.today(server);
+        java.util.List<com.aetherianartificer.townstead.calendar.MonthDef> todayYearMonths =
+                profile != null ? profile.monthsForYear(today.year()) : java.util.List.of();
+        String[] month = (profile != null
+                && today.monthIndex() >= 1
+                && today.monthIndex() <= todayYearMonths.size())
+                ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(
+                        todayYearMonths.get(today.monthIndex() - 1).commonName())
+                : new String[] { "", "" };
+        String[] prof = profile != null
+                ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(profile.displayName())
+                : new String[] { "", "" };
+        String seasonKey = today.season() != null ? today.season().translationKey() : "";
+
+        // Profile shape — packed for the client calendar UI so it can render
+        // arbitrary months/years without further round-trips.
+        int dpw = profile != null ? profile.daysPerWeek() : 7;
+        int epoch = data.epochYearOffset();
+        String[] suffix = (profile != null && profile.yearSuffix() != null)
+                ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(profile.yearSuffix())
+                : new String[] { "", "" };
+        java.util.List<String> monthKeys = new java.util.ArrayList<>();
+        java.util.List<String> monthFallbacks = new java.util.ArrayList<>();
+        java.util.List<Integer> monthDays = new java.util.ArrayList<>();
+        if (profile != null) {
+            for (com.aetherianartificer.townstead.calendar.MonthDef m : profile.months()) {
+                String[] mk = com.aetherianartificer.townstead.calendar.ComponentSync.extract(m.commonName());
+                monthKeys.add(mk[0]);
+                monthFallbacks.add(mk[1]);
+                monthDays.add(m.days());
+            }
+        }
+
+        java.util.List<String> wdLongKeys = new java.util.ArrayList<>();
+        java.util.List<String> wdLongFallbacks = new java.util.ArrayList<>();
+        java.util.List<String> wdShortKeys = new java.util.ArrayList<>();
+        java.util.List<String> wdShortFallbacks = new java.util.ArrayList<>();
+        if (profile != null && profile.weekdays() != null) {
+            for (com.aetherianartificer.townstead.calendar.WeekdayDef w : profile.weekdays()) {
+                String[] lk = com.aetherianartificer.townstead.calendar.ComponentSync.extract(w.longName());
+                String[] sk = com.aetherianartificer.townstead.calendar.ComponentSync.extract(w.shortName());
+                wdLongKeys.add(lk[0]);
+                wdLongFallbacks.add(lk[1]);
+                wdShortKeys.add(sk[0]);
+                wdShortFallbacks.add(sk[1]);
+            }
+        }
+
+        java.util.List<String> eraNameKeys = new java.util.ArrayList<>();
+        java.util.List<String> eraNameFallbacks = new java.util.ArrayList<>();
+        java.util.List<Integer> eraStartYears = new java.util.ArrayList<>();
+        java.util.List<Integer> eraFirstYearDisplayedAs = new java.util.ArrayList<>();
+        java.util.List<Integer> eraDirections = new java.util.ArrayList<>();
+        if (profile != null && profile.eras() != null) {
+            for (com.aetherianartificer.townstead.calendar.Era era : profile.eras()) {
+                String[] nk = com.aetherianartificer.townstead.calendar.ComponentSync.extract(era.name());
+                eraNameKeys.add(nk[0]);
+                eraNameFallbacks.add(nk[1]);
+                eraStartYears.add(era.startYear());
+                eraFirstYearDisplayedAs.add(era.firstYearDisplayedAs());
+                eraDirections.add(era.direction() == com.aetherianartificer.townstead.calendar.Era.Direction.DESCENDING ? 1 : 0);
+            }
+        }
+
+        java.util.List<com.aetherianartificer.townstead.calendar.LeapRule> leapRules =
+                profile != null && profile.leapRules() != null ? profile.leapRules() : java.util.List.of();
+
+        return new com.aetherianartificer.townstead.calendar.CalendarSyncPayload(
+                data.worldDayCounter(),
+                today.year(), today.monthIndex(), today.dayOfMonth(),
+                today.dayOfYear(), today.dayOfWeek(),
+                month[0], month[1], prof[0], prof[1], seasonKey,
+                dpw, epoch, suffix[0], suffix[1],
+                monthKeys, monthFallbacks, monthDays,
+                wdLongKeys, wdLongFallbacks, wdShortKeys, wdShortFallbacks,
+                eraNameKeys, eraNameFallbacks, eraStartYears, eraFirstYearDisplayedAs, eraDirections,
+                leapRules
+        );
+    }
+
+    public static com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload townstead$lifeSync(VillagerEntityMCA villager) {
+        MinecraftServer server = villager.getServer();
+        if (server == null) return null;
+        CompoundTag life = com.aetherianartificer.townstead.calendar.VillagerLifeStamper.peek(villager);
+        if (life == null) return null;
+        long birthDay = com.aetherianartificer.townstead.calendar.LifeData.getBirthWorldDay(life);
+        boolean stamped = com.aetherianartificer.townstead.calendar.LifeData.isStamped(life);
+        com.aetherianartificer.townstead.calendar.CalendarDate birth =
+                com.aetherianartificer.townstead.calendar.TownsteadCalendar.dateOf(server, birthDay);
+        int ageYears = com.aetherianartificer.townstead.calendar.TownsteadCalendar.ageYears(server, villager);
+        com.aetherianartificer.townstead.calendar.CalendarProfile profile =
+                com.aetherianartificer.townstead.calendar.TownsteadCalendar.activeProfile(server);
+        java.util.List<com.aetherianartificer.townstead.calendar.MonthDef> birthYearMonths =
+                profile != null ? profile.monthsForYear(birth.year()) : java.util.List.of();
+        String[] month = (profile != null
+                && birth.monthIndex() >= 1
+                && birth.monthIndex() <= birthYearMonths.size())
+                ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(
+                        birthYearMonths.get(birth.monthIndex() - 1).commonName())
+                : new String[] { "", "" };
+        return new com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload(
+                villager.getId(),
+                birth.year(), birth.monthIndex(), birth.dayOfMonth(),
+                month[0], month[1], ageYears, stamped
+        );
+    }
+
+    public static void townstead$broadcastCalendarSync(MinecraftServer server) {
+        if (server == null) return;
+        com.aetherianartificer.townstead.calendar.CalendarSyncPayload payload = townstead$calendarSync(server);
+        //? if neoforge {
+        for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(sp, payload);
+        }
+        //?} else if forge {
+        /*TownsteadNetwork.sendToAll(payload);
+        *///?}
+    }
+
+    /**
+     * Re-broadcast {@link com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload}
+     * for every loaded VillagerEntityMCA to its tracking players. Used when
+     * the calendar profile or epoch changes — birth-date strings are
+     * pre-resolved server-side, so without a re-broadcast clients keep
+     * showing the previous calendar's date.
+     *
+     * Cost: O(loaded villagers × tracking players per villager). Profile
+     * changes are rare, so the one-shot cost is fine.
+     */
+    public static void townstead$broadcastAllVillagerLifeSync(MinecraftServer server) {
+        if (server == null) return;
+        for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+            for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+                if (!(entity instanceof VillagerEntityMCA villager)) continue;
+                com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload payload =
+                        townstead$lifeSync(villager);
+                if (payload == null) continue;
+                //? if neoforge {
+                PacketDistributor.sendToPlayersTrackingEntity(villager, payload);
+                //?} else if forge {
+                /*TownsteadNetwork.sendToTrackingEntity(villager, payload);
+                *///?}
+            }
+        }
     }
 
 }

@@ -38,8 +38,10 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
                         for (int shiftIndex = 0; shiftIndex < shiftLength; shiftIndex++) {
                             shifts[shiftIndex] = buf.readVarInt();
                         }
+                        String chronotype = buf.readUtf();
+                        String templateId = buf.readUtf();
                         residents.add(new VillageResidentClientStore.Resident(
-                                villagerUuid, name, professionId, professionLevel, shifts));
+                                villagerUuid, name, professionId, professionLevel, shifts, chronotype, templateId));
                     }
                     return new VillageResidentsSyncPayload(residents);
                 }
@@ -57,6 +59,8 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
                         for (int shift : resident.shifts()) {
                             buf.writeVarInt(shift);
                         }
+                        buf.writeUtf(resident.chronotype());
+                        buf.writeUtf(resident.templateId());
                     }
                 }
             };
@@ -86,6 +90,8 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
             for (int shift : resident.shifts()) {
                 buf.writeVarInt(shift);
             }
+            buf.writeUtf(resident.chronotype());
+            buf.writeUtf(resident.templateId());
         }
     }
 
@@ -102,8 +108,10 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
             for (int shiftIndex = 0; shiftIndex < shiftLength; shiftIndex++) {
                 shifts[shiftIndex] = buf.readVarInt();
             }
+            String chronotype = buf.readUtf();
+            String templateId = buf.readUtf();
             residents.add(new VillageResidentClientStore.Resident(
-                    villagerUuid, name, professionId, professionLevel, shifts));
+                    villagerUuid, name, professionId, professionLevel, shifts, chronotype, templateId));
         }
         return new VillageResidentsSyncPayload(residents);
     }
