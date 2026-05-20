@@ -3,16 +3,23 @@ package com.aetherianartificer.townstead.client.gui.shift;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
+import com.aetherianartificer.townstead.calendar.CalendarClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
+import com.aetherianartificer.townstead.shift.ShiftWeekSetPayload;
 import com.aetherianartificer.townstead.shift.template.Chronotype;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplate;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateApplyPayload;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateClientStore;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateDeletePayload;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateSavePayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlan;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanApplyPayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanClientStore;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanDeletePayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSavePayload;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -63,6 +70,45 @@ public class ShiftManagerScreen extends Screen {
     private static final int SLEEP_BAND_COLOR = 0xB0E8E0C0;
 
     private final Screen returnScreen;
+
+    // -- Tabs ---------------------------------------------------------------
+    private static final int TAB_DAILY = 0;
+    private static final int TAB_WEEKLY = 1;
+    private static final int TAB_H = 18;
+    private static final int TODAY_COL_TINT = 0x33FFD040;
+    private static final int TODAY_COL_BORDER = 0xFFFFD040;
+    private static final int WEEK_FALLBACK_FILL = 0x30FFFFFF;
+    private int viewTab = TAB_DAILY;
+    private int tabsY;
+    private int dailyTabX, dailyTabW, weeklyTabX, weeklyTabW;
+
+    // -- Weekly grid state --------------------------------------------------
+    private int weekCols = 7;       // calendar daysPerWeek (fallback 7)
+    private int weekCellW;
+    private int weeklyFocusedDay = 0;
+    private ShiftClientStore.WeekState weeklyWeekClipboard = null;   // copied whole week (row-level)
+    private final Set<UUID> weekQueried = new HashSet<>();
+    private Button weeklyCopyButton, weeklyPasteButton;
+    private Button weeklyApplyPlanButton, weeklySavePlanButton;
+    private Button resetButton;
+
+    // -- Day-assign modal (reuses the template modal in a different mode) ----
+    private boolean modalDayAssign = false;
+    private UUID modalDayTarget = null;
+    private int modalDayIndex = -1;
+    private Button modalAllDaysButton;
+
+    // -- Week plan modal ----------------------------------------------------
+    private boolean weekPlanModalActive = false;
+    private boolean weekPlanBulk = false;
+    private UUID weekPlanTarget = null;
+    private List<UUID> weekPlanBulkTargets = List.of();
+    private ResourceLocation weekPlanSelectedId = null;
+    private int weekPlanListScroll = 0;
+    private boolean weekPlanSaveActive = false;
+    private EditBox weekPlanSaveInput;
+    private Button weekPlanApplyButton, weekPlanDeleteButton, weekPlanSaveButton, weekPlanCloseButton;
+    private Button weekPlanSaveConfirm, weekPlanSaveCancel;
 
     private int nameLeft;
     private int gridLeft;
@@ -134,12 +180,22 @@ public class ShiftManagerScreen extends Screen {
         templateBtnLeft = width - EDGE - TEMPLATE_BTN_W;
         gridRight = templateBtnLeft - 8;
         cellW = Math.max(8, (gridRight - gridLeft) / ShiftData.HOURS_PER_DAY);
-        gridTop = EDGE + HEADER_H;
+        tabsY = EDGE + HEADER_H;
+        gridTop = tabsY + TAB_H;
+
+        weekCols = Math.max(1, currentDaysPerWeek());
+        weekCellW = Math.max(8, (gridRight - gridLeft) / weekCols);
 
         int footerBtnY = height - EDGE - 20;
         legendY = footerBtnY - 18;
 
         gridBottom = legendY - 8;
+
+        // Tabs: left-aligned folder tabs attached to the top of the grid panel.
+        dailyTabW = 66;
+        weeklyTabW = 66;
+        dailyTabX = EDGE;
+        weeklyTabX = dailyTabX + dailyTabW + 2;
 
         refreshShiftVillagers();
         pruneStateAgainstResidents();
@@ -155,7 +211,7 @@ public class ShiftManagerScreen extends Screen {
         applyToSelectedButton = addRenderableWidget(Button.builder(
                 Component.translatable("townstead.shift.apply_to_selected", 0),
                 b -> openTemplateModalBulk())
-                .bounds(EDGE + 60, headerY, 180, 20)
+                .bounds(EDGE + 60, headerY, 96, 20)
                 .build());
         applyToSelectedButton.visible = false;
 
@@ -179,7 +235,7 @@ public class ShiftManagerScreen extends Screen {
                 .bounds(EDGE, footerBtnY, 60, 20)
                 .build());
 
-        addRenderableWidget(Button.builder(
+        resetButton = addRenderableWidget(Button.builder(
                 Component.translatable("townstead.shift.reset"),
                 b -> resetAllShifts())
                 .bounds(width - EDGE - 70, footerBtnY, 70, 20)
@@ -188,7 +244,28 @@ public class ShiftManagerScreen extends Screen {
         legendStep = Math.max(56,
                 (width - EDGE - 80 - (EDGE + 64)) / Math.max(1, ShiftData.ORDINAL_COLORS.length));
 
+        // Weekly toolbar: two grouped clusters on the legend row. Left = quick
+        // row-level edit (Copy/Paste week); right = Week Plans. Hidden in daily.
+        int toolY = legendY - 2;
+        int toolH = 16;
+        int toolGap = 6;
+        int editW = 92;
+        weeklyCopyButton = addRenderableWidget(Button.builder(
+                Component.translatable("townstead.shift.weekly.copy_day"), b -> weeklyCopyWeek())
+                .bounds(EDGE, toolY, editW, toolH).build());
+        weeklyPasteButton = addRenderableWidget(Button.builder(
+                Component.translatable("townstead.shift.weekly.paste_day"), b -> weeklyPasteWeek())
+                .bounds(EDGE + editW + toolGap, toolY, editW, toolH).build());
+        int planW = 130;
+        weeklyApplyPlanButton = addRenderableWidget(Button.builder(
+                Component.translatable("townstead.weekplan.apply_short"), b -> openWeekPlanModalApply())
+                .bounds(width - EDGE - planW, toolY, planW, toolH).build());
+        weeklySavePlanButton = addRenderableWidget(Button.builder(
+                Component.translatable("townstead.weekplan.save_short"), b -> openWeekPlanModalSave())
+                .bounds(width - EDGE - planW * 2 - toolGap, toolY, planW, toolH).build());
+
         queryShiftData();
+        applyTabVisibility();
     }
 
     // ---------------------------------------------------------------- Render
@@ -200,21 +277,92 @@ public class ShiftManagerScreen extends Screen {
         refreshShiftVillagers();
         pruneStateAgainstResidents();
         updateHeaderButtons();
+        // Grid starts below the tab strip, plus a label band. Weekly needs room
+        // for a hint line + weekday headers; daily needs a roomier hour row.
+        gridTop = tabsY + TAB_H + (viewTab == TAB_WEEKLY ? 22 : 14);
         clampRowScroll();
 
         // Title
         g.drawCenteredString(this.font, getTitle(),
                 width / 2, EDGE + 6, 0xFFFFFFFF);
 
-        // Hour labels above the grid
+        renderTabs(g, mouseX, mouseY);
+
+        if (viewTab == TAB_DAILY) {
+            renderDailyBody(g, mouseX, mouseY);
+        } else {
+            renderWeeklyBody(g, mouseX, mouseY);
+        }
+
+        renderRowScrollbar(g);
+
+        boolean anyModal = modalActive || weekPlanModalActive;
+
+        // Tooltips suppressed while a modal is open (they'd stack on top of it)
+        if (!anyModal) {
+            if (viewTab == TAB_DAILY) renderHoverTooltips(g, mouseX, mouseY);
+            else renderWeekHoverTooltips(g, mouseX, mouseY);
+        }
+
+        // Modal: translate to z=400 so it sits on top of the rest of the GUI,
+        // the same trick vanilla uses for tooltip rendering. Higher z in MC's
+        // GUI ortho projection is closer to the camera.
+        if (modalActive) {
+            g.pose().pushPose();
+            g.pose().translate(0.0F, 0.0F, 400.0F);
+            renderModal(g, mouseX, mouseY, partialTicks);
+            g.pose().popPose();
+        } else if (weekPlanModalActive) {
+            g.pose().pushPose();
+            g.pose().translate(0.0F, 0.0F, 400.0F);
+            renderWeekPlanModal(g, mouseX, mouseY, partialTicks);
+            g.pose().popPose();
+        }
+    }
+
+    private void renderTabs(GuiGraphics g, int mouseX, int mouseY) {
+        int h = TAB_H - 2;
+        int lineY = tabsY + h - 1;
+        // Baseline that the tab row sits on; the active tab erases its segment so
+        // it reads as connected to the content below (folder-tab look).
+        g.fill(EDGE, lineY, width - EDGE, lineY + 1, 0xFF455565);
+        drawTab(g, dailyTabX, dailyTabW, Component.translatable("townstead.shift.tab.daily"),
+                viewTab == TAB_DAILY, mouseX, mouseY);
+        drawTab(g, weeklyTabX, weeklyTabW, Component.translatable("townstead.shift.tab.weekly"),
+                viewTab == TAB_WEEKLY, mouseX, mouseY);
+    }
+
+    private void drawTab(GuiGraphics g, int x, int w, Component label, boolean active, int mouseX, int mouseY) {
+        int y = tabsY;
+        int h = TAB_H - 2;
+        boolean hovered = mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
+        int bg = active ? 0xFF2A2F38 : (hovered ? 0xFF242A33 : 0xFF1A1E25);
+        g.fill(x, y, x + w, y + h, bg);
+        int border = active ? 0xFFFFD040 : 0xFF455565;
+        g.fill(x, y, x + w, y + 1, border);              // top
+        g.fill(x, y, x + 1, y + h, border);              // left
+        g.fill(x + w - 1, y, x + w, y + h, border);      // right
+        if (active) {
+            // erase the baseline under the active tab so it merges with content
+            g.fill(x + 1, y + h - 1, x + w - 1, y + h, bg);
+        } else {
+            g.fill(x, y + h - 1, x + w, y + h, 0xFF455565); // bottom for inactive
+        }
+        g.drawCenteredString(this.font, label, x + w / 2,
+                y + (h - this.font.lineHeight) / 2 + 1, active ? 0xFFFFFFFF : 0xFFB0B0B0);
+    }
+
+    private void renderDailyBody(GuiGraphics g, int mouseX, int mouseY) {
+        // Hour labels in their own row, with breathing room above the cells.
+        int hourLabelY = gridTop - 9;
         for (int h = 0; h < ShiftData.HOURS_PER_DAY; h++) {
             int displayHour = ShiftData.toDisplayHour(h);
             String label = String.valueOf(displayHour);
             int lx = gridLeft + h * cellW;
             g.pose().pushPose();
-            g.pose().translate(lx + cellW / 2.0f, gridTop - 2, 0);
+            g.pose().translate(lx + cellW / 2.0f, hourLabelY, 0);
             g.pose().scale(0.5f, 0.5f, 1.0f);
-            g.drawString(this.font, label, -this.font.width(label) / 2, -this.font.lineHeight, 0xFFC0C0C0, false);
+            g.drawString(this.font, label, -this.font.width(label) / 2, 0, 0xFFC0C0C0, false);
             g.pose().popPose();
         }
 
@@ -240,9 +388,6 @@ public class ShiftManagerScreen extends Screen {
         }
         g.disableScissor();
 
-        // Scrollbar
-        renderRowScrollbar(g);
-
         // Now-line — drawn last over cells so it's visible
         if (minecraft != null && minecraft.level != null && visibleCount > 0) {
             long dayTime = minecraft.level.getDayTime() % HOURS_PER_DAY_TICKS;
@@ -264,19 +409,6 @@ public class ShiftManagerScreen extends Screen {
             g.drawString(this.font, Component.translatable(ShiftData.ORDINAL_TO_KEY[i]),
                     lx + 10, legendY, selected ? 0xFFFFFFFF : 0xFFC0C0C0, false);
         }
-
-        // Tooltips suppressed while modal is open (they otherwise stack on top of it)
-        if (!modalActive) renderHoverTooltips(g, mouseX, mouseY);
-
-        // Modal: translate to z=400 so it sits on top of the rest of the GUI,
-        // the same trick vanilla uses for tooltip rendering. Higher z in MC's
-        // GUI ortho projection is closer to the camera.
-        if (modalActive) {
-            g.pose().pushPose();
-            g.pose().translate(0.0F, 0.0F, 400.0F);
-            renderModal(g, mouseX, mouseY, partialTicks);
-            g.pose().popPose();
-        }
     }
 
     private void renderName(GuiGraphics g, UUID uuid, int rowY) {
@@ -286,8 +418,9 @@ public class ShiftManagerScreen extends Screen {
             truncated = truncated.substring(0, truncated.length() - 1);
         }
         if (!truncated.equals(name)) truncated += "..";
+        int color = uuid.equals(focusedVillager) ? 0xFFFFD040 : 0xFFFFFFFF;
         g.drawString(this.font, truncated, nameLeft,
-                rowY + (CELL_H - this.font.lineHeight) / 2 + 1, 0xFFFFFFFF, false);
+                rowY + (CELL_H - this.font.lineHeight) / 2 + 1, color, false);
     }
 
     private void renderGridRow(GuiGraphics g, UUID uuid, int rowY, int mouseX, int mouseY) {
@@ -311,6 +444,8 @@ public class ShiftManagerScreen extends Screen {
                 g.fill(cellX, cellY, cellX + cellW - 1, cellY + CELL_H - 1, 0x40FFFFFF);
             }
         }
+        // Subtle frame around the 24h strip (consistent with the weekly cells).
+        drawCellBorder(g, gridLeft, rowY, ShiftData.HOURS_PER_DAY * cellW - 1, CELL_H - 1, 0x66000000);
     }
 
     private void renderTemplateButton(GuiGraphics g, UUID uuid, int rowY, int mouseX, int mouseY) {
@@ -432,7 +567,10 @@ public class ShiftManagerScreen extends Screen {
 
         // Header
         String headerText;
-        if (modalBulkMode) {
+        if (modalDayAssign) {
+            headerText = Component.translatable("townstead.shift.weekly.assign_day",
+                    weekdayLong(modalDayIndex)).getString();
+        } else if (modalBulkMode) {
             headerText = Component.translatable("townstead.shift.template.title_bulk",
                     modalBulkTargets.size()).getString();
         } else if (modalTarget != null) {
@@ -464,6 +602,7 @@ public class ShiftManagerScreen extends Screen {
         if (modalDuplicateButton != null) modalDuplicateButton.render(g, mouseX, mouseY, partialTicks);
         if (modalDeleteButton != null) modalDeleteButton.render(g, mouseX, mouseY, partialTicks);
         if (modalSaveAsButton != null) modalSaveAsButton.render(g, mouseX, mouseY, partialTicks);
+        if (modalAllDaysButton != null) modalAllDaysButton.render(g, mouseX, mouseY, partialTicks);
 
         if (modalSaveAsActive) {
             renderSaveAsOverlay(g, mouseX, mouseY, partialTicks);
@@ -767,7 +906,16 @@ public class ShiftManagerScreen extends Screen {
                 b -> deleteSelectedTemplate())
                 .bounds(rightX + 8 + btnW, btnRowY, btnW, 20)
                 .build();
-        if (!modalBulkMode) {
+        if (modalDayAssign) {
+            modalDuplicateButton = null;
+            modalSaveAsButton = null;
+            modalAllDaysButton = Button.builder(
+                    Component.translatable("townstead.shift.weekly.fill_all"),
+                    b -> applyDayTemplateAllDays())
+                    .bounds(rightX + 4, btnRowY - 22, rightW - 8, 20)
+                    .build();
+        } else if (!modalBulkMode) {
+            modalAllDaysButton = null;
             modalDuplicateButton = Button.builder(
                     Component.translatable("townstead.shift.template.duplicate"),
                     b -> duplicateSelectedTemplate())
@@ -781,6 +929,7 @@ public class ShiftManagerScreen extends Screen {
         } else {
             modalDuplicateButton = null;
             modalSaveAsButton = null;
+            modalAllDaysButton = null;
         }
         modalCloseButton = Button.builder(
                 Component.translatable("townstead.shift.template.close"),
@@ -797,9 +946,11 @@ public class ShiftManagerScreen extends Screen {
         if (modalDuplicateButton != null) modalDuplicateButton.active = t != null && modalTarget != null;
         if (modalDeleteButton != null) modalDeleteButton.active = t != null && !t.builtIn();
         if (modalSaveAsButton != null) modalSaveAsButton.active = modalTarget != null;
+        if (modalAllDaysButton != null) modalAllDaysButton.active = t != null && modalDayTarget != null;
     }
 
     private boolean hasApplyTarget() {
+        if (modalDayAssign) return modalDayTarget != null;
         return modalBulkMode ? !modalBulkTargets.isEmpty() : modalTarget != null;
     }
 
@@ -808,6 +959,7 @@ public class ShiftManagerScreen extends Screen {
         modalDuplicateButton = null;
         modalDeleteButton = null;
         modalSaveAsButton = null;
+        modalAllDaysButton = null;
         modalCloseButton = null;
         modalSaveAsInput = null;
         modalSaveAsConfirmButton = null;
@@ -822,6 +974,9 @@ public class ShiftManagerScreen extends Screen {
         modalBulkTargets = List.of();
         modalSelectedId = null;
         modalSaveAsActive = false;
+        modalDayAssign = false;
+        modalDayTarget = null;
+        modalDayIndex = -1;
         modalTemplateEdits.clear();
         clearModalWidgets();
         setFocused(null);
@@ -959,6 +1114,13 @@ public class ShiftManagerScreen extends Screen {
     private void applySelectedTemplate() {
         ShiftTemplate t = ShiftTemplateClientStore.find(modalSelectedId);
         if (t == null) return;
+        if (modalDayAssign) {
+            if (modalDayTarget != null && modalDayIndex >= 0) {
+                assignDayTemplate(modalDayTarget, modalDayIndex, t.id().toString());
+            }
+            closeModal();
+            return;
+        }
         List<UUID> targets;
         if (modalBulkMode) targets = new ArrayList<>(modalBulkTargets);
         else if (modalTarget != null) targets = new ArrayList<>(List.of(modalTarget));
@@ -1012,6 +1174,18 @@ public class ShiftManagerScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (modalActive) return modalMouseClicked(mouseX, mouseY, button);
+        if (weekPlanModalActive) return weekPlanModalMouseClicked(mouseX, mouseY, button);
+
+        // Tab strip
+        if (button == 0 && mouseY >= tabsY && mouseY <= tabsY + TAB_H - 2) {
+            if (mouseX >= dailyTabX && mouseX <= dailyTabX + dailyTabW) { switchTab(TAB_DAILY); return true; }
+            if (mouseX >= weeklyTabX && mouseX <= weeklyTabX + weeklyTabW) { switchTab(TAB_WEEKLY); return true; }
+        }
+
+        if (viewTab == TAB_WEEKLY) {
+            if (weeklyMouseClicked(mouseX, mouseY, button)) return true;
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
 
         if (button == 0) {
             // Clicks outside the grid viewport ignore row hit-testing
@@ -1101,6 +1275,7 @@ public class ShiftManagerScreen extends Screen {
         if (modalDuplicateButton != null && modalDuplicateButton.mouseClicked(mouseX, mouseY, button)) return true;
         if (modalDeleteButton != null && modalDeleteButton.mouseClicked(mouseX, mouseY, button)) return true;
         if (modalSaveAsButton != null && modalSaveAsButton.mouseClicked(mouseX, mouseY, button)) return true;
+        if (modalAllDaysButton != null && modalAllDaysButton.mouseClicked(mouseX, mouseY, button)) return true;
 
         // Preview-pane interactions
         ShiftTemplate selected = ShiftTemplateClientStore.find(modalSelectedId);
@@ -1161,7 +1336,8 @@ public class ShiftManagerScreen extends Screen {
             }
             return true;
         }
-        if (button == 0 && shiftPaintOrdinal >= 0 && applyCell(mouseX, mouseY)) {
+        if (weekPlanModalActive) return true;
+        if (viewTab == TAB_DAILY && button == 0 && shiftPaintOrdinal >= 0 && applyCell(mouseX, mouseY)) {
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
@@ -1188,6 +1364,24 @@ public class ShiftManagerScreen extends Screen {
                 int visible = listH - 8;
                 int maxScroll = Math.max(0, listSize - visible);
                 modalListScroll = (int) Math.max(0, Math.min(maxScroll, modalListScroll - scrollY * 12));
+            }
+            return true;
+        }
+
+        if (weekPlanModalActive) {
+            int mw = Math.min(520, width - 60);
+            int mh = Math.min(340, height - 60);
+            int mx = (width - mw) / 2;
+            int my = (height - mh) / 2;
+            int listX = mx + 10;
+            int listY = my + 30;
+            int listW = (mw - 30) / 2;
+            int listH = mh - 60;
+            if (mouseX >= listX && mouseX <= listX + listW && mouseY >= listY && mouseY <= listY + listH) {
+                int listSize = WeekPlanClientStore.all().size() * LIST_ENTRY_H;
+                int visible = listH - 8;
+                int maxScroll = Math.max(0, listSize - visible);
+                weekPlanListScroll = (int) Math.max(0, Math.min(maxScroll, weekPlanListScroll - scrollY * 12));
             }
             return true;
         }
@@ -1224,6 +1418,16 @@ public class ShiftManagerScreen extends Screen {
             if (keyCode == 256) { closeModal(); return true; }
             return super.keyPressed(keyCode, scanCode, modifiers);
         }
+        if (weekPlanModalActive) {
+            if (weekPlanSaveActive) {
+                if (keyCode == 256) { weekPlanSaveActive = false; weekPlanSaveInput = null; setFocused(null); return true; }
+                if (keyCode == 257 || keyCode == 335) { confirmWeekPlanSave(); return true; }
+                if (weekPlanSaveInput != null && weekPlanSaveInput.keyPressed(keyCode, scanCode, modifiers)) return true;
+                return super.keyPressed(keyCode, scanCode, modifiers);
+            }
+            if (keyCode == 256) { closeWeekPlanModal(); return true; }
+            return super.keyPressed(keyCode, scanCode, modifiers);
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
@@ -1231,12 +1435,14 @@ public class ShiftManagerScreen extends Screen {
     public boolean charTyped(char chr, int modifiers) {
         if (modalRenamingTitle && modalRenameInput != null && modalRenameInput.charTyped(chr, modifiers)) return true;
         if (modalSaveAsActive && modalSaveAsInput != null && modalSaveAsInput.charTyped(chr, modifiers)) return true;
+        if (weekPlanSaveActive && weekPlanSaveInput != null && weekPlanSaveInput.charTyped(chr, modifiers)) return true;
         return super.charTyped(chr, modifiers);
     }
 
     @Override
     public void onClose() {
         if (modalActive) { closeModal(); return; }
+        if (weekPlanModalActive) { closeWeekPlanModal(); return; }
         if (this.minecraft != null) this.minecraft.setScreen(returnScreen);
         else super.onClose();
     }
@@ -1368,7 +1574,9 @@ public class ShiftManagerScreen extends Screen {
     private void updateHeaderButtons() {
         if (applyToSelectedButton != null) {
             int n = selectedVillagers.size();
-            applyToSelectedButton.visible = n > 0;
+            // Daily-only: this applies a per-day (24h) template. In the weekly
+            // tab use Apply Plan instead, so hide it there.
+            applyToSelectedButton.visible = n > 0 && viewTab == TAB_DAILY;
             applyToSelectedButton.setMessage(
                     Component.translatable("townstead.shift.apply_to_selected", n));
         }
@@ -1435,6 +1643,717 @@ public class ShiftManagerScreen extends Screen {
             }
         }
         return false;
+    }
+
+    // ============================================================ Weekly view
+
+    private void applyTabVisibility() {
+        boolean weekly = viewTab == TAB_WEEKLY;
+        if (resetButton != null) resetButton.visible = !weekly;
+        if (weeklyCopyButton != null) weeklyCopyButton.visible = weekly;
+        if (weeklyPasteButton != null) weeklyPasteButton.visible = weekly;
+        if (weeklyApplyPlanButton != null) weeklyApplyPlanButton.visible = weekly;
+        if (weeklySavePlanButton != null) weeklySavePlanButton.visible = weekly;
+        // Paint mode is daily-only.
+        if (weekly) shiftPaintOrdinal = -1;
+    }
+
+    private void switchTab(int tab) {
+        if (viewTab == tab) return;
+        viewTab = tab;
+        if (modalActive) closeModal();
+        if (weekPlanModalActive) closeWeekPlanModal();
+        applyTabVisibility();
+    }
+
+    /**
+     * Lazily query a villager's weekly state the first time it becomes visible
+     * in the weekly tab. The server replies with a {@code ShiftWeekSyncPayload}
+     * that populates {@link ShiftClientStore#getWeek}. Gated per-uuid so each
+     * villager is queried at most once.
+     */
+    private void maybeQueryWeek(UUID uuid) {
+        if (uuid == null || !weekQueried.add(uuid)) return;
+        //? if neoforge {
+        PacketDistributor.sendToServer(new ShiftSetPayload(uuid, new int[0]));
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(new ShiftSetPayload(uuid, new int[0]));
+        *///?}
+    }
+
+    private int currentDaysPerWeek() {
+        CalendarClientStore.Snapshot s = CalendarClientStore.get();
+        if (s != null && s.daysPerWeek() > 0) return s.daysPerWeek();
+        return 7;
+    }
+
+    private int todayDow() {
+        CalendarClientStore.Snapshot s = CalendarClientStore.get();
+        if (s != null && s.daysPerWeek() > 0) return Math.floorMod(s.dayOfWeek(), s.daysPerWeek());
+        return -1;
+    }
+
+    private String weekdayShort(int dow) {
+        CalendarClientStore.Snapshot s = CalendarClientStore.get();
+        if (s != null && s.hasWeekdays() && dow >= 0 && dow < s.weekdays().size()) {
+            String v = s.weekdays().get(dow).shortComponent().getString();
+            if (v != null && !v.isEmpty()) return v;
+        }
+        return "D" + (dow + 1);
+    }
+
+    private String weekdayLong(int dow) {
+        CalendarClientStore.Snapshot s = CalendarClientStore.get();
+        if (s != null && s.hasWeekdays() && dow >= 0 && dow < s.weekdays().size()) {
+            String v = s.weekdays().get(dow).longComponent().getString();
+            if (v != null && !v.isEmpty()) return v;
+        }
+        return Component.translatable("townstead.shift.weekly.fallback").getString() + " " + (dow + 1);
+    }
+
+    private void renderWeeklyBody(GuiGraphics g, int mouseX, int mouseY) {
+        weekCols = Math.max(1, currentDaysPerWeek());
+        weekCellW = Math.max(8, (gridRight - gridLeft) / weekCols);
+        if (weeklyFocusedDay >= weekCols) weeklyFocusedDay = 0;
+
+        if (CalendarClientStore.get() == null) {
+            g.drawCenteredString(this.font, Component.translatable("townstead.shift.weekly.no_calendar"),
+                    width / 2, gridTop + 20, 0xFFA0A0A0);
+            return;
+        }
+
+        int today = todayDow();
+
+        // Hint line (just below the tab strip)
+        g.drawCenteredString(this.font, Component.translatable("townstead.shift.weekly.hint"),
+                width / 2, tabsY + TAB_H + 1, 0xFF9AA0A8);
+
+        // Weekday header labels (own band, directly above the grid)
+        int labelY = gridTop - this.font.lineHeight - 1;
+        for (int d = 0; d < weekCols; d++) {
+            int cx = gridLeft + d * weekCellW;
+            String label = weekdayShort(d);
+            boolean isToday = d == today;
+            int color = isToday ? 0xFFFFD040 : 0xFFC8C8C8;
+            int tw = this.font.width(label);
+            int tx = cx + (weekCellW - tw) / 2;
+            g.drawString(this.font, label, tx, labelY, color, false);
+        }
+
+        g.enableScissor(EDGE - 2, gridTop, width - EDGE + 2, gridBottom);
+        for (int idx = 0; idx < filteredUuids.size(); idx++) {
+            int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+            if (rowY + CELL_H < gridTop) continue;
+            if (rowY > gridBottom) break;
+            UUID uuid = filteredUuids.get(idx);
+            maybeQueryWeek(uuid);
+
+            if (mouseY >= rowY && mouseY < rowY + CELL_H && mouseY >= gridTop && mouseY < gridBottom) {
+                g.fill(EDGE - 2, rowY - 1, width - EDGE + 2, rowY + CELL_H, ROW_HOVER);
+            }
+
+            renderCheckbox(g, EDGE, rowY + (CELL_H - CHECKBOX_SIZE) / 2, selectedVillagers.contains(uuid));
+            renderName(g, uuid, rowY);
+            renderWeekRow(g, uuid, rowY, mouseX, mouseY);
+            renderModeToggle(g, uuid, rowY, mouseX, mouseY);
+        }
+        g.disableScissor();
+
+        // Today column highlight (on top, translucent tint + visible border)
+        if (today >= 0 && today < weekCols) {
+            int tx = gridLeft + today * weekCellW;
+            g.fill(tx, gridTop, tx + weekCellW - 1, gridBottom, TODAY_COL_TINT);
+            g.fill(tx, gridTop, tx + 1, gridBottom, TODAY_COL_BORDER);
+            g.fill(tx + weekCellW - 2, gridTop, tx + weekCellW - 1, gridBottom, TODAY_COL_BORDER);
+            // little marker above the column header
+            g.fill(tx + weekCellW / 2 - 2, gridTop - 3, tx + weekCellW / 2 + 2, gridTop - 1, TODAY_COL_BORDER);
+        }
+    }
+
+    private void renderWeekRow(GuiGraphics g, UUID uuid, int rowY, int mouseX, int mouseY) {
+        ShiftClientStore.WeekState ws = ShiftClientStore.getWeek(uuid);
+        int stripLeft = gridLeft;
+        int stripRight = gridLeft + weekCols * weekCellW;
+        int ch = CELL_H - 1;
+
+        if (!ws.isWeekly()) {
+            // Daily mode: show the villager's actual 24h schedule as one dimmed
+            // strip behind a small "Daily" tag, so you still see what they do.
+            int tagW = 42;
+            int stripX = stripLeft + tagW + 2;
+            int stripW = Math.max(1, stripRight - 1 - stripX);
+            g.fill(stripLeft, rowY, stripLeft + tagW, rowY + ch, 0xFF2A2F38);
+            drawCellBorder(g, stripLeft, rowY, tagW, ch, 0xFF455565);
+            g.drawString(this.font, Component.translatable("townstead.shift.weekly.daily_tag"),
+                    stripLeft + 5, rowY + (CELL_H - this.font.lineHeight) / 2, 0xFFB6BCC4, false);
+            drawMiniStrip(g, stripX, rowY, stripW, ch, ShiftClientStore.get(uuid), false);
+            drawCellBorder(g, stripX, rowY, stripW, ch, 0x66000000);
+            return;
+        }
+
+        for (int d = 0; d < weekCols; d++) {
+            int cellX = gridLeft + d * weekCellW;
+            int cw = weekCellW - 2;
+            String tplId = ws.dayTemplate(d);
+            ShiftTemplate t = (tplId == null || tplId.isEmpty()) ? null : ShiftTemplateClientStore.find(tplId);
+
+            if (t != null) {
+                drawMiniStrip(g, cellX, rowY, cw, ch, t.copyShifts(), true);
+            } else {
+                // Unassigned: this day uses the daily fallback. Muted box + dash.
+                g.fill(cellX, rowY, cellX + cw, rowY + ch, WEEK_FALLBACK_FILL);
+                String dash = "–"; // en dash
+                int dw = this.font.width(dash);
+                g.drawString(this.font, dash, cellX + (cw - dw) / 2,
+                        rowY + (CELL_H - this.font.lineHeight) / 2, 0xFF6A7078, false);
+            }
+            drawCellBorder(g, cellX, rowY, cw, ch, 0x66000000);
+
+            if (mouseX >= cellX && mouseX < cellX + cw && mouseY >= rowY && mouseY < rowY + ch) {
+                g.fill(cellX, rowY, cellX + cw, rowY + ch, 0x30FFFFFF);
+                drawCellBorder(g, cellX, rowY, cw, ch, 0xFFFFD040);
+            }
+        }
+    }
+
+    private void drawCellBorder(GuiGraphics g, int x, int y, int w, int h, int color) {
+        g.fill(x, y, x + w, y + 1, color);
+        g.fill(x, y + h - 1, x + w, y + h, color);
+        g.fill(x, y, x + 1, y + h, color);
+        g.fill(x + w - 1, y, x + w, y + h, color);
+    }
+
+    /** Paint a 24-hour activity strip compressed into w pixels. */
+    private void drawMiniStrip(GuiGraphics g, int x, int y, int w, int h, int[] shifts, boolean enabled) {
+        if (shifts == null || shifts.length != ShiftData.HOURS_PER_DAY || w <= 0) {
+            g.fill(x, y, x + w, y + h, 0x30FFFFFF);
+            return;
+        }
+        for (int px = 0; px < w; px++) {
+            int hour = (px * ShiftData.HOURS_PER_DAY) / w;
+            if (hour < 0) hour = 0;
+            if (hour >= ShiftData.HOURS_PER_DAY) hour = ShiftData.HOURS_PER_DAY - 1;
+            int ord = shifts[hour];
+            if (ord < 0 || ord >= ShiftData.ORDINAL_COLORS.length) ord = ShiftData.ORD_IDLE;
+            int color = ShiftData.ORDINAL_COLORS[ord];
+            if (!enabled) color = (color & 0x00FFFFFF) | 0x60000000;
+            g.fill(x + px, y, x + px + 1, y + h, color);
+        }
+    }
+
+    private static final int SEG_ACTIVE_BG = 0xFF3A6EA5;
+    private static final int SEG_INACTIVE_BG = 0xFF24282F;
+    private static final int SEG_HOVER_BG = 0xFF323844;
+
+    /** Per-row segmented control: [ Daily | Weekly ], active half highlighted. */
+    private void renderModeToggle(GuiGraphics g, UUID uuid, int rowY, int mouseX, int mouseY) {
+        boolean weekly = ShiftClientStore.getWeek(uuid).isWeekly();
+        int btnX = templateBtnLeft;
+        int btnY = rowY + (CELL_H - 14) / 2;
+        int btnH = 14;
+        int halfW = TEMPLATE_BTN_W / 2;
+        int midX = btnX + halfW;
+
+        drawSegHalf(g, btnX, btnY, halfW, btnH, Component.translatable("townstead.shift.weekly.mode_daily"),
+                !weekly, mouseX, mouseY);
+        drawSegHalf(g, midX, btnY, TEMPLATE_BTN_W - halfW, btnH, Component.translatable("townstead.shift.weekly.mode_weekly"),
+                weekly, mouseX, mouseY);
+
+        // outer border + divider
+        int border = TEMPLATE_BTN_BORDER;
+        g.fill(btnX, btnY, btnX + TEMPLATE_BTN_W, btnY + 1, border);
+        g.fill(btnX, btnY + btnH - 1, btnX + TEMPLATE_BTN_W, btnY + btnH, border);
+        g.fill(btnX, btnY, btnX + 1, btnY + btnH, border);
+        g.fill(btnX + TEMPLATE_BTN_W - 1, btnY, btnX + TEMPLATE_BTN_W, btnY + btnH, border);
+        g.fill(midX, btnY, midX + 1, btnY + btnH, border);
+    }
+
+    private void drawSegHalf(GuiGraphics g, int x, int y, int w, int h, Component label,
+                             boolean active, int mouseX, int mouseY) {
+        boolean hovered = mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
+        int bg = active ? SEG_ACTIVE_BG : (hovered ? SEG_HOVER_BG : SEG_INACTIVE_BG);
+        g.fill(x, y, x + w, y + h, bg);
+        int color = active ? 0xFFFFFFFF : 0xFF9098A2;
+        g.drawCenteredString(this.font, label, x + w / 2, y + (h - this.font.lineHeight) / 2 + 1, color);
+    }
+
+    private void renderWeekHoverTooltips(GuiGraphics g, int mouseX, int mouseY) {
+        if (CalendarClientStore.get() == null) return;
+        if (mouseY < gridTop || mouseY > gridBottom) return;
+        if (mouseX < gridLeft || mouseX >= gridLeft + weekCols * weekCellW) return;
+        int d = (mouseX - gridLeft) / weekCellW;
+        if (d < 0 || d >= weekCols) return;
+        for (int idx = 0; idx < filteredUuids.size(); idx++) {
+            int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+            if (rowY + CELL_H < gridTop) continue;
+            if (rowY > gridBottom) break;
+            if (mouseY >= rowY && mouseY < rowY + CELL_H) {
+                UUID uuid = filteredUuids.get(idx);
+                String villager = shiftVillagerNames.getOrDefault(uuid, "???");
+                String dayLabel = weekdayLong(d);
+                String tplLabel = effectiveDayLabel(uuid, d);
+                g.renderTooltip(this.font,
+                        Component.literal(villager + " - " + dayLabel + ": " + tplLabel), mouseX, mouseY);
+                return;
+            }
+        }
+    }
+
+    private String effectiveDayLabel(UUID uuid, int day) {
+        ShiftClientStore.WeekState ws = ShiftClientStore.getWeek(uuid);
+        if (!ws.isWeekly()) return Component.translatable("townstead.shift.weekly.mode_daily").getString();
+        String id = ws.dayTemplate(day);
+        ShiftTemplate t = (id == null || id.isEmpty()) ? null : ShiftTemplateClientStore.find(id);
+        if (t != null) return t.displayName();
+        return Component.translatable("townstead.shift.weekly.fallback").getString();
+    }
+
+    // -- Weekly input -------------------------------------------------------
+
+    private boolean weeklyMouseClicked(double mouseX, double mouseY, int button) {
+        boolean inViewport = mouseY >= gridTop && mouseY <= gridBottom;
+        if (!inViewport) return false;
+
+        for (int idx = 0; idx < filteredUuids.size(); idx++) {
+            int rowY = gridTop + idx * (CELL_H + CELL_GAP) - rowScroll;
+            if (rowY + CELL_H < gridTop) continue;
+            if (rowY > gridBottom) break;
+            UUID uuid = filteredUuids.get(idx);
+
+            // Checkbox
+            int cbY = rowY + (CELL_H - CHECKBOX_SIZE) / 2;
+            if (button == 0 && mouseX >= EDGE && mouseX <= EDGE + CHECKBOX_SIZE
+                    && mouseY >= cbY && mouseY <= cbY + CHECKBOX_SIZE) {
+                if (hasShiftDown() && lastToggledOn != null) {
+                    rangeSelect(lastToggledOn, uuid);
+                } else if (selectedVillagers.contains(uuid)) {
+                    selectedVillagers.remove(uuid);
+                    if (uuid.equals(focusedVillager)) focusedVillager = null;
+                } else {
+                    selectedVillagers.add(uuid);
+                    lastToggledOn = uuid;
+                    focusedVillager = uuid;
+                }
+                return true;
+            }
+
+            // Mode toggle: left half = Daily, right half = Weekly
+            int btnY = rowY + (CELL_H - 14) / 2;
+            if (button == 0 && mouseX >= templateBtnLeft && mouseX <= templateBtnLeft + TEMPLATE_BTN_W
+                    && mouseY >= btnY && mouseY <= btnY + 14) {
+                focusedVillager = uuid;
+                boolean wantWeekly = mouseX >= templateBtnLeft + TEMPLATE_BTN_W / 2;
+                setRowMode(uuid, wantWeekly);
+                return true;
+            }
+
+            // Weekday cell
+            if (mouseX >= gridLeft && mouseX < gridLeft + weekCols * weekCellW
+                    && mouseY >= rowY && mouseY < rowY + CELL_H) {
+                int d = (int) ((mouseX - gridLeft) / weekCellW);
+                if (d < 0 || d >= weekCols) return true;
+                focusedVillager = uuid;
+                weeklyFocusedDay = d;
+                if (button == 1) {
+                    // right-click clears the day (back to daily fallback); only
+                    // meaningful when the villager is already on a weekly plan.
+                    if (ShiftClientStore.getWeek(uuid).isWeekly()) assignDayTemplate(uuid, d, "");
+                } else if (button == 0) {
+                    openDayAssignModal(uuid, d);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void setRowMode(UUID uuid, boolean weekly) {
+        ShiftClientStore.WeekState ws = ShiftClientStore.getWeek(uuid);
+        sendWeek(uuid, weekly ? ShiftData.MODE_WEEKLY : ShiftData.MODE_DAILY, ws.weekDays());
+    }
+
+    private void assignDayTemplate(UUID uuid, int day, String templateId) {
+        if (day < 0 || day >= weekCols) return;
+        List<String> days = new ArrayList<>(ShiftClientStore.getWeek(uuid).weekDays());
+        while (days.size() < weekCols) days.add("");
+        days.set(day, templateId == null ? "" : templateId);
+        sendWeek(uuid, ShiftData.MODE_WEEKLY, days);
+    }
+
+    private void sendWeek(UUID uuid, String mode, List<String> days) {
+        List<String> copy = new ArrayList<>(days);
+        ShiftClientStore.setWeek(uuid, mode, copy);
+        //? if neoforge {
+        PacketDistributor.sendToServer(new ShiftWeekSetPayload(uuid, mode, copy));
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(new ShiftWeekSetPayload(uuid, mode, copy));
+        *///?}
+    }
+
+    /** Copy the focused villager's whole week (mode + per-day templates). */
+    private void weeklyCopyWeek() {
+        if (focusedVillager == null) return;
+        weeklyWeekClipboard = ShiftClientStore.getWeek(focusedVillager);
+    }
+
+    /** Paste the copied week onto every checked villager (or the focused one). */
+    private void weeklyPasteWeek() {
+        if (weeklyWeekClipboard == null) return;
+        List<UUID> targets = new ArrayList<>(selectedVillagers);
+        if (targets.isEmpty() && focusedVillager != null) targets.add(focusedVillager);
+        for (UUID uuid : targets) {
+            sendWeek(uuid, weeklyWeekClipboard.mode(), weeklyWeekClipboard.weekDays());
+        }
+    }
+
+    // -- Day-assign modal (reuses the template modal) -----------------------
+
+    private void openDayAssignModal(UUID uuid, int day) {
+        modalActive = true;
+        modalDayAssign = true;
+        modalDayTarget = uuid;
+        modalDayIndex = day;
+        modalBulkMode = false;
+        modalTarget = null;
+        modalBulkTargets = List.of();
+        modalSaveAsActive = false;
+        modalListScroll = 0;
+        String cur = ShiftClientStore.getWeek(uuid).dayTemplate(day);
+        ShiftTemplate t = (cur == null || cur.isEmpty()) ? null : ShiftTemplateClientStore.find(cur);
+        modalSelectedId = t != null ? t.id() : null;
+        rebuildModalWidgets();
+    }
+
+    private void applyDayTemplateAllDays() {
+        ShiftTemplate t = ShiftTemplateClientStore.find(modalSelectedId);
+        if (t == null || modalDayTarget == null) return;
+        List<String> days = new ArrayList<>();
+        for (int d = 0; d < weekCols; d++) days.add(t.id().toString());
+        sendWeek(modalDayTarget, ShiftData.MODE_WEEKLY, days);
+        closeModal();
+    }
+
+    // ========================================================= Week plan modal
+
+    private void openWeekPlanModalApply() {
+        if (!selectedVillagers.isEmpty()) {
+            weekPlanBulk = true;
+            weekPlanBulkTargets = new ArrayList<>(selectedVillagers);
+            weekPlanTarget = null;
+        } else if (focusedVillager != null) {
+            weekPlanBulk = false;
+            weekPlanTarget = focusedVillager;
+            weekPlanBulkTargets = List.of();
+        } else {
+            return;
+        }
+        weekPlanModalActive = true;
+        weekPlanSaveActive = false;
+        weekPlanListScroll = 0;
+        weekPlanSelectedId = null;
+        rebuildWeekPlanWidgets();
+    }
+
+    private void openWeekPlanModalSave() {
+        if (focusedVillager == null) return;
+        weekPlanModalActive = true;
+        weekPlanBulk = false;
+        weekPlanTarget = focusedVillager;
+        weekPlanBulkTargets = List.of();
+        weekPlanListScroll = 0;
+        weekPlanSelectedId = null;
+        weekPlanSaveActive = false;
+        rebuildWeekPlanWidgets();
+    }
+
+    private void rebuildWeekPlanWidgets() {
+        clearWeekPlanWidgets();
+        int mw = Math.min(520, width - 60);
+        int mh = Math.min(340, height - 60);
+        int mx = (width - mw) / 2;
+        int my = (height - mh) / 2;
+        int btnRowY = my + mh - 30;
+        int rightX = mx + 10 + (mw - 30) / 2 + 10;
+        int rightW = mw - (rightX - mx) - 10;
+        int btnW = (rightW - 8) / 2;
+
+        // Apply is the primary action (full width, on top); Save / Delete below.
+        Component applyLabel = Component.translatable(weekPlanBulk
+                ? "townstead.weekplan.apply_btn_bulk" : "townstead.weekplan.apply_btn");
+        weekPlanApplyButton = Button.builder(applyLabel,
+                b -> applySelectedWeekPlan()).bounds(rightX, btnRowY - 22, rightW, 20).build();
+        weekPlanSaveButton = Button.builder(Component.translatable("townstead.weekplan.save_short"),
+                b -> openWeekPlanSaveOverlay()).bounds(rightX, btnRowY, btnW, 20).build();
+        weekPlanDeleteButton = Button.builder(Component.translatable("townstead.shift.template.delete"),
+                b -> deleteSelectedWeekPlan()).bounds(rightX + btnW + 8, btnRowY, btnW, 20).build();
+        weekPlanCloseButton = Button.builder(Component.translatable("townstead.shift.template.close"),
+                b -> closeWeekPlanModal()).bounds(mx + mw - 60, my + 6, 50, 18).build();
+        updateWeekPlanActionStates();
+    }
+
+    private void updateWeekPlanActionStates() {
+        WeekPlan p = WeekPlanClientStore.find(weekPlanSelectedId);
+        boolean hasTarget = weekPlanBulk ? !weekPlanBulkTargets.isEmpty() : weekPlanTarget != null;
+        if (weekPlanApplyButton != null) weekPlanApplyButton.active = p != null && hasTarget;
+        if (weekPlanDeleteButton != null) weekPlanDeleteButton.active = p != null && !p.builtIn();
+        if (weekPlanSaveButton != null) weekPlanSaveButton.active = weekPlanTarget != null;
+    }
+
+    private void clearWeekPlanWidgets() {
+        weekPlanApplyButton = null;
+        weekPlanDeleteButton = null;
+        weekPlanSaveButton = null;
+        weekPlanCloseButton = null;
+        weekPlanSaveConfirm = null;
+        weekPlanSaveCancel = null;
+        weekPlanSaveInput = null;
+    }
+
+    private void closeWeekPlanModal() {
+        weekPlanModalActive = false;
+        weekPlanSaveActive = false;
+        weekPlanBulk = false;
+        weekPlanTarget = null;
+        weekPlanBulkTargets = List.of();
+        weekPlanSelectedId = null;
+        clearWeekPlanWidgets();
+        setFocused(null);
+    }
+
+    private void renderWeekPlanModal(GuiGraphics g, int mouseX, int mouseY, float partialTicks) {
+        g.fill(0, 0, width, height, OVERLAY_DIM);
+        int mw = Math.min(520, width - 60);
+        int mh = Math.min(340, height - 60);
+        int mx = (width - mw) / 2;
+        int my = (height - mh) / 2;
+        g.fill(mx, my, mx + mw, my + mh, MODAL_BG);
+        drawBorder(g, mx, my, mw, mh, MODAL_BORDER);
+
+        String header;
+        if (weekPlanBulk) {
+            header = Component.translatable("townstead.weekplan.title_bulk", weekPlanBulkTargets.size()).getString();
+        } else if (weekPlanTarget != null) {
+            header = Component.translatable("townstead.weekplan.title_for",
+                    shiftVillagerNames.getOrDefault(weekPlanTarget, "???")).getString();
+        } else {
+            header = Component.translatable("townstead.weekplan.title").getString();
+        }
+        g.drawString(this.font, Component.literal(header), mx + 12, my + 10, 0xFFFFFFFF, false);
+
+        int listX = mx + 10;
+        int listY = my + 30;
+        int listW = (mw - 30) / 2;
+        int listH = mh - 60;
+        int rightX = listX + listW + 10;
+        int rightW = mw - (rightX - mx) - 10;
+        drawBorder(g, listX, listY, listW, listH, MODAL_BORDER);
+        drawBorder(g, rightX, listY, rightW, listH - 32, MODAL_BORDER);
+
+        renderWeekPlanList(g, listX, listY, listW, listH, mouseX, mouseY);
+        renderWeekPlanPreview(g, rightX, listY, rightW, listH - 32);
+
+        if (weekPlanApplyButton != null) weekPlanApplyButton.render(g, mouseX, mouseY, partialTicks);
+        if (weekPlanDeleteButton != null) weekPlanDeleteButton.render(g, mouseX, mouseY, partialTicks);
+        if (weekPlanSaveButton != null) weekPlanSaveButton.render(g, mouseX, mouseY, partialTicks);
+        if (weekPlanCloseButton != null) weekPlanCloseButton.render(g, mouseX, mouseY, partialTicks);
+
+        if (weekPlanSaveActive) renderWeekPlanSaveOverlay(g, mouseX, mouseY, partialTicks);
+    }
+
+    private void renderWeekPlanList(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY) {
+        List<WeekPlan> plans = WeekPlanClientStore.all();
+        int innerX = x + 2;
+        int innerY = y + 4;
+        int innerR = x + w - 2;
+        int innerB = y + h - 2;
+        if (plans.isEmpty()) {
+            g.drawString(this.font, Component.translatable("townstead.weekplan.none"),
+                    innerX + 4, innerY + 4, 0xFF808080, false);
+            return;
+        }
+        int dy = innerY - weekPlanListScroll;
+        boolean sawBuiltIn = false;
+        for (WeekPlan p : plans) {
+            // Divider line at the built-in -> custom boundary (no vertical gap,
+            // so click hit-testing stays a simple fixed-height scan).
+            if (sawBuiltIn && !p.builtIn() && dy > innerY && dy < innerB) {
+                g.fill(innerX + 6, dy, innerR - 6, dy + 1, 0xFF455565);
+            }
+            if (dy + LIST_ENTRY_H >= innerY && dy <= innerB) {
+                int yT = Math.max(dy, innerY);
+                int yB = Math.min(dy + LIST_ENTRY_H - 1, innerB);
+                boolean selected = p.id().equals(weekPlanSelectedId);
+                boolean hovered = mouseX >= innerX && mouseX < innerR && mouseY >= yT && mouseY <= yB;
+                if (selected) g.fill(innerX, yT, innerR, yB, LIST_SELECTED_BG);
+                else if (hovered) g.fill(innerX, yT, innerR, yB, LIST_HOVER_BG);
+                int color = p.builtIn() ? 0xFFE0E0E0 : 0xFFC9F0FF;
+                String label = p.displayName();
+                int maxW = (innerR - 6) - (innerX + 6);
+                String trunc = label;
+                while (this.font.width(trunc) > maxW && trunc.length() > 1) trunc = trunc.substring(0, trunc.length() - 1);
+                if (!trunc.equals(label)) trunc += "..";
+                g.drawString(this.font, trunc, innerX + 6,
+                        dy + (LIST_ENTRY_H - this.font.lineHeight) / 2 + 1, color, false);
+            }
+            dy += LIST_ENTRY_H;
+            if (p.builtIn()) sawBuiltIn = true;
+        }
+    }
+
+    private void renderWeekPlanPreview(GuiGraphics g, int x, int y, int w, int h) {
+        WeekPlan p = WeekPlanClientStore.find(weekPlanSelectedId);
+        int pad = 8;
+        if (p == null) {
+            g.drawCenteredString(this.font, Component.translatable("townstead.shift.template.unassigned"),
+                    x + w / 2, y + h / 2 - 4, 0xFF808080);
+            return;
+        }
+        g.drawString(this.font, Component.literal(p.displayName()), x + pad, y + pad, 0xFFFFFFFF, false);
+        String tag = p.builtIn()
+                ? Component.translatable("townstead.weekplan.builtin_tag").getString() : "Custom";
+        g.drawString(this.font, tag, x + pad, y + pad + this.font.lineHeight + 2, 0xFFA0A0A0, false);
+
+        // Mini week preview: one row of day strips
+        List<String> days = p.dayTemplates();
+        int rows = days.size();
+        int gridY = y + pad + this.font.lineHeight * 2 + 8;
+        int rowH = 12;
+        int stripW = w - pad * 2 - 70;
+        for (int d = 0; d < rows; d++) {
+            int ry = gridY + d * (rowH + 2);
+            if (ry + rowH > y + h - 2) break;
+            String label = (d < 64) ? weekdayShort(d) : "D" + (d + 1);
+            g.drawString(this.font, label, x + pad, ry + 2, 0xFFC0C0C0, false);
+            String id = days.get(d);
+            ShiftTemplate t = (id == null || id.isEmpty()) ? null : ShiftTemplateClientStore.find(id);
+            int sx = x + pad + 40;
+            if (t != null) {
+                drawMiniStrip(g, sx, ry, stripW, rowH, t.copyShifts(), true);
+            } else {
+                g.fill(sx, ry, sx + stripW, ry + rowH, WEEK_FALLBACK_FILL);
+            }
+        }
+    }
+
+    private void renderWeekPlanSaveOverlay(GuiGraphics g, int mouseX, int mouseY, float partialTicks) {
+        g.fill(0, 0, width, height, OVERLAY_DIM);
+        int mw = 280;
+        int mh = 88;
+        int mx = (width - mw) / 2;
+        int my = (height - mh) / 2;
+        g.fill(mx, my, mx + mw, my + mh, MODAL_BG);
+        drawBorder(g, mx, my, mw, mh, MODAL_BORDER);
+        g.drawString(this.font, Component.translatable("townstead.weekplan.save_prompt"),
+                mx + 12, my + 10, 0xFFFFFFFF, false);
+        if (weekPlanSaveInput != null) weekPlanSaveInput.render(g, mouseX, mouseY, partialTicks);
+        if (weekPlanSaveConfirm != null) weekPlanSaveConfirm.render(g, mouseX, mouseY, partialTicks);
+        if (weekPlanSaveCancel != null) weekPlanSaveCancel.render(g, mouseX, mouseY, partialTicks);
+    }
+
+    private void openWeekPlanSaveOverlay() {
+        if (weekPlanTarget == null) return;
+        weekPlanSaveActive = true;
+        int mw = 280;
+        int mh = 88;
+        int mx = (width - mw) / 2;
+        int my = (height - mh) / 2;
+        weekPlanSaveInput = new EditBox(this.font, mx + 12, my + 24, mw - 24, 18,
+                Component.translatable("townstead.weekplan.save_prompt"));
+        weekPlanSaveInput.setMaxLength(64);
+        weekPlanSaveInput.setValue("Week: " + shiftVillagerNames.getOrDefault(weekPlanTarget, "Villager"));
+        weekPlanSaveInput.setFocused(true);
+        setFocused(weekPlanSaveInput);
+        weekPlanSaveConfirm = Button.builder(Component.translatable("townstead.shift.template.ok"),
+                b -> confirmWeekPlanSave()).bounds(mx + mw - 130, my + mh - 26, 60, 20).build();
+        weekPlanSaveCancel = Button.builder(Component.translatable("townstead.shift.template.cancel"),
+                b -> { weekPlanSaveActive = false; weekPlanSaveInput = null; setFocused(null); })
+                .bounds(mx + mw - 66, my + mh - 26, 60, 20).build();
+    }
+
+    private void confirmWeekPlanSave() {
+        if (weekPlanSaveInput == null || weekPlanTarget == null) { weekPlanSaveActive = false; return; }
+        String name = weekPlanSaveInput.getValue().trim();
+        if (name.isEmpty()) name = "Untitled";
+        List<String> days = new ArrayList<>(ShiftClientStore.getWeek(weekPlanTarget).weekDays());
+        while (days.size() < weekCols) days.add("");
+        WeekPlanSavePayload payload = new WeekPlanSavePayload("", name, days);
+        //? if neoforge {
+        PacketDistributor.sendToServer(payload);
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(payload);
+        *///?}
+        weekPlanSaveActive = false;
+        weekPlanSaveInput = null;
+        setFocused(null);
+    }
+
+    private void applySelectedWeekPlan() {
+        WeekPlan p = WeekPlanClientStore.find(weekPlanSelectedId);
+        if (p == null) return;
+        List<UUID> targets;
+        if (weekPlanBulk) targets = new ArrayList<>(weekPlanBulkTargets);
+        else if (weekPlanTarget != null) targets = new ArrayList<>(List.of(weekPlanTarget));
+        else return;
+        if (targets.isEmpty()) return;
+        // Local optimistic update
+        List<String> days = p.copyDays();
+        for (UUID uuid : targets) ShiftClientStore.setWeek(uuid, ShiftData.MODE_WEEKLY, days);
+        WeekPlanApplyPayload payload = new WeekPlanApplyPayload(p.id(), targets);
+        //? if neoforge {
+        PacketDistributor.sendToServer(payload);
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(payload);
+        *///?}
+        closeWeekPlanModal();
+    }
+
+    private void deleteSelectedWeekPlan() {
+        WeekPlan p = WeekPlanClientStore.find(weekPlanSelectedId);
+        if (p == null || p.builtIn()) return;
+        WeekPlanDeletePayload payload = new WeekPlanDeletePayload(p.id());
+        //? if neoforge {
+        PacketDistributor.sendToServer(payload);
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(payload);
+        *///?}
+        weekPlanSelectedId = null;
+        updateWeekPlanActionStates();
+    }
+
+    private boolean weekPlanModalMouseClicked(double mouseX, double mouseY, int button) {
+        if (weekPlanSaveActive) {
+            if (weekPlanSaveConfirm != null && weekPlanSaveConfirm.mouseClicked(mouseX, mouseY, button)) return true;
+            if (weekPlanSaveCancel != null && weekPlanSaveCancel.mouseClicked(mouseX, mouseY, button)) return true;
+            if (weekPlanSaveInput != null && weekPlanSaveInput.mouseClicked(mouseX, mouseY, button)) return true;
+            return true;
+        }
+        if (weekPlanCloseButton != null && weekPlanCloseButton.mouseClicked(mouseX, mouseY, button)) return true;
+        if (weekPlanApplyButton != null && weekPlanApplyButton.mouseClicked(mouseX, mouseY, button)) return true;
+        if (weekPlanDeleteButton != null && weekPlanDeleteButton.mouseClicked(mouseX, mouseY, button)) return true;
+        if (weekPlanSaveButton != null && weekPlanSaveButton.mouseClicked(mouseX, mouseY, button)) return true;
+
+        int mw = Math.min(520, width - 60);
+        int mh = Math.min(340, height - 60);
+        int mx = (width - mw) / 2;
+        int my = (height - mh) / 2;
+        int listX = mx + 10;
+        int listY = my + 30;
+        int listW = (mw - 30) / 2;
+        int listH = mh - 60;
+        if (mouseX >= listX && mouseX <= listX + listW && mouseY >= listY && mouseY <= listY + listH) {
+            List<WeekPlan> plans = WeekPlanClientStore.all();
+            int dy = listY + 4 - weekPlanListScroll;
+            for (WeekPlan p : plans) {
+                if (mouseY >= dy && mouseY < dy + LIST_ENTRY_H) {
+                    weekPlanSelectedId = p.id().equals(weekPlanSelectedId) ? null : p.id();
+                    updateWeekPlanActionStates();
+                    break;
+                }
+                dy += LIST_ENTRY_H;
+            }
+            return true;
+        }
+        return true; // consume clicks while modal active
     }
 
     private String profDisplayName(String professionId) {

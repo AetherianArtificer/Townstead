@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.calendar;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 
@@ -115,6 +116,7 @@ public final class WorldCalendarTicker {
                     Townstead.LOGGER.info("[Calendar] Real-clock catch-up: advanced worldDayCounter by {} real day{}",
                             catchupDays, catchupDays == 1 ? "" : "s");
                     AgeableCatchup.applyBulkCatchup(server, catchupDays);
+                    ShiftScheduleApplier.reapplyWeeklySchedules(server);
                     Townstead.townstead$broadcastCalendarSync(server);
                 }
             }
@@ -144,6 +146,9 @@ public final class WorldCalendarTicker {
             // between sessions persist the latest value (otherwise the next
             // load would see a stale stamp and incorrectly catch up).
             AgeableCatchup.refreshLastSeenStamps(server);
+            // Day-of-week changed: swap in each weekly-mode villager's schedule
+            // for the new day. Once per in-game day, off the per-tick hot path.
+            ShiftScheduleApplier.reapplyWeeklySchedules(server);
             Townstead.townstead$broadcastCalendarSync(server);
         }
     }

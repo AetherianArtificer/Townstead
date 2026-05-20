@@ -28,6 +28,16 @@ import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
 import com.aetherianartificer.townstead.shift.ShiftSyncPayload;
+import com.aetherianartificer.townstead.shift.ShiftWeekSetPayload;
+import com.aetherianartificer.townstead.shift.ShiftWeekSyncPayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlan;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanApplyPayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanClientStore;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanDeletePayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanRegistry;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSavePayload;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSavedData;
+import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSyncPayload;
 import com.aetherianartificer.townstead.shift.template.Chronotype;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplate;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateApplyPayload;
@@ -134,6 +144,20 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleShiftTemplateDelete);
         registerC2S(ShiftTemplateApplyPayload.class, ShiftTemplateApplyPayload::write, ShiftTemplateApplyPayload::read,
                 TownsteadNetwork::handleShiftTemplateApply);
+
+        // Weekly schedule + week plans
+        registerS2C(ShiftWeekSyncPayload.class, ShiftWeekSyncPayload::write, ShiftWeekSyncPayload::read,
+                TownsteadNetwork::handleShiftWeekSync);
+        registerC2S(ShiftWeekSetPayload.class, ShiftWeekSetPayload::write, ShiftWeekSetPayload::read,
+                TownsteadNetwork::handleShiftWeekSet);
+        registerS2C(WeekPlanSyncPayload.class, WeekPlanSyncPayload::write, WeekPlanSyncPayload::read,
+                TownsteadNetwork::handleWeekPlanSync);
+        registerC2S(WeekPlanSavePayload.class, WeekPlanSavePayload::write, WeekPlanSavePayload::read,
+                TownsteadNetwork::handleWeekPlanSave);
+        registerC2S(WeekPlanDeletePayload.class, WeekPlanDeletePayload::write, WeekPlanDeletePayload::read,
+                TownsteadNetwork::handleWeekPlanDelete);
+        registerC2S(WeekPlanApplyPayload.class, WeekPlanApplyPayload::write, WeekPlanApplyPayload::read,
+                TownsteadNetwork::handleWeekPlanApply);
 
         // Profession management
         registerC2S(ProfessionQueryPayload.class, ProfessionQueryPayload::write, ProfessionQueryPayload::read,
@@ -440,10 +464,12 @@ public final class TownsteadNetwork {
         }
         if (villager == null) return;
 
-        // Query mode
+        // Query mode: reply with the daily array and the weekly state together.
         if (payload.shifts().length == 0) {
             CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
             sendToPlayer(sp, new ShiftSyncPayload(payload.villagerUuid(), ShiftData.getShifts(shiftTag)));
+            sendToPlayer(sp, new ShiftWeekSyncPayload(payload.villagerUuid(),
+                    ShiftData.getMode(shiftTag), ShiftData.getWeekDayTemplates(shiftTag)));
             return;
         }
 
@@ -549,6 +575,107 @@ public final class TownsteadNetwork {
         if (server == null) return;
         java.util.List<ShiftTemplate> all = ShiftTemplateRegistry.combinedFor(server);
         ShiftTemplateSyncPayload payload = new ShiftTemplateSyncPayload(all);
+        for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            sendToPlayer(sp, payload);
+        }
+    }
+
+    // ── Weekly schedule + week plan handlers ──
+
+    private static void handleShiftWeekSync(ShiftWeekSyncPayload payload) {
+        ShiftClientStore.setWeek(payload.villagerUuid(), payload.mode(), payload.weekDays());
+    }
+
+    private static void handleShiftWeekSet(ShiftWeekSetPayload payload, ServerPlayer sp) {
+        VillagerEntityMCA villager = findVillager(sp.getServer(), payload.villagerUuid());
+        if (villager == null) return;
+        writeVillagerWeek(villager, payload.mode(), payload.weekDays(), sp);
+    }
+
+    private static void handleWeekPlanSync(WeekPlanSyncPayload payload) {
+        WeekPlanClientStore.set(payload.plans());
+    }
+
+    private static void handleWeekPlanSave(WeekPlanSavePayload payload, ServerPlayer sp) {
+        net.minecraft.server.MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        String name = payload.name() != null && !payload.name().isBlank() ? payload.name().trim() : "Untitled";
+        if (name.length() > 64) name = name.substring(0, 64);
+        ResourceLocation id;
+        String idStr = payload.id();
+        if (idStr == null || idStr.isBlank() || !idStr.startsWith(WeekPlan.USER_NAMESPACE + ":")) {
+            String slug = "u_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            id = new ResourceLocation(WeekPlan.USER_NAMESPACE, slug);
+        } else {
+            try {
+                id = new ResourceLocation(idStr);
+            } catch (Exception ex) { return; }
+            if (!WeekPlan.USER_NAMESPACE.equals(id.getNamespace())) return;
+        }
+        WeekPlan plan;
+        try {
+            plan = new WeekPlan(id, name, payload.days() == null ? java.util.List.of() : payload.days(), false);
+        } catch (IllegalArgumentException ex) { return; }
+        WeekPlanSavedData.get(server).put(plan);
+        broadcastWeekPlanSync(server);
+    }
+
+    private static void handleWeekPlanDelete(WeekPlanDeletePayload payload, ServerPlayer sp) {
+        net.minecraft.server.MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        if (!WeekPlan.USER_NAMESPACE.equals(payload.id().getNamespace())) return;
+        if (WeekPlanSavedData.get(server).remove(payload.id())) broadcastWeekPlanSync(server);
+    }
+
+    private static void handleWeekPlanApply(WeekPlanApplyPayload payload, ServerPlayer sp) {
+        net.minecraft.server.MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        WeekPlan plan = WeekPlanRegistry.resolve(server, payload.planId()).orElse(null);
+        if (plan == null) {
+            Townstead.LOGGER.warn("Apply requested for unknown week plan {}", payload.planId());
+            return;
+        }
+        java.util.List<String> days = plan.copyDays();
+        for (java.util.UUID uuid : payload.villagerUuids()) {
+            VillagerEntityMCA villager = findVillager(server, uuid);
+            if (villager == null) continue;
+            writeVillagerWeek(villager, ShiftData.MODE_WEEKLY, days, sp);
+        }
+    }
+
+    private static VillagerEntityMCA findVillager(net.minecraft.server.MinecraftServer server, java.util.UUID uuid) {
+        if (server == null) return null;
+        for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+            Entity entity = level.getEntity(uuid);
+            if (entity instanceof VillagerEntityMCA v) return v;
+        }
+        return null;
+    }
+
+    private static void writeVillagerWeek(VillagerEntityMCA villager, String mode,
+                                          java.util.List<String> weekDays, ServerPlayer originator) {
+        CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
+        ShiftData.setMode(shiftTag, mode);
+        ShiftData.setWeekDayTemplates(shiftTag, weekDays);
+        villager.getPersistentData().put("townstead_shift", shiftTag);
+
+        ShiftScheduleApplier.apply(villager);
+
+        ShiftWeekSyncPayload sync = new ShiftWeekSyncPayload(
+                villager.getUUID(), ShiftData.getMode(shiftTag), ShiftData.getWeekDayTemplates(shiftTag));
+        if (originator != null) sendToPlayer(originator, sync);
+        sendToTrackingEntity(villager, sync);
+    }
+
+    public static void sendWeekPlanSync(ServerPlayer sp) {
+        net.minecraft.server.MinecraftServer server = sp.getServer();
+        if (server == null) return;
+        sendToPlayer(sp, new WeekPlanSyncPayload(WeekPlanRegistry.combinedFor(server)));
+    }
+
+    public static void broadcastWeekPlanSync(net.minecraft.server.MinecraftServer server) {
+        if (server == null) return;
+        WeekPlanSyncPayload payload = new WeekPlanSyncPayload(WeekPlanRegistry.combinedFor(server));
         for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
             sendToPlayer(sp, payload);
         }
