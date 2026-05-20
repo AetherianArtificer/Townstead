@@ -87,6 +87,7 @@ public class ShiftManagerScreen extends Screen {
     private int weekCellW;
     private int weeklyFocusedDay = 0;
     private ShiftClientStore.WeekState weeklyWeekClipboard = null;   // copied whole week (row-level)
+    private String weeklyClipboardName = null;                      // name of the villager it was copied from
     private final Set<UUID> weekQueried = new HashSet<>();
     private Button weeklyCopyButton, weeklyPasteButton;
     private Button weeklyApplyPlanButton, weeklySavePlanButton;
@@ -156,7 +157,8 @@ public class ShiftManagerScreen extends Screen {
     private int previewGridX, previewGridY, previewGridCellW, previewGridH;
     private final int[] summaryHitX = new int[ShiftData.ORDINAL_COLORS.length];
     private final int[] summaryHitW = new int[ShiftData.ORDINAL_COLORS.length];
-    private int summaryHitY = 0, summaryHitH = 0;
+    private final int[] summaryHitY = new int[ShiftData.ORDINAL_COLORS.length];
+    private int summaryHitH = 0;
     private EditBox modalSaveAsInput;
     private Button modalLoadButton;
     private Button modalDuplicateButton;
@@ -278,8 +280,9 @@ public class ShiftManagerScreen extends Screen {
         pruneStateAgainstResidents();
         updateHeaderButtons();
         // Grid starts below the tab strip, plus a label band. Weekly needs room
-        // for a hint line + weekday headers; daily needs a roomier hour row.
-        gridTop = tabsY + TAB_H + (viewTab == TAB_WEEKLY ? 22 : 14);
+        // for the weekday headers; daily needs a roomier hour row. (The weekly
+        // usage hint now lives in the footer next to Back.)
+        gridTop = tabsY + TAB_H + (viewTab == TAB_WEEKLY ? 12 : 14);
         clampRowScroll();
 
         // Title
@@ -292,6 +295,10 @@ public class ShiftManagerScreen extends Screen {
             renderDailyBody(g, mouseX, mouseY);
         } else {
             renderWeeklyBody(g, mouseX, mouseY);
+            // Usage hint in the footer, to the right of the Back button.
+            int footerY = height - EDGE - 20;
+            g.drawString(this.font, Component.translatable("townstead.shift.weekly.hint"),
+                    EDGE + 68, footerY + 6, 0xFF9098A2, false);
         }
 
         renderRowScrollbar(g);
@@ -353,6 +360,17 @@ public class ShiftManagerScreen extends Screen {
     }
 
     private void renderDailyBody(GuiGraphics g, int mouseX, int mouseY) {
+        // When an activity is selected, hovering an hour header previews a
+        // whole-column fill (click = set that hour for every villager).
+        boolean overHourHeader = shiftPaintOrdinal >= 0
+                && mouseY >= gridTop - 12 && mouseY < gridTop
+                && mouseX >= gridLeft && mouseX < gridLeft + ShiftData.HOURS_PER_DAY * cellW;
+        int hoverHour = overHourHeader ? (int) ((mouseX - gridLeft) / cellW) : -1;
+        if (hoverHour >= 0) {
+            int hx = gridLeft + hoverHour * cellW;
+            g.fill(hx, gridTop - 12, hx + cellW - 1, gridTop - 1, 0x40FFFFFF);
+        }
+
         // Hour labels in their own row, with breathing room above the cells.
         int hourLabelY = gridTop - 9;
         for (int h = 0; h < ShiftData.HOURS_PER_DAY; h++) {
@@ -362,7 +380,8 @@ public class ShiftManagerScreen extends Screen {
             g.pose().pushPose();
             g.pose().translate(lx + cellW / 2.0f, hourLabelY, 0);
             g.pose().scale(0.5f, 0.5f, 1.0f);
-            g.drawString(this.font, label, -this.font.width(label) / 2, 0, 0xFFC0C0C0, false);
+            int lc = (h == hoverHour) ? 0xFFFFFFFF : 0xFFC0C0C0;
+            g.drawString(this.font, label, -this.font.width(label) / 2, 0, lc, false);
             g.pose().popPose();
         }
 
@@ -770,37 +789,44 @@ public class ShiftManagerScreen extends Screen {
             }
         }
 
-        // Activity summary — clickable like the bottom legend; the swatch sits next
-        // to the label with its bottom on the same baseline as the text.
-        int sumY = gridY + CELL_H + 10;
+        // Activity summary — clickable like the bottom legend. Wraps to a new
+        // line when it would overflow the preview pane (small screens).
         int swatchSize = 9;
+        int lineH = swatchSize + 6;
         int textOffsetY = swatchSize - this.font.lineHeight + 1; // align text bottom to swatch bottom
         int[] counts = new int[ShiftData.ORDINAL_COLORS.length];
         for (int v : shifts) {
             if (v >= 0 && v < counts.length) counts[v]++;
         }
-        summaryHitY = sumY - 2;
         summaryHitH = swatchSize + 4;
+        int rightBound = gridX + gridActualW;
         int sx = gridX;
+        int sy = gridY + CELL_H + 10;
         for (int i = 0; i < counts.length; i++) {
             String label = Component.translatable(ShiftData.ORDINAL_TO_KEY[i]).getString() + " " + counts[i] + "h";
             int entryW = swatchSize + 3 + this.font.width(label);
+            if (sx != gridX && sx + entryW > rightBound) { // wrap
+                sx = gridX;
+                sy += lineH;
+            }
+            int hitY = sy - 2;
             boolean active = shiftPaintOrdinal == i;
             if (active) {
-                g.fill(sx - 2, summaryHitY, sx + entryW + 2, summaryHitY + summaryHitH, 0xFFFFFFFF);
-                g.fill(sx - 1, summaryHitY + 1, sx + entryW + 1, summaryHitY + summaryHitH - 1, 0xFF000000);
+                g.fill(sx - 2, hitY, sx + entryW + 2, hitY + summaryHitH, 0xFFFFFFFF);
+                g.fill(sx - 1, hitY + 1, sx + entryW + 1, hitY + summaryHitH - 1, 0xFF000000);
             }
-            g.fill(sx, sumY, sx + swatchSize, sumY + swatchSize, ShiftData.ORDINAL_COLORS[i]);
-            g.drawString(this.font, label, sx + swatchSize + 3, sumY + textOffsetY,
+            g.fill(sx, sy, sx + swatchSize, sy + swatchSize, ShiftData.ORDINAL_COLORS[i]);
+            g.drawString(this.font, label, sx + swatchSize + 3, sy + textOffsetY,
                     active ? 0xFFFFFFFF : 0xFFE0E0E0, false);
             summaryHitX[i] = sx;
             summaryHitW[i] = entryW;
+            summaryHitY[i] = hitY;
             sx += entryW + 12;
         }
 
-        // Assigned-to count
+        // Assigned-to count (below the last summary row)
         int used = countAssignedTo(t);
-        int usedY = sumY + this.font.lineHeight + 6;
+        int usedY = sy + this.font.lineHeight + 6;
         String usedText = used == 0
                 ? Component.translatable("townstead.shift.template.used_none").getString()
                 : Component.translatable("townstead.shift.template.used_by", used).getString();
@@ -894,7 +920,9 @@ public class ShiftManagerScreen extends Screen {
         int rightX = mx + 10 + listW + 10;
         int rightW = mw - (rightX - mx) - 10;
         int btnRowY = my + mh - 30;
-        int btnW = (rightW - 16) / 2;
+        // Two-column rows span exactly the same left/right edges as the
+        // full-width button above them (gap of 4 between the two columns).
+        int btnW = (rightW - 12) / 2;
 
         modalLoadButton = Button.builder(
                 Component.translatable("townstead.shift.template.load"),
@@ -1188,6 +1216,15 @@ public class ShiftManagerScreen extends Screen {
         }
 
         if (button == 0) {
+            // Hour-label header: with an activity selected, clicking an hour
+            // column sets that hour for ALL villagers in the list.
+            if (shiftPaintOrdinal >= 0 && mouseY >= gridTop - 12 && mouseY < gridTop
+                    && mouseX >= gridLeft && mouseX < gridLeft + ShiftData.HOURS_PER_DAY * cellW) {
+                int h = (int) ((mouseX - gridLeft) / cellW);
+                fillHourForAll(h, shiftPaintOrdinal);
+                return true;
+            }
+
             // Clicks outside the grid viewport ignore row hit-testing
             boolean inViewport = mouseY >= gridTop && mouseY <= gridBottom;
 
@@ -1288,10 +1325,10 @@ public class ShiftManagerScreen extends Screen {
                 return true;
             }
             // Click on a summary entry toggles paint mode (like the bottom legend)
-            if (button == 0 && summaryHitH > 0
-                    && mouseY >= summaryHitY && mouseY <= summaryHitY + summaryHitH) {
+            if (button == 0 && summaryHitH > 0) {
                 for (int i = 0; i < summaryHitX.length; i++) {
-                    if (mouseX >= summaryHitX[i] && mouseX <= summaryHitX[i] + summaryHitW[i]) {
+                    if (mouseX >= summaryHitX[i] && mouseX <= summaryHitX[i] + summaryHitW[i]
+                            && mouseY >= summaryHitY[i] && mouseY <= summaryHitY[i] + summaryHitH) {
                         shiftPaintOrdinal = (shiftPaintOrdinal == i) ? -1 : i;
                         return true;
                     }
@@ -1580,6 +1617,14 @@ public class ShiftManagerScreen extends Screen {
             applyToSelectedButton.setMessage(
                     Component.translatable("townstead.shift.apply_to_selected", n));
         }
+        // Weekly toolbar enablement. A "target" is any checked villager, or the
+        // focused (highlighted) one as a fallback.
+        boolean hasTarget = !selectedVillagers.isEmpty() || focusedVillager != null;
+        if (weeklyCopyButton != null) weeklyCopyButton.active = focusedVillager != null;
+        if (weeklyPasteButton != null) weeklyPasteButton.active = weeklyWeekClipboard != null && hasTarget;
+        // Save a plan from the focused villager's week; apply a plan to targets.
+        if (weeklySavePlanButton != null) weeklySavePlanButton.active = focusedVillager != null;
+        if (weeklyApplyPlanButton != null) weeklyApplyPlanButton.active = hasTarget;
     }
 
     private Chronotype chronotypeOf(UUID uuid) {
@@ -1603,6 +1648,25 @@ public class ShiftManagerScreen extends Screen {
             PacketDistributor.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(defaults, defaults.length)));
             //?} else if forge {
             /*TownsteadNetwork.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(defaults, defaults.length)));
+            *///?}
+        }
+    }
+
+    /** Set the given hour to {@code ordinal} for every villager in the filtered list. */
+    private void fillHourForAll(int hour, int ordinal) {
+        if (hour < 0 || hour >= ShiftData.HOURS_PER_DAY) return;
+        if (ordinal < 0 || ordinal >= ShiftData.ORDINAL_TO_ACTIVITY.length) return;
+        for (UUID uuid : filteredUuids) {
+            int[] existing = shiftEdits.containsKey(uuid) ? shiftEdits.get(uuid) : ShiftClientStore.get(uuid);
+            if (existing[hour] == ordinal) continue;
+            int[] shifts = Arrays.copyOf(existing, existing.length);
+            shifts[hour] = ordinal;
+            shiftEdits.put(uuid, shifts);
+            shiftVillagerTemplateIds.put(uuid, "");
+            //? if neoforge {
+            PacketDistributor.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(shifts, shifts.length)));
+            //?} else if forge {
+            /*TownsteadNetwork.sendToServer(new ShiftSetPayload(uuid, Arrays.copyOf(shifts, shifts.length)));
             *///?}
         }
     }
@@ -1724,10 +1788,6 @@ public class ShiftManagerScreen extends Screen {
 
         int today = todayDow();
 
-        // Hint line (just below the tab strip)
-        g.drawCenteredString(this.font, Component.translatable("townstead.shift.weekly.hint"),
-                width / 2, tabsY + TAB_H + 1, 0xFF9AA0A8);
-
         // Weekday header labels (own band, directly above the grid)
         int labelY = gridTop - this.font.lineHeight - 1;
         for (int d = 0; d < weekCols; d++) {
@@ -1759,14 +1819,33 @@ public class ShiftManagerScreen extends Screen {
         }
         g.disableScissor();
 
-        // Today column highlight (on top, translucent tint + visible border)
+        // Today column: clean tinted band with side lines, from the weekday
+        // label down through the rows (no knob).
         if (today >= 0 && today < weekCols) {
             int tx = gridLeft + today * weekCellW;
-            g.fill(tx, gridTop, tx + weekCellW - 1, gridBottom, TODAY_COL_TINT);
-            g.fill(tx, gridTop, tx + 1, gridBottom, TODAY_COL_BORDER);
-            g.fill(tx + weekCellW - 2, gridTop, tx + weekCellW - 1, gridBottom, TODAY_COL_BORDER);
-            // little marker above the column header
-            g.fill(tx + weekCellW / 2 - 2, gridTop - 3, tx + weekCellW / 2 + 2, gridTop - 1, TODAY_COL_BORDER);
+            int top = labelY - 1;
+            g.fill(tx, top, tx + weekCellW - 1, gridBottom, TODAY_COL_TINT);
+            g.fill(tx, top, tx + 1, gridBottom, TODAY_COL_BORDER);
+            g.fill(tx + weekCellW - 2, top, tx + weekCellW - 1, gridBottom, TODAY_COL_BORDER);
+        }
+
+        // Copy/Paste helper line, centered in the gap between the Copy/Paste
+        // cluster and the Week Plan cluster (skipped if there isn't room).
+        String help;
+        if (weeklyWeekClipboard != null) {
+            int n = selectedVillagers.isEmpty() ? (focusedVillager != null ? 1 : 0) : selectedVillagers.size();
+            help = Component.translatable("townstead.shift.weekly.clipboard", weeklyClipboardName, n).getString();
+        } else if (focusedVillager != null) {
+            help = Component.translatable("townstead.shift.weekly.copy_hint",
+                    shiftVillagerNames.getOrDefault(focusedVillager, "?")).getString();
+        } else {
+            help = Component.translatable("townstead.shift.weekly.copy_none").getString();
+        }
+        int gapStart = EDGE + 2 * 92 + 6 + 8;        // right of the Paste button
+        int gapEnd = width - EDGE - 130 * 2 - 6 - 8; // left of the Save Plan button
+        int textW = this.font.width(help);
+        if (gapEnd - gapStart >= textW) {
+            g.drawString(this.font, help, (gapStart + gapEnd - textW) / 2, legendY + 2, 0xFF9098A2, false);
         }
     }
 
@@ -1994,6 +2073,7 @@ public class ShiftManagerScreen extends Screen {
     private void weeklyCopyWeek() {
         if (focusedVillager == null) return;
         weeklyWeekClipboard = ShiftClientStore.getWeek(focusedVillager);
+        weeklyClipboardName = shiftVillagerNames.getOrDefault(focusedVillager, "?");
     }
 
     /** Paste the copied week onto every checked villager (or the focused one). */
