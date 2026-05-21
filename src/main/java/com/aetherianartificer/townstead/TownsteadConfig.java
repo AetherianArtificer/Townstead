@@ -500,7 +500,7 @@ public final class TownsteadConfig {
         b.translation("townstead.configuration.calendar").push("calendar");
         CALENDAR_PROFILE = b
                 .translation("townstead.configuration.calendar.profile")
-                .comment("Active calendar profile. Use \"auto\" to detect seasonal mods (TFC > Serene Seasons > Ecliptic Seasons > Default).",
+                .comment("Active calendar profile. Use \"auto\" to detect seasonal mods (TFC > Serene Seasons > Ecliptic Seasons > Gregorian).",
                          "Or pin a specific profile by id, e.g., townstead_calendar:default, townstead_calendar:serene, townstead_calendar:tfc, townstead_calendar:ecliptic, or any data-pack-supplied profile.",
                          "Profiles are defined in data packs at data/<ns>/calendar_profile/<name>.json so any pack can add a new one in its own namespace.",
                          "In-game: run /townstead calendar set-profile <id> for tab-completed picking.",

@@ -8,9 +8,8 @@ import net.minecraft.server.MinecraftServer;
  * (compute logic isn't data-pack territory) and bound to a profile via
  * {@code CalendarProfile.typeId}.
  *
- * Implementations may ignore {@code worldDay} (Realtime / Localtime read the
- * system clock instead) but must always return a valid date for the given
- * profile.
+ * Implementations may ignore {@code worldDay} but must always return a valid
+ * date for the given profile.
  */
 public interface CalendarType {
     ResourceLocation id();

@@ -18,18 +18,18 @@
       "short": { "translate": "calendar_profile.townstead_calendar.default.weekday.sunday.short" } }
   ],
   "months": [
-    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.axolen"  } },
-    { "days": 28, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.mautep"  } },
-    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.melitar" } },
-    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.cwynen"  } },
-    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.maizar"  } },
-    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.kamiro"  } },
-    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.renaud"  } },
-    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.heelan"  } },
-    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.ulfar"   } },
-    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.moguan"  } },
-    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.jemar"   } },
-    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.nagari"  } }
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.january"   } },
+    { "days": 28, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.february"  } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.march"     } },
+    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.april"     } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.may"       } },
+    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.june"      } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.july"      } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.august"    } },
+    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.september" } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.october"   } },
+    { "days": 30, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.november"  } },
+    { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.december"  } }
   ],
   "leap_rules": [
     { "when": { "year_mod": 4,   "equals": 0 }, "add_day_to_month":      2 },

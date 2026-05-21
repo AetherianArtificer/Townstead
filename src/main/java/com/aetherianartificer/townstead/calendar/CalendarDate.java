@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
  * except {@code dayOfWeek} which is 0-based (0 = first day of week per profile).
  *
  * {@code season} may be null for profiles that do not model seasons
- * (Localtime, stub profiles).
+ * (e.g. the default Gregorian profile when no seasonal mod is driving it).
  */
 public record CalendarDate(
         int year,

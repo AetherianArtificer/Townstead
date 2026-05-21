@@ -32,7 +32,7 @@ import java.util.Map;
  *   "display_name": { "translate": "calendar_profile.townstead_calendar.default.name" },
  *   "days_per_week": 7,
  *   "months": [
- *     { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.axolen" } },
+ *     { "days": 31, "common_name": { "translate": "calendar_profile.townstead_calendar.default.month.january" } },
  *     ...
  *   ]
  * }
@@ -40,9 +40,9 @@ import java.util.Map;
  *
  * {@code display_name} and {@code common_name} accept any of:
  * <ul>
- *   <li>literal string: {@code "Axolen"}</li>
- *   <li>{@code { "text": "Axolen" }}</li>
- *   <li>{@code { "translate": "calendar_profile.foo.bar.month.axolen" }}</li>
+ *   <li>literal string: {@code "January"}</li>
+ *   <li>{@code { "text": "January" }}</li>
+ *   <li>{@code { "translate": "calendar_profile.foo.bar.month.january" }}</li>
  * </ul>
  *
  * Recommended lang key convention mirrors the profile's resource path so the

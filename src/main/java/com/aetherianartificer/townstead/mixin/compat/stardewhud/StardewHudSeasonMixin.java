@@ -16,8 +16,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * any future seasonal mod Townstead bridges.
  *
  * We only override when {@link CalendarClientStore} has a synced season
- * (i.e., the active profile is mod-bound). For Vanilla/Realtime/Localtime
- * profiles, {@code hasSeason()} is false and Stardew HUD's own cycle
+ * (i.e., the active profile is mod-bound). For non-seasonal profiles (such as
+ * the default Gregorian profile), {@code hasSeason()} is false and Stardew HUD's own cycle
  * continues to drive the icon — preserving its behavior for players who
  * intentionally chose a non-seasonal profile.
  *

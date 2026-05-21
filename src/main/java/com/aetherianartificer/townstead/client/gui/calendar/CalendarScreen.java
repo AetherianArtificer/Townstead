@@ -514,7 +514,7 @@ public class CalendarScreen extends Screen {
     private void renderHoverTooltip(GuiGraphics g, CalendarClientStore.Snapshot snap, int mouseX, int mouseY) {
         if (hoverDay < 0) return;
         List<Component> lines = new ArrayList<>();
-        // Full date: "Monday, Axolen 4, 1234 A.D."
+        // Full date: "Monday, January 4, 1234 A.D."
         Component monthName = monthNameFor(snap, viewMonth - 1);
         int displayYear = viewYear;
         Component yearLabel = Component.empty();

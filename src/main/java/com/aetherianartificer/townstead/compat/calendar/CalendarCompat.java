@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
  * ({@code data/townstead/calendar_profile/*.json}); this class only does the
  * "which id to auto-resolve" decision when the config is set to {@code auto}.
  *
- * Priority: TFC > Serene Seasons > Ecliptic Seasons > Townstead Vanilla.
- * Realtime and Localtime are user-selected only — auto never picks them.
+ * Priority: TFC > Serene Seasons > Ecliptic Seasons > Gregorian (the default,
+ * non-seasonal fallback).
  */
 public final class CalendarCompat {
     public static final String SERENE_MOD_ID = "sereneseasons";
