@@ -39,6 +39,18 @@ public final class TargetReachabilityCache {
         FAILED_UNTIL.remove(key(level, villager, pos));
     }
 
+    public static void purgeExpired(long gameTime) {
+        FAILED_UNTIL.entrySet().removeIf(entry -> entry.getValue() <= gameTime);
+    }
+
+    public static void clearAll() {
+        FAILED_UNTIL.clear();
+    }
+
+    public static int size() {
+        return FAILED_UNTIL.size();
+    }
+
     private static String key(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
         return level.dimension().location() + "|" + villager.getUUID() + "|" + pos.asLong();
     }

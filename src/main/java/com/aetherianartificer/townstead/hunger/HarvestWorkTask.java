@@ -1576,14 +1576,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private void townstead$awardFarmerXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
         if (amount <= 0) return;
         //? if neoforge {
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag hunger = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
         FarmerProgressData.GainResult result = FarmerProgressData.addXp(hunger, amount, gameTime);
         if (result.appliedXp() <= 0) return;
         //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, hunger);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, hunger);
         //?} else {
         /*villager.getPersistentData().put("townstead_hunger", hunger);
         *///?}
@@ -1620,14 +1620,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         blockedReason = reason;
 
         //? if neoforge {
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag hunger = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
         if (HungerData.getFarmBlockedReason(hunger) != reason) {
             HungerData.setFarmBlockedReason(hunger, reason);
             //? if neoforge {
-            villager.setData(Townstead.HUNGER_DATA, hunger);
+            com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, hunger);
             //?} else {
             /*villager.getPersistentData().put("townstead_hunger", hunger);
             *///?}
@@ -1820,7 +1820,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private static boolean townstead$isFatigueGated(VillagerEntityMCA villager) {
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return false;
         //? if neoforge {
-        CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+        CompoundTag fatigue = com.aetherianartificer.townstead.villager.TownsteadVillagerState.fatigue(villager);
         //?} else {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}

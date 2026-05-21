@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.fatigue;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -21,6 +22,22 @@ public final class RestCoordinator {
                 scheduleActivity,
                 FatigueData.getFatigue(fatigue),
                 FatigueData.isCollapsed(fatigue),
+                villager.isSleeping(),
+                villager.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent(),
+                villager.getLastHurtByMob() != null,
+                villager.getBrain().getMemory(MemoryModuleType.HOME).isPresent(),
+                hasValidSleepingBed,
+                guardRole,
+                restOverrideActive
+        );
+    }
+
+    public static RestContext capture(VillagerEntityMCA villager, TownsteadVillager.Needs needs, boolean hasValidSleepingBed, boolean guardRole, Activity scheduleActivity, boolean restOverrideActive) {
+        return new RestContext(
+                TownsteadConfig.isVillagerFatigueEnabled(),
+                scheduleActivity,
+                needs.fatigue(),
+                needs.collapsed(),
                 villager.isSleeping(),
                 villager.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent(),
                 villager.getLastHurtByMob() != null,
@@ -63,6 +80,31 @@ public final class RestCoordinator {
         long previousTarget = RestDebugData.getRestDebugTargetBed(fatigue);
 
         RestDebugData.setRestDebugDecision(fatigue, decision.reason(), decision.blockReason(), targetBed);
+
+        if (!TownsteadConfig.isVillagerSleepDebugEnabled()) return;
+
+        long newTarget = targetBed == null ? Long.MIN_VALUE : targetBed.asLong();
+        if (previousReason.equals(decision.reason().id())
+                && previousBlock.equals(decision.blockReason().id())
+                && previousTarget == newTarget) {
+            return;
+        }
+
+        Townstead.LOGGER.info(
+                "Sleep decision villager={} reason={} block={} target={}",
+                villager.getUUID(),
+                decision.reason().id(),
+                decision.blockReason().id(),
+                targetBed == null ? "-" : targetBed
+        );
+    }
+
+    public static void recordDecision(VillagerEntityMCA villager, TownsteadVillager.Needs needs, RestDecision decision, BlockPos targetBed) {
+        String previousReason = needs.restDebugReasonId();
+        String previousBlock = needs.restDebugBlockId();
+        long previousTarget = needs.restDebugTargetBed();
+
+        needs.setRestDebugDecision(decision.reason(), decision.blockReason(), targetBed);
 
         if (!TownsteadConfig.isVillagerSleepDebugEnabled()) return;
 

@@ -10,6 +10,8 @@ import com.aetherianartificer.townstead.hunger.FoodSafety;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.aetherianartificer.townstead.thirst.VillagerDrinkingManager;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -58,22 +60,18 @@ public final class HungerVillagerTicker {
         }
 
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
-        //? if neoforge {
-        CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
-        //?} else {
-        /*CompoundTag hunger = self.getPersistentData().getCompound("townstead_hunger");
-        *///?}
-        boolean hungerChanged = VillagerEatingManager.tickAndFinalize(self, hunger);
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
+        boolean hungerChanged = VillagerEatingManager.tickAndFinalize(self, needs);
 
         long dayTime = level.getDayTime();
         if (state.lastDayTime < 0) state.lastDayTime = dayTime;
         long dayTimeDelta = Math.max(0, dayTime - state.lastDayTime);
         state.lastDayTime = dayTime;
-        int currentHungerLevel = HungerData.getHunger(hunger);
-        if (HungerData.isEatingMode(hunger)) {
-            if (currentHungerLevel >= HungerData.ADEQUATE_THRESHOLD) HungerData.setEatingMode(hunger, false);
+        int currentHungerLevel = needs.hunger();
+        if (needs.eatingMode()) {
+            if (currentHungerLevel >= HungerData.ADEQUATE_THRESHOLD) needs.setEatingMode(false);
         } else if (currentHungerLevel < HungerData.EMERGENCY_THRESHOLD) {
-            HungerData.setEatingMode(hunger, true);
+            needs.setEatingMode(true);
         }
 
         double dx = self.getX() - state.prevX;
@@ -83,32 +81,26 @@ public final class HungerVillagerTicker {
         state.prevZ = self.getZ();
         if (distSq > 0.0025) {
             float dist = (float) Math.sqrt(distSq);
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + dist * HungerData.EXHAUSTION_MOVEMENT_PER_BLOCK * dayTimeDelta);
+            needs.addHungerExhaustion(dist * HungerData.EXHAUSTION_MOVEMENT_PER_BLOCK * dayTimeDelta);
         }
 
         VillagerBrain<?> brain = self.getVillagerBrain();
         Chore currentJob = brain.getCurrentJob();
         if (brain.isPanicking() || self.getLastHurtByMob() != null) {
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_COMBAT * dayTimeDelta);
+            needs.addHungerExhaustion(HungerData.EXHAUSTION_COMBAT * dayTimeDelta);
         } else if (currentJob != Chore.NONE) {
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_CHORE * dayTimeDelta);
+            needs.addHungerExhaustion(HungerData.EXHAUSTION_CHORE * dayTimeDelta);
         } else if (isGuardPatrolling(self)) {
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_GUARD_PATROL * dayTimeDelta);
+            needs.addHungerExhaustion(HungerData.EXHAUSTION_GUARD_PATROL * dayTimeDelta);
         } else if (!isResting(self)) {
-            HungerData.setExhaustion(hunger, HungerData.getExhaustion(hunger) + HungerData.EXHAUSTION_AWAKE_BASELINE * dayTimeDelta);
+            needs.addHungerExhaustion(HungerData.EXHAUSTION_AWAKE_BASELINE * dayTimeDelta);
         }
 
-        hungerChanged |= HungerData.processExhaustion(hunger);
+        hungerChanged |= needs.processHungerExhaustion();
         // Drowsy/exhausted villagers drain hunger 1.25x faster (shorter interval)
         int passiveInterval = HungerData.PASSIVE_DRAIN_INTERVAL;
         if (TownsteadConfig.isVillagerFatigueEnabled()) {
-            //? if neoforge {
-            CompoundTag fatigueTag = self.getData(Townstead.FATIGUE_DATA);
-            //?} else {
-            /*CompoundTag fatigueTag = self.getPersistentData().getCompound("townstead_fatigue");
-            *///?}
-            int fatigue = FatigueData.getFatigue(fatigueTag);
-            if (fatigue >= FatigueData.DROWSY_THRESHOLD) {
+            if (needs.fatigue() >= FatigueData.DROWSY_THRESHOLD) {
                 passiveInterval = (int)(passiveInterval / FatigueData.DROWSY_HUNGER_MULTIPLIER);
             }
         }
@@ -123,20 +115,20 @@ public final class HungerVillagerTicker {
             int drainIterations = 0;
             while (dayTime - state.lastPassiveDrainDayTime >= passiveInterval && drainIterations < 100) {
                 state.lastPassiveDrainDayTime += passiveInterval;
-                hungerChanged |= HungerData.passiveDrain(hunger);
+                hungerChanged |= needs.passiveHungerDrain();
                 drained = true;
                 drainIterations++;
             }
 
             // Activity-gated eating: check on passive drain interval, guarded by MIN_EAT_INTERVAL
             if (drained) {
-                int h = HungerData.getHunger(hunger);
+                int h = needs.hunger();
                 int threshold = (currentActivity == Activity.IDLE || currentActivity == Activity.MEET)
                         ? HungerData.LUNCH_THRESHOLD
                         : HungerData.EMERGENCY_THRESHOLD;
                 if (h < threshold) {
                     long gameTime = level.getGameTime();
-                    long lastAte = HungerData.getLastAteTime(hunger);
+                    long lastAte = needs.lastAteTime();
                     if ((gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL
                             && !VillagerEatingManager.isEating(self)
                             && !VillagerDrinkingManager.isDrinking(self)) {
@@ -149,10 +141,10 @@ public final class HungerVillagerTicker {
         if (state.lastMoodDayTime < 0) state.lastMoodDayTime = dayTime;
         if (dayTime - state.lastMoodDayTime >= HungerData.MOOD_CHECK_INTERVAL) {
             state.lastMoodDayTime = dayTime;
-            int h = HungerData.getHunger(hunger);
+            int h = needs.hunger();
             HungerData.HungerState moodState = HungerData.getState(h);
             float pressure = HungerData.getMoodPressure(moodState);
-            float drift = HungerData.getMoodDrift(hunger) + pressure;
+            float drift = needs.hungerMoodDrift() + pressure;
             int moodDelta = 0;
             if (drift >= 1f) moodDelta = (int) Math.floor(drift);
             else if (drift <= -1f) moodDelta = (int) Math.ceil(drift);
@@ -161,21 +153,17 @@ public final class HungerVillagerTicker {
                 brain.modifyMoodValue(moodDelta);
                 drift -= moodDelta;
             }
-            HungerData.setMoodDrift(hunger, drift);
+            needs.setHungerMoodDrift(drift);
         }
 
         if (!self.isBaby()) {
-            updateSpeedModifier(self, HungerData.getHunger(hunger));
+            updateSpeedModifier(self, needs.hunger());
         }
-        //? if neoforge {
-        self.setData(Townstead.HUNGER_DATA, hunger);
-        //?} else {
-        /*self.getPersistentData().put("townstead_hunger", hunger);
-        *///?}
 
-        int currentHunger = HungerData.getHunger(hunger);
+        int currentHunger = needs.hunger();
         if (currentHunger != state.lastSyncedHunger || hungerChanged) {
             state.lastSyncedHunger = currentHunger;
+            CompoundTag hunger = needs.hungerTag();
             //? if neoforge {
             PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$hungerSync(self, hunger));
             //?} else if forge {

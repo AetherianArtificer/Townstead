@@ -5,8 +5,9 @@ import com.aetherianartificer.townstead.calendar.CalendarDate;
 import com.aetherianartificer.townstead.calendar.TownsteadCalendar;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplate;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -40,8 +41,8 @@ public final class ShiftScheduleApplier {
     public static void apply(VillagerEntityMCA villager) {
         if (villager.getBrain() == null) return;
 
-        CompoundTag shiftTag = readShiftTag(villager);
-        int[] resolved = resolveTodayShifts(villager, shiftTag);
+        TownsteadVillager.ScheduleState schedule = TownsteadVillagers.get(villager).schedule();
+        int[] resolved = resolveTodayShifts(villager, schedule);
         if (resolved == null) return;
         villager.getBrain().setSchedule(new TownsteadSchedule(resolved));
     }
@@ -51,15 +52,16 @@ public final class ShiftScheduleApplier {
      * today, or {@code null} to mean "no Townstead override — preserve MCA's
      * schedule".
      */
-    private static int[] resolveTodayShifts(VillagerEntityMCA villager, CompoundTag shiftTag) {
-        if (ShiftData.isWeekly(shiftTag)) {
+    private static int[] resolveTodayShifts(VillagerEntityMCA villager, TownsteadVillager.ScheduleState schedule) {
+        if (ShiftData.MODE_WEEKLY.equals(schedule.mode())) {
             MinecraftServer server = villager.level().getServer();
             int dow = 0;
             if (server != null) {
                 CalendarDate today = TownsteadCalendar.today(server);
                 dow = Math.max(0, today.dayOfWeek());
             }
-            String tplId = ShiftData.getWeekDayTemplate(shiftTag, dow);
+            java.util.List<String> weekDays = schedule.weekDayTemplates();
+            String tplId = dow >= 0 && dow < weekDays.size() ? weekDays.get(dow) : "";
             if (server != null && tplId != null && !tplId.isEmpty()) {
                 ResourceLocation rl = tryParse(tplId);
                 if (rl != null) {
@@ -69,11 +71,11 @@ public final class ShiftScheduleApplier {
             }
             // Empty slot or a template that no longer exists: fall back to the
             // daily schedule if one was customized, else leave MCA's alone.
-            return ShiftData.hasCustomShifts(shiftTag) ? ShiftData.getShifts(shiftTag) : null;
+            return schedule.hasCustomShifts() ? schedule.copyShifts() : null;
         }
 
         // Daily mode.
-        return ShiftData.hasCustomShifts(shiftTag) ? ShiftData.getShifts(shiftTag) : null;
+        return schedule.hasCustomShifts() ? schedule.copyShifts() : null;
     }
 
     /**
@@ -88,8 +90,7 @@ public final class ShiftScheduleApplier {
         for (ServerLevel level : server.getAllLevels()) {
             for (Entity entity : level.getAllEntities()) {
                 if (!(entity instanceof VillagerEntityMCA villager)) continue;
-                CompoundTag shiftTag = readShiftTag(villager);
-                if (!ShiftData.isWeekly(shiftTag)) continue;
+                if (!ShiftData.MODE_WEEKLY.equals(TownsteadVillagers.get(villager).schedule().mode())) continue;
                 apply(villager);
             }
         }
@@ -107,14 +108,6 @@ public final class ShiftScheduleApplier {
         int restOrdinal = 3; // REST
         java.util.Arrays.fill(allRest, restOrdinal);
         villager.getBrain().setSchedule(new TownsteadSchedule(allRest));
-    }
-
-    private static CompoundTag readShiftTag(VillagerEntityMCA villager) {
-        //? if neoforge {
-        return villager.getData(Townstead.SHIFT_DATA);
-        //?} else if forge {
-        /*return villager.getPersistentData().getCompound("townstead_shift");
-        *///?}
     }
 
     private static ResourceLocation tryParse(String s) {

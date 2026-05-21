@@ -548,7 +548,7 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
 
     private static boolean onThrottle(VillagerEntityMCA villager, long gameTime) {
         //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag data = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
@@ -558,9 +558,9 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
 
     private static void markThrottle(VillagerEntityMCA villager, long gameTime) {
         //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag data = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         data.putLong("townstead_lastSlaughterTick", gameTime);
-        villager.setData(Townstead.HUNGER_DATA, data);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, data);
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         data.putLong("townstead_lastSlaughterTick", gameTime);
@@ -571,13 +571,13 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
         //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag data = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
         ButcherProgressData.GainResult result = ButcherProgressData.addXp(data, amount, gameTime);
         //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, data);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, data);
         //?} else {
         /*villager.getPersistentData().put("townstead_hunger", data);
         *///?}

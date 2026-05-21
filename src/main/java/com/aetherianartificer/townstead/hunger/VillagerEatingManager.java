@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import net.conczin.mca.entity.VillagerEntityMCA;
 //? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
@@ -95,5 +96,34 @@ public final class VillagerEatingManager {
         FatigueData.applyCoffeeEffect(villager, pending.food());
 
         return HungerData.getHunger(hungerTag) != before;
+    }
+
+    public static boolean tickAndFinalize(VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
+        PendingEat pending = PENDING.get(villager.getId());
+        if (pending == null) return false;
+        if (villager.isUsingItem()) return false;
+
+        boolean completed = villager.level().getGameTime() >= pending.finishTick();
+        if (!completed) {
+            villager.setItemInHand(InteractionHand.MAIN_HAND, pending.food().copy());
+            villager.startUsingItem(InteractionHand.MAIN_HAND);
+            return false;
+        }
+
+        PENDING.remove(villager.getId());
+        villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
+
+        //? if >=1.21 {
+        FoodProperties food = pending.food().get(DataComponents.FOOD);
+        //?} else {
+        /*FoodProperties food = pending.food().getFoodProperties(null);
+        *///?}
+        if (food == null) return false;
+
+        int before = needs.hunger();
+        needs.applyFood(food);
+        needs.setLastAteTime(villager.level().getGameTime());
+        FatigueData.applyCoffeeEffect(villager, pending.food());
+        return needs.hunger() != before;
     }
 }

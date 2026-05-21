@@ -41,6 +41,14 @@ public final class VillageAiBudget {
         return new Snapshot(GRANTED.sum(), THROTTLED.sum());
     }
 
+    public static void clear() {
+        STATE.clear();
+    }
+
+    public static int scopeCount() {
+        return STATE.size();
+    }
+
     private record BudgetKey(String dimensionId, String scope) {}
 
     private static final class BudgetState {

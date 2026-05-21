@@ -276,14 +276,14 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         food.shrink(1);
         caregiver.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         //? if neoforge {
-        CompoundTag childHunger = childTarget.getData(Townstead.HUNGER_DATA);
+        CompoundTag childHunger = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(childTarget);
         //?} else {
         /*CompoundTag childHunger = childTarget.getPersistentData().getCompound("townstead_hunger");
         *///?}
         HungerData.applyFood(childHunger, props);
         HungerData.setLastAteTime(childHunger, level.getGameTime());
         //? if neoforge {
-        childTarget.setData(Townstead.HUNGER_DATA, childHunger);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(childTarget, childHunger);
         //?} else {
         /*childTarget.getPersistentData().put("townstead_hunger", childHunger);
         *///?}
@@ -304,7 +304,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         // Exhausted villagers cannot volunteer as caregivers
         if (TownsteadConfig.isVillagerFatigueEnabled()) {
             //? if neoforge {
-            CompoundTag fatigueTag = caregiver.getData(Townstead.FATIGUE_DATA);
+            CompoundTag fatigueTag = com.aetherianartificer.townstead.villager.TownsteadVillagerState.fatigue(caregiver);
             //?} else {
             /*CompoundTag fatigueTag = caregiver.getPersistentData().getCompound("townstead_fatigue");
             *///?}
@@ -361,7 +361,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
             return false;
         }
         //? if neoforge {
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag hunger = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}

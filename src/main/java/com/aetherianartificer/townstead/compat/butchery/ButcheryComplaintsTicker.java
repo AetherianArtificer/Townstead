@@ -91,7 +91,7 @@ public final class ButcheryComplaintsTicker {
     private static boolean checkShopPromotion(VillagerEntityMCA villager, ServerLevel level) {
         int currentTier = ButcheryShopScanner.tierFor(level, villager);
         //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag data = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
@@ -102,7 +102,7 @@ public final class ButcheryComplaintsTicker {
         if (lastTier < 0) {
             data.putInt(LAST_SEEN_TIER_KEY, currentTier);
             //? if neoforge {
-            villager.setData(Townstead.HUNGER_DATA, data);
+            com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, data);
             //?} else {
             /*villager.getPersistentData().put("townstead_hunger", data);
             *///?}
@@ -114,7 +114,7 @@ public final class ButcheryComplaintsTicker {
             if (currentTier != lastTier) {
                 data.putInt(LAST_SEEN_TIER_KEY, currentTier);
                 //? if neoforge {
-                villager.setData(Townstead.HUNGER_DATA, data);
+                com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, data);
                 //?} else {
                 /*villager.getPersistentData().put("townstead_hunger", data);
                 *///?}
@@ -124,7 +124,7 @@ public final class ButcheryComplaintsTicker {
 
         data.putInt(LAST_SEEN_TIER_KEY, currentTier);
         //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, data);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, data);
         //?} else {
         /*villager.getPersistentData().put("townstead_hunger", data);
         *///?}
@@ -249,7 +249,7 @@ public final class ButcheryComplaintsTicker {
 
     private static boolean onThrottle(VillagerEntityMCA villager, long gameTime) {
         //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag data = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
@@ -259,9 +259,9 @@ public final class ButcheryComplaintsTicker {
 
     private static void markComplained(VillagerEntityMCA villager, long gameTime) {
         //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag data = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         data.putLong(LAST_COMPLAINT_KEY, gameTime);
-        villager.setData(Townstead.HUNGER_DATA, data);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, data);
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         data.putLong(LAST_COMPLAINT_KEY, gameTime);

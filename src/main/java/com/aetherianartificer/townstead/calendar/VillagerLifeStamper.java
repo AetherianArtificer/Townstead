@@ -1,7 +1,8 @@
 package com.aetherianartificer.townstead.calendar;
 
-import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.calendar.CalendarCompat;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.AgeState;
 import net.conczin.mca.server.world.data.Village;
@@ -20,8 +21,7 @@ import java.util.Random;
  * villager / village gets the same fabricated date across reloads up until
  * the first save persists it.
  *
- * Cost on the steady-state path is one {@code CompoundTag.getBoolean} per
- * villager per tick. Called from {@link com.aetherianartificer.townstead.tick.VillagerServerTickDispatcher}.
+ * Called from {@link com.aetherianartificer.townstead.tick.VillagerServerTickDispatcher}.
  */
 public final class VillagerLifeStamper {
 
@@ -32,11 +32,9 @@ public final class VillagerLifeStamper {
         MinecraftServer server = serverLevel.getServer();
         if (server == null) return;
 
-        CompoundTag life = readLife(villager);
-        boolean wasStamped = LifeData.hasBirth(life);
-        if (!wasStamped) {
-            stampDob(villager, server, life);
-            writeLife(villager, life);
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        if (!state.life().hasBirth()) {
+            state.life().setBirth(fabricateDob(villager, server), false);
             broadcastFreshStamp(villager);
         }
 
@@ -56,7 +54,7 @@ public final class VillagerLifeStamper {
 
     // ---- DOB fabrication ----
 
-    private static void stampDob(VillagerEntityMCA villager, MinecraftServer server, CompoundTag life) {
+    private static long fabricateDob(VillagerEntityMCA villager, MinecraftServer server) {
         long today = TownsteadCalendar.worldDay(server);
         CalendarProfile profile = TownsteadCalendar.activeProfile(server);
         int dpy = profile != null && profile.daysPerYear() > 0 ? profile.daysPerYear() : 360;
@@ -77,7 +75,7 @@ public final class VillagerLifeStamper {
         int yearsAgo = yearsAgoMin + rng.nextInt(Math.max(1, yearsAgoMax - yearsAgoMin + 1));
         int dayInYear = rng.nextInt(dpy);
         long birthDay = today - (long) yearsAgo * dpy - dayInYear;
-        LifeData.setBirth(life, birthDay, false);
+        return birthDay;
     }
 
     private static AgeState safeAgeState(VillagerEntityMCA villager) {
@@ -143,29 +141,11 @@ public final class VillagerLifeStamper {
         }
     }
 
-    // ---- Forge/NeoForge access split ----
-
-    private static CompoundTag readLife(VillagerEntityMCA villager) {
-        //? if neoforge {
-        return villager.getData(Townstead.LIFE_DATA);
-        //?} else {
-        /*return villager.getPersistentData().getCompound("townstead_life");
-        *///?}
-    }
-
-    private static void writeLife(VillagerEntityMCA villager, CompoundTag life) {
-        //? if neoforge {
-        villager.setData(Townstead.LIFE_DATA, life);
-        //?} else {
-        /*villager.getPersistentData().put("townstead_life", life);
-        *///?}
-    }
-
     // ---- Helper for the calendar API ----
 
     @Nullable
     public static CompoundTag peek(VillagerEntityMCA villager) {
-        CompoundTag t = readLife(villager);
-        return LifeData.hasBirth(t) ? t : null;
+        TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        return life.hasBirth() ? life.toTag() : null;
     }
 }

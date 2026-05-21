@@ -8,6 +8,8 @@ import com.aetherianartificer.townstead.reaction.ReactionLockTracker;
 import com.aetherianartificer.townstead.reaction.ReactionRegistry;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Memories;
 import net.conczin.mca.entity.ai.relationship.AgeState;
@@ -18,7 +20,6 @@ import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -29,7 +30,6 @@ import net.minecraft.world.entity.monster.AbstractIllager;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LightLayer;
@@ -185,41 +185,32 @@ public final class ContextResolver {
     }
 
     /**
-     * Townstead state-system tags driven by hunger / thirst / fatigue
-     * attachments, the villager's vanilla profession + job-site memory,
+     * Townstead state-system tags driven by typed hunger / thirst / fatigue
+     * state, the villager's vanilla profession + job-site memory,
      * and MCA's pregnancy state. Each block is wrapped in a try/catch
      * so a missing or malformed attachment skips the tag rather than
      * killing the whole stride.
      */
     private static void addProfessionStateTags(VillagerEntityMCA villager, Set<String> tags) {
         try {
-            CompoundTag hunger = readHungerTag(villager);
-            if (hunger != null) {
-                int h = HungerData.getHunger(hunger);
-                if (h < HungerData.EMERGENCY_THRESHOLD) tags.add("hungry");
-                else if (h < HungerData.ADEQUATE_THRESHOLD) tags.add("peckish");
-            }
+            int h = TownsteadVillagers.get(villager).needs().hunger();
+            if (h < HungerData.EMERGENCY_THRESHOLD) tags.add("hungry");
+            else if (h < HungerData.ADEQUATE_THRESHOLD) tags.add("peckish");
         } catch (Throwable ignored) {}
 
         try {
             if (ThirstBridgeResolver.isActive()) {
-                CompoundTag thirst = readThirstTag(villager);
-                if (thirst != null) {
-                    int t = ThirstData.getThirst(thirst);
-                    if (t <= ThirstData.EMERGENCY_THRESHOLD) tags.add("thirsty");
-                    else if (t < ThirstData.ADEQUATE_THRESHOLD) tags.add("parched");
-                }
+                int t = TownsteadVillagers.get(villager).needs().thirst();
+                if (t <= ThirstData.EMERGENCY_THRESHOLD) tags.add("thirsty");
+                else if (t < ThirstData.ADEQUATE_THRESHOLD) tags.add("parched");
             }
         } catch (Throwable ignored) {}
 
         try {
-            CompoundTag fatigue = readFatigueTag(villager);
-            if (fatigue != null) {
-                int f = FatigueData.getFatigue(fatigue);
-                if (f >= FatigueData.COLLAPSE_THRESHOLD) tags.add("exhausted");
-                else if (f >= FatigueData.DROWSY_THRESHOLD) tags.add("drowsy");
-                else if (f >= FatigueData.TIRED_THRESHOLD) tags.add("tired");
-            }
+            int f = TownsteadVillagers.get(villager).needs().fatigue();
+            if (f >= FatigueData.COLLAPSE_THRESHOLD) tags.add("exhausted");
+            else if (f >= FatigueData.DROWSY_THRESHOLD) tags.add("drowsy");
+            else if (f >= FatigueData.TIRED_THRESHOLD) tags.add("tired");
         } catch (Throwable ignored) {}
 
         try {
@@ -240,30 +231,6 @@ public final class ContextResolver {
                 tags.add("pregnant");
             }
         } catch (Throwable ignored) {}
-    }
-
-    private static CompoundTag readHungerTag(VillagerEntityMCA villager) {
-        //? if neoforge {
-        return villager.getData(Townstead.HUNGER_DATA);
-        //?} else if forge {
-        /*return villager.getPersistentData().getCompound("townstead:hunger_data");
-        *///?}
-    }
-
-    private static CompoundTag readThirstTag(VillagerEntityMCA villager) {
-        //? if neoforge {
-        return villager.getData(Townstead.THIRST_DATA);
-        //?} else if forge {
-        /*return villager.getPersistentData().getCompound("townstead:thirst_data");
-        *///?}
-    }
-
-    private static CompoundTag readFatigueTag(VillagerEntityMCA villager) {
-        //? if neoforge {
-        return villager.getData(Townstead.FATIGUE_DATA);
-        //?} else if forge {
-        /*return villager.getPersistentData().getCompound("townstead:fatigue_data");
-        *///?}
     }
 
     /**
@@ -441,10 +408,7 @@ public final class ContextResolver {
         int tickHour = (int) ((level.getDayTime() % 24000L) / 1000L);
         for (VillagerEntityMCA neighbor : cache.nearbyVillagers()) {
             if (working && resting && meeting) break;
-            CompoundTag shiftTag = readShiftTag(neighbor);
-            if (shiftTag == null) continue;
-            Activity activity = ShiftData.getActivityAt(shiftTag, tickHour);
-            int ord = ShiftData.activityToOrdinal(activity);
+            int ord = TownsteadVillagers.get(neighbor).schedule().currentShift(tickHour);
             switch (ord) {
                 case ShiftData.ORD_WORK -> working = true;
                 case ShiftData.ORD_REST -> resting = true;
@@ -495,14 +459,12 @@ public final class ContextResolver {
     }
 
     private static void addShiftTags(ServerLevel level, VillagerEntityMCA villager, Set<String> tags) {
-        CompoundTag shiftTag = readShiftTag(villager);
-        if (shiftTag == null) return;
         int tickHour = (int) ((level.getDayTime() % 24000L) / 1000L);
-        Activity activity = ShiftData.getActivityAt(shiftTag, tickHour);
-        int ord = ShiftData.activityToOrdinal(activity);
+        TownsteadVillager.ScheduleState schedule = TownsteadVillagers.get(villager).schedule();
+        int ord = schedule.currentShift(tickHour);
         String name = shiftName(ord);
         if (name != null) tags.add("on_shift:" + name);
-        if (ShiftData.hasCustomShifts(shiftTag) && !ShiftData.isDefault(shiftTag)) {
+        if (schedule.hasCustomShifts() && !java.util.Arrays.equals(schedule.copyShifts(), ShiftData.getVanillaDefault())) {
             tags.add("shift_custom");
         }
     }
@@ -515,18 +477,6 @@ public final class ContextResolver {
             case ShiftData.ORD_REST -> "rest";
             default -> null;
         };
-    }
-
-    private static CompoundTag readShiftTag(VillagerEntityMCA villager) {
-        try {
-            //? if neoforge {
-            return villager.getData(Townstead.SHIFT_DATA);
-            //?} else if forge {
-            /*return villager.getPersistentData().getCompound("townstead_shift");
-            *///?}
-        } catch (Throwable ignored) {
-            return null;
-        }
     }
 
     private static void addEnvironmentTags(ServerLevel level, BlockPos pos, Set<String> tags) {

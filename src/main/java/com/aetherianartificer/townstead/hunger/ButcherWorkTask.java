@@ -335,13 +335,13 @@ public class ButcherWorkTask extends ProducerWorkTask {
         // to unlock, so the data layer stays dormant.
         if (!ButcheryCompat.isLoaded()) return;
         //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag data = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
         ButcherProgressData.addXp(data, 1, gameTime);
         //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, data);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, data);
         //?} else {
         /*villager.getPersistentData().put("townstead_hunger", data);
         *///?}
@@ -556,7 +556,7 @@ public class ButcherWorkTask extends ProducerWorkTask {
 
     private void syncBlockedReasonIfChanged(ServerLevel level, VillagerEntityMCA villager, HungerData.ButcherBlockedReason mapped) {
         //? if neoforge {
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag hunger = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
@@ -564,7 +564,7 @@ public class ButcherWorkTask extends ProducerWorkTask {
 
         HungerData.setButcherBlockedReason(hunger, mapped);
         //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, hunger);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, hunger);
         //?} else {
         /*villager.getPersistentData().put("townstead_hunger", hunger);
         *///?}

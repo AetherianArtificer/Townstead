@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.village;
 
-import com.aetherianartificer.townstead.Townstead;
-import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.template.Chronotype;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.AgeState;
 import net.conczin.mca.entity.ai.relationship.Personality;
@@ -43,19 +43,15 @@ public final class VillageResidentRoster {
                 personality = villager.getVillagerBrain().getPersonality();
             } catch (Throwable ignored) {}
             Chronotype chronotype = Chronotype.fromPersonality(personality);
-            //? if neoforge {
-            net.minecraft.nbt.CompoundTag shiftTag = villager.getData(Townstead.SHIFT_DATA);
-            //?} else if forge {
-            /*net.minecraft.nbt.CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
-            *///?}
+            TownsteadVillager state = TownsteadVillagers.get(villager);
             residents.add(new VillageResidentClientStore.Resident(
                     villager.getUUID(),
                     villager.getDisplayName().getString(),
                     professionKey(villager.getVillagerData().getProfession()),
                     villager.getVillagerData().getLevel(),
-                    ShiftData.getShifts(shiftTag),
+                    state.schedule().copyShifts(),
                     chronotype.name(),
-                    ShiftData.getTemplateId(shiftTag)
+                    state.schedule().templateId()
             ));
         }
         residents.sort(Comparator.comparing(VillageResidentClientStore.Resident::name, String.CASE_INSENSITIVE_ORDER));

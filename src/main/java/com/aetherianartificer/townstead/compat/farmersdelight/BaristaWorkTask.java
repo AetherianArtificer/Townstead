@@ -256,13 +256,13 @@ public class BaristaWorkTask extends ProducerWorkTask {
         if (activeRecipe == null) return;
         int xp = Math.max(1, activeRecipe.tier());
         //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag data = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
         CookProgressData.addXp(data, xp, level.getGameTime());
         //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, data);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, data);
         //?} else {
         /*villager.getPersistentData().put("townstead_hunger", data);
         *///?}

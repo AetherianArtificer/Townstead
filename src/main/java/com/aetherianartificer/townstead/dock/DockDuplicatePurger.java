@@ -1,9 +1,11 @@
 package com.aetherianartificer.townstead.dock;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.village.TownsteadVillageSavedData;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +29,7 @@ public final class DockDuplicatePurger {
 
     private DockDuplicatePurger() {}
 
-    public static void purgeAll(Village village) {
+    public static void purgeAll(ServerLevel level, Village village) {
         Map<Integer, Building> all = village.getBuildings();
         List<Map.Entry<Integer, Building>> docks = new ArrayList<>();
         for (Map.Entry<Integer, Building> e : all.entrySet()) {
@@ -65,6 +67,9 @@ public final class DockDuplicatePurger {
             for (Map.Entry<Integer, Building> e : group) {
                 if (e.getKey() == keeperId) continue;
                 village.removeBuilding(e.getKey());
+                if (level != null) {
+                    TownsteadVillageSavedData.get(level.getServer()).removeBuilding(level, village.getId(), e.getKey());
+                }
                 totalRemoved++;
             }
             Building keeper = all.get(keeperId);

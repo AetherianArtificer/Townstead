@@ -25,6 +25,8 @@ import net.minecraft.nbt.Tag;
  * the live {@code Village} snapshot used by the running server.</p>
  */
 public final class VillageSnapshotSlimmer {
+    private static final int MAX_PLACEHOLDER_POSITIONS_PER_BLOCK = 8;
+
     private VillageSnapshotSlimmer() {}
 
     public static CompoundTag slim(CompoundTag villageData) {
@@ -39,7 +41,8 @@ public final class VillageSnapshotSlimmer {
             for (String blockKey : blocks2.getAllKeys()) {
                 ListTag positions = blocks2.getList(blockKey, Tag.TAG_COMPOUND);
                 ListTag empties = new ListTag();
-                for (int j = 0; j < positions.size(); j++) {
+                int count = Math.min(positions.size(), MAX_PLACEHOLDER_POSITIONS_PER_BLOCK);
+                for (int j = 0; j < count; j++) {
                     empties.add(new CompoundTag());
                 }
                 trimmed.put(blockKey, empties);

@@ -1,11 +1,11 @@
 package com.aetherianartificer.townstead.tick;
 
-import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public final class BaristaTradeBackfillTicker {
-    private static final String KEY_TRADES_POPULATED_LEVEL = "townsteadBaristaTradesLevel";
+    private static final String TRADE_BACKFILL_KEY = "barista";
     private static final int CHECK_INTERVAL_TICKS = 200;
     private static final int TRADES_PER_LEVEL = 2;
 
@@ -28,12 +28,8 @@ public final class BaristaTradeBackfillTicker {
         if (!FarmersDelightBaristaAssignment.isBaristaProfession(villager.getVillagerData().getProfession())) return;
 
         int currentLevel = villager.getVillagerData().getLevel();
-        //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
-        //?} else {
-        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
-        *///?}
-        int populatedLevel = data.getInt(KEY_TRADES_POPULATED_LEVEL);
+        TownsteadVillager.ProfessionMemory memory = TownsteadVillagers.get(villager).professionMemory();
+        int populatedLevel = memory.tradeBackfillLevel(TRADE_BACKFILL_KEY);
 
         if (populatedLevel >= currentLevel) return;
 
@@ -58,12 +54,7 @@ public final class BaristaTradeBackfillTicker {
             }
         }
 
-        data.putInt(KEY_TRADES_POPULATED_LEVEL, currentLevel);
-        //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, data);
-        //?} else {
-        /*villager.getPersistentData().put("townstead_hunger", data);
-        *///?}
+        memory.setTradeBackfillLevel(TRADE_BACKFILL_KEY, currentLevel);
     }
 
     private static boolean hasMatchingOffer(MerchantOffers offers, MerchantOffer candidate) {

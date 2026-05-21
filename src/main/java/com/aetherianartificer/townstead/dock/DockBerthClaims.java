@@ -82,6 +82,25 @@ public final class DockBerthClaims {
         }
     }
 
+    public static void purgeExpired(long gameTime) {
+        synchronized (LOCK) {
+            BERTHS.entrySet().removeIf(entry -> {
+                pruneExpired(entry.getValue(), gameTime);
+                return entry.getValue().isEmpty();
+            });
+        }
+    }
+
+    public static void clearAll() {
+        synchronized (LOCK) {
+            BERTHS.clear();
+        }
+    }
+
+    public static int claimGroupCount() {
+        return BERTHS.size();
+    }
+
     private static void pruneExpired(List<Claim> list, long now) {
         Iterator<Claim> it = list.iterator();
         while (it.hasNext()) {

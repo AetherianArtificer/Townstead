@@ -26,7 +26,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
-final class NearbyStorageIndex {
+public final class NearbyStorageIndex {
     private static final long SNAPSHOT_TTL_TICKS = 10L;
     private static final int REFRESH_BUDGET_PER_TICK = 4;
     private static final Map<SnapshotKey, Snapshot> SNAPSHOTS = new ConcurrentHashMap<>();
@@ -51,6 +51,18 @@ final class NearbyStorageIndex {
     static void invalidate(ServerLevel level) {
         String dimensionId = level.dimension().location().toString();
         SNAPSHOTS.keySet().removeIf(key -> key.dimensionId().equals(dimensionId));
+    }
+
+    public static void purgeExpired(long gameTime) {
+        SNAPSHOTS.entrySet().removeIf(entry -> !entry.getValue().validAt(gameTime));
+    }
+
+    public static void clearAll() {
+        SNAPSHOTS.clear();
+    }
+
+    public static int snapshotCount() {
+        return SNAPSHOTS.size();
     }
 
     static void invalidate(ServerLevel level, BlockPos changedPos) {

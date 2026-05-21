@@ -57,6 +57,24 @@ public final class DockLocationIndex {
         return out;
     }
 
+    public static void clear() {
+        BY_VILLAGE.clear();
+    }
+
+    public static int villageCount() {
+        int total = 0;
+        for (Map<Integer, List<Dock>> byVillage : BY_VILLAGE.values()) total += byVillage.size();
+        return total;
+    }
+
+    public static int dockCount() {
+        int total = 0;
+        for (Map<Integer, List<Dock>> byVillage : BY_VILLAGE.values()) {
+            for (List<Dock> docks : byVillage.values()) total += docks.size();
+        }
+        return total;
+    }
+
     private static Dock dockFromBuilding(Building building) {
         if (building == null) return null;
         String type = building.getType();

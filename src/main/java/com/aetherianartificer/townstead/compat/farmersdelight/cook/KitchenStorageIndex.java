@@ -54,6 +54,18 @@ public final class KitchenStorageIndex {
         VillageStorageIndex.invalidate(level);
     }
 
+    public static void purgeExpired(long gameTime) {
+        SNAPSHOTS.entrySet().removeIf(entry -> !entry.getValue().validAt(gameTime));
+    }
+
+    public static void clearAll() {
+        SNAPSHOTS.clear();
+    }
+
+    public static int snapshotCount() {
+        return SNAPSHOTS.size();
+    }
+
     static void invalidate(ServerLevel level, BlockPos changedPos) {
         if (level == null || changedPos == null) return;
         VillageStorageIndex.invalidate(level, changedPos);

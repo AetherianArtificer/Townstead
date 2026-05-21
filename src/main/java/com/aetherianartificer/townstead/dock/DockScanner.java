@@ -178,6 +178,18 @@ public final class DockScanner {
         CACHE.keySet().removeIf(k -> k.dim.equals(dim) && k.posKey == posKey);
     }
 
+    public static void purgeExpired(long gameTime) {
+        CACHE.entrySet().removeIf(entry -> entry.getValue().expiresAt <= gameTime);
+    }
+
+    public static void clearAll() {
+        CACHE.clear();
+    }
+
+    public static int cacheSize() {
+        return CACHE.size();
+    }
+
     private static @Nullable Dock scanUncached(ServerLevel level, BlockPos near, int horizontalRadius, boolean diagnostics) {
         Set<Long> planks = new HashSet<>();
         for (BlockPos p : BlockPos.betweenClosed(

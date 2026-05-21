@@ -71,7 +71,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         // Don't interrupt an existing walk target unless critically thirsty
         if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isPresent()) {
             //? if neoforge {
-            int quickCheck = ThirstData.getThirst(villager.getData(Townstead.THIRST_DATA));
+            int quickCheck = ThirstData.getThirst(com.aetherianartificer.townstead.villager.TownsteadVillagerState.thirst(villager));
             //?} else {
             /*int quickCheck = ThirstData.getThirst(villager.getPersistentData().getCompound("townstead_thirst"));
             *///?}
@@ -85,7 +85,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         if (!VillagerSearchCadence.isDue(level, villager, SEARCH_CADENCE_KEY)) return false;
 
         //? if neoforge {
-        CompoundTag thirst = villager.getData(Townstead.THIRST_DATA);
+        CompoundTag thirst = com.aetherianartificer.townstead.villager.TownsteadVillagerState.thirst(villager);
         //?} else {
         /*CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
         *///?}
@@ -181,7 +181,7 @@ public class SeekDrinkTask extends Behavior<VillagerEntityMCA> {
         targetContainerSlot = null;
         ConsumableTargetClaims.releaseAll(villager.getUUID());
         //? if neoforge {
-        CompoundTag thirst = villager.getData(Townstead.THIRST_DATA);
+        CompoundTag thirst = com.aetherianartificer.townstead.villager.TownsteadVillagerState.thirst(villager);
         //?} else {
         /*CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
         *///?}

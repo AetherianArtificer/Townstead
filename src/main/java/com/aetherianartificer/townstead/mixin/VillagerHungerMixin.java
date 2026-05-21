@@ -22,6 +22,8 @@ import com.aetherianartificer.townstead.hunger.SeekFoodTask;
 import com.aetherianartificer.townstead.thirst.HydrateYoungTask;
 import com.aetherianartificer.townstead.thirst.SeekDrinkTask;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableList;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Dynamic;
@@ -144,29 +146,18 @@ public abstract class VillagerHungerMixin extends Villager {
         // Writing here would overwrite any editor changes the player made.
         if (self.level().isClientSide) return;
 
-        //? if neoforge {
-        CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
-        CompoundTag fatigue = self.getData(Townstead.FATIGUE_DATA);
-        //?} else {
-        /*CompoundTag hunger = self.getPersistentData().getCompound("townstead_hunger");
-        CompoundTag fatigue = self.getPersistentData().getCompound("townstead_fatigue");
-        *///?}
-        nbt.putInt(HungerData.EDITOR_KEY_HUNGER, HungerData.getHunger(hunger));
-        nbt.putFloat(HungerData.EDITOR_KEY_SATURATION, HungerData.getSaturation(hunger));
-        nbt.putFloat(HungerData.EDITOR_KEY_EXHAUSTION, HungerData.getExhaustion(hunger));
-        nbt.putInt(FatigueData.EDITOR_KEY_FATIGUE, FatigueData.getFatigue(fatigue));
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
+        nbt.putInt(HungerData.EDITOR_KEY_HUNGER, needs.hunger());
+        nbt.putFloat(HungerData.EDITOR_KEY_SATURATION, needs.saturation());
+        nbt.putFloat(HungerData.EDITOR_KEY_EXHAUSTION, needs.hungerExhaustion());
+        nbt.putInt(FatigueData.EDITOR_KEY_FATIGUE, needs.fatigue());
         nbt.putByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE,
-                ButcherSettings.getSlaughterOverride(hunger).code);
+                TownsteadVillagers.get(self).professionMemory().slaughterOverride().code);
 
         if (ThirstBridgeResolver.isActive()) {
-            //? if neoforge {
-            CompoundTag thirst = self.getData(Townstead.THIRST_DATA);
-            //?} else {
-            /*CompoundTag thirst = self.getPersistentData().getCompound("townstead_thirst");
-            *///?}
-            nbt.putInt(ThirstData.EDITOR_KEY_THIRST, ThirstData.getThirst(thirst));
-            nbt.putInt(ThirstData.EDITOR_KEY_QUENCHED, ThirstData.getQuenched(thirst));
-            nbt.putFloat(ThirstData.EDITOR_KEY_EXHAUSTION, ThirstData.getExhaustion(thirst));
+            nbt.putInt(ThirstData.EDITOR_KEY_THIRST, needs.thirst());
+            nbt.putInt(ThirstData.EDITOR_KEY_QUENCHED, needs.quenched());
+            nbt.putFloat(ThirstData.EDITOR_KEY_EXHAUSTION, needs.thirstExhaustion());
         }
     }
 
@@ -183,39 +174,21 @@ public abstract class VillagerHungerMixin extends Villager {
         boolean hasThirst = bridgeActive && nbtHasThirst;
         boolean hasFatigue = nbt.contains(FatigueData.EDITOR_KEY_FATIGUE);
         if (!hasHunger && !hasThirst && !hasFatigue) return;
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
 
         if (hasHunger) {
-            //? if neoforge {
-            CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
-            //?} else {
-            /*CompoundTag hunger = self.getPersistentData().getCompound("townstead_hunger");
-            *///?}
-            HungerData.setHunger(hunger, nbt.getInt(HungerData.EDITOR_KEY_HUNGER));
-            HungerData.setSaturation(hunger, nbt.getFloat(HungerData.EDITOR_KEY_SATURATION));
-            HungerData.setExhaustion(hunger, nbt.getFloat(HungerData.EDITOR_KEY_EXHAUSTION));
-            //? if neoforge {
-            self.setData(Townstead.HUNGER_DATA, hunger);
-            //?} else {
-            /*self.getPersistentData().put("townstead_hunger", hunger);
-            *///?}
+            needs.setHunger(nbt.getInt(HungerData.EDITOR_KEY_HUNGER));
+            needs.setSaturation(nbt.getFloat(HungerData.EDITOR_KEY_SATURATION));
+            needs.setHungerExhaustion(nbt.getFloat(HungerData.EDITOR_KEY_EXHAUSTION));
         }
 
         if (hasThirst) {
             int newThirst = nbt.getInt(ThirstData.EDITOR_KEY_THIRST);
-            //? if neoforge {
-            CompoundTag thirst = self.getData(Townstead.THIRST_DATA);
-            //?} else {
-            /*CompoundTag thirst = self.getPersistentData().getCompound("townstead_thirst");
-            *///?}
-            ThirstData.setThirst(thirst, newThirst);
-            ThirstData.setQuenched(thirst, nbt.getInt(ThirstData.EDITOR_KEY_QUENCHED));
-            ThirstData.setExhaustion(thirst, nbt.getFloat(ThirstData.EDITOR_KEY_EXHAUSTION));
-            //? if neoforge {
-            self.setData(Townstead.THIRST_DATA, thirst);
-            //?} else {
-            /*self.getPersistentData().put("townstead_thirst", thirst);
-            *///?}
+            needs.setThirst(newThirst);
+            needs.setQuenched(nbt.getInt(ThirstData.EDITOR_KEY_QUENCHED));
+            needs.setThirstExhaustion(nbt.getFloat(ThirstData.EDITOR_KEY_EXHAUSTION));
             if (!self.level().isClientSide) {
+                CompoundTag thirst = needs.thirstTag();
                 //? if neoforge {
                 PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
                 //?} else if forge {
@@ -226,25 +199,16 @@ public abstract class VillagerHungerMixin extends Villager {
 
         if (hasFatigue) {
             int newFatigue = nbt.getInt(FatigueData.EDITOR_KEY_FATIGUE);
-            //? if neoforge {
-            CompoundTag fatigue = self.getData(Townstead.FATIGUE_DATA);
-            //?} else {
-            /*CompoundTag fatigue = self.getPersistentData().getCompound("townstead_fatigue");
-            *///?}
-            FatigueData.setFatigue(fatigue, newFatigue);
+            needs.setFatigue(newFatigue);
             // Clear collapse/gate if below thresholds
             if (newFatigue < FatigueData.COLLAPSE_THRESHOLD) {
-                FatigueData.setCollapsed(fatigue, false);
+                needs.setCollapsed(false);
             }
             if (newFatigue < FatigueData.RECOVERY_GATE) {
-                FatigueData.setGated(fatigue, false);
+                needs.setGated(false);
             }
-            //? if neoforge {
-            self.setData(Townstead.FATIGUE_DATA, fatigue);
-            //?} else {
-            /*self.getPersistentData().put("townstead_fatigue", fatigue);
-            *///?}
             if (!self.level().isClientSide) {
+                CompoundTag fatigue = needs.fatigueTag();
                 //? if neoforge {
                 PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
                 //?} else if forge {
@@ -254,19 +218,9 @@ public abstract class VillagerHungerMixin extends Villager {
         }
 
         if (nbt.contains(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE)) {
-            //? if neoforge {
-            CompoundTag hunger = self.getData(Townstead.HUNGER_DATA);
-            //?} else {
-            /*CompoundTag hunger = self.getPersistentData().getCompound("townstead_hunger");
-            *///?}
-            ButcherSettings.setSlaughterOverride(hunger,
+            TownsteadVillagers.get(self).professionMemory().setSlaughterOverride(
                     ButcherSettings.SlaughterOverride.fromCode(
                             nbt.getByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE)));
-            //? if neoforge {
-            self.setData(Townstead.HUNGER_DATA, hunger);
-            //?} else {
-            /*self.getPersistentData().put("townstead_hunger", hunger);
-            *///?}
         }
     }
 }

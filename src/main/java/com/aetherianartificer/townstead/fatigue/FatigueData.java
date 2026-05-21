@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.fatigue;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -296,18 +297,7 @@ public final class FatigueData {
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return;
         if (!isEnergyRestoring(consumed)) return;
 
-        //? if neoforge {
-        CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
-        //?} else {
-        /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
-        *///?}
-        int current = getFatigue(fatigue);
-        setFatigue(fatigue, Math.max(0, current - ENERGY_RESTORE_AMOUNT));
-        //? if neoforge {
-        villager.setData(Townstead.FATIGUE_DATA, fatigue);
-        //?} else {
-        /*villager.getPersistentData().put("townstead_fatigue", fatigue);
-        *///?}
+        TownsteadVillagers.get(villager).needs().restoreEnergy(ENERGY_RESTORE_AMOUNT);
     }
 
     /**

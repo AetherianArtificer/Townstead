@@ -361,7 +361,7 @@ public abstract class VillagerEditorMixin extends Screen {
             return ThirstClientStore.getThirst(villager.getId());
         }
         //? if neoforge {
-        return ThirstData.getThirst(villager.getData(Townstead.THIRST_DATA));
+        return com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs().thirst();
         //?} else if forge {
         /*return ThirstData.getThirst(villager.getPersistentData().getCompound("townstead_thirst"));
         *///?}
@@ -405,7 +405,7 @@ public abstract class VillagerEditorMixin extends Screen {
             return FatigueClientStore.getFatigue(villager.getId());
         }
         //? if neoforge {
-        return FatigueData.getFatigue(villager.getData(Townstead.FATIGUE_DATA));
+        return com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs().fatigue();
         //?} else if forge {
         /*return FatigueData.getFatigue(villager.getPersistentData().getCompound("townstead_fatigue"));
         *///?}

@@ -251,14 +251,14 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
 
         caregiver.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         //? if neoforge {
-        CompoundTag childThirst = childTarget.getData(Townstead.THIRST_DATA);
+        CompoundTag childThirst = com.aetherianartificer.townstead.villager.TownsteadVillagerState.thirst(childTarget);
         //?} else {
         /*CompoundTag childThirst = childTarget.getPersistentData().getCompound("townstead_thirst");
         *///?}
         ThirstData.applyDrink(childThirst, hydration, quenched, bridge.extraHydrationToQuenched());
         ThirstData.setLastDrankTime(childThirst, level.getGameTime());
         //? if neoforge {
-        childTarget.setData(Townstead.THIRST_DATA, childThirst);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveThirst(childTarget, childThirst);
         //?} else {
         /*childTarget.getPersistentData().put("townstead_thirst", childThirst);
         *///?}
@@ -286,7 +286,7 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
         }
         if (TownsteadConfig.isVillagerFatigueEnabled()) {
             //? if neoforge {
-            CompoundTag fatigueTag = caregiver.getData(Townstead.FATIGUE_DATA);
+            CompoundTag fatigueTag = com.aetherianartificer.townstead.villager.TownsteadVillagerState.fatigue(caregiver);
             //?} else {
             /*CompoundTag fatigueTag = caregiver.getPersistentData().getCompound("townstead_fatigue");
             *///?}
@@ -343,7 +343,7 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
             return false;
         }
         //? if neoforge {
-        CompoundTag thirst = villager.getData(Townstead.THIRST_DATA);
+        CompoundTag thirst = com.aetherianartificer.townstead.villager.TownsteadVillagerState.thirst(villager);
         //?} else {
         /*CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
         *///?}

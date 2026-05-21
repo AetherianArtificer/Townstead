@@ -12,6 +12,8 @@ import com.aetherianartificer.townstead.fatigue.RestDebugData;
 import com.aetherianartificer.townstead.fatigue.RestDecision;
 import com.aetherianartificer.townstead.fatigue.SleepReason;
 import com.aetherianartificer.townstead.shift.template.Chronotype;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.Personality;
@@ -56,18 +58,14 @@ public final class FatigueVillagerTicker {
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return;
         if (self.isBaby()) return;
 
-        //? if neoforge {
-        CompoundTag fatigue = self.getData(Townstead.FATIGUE_DATA);
-        //?} else {
-        /*CompoundTag fatigue = self.getPersistentData().getCompound("townstead_fatigue");
-        *///?}
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
 
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
-        int oldFatigue = FatigueData.getFatigue(fatigue);
+        int oldFatigue = needs.fatigue();
         boolean changed = false;
 
         // --- Collapse enforcement (every tick) ---
-        if (FatigueData.isCollapsed(fatigue)) {
+        if (needs.collapsed()) {
             // Collapsed villagers cannot move — erase movement memories
             self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
             self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
@@ -104,7 +102,7 @@ public final class FatigueVillagerTicker {
             state.lastFatigueDayTime += FatigueData.ACCUMULATION_INTERVAL;
             fatigueIterations++;
 
-            if (FatigueData.isCollapsed(fatigue)) {
+            if (needs.collapsed()) {
                 // Collapsed recovery runs on gameTime below so it's robust to
                 // doDaylightCycle=false and time-scaling mods. Skip here.
                 continue;
@@ -114,9 +112,9 @@ public final class FatigueVillagerTicker {
                 float recovery = inSleepWindow
                         ? FatigueData.RECOVERY_BED_ALIGNED
                         : FatigueData.RECOVERY_BED_MISALIGNED;
-                applyFatigueDelta(fatigue, state, recovery);
-            } else if (activity == Activity.REST && !FatigueData.isRestOverrideActive(fatigue)) {
-                applyFatigueDelta(fatigue, state, FatigueData.RECOVERY_REST_NO_BED);
+                applyFatigueDelta(needs, state, recovery);
+            } else if (activity == Activity.REST && !needs.restOverrideActive()) {
+                applyFatigueDelta(needs, state, FatigueData.RECOVERY_REST_NO_BED);
             } else {
                 float rate;
                 if (activity == Activity.WORK) {
@@ -136,41 +134,41 @@ public final class FatigueVillagerTicker {
                 } else {
                     rate *= misalignedMult;
                 }
-                applyFatigueDelta(fatigue, state, rate);
+                applyFatigueDelta(needs, state, rate);
             }
         }
 
         // --- Collapsed recovery on gameTime (independent of dayTime) ---
         long gameTime = level.getGameTime();
         int collapsedIterations = 0;
-        if (FatigueData.isCollapsed(fatigue)) {
+        if (needs.collapsed()) {
             if (state.lastCollapsedGameTime < 0) state.lastCollapsedGameTime = gameTime;
             while (gameTime - state.lastCollapsedGameTime >= FatigueData.COLLAPSED_GAMETIME_INTERVAL
                     && collapsedIterations < 100) {
                 state.lastCollapsedGameTime += FatigueData.COLLAPSED_GAMETIME_INTERVAL;
                 collapsedIterations++;
-                applyFatigueDelta(fatigue, state, FatigueData.RECOVERY_COLLAPSED);
+                applyFatigueDelta(needs, state, FatigueData.RECOVERY_COLLAPSED);
                 FatigueData.tryAutoDrinkCoffee(self);
-                if (!FatigueData.isCollapsed(fatigue)) break;
+                if (!needs.collapsed()) break;
             }
         } else {
             state.lastCollapsedGameTime = gameTime;
         }
 
         if (fatigueIterations > 0 || collapsedIterations > 0) {
-            changed = FatigueData.getFatigue(fatigue) != oldFatigue;
+            changed = needs.fatigue() != oldFatigue;
         }
 
         // --- Collapse / gate / auto-coffee (runs after interval processing) ---
         if (changed || fatigueIterations > 0 || collapsedIterations > 0) {
-            int currentFatigue = FatigueData.getFatigue(fatigue);
+            int currentFatigue = needs.fatigue();
             int collapseThreshold = FatigueData.COLLAPSE_THRESHOLD;
             int recoveryGate = FatigueData.RECOVERY_GATE;
 
             // --- Safety: clear stale collapse if fatigue is below threshold ---
-            if (FatigueData.isCollapsed(fatigue) && currentFatigue < collapseThreshold) {
-                FatigueData.setCollapsed(fatigue, false);
-                FatigueData.setGated(fatigue, false);
+            if (needs.collapsed() && currentFatigue < collapseThreshold) {
+                needs.setCollapsed(false);
+                needs.setGated(false);
                 changed = true;
                 if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
                     self.sendChatToAllAround("dialogue.chat.energy.recovered/"
@@ -179,9 +177,9 @@ public final class FatigueVillagerTicker {
             }
 
             // --- Collapse check ---
-            if (currentFatigue >= collapseThreshold && !self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
-                FatigueData.setCollapsed(fatigue, true);
-                FatigueData.setGated(fatigue, true);
+            if (currentFatigue >= collapseThreshold && !self.isSleeping() && !needs.collapsed()) {
+                needs.setCollapsed(true);
+                needs.setGated(true);
                 changed = true;
                 if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
                     self.sendChatToAllAround("dialogue.chat.energy.collapsed/"
@@ -190,10 +188,10 @@ public final class FatigueVillagerTicker {
             }
 
             // --- Gate release check ---
-            if (currentFatigue < recoveryGate && FatigueData.isGated(fatigue)) {
-                boolean wasCollapsedHere = FatigueData.isCollapsed(fatigue);
-                FatigueData.setGated(fatigue, false);
-                FatigueData.setCollapsed(fatigue, false);
+            if (currentFatigue < recoveryGate && needs.gated()) {
+                boolean wasCollapsedHere = needs.collapsed();
+                needs.setGated(false);
+                needs.setCollapsed(false);
                 changed = true;
                 if (wasCollapsedHere && TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
                     self.sendChatToAllAround("dialogue.chat.energy.recovered/"
@@ -202,7 +200,7 @@ public final class FatigueVillagerTicker {
             }
 
             // --- Auto-drink coffee when drowsy or worse ---
-            currentFatigue = FatigueData.getFatigue(fatigue);
+            currentFatigue = needs.fatigue();
             if (currentFatigue >= FatigueData.DROWSY_THRESHOLD) {
                 if (FatigueData.tryAutoDrinkCoffee(self)) {
                     changed = true;
@@ -211,16 +209,16 @@ public final class FatigueVillagerTicker {
         }
 
         // --- Fatigue schedule override (before rest decision so wake check sees correct schedule) ---
-        boolean overrideActive = FatigueData.isRestOverrideActive(fatigue);
+        boolean overrideActive = needs.restOverrideActive();
         Activity naturalScheduleActivity = currentScheduleActivity(self, overrideActive ? state.preOverrideSchedule : null);
         RestDecision naturalRestDecision = RestCoordinator.decide(
-                RestCoordinator.capture(self, fatigue, hasValidSleepingBed(self), false, naturalScheduleActivity, false)
+                RestCoordinator.capture(self, needs, hasValidSleepingBed(self), false, naturalScheduleActivity, false)
         );
         if (naturalRestDecision.shouldOverrideScheduleToRest()) {
             if (!overrideActive) {
                 state.preOverrideSchedule = self.getBrain().getSchedule();
                 com.aetherianartificer.townstead.shift.ShiftScheduleApplier.overrideToRest(self);
-                FatigueData.setRestOverride(fatigue, true, SleepReason.FATIGUE_REST);
+                needs.setRestOverride(true, SleepReason.FATIGUE_REST);
             }
         } else if (overrideActive && !self.isSleeping()) {
             // Restore the pre-override schedule first, then let apply() overwrite
@@ -232,7 +230,7 @@ public final class FatigueVillagerTicker {
                 state.preOverrideSchedule = null;
             }
             com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(self);
-            FatigueData.setRestOverride(fatigue, false, SleepReason.NONE);
+            needs.setRestOverride(false, SleepReason.NONE);
         }
 
         // --- Rest decisions (after schedule restore so wake check sees correct schedule) ---
@@ -240,18 +238,18 @@ public final class FatigueVillagerTicker {
                 ? currentScheduleActivity(self, state.preOverrideSchedule)
                 : currentScheduleActivity(self);
         RestDecision restDecision = RestCoordinator.decide(
-                RestCoordinator.capture(self, fatigue, hasValidSleepingBed(self), false, decisionScheduleActivity, overrideActive)
+                RestCoordinator.capture(self, needs, hasValidSleepingBed(self), false, decisionScheduleActivity, overrideActive)
         );
-        RestCoordinator.recordDecision(self, fatigue, restDecision, null);
+        RestCoordinator.recordDecision(self, needs, restDecision, null);
 
         // Sleeping villagers should not keep executing stale movement orders.
-        if (self.isSleeping() && !FatigueData.isCollapsed(fatigue)) {
+        if (self.isSleeping() && !needs.collapsed()) {
             self.getSleepingPos().ifPresent(pos ->
                     EmergencyBedClaims.renew(level, self.getUUID(), pos, level.getGameTime() + 200L));
             if (restDecision.shouldWake()) {
                 EmergencyBedClaims.releaseAll(level, self.getUUID());
                 self.stopSleeping();
-                restoreHomeAfterEmergencySleep(self, fatigue);
+                restoreHomeAfterEmergencySleep(self, needs);
             }
             self.getNavigation().stop();
             self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
@@ -262,18 +260,18 @@ public final class FatigueVillagerTicker {
         // If the villager is NOT sleeping but has a persisted emergency bed,
         // the sleep was interrupted (death, chunk unload, etc.). Restore the
         // original HOME memory so MCA's village assignment isn't corrupted.
-        if (!self.isSleeping() && FatigueData.hasEmergencyBed(fatigue)) {
-            restoreHomeAfterEmergencySleep(self, fatigue);
+        if (!self.isSleeping() && needs.hasEmergencyBed()) {
+            restoreHomeAfterEmergencySleep(self, needs);
         }
 
         // --- Mood drift (dayTime-based) ---
         if (state.lastMoodDayTime < 0) state.lastMoodDayTime = dayTime;
         if (dayTime - state.lastMoodDayTime >= FatigueData.MOOD_CHECK_INTERVAL) {
             state.lastMoodDayTime = dayTime;
-            int f = FatigueData.getFatigue(fatigue);
+            int f = needs.fatigue();
             FatigueData.FatigueState fatigueState = FatigueData.getState(f);
             float pressure = FatigueData.getMoodPressure(fatigueState);
-            float drift = FatigueData.getMoodDrift(fatigue) + pressure;
+            float drift = needs.fatigueMoodDrift() + pressure;
             int moodDelta = 0;
             if (drift >= 1f) moodDelta = (int) Math.floor(drift);
             else if (drift <= -1f) moodDelta = (int) Math.ceil(drift);
@@ -282,25 +280,19 @@ public final class FatigueVillagerTicker {
                 self.getVillagerBrain().modifyMoodValue(moodDelta);
                 drift -= moodDelta;
             }
-            FatigueData.setMoodDrift(fatigue, drift);
+            needs.setFatigueMoodDrift(drift);
         }
 
         // --- Speed modifier ---
-        updateSpeedModifier(self, FatigueData.getFatigue(fatigue), state);
-
-        // --- Persist ---
-        //? if neoforge {
-        self.setData(Townstead.FATIGUE_DATA, fatigue);
-        //?} else {
-        /*self.getPersistentData().put("townstead_fatigue", fatigue);
-        *///?}
+        updateSpeedModifier(self, needs.fatigue(), state);
 
         // --- Sync ---
-        int currentFatigue = FatigueData.getFatigue(fatigue);
-        boolean currentCollapsed = FatigueData.isCollapsed(fatigue);
+        int currentFatigue = needs.fatigue();
+        boolean currentCollapsed = needs.collapsed();
         if (currentFatigue != state.lastSyncedFatigue || currentCollapsed != state.lastSyncedCollapsed) {
             state.lastSyncedFatigue = currentFatigue;
             state.lastSyncedCollapsed = currentCollapsed;
+            CompoundTag fatigue = needs.fatigueTag();
             //? if neoforge {
             PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
             //?} else if forge {
@@ -310,7 +302,7 @@ public final class FatigueVillagerTicker {
 
         // --- Cleanup ---
         if (!self.isAlive() || self.isRemoved()) {
-            restoreHomeAfterEmergencySleep(self, fatigue);
+            restoreHomeAfterEmergencySleep(self, needs);
             EmergencyBedClaims.releaseAll(level, self.getUUID());
             STATE.remove(self.getId());
         }
@@ -345,7 +337,7 @@ public final class FatigueVillagerTicker {
      * Small deltas (e.g. -0.15) accumulate across intervals until they
      * cross a whole-point threshold, preventing rounding to zero.
      */
-    private static void applyFatigueDelta(CompoundTag fatigue, TickState state, float delta) {
+    private static void applyFatigueDelta(TownsteadVillager.Needs needs, TickState state, float delta) {
         state.fatigueResidue += delta;
         int wholeDelta;
         if (state.fatigueResidue >= 1f) {
@@ -356,9 +348,7 @@ public final class FatigueVillagerTicker {
             return;
         }
         state.fatigueResidue -= wholeDelta;
-        int current = FatigueData.getFatigue(fatigue);
-        int newValue = Math.max(0, Math.min(current + wholeDelta, FatigueData.MAX_FATIGUE));
-        FatigueData.setFatigue(fatigue, newValue);
+        needs.addFatigue(wholeDelta);
     }
 
     private static Activity currentScheduleActivity(VillagerEntityMCA self) {
@@ -390,20 +380,20 @@ public final class FatigueVillagerTicker {
      * MCA owns bed occupancy — stopSleeping() already handles clearing
      * BedBlock.OCCUPIED, so we only need to fix the HOME pointer.
      */
-    private static void restoreHomeAfterEmergencySleep(VillagerEntityMCA self, CompoundTag fatigue) {
-        if (!FatigueData.hasEmergencyBed(fatigue)) return;
-        if (FatigueData.hasSavedHome(fatigue)) {
-            if (FatigueData.wasPreviouslyHomeless(fatigue)) {
+    private static void restoreHomeAfterEmergencySleep(VillagerEntityMCA self, TownsteadVillager.Needs needs) {
+        if (!needs.hasEmergencyBed()) return;
+        if (needs.hasSavedHome()) {
+            if (needs.wasPreviouslyHomeless()) {
                 self.getBrain().eraseMemory(MemoryModuleType.HOME);
             } else {
-                net.minecraft.core.GlobalPos savedHome = FatigueData.getSavedHome(fatigue);
+                net.minecraft.core.GlobalPos savedHome = needs.savedHome();
                 if (savedHome != null) {
                     self.getBrain().setMemory(MemoryModuleType.HOME, savedHome);
                 }
             }
-            FatigueData.clearSavedHome(fatigue);
+            needs.clearSavedHome();
         }
-        FatigueData.clearEmergencyBed(fatigue);
+        needs.clearEmergencyBed();
     }
 
     private static void updateSpeedModifier(VillagerEntityMCA self, int currentFatigue, TickState state) {

@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.enclosure;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.spirit.SpiritReconciler;
+import com.aetherianartificer.townstead.village.TownsteadVillageSavedData;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -58,12 +59,22 @@ public final class EnclosureBuildingSync {
 
         int id = findOverlappingEnclosureId(village, bb).orElseGet(() -> synthIdFor(bb));
         Building existing = village.getBuildings().get(id);
-        boolean purged = purgeOverlappingStaleEnclosures(village, bb, id);
+        boolean purged = purgeOverlappingStaleEnclosures(level, village, bb, id);
         if (existing != null && buildingType.equals(existing.getType()) && !purged) {
             return false;
         }
 
-        CompoundTag nbt = buildingNbt(level, id, buildingType, enclosure);
+        Map<String, List<BlockPos>> enclosureBlocks = collectEnclosureBlocks(level, enclosure);
+        TownsteadVillageSavedData.get(level.getServer()).putBuilding(
+                level,
+                village.getId(),
+                id,
+                new TownsteadVillageSavedData.BuildingOverlay(
+                        "enclosure",
+                        buildingType,
+                        new int[] {bb.minX(), bb.minY(), bb.minZ(), bb.maxX(), bb.maxY(), bb.maxZ()},
+                        toPackedPositions(enclosureBlocks)));
+        CompoundTag nbt = buildingNbt(id, buildingType, enclosure, enclosureBlocks);
         Building building = new Building(nbt);
         village.getBuildings().put(id, building);
         village.calculateDimensions();
@@ -87,7 +98,7 @@ public final class EnclosureBuildingSync {
         return Optional.empty();
     }
 
-    private static boolean purgeOverlappingStaleEnclosures(Village village, BoundingBox bb, int selfId) {
+    private static boolean purgeOverlappingStaleEnclosures(ServerLevel level, Village village, BoundingBox bb, int selfId) {
         List<Integer> toRemove = new ArrayList<>();
         for (Map.Entry<Integer, Building> e : village.getBuildings().entrySet()) {
             Integer otherId = e.getKey();
@@ -97,7 +108,10 @@ public final class EnclosureBuildingSync {
             if (t == null || !EnclosureTypeIndex.isEnclosureType(t)) continue;
             if (boundsIntersect(other, bb)) toRemove.add(otherId);
         }
-        for (int rid : toRemove) village.removeBuilding(rid);
+        for (int rid : toRemove) {
+            village.removeBuilding(rid);
+            TownsteadVillageSavedData.get(level.getServer()).removeBuilding(level, village.getId(), rid);
+        }
         return !toRemove.isEmpty();
     }
 
@@ -109,7 +123,7 @@ public final class EnclosureBuildingSync {
                 && op0.getZ() <= bb.maxZ() && op1.getZ() >= bb.minZ();
     }
 
-    private static CompoundTag buildingNbt(ServerLevel level, int id, String type, Enclosure enclosure) {
+    private static CompoundTag buildingNbt(int id, String type, Enclosure enclosure, Map<String, List<BlockPos>> enclosureBlocks) {
         BoundingBox bb = enclosure.bounds();
         CompoundTag v = new CompoundTag();
         v.putInt("id", id);
@@ -126,7 +140,7 @@ public final class EnclosureBuildingSync {
         v.putBoolean("isTypeForced", true);
         v.putString("type", type);
         v.putBoolean("strictScan", false);
-        v.put("blocks2", collectEnclosureBlocksNbt(level, enclosure));
+        v.put("blocks2", compactBlocksNbt(enclosureBlocks));
         return v;
     }
 
@@ -137,7 +151,7 @@ public final class EnclosureBuildingSync {
      * MCA's {@code validateBlocks} prunes entries as the player breaks them
      * and eventually returns the building to {@code TOO_SMALL}.
      */
-    private static CompoundTag collectEnclosureBlocksNbt(ServerLevel level, Enclosure enclosure) {
+    private static Map<String, List<BlockPos>> collectEnclosureBlocks(ServerLevel level, Enclosure enclosure) {
         Map<String, List<BlockPos>> byId = new HashMap<>();
         for (BlockPos p : enclosure.perimeter()) {
             BlockState s = level.getBlockState(p);
@@ -159,10 +173,20 @@ public final class EnclosureBuildingSync {
                 byId.computeIfAbsent(key.toString(), k -> new ArrayList<>()).add(q.immutable());
             }
         }
+        return byId;
+    }
+
+    /**
+     * Keep MCA's synthetic building payload small; full geometry lives in
+     * TownsteadVillageSavedData.
+     */
+    private static CompoundTag compactBlocksNbt(Map<String, List<BlockPos>> byId) {
         CompoundTag blocks2 = new CompoundTag();
         for (Map.Entry<String, List<BlockPos>> entry : byId.entrySet()) {
             ListTag list = new ListTag();
+            int emitted = 0;
             for (BlockPos pos : entry.getValue()) {
+                if (emitted++ >= 8) break;
                 CompoundTag posTag = new CompoundTag();
                 posTag.putInt("x", pos.getX());
                 posTag.putInt("y", pos.getY());
@@ -172,6 +196,18 @@ public final class EnclosureBuildingSync {
             blocks2.put(entry.getKey(), list);
         }
         return blocks2;
+    }
+
+    private static Map<String, long[]> toPackedPositions(Map<String, List<BlockPos>> byId) {
+        Map<String, long[]> packed = new HashMap<>();
+        for (Map.Entry<String, List<BlockPos>> entry : byId.entrySet()) {
+            long[] values = new long[entry.getValue().size()];
+            for (int i = 0; i < entry.getValue().size(); i++) {
+                values[i] = entry.getValue().get(i).asLong();
+            }
+            packed.put(entry.getKey(), values);
+        }
+        return packed;
     }
 
     private static int synthIdFor(BoundingBox bb) {

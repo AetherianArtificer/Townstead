@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
-import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.nbt.CompoundTag;
 
@@ -9,8 +9,8 @@ import net.minecraft.nbt.CompoundTag;
  * slaughter toggle, which lets a player tell a specific butcher whether to
  * kill livestock autonomously without flipping the global config.
  *
- * <p>Stored as a byte in the villager's HUNGER_DATA compound under
- * {@link #SLAUGHTER_OVERRIDE_KEY}. Absent / 0 = follow the global config;
+ * <p>Stored in typed Townstead villager state. The key remains public for
+ * legacy NBT import/export. Absent / 0 = follow the global config;
  * 1 = force on; 2 = force off.
  */
 public final class ButcherSettings {
@@ -61,10 +61,6 @@ public final class ButcherSettings {
     }
 
     public static SlaughterOverride getSlaughterOverride(VillagerEntityMCA villager) {
-        //? if neoforge {
-        return getSlaughterOverride(villager.getData(Townstead.HUNGER_DATA));
-        //?} else {
-        /*return getSlaughterOverride(villager.getPersistentData().getCompound("townstead_hunger"));
-        *///?}
+        return TownsteadVillagers.get(villager).professionMemory().slaughterOverride();
     }
 }

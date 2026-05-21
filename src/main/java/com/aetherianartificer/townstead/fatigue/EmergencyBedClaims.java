@@ -90,6 +90,29 @@ public final class EmergencyBedClaims {
         }
     }
 
+    public static void purgeExpired(long gameTime) {
+        synchronized (CLAIM_LOCK) {
+            CLAIM_UNTIL.entrySet().removeIf(entry -> {
+                if (entry.getValue() > gameTime) return false;
+                UUID owner = CLAIM_OWNER.remove(entry.getKey());
+                if (owner != null) OWNER_TO_KEY.remove(owner, entry.getKey());
+                return true;
+            });
+        }
+    }
+
+    public static void clearAll() {
+        synchronized (CLAIM_LOCK) {
+            CLAIM_OWNER.clear();
+            CLAIM_UNTIL.clear();
+            OWNER_TO_KEY.clear();
+        }
+    }
+
+    public static int size() {
+        return CLAIM_OWNER.size();
+    }
+
     private static void pruneExpired(ServerLevel level, String key) {
         Long until = CLAIM_UNTIL.get(key);
         if (until == null || until > level.getGameTime()) return;

@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.dock;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.spirit.SpiritReconciler;
+import com.aetherianartificer.townstead.village.TownsteadVillageSavedData;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -107,7 +108,7 @@ public final class DockBuildingSync {
         int id = findOverlappingDockId(village, bb).orElseGet(() -> synthIdFor(dock));
 
         Building existing = village.getBuildings().get(id);
-        boolean purged = purgeOverlappingStaleDocks(village, bb, id);
+        boolean purged = purgeOverlappingStaleDocks(level, village, bb, id);
         if (existing != null && desiredType.equals(existing.getType()) && !purged) {
             DockLocationIndex.rebuildVillage(level, village);
             return false;
@@ -123,7 +124,17 @@ public final class DockBuildingSync {
             return false;
         }
 
-        CompoundTag nbt = buildingNbt(level, id, desiredType, dock);
+        Map<String, List<BlockPos>> surfaceBlocks = collectDockSurfaceBlocks(level, bb);
+        TownsteadVillageSavedData.get(level.getServer()).putBuilding(
+                level,
+                village.getId(),
+                id,
+                new TownsteadVillageSavedData.BuildingOverlay(
+                        "dock",
+                        desiredType,
+                        new int[] {bb.minX(), bb.minY(), bb.minZ(), bb.maxX(), bb.maxY(), bb.maxZ()},
+                        toPackedPositions(surfaceBlocks)));
+        CompoundTag nbt = buildingNbt(id, desiredType, dock, surfaceBlocks);
         Building building = new Building(nbt);
         village.getBuildings().put(id, building);
         village.calculateDimensions();
@@ -173,7 +184,7 @@ public final class DockBuildingSync {
      * provides {@code selfId} so we don't remove the entry we're about to
      * update in place.
      */
-    private static boolean purgeOverlappingStaleDocks(Village village, BoundingBox bb, int selfId) {
+    private static boolean purgeOverlappingStaleDocks(ServerLevel level, Village village, BoundingBox bb, int selfId) {
         List<Integer> toRemove = new ArrayList<>();
         for (Map.Entry<Integer, Building> e : village.getBuildings().entrySet()) {
             Integer otherId = e.getKey();
@@ -185,7 +196,10 @@ public final class DockBuildingSync {
                 toRemove.add(otherId);
             }
         }
-        for (int rid : toRemove) village.removeBuilding(rid);
+        for (int rid : toRemove) {
+            village.removeBuilding(rid);
+            TownsteadVillageSavedData.get(level.getServer()).removeBuilding(level, village.getId(), rid);
+        }
         return !toRemove.isEmpty();
     }
 
@@ -197,7 +211,7 @@ public final class DockBuildingSync {
                 && op0.getZ() <= bb.maxZ() && op1.getZ() >= bb.minZ();
     }
 
-    private static CompoundTag buildingNbt(ServerLevel level, int id, String type, Dock dock) {
+    private static CompoundTag buildingNbt(int id, String type, Dock dock, Map<String, List<BlockPos>> surfaceBlocks) {
         BoundingBox bb = dock.bounds();
         CompoundTag v = new CompoundTag();
         v.putInt("id", id);
@@ -214,7 +228,7 @@ public final class DockBuildingSync {
         v.putBoolean("isTypeForced", true);
         v.putString("type", type);
         v.putBoolean("strictScan", false);
-        v.put("blocks2", collectDockSurfaceBlocksNbt(level, bb));
+        v.put("blocks2", compactBlocksNbt(surfaceBlocks));
         return v;
     }
 
@@ -225,7 +239,7 @@ public final class DockBuildingSync {
      * dock blocks are broken (the Building is then invalidated only once ALL
      * its tracked deck blocks are gone).
      */
-    private static CompoundTag collectDockSurfaceBlocksNbt(ServerLevel level, BoundingBox bb) {
+    private static Map<String, List<BlockPos>> collectDockSurfaceBlocks(ServerLevel level, BoundingBox bb) {
         Map<String, List<BlockPos>> byBlockId = new HashMap<>();
         for (BlockPos p : BlockPos.betweenClosed(
                 new BlockPos(bb.minX(), bb.minY(), bb.minZ()),
@@ -235,10 +249,20 @@ public final class DockBuildingSync {
             ResourceLocation key = BuiltInRegistries.BLOCK.getKey(s.getBlock());
             byBlockId.computeIfAbsent(key.toString(), k -> new ArrayList<>()).add(p.immutable());
         }
+        return byBlockId;
+    }
+
+    /**
+     * MCA only needs enough block data to keep the synthetic building shaped
+     * and visible. Full Townstead geometry is stored in TownsteadVillageSavedData.
+     */
+    private static CompoundTag compactBlocksNbt(Map<String, List<BlockPos>> byBlockId) {
         CompoundTag blocks2 = new CompoundTag();
         for (Map.Entry<String, List<BlockPos>> entry : byBlockId.entrySet()) {
             ListTag list = new ListTag();
+            int emitted = 0;
             for (BlockPos pos : entry.getValue()) {
+                if (emitted++ >= 8) break;
                 CompoundTag posTag = new CompoundTag();
                 posTag.putInt("x", pos.getX());
                 posTag.putInt("y", pos.getY());
@@ -248,6 +272,18 @@ public final class DockBuildingSync {
             blocks2.put(entry.getKey(), list);
         }
         return blocks2;
+    }
+
+    private static Map<String, long[]> toPackedPositions(Map<String, List<BlockPos>> byBlockId) {
+        Map<String, long[]> packed = new HashMap<>();
+        for (Map.Entry<String, List<BlockPos>> entry : byBlockId.entrySet()) {
+            long[] values = new long[entry.getValue().size()];
+            for (int i = 0; i < entry.getValue().size(); i++) {
+                values[i] = entry.getValue().get(i).asLong();
+            }
+            packed.put(entry.getKey(), values);
+        }
+        return packed;
     }
 
     /**

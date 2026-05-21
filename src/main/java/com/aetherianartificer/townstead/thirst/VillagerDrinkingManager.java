@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.thirst;
 import com.aetherianartificer.townstead.compat.mca.McaSicknessAdapter;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -108,5 +109,61 @@ public final class VillagerDrinkingManager {
 
         ThirstData.setLastDrankTime(thirstTag, villager.level().getGameTime());
         return ThirstData.getThirst(thirstTag) != beforeThirst || ThirstData.getQuenched(thirstTag) != beforeQuenched;
+    }
+
+    public static boolean tickAndFinalize(VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
+        PendingDrink pending = PENDING.get(villager.getId());
+        if (pending == null) return false;
+        if (villager.isUsingItem()) return false;
+
+        boolean completed = villager.level().getGameTime() >= pending.finishTick();
+        if (!completed) {
+            villager.setItemInHand(InteractionHand.MAIN_HAND, pending.drink().copy());
+            villager.startUsingItem(InteractionHand.MAIN_HAND);
+            return false;
+        }
+
+        PENDING.remove(villager.getId());
+        villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
+
+        ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+        if (bridge == null) return false;
+
+        int beforeThirst = needs.thirst();
+        int beforeQuenched = needs.quenched();
+
+        int hydration = bridge.hydration(pending.drink());
+        int quenched = bridge.quenched(pending.drink());
+        boolean isPurityWater = bridge.isPurityWaterContainer(pending.drink());
+        ThirstCompatBridge.PurityResult purityResult = isPurityWater
+                ? bridge.evaluatePurity(bridge.purity(pending.drink()), villager.getRandom())
+                : new ThirstCompatBridge.PurityResult(true, false, false, -1);
+
+        if (purityResult.sickness()) {
+            villager.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 20 * 5, 0));
+            villager.addEffect(new MobEffectInstance(MobEffects.HUNGER, 20 * 30, 0));
+            McaSicknessAdapter.markSick(villager, false);
+        }
+        if (purityResult.poison()) {
+            villager.addEffect(new MobEffectInstance(MobEffects.POISON, 20 * 10, 0));
+            McaSicknessAdapter.markSick(villager, true);
+        }
+
+        if (purityResult.applyHydration()) {
+            needs.applyDrink(hydration, quenched, bridge.extraHydrationToQuenched());
+        }
+
+        if (pending.shouldDropBottle()) {
+            ItemStack bottle = new ItemStack(Items.GLASS_BOTTLE);
+            ItemStack remainder = villager.getInventory().addItem(bottle);
+            if (!remainder.isEmpty()) {
+                ItemEntity drop = new ItemEntity(villager.level(), villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
+                drop.setPickUpDelay(0);
+                villager.level().addFreshEntity(drop);
+            }
+        }
+
+        needs.setLastDrankTime(villager.level().getGameTime());
+        return needs.thirst() != beforeThirst || needs.quenched() != beforeQuenched;
     }
 }

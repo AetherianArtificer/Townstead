@@ -13,6 +13,8 @@ import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.VillagerDrinkingManager;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -20,7 +22,6 @@ import net.conczin.mca.registry.ProfessionsMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
@@ -89,11 +90,7 @@ public final class ThirstVillagerTicker {
         }
 
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
-        //? if neoforge {
-        CompoundTag thirst = self.getData(Townstead.THIRST_DATA);
-        //?} else {
-        /*CompoundTag thirst = self.getPersistentData().getCompound("townstead_thirst");
-        *///?}
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
         long gameTime = level.getGameTime();
 
         if (gameTime >= state.nextBiomeModifierSampleTick) {
@@ -107,13 +104,13 @@ public final class ThirstVillagerTicker {
         long dayTimeDelta = Math.max(0, dayTime - state.lastDayTime);
         state.lastDayTime = dayTime;
 
-        boolean thirstChanged = VillagerDrinkingManager.tickAndFinalize(self, thirst);
+        boolean thirstChanged = VillagerDrinkingManager.tickAndFinalize(self, needs);
 
-        int currentThirstLevel = ThirstData.getThirst(thirst);
-        if (ThirstData.isDrinkingMode(thirst)) {
-            if (currentThirstLevel >= ThirstData.ADEQUATE_THRESHOLD) ThirstData.setDrinkingMode(thirst, false);
+        int currentThirstLevel = needs.thirst();
+        if (needs.drinkingMode()) {
+            if (currentThirstLevel >= ThirstData.ADEQUATE_THRESHOLD) needs.setDrinkingMode(false);
         } else if (currentThirstLevel <= ThirstData.EMERGENCY_THRESHOLD) {
-            ThirstData.setDrinkingMode(thirst, true);
+            needs.setDrinkingMode(true);
         }
 
         double dx = self.getX() - state.prevX;
@@ -123,22 +120,22 @@ public final class ThirstVillagerTicker {
         state.prevZ = self.getZ();
         if (distSq > 0.0025) {
             float dist = (float) Math.sqrt(distSq);
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (dist * ThirstData.EXHAUSTION_MOVEMENT_PER_BLOCK * biomeModifier * dayTimeDelta));
+            needs.addThirstExhaustion(dist * ThirstData.EXHAUSTION_MOVEMENT_PER_BLOCK * biomeModifier * dayTimeDelta);
         }
 
         VillagerBrain<?> brain = self.getVillagerBrain();
         Chore currentJob = brain.getCurrentJob();
         if (brain.isPanicking() || self.getLastHurtByMob() != null) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_COMBAT * biomeModifier * dayTimeDelta));
+            needs.addThirstExhaustion(ThirstData.EXHAUSTION_COMBAT * biomeModifier * dayTimeDelta);
         } else if (currentJob != Chore.NONE) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_CHORE * biomeModifier * dayTimeDelta));
+            needs.addThirstExhaustion(ThirstData.EXHAUSTION_CHORE * biomeModifier * dayTimeDelta);
         } else if (isGuardPatrolling(self)) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_GUARD_PATROL * biomeModifier * dayTimeDelta));
+            needs.addThirstExhaustion(ThirstData.EXHAUSTION_GUARD_PATROL * biomeModifier * dayTimeDelta);
         } else if (!isResting(self)) {
-            ThirstData.setExhaustion(thirst, ThirstData.getExhaustion(thirst) + (ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier * dayTimeDelta));
+            needs.addThirstExhaustion(ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier * dayTimeDelta);
         }
 
-        thirstChanged |= ThirstData.processExhaustion(thirst);
+        thirstChanged |= needs.processThirstExhaustion();
         if (state.lastPassiveDrainDayTime < 0) state.lastPassiveDrainDayTime = dayTime;
         Activity currentActivity = currentScheduleActivity(self);
         boolean resting = currentActivity == Activity.REST;
@@ -150,19 +147,19 @@ public final class ThirstVillagerTicker {
             int drainIterations = 0;
             while (dayTime - state.lastPassiveDrainDayTime >= ThirstData.PASSIVE_DRAIN_INTERVAL && drainIterations < 100) {
                 state.lastPassiveDrainDayTime += ThirstData.PASSIVE_DRAIN_INTERVAL;
-                thirstChanged |= ThirstData.passiveDrain(thirst);
+                thirstChanged |= needs.passiveThirstDrain();
                 drained = true;
                 drainIterations++;
             }
 
             // Activity-gated drinking: check on passive drain interval, guarded by MIN_DRINK_INTERVAL
             if (drained) {
-                int t = ThirstData.getThirst(thirst);
+                int t = needs.thirst();
                 int threshold = (currentActivity == Activity.IDLE || currentActivity == Activity.MEET)
                         ? ThirstData.LUNCH_THRESHOLD
                         : ThirstData.EMERGENCY_THRESHOLD;
                 if (t < threshold) {
-                    long lastDrank = ThirstData.getLastDrankTime(thirst);
+                    long lastDrank = needs.lastDrankTime();
                     if ((gameTime - lastDrank) >= ThirstData.MIN_DRINK_INTERVAL
                             && !VillagerDrinkingManager.isDrinking(self)
                             && !VillagerEatingManager.isEating(self)) {
@@ -175,10 +172,10 @@ public final class ThirstVillagerTicker {
         if (state.lastMoodDayTime < 0) state.lastMoodDayTime = dayTime;
         if (dayTime - state.lastMoodDayTime >= ThirstData.MOOD_CHECK_INTERVAL) {
             state.lastMoodDayTime = dayTime;
-            int t = ThirstData.getThirst(thirst);
+            int t = needs.thirst();
             ThirstData.ThirstState moodState = ThirstData.getState(t);
             float pressure = ThirstData.getMoodPressure(moodState);
-            float drift = ThirstData.getMoodDrift(thirst) + pressure;
+            float drift = needs.thirstMoodDrift() + pressure;
             int moodDelta = 0;
             if (drift >= 1f) moodDelta = (int) Math.floor(drift);
             else if (drift <= -1f) moodDelta = (int) Math.ceil(drift);
@@ -187,31 +184,27 @@ public final class ThirstVillagerTicker {
                 brain.modifyMoodValue(moodDelta);
                 drift -= moodDelta;
             }
-            ThirstData.setMoodDrift(thirst, drift);
+            needs.setThirstMoodDrift(drift);
         }
 
         // Dehydration no longer deals damage — villagers get speed penalties
         // and mood pressure instead, matching hunger's non-lethal approach.
-        ThirstData.setDamageTimer(thirst, 0);
+        needs.setThirstDamageTimer(0);
 
         if (self.tickCount % 100 == 0) {
             storeEmptyBottles(level, self);
         }
 
         if (!self.isBaby()) {
-            updateSpeedModifier(self, ThirstData.getThirst(thirst));
+            updateSpeedModifier(self, needs.thirst());
         }
-        //? if neoforge {
-        self.setData(Townstead.THIRST_DATA, thirst);
-        //?} else {
-        /*self.getPersistentData().put("townstead_thirst", thirst);
-        *///?}
 
-        int thirstLevel = ThirstData.getThirst(thirst);
-        int quenchedLevel = ThirstData.getQuenched(thirst);
+        int thirstLevel = needs.thirst();
+        int quenchedLevel = needs.quenched();
         if (thirstLevel != state.lastSyncedThirst || quenchedLevel != state.lastSyncedQuenched || thirstChanged) {
             state.lastSyncedThirst = thirstLevel;
             state.lastSyncedQuenched = quenchedLevel;
+            net.minecraft.nbt.CompoundTag thirst = needs.thirstTag();
             //? if neoforge {
             PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
             //?} else if forge {

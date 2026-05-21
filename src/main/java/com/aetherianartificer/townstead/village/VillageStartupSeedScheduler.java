@@ -51,7 +51,8 @@ public final class VillageStartupSeedScheduler {
 
     private static void seed(ServerLevel level, Village village) {
         if (level == null || village == null) return;
-        DockDuplicatePurger.purgeAll(village);
+        TownsteadVillageMigration.migrateVillage(level, village);
+        DockDuplicatePurger.purgeAll(level, village);
         DockLocationIndex.rebuildVillage(level, village);
         BuildingRecognitionTracker.seed(level, village);
         SpiritReconciler.seed(level, village);

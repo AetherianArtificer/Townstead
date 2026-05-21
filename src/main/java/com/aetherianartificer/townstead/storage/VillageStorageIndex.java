@@ -67,6 +67,18 @@ public final class VillageStorageIndex {
                 && entry.getValue().contains(changedKey));
     }
 
+    public static void purgeExpired(long gameTime) {
+        SNAPSHOTS.entrySet().removeIf(entry -> !entry.getValue().validAt(gameTime));
+    }
+
+    public static void clearAll() {
+        SNAPSHOTS.clear();
+    }
+
+    public static int snapshotCount() {
+        return SNAPSHOTS.size();
+    }
+
     private static Snapshot buildSnapshot(ServerLevel level, Village village, long gameTime) {
         StorageSearchContext searchContext = new StorageSearchContext(level);
         List<Entry> entries = new ArrayList<>();

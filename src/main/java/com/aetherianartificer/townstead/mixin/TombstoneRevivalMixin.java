@@ -6,8 +6,9 @@ import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
@@ -39,54 +40,17 @@ public class TombstoneRevivalMixin {
         Entity entity = result.get();
         if (!(entity instanceof VillagerEntityMCA villager)) return;
 
-        // Reset hunger to midpoint
-        //? if neoforge {
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
-        //?} else {
-        /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
-        *///?}
-        HungerData.setHunger(hunger, HungerData.MAX_HUNGER / 2);
-        HungerData.setSaturation(hunger, HungerData.MAX_SATURATION / 2);
-        HungerData.setExhaustion(hunger, 0f);
-        //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, hunger);
-        //?} else {
-        /*villager.getPersistentData().put("townstead_hunger", hunger);
-        *///?}
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        state.needs().resetHunger(HungerData.MAX_HUNGER / 2, HungerData.MAX_SATURATION / 2);
 
         // Reset thirst if active
         if (ThirstBridgeResolver.isActive()) {
-            //? if neoforge {
-            CompoundTag thirst = villager.getData(Townstead.THIRST_DATA);
-            //?} else {
-            /*CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
-            *///?}
-            ThirstData.setThirst(thirst, ThirstData.MAX_THIRST / 2);
-            ThirstData.setQuenched(thirst, ThirstData.MAX_QUENCHED / 4);
-            ThirstData.setExhaustion(thirst, 0f);
-            ThirstData.setDamageTimer(thirst, 0);
-            //? if neoforge {
-            villager.setData(Townstead.THIRST_DATA, thirst);
-            //?} else {
-            /*villager.getPersistentData().put("townstead_thirst", thirst);
-            *///?}
+            state.needs().resetThirst(ThirstData.MAX_THIRST / 2, ThirstData.MAX_QUENCHED / 4);
         }
 
         // Reset fatigue
         if (TownsteadConfig.isVillagerFatigueEnabled()) {
-            //? if neoforge {
-            CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
-            //?} else {
-            /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
-            *///?}
-            FatigueData.setFatigue(fatigue, FatigueData.MAX_FATIGUE / 2);
-            FatigueData.setCollapsed(fatigue, false);
-            FatigueData.setGated(fatigue, false);
-            //? if neoforge {
-            villager.setData(Townstead.FATIGUE_DATA, fatigue);
-            //?} else {
-            /*villager.getPersistentData().put("townstead_fatigue", fatigue);
-            *///?}
+            state.needs().resetFatigue(FatigueData.MAX_FATIGUE / 2);
         }
     }
 }

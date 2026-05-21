@@ -189,13 +189,13 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
         //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag data = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
         ShepherdProgressData.addXp(data, amount, gameTime);
         //? if neoforge {
-        villager.setData(Townstead.HUNGER_DATA, data);
+        com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, data);
         //?} else {
         /*villager.getPersistentData().put("townstead_hunger", data);
         *///?}

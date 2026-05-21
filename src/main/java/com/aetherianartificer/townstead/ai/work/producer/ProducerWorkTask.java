@@ -714,7 +714,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected static boolean isFatigueGated(VillagerEntityMCA villager) {
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return false;
         //? if neoforge {
-        CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+        CompoundTag fatigue = com.aetherianartificer.townstead.villager.TownsteadVillagerState.fatigue(villager);
         //?} else {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}

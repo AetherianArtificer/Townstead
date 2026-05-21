@@ -53,7 +53,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         if (cooldown > 0) { cooldown--; return false; }
 
         //? if neoforge {
-        CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+        CompoundTag fatigue = com.aetherianartificer.townstead.villager.TownsteadVillagerState.fatigue(villager);
         //?} else {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
@@ -111,7 +111,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (bedPos == null) return;
         //? if neoforge {
-        CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+        CompoundTag fatigue = com.aetherianartificer.townstead.villager.TownsteadVillagerState.fatigue(villager);
         //?} else {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
@@ -191,7 +191,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
             // behaviour handles occupancy, positioning, and wake-up normally.
             // The original HOME is saved in fatigue NBT and restored on wake.
             //? if neoforge {
-            CompoundTag ft = villager.getData(Townstead.FATIGUE_DATA);
+            CompoundTag ft = com.aetherianartificer.townstead.villager.TownsteadVillagerState.fatigue(villager);
             //?} else {
             /*CompoundTag ft = villager.getPersistentData().getCompound("townstead_fatigue");
             *///?}
@@ -203,7 +203,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
             }
             FatigueData.setEmergencyBed(ft, headPos);
             //? if neoforge {
-            villager.setData(Townstead.FATIGUE_DATA, ft);
+            com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveFatigue(villager, ft);
             //?} else {
             /*villager.getPersistentData().put("townstead_fatigue", ft);
             *///?}
@@ -222,7 +222,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         }
 
         //? if neoforge {
-        CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+        CompoundTag fatigue = com.aetherianartificer.townstead.villager.TownsteadVillagerState.fatigue(villager);
         //?} else {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}

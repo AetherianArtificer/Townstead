@@ -67,6 +67,27 @@ public final class ProducerStationClaims {
         }
     }
 
+    public static void purgeExpired(long gameTime) {
+        synchronized (CLAIM_LOCK) {
+            STATION_CLAIM_UNTIL.entrySet().removeIf(entry -> {
+                if (entry.getValue() > gameTime) return false;
+                STATION_CLAIM_OWNER.remove(entry.getKey());
+                return true;
+            });
+        }
+    }
+
+    public static void clearAll() {
+        synchronized (CLAIM_LOCK) {
+            STATION_CLAIM_OWNER.clear();
+            STATION_CLAIM_UNTIL.clear();
+        }
+    }
+
+    public static int size() {
+        return STATION_CLAIM_OWNER.size();
+    }
+
     private static String claimKey(ServerLevel level, BlockPos pos) {
         return claimKey(level.dimension().location(), pos.asLong());
     }

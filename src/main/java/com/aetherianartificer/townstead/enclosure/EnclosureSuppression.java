@@ -89,6 +89,16 @@ public final class EnclosureSuppression {
         }
     }
 
+    public static void clearAll() {
+        SUPPRESSED.clear();
+    }
+
+    public static int entryCount() {
+        int total = 0;
+        for (List<int[]> list : SUPPRESSED.values()) total += list.size();
+        return total;
+    }
+
     private static String keyOf(ServerLevel level, Village village) {
         return level.dimension().location().toString() + "|" + village.getId();
     }

@@ -47,6 +47,9 @@ import com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateSavePayload;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateSavedData;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateSyncPayload;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagerState;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.aetherianartificer.townstead.village.VillageResidentRoster;
 import com.aetherianartificer.townstead.village.VillageResidentsSyncPayload;
@@ -371,23 +374,22 @@ public final class TownsteadNetwork {
         Entity entity = sp.serverLevel().getEntity(payload.entityId());
         if (!(entity instanceof VillagerEntityMCA villager)) return;
 
-        CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
-        int currentHunger = HungerData.getHunger(hunger);
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        int currentHunger = state.needs().hunger();
 
         if (payload.hunger() == -1) {
-            sendToPlayer(sp, Townstead.townstead$hungerSync(villager, hunger));
+            sendToPlayer(sp, Townstead.townstead$hungerSync(villager, state.needs().hungerTag()));
             return;
         }
 
         int newHunger = payload.hunger();
         Townstead.LOGGER.debug("HungerSet packet: entityId={}, target={}", payload.entityId(), newHunger);
-        HungerData.setHunger(hunger, newHunger);
+        state.needs().setHunger(newHunger);
         if (newHunger > currentHunger) {
-            HungerData.setSaturation(hunger, Math.min(newHunger, HungerData.MAX_SATURATION));
+            state.needs().setSaturation(Math.min(newHunger, HungerData.MAX_SATURATION));
         }
-        HungerData.setExhaustion(hunger, 0f);
-        villager.getPersistentData().put("townstead_hunger", hunger);
-        HungerSyncPayload sync = Townstead.townstead$hungerSync(villager, hunger);
+        state.needs().setHungerExhaustion(0f);
+        HungerSyncPayload sync = Townstead.townstead$hungerSync(villager, state.needs().hungerTag());
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);
         Townstead.LOGGER.debug("Hunger set: {} -> {}", currentHunger, sync.hunger());
@@ -398,23 +400,22 @@ public final class TownsteadNetwork {
         Entity entity = sp.serverLevel().getEntity(payload.entityId());
         if (!(entity instanceof VillagerEntityMCA villager)) return;
 
-        CompoundTag thirst = villager.getPersistentData().getCompound("townstead_thirst");
-        int currentThirst = ThirstData.getThirst(thirst);
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        int currentThirst = state.needs().thirst();
 
         if (payload.thirst() == -1) {
-            sendToPlayer(sp, Townstead.townstead$thirstSync(villager, thirst));
+            sendToPlayer(sp, Townstead.townstead$thirstSync(villager, state.needs().thirstTag()));
             return;
         }
 
         int newThirst = payload.thirst();
         Townstead.LOGGER.debug("ThirstSet packet: entityId={}, target={}", payload.entityId(), newThirst);
-        ThirstData.setThirst(thirst, newThirst);
+        state.needs().setThirst(newThirst);
         if (newThirst > currentThirst) {
-            ThirstData.setQuenched(thirst, Math.min(newThirst, ThirstData.MAX_QUENCHED));
+            state.needs().setQuenched(Math.min(newThirst, ThirstData.MAX_QUENCHED));
         }
-        ThirstData.setExhaustion(thirst, 0f);
-        villager.getPersistentData().put("townstead_thirst", thirst);
-        ThirstSyncPayload sync = Townstead.townstead$thirstSync(villager, thirst);
+        state.needs().setThirstExhaustion(0f);
+        ThirstSyncPayload sync = Townstead.townstead$thirstSync(villager, state.needs().thirstTag());
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);
     }
@@ -427,25 +428,24 @@ public final class TownsteadNetwork {
         Entity entity = sp.serverLevel().getEntity(payload.entityId());
         if (!(entity instanceof VillagerEntityMCA villager)) return;
 
-        CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
-        int currentFatigue = FatigueData.getFatigue(fatigue);
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        int currentFatigue = state.needs().fatigue();
 
         if (payload.fatigue() == -1) {
-            sendToPlayer(sp, Townstead.townstead$fatigueSync(villager, fatigue));
+            sendToPlayer(sp, Townstead.townstead$fatigueSync(villager, state.needs().fatigueTag()));
             return;
         }
 
         int newFatigue = payload.fatigue();
         Townstead.LOGGER.debug("FatigueSet packet: entityId={}, target={}", payload.entityId(), newFatigue);
-        FatigueData.setFatigue(fatigue, newFatigue);
+        state.needs().setFatigue(newFatigue);
         if (newFatigue < FatigueData.COLLAPSE_THRESHOLD) {
-            FatigueData.setCollapsed(fatigue, false);
+            state.needs().setCollapsed(false);
         }
         if (newFatigue < FatigueData.RECOVERY_GATE) {
-            FatigueData.setGated(fatigue, false);
+            state.needs().setGated(false);
         }
-        villager.getPersistentData().put("townstead_fatigue", fatigue);
-        FatigueSyncPayload sync = Townstead.townstead$fatigueSync(villager, fatigue);
+        FatigueSyncPayload sync = Townstead.townstead$fatigueSync(villager, state.needs().fatigueTag());
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);
     }
@@ -466,7 +466,8 @@ public final class TownsteadNetwork {
 
         // Query mode: reply with the daily array and the weekly state together.
         if (payload.shifts().length == 0) {
-            CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
+            TownsteadVillager state = TownsteadVillagers.get(villager);
+            CompoundTag shiftTag = state.schedule().toTag();
             sendToPlayer(sp, new ShiftSyncPayload(payload.villagerUuid(), ShiftData.getShifts(shiftTag)));
             sendToPlayer(sp, new ShiftWeekSyncPayload(payload.villagerUuid(),
                     ShiftData.getMode(shiftTag), ShiftData.getWeekDayTemplates(shiftTag)));
@@ -484,10 +485,9 @@ public final class TownsteadNetwork {
 
     private static void writeVillagerShifts(VillagerEntityMCA villager, int[] shifts, ServerPlayer originator,
                                             String templateId) {
-        CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
-        ShiftData.setShifts(shiftTag, shifts);
-        ShiftData.setTemplateId(shiftTag, templateId);
-        villager.getPersistentData().put("townstead_shift", shiftTag);
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        state.schedule().setShifts(shifts);
+        state.schedule().setTemplateId(templateId);
 
         ShiftScheduleApplier.apply(villager);
 
@@ -654,10 +654,10 @@ public final class TownsteadNetwork {
 
     private static void writeVillagerWeek(VillagerEntityMCA villager, String mode,
                                           java.util.List<String> weekDays, ServerPlayer originator) {
-        CompoundTag shiftTag = villager.getPersistentData().getCompound("townstead_shift");
-        ShiftData.setMode(shiftTag, mode);
-        ShiftData.setWeekDayTemplates(shiftTag, weekDays);
-        villager.getPersistentData().put("townstead_shift", shiftTag);
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        state.schedule().setMode(mode);
+        state.schedule().setWeekDayTemplates(weekDays);
+        CompoundTag shiftTag = state.schedule().toTag();
 
         ShiftScheduleApplier.apply(villager);
 

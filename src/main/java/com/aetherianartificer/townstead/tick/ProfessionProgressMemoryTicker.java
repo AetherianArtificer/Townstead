@@ -1,38 +1,28 @@
 package com.aetherianartificer.townstead.tick;
 
-import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.villager.TownsteadVillager;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.npc.VillagerData;
 import net.minecraft.world.entity.npc.VillagerProfession;
 
 public final class ProfessionProgressMemoryTicker {
-    private static final String KEY_LAST_PROFESSION = "townsteadLastProfession";
-    private static final String KEY_PROFESSION_PROGRESS = "townsteadProfessionProgress";
-    private static final String KEY_LEVEL = "level";
-    private static final String KEY_XP = "xp";
-
     private ProfessionProgressMemoryTicker() {}
 
     public static void tick(VillagerEntityMCA villager) {
-        //? if neoforge {
-        CompoundTag data = villager.getData(Townstead.HUNGER_DATA);
-        //?} else {
-        /*CompoundTag data = villager.getPersistentData().getCompound("townstead_hunger");
-        *///?}
+        TownsteadVillager.ProfessionMemory memory = TownsteadVillagers.get(villager).professionMemory();
         String currentKey = professionKey(villager.getVillagerData().getProfession());
         if (currentKey == null) return;
 
-        String lastKey = data.getString(KEY_LAST_PROFESSION);
+        String lastKey = memory.lastProfession();
         boolean changed = !lastKey.isBlank() && !lastKey.equals(currentKey);
 
-        CompoundTag allProgress = data.getCompound(KEY_PROFESSION_PROGRESS);
-        if (changed && isTrackable(currentKey) && allProgress.contains(currentKey, CompoundTag.TAG_COMPOUND)) {
-            CompoundTag saved = allProgress.getCompound(currentKey);
-            int savedLevel = Math.max(1, saved.getInt(KEY_LEVEL));
-            int savedXp = Math.max(0, saved.getInt(KEY_XP));
+        TownsteadVillager.ProfessionMemory.Progress saved = memory.progress(currentKey);
+        if (changed && isTrackable(currentKey) && saved != null) {
+            int savedLevel = saved.level();
+            int savedXp = saved.xp();
             if (savedLevel != villager.getVillagerData().getLevel() || savedXp != villager.getVillagerXp()) {
                 VillagerData vd = villager.getVillagerData();
                 villager.setVillagerData(vd.setLevel(savedLevel));
@@ -41,14 +31,10 @@ public final class ProfessionProgressMemoryTicker {
         }
 
         if (isTrackable(currentKey)) {
-            CompoundTag mine = new CompoundTag();
-            mine.putInt(KEY_LEVEL, Math.max(1, villager.getVillagerData().getLevel()));
-            mine.putInt(KEY_XP, Math.max(0, villager.getVillagerXp()));
-            allProgress.put(currentKey, mine);
-            data.put(KEY_PROFESSION_PROGRESS, allProgress);
+            memory.putProgress(currentKey, villager.getVillagerData().getLevel(), villager.getVillagerXp());
         }
 
-        data.putString(KEY_LAST_PROFESSION, currentKey);
+        memory.setLastProfession(currentKey);
     }
 
     private static boolean isTrackable(String key) {

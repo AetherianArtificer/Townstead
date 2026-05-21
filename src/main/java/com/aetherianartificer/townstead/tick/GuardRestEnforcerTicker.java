@@ -3,9 +3,9 @@ package com.aetherianartificer.townstead.tick;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.registry.ProfessionsMCA;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.VillagerProfession;
@@ -41,12 +41,7 @@ public final class GuardRestEnforcerTicker {
         if (brain.getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) return;
 
         if (TownsteadConfig.isVillagerFatigueEnabled()) {
-            //? if neoforge {
-            CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
-            //?} else {
-            /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
-            *///?}
-            if (FatigueData.getFatigue(fatigue) >= FatigueData.DROWSY_THRESHOLD) return;
+            if (TownsteadVillagers.get(villager).needs().fatigue() >= FatigueData.DROWSY_THRESHOLD) return;
         }
 
         if (villager.isSleeping()) return;

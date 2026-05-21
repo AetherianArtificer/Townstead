@@ -1192,7 +1192,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static boolean townstead$isFatigueGated(VillagerEntityMCA villager) {
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return false;
         //? if neoforge {
-        CompoundTag fatigue = villager.getData(Townstead.FATIGUE_DATA);
+        CompoundTag fatigue = com.aetherianartificer.townstead.villager.TownsteadVillagerState.fatigue(villager);
         //?} else {
         /*CompoundTag fatigue = villager.getPersistentData().getCompound("townstead_fatigue");
         *///?}
@@ -1327,14 +1327,14 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         blockedReason = reason;
 
         //? if neoforge {
-        CompoundTag hunger = villager.getData(Townstead.HUNGER_DATA);
+        CompoundTag hunger = com.aetherianartificer.townstead.villager.TownsteadVillagerState.hunger(villager);
         //?} else {
         /*CompoundTag hunger = villager.getPersistentData().getCompound("townstead_hunger");
         *///?}
         if (HungerData.getFishermanBlockedReason(hunger) != reason) {
             HungerData.setFishermanBlockedReason(hunger, reason);
             //? if neoforge {
-            villager.setData(Townstead.HUNGER_DATA, hunger);
+            com.aetherianartificer.townstead.villager.TownsteadVillagerState.saveHunger(villager, hunger);
             //?} else {
             /*villager.getPersistentData().put("townstead_hunger", hunger);
             *///?}
