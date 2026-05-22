@@ -4,11 +4,13 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ZombieVillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -26,6 +28,7 @@ public final class ContextScanCache {
     private final ServerLevel level;
     private final BlockPos center;
     private final LivingEntity self;
+    private boolean scanned;
     private List<VillagerEntityMCA> nearbyVillagers;
     private List<Player> nearbyPlayers;
     private List<Monster> nearbyHostileMobs;
@@ -38,35 +41,48 @@ public final class ContextScanCache {
     }
 
     public List<VillagerEntityMCA> nearbyVillagers() {
-        if (nearbyVillagers == null) {
-            AABB box = new AABB(center).inflate(SOCIAL_RADIUS);
-            nearbyVillagers = level.getEntitiesOfClass(VillagerEntityMCA.class, box, v -> v != self);
-        }
+        scan();
         return nearbyVillagers;
     }
 
     public List<Player> nearbyPlayers() {
-        if (nearbyPlayers == null) {
-            AABB box = new AABB(center).inflate(SOCIAL_RADIUS);
-            nearbyPlayers = level.getEntitiesOfClass(Player.class, box, p -> p != self);
-        }
+        scan();
         return nearbyPlayers;
     }
 
     public List<Monster> nearbyHostileMobs() {
-        if (nearbyHostileMobs == null) {
-            AABB box = new AABB(center).inflate(SOCIAL_RADIUS);
-            nearbyHostileMobs = level.getEntitiesOfClass(Monster.class, box);
-        }
+        scan();
         return nearbyHostileMobs;
     }
 
     public List<ZombieVillagerEntityMCA> nearbyZombieVillagers() {
-        if (nearbyZombieVillagers == null) {
-            AABB box = new AABB(center).inflate(SOCIAL_RADIUS);
-            nearbyZombieVillagers = level.getEntitiesOfClass(ZombieVillagerEntityMCA.class, box);
-        }
+        scan();
         return nearbyZombieVillagers;
+    }
+
+    private void scan() {
+        if (scanned) return;
+        scanned = true;
+        nearbyVillagers = new ArrayList<>();
+        nearbyPlayers = new ArrayList<>();
+        nearbyHostileMobs = new ArrayList<>();
+        nearbyZombieVillagers = new ArrayList<>();
+
+        AABB box = new AABB(center).inflate(SOCIAL_RADIUS);
+        for (Entity entity : level.getEntities(self, box, entity -> true)) {
+            if (entity instanceof VillagerEntityMCA villager) {
+                nearbyVillagers.add(villager);
+            }
+            if (entity instanceof Player player) {
+                nearbyPlayers.add(player);
+            }
+            if (entity instanceof Monster monster) {
+                nearbyHostileMobs.add(monster);
+            }
+            if (entity instanceof ZombieVillagerEntityMCA zombieVillager) {
+                nearbyZombieVillagers.add(zombieVillager);
+            }
+        }
     }
 
     public BlockPos center() {

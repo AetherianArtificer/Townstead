@@ -464,7 +464,7 @@ public final class ContextResolver {
         int ord = schedule.currentShift(tickHour);
         String name = shiftName(ord);
         if (name != null) tags.add("on_shift:" + name);
-        if (schedule.hasCustomShifts() && !java.util.Arrays.equals(schedule.copyShifts(), ShiftData.getVanillaDefault())) {
+        if (schedule.hasNonDefaultCustomShifts()) {
             tags.add("shift_custom");
         }
     }

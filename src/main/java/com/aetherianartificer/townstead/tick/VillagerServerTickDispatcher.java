@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.tick;
 import com.aetherianartificer.townstead.compat.butchery.ButcherToolAcquisitionTicker;
 import com.aetherianartificer.townstead.compat.butchery.ButcheryComplaintsTicker;
 import com.aetherianartificer.townstead.compat.butchery.SkinRackJob;
+import com.aetherianartificer.townstead.diagnostics.TownsteadProfiler;
 import com.aetherianartificer.townstead.leatherworking.LeatherworkerComplaintsTicker;
 import com.aetherianartificer.townstead.leatherworking.LeatherworkerSupplyAcquisitionTicker;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
@@ -42,25 +43,41 @@ public final class VillagerServerTickDispatcher {
             return;
         }
 
-        BedOccupancySanitizer.tick(villager);
-        CookAutoAssignTicker.tick(villager);
-        BaristaAutoAssignTicker.tick(villager);
-        CookTradeBackfillTicker.tick(villager);
-        BaristaTradeBackfillTicker.tick(villager);
-        HungerVillagerTicker.tick(villager);
+        profile("villager.bed_occupancy", () -> BedOccupancySanitizer.tick(villager));
+        profile("villager.cook_auto_assign", () -> CookAutoAssignTicker.tick(villager));
+        profile("villager.barista_auto_assign", () -> BaristaAutoAssignTicker.tick(villager));
+        profile("villager.cook_trade_backfill", () -> CookTradeBackfillTicker.tick(villager));
+        profile("villager.barista_trade_backfill", () -> BaristaTradeBackfillTicker.tick(villager));
+        profile("villager.hunger", () -> HungerVillagerTicker.tick(villager));
         if (ThirstBridgeResolver.isActive()) {
-            ThirstVillagerTicker.tick(villager);
+            profile("villager.thirst", () -> ThirstVillagerTicker.tick(villager));
         }
-        FatigueVillagerTicker.tick(villager);
-        ProfessionProgressMemoryTicker.tick(villager);
-        GuardRestEnforcerTicker.tick(villager);
-        ButcherToolAcquisitionTicker.tick(villager);
-        LeatherworkerSupplyAcquisitionTicker.tick(villager);
-        WorkToolTicker.tick(villager);
-        ButcheryComplaintsTicker.tick(villager);
-        LeatherworkerComplaintsTicker.tick(villager);
-        com.aetherianartificer.townstead.reaction.ReactionLockTracker.tickFreeze(villager, gameTime);
-        com.aetherianartificer.townstead.reaction.trigger.event.ContextTickHook.tick(villager, gameTime);
-        com.aetherianartificer.townstead.calendar.VillagerLifeStamper.tick(villager);
+        profile("villager.fatigue", () -> FatigueVillagerTicker.tick(villager));
+        profile("villager.profession_memory", () -> ProfessionProgressMemoryTicker.tick(villager));
+        profile("villager.guard_rest", () -> GuardRestEnforcerTicker.tick(villager));
+        profile("villager.butcher_tool_acquire", () -> ButcherToolAcquisitionTicker.tick(villager));
+        profile("villager.leatherworker_supply", () -> LeatherworkerSupplyAcquisitionTicker.tick(villager));
+        profile("villager.work_tool", () -> WorkToolTicker.tick(villager));
+        profile("villager.butchery_complaints", () -> ButcheryComplaintsTicker.tick(villager));
+        profile("villager.leatherworker_complaints", () -> LeatherworkerComplaintsTicker.tick(villager));
+        profile("villager.reaction_lock", () ->
+                com.aetherianartificer.townstead.reaction.ReactionLockTracker.tickFreeze(villager, gameTime));
+        profile("villager.reaction_context", () ->
+                com.aetherianartificer.townstead.reaction.trigger.event.ContextTickHook.tick(villager, gameTime));
+        profile("villager.life_stamper", () ->
+                com.aetherianartificer.townstead.calendar.VillagerLifeStamper.tick(villager));
+    }
+
+    private static void profile(String name, Runnable runnable) {
+        if (!TownsteadProfiler.enabled()) {
+            runnable.run();
+            return;
+        }
+        long start = System.nanoTime();
+        try {
+            runnable.run();
+        } finally {
+            TownsteadProfiler.record(name, System.nanoTime() - start);
+        }
     }
 }

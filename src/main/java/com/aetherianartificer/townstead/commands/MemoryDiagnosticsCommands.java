@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.commands;
 
 import com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle;
+import com.aetherianartificer.townstead.diagnostics.TownsteadProfiler;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import com.aetherianartificer.townstead.village.TownsteadVillageMigration;
 import com.aetherianartificer.townstead.village.TownsteadVillageSavedData;
@@ -27,6 +28,11 @@ public final class MemoryDiagnosticsCommands {
                 .then(Commands.literal("memory")
                         .requires(source -> source.hasPermission(2))
                         .then(Commands.literal("report").executes(c -> report(c.getSource())))
+                        .then(Commands.literal("profile")
+                                .then(Commands.literal("start").executes(c -> profileStart(c.getSource())))
+                                .then(Commands.literal("stop").executes(c -> profileStop(c.getSource())))
+                                .then(Commands.literal("reset").executes(c -> profileReset(c.getSource())))
+                                .then(Commands.literal("report").executes(c -> profileReport(c.getSource()))))
                         .then(Commands.literal("migrate-now").executes(c -> migrateNow(c.getSource())))
                         .then(Commands.literal("purge-caches").executes(c -> purgeCaches(c.getSource())))));
     }
@@ -63,6 +69,44 @@ public final class MemoryDiagnosticsCommands {
                         + ", aiBudget[granted=" + budget.granted()
                         + ", throttled=" + budget.throttled() + "]"),
                 false);
+        return 1;
+    }
+
+    private static int profileStart(CommandSourceStack source) {
+        TownsteadProfiler.clear();
+        TownsteadProfiler.setEnabled(true);
+        source.sendSuccess(() -> Component.literal("Townstead profiler started."), true);
+        return 1;
+    }
+
+    private static int profileStop(CommandSourceStack source) {
+        TownsteadProfiler.setEnabled(false);
+        source.sendSuccess(() -> Component.literal("Townstead profiler stopped."), true);
+        return 1;
+    }
+
+    private static int profileReset(CommandSourceStack source) {
+        TownsteadProfiler.clear();
+        source.sendSuccess(() -> Component.literal("Townstead profiler counters reset."), true);
+        return 1;
+    }
+
+    private static int profileReport(CommandSourceStack source) {
+        TownsteadProfiler.Snapshot snapshot = TownsteadProfiler.snapshot();
+        StringBuilder out = new StringBuilder();
+        out.append("Townstead profiler: ")
+                .append(snapshot.enabled() ? "running" : "stopped");
+        int rows = 0;
+        for (TownsteadProfiler.Row row : snapshot.rows()) {
+            if (rows++ >= 12) break;
+            out.append("\n")
+                    .append(row.name())
+                    .append(": calls=").append(row.calls())
+                    .append(", totalMs=").append(String.format(java.util.Locale.ROOT, "%.3f", row.millis()))
+                    .append(", usPerCall=").append(String.format(java.util.Locale.ROOT, "%.3f", row.microsPerCall()));
+        }
+        if (rows == 0) out.append("\n(no samples yet)");
+        source.sendSuccess(() -> Component.literal(out.toString()), false);
         return 1;
     }
 

@@ -164,6 +164,24 @@ public final class HarvestWorkIndex {
                     continue;
                 }
 
+                // Surface water crops (e.g. Cobblemon's medicinal leek) sit ON the water source at
+                // soilPos.above() rather than submerged at soilPos. With water present and nothing in
+                // the water itself, check the block on top for a maturing/mature surface crop.
+                if (hasWater) {
+                    BlockState surface = level.getBlockState(soilPos.above());
+                    boolean surfaceIsCrop = surface.getBlock() instanceof CropBlock
+                            || surface.getBlock() instanceof net.minecraft.world.level.block.BushBlock;
+                    if (surfaceIsCrop) {
+                        if (surface.getBlock() instanceof CropBlock crop && crop.isMaxAge(surface)) {
+                            harvestTargets.add(soilPos.above().immutable());
+                        } else if (FarmerCropCompatRegistry.shouldPartialHarvest(surface)) {
+                            harvestTargets.add(soilPos.above().immutable());
+                        }
+                        // Surface crop present (growing, or harvested and regrowing) — leave it be.
+                        continue;
+                    }
+                }
+
                 if (!hasWater) {
                     if (isWaterPlaceable(soilState)) {
                         waterTargets.add(soilPos.immutable());
@@ -174,20 +192,23 @@ public final class HarvestWorkIndex {
                     continue;
                 }
 
-                // Water is in place, no crop yet — try to plant the assigned seed.
+                // Water is in place, no crop yet — try to plant the assigned seed. Submerged crops
+                // (rice) plant in the water at soilPos; surface crops (medicinal leek) plant on top
+                // of it at soilPos.above().
                 boolean seedAllowed = !SeedAssignment.NONE.equals(cell.seedAssignment())
                         && !SeedAssignment.AUTO.equals(cell.seedAssignment())
                         && cell.seedAssignment() != null;
-                boolean plantable = FarmerCropCompatRegistry.isPlantableSpot(level, soilPos);
+                BlockPos plantPos = plantsOnWaterSurface(level, cell) ? soilPos.above() : soilPos;
+                boolean plantable = FarmerCropCompatRegistry.isPlantableSpot(level, plantPos);
                 boolean matches = seedMatchesSoil(level, cell);
                 if (seedAllowed && plantable && matches) {
-                    plantTargets.add(soilPos.immutable());
+                    plantTargets.add(plantPos.immutable());
                 } else if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get() && seedAllowed) {
                     org.slf4j.LoggerFactory.getLogger("townstead/HarvestWorkIndex").info(
-                            "WATER cell {} has water but no plant target: seed={}, blockHere={}, blockBelow={}, plantable={}, matches={}",
-                            soilPos, cell.seedAssignment(),
-                            level.getBlockState(soilPos).getBlock(),
-                            level.getBlockState(soilPos.below()).getBlock(),
+                            "WATER cell {} has water but no plant target: seed={}, plantPos={}, blockThere={}, blockBelow={}, plantable={}, matches={}",
+                            soilPos, cell.seedAssignment(), plantPos,
+                            level.getBlockState(plantPos).getBlock(),
+                            level.getBlockState(plantPos.below()).getBlock(),
                             plantable, matches);
                 }
                 continue;
@@ -295,6 +316,26 @@ public final class HarvestWorkIndex {
         if (seedItem == null) return true;
         java.util.Set<SoilType> compatible = CropProductResolver.get(level).getCompatibleSoils(seedItem);
         return compatible.contains(cell.desiredSoil());
+    }
+
+    /**
+     * True if the cell's assigned seed is a surface water crop (planted on top of the water source,
+     * at soilPos.above()) rather than submerged in it. AUTO / NONE / unresolved seeds are not.
+     */
+    private static boolean plantsOnWaterSurface(ServerLevel level, PlannedCell cell) {
+        String seed = cell.seedAssignment();
+        if (seed == null || SeedAssignment.AUTO.equals(seed) || SeedAssignment.NONE.equals(seed)) return false;
+        ResourceLocation rl;
+        try {
+            //? if >=1.21 {
+            rl = ResourceLocation.parse(seed);
+            //?} else {
+            /*rl = new ResourceLocation(seed);
+            *///?}
+        } catch (Exception e) { return false; }
+        Item seedItem = BuiltInRegistries.ITEM.get(rl);
+        if (seedItem == null) return false;
+        return FarmerCropCompatRegistry.plantsOnWaterSurface(new ItemStack(seedItem));
     }
 
     private static Iterable<BlockPos> harvestCandidatesNear(ServerLevel level, BlockPos cropPos) {

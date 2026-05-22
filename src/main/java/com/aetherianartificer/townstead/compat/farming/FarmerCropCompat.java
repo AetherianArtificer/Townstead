@@ -21,6 +21,14 @@ public interface FarmerCropCompat {
      */
     default boolean excludeAsSeed(ItemStack stack) { return false; }
 
+    /**
+     * True if this seed's crop is planted ON TOP of a water source (at the block above the water)
+     * rather than submerged in it like rice. For these, the farmer places the water source in the
+     * WATER-painted cell and the crop one block above it. Cobblemon's medicinal leek is the
+     * canonical example. Defaults to false (in-water / on-land behavior).
+     */
+    default boolean plantsOnWaterSurface(ItemStack stack) { return false; }
+
     boolean shouldPartialHarvest(BlockState state);
 
     List<ItemStack> doPartialHarvest(ServerLevel level, BlockPos pos, BlockState state);

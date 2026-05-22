@@ -13,6 +13,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Per-villager tick step that fabricates a date-of-birth on first encounter
@@ -24,6 +26,8 @@ import java.util.Random;
  * Called from {@link com.aetherianartificer.townstead.tick.VillagerServerTickDispatcher}.
  */
 public final class VillagerLifeStamper {
+    private static final Set<ServerVillageKey> KNOWN_STAMPED_VILLAGES =
+            ConcurrentHashMap.newKeySet();
 
     private VillagerLifeStamper() {}
 
@@ -93,10 +97,16 @@ public final class VillagerLifeStamper {
         Village village = resolveHomeVillage(villager);
         if (village == null) return;
 
-        WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
         WorldCalendarSavedData.VillageKey key = new WorldCalendarSavedData.VillageKey(
                 level.dimension().location(), village.getId());
-        if (data.getVillageBirth(key) != null) return;
+        ServerVillageKey cacheKey = new ServerVillageKey(System.identityHashCode(server), key);
+        if (KNOWN_STAMPED_VILLAGES.contains(cacheKey)) return;
+
+        WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
+        if (data.getVillageBirth(key) != null) {
+            KNOWN_STAMPED_VILLAGES.add(cacheKey);
+            return;
+        }
 
         long today = TownsteadCalendar.worldDay(server);
         CalendarProfile profile = TownsteadCalendar.activeProfile(server);
@@ -114,6 +124,7 @@ public final class VillagerLifeStamper {
             birthDay = today - (long) yearsAgo * dpy - dayInYear;
         }
         data.putVillageBirth(key, new WorldCalendarSavedData.VillageBirth(birthDay, playerFounded));
+        KNOWN_STAMPED_VILLAGES.add(cacheKey);
     }
 
     @Nullable
@@ -148,4 +159,6 @@ public final class VillagerLifeStamper {
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
         return life.hasBirth() ? life.toTag() : null;
     }
+
+    private record ServerVillageKey(int serverId, WorldCalendarSavedData.VillageKey villageKey) {}
 }

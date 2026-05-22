@@ -336,10 +336,14 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
-            com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
-            com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
-            com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer());
-            com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.tick(e.getServer());
+            townstead$profile("server.village_startup_seed", () ->
+                    com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer()));
+            townstead$profile("server.village_spirit_query", () ->
+                    com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer()));
+            townstead$profile("server.world_calendar", () ->
+                    com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer()));
+            townstead$profile("server.memory_lifecycle", () ->
+                    com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.tick(e.getServer()));
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityJoinLevelEvent e) -> {
             if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
@@ -408,6 +412,7 @@ public class Townstead {
             // Dedicated server: no client-side playback registry to clear.
         }
     }
+
     //?} else if forge {
     /*public Townstead() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -436,10 +441,14 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.TickEvent.ServerTickEvent e) -> {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
-                com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer());
-                com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer());
-                com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer());
-                com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.tick(e.getServer());
+                townstead$profile("server.village_startup_seed", () ->
+                        com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer()));
+                townstead$profile("server.village_spirit_query", () ->
+                        com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.tick(e.getServer()));
+                townstead$profile("server.world_calendar", () ->
+                        com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer()));
+                townstead$profile("server.memory_lifecycle", () ->
+                        com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.tick(e.getServer()));
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityJoinLevelEvent e) -> {
@@ -506,6 +515,19 @@ public class Townstead {
         LOGGER.info("Townstead loaded");
     }
     *///?}
+
+    private static void townstead$profile(String name, Runnable runnable) {
+        if (!com.aetherianartificer.townstead.diagnostics.TownsteadProfiler.enabled()) {
+            runnable.run();
+            return;
+        }
+        long start = System.nanoTime();
+        try {
+            runnable.run();
+        } finally {
+            com.aetherianartificer.townstead.diagnostics.TownsteadProfiler.record(name, System.nanoTime() - start);
+        }
+    }
 
     //? if neoforge {
     private void addPackFinders(net.neoforged.neoforge.event.AddPackFindersEvent event) {

@@ -677,6 +677,10 @@ public final class TownsteadVillager {
             return customShifts;
         }
 
+        public boolean hasNonDefaultCustomShifts() {
+            return customShifts && !java.util.Arrays.equals(shifts, ShiftData.getVanillaDefault());
+        }
+
         public String templateId() {
             return templateId;
         }

@@ -18,7 +18,8 @@ public final class FarmerCropCompatRegistry {
             new VineryCropCompat(),
             new FarmingForBlockheadsCompat(),
             new CreepyDelightCropCompat(),
-            new CauponaCropCompat()
+            new CauponaCropCompat(),
+            new CobblemonCropCompat()
     );
 
     private FarmerCropCompatRegistry() {}
@@ -44,6 +45,16 @@ public final class FarmerCropCompatRegistry {
         for (FarmerCropCompat provider : PROVIDERS) {
             if (!ModCompat.isLoaded(provider.modId())) continue;
             if (provider.excludeAsSeed(stack)) return true;
+        }
+        return false;
+    }
+
+    /** True if any loaded provider plants this seed's crop on top of a water source (e.g. medicinal leek). */
+    public static boolean plantsOnWaterSurface(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.plantsOnWaterSurface(stack)) return true;
         }
         return false;
     }
