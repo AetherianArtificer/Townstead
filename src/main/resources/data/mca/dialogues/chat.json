@@ -9,8 +9,7 @@
             { "chance": 10, "hunger": "starving" }
           ],
           "actions": {
-            "next": "main",
-            "say": "chat.hunger.starving"
+            "next": "chat.hunger.starving"
           }
         },
         {
@@ -19,8 +18,7 @@
             { "chance": 8, "hunger": "famished" }
           ],
           "actions": {
-            "next": "main",
-            "say": "chat.hunger.famished"
+            "next": "chat.hunger.famished"
           }
         },
         {
@@ -29,8 +27,7 @@
             { "chance": 4, "hunger": "hungry" }
           ],
           "actions": {
-            "next": "main",
-            "say": "chat.hunger.hungry",
+            "next": "chat.hunger.hungry",
             "positive": 2
           }
         },
@@ -40,8 +37,7 @@
             { "chance": 10, "thirst": "dehydrated" }
           ],
           "actions": {
-            "next": "main",
-            "say": "chat.thirst.dehydrated"
+            "next": "chat.thirst.dehydrated"
           }
         },
         {
@@ -50,8 +46,7 @@
             { "chance": 8, "thirst": "parched" }
           ],
           "actions": {
-            "next": "main",
-            "say": "chat.thirst.parched"
+            "next": "chat.thirst.parched"
           }
         },
         {
@@ -60,8 +55,7 @@
             { "chance": 4, "thirst": "thirsty" }
           ],
           "actions": {
-            "next": "main",
-            "say": "chat.thirst.thirsty",
+            "next": "chat.thirst.thirsty",
             "positive": 2
           }
         },
@@ -71,8 +65,7 @@
             { "chance": 10, "fatigue": "exhausted" }
           ],
           "actions": {
-            "next": "main",
-            "say": "chat.fatigue.exhausted"
+            "next": "chat.fatigue.exhausted"
           }
         },
         {
@@ -81,8 +74,7 @@
             { "chance": 8, "fatigue": "drowsy" }
           ],
           "actions": {
-            "next": "main",
-            "say": "chat.fatigue.drowsy"
+            "next": "chat.fatigue.drowsy"
           }
         },
         {
@@ -91,8 +83,7 @@
             { "chance": 4, "fatigue": "tired" }
           ],
           "actions": {
-            "next": "main",
-            "say": "chat.fatigue.tired",
+            "next": "chat.fatigue.tired",
             "positive": 2
           }
         },
