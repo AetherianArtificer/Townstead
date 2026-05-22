@@ -23,8 +23,11 @@ import java.util.List;
 public final class McaAnimationBridge {
     private static final EmfAnimationSourceAdapter EMF_ADAPTER = new EmfAnimationSourceAdapter();
     private static final EmotecraftAnimationSourceAdapter EMOTE_ADAPTER = new EmotecraftAnimationSourceAdapter();
+    // NOTE: DebugAnimationSourceAdapter is intentionally NOT registered here. It waves every
+    // villager's right arm and keys off DEBUG_VILLAGER_AI, which is the general AI-logging flag —
+    // leaving it wired in meant turning on AI debug logging visibly animated all villagers. Re-add
+    // it locally only when specifically testing the animation hook.
     private static final List<AnimationSourceAdapter> SOURCES = List.of(
-            new DebugAnimationSourceAdapter(),
             EMF_ADAPTER,
             EMOTE_ADAPTER
     );
