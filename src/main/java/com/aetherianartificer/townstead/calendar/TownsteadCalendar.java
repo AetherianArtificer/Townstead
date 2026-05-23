@@ -8,6 +8,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.LocalDate;
+import java.util.List;
+
 /**
  * Server-side facade for everything calendar-related. Composes:
  *   - {@link WorldCalendarSavedData} (counter + offset + override)
@@ -64,6 +67,101 @@ public final class TownsteadCalendar {
         CalendarDate now = type.compute(server, profile, data.worldDayCounter(), 0);
         data.setEpochYearOffset(displayYear - now.year());
         rebroadcastAfterCalendarChange(server);
+    }
+
+    /**
+     * Force the world-day counter and push a fresh calendar sync to clients.
+     * This is the only correct entry point for the {@code set-day} command:
+     * poking {@link WorldCalendarSavedData#setWorldDayCounter} directly updates
+     * the server but leaves clients showing their cached date.
+     */
+    public static void setWorldDay(MinecraftServer server, long worldDay) {
+        WorldCalendarSavedData.get(server).setWorldDayCounter(worldDay);
+        rebroadcastAfterCalendarChange(server);
+    }
+
+    /**
+     * Move the calendar so "today" displays as the given date, <em>without</em>
+     * aging anyone. Returns the resulting {@link CalendarDate}, or {@code null}
+     * if {@code month}/{@code day} are out of range for that year's layout
+     * (e.g. day 30 of a 28-day month) or no profile/driver is available.
+     *
+     * <p>This is purely a display change, by design:
+     * <ul>
+     *   <li>The <b>year</b> is set with the epoch offset alone (exactly like
+     *       {@link #rebaseToDisplayYear}); the day counter is untouched by this
+     *       step. Villager ages and village foundings are computed from counter
+     *       <em>differences</em>, and the offset cancels out of that
+     *       subtraction, so nobody ages.</li>
+     *   <li>The <b>month/day</b> is set by nudging the counter only <em>within
+     *       the current year</em>. The move stays inside the same year bucket,
+     *       so the displayed year (and therefore every age) is unchanged.</li>
+     * </ul>
+     * The weekday falls wherever the counter's natural {@code mod daysPerWeek}
+     * cycle lands. Aligning it to a specific real-world weekday is impossible
+     * without shifting the counter across whole years (which <em>would</em> age
+     * villagers), so it is intentionally not attempted here.</p>
+     */
+    @Nullable
+    public static CalendarDate setToDate(MinecraftServer server, int displayYear, int month, int day) {
+        WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
+        CalendarProfile profile = activeProfile(server);
+        if (profile == null) return null;
+        CalendarType type = CalendarTypes.resolveDriverFor(profile.id());
+        if (type == null) return null;
+
+        List<MonthDef> months = profile.months();
+        List<LeapRule> rules = profile.leapRules();
+
+        // Reject impossible dates against the target year's actual layout.
+        LeapEngine.YearLayout layout = LeapEngine.layoutForYear(months, rules, displayYear);
+        if (month < 1 || month > layout.months().size()) return null;
+        if (day < 1 || day > layout.months().get(month - 1).days()) return null;
+
+        long counter = data.worldDayCounter();
+
+        // 1) Year via the offset only (counter untouched -> ages preserved).
+        int newOffset = displayYear - type.compute(server, profile, counter, 0).year();
+
+        // 2) Day-of-year via an in-year counter nudge. Staying inside the same
+        //    year bucket keeps the displayed year (hence every age) unchanged.
+        int curDayOfYear = type.compute(server, profile, counter, newOffset).dayOfYear();
+        int targetDayOfYear = LeapEngine.daysBeforeMonth(months, rules, displayYear, month) + day;
+        long newCounter = counter + (targetDayOfYear - curDayOfYear);
+
+        data.setEpochYearOffset(newOffset);
+        data.setWorldDayCounter(newCounter);
+        rebroadcastAfterCalendarChange(server);
+        return type.compute(server, profile, newCounter, newOffset);
+    }
+
+    /**
+     * Snap the calendar to the server host's real-world current date (display
+     * only, no aging; see {@link #setToDate}). On a Gregorian-shaped profile
+     * this lands on the literal date. When the real date has no matching slot
+     * (a real Feb 29 against a 28-day February with no leap rule, or a fantasy
+     * month layout), it falls back to the same position in the year
+     * (day-of-year), clamped to that year's length.
+     */
+    public static CalendarDate matchToday(MinecraftServer server) {
+        LocalDate now = LocalDate.now();
+        CalendarDate literal = setToDate(server, now.getYear(), now.getMonthValue(), now.getDayOfMonth());
+        if (literal != null) return literal;
+
+        // Positional fallback: same day-of-year, clamped to the profile's year.
+        CalendarProfile profile = activeProfile(server);
+        if (profile == null) return CalendarDate.UNKNOWN;
+        LeapEngine.YearLayout layout = LeapEngine.layoutForYear(profile.months(), profile.leapRules(), now.getYear());
+        int doy = Math.min(now.getDayOfYear(), Math.max(1, layout.daysPerYear()));
+        int month = 1, day = 1, acc = 0;
+        List<MonthDef> ms = layout.months();
+        for (int i = 0; i < ms.size(); i++) {
+            int d = ms.get(i).days();
+            if (doy <= acc + d) { month = i + 1; day = doy - acc; break; }
+            acc += d;
+        }
+        CalendarDate positional = setToDate(server, now.getYear(), month, day);
+        return positional != null ? positional : CalendarDate.UNKNOWN;
     }
 
     /**

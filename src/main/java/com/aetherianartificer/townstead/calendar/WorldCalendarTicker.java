@@ -104,12 +104,8 @@ public final class WorldCalendarTicker {
             data.markCalendarInitialized();
         }
 
-        if (!data.hasLastSample()) {
-            // First tick after world load. If the player picked the real-clock
-            // time mode, add the real-world days that elapsed since the world
-            // was last saved before priming the dayTime baseline. Runs at
-            // most once per world load (next tick takes the hasLastSample
-            // branch above).
+        if (!data.realClockCatchupApplied()) {
+            data.markRealClockCatchupApplied();
             if (TownsteadCalendar.isRealClockMode(server)) {
                 int catchupDays = data.applyRealClockCatchup();
                 if (catchupDays > 0) {
@@ -120,11 +116,15 @@ public final class WorldCalendarTicker {
                     Townstead.townstead$broadcastCalendarSync(server);
                 }
             }
+        }
+
+        if (!data.hasLastSample()) {
             data.primeSample(current);
             return;
         }
 
-        long delta = current - data.lastDayTimeSample();
+        long lastSample = data.lastDayTimeSample();
+        long delta = current - lastSample;
         if (delta == 0L) return;
 
         // /time set going backwards, or an admin teleporting day count forward
@@ -135,11 +135,8 @@ public final class WorldCalendarTicker {
             return;
         }
 
-        long residue = data.subDayResidueTicks() + delta;
-        int daysAdvanced = (int) (residue / TICKS_PER_DAY);
-        // advance() folds the residue back into [0, 24000) using floorMod on
-        // the supplied delta, so we pass the raw delta along with the days
-        // we computed against the previous residue.
+        int daysAdvanced = (int) (Math.floorDiv(current, TICKS_PER_DAY)
+                - Math.floorDiv(lastSample, TICKS_PER_DAY));
         data.advance(current, delta, daysAdvanced);
         if (daysAdvanced > 0) {
             // Keep AgeableMob.lastSeenWorldDay stamps current so autosaves

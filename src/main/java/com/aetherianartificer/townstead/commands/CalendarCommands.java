@@ -7,6 +7,7 @@ import com.aetherianartificer.townstead.calendar.CalendarProfileChoices;
 import com.aetherianartificer.townstead.calendar.CalendarProfileRegistry;
 import com.aetherianartificer.townstead.calendar.DynamicProfileSources;
 import com.aetherianartificer.townstead.calendar.TownsteadCalendar;
+import com.aetherianartificer.townstead.calendar.WeekdayDef;
 import com.aetherianartificer.townstead.calendar.WorldCalendarSavedData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -24,8 +25,9 @@ import net.minecraft.server.MinecraftServer;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * {@code /townstead calendar get | set-year <N> | set-profile <id> | set-day <day>}.
- * Read access is unrestricted; mutators require op level 2.
+ * {@code /townstead calendar get | set-year <N> | set-profile <id> |
+ * set-day <day> | set-date <year> <month> <day> | match-today |
+ * time-mode [...]}. Read access is unrestricted; mutators require op level 2.
  */
 public final class CalendarCommands {
     private CalendarCommands() {}
@@ -47,6 +49,18 @@ public final class CalendarCommands {
                                 .requires(s -> s.hasPermission(2))
                                 .then(Commands.argument("worldDay", IntegerArgumentType.integer())
                                         .executes(c -> setDay(c.getSource(), IntegerArgumentType.getInteger(c, "worldDay")))))
+                        .then(Commands.literal("set-date")
+                                .requires(s -> s.hasPermission(2))
+                                .then(Commands.argument("year", IntegerArgumentType.integer())
+                                        .then(Commands.argument("month", IntegerArgumentType.integer(1))
+                                                .then(Commands.argument("day", IntegerArgumentType.integer(1))
+                                                        .executes(c -> setDate(c.getSource(),
+                                                                IntegerArgumentType.getInteger(c, "year"),
+                                                                IntegerArgumentType.getInteger(c, "month"),
+                                                                IntegerArgumentType.getInteger(c, "day")))))))
+                        .then(Commands.literal("match-today")
+                                .requires(s -> s.hasPermission(2))
+                                .executes(c -> matchToday(c.getSource())))
                         .then(Commands.literal("time-mode")
                                 .executes(c -> getTimeMode(c.getSource()))
                                 .then(Commands.literal("normal")
@@ -129,13 +143,52 @@ public final class CalendarCommands {
 
     private static int setDay(CommandSourceStack source, int worldDay) {
         MinecraftServer server = source.getServer();
-        WorldCalendarSavedData.get(server).setWorldDayCounter(worldDay);
+        // Goes through TownsteadCalendar so the change is broadcast to clients;
+        // setting the counter directly on the saved data leaves the displayed
+        // date stale on every connected client.
+        TownsteadCalendar.setWorldDay(server, worldDay);
         CalendarDate today = TownsteadCalendar.today(server);
         source.sendSuccess(() -> Component.literal(
                 "World day counter set to " + worldDay + ". Displayed date is now "
                         + formatShortDate(today) + "."),
                 true);
         return 1;
+    }
+
+    private static int setDate(CommandSourceStack source, int year, int month, int day) {
+        MinecraftServer server = source.getServer();
+        // Display-only: sets the year via the epoch offset and the month/day via
+        // an in-year counter nudge, so villager ages are preserved. The weekday
+        // falls where the calendar's own cycle puts it.
+        CalendarDate result = TownsteadCalendar.setToDate(server, year, month, day);
+        if (result == null) {
+            source.sendFailure(Component.literal("Could not set " + year + "-" + month + "-" + day
+                    + ": month/day out of range for the active profile (or no profile loaded)."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(
+                "Calendar set to " + formatShortDate(result) + describeWeekday(server, result) + "."),
+                true);
+        return 1;
+    }
+
+    private static int matchToday(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        CalendarDate result = TownsteadCalendar.matchToday(server);
+        source.sendSuccess(() -> Component.literal(
+                "Calendar synced to today: " + formatShortDate(result) + describeWeekday(server, result) + "."),
+                true);
+        return 1;
+    }
+
+    /** " (Geos)"-style suffix naming the resulting weekday, or "" if the profile declares none. */
+    private static String describeWeekday(MinecraftServer server, CalendarDate date) {
+        CalendarProfile profile = TownsteadCalendar.activeProfile(server);
+        if (profile == null || profile.weekdays() == null) return "";
+        java.util.List<WeekdayDef> weekdays = profile.weekdays();
+        int idx = date.dayOfWeek();
+        if (idx < 0 || idx >= weekdays.size()) return "";
+        return " (" + weekdays.get(idx).longName().getString() + ")";
     }
 
     private static int getTimeMode(CommandSourceStack source) {

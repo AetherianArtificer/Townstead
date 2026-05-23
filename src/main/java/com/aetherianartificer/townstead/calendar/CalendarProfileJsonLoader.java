@@ -28,7 +28,6 @@ import java.util.Map;
  * {@code data/<ns>/calendar_profile/<path>.json}. Each file shape:
  * <pre>{@code
  * {
- *   "type": "townstead:vanilla_math",
  *   "display_name": { "translate": "calendar_profile.townstead_calendar.default.name" },
  *   "days_per_week": 7,
  *   "months": [

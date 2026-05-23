@@ -61,6 +61,7 @@ public class WorldCalendarSavedData extends SavedData {
     private boolean calendarInitialized = false;
     private long lastRealMillisAtSave = 0L;
     private boolean hasLastRealMillis = false;
+    private boolean realClockCatchupApplied = false;
     @Nullable
     private String timeModeOverride = null;
     @Nullable
@@ -281,6 +282,10 @@ public class WorldCalendarSavedData extends SavedData {
             setDirty();
         }
     }
+
+    public boolean realClockCatchupApplied() { return realClockCatchupApplied; }
+
+    public void markRealClockCatchupApplied() { this.realClockCatchupApplied = true; }
 
     /**
      * Advance {@link #worldDayCounter} by the number of whole real-world days
