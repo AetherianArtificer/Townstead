@@ -1,4 +1,6 @@
 {
+  "gui.villager_editor.page.origins": "Origins",
+  "gui.destiny.origins": "Origins",
   "townstead.gui.back": "<< Back",
   "gui.button.pose": "Pose",
   "townstead.pose.picker.title": "Choose a pose",

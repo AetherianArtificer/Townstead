@@ -38,7 +38,9 @@
     "client.VillagerEntityModelMcaCopyWearMixin",
     "client.VillagerLayerBendMixin",
     "InteractScreenMixin",
-    "VillagerEditorMixin"
+    "VillagerEditorMixin",
+    "VillagerEditorOriginMixin",
+    "DestinyScreenMixin"
   ],
   "minVersion": "0.8"
 }

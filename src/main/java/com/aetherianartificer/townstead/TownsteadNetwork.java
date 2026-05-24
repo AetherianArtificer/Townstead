@@ -211,6 +211,43 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload::write,
                 com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload::read,
                 TownsteadNetwork::handleVillagerLifeSync);
+
+        // Origins
+        registerC2S(com.aetherianartificer.townstead.origin.OriginSetC2SPayload.class,
+                com.aetherianartificer.townstead.origin.OriginSetC2SPayload::write,
+                com.aetherianartificer.townstead.origin.OriginSetC2SPayload::read,
+                TownsteadNetwork::handleOriginSet);
+        registerS2C(com.aetherianartificer.townstead.origin.OriginSyncS2CPayload.class,
+                com.aetherianartificer.townstead.origin.OriginSyncS2CPayload::write,
+                com.aetherianartificer.townstead.origin.OriginSyncS2CPayload::read,
+                TownsteadNetwork::handleOriginSync);
+        registerS2C(com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload.class,
+                com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload::write,
+                com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload::read,
+                TownsteadNetwork::handleOriginCatalogSync);
+    }
+
+    private static void handleOriginSet(
+            com.aetherianartificer.townstead.origin.OriginSetC2SPayload payload, ServerPlayer sp) {
+        com.aetherianartificer.townstead.origin.OriginServerLogic.Result result =
+                com.aetherianartificer.townstead.origin.OriginServerLogic.applyOrRequest(
+                        sp, payload.entityId(), payload.originId());
+        if (result == null) return;
+        com.aetherianartificer.townstead.origin.OriginSyncS2CPayload sync =
+                new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(result.targetId(), result.originId());
+        sendToPlayer(sp, sync);
+        if (result.targetId() != com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF) {
+            Entity tracked = sp.serverLevel().getEntity(result.targetId());
+            if (tracked != null) sendToTrackingEntity(tracked, sync);
+        }
+    }
+
+    private static void handleOriginSync(com.aetherianartificer.townstead.origin.OriginSyncS2CPayload payload) {
+        com.aetherianartificer.townstead.client.origin.OriginClientStore.set(payload.entityId(), payload.originId());
+    }
+
+    private static void handleOriginCatalogSync(com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload payload) {
+        com.aetherianartificer.townstead.client.origin.OriginCatalogClient.set(payload.entries());
     }
 
     private static void handleCalendarSync(com.aetherianartificer.townstead.calendar.CalendarSyncPayload payload) {

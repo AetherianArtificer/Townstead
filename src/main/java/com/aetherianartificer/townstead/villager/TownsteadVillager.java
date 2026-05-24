@@ -28,7 +28,7 @@ import java.util.UUID;
  * boundaries and in temporary adapters for older call sites.</p>
  */
 public final class TownsteadVillager {
-    public static final int SCHEMA_VERSION = 3;
+    public static final int SCHEMA_VERSION = 4;
 
     private final UUID villagerId;
     private boolean dirty;
@@ -741,6 +741,7 @@ public final class TownsteadVillager {
     public final class Life {
         private long birthWorldDay = Long.MIN_VALUE;
         private boolean stamped;
+        private String originId = "";
 
         public long birthWorldDay() {
             return birthWorldDay;
@@ -760,11 +761,28 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** The villager's origin id (e.g. {@code townstead_origins:overworlder}); empty until assigned. */
+        public String originId() {
+            return originId;
+        }
+
+        public boolean hasOrigin() {
+            return !originId.isEmpty();
+        }
+
+        public void setOrigin(String id) {
+            originId = id == null ? "" : id;
+            markDirty();
+        }
+
         public CompoundTag toTag() {
             CompoundTag tag = new CompoundTag();
             if (hasBirth()) {
                 tag.putLong("birthWorldDay", birthWorldDay);
                 tag.putBoolean("birthStamped", stamped);
+            }
+            if (hasOrigin()) {
+                tag.putString("originId", originId);
             }
             return tag;
         }
@@ -777,6 +795,7 @@ public final class TownsteadVillager {
                 birthWorldDay = Long.MIN_VALUE;
                 stamped = false;
             }
+            originId = tag.getString("originId");
             markDirty();
         }
     }

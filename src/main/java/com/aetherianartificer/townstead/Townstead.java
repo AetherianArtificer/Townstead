@@ -197,6 +197,13 @@ public class Townstead {
                     .serialize(net.minecraft.nbt.CompoundTag.CODEC)
                     .build()
     );
+    public static final Supplier<AttachmentType<CompoundTag>> PLAYER_ORIGIN_DATA = ATTACHMENTS.register(
+            "player_origin_data",
+            () -> AttachmentType.builder(() -> new CompoundTag())
+                    .serialize(net.minecraft.nbt.CompoundTag.CODEC)
+                    .copyOnDeath()
+                    .build()
+    );
     //?}
 
     public static final Supplier<VillagerProfession> COOK_PROFESSION = PROFESSIONS.register(
@@ -353,6 +360,11 @@ public class Townstead {
                 }
             }
         });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent e) -> {
+            if (e.getEntity() instanceof VillagerEntityMCA villager && !villager.level().isClientSide) {
+                com.aetherianartificer.townstead.origin.OriginSpawnHandler.onTrueSpawn(villager);
+            }
+        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
@@ -372,6 +384,13 @@ public class Townstead {
                 townstead$sendShiftTemplateSync(sp);
                 townstead$sendWeekPlanSync(sp);
                 PacketDistributor.sendToPlayer(sp, townstead$calendarSync(sp.serverLevel().getServer()));
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.OnDatapackSyncEvent e) -> {
+            if (e.getPlayer() != null) {
+                townstead$sendOriginData(e.getPlayer());
+            } else {
+                e.getPlayerList().getPlayers().forEach(Townstead::townstead$sendOriginData);
             }
         });
         ShiftTemplateRegistry.setChangeListener(Townstead::townstead$broadcastShiftTemplateSync);
@@ -459,6 +478,11 @@ public class Townstead {
                 }
             }
         });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.MobSpawnEvent.FinalizeSpawn e) -> {
+            if (e.getEntity() instanceof VillagerEntityMCA villager && !villager.level().isClientSide) {
+                com.aetherianartificer.townstead.origin.OriginSpawnHandler.onTrueSpawn(villager);
+            }
+        });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
@@ -478,6 +502,13 @@ public class Townstead {
                 TownsteadNetwork.sendShiftTemplateSync(sp);
                 TownsteadNetwork.sendWeekPlanSync(sp);
                 TownsteadNetwork.sendToPlayer(sp, townstead$calendarSync(sp.serverLevel().getServer()));
+            }
+        });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.OnDatapackSyncEvent e) -> {
+            if (e.getPlayer() != null) {
+                townstead$sendOriginData(e.getPlayer());
+            } else {
+                e.getPlayerList().getPlayers().forEach(Townstead::townstead$sendOriginData);
             }
         });
         ShiftTemplateRegistry.setChangeListener(TownsteadNetwork::broadcastShiftTemplateSync);
@@ -603,6 +634,10 @@ public class Townstead {
         event.addListener(new ShiftTemplateJsonLoader());
         event.addListener(new WeekPlanJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.calendar.CalendarProfileJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.SpeciesJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.AncestryJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.HeritageJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.OriginJsonLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
@@ -1087,6 +1122,21 @@ public class Townstead {
                 com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload.STREAM_CODEC,
                 this::handleVillagerLifeSync
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.origin.OriginSetC2SPayload.TYPE,
+                com.aetherianartificer.townstead.origin.OriginSetC2SPayload.STREAM_CODEC,
+                this::handleOriginSet
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.origin.OriginSyncS2CPayload.TYPE,
+                com.aetherianartificer.townstead.origin.OriginSyncS2CPayload.STREAM_CODEC,
+                this::handleOriginSync
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload.TYPE,
+                com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload.STREAM_CODEC,
+                this::handleOriginCatalogSync
+        );
     }
 
     private void handleCalendarSync(
@@ -1101,6 +1151,42 @@ public class Townstead {
             IPayloadContext context
     ) {
         context.enqueueWork(() -> com.aetherianartificer.townstead.calendar.LifeClientStore.setFrom(payload));
+    }
+
+    private void handleOriginSet(
+            com.aetherianartificer.townstead.origin.OriginSetC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            com.aetherianartificer.townstead.origin.OriginServerLogic.Result result =
+                    com.aetherianartificer.townstead.origin.OriginServerLogic.applyOrRequest(
+                            sp, payload.entityId(), payload.originId());
+            if (result == null) return;
+            com.aetherianartificer.townstead.origin.OriginSyncS2CPayload sync =
+                    new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(result.targetId(), result.originId());
+            PacketDistributor.sendToPlayer(sp, sync);
+            if (result.targetId() != com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF) {
+                Entity tracked = sp.serverLevel().getEntity(result.targetId());
+                if (tracked != null) PacketDistributor.sendToPlayersTrackingEntity(tracked, sync);
+            }
+        });
+    }
+
+    private void handleOriginSync(
+            com.aetherianartificer.townstead.origin.OriginSyncS2CPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.client.origin.OriginClientStore.set(payload.entityId(), payload.originId()));
+    }
+
+    private void handleOriginCatalogSync(
+            com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.client.origin.OriginCatalogClient.set(payload.entries()));
     }
 
     private void handleDialogueStateC2S(
@@ -2112,6 +2198,30 @@ public class Townstead {
         }
         //?} else if forge {
         /*TownsteadNetwork.sendToAll(payload);
+        *///?}
+    }
+
+    /**
+     * Send the origin catalog and the player's own current origin to one player.
+     * Fired on login and on datapack reload (via OnDatapackSyncEvent), so the
+     * picker can list/label origins even on a client whose datapack registry is
+     * empty.
+     */
+    public static void townstead$sendOriginData(ServerPlayer sp) {
+        if (sp == null) return;
+        com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload catalog =
+                new com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload(
+                        com.aetherianartificer.townstead.origin.OriginCatalog.build());
+        com.aetherianartificer.townstead.origin.OriginSyncS2CPayload self =
+                new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(
+                        com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF,
+                        com.aetherianartificer.townstead.origin.PlayerOrigin.getOriginId(sp));
+        //? if neoforge {
+        PacketDistributor.sendToPlayer(sp, catalog);
+        PacketDistributor.sendToPlayer(sp, self);
+        //?} else if forge {
+        /*TownsteadNetwork.sendToPlayer(sp, catalog);
+        TownsteadNetwork.sendToPlayer(sp, self);
         *///?}
     }
 

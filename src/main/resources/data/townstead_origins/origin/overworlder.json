@@ -1,0 +1,10 @@
+{
+  "display_name": { "translate": "origin.townstead_origins.origin.overworlder" },
+  "species": "townstead_origins:humanoid",
+  "ancestry": "townstead_origins:human",
+  "demonym": {
+    "singular": { "translate": "origin.townstead_origins.origin.overworlder.demonym.singular" },
+    "plural": { "translate": "origin.townstead_origins.origin.overworlder.demonym.plural" }
+  },
+  "backstory": { "translate": "origin.townstead_origins.origin.overworlder.backstory" }
+}

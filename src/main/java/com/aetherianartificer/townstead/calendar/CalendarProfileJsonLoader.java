@@ -7,7 +7,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
@@ -15,10 +14,8 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,7 +111,6 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/CalendarProfileJsonLoader");
     private static final Gson GSON = new Gson();
     private static final String DIRECTORY = "calendar_profile";
-    private static final String LANG_SIDECAR_PATH = "lang/en_us.json";
 
     public CalendarProfileJsonLoader() {
         super(GSON, DIRECTORY);
@@ -123,7 +119,8 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resourceManager,
                          ProfilerFiller profiler) {
-        Map<String, String> langIndex = loadLangIndex(resourceManager);
+        Map<String, String> langIndex = com.aetherianartificer.townstead.data.DataPackLang
+                .loadLangIndex(resourceManager, CalendarProfileJsonLoader::convertNamedPlaceholders);
         Map<ResourceLocation, CalendarProfile> parsed = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
@@ -348,44 +345,6 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
     }
 
     /**
-     * Scan every namespace for {@code data/<ns>/lang/en_us.json} and merge the
-     * (key, English-string) entries into one map. Same JSON shape as a standard
-     * Minecraft lang file. Each value also runs through
-     * {@link #convertNamedPlaceholders(String)} so authors can write tokens
-     * like {@code {day}} instead of {@code %1$s}. Silently skips namespaces
-     * without a sidecar and malformed files (warns).
-     */
-    private static Map<String, String> loadLangIndex(ResourceManager rm) {
-        Map<String, String> out = new HashMap<>();
-        // Enumerate every data/<ns>/lang/en_us.json directly via listResources
-        // (the same scan the parent listener uses to find the profiles) rather
-        // than iterating getNamespaces(). On 1.20.1 Forge a data-only namespace
-        // (one with no registered registry content, like townstead_calendar)
-        // can be absent from getNamespaces(), which silently dropped this mod's
-        // own calendar sidecar and left every built-in profile name unresolved
-        // on the client. listResources walks the actual pack tree, so it sees
-        // the sidecar regardless of namespace enumeration quirks.
-        Map<ResourceLocation, Resource> sidecars =
-                rm.listResources("lang", loc -> loc.getPath().equals(LANG_SIDECAR_PATH));
-        for (Map.Entry<ResourceLocation, Resource> sidecar : sidecars.entrySet()) {
-            try (Reader r = sidecar.getValue().openAsReader()) {
-                JsonElement el = GSON.fromJson(r, JsonElement.class);
-                if (el == null || !el.isJsonObject()) continue;
-                JsonObject obj = el.getAsJsonObject();
-                for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
-                    JsonElement v = e.getValue();
-                    if (v != null && v.isJsonPrimitive()) {
-                        out.put(e.getKey(), convertNamedPlaceholders(v.getAsString()));
-                    }
-                }
-            } catch (Exception ex) {
-                LOGGER.warn("Failed to read calendar lang sidecar {}: {}", sidecar.getKey(), ex.getMessage());
-            }
-        }
-        return out;
-    }
-
-    /**
      * Rewrite named placeholders to MC's positional format args. Idempotent on
      * already-positional patterns. See class Javadoc for the supported token
      * vocabulary.
@@ -402,20 +361,6 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
     }
 
     private static Component parseComponent(JsonElement el, String context, Map<String, String> langIndex) {
-        if (el == null || el.isJsonNull()) return Component.literal(context);
-        if (el.isJsonPrimitive()) return Component.literal(el.getAsString());
-        if (el.isJsonObject()) {
-            JsonObject obj = el.getAsJsonObject();
-            if (obj.has("translate")) {
-                String key = obj.get("translate").getAsString();
-                String resolved = langIndex.get(key);
-                if (resolved != null) {
-                    return Component.translatableWithFallback(key, resolved);
-                }
-                return Component.translatable(key);
-            }
-            if (obj.has("text")) return Component.literal(obj.get("text").getAsString());
-        }
-        return Component.literal(context);
+        return com.aetherianartificer.townstead.data.DataPackLang.parseComponent(el, context, langIndex);
     }
 }

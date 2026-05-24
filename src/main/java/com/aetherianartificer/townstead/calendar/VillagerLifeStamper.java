@@ -42,6 +42,11 @@ public final class VillagerLifeStamper {
             broadcastFreshStamp(villager);
         }
 
+        // Backfill an origin for villagers that predate the Origins system (or any
+        // that bypassed the FinalizeSpawn hook). Assigns the default id only; genes
+        // are left as MCA rolled them, so existing villagers keep their appearance.
+        com.aetherianartificer.townstead.origin.OriginSpawnHandler.backfillIfMissing(villager);
+
         stampVillageBirthIfNeeded(villager, serverLevel, server);
     }
 

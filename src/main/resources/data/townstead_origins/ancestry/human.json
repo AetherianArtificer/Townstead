@@ -1,0 +1,25 @@
+{
+  "display_name": { "translate": "origin.townstead_origins.ancestry.human" },
+  "species": "townstead_origins:humanoid",
+  "demonym": {
+    "singular": { "translate": "origin.townstead_origins.ancestry.human.demonym.singular" },
+    "plural": { "translate": "origin.townstead_origins.ancestry.human.demonym.plural" }
+  },
+  "backstory": { "translate": "origin.townstead_origins.ancestry.human.backstory" },
+  "genome": {
+    "genes": {
+      "size":        { "min": 0.0, "max": 1.0 },
+      "width":       { "min": 0.0, "max": 1.0 },
+      "breast":      { "min": 0.0, "max": 1.0 },
+      "melanin":     { "min": 0.0, "max": 1.0 },
+      "hemoglobin":  { "min": 0.0, "max": 1.0 },
+      "eumelanin":   { "min": 0.0, "max": 1.0 },
+      "pheomelanin": { "min": 0.0, "max": 1.0 },
+      "skin":        { "min": 0.0, "max": 1.0 },
+      "face":        { "min": 0.0, "max": 1.0 },
+      "voice":       { "min": 0.0, "max": 1.0 },
+      "voice_tone":  { "min": 0.0, "max": 1.0 }
+    },
+    "tags": []
+  }
+}
