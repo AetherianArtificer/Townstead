@@ -22,7 +22,7 @@ public final class AncestryRegistry {
 
     @Nullable
     public static Ancestry byId(ResourceLocation id) {
-        return ENTRIES.get(id);
+        return id == null ? null : ENTRIES.get(id);
     }
 
     public static List<Ancestry> all() {

@@ -20,6 +20,12 @@
       "voice":       { "min": 0.0, "max": 1.0 },
       "voice_tone":  { "min": 0.0, "max": 1.0 }
     },
-    "tags": []
+    "inherited_genes": [
+      "townstead_origins:warm_skin",
+      "townstead_origins:omnivore",
+      "townstead_origins:water_drinker",
+      "townstead_origins:diurnal",
+      "townstead_origins:human_lifespan"
+    ]
   }
 }

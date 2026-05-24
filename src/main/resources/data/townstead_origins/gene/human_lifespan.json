@@ -1,0 +1,8 @@
+{
+  "type": "townstead_origins:lifespan",
+  "display_name": { "translate": "gene.townstead_origins.human_lifespan" },
+  "description": { "translate": "gene.townstead_origins.human_lifespan.desc" },
+  "category": "Vitality",
+  "dominance": "dominant",
+  "multiplier": 1.0
+}

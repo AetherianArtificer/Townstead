@@ -12,15 +12,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Server → client: the full list of selectable origins (flattened display data)
- * so the picker can render on a client whose datapack-driven
- * {@link OriginRegistry} is empty. Sent on login and on datapack reload, mirror
- * of {@code CalendarSyncPayload}.
+ * Server → client: the selectable origins (lineage names + granted gene ids) plus
+ * a gene dictionary (id → display data) covering every gene any origin grants, so
+ * the picker renders fully on a client whose datapack-driven registries are empty.
+ * Sent on login and datapack reload.
  */
 //? if neoforge {
-public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries) implements CustomPacketPayload {
+public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes)
+        implements CustomPacketPayload {
 //?} else {
-/*public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries) {
+/*public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes) {
 *///?}
 
     //? if neoforge {
@@ -48,6 +49,29 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries) impleme
             buf.writeUtf(e.demonymSingular());
             buf.writeUtf(e.demonymPlural());
             buf.writeUtf(e.backstory());
+            buf.writeUtf(e.speciesName());
+            buf.writeUtf(e.ancestryName());
+            buf.writeUtf(e.heritageName());
+            buf.writeVarInt(e.inheritedGenes().size());
+            for (OriginCatalogEntry.Inherited in : e.inheritedGenes()) {
+                buf.writeUtf(in.geneId());
+                buf.writeFloat(in.occurrence());
+            }
+        }
+        buf.writeVarInt(genes.size());
+        for (GeneCatalogEntry g : genes) {
+            buf.writeUtf(g.id());
+            buf.writeUtf(g.name());
+            buf.writeUtf(g.description());
+            buf.writeUtf(g.category());
+            buf.writeVarInt(g.displayKind());
+            buf.writeFloat(g.min());
+            buf.writeFloat(g.max());
+            buf.writeUtf(g.targetId());
+            buf.writeFloat(g.amount());
+            buf.writeVarInt(g.dominanceOrdinal());
+            buf.writeUtf(g.alleleGroup());
+            buf.writeVarInt(g.weight());
         }
     }
 
@@ -55,9 +79,31 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries) impleme
         int n = buf.readVarInt();
         List<OriginCatalogEntry> entries = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
-            entries.add(new OriginCatalogEntry(
-                    buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf()));
+            String id = buf.readUtf();
+            String name = buf.readUtf();
+            String singular = buf.readUtf();
+            String plural = buf.readUtf();
+            String backstory = buf.readUtf();
+            String speciesName = buf.readUtf();
+            String ancestryName = buf.readUtf();
+            String heritageName = buf.readUtf();
+            int gn = buf.readVarInt();
+            List<OriginCatalogEntry.Inherited> inherited = new ArrayList<>(gn);
+            for (int j = 0; j < gn; j++) {
+                inherited.add(new OriginCatalogEntry.Inherited(buf.readUtf(), buf.readFloat()));
+            }
+            entries.add(new OriginCatalogEntry(id, name, singular, plural, backstory,
+                    speciesName, ancestryName, heritageName, inherited));
         }
-        return new OriginCatalogSyncPayload(entries);
+        int m = buf.readVarInt();
+        List<GeneCatalogEntry> genes = new ArrayList<>(m);
+        for (int i = 0; i < m; i++) {
+            genes.add(new GeneCatalogEntry(
+                    buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
+                    buf.readVarInt(), buf.readFloat(), buf.readFloat(),
+                    buf.readUtf(), buf.readFloat(),
+                    buf.readVarInt(), buf.readUtf(), buf.readVarInt()));
+        }
+        return new OriginCatalogSyncPayload(entries, genes);
     }
 }

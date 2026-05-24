@@ -23,7 +23,7 @@ public final class SpeciesRegistry {
 
     @Nullable
     public static Species byId(ResourceLocation id) {
-        return ENTRIES.get(id);
+        return id == null ? null : ENTRIES.get(id);
     }
 
     public static List<Species> all() {

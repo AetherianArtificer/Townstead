@@ -91,14 +91,24 @@ final class OriginJsonParsing {
             }
         }
 
-        List<ResourceLocation> tags = new ArrayList<>();
-        if (g.has("tags") && g.get("tags").isJsonArray()) {
-            for (JsonElement t : g.getAsJsonArray("tags")) {
-                ResourceLocation tag = DataPackLang.parseId(t.getAsString());
-                if (tag != null) tags.add(tag);
+        List<com.aetherianartificer.townstead.origin.gene.InheritedGene> inheritedGenes = new ArrayList<>();
+        if (g.has("inherited_genes") && g.get("inherited_genes").isJsonArray()) {
+            for (JsonElement t : g.getAsJsonArray("inherited_genes")) {
+                if (t.isJsonObject()) {
+                    JsonObject go = t.getAsJsonObject();
+                    ResourceLocation gene = DataPackLang.parseId(GsonHelper.getAsString(go, "gene", ""));
+                    if (gene == null) continue;
+                    float occurrence = GsonHelper.getAsFloat(go, "occurrence", 1.0f);
+                    inheritedGenes.add(new com.aetherianartificer.townstead.origin.gene.InheritedGene(gene, occurrence));
+                } else if (t.isJsonPrimitive()) {
+                    ResourceLocation gene = DataPackLang.parseId(t.getAsString());
+                    if (gene != null) {
+                        inheritedGenes.add(com.aetherianartificer.townstead.origin.gene.InheritedGene.of(gene));
+                    }
+                }
             }
         }
 
-        return new Genome(genes, tags);
+        return new Genome(genes, inheritedGenes);
     }
 }

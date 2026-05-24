@@ -34,7 +34,7 @@ public final class OriginRegistry {
 
     @Nullable
     public static Origin byId(ResourceLocation id) {
-        return ENTRIES.get(id);
+        return id == null ? null : ENTRIES.get(id);
     }
 
     public static List<Origin> all() {

@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
-import com.aetherianartificer.townstead.client.gui.origin.OriginListWidget;
-import com.aetherianartificer.townstead.client.origin.OriginCatalogClient;
+import com.aetherianartificer.townstead.client.gui.origin.OriginPicker;
 import com.aetherianartificer.townstead.origin.OriginSetC2SPayload;
 import net.conczin.mca.client.gui.DestinyScreen;
 import net.minecraft.client.Minecraft;
@@ -43,12 +42,15 @@ public abstract class DestinyScreenMixin extends Screen {
     private void townstead$buildOriginsPage(String page, CallbackInfo ci) {
         if (!"origins".equals(page)) return;
 
-        OriginListWidget widget = new OriginListWidget(
+        OriginPicker.Widgets ws = OriginPicker.build(
                 Minecraft.getInstance(),
-                this.width / 2, 178, 150, this.height / 2 - 75, OriginSetC2SPayload.SELF,
+                this.width / 2, this.height / 2 - 80, 175, 185, OriginSetC2SPayload.SELF,
                 this::townstead$sendOriginSet);
-        widget.setEntries(OriginCatalogClient.get());
-        addRenderableWidget(widget);
+        addRenderableWidget(ws.search());
+        addRenderableWidget(ws.list());
+        addRenderableWidget(ws.description());
+        addRenderableWidget(ws.traits());
+        addRenderableWidget(ws.apply());
 
         townstead$sendOriginSet("");
     }

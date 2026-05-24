@@ -1,0 +1,10 @@
+{
+  "type": "townstead_origins:skin_tone",
+  "display_name": { "translate": "gene.townstead_origins.warm_skin" },
+  "description": { "translate": "gene.townstead_origins.warm_skin.desc" },
+  "category": "Appearance",
+  "dominance": "dominant",
+  "palette": "warm",
+  "min": 0.0,
+  "max": 1.0
+}

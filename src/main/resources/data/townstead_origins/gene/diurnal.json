@@ -1,0 +1,8 @@
+{
+  "type": "townstead_origins:chronotype",
+  "display_name": { "translate": "gene.townstead_origins.diurnal" },
+  "description": { "translate": "gene.townstead_origins.diurnal.desc" },
+  "category": "Activity",
+  "dominance": "dominant",
+  "chronotype": "diurnal"
+}

@@ -22,7 +22,7 @@ public final class HeritageRegistry {
 
     @Nullable
     public static Heritage byId(ResourceLocation id) {
-        return ENTRIES.get(id);
+        return id == null ? null : ENTRIES.get(id);
     }
 
     public static List<Heritage> all() {

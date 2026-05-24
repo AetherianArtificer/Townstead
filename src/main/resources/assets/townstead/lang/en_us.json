@@ -1,6 +1,10 @@
 {
   "gui.villager_editor.page.origins": "Origins",
   "gui.destiny.origins": "Origins",
+  "townstead.origin.search": "Search origins...",
+  "townstead.origin.apply": "Apply",
+  "townstead.origin.inherited_genes": "Inherited Genes",
+  "townstead.origin.no_traits": "No distinctive traits.",
   "townstead.gui.back": "<< Back",
   "gui.button.pose": "Pose",
   "townstead.pose.picker.title": "Choose a pose",

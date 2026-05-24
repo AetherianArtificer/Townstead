@@ -247,7 +247,7 @@ public final class TownsteadNetwork {
     }
 
     private static void handleOriginCatalogSync(com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload payload) {
-        com.aetherianartificer.townstead.client.origin.OriginCatalogClient.set(payload.entries());
+        com.aetherianartificer.townstead.client.origin.OriginCatalogClient.setFrom(payload);
     }
 
     private static void handleCalendarSync(com.aetherianartificer.townstead.calendar.CalendarSyncPayload payload) {

@@ -1,0 +1,8 @@
+{
+  "type": "townstead_origins:diet",
+  "display_name": { "translate": "gene.townstead_origins.omnivore" },
+  "description": { "translate": "gene.townstead_origins.omnivore.desc" },
+  "category": "Diet",
+  "dominance": "dominant",
+  "diet": "omnivore"
+}

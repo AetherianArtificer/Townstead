@@ -625,6 +625,26 @@ public class Townstead {
                     new com.aetherianartificer.townstead.reaction.trigger.types.TimeTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.event.MusicSourceProviders.register(
                     new com.aetherianartificer.townstead.reaction.trigger.event.JukeboxMusicSourceProvider());
+
+            // Origin gene types (Apoli-style behavior backbone)
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.ScaledPartGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.CosmeticFeatureGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.DietGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.HydrationGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.ChronotypeGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.LifespanGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.AttributeGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.SkinToneGeneType());
         });
     }
 
@@ -638,6 +658,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.origin.AncestryJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.HeritageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.OriginJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.gene.GeneJsonLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
@@ -1186,7 +1207,7 @@ public class Townstead {
             IPayloadContext context
     ) {
         context.enqueueWork(() ->
-                com.aetherianartificer.townstead.client.origin.OriginCatalogClient.set(payload.entries()));
+                com.aetherianartificer.townstead.client.origin.OriginCatalogClient.setFrom(payload));
     }
 
     private void handleDialogueStateC2S(
@@ -2209,20 +2230,27 @@ public class Townstead {
      */
     public static void townstead$sendOriginData(ServerPlayer sp) {
         if (sp == null) return;
-        com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload catalog =
-                new com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload(
-                        com.aetherianartificer.townstead.origin.OriginCatalog.build());
-        com.aetherianartificer.townstead.origin.OriginSyncS2CPayload self =
-                new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(
-                        com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF,
-                        com.aetherianartificer.townstead.origin.PlayerOrigin.getOriginId(sp));
-        //? if neoforge {
-        PacketDistributor.sendToPlayer(sp, catalog);
-        PacketDistributor.sendToPlayer(sp, self);
-        //?} else if forge {
-        /*TownsteadNetwork.sendToPlayer(sp, catalog);
-        TownsteadNetwork.sendToPlayer(sp, self);
-        *///?}
+        // Never let a cosmetic catalog/sync failure abort the player's login.
+        try {
+            com.aetherianartificer.townstead.origin.OriginCatalog.Snapshot originSnap =
+                    com.aetherianartificer.townstead.origin.OriginCatalog.build();
+            com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload catalog =
+                    new com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload(
+                            originSnap.origins(), originSnap.genes());
+            com.aetherianartificer.townstead.origin.OriginSyncS2CPayload self =
+                    new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(
+                            com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF,
+                            com.aetherianartificer.townstead.origin.PlayerOrigin.getOriginId(sp));
+            //? if neoforge {
+            PacketDistributor.sendToPlayer(sp, catalog);
+            PacketDistributor.sendToPlayer(sp, self);
+            //?} else if forge {
+            /*TownsteadNetwork.sendToPlayer(sp, catalog);
+            TownsteadNetwork.sendToPlayer(sp, self);
+            *///?}
+        } catch (Exception ex) {
+            LOGGER.error("Failed to send origin data to {}", sp.getName().getString(), ex);
+        }
     }
 
     /**

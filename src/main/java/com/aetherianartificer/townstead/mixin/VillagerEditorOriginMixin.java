@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
-import com.aetherianartificer.townstead.client.gui.origin.OriginListWidget;
-import com.aetherianartificer.townstead.client.origin.OriginCatalogClient;
+import com.aetherianartificer.townstead.client.gui.origin.OriginPicker;
 import com.aetherianartificer.townstead.origin.OriginSetC2SPayload;
 import net.conczin.mca.client.gui.DestinyScreen;
 import net.conczin.mca.client.gui.VillagerEditorScreen;
@@ -57,12 +56,18 @@ public abstract class VillagerEditorOriginMixin extends Screen {
         if (!"origins".equals(page)) return;
 
         int target = villagerUUID.equals(playerUUID) ? OriginSetC2SPayload.SELF : villager.getId();
-        OriginListWidget widget = new OriginListWidget(
+        // Span MCA's content column exactly: search top aligns with the General
+        // name field (h/2-80); Apply lands on the Done button's row (h/2+85, height 20);
+        // right edge aligned to the tab row (w/2+175).
+        OriginPicker.Widgets ws = OriginPicker.build(
                 Minecraft.getInstance(),
-                this.width / 2, 178, 150, this.height / 2 - 75, target,
+                this.width / 2, this.height / 2 - 80, 175, 185, target,
                 originId -> townstead$sendOriginSet(target, originId));
-        widget.setEntries(OriginCatalogClient.get());
-        addRenderableWidget(widget);
+        addRenderableWidget(ws.search());
+        addRenderableWidget(ws.list());
+        addRenderableWidget(ws.description());
+        addRenderableWidget(ws.traits());
+        addRenderableWidget(ws.apply());
 
         // Ask the server for the target's current origin so the row highlights.
         townstead$sendOriginSet(target, "");
