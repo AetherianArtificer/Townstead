@@ -126,6 +126,7 @@ public final class TownsteadClient {
         clearClientStore("com.aetherianartificer.townstead.shift.ShiftClientStore");
         clearClientStore("com.aetherianartificer.townstead.profession.ProfessionClientStore");
         clearClientStore("com.aetherianartificer.townstead.village.VillageResidentClientStore");
+        clearClientStore("com.aetherianartificer.townstead.calendar.CalendarStampClientStore");
     }
 
     private static void clearClientStore(String className) {

@@ -384,6 +384,8 @@ public class Townstead {
                 townstead$sendShiftTemplateSync(sp);
                 townstead$sendWeekPlanSync(sp);
                 PacketDistributor.sendToPlayer(sp, townstead$calendarSync(sp.serverLevel().getServer()));
+                PacketDistributor.sendToPlayer(sp,
+                        com.aetherianartificer.townstead.calendar.CalendarStampServer.snapshotFor(sp.serverLevel().getServer(), sp));
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.OnDatapackSyncEvent e) -> {
@@ -502,6 +504,8 @@ public class Townstead {
                 TownsteadNetwork.sendShiftTemplateSync(sp);
                 TownsteadNetwork.sendWeekPlanSync(sp);
                 TownsteadNetwork.sendToPlayer(sp, townstead$calendarSync(sp.serverLevel().getServer()));
+                TownsteadNetwork.sendToPlayer(sp,
+                        com.aetherianartificer.townstead.calendar.CalendarStampServer.snapshotFor(sp.serverLevel().getServer(), sp));
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.OnDatapackSyncEvent e) -> {
@@ -1145,6 +1149,16 @@ public class Townstead {
                 com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload.STREAM_CODEC,
                 this::handleVillagerLifeSync
         );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload.TYPE,
+                com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload.STREAM_CODEC,
+                this::handleStampSync
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload.TYPE,
+                com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload.STREAM_CODEC,
+                this::handleStampAction
+        );
         registrar.playToServer(
                 com.aetherianartificer.townstead.origin.OriginSetC2SPayload.TYPE,
                 com.aetherianartificer.townstead.origin.OriginSetC2SPayload.STREAM_CODEC,
@@ -1167,6 +1181,25 @@ public class Townstead {
             IPayloadContext context
     ) {
         context.enqueueWork(() -> com.aetherianartificer.townstead.calendar.CalendarClientStore.setFrom(payload));
+    }
+
+    private void handleStampSync(
+            com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> com.aetherianartificer.townstead.calendar.CalendarStampClientStore.setFrom(payload));
+    }
+
+    private void handleStampAction(
+            com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            if (com.aetherianartificer.townstead.calendar.CalendarStampServer.apply(sp, payload)) {
+                townstead$broadcastStampSync(sp.getServer());
+            }
+        });
     }
 
     private void handleVillagerLifeSync(
@@ -2228,6 +2261,20 @@ public class Townstead {
         //?} else if forge {
         /*TownsteadNetwork.sendToAll(payload);
         *///?}
+    }
+
+    public static void townstead$broadcastStampSync(MinecraftServer server) {
+        if (server == null) return;
+        // Per-player: each gets their own private stamps plus all public ones.
+        for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload payload =
+                    com.aetherianartificer.townstead.calendar.CalendarStampServer.snapshotFor(server, sp);
+            //? if neoforge {
+            PacketDistributor.sendToPlayer(sp, payload);
+            //?} else if forge {
+            /*TownsteadNetwork.sendToPlayer(sp, payload);
+            *///?}
+        }
     }
 
     /**
