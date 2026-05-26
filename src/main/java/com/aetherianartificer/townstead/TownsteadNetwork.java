@@ -211,6 +211,14 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload::write,
                 com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload::read,
                 TownsteadNetwork::handleVillagerLifeSync);
+        registerS2C(com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload.class,
+                com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload::write,
+                com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload::read,
+                TownsteadNetwork::handleStampSync);
+        registerC2S(com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload.class,
+                com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload::write,
+                com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload::read,
+                TownsteadNetwork::handleStampAction);
 
         // Origins
         registerC2S(com.aetherianartificer.townstead.origin.OriginSetC2SPayload.class,
@@ -256,6 +264,25 @@ public final class TownsteadNetwork {
 
     private static void handleVillagerLifeSync(com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload payload) {
         com.aetherianartificer.townstead.calendar.LifeClientStore.setFrom(payload);
+    }
+
+    private static void handleStampSync(com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload payload) {
+        com.aetherianartificer.townstead.calendar.CalendarStampClientStore.setFrom(payload);
+    }
+
+    private static void handleStampAction(
+            com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload payload, ServerPlayer sp) {
+        if (com.aetherianartificer.townstead.calendar.CalendarStampServer.apply(sp, payload)) {
+            broadcastStampSync(sp.getServer());
+        }
+    }
+
+    public static void broadcastStampSync(net.minecraft.server.MinecraftServer server) {
+        if (server == null) return;
+        // Per-player: each gets their own private stamps plus all public ones.
+        for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            sendToPlayer(sp, com.aetherianartificer.townstead.calendar.CalendarStampServer.snapshotFor(server, sp));
+        }
     }
 
     private static void handleDialogueStateC2S(
