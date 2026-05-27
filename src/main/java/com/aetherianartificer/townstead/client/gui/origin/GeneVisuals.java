@@ -5,6 +5,8 @@ import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.util.Locale;
 
@@ -35,6 +37,10 @@ final class GeneVisuals {
     private static final ResourceLocation STEVE_SKIN = new ResourceLocation("minecraft", "textures/entity/player/wide/steve.png");
     *///?}
 
+    // Lifespan / Abilities have no vanilla HUD sprite, so they render as item icons.
+    private static final ItemStack LIFESPAN_ITEM = new ItemStack(Items.CLOCK);
+    private static final ItemStack ABILITIES_ITEM = new ItemStack(Items.FEATHER);
+
     /**
      * A tinted, pressed-in stone button backdrop: a tiled stone texture darkened for
      * contrast, washed with the category tint, and finished with an inset bevel (dark
@@ -62,7 +68,8 @@ final class GeneVisuals {
      */
     static boolean hasCategoryIcon(String cat) {
         switch (cat == null ? "" : cat.toLowerCase(Locale.ROOT)) {
-            case "diet": case "vitality": case "activity": case "appearance": return true;
+            case "diet": case "health": case "lifespan": case "abilities":
+            case "activity": case "appearance": return true;
             case "hydration": return ThirstBridgeResolver.isActive();
             default: return false;
         }
@@ -72,7 +79,9 @@ final class GeneVisuals {
     static void drawCategoryIcon(GuiGraphics g, String cat, int x, int y) {
         switch (cat == null ? "" : cat.toLowerCase(Locale.ROOT)) {
             case "diet":       foodIcon(g, x, y); break;
-            case "vitality":   heartIcon(g, x, y); break;
+            case "health":     heartIcon(g, x, y); break;
+            case "lifespan":   itemIcon(g, LIFESPAN_ITEM, x, y); break;
+            case "abilities":  itemIcon(g, ABILITIES_ITEM, x, y); break;
             case "activity":   g.blit(ENERGY_ICON, x, y, 0, 0, 9, 9, 9, 9); break;
             case "appearance": g.blit(STEVE_SKIN, x, y, 8, 8, 8, 8, 64, 64); break; // default-skin face
             case "hydration":  thirstIcon(g, x, y); break;
@@ -103,12 +112,24 @@ final class GeneVisuals {
         g.blit(i.texture(), x, y, i.u(), i.v(), 9, 9, i.texW(), i.texH());
     }
 
+    /** Renders a 16px item icon scaled into the category icon slot (a touch larger reads better). */
+    private static void itemIcon(GuiGraphics g, ItemStack stack, int x, int y) {
+        float s = (ICON_SIZE + 1) / 16f;
+        g.pose().pushPose();
+        g.pose().translate(x, y, 0);
+        g.pose().scale(s, s, 1f);
+        g.renderItem(stack, 0, 0);
+        g.pose().popPose();
+    }
+
     static int categoryTint(String cat) {
         switch (cat == null ? "" : cat.toLowerCase(Locale.ROOT)) {
             case "diet":       return 0xFF8FBF6F;
             case "hydration":  return 0xFF6FA8D8;
             case "activity":   return 0xFFD8B45A;
-            case "vitality":   return 0xFFCF7070;
+            case "health":     return 0xFFCF7070;
+            case "lifespan":   return 0xFFB0AEC8;
+            case "abilities":  return 0xFFD58CB8;
             case "appearance": return 0xFF6FCFC0;
             case "genetics":   return 0xFFB58CD8;
             default:           return hashTint(cat);

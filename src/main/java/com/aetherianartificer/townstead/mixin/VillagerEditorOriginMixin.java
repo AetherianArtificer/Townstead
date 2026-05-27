@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.origin.GeneRange;
 import com.aetherianartificer.townstead.origin.Genome;
 import com.aetherianartificer.townstead.origin.OriginCatalogEntry;
 import com.aetherianartificer.townstead.origin.OriginGenes;
+import com.aetherianartificer.townstead.origin.OriginRegistry;
 import com.aetherianartificer.townstead.origin.OriginSetC2SPayload;
 import net.conczin.mca.client.gui.DestinyScreen;
 import net.conczin.mca.client.gui.VillagerEditorScreen;
@@ -93,7 +94,7 @@ public abstract class VillagerEditorOriginMixin extends Screen {
                 Minecraft.getInstance(),
                 this.width / 2, this.height / 2 - 80, 175, 185, target,
                 originId -> townstead$applyOrigin(target, originId),
-                this::townstead$previewOrigin);
+                entry -> townstead$previewOrigin(target, entry));
         addRenderableWidget(ws.tabOrigin());
         addRenderableWidget(ws.tabGenes());
         addRenderableWidget(ws.search());
@@ -109,9 +110,20 @@ public abstract class VillagerEditorOriginMixin extends Screen {
         townstead$previewDirty = false;
     }
 
-    /** Roll the selected origin's genome onto the editor dummy for a live, WYSIWYG preview. */
+    /**
+     * Roll the selected origin's genome onto the editor dummy for a live, WYSIWYG preview.
+     * Re-selecting the origin the target already is (or the default Overworlder when it has
+     * none) must not re-roll: that would randomize the existing genes (e.g. skin tone) for
+     * no reason, so instead we drop any in-progress preview back to the dummy's real genes.
+     */
     @Unique
-    private void townstead$previewOrigin(OriginCatalogEntry entry) {
+    private void townstead$previewOrigin(int target, OriginCatalogEntry entry) {
+        String current = OriginClientStore.get(target);
+        if (current.isEmpty()) current = OriginRegistry.DEFAULT_ID.toString();
+        if (entry.id().equals(current)) {
+            townstead$revertPreview();
+            return;
+        }
         Map<String, GeneRange> ranges = new LinkedHashMap<>();
         for (OriginCatalogEntry.GeneRangeView r : entry.geneRanges()) {
             ranges.put(r.key(), new GeneRange(r.min(), r.max()));

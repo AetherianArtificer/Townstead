@@ -22,6 +22,7 @@
     "WalkNodeEvaluatorFenceGateMixin"
   ],
   "client": [
+    "compat.stardewhud.StardewHudDateMixin",
     "compat.stardewhud.StardewHudSeasonMixin",
     "compat.timekeeper.TimekeeperReturnTimeMixin",
     "BlueprintScreenMixin",
