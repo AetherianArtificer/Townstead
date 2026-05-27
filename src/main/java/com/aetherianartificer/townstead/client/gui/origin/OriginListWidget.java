@@ -128,6 +128,12 @@ public class OriginListWidget extends ObjectSelectionList<OriginListWidget.Row> 
         return r != null ? r.entry : null;
     }
 
+    /** Scroll so the selected row is on screen (reveals the target's current origin on open). */
+    public void scrollToSelected() {
+        Row r = getSelected();
+        if (r != null) ensureVisible(r);
+    }
+
     @Override
     public int getRowWidth() {
         return this.width;

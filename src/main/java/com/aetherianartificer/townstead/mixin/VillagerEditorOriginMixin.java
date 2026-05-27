@@ -51,6 +51,9 @@ public abstract class VillagerEditorOriginMixin extends Screen {
 
     @Unique private boolean townstead$previewDirty;
     @Unique private float[] townstead$geneSnapshot;
+    @Unique private String townstead$baseOriginId = "";
+    @Unique private boolean townstead$primed;
+    @Unique private int townstead$target;
 
     private VillagerEditorOriginMixin() {
         super(null);
@@ -79,22 +82,36 @@ public abstract class VillagerEditorOriginMixin extends Screen {
     }
 
     @Inject(method = "setPage", remap = false, at = @At("TAIL"))
-    private void townstead$buildOriginsPage(String page, CallbackInfo ci) {
+    private void townstead$onSetPage(String page, CallbackInfo ci) {
         if ((Object) this instanceof DestinyScreen) return;
+
+        // Prime once, on the first page shown. MCA draws the preview villager on EVERY page (it's
+        // the screen's left-side model, not page-specific), so the dummy's origin tint must be set
+        // up the moment the editor opens, not only when the Origins tab is built — otherwise the
+        // initial render shows MCA-native (human) skin. The editor renders a throwaway dummy
+        // (EntityType.create) whose id differs from the real villager, so we resolve the REAL
+        // villager by UUID, read its synced origin, and mirror it onto the dummy's id.
+        if (!townstead$primed) {
+            townstead$target = villagerUUID.equals(playerUUID)
+                    ? OriginSetC2SPayload.SELF
+                    : townstead$resolveVillagerEntityId(villagerUUID);
+            townstead$sendOriginSet(townstead$target, "");      // also makes the picker row highlight
+            townstead$baseOriginId = OriginClientStore.get(townstead$target);
+            townstead$geneSnapshot = OriginGenes.snapshot(villager);   // baseline for revert
+            townstead$primed = true;
+        }
+        // Keep the dummy tinted to the real origin on every page. A page change reverts any
+        // un-applied preview at HEAD first, so this never clobbers a live preview.
+        OriginClientStore.set(villager.getId(), townstead$baseOriginId);
+        townstead$previewDirty = false;
+
         if (!"origins".equals(page)) return;
 
-        // MCA's editor renders a throwaway client dummy (EntityType.create), not the
-        // live villager, so its getId() resolves to nothing server-side. Target the
-        // REAL villager by its UUID -> its actual network id (it's loaded nearby,
-        // since the player interacted with it to open the editor).
-        int target = villagerUUID.equals(playerUUID)
-                ? OriginSetC2SPayload.SELF
-                : townstead$resolveVillagerEntityId(villagerUUID);
         OriginPicker.Widgets ws = OriginPicker.build(
                 Minecraft.getInstance(),
-                this.width / 2, this.height / 2 - 80, 175, 185, target,
-                originId -> townstead$applyOrigin(target, originId),
-                entry -> townstead$previewOrigin(target, entry));
+                this.width / 2, this.height / 2 - 80, 175, 185, townstead$target,
+                originId -> townstead$applyOrigin(townstead$target, originId),
+                entry -> townstead$previewOrigin(townstead$target, entry));
         addRenderableWidget(ws.tabOrigin());
         addRenderableWidget(ws.tabGenes());
         addRenderableWidget(ws.search());
@@ -102,12 +119,6 @@ public abstract class VillagerEditorOriginMixin extends Screen {
         addRenderableWidget(ws.description());
         addRenderableWidget(ws.master());
         addRenderableWidget(ws.apply());
-
-        // Ask the server for the target's current origin so the row highlights.
-        townstead$sendOriginSet(target, "");
-        // Baseline for revert: the dummy's genes before any preview roll.
-        townstead$geneSnapshot = OriginGenes.snapshot(villager);
-        townstead$previewDirty = false;
     }
 
     /**
@@ -145,7 +156,7 @@ public abstract class VillagerEditorOriginMixin extends Screen {
     private void townstead$revertPreview() {
         if (!townstead$previewDirty) return;
         OriginGenes.restore(villager, townstead$geneSnapshot);
-        OriginClientStore.set(villager.getId(), "");
+        OriginClientStore.set(villager.getId(), townstead$baseOriginId);   // back to the real origin's tint
         townstead$previewDirty = false;
     }
 

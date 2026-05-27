@@ -134,6 +134,7 @@ public final class OriginPicker {
                 break;
             }
         }
+        list.scrollToSelected();   // open scrolled to the target's current origin
         previewReady[0] = true;   // user selections from here on drive the live preview
 
         return new Widgets(tabOrigin, tabGenes, search, list, description, master, apply);
