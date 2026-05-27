@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.calendar;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.calendar.CalendarCompat;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -39,12 +40,12 @@ public final class WorldCalendarTicker {
      *   <li>Wizard / admin pre-set values (calendarInitialized=true on disk)
      *       — never reach this method.</li>
      *   <li>Fresh world ({@code dayTime &lt; 24000}) with randomization
-     *       enabled — roll a year in the configured range and a day-of-year
-     *       in {@code [0, profile.daysPerYear)}, push {@code dayTime}
-     *       forward (time-of-day preserved) so seasonal mods pick the season
-     *       too, set the epoch offset, seed the counter.</li>
-     *   <li>Existing save ({@code dayTime &gt;= 24000}) OR randomization
-     *       disabled — seed {@code worldDayCounter} from
+     *       enabled and no seasonal mod present — roll a year in the
+     *       configured range and a day-of-year in {@code [0, profile.daysPerYear)},
+     *       push {@code dayTime} forward (time-of-day preserved), set the epoch
+     *       offset, seed the counter.</li>
+     *   <li>Existing save ({@code dayTime &gt;= 24000}), randomization disabled,
+     *       OR a seasonal mod present — seed {@code worldDayCounter} from
      *       {@code dayTime / 24000} so saves predating Townstead get
      *       credited the vanilla days they've already elapsed.</li>
      * </ul>
@@ -58,7 +59,8 @@ public final class WorldCalendarTicker {
         int dpy = (profile != null && profile.daysPerYear() > 0) ? profile.daysPerYear() : 360;
 
         boolean wantsRandom = TownsteadConfig.isCalendarRandomizeStartEnabled()
-                && current < TICKS_PER_DAY;
+                && current < TICKS_PER_DAY
+                && !CalendarCompat.isSeasonalModLoaded();
 
         if (wantsRandom) {
             int min = TownsteadConfig.getCalendarStartYearMin();

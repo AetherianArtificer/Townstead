@@ -55,6 +55,20 @@ public final class CalendarCompat {
         return VANILLA_ID;
     }
 
+    /**
+     * True when any seasonal partner mod (TFC, Serene Seasons, Ecliptic
+     * Seasons) is present. These mods derive their season from world
+     * {@code dayTime}, so the fresh-world date randomization is suppressed when
+     * one is installed: the calendar starts at day 0 (the beginning of the
+     * seasonal cycle) instead of a random day-of-year that would land the world
+     * in a random season.
+     */
+    public static boolean isSeasonalModLoaded() {
+        return ModCompat.isLoaded(TFC_MOD_ID)
+                || ModCompat.isLoaded(SERENE_MOD_ID)
+                || ModCompat.isLoaded(ECLIPTIC_MOD_ID);
+    }
+
     public static ResourceLocation vanillaId() { return VANILLA_ID; }
     public static ResourceLocation sereneId() { return SERENE_ID; }
     public static ResourceLocation tfcId() { return TFC_ID; }

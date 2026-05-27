@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.gui.origin;
 
 import com.aetherianartificer.townstead.client.origin.OriginCatalogClient;
+import com.aetherianartificer.townstead.client.skin.SkinBlend;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.origin.GeneCatalogEntry;
 import com.aetherianartificer.townstead.origin.OriginCatalogEntry;
@@ -147,7 +148,13 @@ public class OriginTraitsWidget extends ScrollPane {
         if (gene.isColor()) {
             int w = 34, h = 6;
             int sx = right - w;
-            GeneVisuals.drawSwatch(g, gene.colorFrom(), gene.colorTo(), sx, cy + (CHIP_H - h) / 2, w, h);
+            // Preview the race's actual skin range: a light→dark slice of vanilla skin run through
+            // this gene's exact tint + blend + strength (white tint → the plain human gradient).
+            int mode = gene.blendMode();
+            int eff = SkinBlend.applyStrength(gene.colorFrom(), mode, gene.blendStrength());
+            int light = SkinBlend.rgb(0xF1E4C9, eff, mode);
+            int dark = SkinBlend.rgb(0x3A2418, eff, mode);
+            GeneVisuals.drawSwatch(g, light, dark, sx, cy + (CHIP_H - h) / 2, w, h);
             return sx - 1;
         }
         if (gene.isRange()) {
