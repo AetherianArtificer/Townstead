@@ -17,6 +17,10 @@ import java.util.List;
  * "Plump Snail"). They aren't real farmland crops, though: snails survive only on the
  * {@code SNAIL_GROWABLE_ON}-tagged block beneath them and grow by eating food blocks placed
  * around them, none of which the Field Post can set up. We exclude them so they never appear.
+ *
+ * <p>The same class-based detection flags Caupona's tree/bush fruit blocks ({@code fig_fruits},
+ * {@code wolfberry_fruits}, {@code walnut_fruits}, all {@code FruitBlock}/{@code CropBlock}
+ * subclasses). Those grow on saplings/bush logs rather than farmland, so they're excluded too.
  */
 public final class CauponaCropCompat implements FarmerCropCompat {
     private static final String MOD_ID = "caupona";
@@ -31,9 +35,13 @@ public final class CauponaCropCompat implements FarmerCropCompat {
     public boolean excludeAsSeed(ItemStack stack) {
         if (stack.isEmpty()) return false;
         ResourceLocation key = stack.getItem().builtInRegistryHolder().key().location();
-        // Both are CropBlock subclasses but are not viable Field Post crops.
+        // All CropBlock subclasses, but not viable Field Post crops.
         if (ModCompat.matchesLoadedModPath(key, MOD_ID, "snail_block")) return true; // grows snails / "Plump Snail"
-        return ModCompat.matchesLoadedModPath(key, MOD_ID, "snail_bait"); // ripens into a snail block
+        if (ModCompat.matchesLoadedModPath(key, MOD_ID, "snail_bait")) return true; // ripens into a snail block
+        // FruitBlock subclasses that grow on bushes/trees, not farmland, so the Field Post can't plant them.
+        if (ModCompat.matchesLoadedModPath(key, MOD_ID, "fig_fruits")) return true;
+        if (ModCompat.matchesLoadedModPath(key, MOD_ID, "wolfberry_fruits")) return true;
+        return ModCompat.matchesLoadedModPath(key, MOD_ID, "walnut_fruits");
     }
 
     @Override

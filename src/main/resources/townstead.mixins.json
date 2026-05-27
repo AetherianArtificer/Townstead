@@ -24,6 +24,7 @@
   "client": [
     "compat.stardewhud.StardewHudDateMixin",
     "compat.stardewhud.StardewHudSeasonMixin",
+    "compat.travelerstitles.TitleRendererSubtitleClearMixin",
     "compat.timekeeper.TimekeeperReturnTimeMixin",
     "BlueprintScreenMixin",
     "ChatListenerMixin",
