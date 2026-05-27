@@ -38,6 +38,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_CONTAINER_THIRST_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_CROP_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_CHORUS_FRUIT_TELEPORT;
+    public static final ModConfigSpec.BooleanValue ENABLE_EMPTY_CONTAINER_DROPOFF;
     public static final ModConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
@@ -116,6 +117,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_CONTAINER_THIRST_SOURCING;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CROP_SOURCING;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CHORUS_FRUIT_TELEPORT;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_EMPTY_CONTAINER_DROPOFF;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
@@ -218,6 +220,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.needs.hunger.enableChorusFruitTeleport")
                 .comment("Let villagers teleport when they eat chorus fruit, just like players do.")
                 .define("enableChorusFruitTeleport", true);
+        ENABLE_EMPTY_CONTAINER_DROPOFF = b
+                .translation("townstead.configuration.needs.hunger.enableEmptyContainerDropoff")
+                .comment("Let villagers drop empty containers left from eating/drinking (bowls, bottles, buckets) into nearby storage, preferring kitchen storage. Skipped while actively working so tools aren't taken mid-task.")
+                .define("enableEmptyContainerDropoff", true);
         b.pop();
         if (ThirstBridgeResolver.anyThirstModLoaded()) {
             b.translation("townstead.configuration.needs.thirst").push("thirst");
@@ -659,6 +665,13 @@ public final class TownsteadConfig {
 
     public static boolean isPreferKitchenStorageForEmptyBottlesEnabled() {
         return PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES != null && PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES.get();
+    }
+
+    public static boolean isEmptyContainerDropoffEnabled() {
+        if (ENABLE_EMPTY_CONTAINER_DROPOFF != null && !ENABLE_EMPTY_CONTAINER_DROPOFF.get()) return false;
+        // Back-compat: honor the old thirst-scoped empty-bottle toggle if a user turned it off.
+        if (PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES != null && !PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES.get()) return false;
+        return true;
     }
 
     public static boolean isBaristaRequestChatEnabled() {

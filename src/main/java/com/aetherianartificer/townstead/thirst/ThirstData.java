@@ -24,6 +24,8 @@ public final class ThirstData {
     public static final int DINNER_THRESHOLD = 12;
     public static final int ADEQUATE_THRESHOLD = 12;
     public static final int EMERGENCY_THRESHOLD = 4;
+    // A refuel session drinks until thirst reaches this (~90% of MAX_THIRST), then stops.
+    public static final int SATIETY_THRESHOLD = 18;
 
     public static final int MOOD_CHECK_INTERVAL = 2400;
     public static final int PASSIVE_DRAIN_INTERVAL = 2000;

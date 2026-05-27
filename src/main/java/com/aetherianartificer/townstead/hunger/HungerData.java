@@ -29,6 +29,8 @@ public final class HungerData {
     public static final int DINNER_THRESHOLD = 60;
     public static final int EMERGENCY_THRESHOLD = 25;
     public static final int ADEQUATE_THRESHOLD = 50;
+    // A refuel session eats until hunger reaches this (~90% of MAX_HUNGER), then stops.
+    public static final int SATIETY_THRESHOLD = 90;
 
     // --- Mood effect interval (ticks) ---
     // Longer cadence plus fractional pressure accumulation keeps mood drift subtle.

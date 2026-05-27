@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.leatherworking.LeatherworkerComplaintsTi
 import com.aetherianartificer.townstead.leatherworking.LeatherworkerSupplyAcquisitionTicker;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.fatigue.EmergencyBedClaims;
+import com.aetherianartificer.townstead.storage.EmptyContainerDropoff;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.server.level.ServerLevel;
 
@@ -39,6 +40,7 @@ public final class VillagerServerTickDispatcher {
             ButcherToolAcquisitionTicker.forget(villager);
             LeatherworkerSupplyAcquisitionTicker.forget(villager);
             SkinRackJob.forget(villager);
+            EmptyContainerDropoff.forget(villager);
             LAST_TICK.remove(villager.getId());
             return;
         }
@@ -53,6 +55,7 @@ public final class VillagerServerTickDispatcher {
             profile("villager.thirst", () -> ThirstVillagerTicker.tick(villager));
         }
         profile("villager.fatigue", () -> FatigueVillagerTicker.tick(villager));
+        profile("villager.container_dropoff", () -> EmptyContainerDropoff.tick(villager));
         profile("villager.profession_memory", () -> ProfessionProgressMemoryTicker.tick(villager));
         profile("villager.guard_rest", () -> GuardRestEnforcerTicker.tick(villager));
         profile("villager.butcher_tool_acquire", () -> ButcherToolAcquisitionTicker.tick(villager));

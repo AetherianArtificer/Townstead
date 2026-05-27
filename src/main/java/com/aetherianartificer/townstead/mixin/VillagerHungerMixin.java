@@ -18,9 +18,8 @@ import com.aetherianartificer.townstead.compat.farmersdelight.CookWorkTask;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
 import com.aetherianartificer.townstead.hunger.HungerData;
-import com.aetherianartificer.townstead.hunger.SeekFoodTask;
+import com.aetherianartificer.townstead.hunger.RefuelTask;
 import com.aetherianartificer.townstead.thirst.HydrateYoungTask;
-import com.aetherianartificer.townstead.thirst.SeekDrinkTask;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -101,11 +100,9 @@ public abstract class VillagerHungerMixin extends Villager {
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();
-        if (ThirstBridgeResolver.isActive()) {
-            coreBehaviors.add(Pair.of(98, new SeekDrinkTask()));
-        }
         coreBehaviors.add(Pair.of(65, new SeekBedWhenFatiguedTask()));
-        coreBehaviors.add(Pair.of(99, new SeekFoodTask()));
+        // One unified refuel behavior handles both hunger and thirst (eat/drink to satiety).
+        coreBehaviors.add(Pair.of(99, new RefuelTask()));
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
         if (ThirstBridgeResolver.isActive()) {
             coreBehaviors.add(Pair.of(111, new HydrateYoungTask()));

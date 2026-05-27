@@ -6,7 +6,6 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
 import com.aetherianartificer.townstead.fatigue.FatigueData;
-import com.aetherianartificer.townstead.hunger.FoodSafety;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
@@ -15,19 +14,13 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.registry.ProfessionsMCA;
-//? if >=1.21 {
-import net.minecraft.core.component.DataComponents;
-//?}
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.schedule.Activity;
-import net.minecraft.world.food.FoodProperties;
-import net.minecraft.world.item.ItemStack;
 //? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
 //?}
@@ -110,29 +103,12 @@ public final class HungerVillagerTicker {
             // Keep tracking current while resting so wake-up doesn't cause burst drain
             state.lastPassiveDrainDayTime = dayTime;
         } else {
-            boolean drained = false;
+            // Passive hunger drain only. Eating is owned by RefuelTask now.
             int drainIterations = 0;
             while (dayTime - state.lastPassiveDrainDayTime >= passiveInterval && drainIterations < 100) {
                 state.lastPassiveDrainDayTime += passiveInterval;
                 hungerChanged |= needs.passiveHungerDrain();
-                drained = true;
                 drainIterations++;
-            }
-
-            // Activity-gated eating: check on passive drain interval, guarded by MIN_EAT_INTERVAL
-            if (drained) {
-                int h = needs.hunger();
-                int threshold = (currentActivity == Activity.IDLE || currentActivity == Activity.MEET)
-                        ? HungerData.LUNCH_THRESHOLD
-                        : HungerData.EMERGENCY_THRESHOLD;
-                if (h < threshold) {
-                    long gameTime = level.getGameTime();
-                    long lastAte = needs.lastAteTime();
-                    if ((gameTime - lastAte) >= HungerData.MIN_EAT_INTERVAL
-                            && !VillagerConsumptionManager.isConsuming(self)) {
-                        hungerChanged |= tryEatFromInventory(self);
-                    }
-                }
             }
         }
 
@@ -192,49 +168,6 @@ public final class HungerVillagerTicker {
     private static Activity currentScheduleActivity(VillagerEntityMCA self) {
         long dayTime = self.level().getDayTime() % 24000L;
         return self.getBrain().getSchedule().getActivityAt((int) dayTime);
-    }
-
-    private static boolean tryEatFromInventory(VillagerEntityMCA self) {
-        if (!TownsteadConfig.ENABLE_SELF_INVENTORY_EATING.get()) return false;
-        ItemStack food = findBestFood(self.getInventory());
-        if (food.isEmpty()) return false;
-        return consumeFood(self, food);
-    }
-
-    private static boolean consumeFood(VillagerEntityMCA self, ItemStack food) {
-        //? if >=1.21 {
-        FoodProperties props = food.get(DataComponents.FOOD);
-        //?} else {
-        /*FoodProperties props = food.getFoodProperties(null);
-        *///?}
-        if (props == null) return false;
-        if (!VillagerConsumptionManager.startConsuming(self, food)) return false;
-        food.shrink(1);
-        return true;
-    }
-
-    private static ItemStack findBestFood(SimpleContainer inventory) {
-        ItemStack best = ItemStack.EMPTY;
-        int bestNutrition = 0;
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            // Skip anything harmful (pufferfish, spider eye, rotten flesh, etc.)
-            // so the passive-hunger ticker doesn't silently drop puffers into
-            // the void via startConsuming → shrink(1) → mixin-blocked eat.
-            if (!FoodSafety.isSafeNutritiousFood(stack)) continue;
-            //? if >=1.21 {
-            FoodProperties food = stack.get(DataComponents.FOOD);
-            if (food.nutrition() > bestNutrition) {
-                bestNutrition = food.nutrition();
-            //?} else {
-            /*FoodProperties food = stack.getFoodProperties(null);
-            if (food.getNutrition() > bestNutrition) {
-                bestNutrition = food.getNutrition();
-            *///?}
-                best = stack;
-            }
-        }
-        return best;
     }
 
     private static void updateSpeedModifier(VillagerEntityMCA self, int currentHunger) {

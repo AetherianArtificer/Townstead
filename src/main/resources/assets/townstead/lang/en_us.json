@@ -33,6 +33,8 @@
   "townstead.configuration.needs.hunger.enableCropSourcing.tooltip": "Allow villagers to harvest mature crops as an emergency food fallback. Disabled by default to reduce broad crop scans.",
   "townstead.configuration.needs.hunger.enableChorusFruitTeleport": "Chorus Fruit Teleport",
   "townstead.configuration.needs.hunger.enableChorusFruitTeleport.tooltip": "Let villagers teleport when they eat chorus fruit, just like players do.",
+  "townstead.configuration.needs.hunger.enableEmptyContainerDropoff": "Empty Container Drop-Off",
+  "townstead.configuration.needs.hunger.enableEmptyContainerDropoff.tooltip": "Let villagers put empty containers left from eating/drinking (bowls, bottles, buckets) into nearby storage, preferring kitchen storage. Skipped while actively working.",
   "townstead.configuration.needs.thirst": "Thirst",
   "townstead.configuration.needs.thirst.tooltip": "Controls how villagers source and manage thirst when Thirst Was Taken is installed.",
   "townstead.configuration.needs.thirst.enableSelfInventoryDrinking": "Drink From Own Inventory",

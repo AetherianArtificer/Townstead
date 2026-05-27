@@ -5,8 +5,10 @@ import com.aetherianartificer.townstead.compat.mca.McaSicknessAdapter;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.storage.EmptyContainerDropoff;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.core.BlockPos;
 //? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
 //?}
@@ -37,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class VillagerConsumptionManager {
 
-    private record Pending(ItemStack item, ItemStack previousMainHand, long finishTick) {}
+    private record Pending(ItemStack item, ItemStack previousMainHand, long finishTick, BlockPos source) {}
 
     private static final Map<Integer, Pending> PENDING = new ConcurrentHashMap<>();
 
@@ -49,6 +51,14 @@ public final class VillagerConsumptionManager {
 
     /** Begins consuming one unit of {@code stack} if it is edible or restores thirst. */
     public static boolean startConsuming(VillagerEntityMCA villager, ItemStack stack) {
+        return startConsuming(villager, stack, null);
+    }
+
+    /**
+     * As {@link #startConsuming(VillagerEntityMCA, ItemStack)}, but records the storage block the
+     * item was taken from so the leftover container can be returned there when it's finished.
+     */
+    public static boolean startConsuming(VillagerEntityMCA villager, ItemStack stack, BlockPos source) {
         if (stack.isEmpty() || isConsuming(villager)) return false;
         if (!isConsumable(stack)) return false;
 
@@ -66,7 +76,7 @@ public final class VillagerConsumptionManager {
         if (useDuration <= 0) useDuration = 32;
 
         PENDING.put(villager.getId(),
-                new Pending(oneUnit.copy(), previousMainHand, villager.level().getGameTime() + useDuration));
+                new Pending(oneUnit.copy(), previousMainHand, villager.level().getGameTime() + useDuration, source));
 
         villager.setItemInHand(InteractionHand.MAIN_HAND, oneUnit);
         villager.startUsingItem(InteractionHand.MAIN_HAND);
@@ -102,7 +112,7 @@ public final class VillagerConsumptionManager {
 
         PENDING.remove(villager.getId());
         villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
-        return applyConsumption(villager, villager, pending.item(), needs);
+        return applyConsumption(villager, villager, pending.item(), needs, pending.source());
     }
 
     /**
@@ -115,7 +125,13 @@ public final class VillagerConsumptionManager {
      */
     public static boolean applyConsumption(VillagerEntityMCA holder, VillagerEntityMCA recipient,
                                            ItemStack stack, TownsteadVillager.Needs recipientNeeds) {
-        returnRemainder(holder, stack);
+        return applyConsumption(holder, recipient, stack, recipientNeeds, null);
+    }
+
+    /** As above, returning the leftover container to {@code source} first when one was recorded. */
+    public static boolean applyConsumption(VillagerEntityMCA holder, VillagerEntityMCA recipient,
+                                           ItemStack stack, TownsteadVillager.Needs recipientNeeds, BlockPos source) {
+        returnRemainder(holder, stack, source);
         boolean changed = applyFoodBenefits(recipient, stack, recipientNeeds);
         changed |= applyThirstBenefits(recipient, stack, recipientNeeds);
         return changed;
@@ -227,6 +243,16 @@ public final class VillagerConsumptionManager {
 
     /** Gives the consumption remainder of {@code stack} to the villager, dropping any overflow. */
     public static void returnRemainder(VillagerEntityMCA villager, ItemStack stack) {
+        returnRemainder(villager, stack, null);
+    }
+
+    /**
+     * Routes the leftover container: straight back into its {@code source} if the villager is right
+     * there; otherwise it's carried (and the source is recorded) so the origin-return ledger can
+     * hand it back the next time the villager is near that storage. Origin-less leftovers go to the
+     * nearest storage, falling to the villager's inventory only if none is reachable.
+     */
+    public static void returnRemainder(VillagerEntityMCA villager, ItemStack stack, BlockPos source) {
         boolean debug = TownsteadConfig.DEBUG_VILLAGER_AI.get();
         ItemStack remainder = getConsumptionRemainder(stack);
         if (remainder.isEmpty()) {
@@ -238,21 +264,44 @@ public final class VillagerConsumptionManager {
             }
             return;
         }
-        ItemStack overflow = villager.getInventory().addItem(remainder);
-        boolean dropped = !overflow.isEmpty();
-        if (dropped) {
-            ItemEntity drop = new ItemEntity(villager.level(),
-                    villager.getX(), villager.getY() + 0.25, villager.getZ(), overflow.copy());
-            drop.setPickUpDelay(0);
-            villager.level().addFreshEntity(drop);
+        // Item ref captured before deposit shrinks the remainder away, for the debug line.
+        net.minecraft.world.item.Item container = remainder.getItem();
+        String destination;
+        if (villager.level() instanceof ServerLevel level) {
+            if (source != null && EmptyContainerDropoff.tryReturnToSource(level, villager, remainder, source)) {
+                destination = "returned to source";
+            } else {
+                if (source != null) {
+                    // Carry it; the ledger returns it to this origin next time we're near it.
+                    EmptyContainerDropoff.recordPendingReturn(villager, source);
+                    destination = "held for source";
+                } else {
+                    // No origin: nearest storage now, else carry.
+                    EmptyContainerDropoff.deposit(level, villager, remainder, null);
+                    destination = remainder.isEmpty() ? "nearest storage" : "carried";
+                }
+                if (!remainder.isEmpty()) {
+                    ItemStack overflow = villager.getInventory().addItem(remainder);
+                    if (!overflow.isEmpty()) {
+                        ItemEntity drop = new ItemEntity(villager.level(),
+                                villager.getX(), villager.getY() + 0.25, villager.getZ(), overflow.copy());
+                        drop.setPickUpDelay(0);
+                        villager.level().addFreshEntity(drop);
+                        destination += ", inventory full so dropped";
+                    }
+                }
+            }
+        } else {
+            villager.getInventory().addItem(remainder);
+            destination = "inventory";
         }
         if (debug) {
             com.aetherianartificer.townstead.Townstead.LOGGER.info(
                     "[Consume] villager {} kept container {} from {} ({})",
                     villager.getUUID(),
-                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(remainder.getItem()),
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(container),
                     net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()),
-                    dropped ? "overflow dropped" : "stored in inventory");
+                    destination);
         }
     }
 
