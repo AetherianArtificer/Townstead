@@ -1489,6 +1489,9 @@ public class Townstead {
         state.schedule().setShifts(shifts);
         state.schedule().setTemplateId(templateId);
         ShiftScheduleApplier.apply(villager);
+        // Flush now: schedule edits otherwise sit dirty in memory and never reach
+        // the entity's data attachment before world save, so reloads lose them.
+        TownsteadVillagers.flush(villager);
 
         ShiftSyncPayload sync = new ShiftSyncPayload(villager.getUUID(), shifts);
         if (echoToOriginator && originator != null) PacketDistributor.sendToPlayer(originator, sync);
@@ -1681,6 +1684,9 @@ public class Townstead {
         state.schedule().setWeekDayTemplates(weekDays);
         CompoundTag shiftTag = state.schedule().toTag();
         ShiftScheduleApplier.apply(villager);
+        // Flush now: see writeVillagerShifts — dirty state would otherwise be
+        // dropped on world reload.
+        TownsteadVillagers.flush(villager);
 
         ShiftWeekSyncPayload sync = new ShiftWeekSyncPayload(
                 villager.getUUID(), ShiftData.getMode(shiftTag), ShiftData.getWeekDayTemplates(shiftTag));
