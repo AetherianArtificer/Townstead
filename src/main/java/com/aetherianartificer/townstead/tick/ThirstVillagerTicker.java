@@ -5,45 +5,25 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
-import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
-import com.aetherianartificer.townstead.hunger.NearbyItemSources;
-import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
-import com.aetherianartificer.townstead.storage.StorageSearchContext;
+import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
 import com.aetherianartificer.townstead.thirst.ThirstData;
-import com.aetherianartificer.townstead.thirst.VillagerDrinkingManager;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.registry.ProfessionsMCA;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.Container;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.schedule.Activity;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
 //? if neoforge {
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.network.PacketDistributor;
-//?} else if forge {
-/*import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
-*///?}
+//?}
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,21 +37,6 @@ public final class ThirstVillagerTicker {
             new ResourceLocation(Townstead.MOD_ID, "thirst_speed_penalty");
     *///?}
     private static final long BIOME_MODIFIER_RESAMPLE_TICKS = 100L;
-    //? if >=1.21 {
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_TAG =
-            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage"));
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
-            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_upgraded"));
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_NETHER_TAG =
-            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_nether"));
-    //?} else {
-    /*private static final TagKey<Block> FD_KITCHEN_STORAGE_TAG =
-            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage"));
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
-            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage_upgraded"));
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_NETHER_TAG =
-            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage_nether"));
-    *///?}
     //? if forge {
     /*private static final java.util.UUID TOWNSTEAD_SPEED_PENALTY_UUID =
             java.util.UUID.nameUUIDFromBytes("townstead:thirst_speed_penalty".getBytes());
@@ -104,7 +69,7 @@ public final class ThirstVillagerTicker {
         long dayTimeDelta = Math.max(0, dayTime - state.lastDayTime);
         state.lastDayTime = dayTime;
 
-        boolean thirstChanged = VillagerDrinkingManager.tickAndFinalize(self, needs);
+        boolean thirstChanged = VillagerConsumptionManager.tickAndFinalize(self, needs);
 
         int currentThirstLevel = needs.thirst();
         if (needs.drinkingMode()) {
@@ -143,29 +108,12 @@ public final class ThirstVillagerTicker {
             // Keep tracking current while resting so wake-up doesn't cause burst drain
             state.lastPassiveDrainDayTime = dayTime;
         } else {
-            boolean drained = false;
+            // Passive thirst drain only. Drinking is owned by RefuelTask now.
             int drainIterations = 0;
             while (dayTime - state.lastPassiveDrainDayTime >= ThirstData.PASSIVE_DRAIN_INTERVAL && drainIterations < 100) {
                 state.lastPassiveDrainDayTime += ThirstData.PASSIVE_DRAIN_INTERVAL;
                 thirstChanged |= needs.passiveThirstDrain();
-                drained = true;
                 drainIterations++;
-            }
-
-            // Activity-gated drinking: check on passive drain interval, guarded by MIN_DRINK_INTERVAL
-            if (drained) {
-                int t = needs.thirst();
-                int threshold = (currentActivity == Activity.IDLE || currentActivity == Activity.MEET)
-                        ? ThirstData.LUNCH_THRESHOLD
-                        : ThirstData.EMERGENCY_THRESHOLD;
-                if (t < threshold) {
-                    long lastDrank = needs.lastDrankTime();
-                    if ((gameTime - lastDrank) >= ThirstData.MIN_DRINK_INTERVAL
-                            && !VillagerDrinkingManager.isDrinking(self)
-                            && !VillagerEatingManager.isEating(self)) {
-                        thirstChanged |= tryDrinkFromInventory(self, bridge);
-                    }
-                }
             }
         }
 
@@ -191,10 +139,6 @@ public final class ThirstVillagerTicker {
         // and mood pressure instead, matching hunger's non-lethal approach.
         needs.setThirstDamageTimer(0);
 
-        if (self.tickCount % 100 == 0) {
-            storeEmptyBottles(level, self);
-        }
-
         if (!self.isBaby()) {
             updateSpeedModifier(self, needs.thirst());
         }
@@ -217,142 +161,9 @@ public final class ThirstVillagerTicker {
         }
     }
 
-    private static boolean tryDrinkFromInventory(VillagerEntityMCA self, ThirstCompatBridge bridge) {
-        if (!TownsteadConfig.isSelfInventoryDrinkingEnabled()) return false;
-        SimpleContainer inventory = self.getInventory();
-        int drinkSlot = findBestDrinkSlot(inventory, bridge);
-        if (drinkSlot < 0) return false;
-        ItemStack drink = inventory.getItem(drinkSlot);
-        if (drink.isEmpty()) return false;
-        if (!VillagerDrinkingManager.startDrinking(self, drink)) return false;
-        ItemStack remainder = bridge.onDrinkConsumed(drink);
-        if (remainder.isEmpty()) {
-            drink.shrink(1);
-        } else if (remainder != drink) {
-            drink.shrink(1);
-            inventory.addItem(remainder);
-        }
-        return true;
-    }
-
-    private static int findBestDrinkSlot(SimpleContainer inventory, ThirstCompatBridge bridge) {
-        int bestSlot = -1;
-        int bestScore = Integer.MIN_VALUE;
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (stack.isEmpty() || !bridge.itemRestoresThirst(stack)) continue;
-            int purity = bridge.isPurityWaterContainer(stack) ? Math.max(0, bridge.purity(stack)) : 0;
-            int score = purity * 10_000
-                    + Math.max(0, bridge.quenched(stack)) * 100
-                    + Math.max(0, bridge.hydration(stack)) * 10
-                    + (bridge.isDrink(stack) ? 1 : 0);
-            if (score > bestScore) {
-                bestScore = score;
-                bestSlot = i;
-            }
-        }
-        return bestSlot;
-    }
-
     private static boolean shouldApplyDehydrationDamage(ServerLevel level) {
         if (level.getServer().isHardcore()) return true;
         return TownsteadConfig.isThirstLethalFallbackEnabled();
-    }
-
-    private static void storeEmptyBottles(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.isPreferKitchenStorageForEmptyBottlesEnabled()) return;
-        SimpleContainer inventory = villager.getInventory();
-        int moved = 0;
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            if (moved >= 4) break;
-            ItemStack stack = inventory.getItem(i);
-            if (!stack.is(Items.GLASS_BOTTLE)) continue;
-            ItemStack bottle = stack.split(1);
-            if (!storeBottle(level, villager, bottle)) {
-                ItemStack remainder = inventory.addItem(bottle);
-                if (!remainder.isEmpty()) {
-                    // If inventory is unexpectedly full, stop to avoid loop churn.
-                    break;
-                }
-                break;
-            }
-            moved++;
-        }
-    }
-
-    private static boolean storeBottle(ServerLevel level, VillagerEntityMCA villager, ItemStack bottle) {
-        if (bottle.isEmpty()) return true;
-        if (TownsteadConfig.isPreferKitchenStorageForEmptyBottlesEnabled()
-                && ModCompat.isLoaded("farmersdelight")
-                && insertIntoTaggedStorage(level, villager, bottle)) {
-            return bottle.isEmpty();
-        }
-        return NearbyItemSources.insertIntoNearbyStorage(level, villager, bottle, 16, 4);
-    }
-
-    private static boolean insertIntoTaggedStorage(ServerLevel level, VillagerEntityMCA villager, ItemStack stack) {
-        BlockPos center = villager.blockPosition();
-        StorageSearchContext searchContext = new StorageSearchContext(level);
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-16, -4, -16),
-                center.offset(16, 4, 16))) {
-            if (stack.isEmpty()) return true;
-            StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
-            if (observed.protectedStorage()) continue;
-            BlockState state = observed.state();
-            if (!(state.is(FD_KITCHEN_STORAGE_TAG) || state.is(FD_KITCHEN_STORAGE_UPGRADED_TAG) || state.is(FD_KITCHEN_STORAGE_NETHER_TAG))) {
-                continue;
-            }
-            BlockEntity be = observed.blockEntity();
-            if (be instanceof Container container) {
-                insertIntoContainer(container, stack);
-                if (stack.isEmpty()) return true;
-            }
-            if (be != null) {
-                IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
-                if (handler != null) {
-                    for (int slot = 0; slot < handler.getSlots(); slot++) {
-                        stack = handler.insertItem(slot, stack, false);
-                        if (stack.isEmpty()) return true;
-                    }
-                }
-            }
-        }
-        return stack.isEmpty();
-    }
-
-    private static void insertIntoContainer(Container container, ItemStack stack) {
-        for (int i = 0; i < container.getContainerSize(); i++) {
-            if (stack.isEmpty()) return;
-            ItemStack slot = container.getItem(i);
-            if (slot.isEmpty()) continue;
-            //? if >=1.21 {
-            if (!ItemStack.isSameItemSameComponents(slot, stack)) continue;
-            //?} else {
-            /*if (!ItemStack.isSameItemSameTags(slot, stack)) continue;
-            *///?}
-            if (!container.canPlaceItem(i, stack)) continue;
-            int limit = Math.min(container.getMaxStackSize(), slot.getMaxStackSize());
-            if (slot.getCount() >= limit) continue;
-            int move = Math.min(stack.getCount(), limit - slot.getCount());
-            slot.grow(move);
-            stack.shrink(move);
-            container.setChanged();
-        }
-        for (int i = 0; i < container.getContainerSize(); i++) {
-            if (stack.isEmpty()) return;
-            ItemStack slot = container.getItem(i);
-            if (!slot.isEmpty()) continue;
-            if (!container.canPlaceItem(i, stack)) continue;
-            int move = Math.min(stack.getCount(), Math.min(container.getMaxStackSize(), stack.getMaxStackSize()));
-            //? if >=1.21 {
-            container.setItem(i, stack.copyWithCount(move));
-            //?} else {
-            /*ItemStack portion = stack.copy(); portion.setCount(move); container.setItem(i, portion);
-            *///?}
-            stack.shrink(move);
-            container.setChanged();
-        }
     }
 
     private static boolean isGuardPatrolling(VillagerEntityMCA self) {

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.starcatcher.StarcatcherCompat;
 import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
 import com.aetherianartificer.townstead.dock.DockLocationIndex;
@@ -858,11 +859,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 net.minecraft.sounds.SoundSource.NEUTRAL,
                 0.5F, 0.4F / (level.random.nextFloat() * 0.4F + 0.8F));
 
-        List<ItemStack> loot = rollFishingLoot(level, hook, villager, rodCopy, origin);
+        List<ItemStack> loot = rollCatch(level, villager, hook, rod, rodCopy, origin);
         townstead$depositFishingLoot(level, villager, loot);
 
         if (townstead$dockDoubleCatchTriggers(level)) {
-            List<ItemStack> bonus = rollFishingLoot(level, hook, villager, rodCopy, origin);
+            List<ItemStack> bonus = rollCatch(level, villager, hook, rod, rodCopy, origin);
             townstead$depositFishingLoot(level, villager, bonus);
             if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
                 LOGGER.info("[Fisherman] wharf double-catch (tier {}) yielded {} extra item(s)",
@@ -1287,6 +1288,31 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                         stationAnchor);
             }
         }
+    }
+
+    /**
+     * Dispatch the catch roll based on which kind of rod the villager is
+     * holding. Starcatcher rods route through {@link StarcatcherCompat} so
+     * villagers actually award Starcatcher fish; everything else (vanilla
+     * rod, other modded rods that participate in vanilla loot) falls
+     * through to {@link #rollFishingLoot}.
+     *
+     * If the Starcatcher path returns no items (nothing legal for this
+     * biome/elevation/bait combination, or the reflective bridge failed),
+     * we fall back to vanilla loot rather than have the villager catch
+     * nothing — same gracefulness as the player would get.
+     */
+    private List<ItemStack> rollCatch(ServerLevel level, VillagerEntityMCA villager,
+                                      @Nullable FishingHook hook, ItemStack rod,
+                                      ItemStack rodCopy, Vec3 origin) {
+        if (StarcatcherCompat.isStarcatcherRod(rod)) {
+            ServerPlayer fakePlayer = getFishingActor(level, villager);
+            if (fakePlayer != null) {
+                List<ItemStack> sc = StarcatcherCompat.rollStarcatcherCatch(level, rod, hook, fakePlayer);
+                if (!sc.isEmpty()) return sc;
+            }
+        }
+        return rollFishingLoot(level, hook, villager, rodCopy, origin);
     }
 
     private static List<ItemStack> rollFishingLoot(ServerLevel level, @Nullable FishingHook hook,

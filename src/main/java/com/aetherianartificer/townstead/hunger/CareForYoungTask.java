@@ -274,11 +274,10 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        food.shrink(1);
         caregiver.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         TownsteadVillager.Needs childNeeds = TownsteadVillagers.get(childTarget).needs();
-        childNeeds.applyFood(props);
-        childNeeds.setLastAteTime(level.getGameTime());
+        VillagerConsumptionManager.applyConsumption(caregiver, childTarget, food, childNeeds);
+        food.shrink(1);
 
         nextFeedTick = gameTime + FEED_INTERVAL;
         if (!townstead$isYoungHungry(childTarget)) {

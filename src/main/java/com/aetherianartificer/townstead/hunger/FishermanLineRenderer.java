@@ -56,15 +56,14 @@ public final class FishermanLineRenderer {
     private static final float HOOK_BB_WIDTH = 0.25F;
 
     // Anchor offsets for where the fishing line attaches on the villager.
-    // Values tuned to land on the visible tip of the fishing-rod item as
-    // rendered on a vanilla/MCA villager model. Offsets are relative to the
-    // villager body's facing direction:
+    // Tuned empirically to land on the visible rod tip. Offsets are relative
+    // to the villager body's facing direction:
     //   ANCHOR_SIDE        — +right along the body's right hand side
     //   ANCHOR_FORWARD     — +out along the body's facing direction
     //   ANCHOR_DOWN_FROM_EYE — +down from the villager's eye
     private static final double ANCHOR_SIDE = 0.38D;
-    private static final double ANCHOR_FORWARD = 0.9D;
-    private static final double ANCHOR_DOWN_FROM_EYE = 0.70D;
+    private static final double ANCHOR_FORWARD = 0.95D;
+    private static final double ANCHOR_DOWN_FROM_EYE = 0.35D;
     // Bobber-side attach point: blocks above the hook entity position, tuned
     // so the line meets the visible bobber sprite (vanilla's 0.25 attaches
     // at the top of the quad which looks a bit high).

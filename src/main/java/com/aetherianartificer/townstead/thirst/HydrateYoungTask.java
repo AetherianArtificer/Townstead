@@ -8,7 +8,7 @@ import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
-import com.aetherianartificer.townstead.hunger.VillagerEatingManager;
+import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
 import com.aetherianartificer.townstead.hunger.VillagerSearchCadence;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -247,14 +247,9 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        int hydration = bridge.hydration(drink);
-        int quenched = bridge.quenched(drink);
-
         caregiver.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         TownsteadVillager.Needs childNeeds = TownsteadVillagers.get(childTarget).needs();
-        childNeeds.applyDrink(hydration, quenched, bridge.extraHydrationToQuenched());
-        childNeeds.setLastDrankTime(level.getGameTime());
-
+        VillagerConsumptionManager.applyConsumption(caregiver, childTarget, drink, childNeeds);
         ItemStack remainder = bridge.onDrinkConsumed(drink);
         if (remainder.isEmpty()) {
             drink.shrink(1);
