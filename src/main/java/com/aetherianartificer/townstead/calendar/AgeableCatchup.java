@@ -68,7 +68,7 @@ public final class AgeableCatchup {
     public static void onEntityJoin(Entity entity, MinecraftServer server) {
         if (server == null) return;
         if (!(entity instanceof AgeableMob mob)) return;
-        long currentDay = TownsteadCalendar.worldDay(server);
+        long currentDay = TownsteadCalendar.lifeDay(server);
         CompoundTag nbt = mob.getPersistentData();
         if (nbt.contains(NBT_KEY_LAST_SEEN_WORLD_DAY)) {
             long stored = nbt.getLong(NBT_KEY_LAST_SEEN_WORLD_DAY);
@@ -91,7 +91,7 @@ public final class AgeableCatchup {
     public static void applyBulkCatchup(MinecraftServer server, int catchupDays) {
         if (server == null || catchupDays <= 0) return;
         long deltaTicks = (long) catchupDays * TICKS_PER_MC_DAY;
-        long currentDay = TownsteadCalendar.worldDay(server);
+        long currentDay = TownsteadCalendar.lifeDay(server);
         for (ServerLevel level : server.getAllLevels()) {
             for (Entity entity : level.getAllEntities()) {
                 if (entity instanceof AgeableMob mob) {
@@ -109,7 +109,7 @@ public final class AgeableCatchup {
      */
     public static void refreshLastSeenStamps(MinecraftServer server) {
         if (server == null) return;
-        long currentDay = TownsteadCalendar.worldDay(server);
+        long currentDay = TownsteadCalendar.lifeDay(server);
         for (ServerLevel level : server.getAllLevels()) {
             for (Entity entity : level.getAllEntities()) {
                 if (entity instanceof AgeableMob mob) {

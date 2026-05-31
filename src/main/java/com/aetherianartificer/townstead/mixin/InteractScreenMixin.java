@@ -375,26 +375,27 @@ public abstract class InteractScreenMixin extends Screen {
                 com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.asEntity().getId());
         if (life == null) return originalName;
 
+        // Birthday is shown as "Month Day" — no year (the absolute year confuses
+        // players and isn't meaningful next to the apparent age).
         com.aetherianartificer.townstead.calendar.CalendarClientStore.Snapshot calSnap =
                 com.aetherianartificer.townstead.calendar.CalendarClientStore.get();
-        Component date;
-        if (calSnap != null) {
-            date = com.aetherianartificer.townstead.calendar.CalendarDateFormatter.formatClient(
-                    calSnap,
-                    com.aetherianartificer.townstead.calendar.CalendarDateFormatter.Style.LONG,
-                    life.birthYear(), life.birthMonthIndex(), life.birthDayOfMonth(), 0);
+        Component month;
+        if (calSnap != null && life.birthMonthIndex() >= 1
+                && life.birthMonthIndex() <= calSnap.monthsForYear(life.birthYear()).size()) {
+            month = calSnap.monthsForYear(life.birthYear())
+                    .get(life.birthMonthIndex() - 1).commonName();
         } else {
-            // Pre-sync fallback: use the snapshot we have on the LifeData
-            Component month = life.birthMonthComponent();
+            month = life.birthMonthComponent();
             if (month.getString().isEmpty()) {
                 month = Component.translatable("townstead.calendar.inspector.month_fallback", life.birthMonthIndex());
             }
-            date = Component.literal(life.birthDayOfMonth() + " " + month.getString() + " " + life.birthYear());
         }
+        Component date = Component.translatableWithFallback(
+                "townstead.calendar.inspector.month_day", "%1$s %2$s", month, life.birthDayOfMonth());
         Component born = Component.translatableWithFallback(
                 "townstead.calendar.inspector.born_with_age",
                 "Born %1$s (age %2$s)",
-                date, life.ageYears());
+                date, Math.round(life.narrativeAgeForBio(life.bioAgeDays())));
 
         int nameW = font.width(originalName);
         int bornW = font.width(born);

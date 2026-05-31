@@ -25,6 +25,28 @@ public final class LifeData {
     private static final String KEY_STAMPED = "stamped";
     private static final String KEY_HAS_BIRTH = "hasBirth";
 
+    /**
+     * Transient editor command keys, written into the editor's {@code villagerData}
+     * and read server-side on commit. Never persisted on normal saves. They are
+     * mutually exclusive: editing one control clears the others so the server has
+     * a single unambiguous instruction.
+     * <ul>
+     *   <li>{@link #EDITOR_KEY_BIO_AGE_DAYS} — biological age in days (mortal age
+     *       slider); server stamps {@code birth = today - bioAge}.</li>
+     *   <li>{@link #EDITOR_KEY_BIRTH_YEAR}/{@code _MONTH}/{@code _DAY} — an exact
+     *       date of birth from the debug date picker; server converts via the
+     *       active calendar profile.</li>
+     *   <li>{@link #EDITOR_KEY_FROZEN_STAGE_INDEX} — the cycle index an immortal
+     *       villager is frozen at (immortal appearance slider); leaves the date of
+     *       birth / calendar age untouched.</li>
+     * </ul>
+     */
+    public static final String EDITOR_KEY_BIO_AGE_DAYS = "TownsteadEditorBioAgeDays";
+    public static final String EDITOR_KEY_BIRTH_YEAR = "TownsteadEditorBirthYear";
+    public static final String EDITOR_KEY_BIRTH_MONTH = "TownsteadEditorBirthMonth";
+    public static final String EDITOR_KEY_BIRTH_DAY = "TownsteadEditorBirthDay";
+    public static final String EDITOR_KEY_FROZEN_STAGE_INDEX = "TownsteadEditorFrozenStage";
+
     private LifeData() {}
 
     public static boolean hasBirth(CompoundTag tag) {

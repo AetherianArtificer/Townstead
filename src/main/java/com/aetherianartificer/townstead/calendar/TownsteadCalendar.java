@@ -47,6 +47,28 @@ public final class TownsteadCalendar {
         return WorldCalendarSavedData.get(server).epochYearOffset();
     }
 
+    /**
+     * Pure (year, month, day) -> absolute world day, using the active profile's
+     * leap-aware layout. Unlike {@link #setToDate} this does NOT mutate the world
+     * clock; it is for stamping a villager's date of birth. The date is clamped
+     * to the target year's real month/day layout. Falls back to today when no
+     * profile is active.
+     */
+    public static long worldDayForDate(MinecraftServer server, int displayYear, int month, int day) {
+        CalendarProfile profile = activeProfile(server);
+        if (profile == null) return worldDay(server);
+        List<MonthDef> months = profile.months();
+        List<LeapRule> rules = profile.leapRules();
+        LeapEngine.YearLayout layout = LeapEngine.layoutForYear(months, rules, displayYear);
+        int monthCount = Math.max(1, layout.months().size());
+        int m = Math.max(1, Math.min(month, monthCount));
+        int maxDay = Math.max(1, layout.months().get(m - 1).days());
+        int d = Math.max(1, Math.min(day, maxDay));
+        return LeapEngine.worldDayAtYearStart(months, rules, displayYear, epochYearOffset(server))
+                + LeapEngine.daysBeforeMonth(months, rules, displayYear, m)
+                + (d - 1);
+    }
+
     public static void setEpochYearOffset(MinecraftServer server, int offset) {
         WorldCalendarSavedData.get(server).setEpochYearOffset(offset);
         rebroadcastAfterCalendarChange(server);
@@ -76,8 +98,29 @@ public final class TownsteadCalendar {
      * the server but leaves clients showing their cached date.
      */
     public static void setWorldDay(MinecraftServer server, long worldDay) {
-        WorldCalendarSavedData.get(server).setWorldDayCounter(worldDay);
+        WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
+        // Re-dating the current day is pure relabeling: absorb the counter delta
+        // into the life-epoch shift so villagers don't age. (Real elapsed time, via
+        // the ticker / real_clock, advances the counter WITHOUT touching the shift.)
+        long delta = worldDay - data.worldDayCounter();
+        data.setLifeEpochShift(data.lifeEpochShift() + delta);
+        data.setWorldDayCounter(worldDay);
         rebroadcastAfterCalendarChange(server);
+    }
+
+    /** Days of calendar relabeling absorbed away from the biological clock. */
+    public static long lifeEpochShift(MinecraftServer server) {
+        return WorldCalendarSavedData.get(server).lifeEpochShift();
+    }
+
+    /**
+     * Biological "today": the monotonic day counter minus the relabeling shift.
+     * Life-stage / age math measures against THIS, not {@link #worldDay}, so that
+     * editing the calendar date never ages villagers while real elapsed time does.
+     */
+    public static long lifeDay(MinecraftServer server) {
+        WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
+        return data.worldDayCounter() - data.lifeEpochShift();
     }
 
     /**
@@ -130,6 +173,10 @@ public final class TownsteadCalendar {
         long newCounter = counter + (targetDayOfYear - curDayOfYear);
 
         data.setEpochYearOffset(newOffset);
+        // The day-of-year nudge moves the counter; absorb it into the life-epoch
+        // shift so this re-dating doesn't age villagers (the year change is offset
+        // only and never moved the counter to begin with).
+        data.setLifeEpochShift(data.lifeEpochShift() + (newCounter - counter));
         data.setWorldDayCounter(newCounter);
         rebroadcastAfterCalendarChange(server);
         return type.compute(server, profile, newCounter, newOffset);
@@ -249,7 +296,9 @@ public final class TownsteadCalendar {
     public static CalendarDate birthdayOf(MinecraftServer server, VillagerEntityMCA villager) {
         CompoundTag life = VillagerLifeStamper.peek(villager);
         if (life == null) return null;
-        return dateOf(server, LifeData.getBirthWorldDay(life));
+        // Birth is stored on the biological (life-day) axis; shift back to the
+        // counter axis for display so the shown date floats with calendar edits.
+        return dateOf(server, LifeData.getBirthWorldDay(life) + lifeEpochShift(server));
     }
 
     /**
@@ -260,9 +309,13 @@ public final class TownsteadCalendar {
     public static int ageYears(MinecraftServer server, VillagerEntityMCA villager) {
         CompoundTag life = VillagerLifeStamper.peek(villager);
         if (life == null) return 0;
-        CalendarDate today = today(server);
-        CalendarDate birth = dateOf(server, LifeData.getBirthWorldDay(life));
-        return Math.max(0, today.year() - birth.year());
+        // Real age = elapsed game-years on the biological (life-day) axis, stable
+        // across calendar re-dating. Equals today - displayed-birth in years, since
+        // the lifeEpochShift cancels between the two.
+        long daysAlive = Math.max(0L, lifeDay(server) - LifeData.getBirthWorldDay(life));
+        CalendarProfile profile = activeProfile(server);
+        int dpy = profile != null && profile.daysPerYear() > 0 ? profile.daysPerYear() : 360;
+        return (int) (daysAlive / dpy);
     }
 
     @Nullable
@@ -270,7 +323,7 @@ public final class TownsteadCalendar {
         WorldCalendarSavedData.VillageKey key = new WorldCalendarSavedData.VillageKey(dimension, villageId);
         WorldCalendarSavedData.VillageBirth birth = WorldCalendarSavedData.get(server).getVillageBirth(key);
         if (birth == null) return null;
-        return dateOf(server, birth.worldDay());
+        return dateOf(server, birth.worldDay() + lifeEpochShift(server));
     }
 
     // ---- Internal ----

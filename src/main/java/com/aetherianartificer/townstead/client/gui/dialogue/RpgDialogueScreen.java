@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.client.gui.dialogue;
 
+import com.aetherianartificer.townstead.calendar.LifeClientStore;
 import com.aetherianartificer.townstead.client.camera.DialogueCameraController;
 import com.aetherianartificer.townstead.client.gui.dialogue.DialogueAccessibility;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.DialogueEffects;
@@ -145,6 +146,7 @@ public class RpgDialogueScreen extends Screen {
         dialogueBox.render(graphics, font);
         choicePanel.render(graphics, font, mouseX, mouseY);
         renderHearts(graphics);
+        renderStageLabel(graphics);
 
         if (debugEffects) {
             DialogueEffects[] all = DialogueEffects.all();
@@ -164,6 +166,21 @@ public class RpgDialogueScreen extends Screen {
         int hx = dialogueBox.getX() + dialogueBox.getWidth() - 8 - textWidth;
         int hy = dialogueBox.getY() + 8;
         graphics.drawString(font, heartsText, hx, hy, color);
+    }
+
+    private void renderStageLabel(GuiGraphics graphics) {
+        Entity entity = villager.asEntity();
+        if (entity == null) return;
+        LifeClientStore.Snapshot snap = LifeClientStore.get(entity.getId());
+        if (snap == null || !snap.hasCycle() || snap.currentStageIndex() < 0) return;
+        Component stage = snap.currentStageLabel();
+        if (stage == null) return;
+        int apparent = Math.round(snap.narrativeAgeForBio(snap.bioAgeDays()));
+        Component line = Component.translatable("townstead.life_stage.inspect", stage, apparent);
+        int tw = font.width(line);
+        int x = dialogueBox.getX() + dialogueBox.getWidth() - 8 - tw;
+        int y = dialogueBox.getY() + 8 + font.lineHeight + 2;
+        graphics.drawString(font, line, x, y, 0xFFBFD8C8);
     }
 
     //? if >=1.21 {

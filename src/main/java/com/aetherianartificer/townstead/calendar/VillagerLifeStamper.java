@@ -36,18 +36,67 @@ public final class VillagerLifeStamper {
         MinecraftServer server = serverLevel.getServer();
         if (server == null) return;
 
+        ensureStamped(villager, server);
+        stampVillageBirthIfNeeded(villager, serverLevel, server);
+    }
+
+    /**
+     * Roll the villager's stage durations and fabricate a birth if either is
+     * missing, broadcasting a fresh life sync when anything changed. Safe to call
+     * outside the per-tick path (e.g. when a player starts tracking the villager)
+     * so the client always has a populated snapshot before opening the editor.
+     */
+    public static void ensureStamped(VillagerEntityMCA villager, MinecraftServer server) {
         TownsteadVillager state = TownsteadVillagers.get(villager);
+
+        // Backfill origin + roll stage durations FIRST so the birth fabrication can
+        // place the villager within the correct stage of its rolled cycle. (Assigns
+        // the default origin id only; genes are left as MCA rolled them.)
+        boolean rolled = com.aetherianartificer.townstead.origin.OriginSpawnHandler.backfillIfMissing(villager);
+
+        boolean stamped = false;
         if (!state.life().hasBirth()) {
             state.life().setBirth(fabricateDob(villager, server), false);
-            broadcastFreshStamp(villager);
+            stamped = true;
+        } else if (rolled) {
+            // A re-roll means stageDays changed shape/scale (cycle re-authored, aging
+            // anchor changed, or a pre-rework save). The old birth was measured against
+            // the previous lifespan and is now meaningless, so re-place the villager
+            // mid-stage of the freshly-rolled cycle by its current MCA body. Without
+            // this, an old birth + new stageDays yields absurd apparent ages (e.g. a
+            // 2352-day lifespan villager reading 290 against a 730-day human cycle).
+            state.life().setBirth(fabricateDob(villager, server), false);
+            stamped = true;
+        } else if (townstead$birthIncoherent(state, server, villager)) {
+            // Self-heal a stale birth from the old human-decades fabrication: a
+            // villager reading older than its entire cycle gets re-placed mid-stage
+            // by its current MCA AgeState, so the editor slider seeds sanely.
+            state.life().setBirth(fabricateDob(villager, server), false);
+            stamped = true;
         }
 
-        // Backfill an origin for villagers that predate the Origins system (or any
-        // that bypassed the FinalizeSpawn hook). Assigns the default id only; genes
-        // are left as MCA rolled them, so existing villagers keep their appearance.
-        com.aetherianartificer.townstead.origin.OriginSpawnHandler.backfillIfMissing(villager);
+        // Re-broadcast on a self-heal re-roll too, not just on the first birth stamp,
+        // so an already-born villager's refreshed stageDays reach tracking clients.
+        if (stamped || rolled) {
+            broadcastFreshStamp(villager);
+        }
+    }
 
-        stampVillageBirthIfNeeded(villager, serverLevel, server);
+    /**
+     * True when the stored birth no longer makes sense for this villager: either it
+     * reads older than the whole cycle (legacy human-decades fabrication), or the
+     * stage it resolves to disagrees with the villager's live MCA body (a stale birth
+     * stamped near "today" for an already-adult villager, which would otherwise show
+     * as a 1-year-old). Both re-fabricate from the current MCA AgeState.
+     */
+    private static boolean townstead$birthIncoherent(TownsteadVillager state, MinecraftServer server,
+                                                      VillagerEntityMCA villager) {
+        if (!state.life().hasStageDays()) return false;
+        long bioAge = TownsteadCalendar.lifeDay(server) - state.life().birthWorldDay();
+        long total = 0;
+        for (int d : state.life().stageDays()) total += Math.max(0, d);
+        if (bioAge > total) return true;
+        return !com.aetherianartificer.townstead.origin.LifeStageProgression.birthMatchesBody(villager);
     }
 
     private static void broadcastFreshStamp(VillagerEntityMCA villager) {
@@ -64,27 +113,11 @@ public final class VillagerLifeStamper {
     // ---- DOB fabrication ----
 
     private static long fabricateDob(VillagerEntityMCA villager, MinecraftServer server) {
-        long today = TownsteadCalendar.worldDay(server);
-        CalendarProfile profile = TownsteadCalendar.activeProfile(server);
-        int dpy = profile != null && profile.daysPerYear() > 0 ? profile.daysPerYear() : 360;
-        AgeState state = safeAgeState(villager);
-
-        int yearsAgoMin;
-        int yearsAgoMax;
-        switch (state) {
-            case BABY -> { yearsAgoMin = 0; yearsAgoMax = 1; }
-            case TODDLER -> { yearsAgoMin = 2; yearsAgoMax = 4; }
-            case CHILD -> { yearsAgoMin = 5; yearsAgoMax = 9; }
-            case TEEN -> { yearsAgoMin = 10; yearsAgoMax = 17; }
-            default -> { yearsAgoMin = 18; yearsAgoMax = 60; } // ADULT and any future stages
-        }
-
-        Random rng = new Random(villager.getUUID().getLeastSignificantBits()
-                ^ villager.getUUID().getMostSignificantBits());
-        int yearsAgo = yearsAgoMin + rng.nextInt(Math.max(1, yearsAgoMax - yearsAgoMin + 1));
-        int dayInYear = rng.nextInt(dpy);
-        long birthDay = today - (long) yearsAgo * dpy - dayInYear;
-        return birthDay;
+        // Place the villager mid-way through the stage matching its MCA AgeState,
+        // using its rolled stage durations — so a spawned adult lands inside the
+        // adult stage rather than decades past death under the new game-year cycle.
+        return com.aetherianartificer.townstead.origin.LifeStageProgression.fabricateBirthLifeDay(
+                villager, server, safeAgeState(villager));
     }
 
     private static AgeState safeAgeState(VillagerEntityMCA villager) {
@@ -113,7 +146,9 @@ public final class VillagerLifeStamper {
             return;
         }
 
-        long today = TownsteadCalendar.worldDay(server);
+        // Life-day axis (like villager DOB): village age stays stable across
+        // calendar re-dating; establishmentOf shifts it back for display.
+        long today = TownsteadCalendar.lifeDay(server);
         CalendarProfile profile = TownsteadCalendar.activeProfile(server);
         int dpy = profile != null && profile.daysPerYear() > 0 ? profile.daysPerYear() : 360;
 

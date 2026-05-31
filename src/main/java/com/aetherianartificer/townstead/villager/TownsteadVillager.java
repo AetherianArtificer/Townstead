@@ -741,7 +741,18 @@ public final class TownsteadVillager {
     public final class Life {
         private long birthWorldDay = Long.MIN_VALUE;
         private boolean stamped;
+        // Celebrated birthday: the month/day the villager "celebrates", decoupled from
+        // birthWorldDay (the age axis). 0 = unset → display derives from birthWorldDay.
+        // Editing month/day in the editor changes only this, never the age.
+        private int birthMonth;
+        private int birthDay;
         private String originId = "";
+        private int[] stageDays = EMPTY_INT_ARRAY;
+        private int cycleFingerprint;
+        private String currentStageId = "";
+        private boolean immortal;
+        private boolean isSenior;
+        private float fertility;
 
         public long birthWorldDay() {
             return birthWorldDay;
@@ -761,6 +772,21 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** Celebrated birth month (1-based), or 0 if unset (display falls back to birthWorldDay). */
+        public int birthMonth() { return birthMonth; }
+
+        /** Celebrated birth day-of-month (1-based), or 0 if unset. */
+        public int birthDay() { return birthDay; }
+
+        public boolean hasCelebratedBirthday() { return birthMonth > 0 && birthDay > 0; }
+
+        /** Set the celebrated month/day. Independent of age — does not touch birthWorldDay. */
+        public void setCelebratedBirthday(int month, int day) {
+            birthMonth = Math.max(0, month);
+            birthDay = Math.max(0, day);
+            markDirty();
+        }
+
         /** The villager's origin id (e.g. {@code townstead_origins:overworlder}); empty until assigned. */
         public String originId() {
             return originId;
@@ -775,15 +801,98 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /**
+         * Per-stage day durations rolled at spawn, aligned to the origin's
+         * {@link com.aetherianartificer.townstead.origin.LifeCycle} stage order.
+         * Length 0 until the spawn handler rolls; mismatch with the current
+         * cycle length means the origin was reassigned and a re-roll is due.
+         */
+        public int[] stageDays() {
+            return stageDays.length == 0 ? EMPTY_INT_ARRAY : stageDays.clone();
+        }
+
+        public boolean hasStageDays() {
+            return stageDays.length > 0;
+        }
+
+        public int stageDaysLength() {
+            return stageDays.length;
+        }
+
+        public void setStageDays(int[] value) {
+            stageDays = value == null || value.length == 0 ? EMPTY_INT_ARRAY : value.clone();
+            markDirty();
+        }
+
+        /** Hash of the cycle shape the {@code stageDays} were rolled against; see {@link com.aetherianartificer.townstead.origin.LifeCycle#fingerprint()}. */
+        public int cycleFingerprint() {
+            return cycleFingerprint;
+        }
+
+        public void setCycleFingerprint(int value) {
+            cycleFingerprint = value;
+            markDirty();
+        }
+
+        public String currentStageId() {
+            return currentStageId;
+        }
+
+        public void setCurrentStageId(String id) {
+            currentStageId = id == null ? "" : id;
+            markDirty();
+        }
+
+        public boolean immortal() {
+            return immortal;
+        }
+
+        public void setImmortal(boolean value) {
+            immortal = value;
+            markDirty();
+        }
+
+        public boolean isSenior() {
+            return isSenior;
+        }
+
+        public void setSenior(boolean value) {
+            isSenior = value;
+            markDirty();
+        }
+
+        public float fertility() {
+            return fertility;
+        }
+
+        public void setFertility(float value) {
+            fertility = Math.max(0f, Math.min(1f, value));
+            markDirty();
+        }
+
         public CompoundTag toTag() {
             CompoundTag tag = new CompoundTag();
             if (hasBirth()) {
                 tag.putLong("birthWorldDay", birthWorldDay);
                 tag.putBoolean("birthStamped", stamped);
             }
+            if (birthMonth > 0) tag.putInt("birthMonth", birthMonth);
+            if (birthDay > 0) tag.putInt("birthDay", birthDay);
             if (hasOrigin()) {
                 tag.putString("originId", originId);
             }
+            if (stageDays.length > 0) {
+                tag.putIntArray("stageDays", stageDays.clone());
+            }
+            if (cycleFingerprint != 0) {
+                tag.putInt("cycleFingerprint", cycleFingerprint);
+            }
+            if (!currentStageId.isEmpty()) {
+                tag.putString("currentStageId", currentStageId);
+            }
+            if (immortal) tag.putBoolean("immortal", true);
+            if (isSenior) tag.putBoolean("isSenior", true);
+            if (fertility > 0f) tag.putFloat("fertility", fertility);
             return tag;
         }
 
@@ -795,10 +904,20 @@ public final class TownsteadVillager {
                 birthWorldDay = Long.MIN_VALUE;
                 stamped = false;
             }
+            birthMonth = tag.getInt("birthMonth");
+            birthDay = tag.getInt("birthDay");
             originId = tag.getString("originId");
+            stageDays = tag.contains("stageDays") ? tag.getIntArray("stageDays") : EMPTY_INT_ARRAY;
+            cycleFingerprint = tag.getInt("cycleFingerprint");
+            currentStageId = tag.getString("currentStageId");
+            immortal = tag.getBoolean("immortal");
+            isSenior = tag.getBoolean("isSenior");
+            fertility = tag.getFloat("fertility");
             markDirty();
         }
     }
+
+    private static final int[] EMPTY_INT_ARRAY = new int[0];
 
     public final class ProfessionMemory implements ProfessionXpStore {
         private static final String LEGACY_COOK_TRADES_LEVEL = "townsteadCookTradesLevel";

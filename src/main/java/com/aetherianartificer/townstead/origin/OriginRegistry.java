@@ -1,6 +1,11 @@
 package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.origin.gene.Dominance;
+import com.aetherianartificer.townstead.origin.gene.Gene;
+import com.aetherianartificer.townstead.origin.gene.GeneRegistry;
+import com.aetherianartificer.townstead.origin.gene.InheritedGene;
+import com.aetherianartificer.townstead.origin.gene.types.LifeCycleGeneType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
@@ -83,6 +88,42 @@ public final class OriginRegistry {
             if (ancestry != null) base = ancestry.genome();
         }
         return base.mergedWith(origin.genomeOverrides());
+    }
+
+    /**
+     * Effective life cycle for an origin id, drawn from the Life Cycle gene the
+     * origin's genome expresses. Falls back to {@link LifeCycle#defaultHumanLike()}
+     * when no cycle gene is inherited.
+     */
+    public static LifeCycle effectiveLifeCycle(@Nullable ResourceLocation id) {
+        LifeCycleGeneType.Instance gene = effectiveCycleGene(id);
+        return gene == null || gene.cycle().isEmpty() ? LifeCycle.defaultHumanLike() : gene.cycle();
+    }
+
+    /**
+     * The Life Cycle gene an origin expresses, resolved across its inherited
+     * genes at the shared life-cycle locus: dominant beats recessive, ties break
+     * by weight then by inheritance order. {@code null} if no cycle gene is
+     * inherited (callers fall back to {@link LifeCycle#defaultHumanLike()}).
+     */
+    @Nullable
+    public static LifeCycleGeneType.Instance effectiveCycleGene(@Nullable ResourceLocation id) {
+        Genome genome = effectiveGenome(id);
+        Gene best = null;
+        for (InheritedGene inherited : genome.inheritedGenes()) {
+            Gene gene = GeneRegistry.byId(inherited.geneId());
+            if (gene == null || !(gene.instance() instanceof LifeCycleGeneType.Instance)) continue;
+            if (best == null || cycleAlleleWins(gene, best)) best = gene;
+        }
+        return best == null ? null : (LifeCycleGeneType.Instance) best.instance();
+    }
+
+    /** Locus resolution for cycle alleles: dominant beats recessive, then higher weight; otherwise the incumbent holds. */
+    private static boolean cycleAlleleWins(Gene challenger, Gene incumbent) {
+        boolean challengerDominant = challenger.dominance() == Dominance.DOMINANT;
+        boolean incumbentDominant = incumbent.dominance() == Dominance.DOMINANT;
+        if (challengerDominant != incumbentDominant) return challengerDominant;
+        return challenger.weight() > incumbent.weight();
     }
 
     /** The origin's demonym, falling back to its heritage's then its ancestry's. */

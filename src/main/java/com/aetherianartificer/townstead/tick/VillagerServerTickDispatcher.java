@@ -69,6 +69,7 @@ public final class VillagerServerTickDispatcher {
                 com.aetherianartificer.townstead.reaction.trigger.event.ContextTickHook.tick(villager, gameTime));
         profile("villager.life_stamper", () ->
                 com.aetherianartificer.townstead.calendar.VillagerLifeStamper.tick(villager));
+        profile("villager.life_stage", () -> LifeStageTicker.tick(villager));
     }
 
     private static void profile(String name, Runnable runnable) {

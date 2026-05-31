@@ -16,6 +16,9 @@
     "ReportBuildingMessageMixin",
     "TombstoneRevivalMixin",
     "VillagerEatSafetyMixin",
+    "VillagerEditorBirthMixin",
+    "VillagerEntityMCAImmortalityMixin",
+    "VillagerEntityMCALifeStageMixin",
     "PathNavigationFenceGateMixin",
     "VillagerHungerMixin",
     "VillagerServerTickMixin",
@@ -35,6 +38,7 @@
     "accessor.ColorPickerWidgetAccessor",
     "accessor.InteractScreenAccessor",
     "client.FishingHookRendererMixin",
+    "client.HairLayerSeniorMixin",
     "client.LivingEntityRendererEmoteMixin",
     "client.PlayerEntityExtendedModelAnimationMixin",
     "client.VillagerEntityBaseModelMcaAnimationMixin",
@@ -44,6 +48,7 @@
     "InteractScreenMixin",
     "VillagerEditorMixin",
     "VillagerEditorOriginMixin",
+    "VillagerScaleRendererMixin",
     "DestinyScreenMixin"
   ],
   "minVersion": "0.8"

@@ -14,8 +14,14 @@
   "gene.townstead_origins.water_drinker.desc": "Hydrates on plain water.",
   "gene.townstead_origins.diurnal": "Diurnal",
   "gene.townstead_origins.diurnal.desc": "Awake by day, asleep by night.",
-  "gene.townstead_origins.human_lifespan": "Human Lifespan",
-  "gene.townstead_origins.human_lifespan.desc": "Average human lifespan of around 80 years.",
+  "gene.townstead_origins.human_life_cycle": "Human Life Cycle",
+  "gene.townstead_origins.human_life_cycle.desc": "Ages through baby, child, teen, adult, and senior stages at a human pace.",
   "gene.townstead_origins.warm_skin": "Warm Skin Tone",
-  "gene.townstead_origins.warm_skin.desc": "A warm, pale-to-deep skin-tone spectrum."
+  "gene.townstead_origins.warm_skin.desc": "A warm, pale-to-deep skin-tone spectrum.",
+  "origin.townstead_origins.stage.baby": "Baby",
+  "origin.townstead_origins.stage.toddler": "Toddler",
+  "origin.townstead_origins.stage.child": "Child",
+  "origin.townstead_origins.stage.teen": "Teen",
+  "origin.townstead_origins.stage.adult": "Adult",
+  "origin.townstead_origins.stage.senior": "Senior"
 }

@@ -1,9 +1,0 @@
-{
-  "type": "townstead_origins:lifespan",
-  "display_name": { "translate": "gene.townstead_origins.human_lifespan" },
-  "description": { "translate": "gene.townstead_origins.human_lifespan.desc" },
-  "category": "Lifespan",
-  "dominance": "dominant",
-  "locus": "townstead_origins:lifespan",
-  "multiplier": 1.0
-}

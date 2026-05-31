@@ -1,0 +1,18 @@
+{
+  "type": "townstead_origins:life_cycle",
+  "display_name": { "translate": "gene.townstead_origins.human_life_cycle" },
+  "description": { "translate": "gene.townstead_origins.human_life_cycle.desc" },
+  "category": "Lifespan",
+  "dominance": "dominant",
+  "locus": "townstead_origins:life_cycle",
+  "variance": 0.15,
+  "_comment": "days == apparent-year span of each stage (sum 90 = a human apparent lifespan). No narrative_age, so apparent age derives linearly from days; the aging scale stretches these 90 to the configured calendar-year lifespan (default 2yr/730d). Mirrors LifeCycle.defaultHumanLike().",
+  "stages": [
+    { "id": "baby",    "label": { "translate": "origin.townstead_origins.stage.baby" },    "presents_as": "baby",    "days": 2 },
+    { "id": "toddler", "label": { "translate": "origin.townstead_origins.stage.toddler" }, "presents_as": "toddler", "days": 2 },
+    { "id": "child",   "label": { "translate": "origin.townstead_origins.stage.child" },   "presents_as": "child",   "days": 9 },
+    { "id": "teen",    "label": { "translate": "origin.townstead_origins.stage.teen" },    "presents_as": "teen",    "days": 5 },
+    { "id": "adult",   "label": { "translate": "origin.townstead_origins.stage.adult" },   "presents_as": "adult",   "days": 47 },
+    { "id": "senior",  "label": { "translate": "origin.townstead_origins.stage.senior" },  "presents_as": "senior",  "days": 25, "on_end": "stay" }
+  ]
+}

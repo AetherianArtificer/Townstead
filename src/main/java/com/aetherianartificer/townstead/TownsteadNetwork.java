@@ -211,6 +211,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload::write,
                 com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload::read,
                 TownsteadNetwork::handleVillagerLifeSync);
+        registerC2S(com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload.class,
+                com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload::write,
+                com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload::read,
+                TownsteadNetwork::handleVillagerLifeRequest);
         registerS2C(com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload.class,
                 com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload::write,
                 com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload::read,
@@ -264,6 +268,20 @@ public final class TownsteadNetwork {
 
     private static void handleVillagerLifeSync(com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload payload) {
         com.aetherianartificer.townstead.calendar.LifeClientStore.setFrom(payload);
+    }
+
+    private static void handleVillagerLifeRequest(
+            com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload payload, ServerPlayer sp) {
+        VillagerEntityMCA villager = findVillager(sp.getServer(), payload.villagerUuid());
+        if (villager == null) return;
+        net.minecraft.server.MinecraftServer server = sp.getServer();
+        if (server != null) {
+            com.aetherianartificer.townstead.calendar.VillagerLifeStamper.ensureStamped(villager, server);
+        }
+        com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload sync =
+                com.aetherianartificer.townstead.Townstead.townstead$lifeSync(villager);
+        // Re-key to the editor's preview entity so its client-side lookups match.
+        if (sync != null) sendToPlayer(sp, sync.withEntityId(payload.previewEntityId()));
     }
 
     private static void handleStampSync(com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload payload) {

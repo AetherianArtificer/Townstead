@@ -49,6 +49,7 @@ public class WorldCalendarSavedData extends SavedData {
     private static final String KEY_LAST_REAL_MILLIS = "lastRealMillisAtSave";
     private static final String KEY_HAS_LAST_REAL_MILLIS = "hasLastRealMillis";
     private static final String KEY_TIME_MODE_OVERRIDE = "timeModeOverride";
+    private static final String KEY_LIFE_EPOCH_SHIFT = "lifeEpochShift";
 
     public static final int DEFAULT_EPOCH_YEAR_OFFSET = 1000;
     private static final long MILLIS_PER_DAY = 86_400_000L;
@@ -58,6 +59,10 @@ public class WorldCalendarSavedData extends SavedData {
     private long lastDayTimeSample = 0L;
     private boolean hasLastSample = false;
     private int epochYearOffset = DEFAULT_EPOCH_YEAR_OFFSET;
+    // Days of pure calendar relabeling (date edits) absorbed away from the
+    // biological clock. Biological "today" = worldDayCounter - lifeEpochShift, so
+    // re-dating the calendar never ages villagers, while real elapsed time still does.
+    private long lifeEpochShift = 0L;
     private boolean calendarInitialized = false;
     private long lastRealMillisAtSave = 0L;
     private boolean hasLastRealMillis = false;
@@ -108,6 +113,7 @@ public class WorldCalendarSavedData extends SavedData {
         if (tag.contains(KEY_LAST_SAMPLE)) data.lastDayTimeSample = tag.getLong(KEY_LAST_SAMPLE);
         if (tag.contains(KEY_HAS_SAMPLE)) data.hasLastSample = tag.getBoolean(KEY_HAS_SAMPLE);
         if (tag.contains(KEY_EPOCH)) data.epochYearOffset = tag.getInt(KEY_EPOCH);
+        if (tag.contains(KEY_LIFE_EPOCH_SHIFT)) data.lifeEpochShift = tag.getLong(KEY_LIFE_EPOCH_SHIFT);
         if (tag.contains(KEY_INITIALIZED)) data.calendarInitialized = tag.getBoolean(KEY_INITIALIZED);
         if (tag.contains(KEY_LAST_REAL_MILLIS)) data.lastRealMillisAtSave = tag.getLong(KEY_LAST_REAL_MILLIS);
         if (tag.contains(KEY_HAS_LAST_REAL_MILLIS)) data.hasLastRealMillis = tag.getBoolean(KEY_HAS_LAST_REAL_MILLIS);
@@ -162,6 +168,7 @@ public class WorldCalendarSavedData extends SavedData {
         tag.putLong(KEY_LAST_SAMPLE, lastDayTimeSample);
         tag.putBoolean(KEY_HAS_SAMPLE, hasLastSample);
         tag.putInt(KEY_EPOCH, epochYearOffset);
+        tag.putLong(KEY_LIFE_EPOCH_SHIFT, lifeEpochShift);
         tag.putBoolean(KEY_INITIALIZED, calendarInitialized);
         // Stamp current wall-clock millis at save time so Animal Crossing mode
         // can compute real-days-elapsed on the next load. Always written
@@ -210,6 +217,7 @@ public class WorldCalendarSavedData extends SavedData {
     public boolean hasLastSample() { return hasLastSample; }
     public long lastDayTimeSample() { return lastDayTimeSample; }
     public int epochYearOffset() { return epochYearOffset; }
+    public long lifeEpochShift() { return lifeEpochShift; }
     public boolean calendarInitialized() { return calendarInitialized; }
     @Nullable
     public ResourceLocation activeProfileOverride() { return activeProfileOverride; }
@@ -236,6 +244,13 @@ public class WorldCalendarSavedData extends SavedData {
     public void setEpochYearOffset(int offset) {
         if (this.epochYearOffset != offset) {
             this.epochYearOffset = offset;
+            setDirty();
+        }
+    }
+
+    public void setLifeEpochShift(long shift) {
+        if (this.lifeEpochShift != shift) {
+            this.lifeEpochShift = shift;
             setDirty();
         }
     }

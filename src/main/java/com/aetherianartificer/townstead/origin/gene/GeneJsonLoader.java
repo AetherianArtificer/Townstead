@@ -48,7 +48,7 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                     LOGGER.warn("Skipping gene {} — unknown type '{}'", file, typeKey);
                     continue;
                 }
-                GeneInstance instance = type.get().parse(obj);
+                GeneInstance instance = type.get().parse(obj, lang);
                 if (instance == null) {
                     LOGGER.warn("Skipping gene {} — invalid config for type '{}'", file, typeKey);
                     continue;

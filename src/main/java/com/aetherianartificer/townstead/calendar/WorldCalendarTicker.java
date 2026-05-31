@@ -149,6 +149,8 @@ public final class WorldCalendarTicker {
             // for the new day. Once per in-game day, off the per-tick hot path.
             ShiftScheduleApplier.reapplyWeeklySchedules(server);
             Townstead.townstead$broadcastCalendarSync(server);
+            // Push fresh senior-progress to every tracking client so hair desat lerps daily.
+            com.aetherianartificer.townstead.origin.LifeStageProgression.broadcastDailyUpdates(server);
         }
     }
 }

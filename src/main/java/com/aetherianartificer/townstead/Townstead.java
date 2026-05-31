@@ -276,6 +276,20 @@ public class Townstead {
     public static final Supplier<Item> CALENDAR_ITEM = ITEMS.register("calendar",
             () -> new BlockItem(CALENDAR_BLOCK.get(), new Item.Properties()));
 
+    // ── Immortality elixirs ──
+
+    public static final Supplier<Item> IMMORTALITY_ELIXIR = ITEMS.register("immortality_elixir",
+            () -> new com.aetherianartificer.townstead.item.LifeFreezeElixir(
+                    true,
+                    new Item.Properties().stacksTo(16)
+                            .rarity(net.minecraft.world.item.Rarity.RARE)));
+
+    public static final Supplier<Item> MORTALITY_ELIXIR = ITEMS.register("mortality_elixir",
+            () -> new com.aetherianartificer.townstead.item.LifeFreezeElixir(
+                    false,
+                    new Item.Properties().stacksTo(16)
+                            .rarity(net.minecraft.world.item.Rarity.UNCOMMON)));
+
     public static final Supplier<BlockEntityType<FieldPostBlockEntity>> FIELD_POST_BE =
             BLOCK_ENTITY_TYPES.register("field_post",
                     () -> {
@@ -304,6 +318,8 @@ public class Townstead {
                                     output.accept(variant.get());
                                 }
                                 output.accept(CALENDAR_ITEM.get());
+                                output.accept(IMMORTALITY_ELIXIR.get());
+                                output.accept(MORTALITY_ELIXIR.get());
                             })
                             .build());
 
@@ -644,7 +660,7 @@ public class Townstead {
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.ChronotypeGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
-                    new com.aetherianartificer.townstead.origin.gene.types.LifespanGeneType());
+                    new com.aetherianartificer.townstead.origin.gene.types.LifeCycleGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.AttributeGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
@@ -1149,6 +1165,11 @@ public class Townstead {
                 com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload.STREAM_CODEC,
                 this::handleVillagerLifeSync
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload.TYPE,
+                com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload.STREAM_CODEC,
+                this::handleVillagerLifeRequest
+        );
         registrar.playToClient(
                 com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload.TYPE,
                 com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload.STREAM_CODEC,
@@ -1207,6 +1228,24 @@ public class Townstead {
             IPayloadContext context
     ) {
         context.enqueueWork(() -> com.aetherianartificer.townstead.calendar.LifeClientStore.setFrom(payload));
+    }
+
+    private void handleVillagerLifeRequest(
+            com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            VillagerEntityMCA villager = townstead$findVillager(sp.getServer(), payload.villagerUuid());
+            if (villager == null) return;
+            net.minecraft.server.MinecraftServer server = villager.getServer();
+            if (server != null) {
+                com.aetherianartificer.townstead.calendar.VillagerLifeStamper.ensureStamped(villager, server);
+            }
+            com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload sync = townstead$lifeSync(villager);
+            // Re-key to the editor's preview entity so its client-side lookups match.
+            if (sync != null) PacketDistributor.sendToPlayer(sp, sync.withEntityId(payload.previewEntityId()));
+        });
     }
 
     private void handleOriginSet(
@@ -2055,6 +2094,14 @@ public class Townstead {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
 
+        // Make sure stage durations are rolled and a birth is stamped before the
+        // life sync below is built, so the client snapshot is never empty when the
+        // player can reach the villager's editor.
+        net.minecraft.server.MinecraftServer trackingServer = villager.getServer();
+        if (trackingServer != null) {
+            com.aetherianartificer.townstead.calendar.VillagerLifeStamper.ensureStamped(villager, trackingServer);
+        }
+
         //? if neoforge {
         TownsteadVillager state = TownsteadVillagers.get(villager);
         CompoundTag hunger = state.needs().hungerTag();
@@ -2237,8 +2284,9 @@ public class Townstead {
         if (life == null) return null;
         long birthDay = com.aetherianartificer.townstead.calendar.LifeData.getBirthWorldDay(life);
         boolean stamped = com.aetherianartificer.townstead.calendar.LifeData.isStamped(life);
+        long lifeShift = com.aetherianartificer.townstead.calendar.TownsteadCalendar.lifeEpochShift(server);
         com.aetherianartificer.townstead.calendar.CalendarDate birth =
-                com.aetherianartificer.townstead.calendar.TownsteadCalendar.dateOf(server, birthDay);
+                com.aetherianartificer.townstead.calendar.TownsteadCalendar.dateOf(server, birthDay + lifeShift);
         int ageYears = com.aetherianartificer.townstead.calendar.TownsteadCalendar.ageYears(server, villager);
         com.aetherianartificer.townstead.calendar.CalendarProfile profile =
                 com.aetherianartificer.townstead.calendar.TownsteadCalendar.activeProfile(server);
@@ -2250,10 +2298,124 @@ public class Townstead {
                 ? com.aetherianartificer.townstead.calendar.ComponentSync.extract(
                         birthYearMonths.get(birth.monthIndex() - 1).commonName())
                 : new String[] { "", "" };
+        com.aetherianartificer.townstead.villager.TownsteadVillager.Life lifeState =
+                com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life();
+        // Celebrated birthday (month/day) is decoupled from birthWorldDay/age: if set,
+        // it overrides the age-derived month/day in the display. The year stays the
+        // age-derived one (it's not shown anyway).
+        int birthMonthIndex = birth.monthIndex();
+        int birthDayOfMonth = birth.dayOfMonth();
+        if (lifeState.hasCelebratedBirthday()) {
+            birthMonthIndex = lifeState.birthMonth();
+            birthDayOfMonth = lifeState.birthDay();
+            java.util.List<com.aetherianartificer.townstead.calendar.MonthDef> yMonths =
+                    profile != null ? profile.monthsForYear(birth.year()) : java.util.List.of();
+            if (profile != null && birthMonthIndex >= 1 && birthMonthIndex <= yMonths.size()) {
+                month = com.aetherianartificer.townstead.calendar.ComponentSync.extract(
+                        yMonths.get(birthMonthIndex - 1).commonName());
+            }
+        }
+        boolean isSenior = lifeState.isSenior();
+        int seniorPermil = isSenior
+                ? com.aetherianartificer.townstead.origin.LifeStageProgression.seniorProgressPermil(villager)
+                : 0;
+
+        long today = com.aetherianartificer.townstead.calendar.TownsteadCalendar.lifeDay(server);
+        int bioAgeDays = (int) Math.max(0L, today - birthDay);
+        boolean immortal = lifeState.immortal();
+
+        net.minecraft.resources.ResourceLocation originId =
+                net.minecraft.resources.ResourceLocation.tryParse(lifeState.originId());
+        if (originId == null) originId = com.aetherianartificer.townstead.origin.OriginRegistry.DEFAULT_ID;
+        com.aetherianartificer.townstead.origin.LifeCycle cycle =
+                com.aetherianartificer.townstead.origin.OriginRegistry.effectiveLifeCycle(originId);
+
+        int[] stageDays;
+        String[] stageKeys;
+        String[] stageFallbacks;
+        float[] stageScales;
+        int[] stageModelAges;
+        float[] stageNarrativeMin;
+        float[] stageNarrativeMax;
+        int currentStageIndex = -1;
+        float narrativeAge = 0f;
+        // Apparent-years per game-day. When a cycle has no explicit narrative_age,
+        // apparent age derives as bioAgeDays * narrativeRate (the inverse of the
+        // spawn-time aging scale). Synced so the client matches without bands.
+        boolean derivesNarrative = cycle != null && !cycle.isEmpty() && cycle.derivesNarrative();
+        float narrativeRate = derivesNarrative
+                ? 1f / Math.max(0.0001f, com.aetherianartificer.townstead.origin.OriginSpawnHandler.agingScale(server))
+                : 0f;
+        if (cycle != null && !cycle.isEmpty()
+                && lifeState.hasStageDays() && lifeState.stageDaysLength() == cycle.size()) {
+            stageDays = lifeState.stageDays();
+            int n = cycle.size();
+            stageKeys = new String[n];
+            stageFallbacks = new String[n];
+            stageScales = new float[n];
+            stageModelAges = new int[n];
+            stageNarrativeMin = new float[n];
+            stageNarrativeMax = new float[n];
+            for (int i = 0; i < n; i++) {
+                String[] parts = com.aetherianartificer.townstead.calendar.ComponentSync.extract(
+                        cycle.stageAt(i).label());
+                stageKeys[i] = parts[0];
+                stageFallbacks[i] = parts[1];
+                stageScales[i] = cycle.stageAt(i).scale();
+                stageModelAges[i] = com.aetherianartificer.townstead.origin.LifeStageProgression
+                        .representativeMcaAge(cycle.stageAt(i).presentsAs());
+                stageNarrativeMin[i] = cycle.stageAt(i).narrativeStart();
+                stageNarrativeMax[i] = cycle.stageAt(i).narrativeEnd();
+            }
+            if (immortal && !lifeState.currentStageId().isEmpty()) {
+                // Immortal: report the frozen stage, not the calendar-derived one.
+                for (int i = 0; i < cycle.size(); i++) {
+                    if (cycle.stageAt(i).id().equals(lifeState.currentStageId())) {
+                        currentStageIndex = i;
+                        break;
+                    }
+                }
+                if (currentStageIndex >= 0) {
+                    // Immortal frozen: midpoint of the frozen stage's day-span,
+                    // derived; or the authored band midpoint for override cycles.
+                    if (derivesNarrative) {
+                        long before = com.aetherianartificer.townstead.origin.LifeStageResolver
+                                .cumulativeDaysBefore(stageDays, currentStageIndex);
+                        long mid = before + Math.max(1, stageDays[currentStageIndex]) / 2L;
+                        narrativeAge = mid * narrativeRate;
+                    } else {
+                        narrativeAge = cycle.stageAt(currentStageIndex).narrativeAgeAt(0.5f);
+                    }
+                }
+            } else {
+                com.aetherianartificer.townstead.origin.LifeStageResolver.Resolved resolved =
+                        com.aetherianartificer.townstead.origin.LifeStageResolver.resolve(
+                                cycle, stageDays, birthDay, today);
+                if (resolved != null) {
+                    currentStageIndex = resolved.stageIndex();
+                    narrativeAge = derivesNarrative
+                            ? bioAgeDays * narrativeRate
+                            : resolved.stage().narrativeAgeAt(resolved.deltaInStage());
+                }
+            }
+        } else {
+            stageDays = new int[0];
+            stageKeys = new String[0];
+            stageFallbacks = new String[0];
+            stageScales = new float[0];
+            stageModelAges = new int[0];
+            stageNarrativeMin = new float[0];
+            stageNarrativeMax = new float[0];
+        }
+
         return new com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload(
                 villager.getId(),
-                birth.year(), birth.monthIndex(), birth.dayOfMonth(),
-                month[0], month[1], ageYears, stamped
+                birth.year(), birthMonthIndex, birthDayOfMonth,
+                month[0], month[1], ageYears, stamped,
+                isSenior, seniorPermil,
+                bioAgeDays, immortal, currentStageIndex,
+                stageDays, stageKeys, stageFallbacks, narrativeAge, stageScales, stageModelAges,
+                stageNarrativeMin, stageNarrativeMax, narrativeRate
         );
     }
 
