@@ -101,8 +101,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
-    public static final ModConfigSpec.ConfigValue<String> CALENDAR_TIME_MODE;
-    public static final ModConfigSpec.ConfigValue<String> VILLAGER_AGING_MODE;
+    public static final ModConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ModConfigSpec.DoubleValue AGING_SCALE;
     public static final ModConfigSpec.BooleanValue DISABLE_VILLAGER_AGING;
     public static final ModConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
@@ -183,8 +182,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
-    public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_TIME_MODE;
-    public static final ForgeConfigSpec.ConfigValue<String> VILLAGER_AGING_MODE;
+    public static final ForgeConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ForgeConfigSpec.DoubleValue AGING_SCALE;
     public static final ForgeConfigSpec.BooleanValue DISABLE_VILLAGER_AGING;
     public static final ForgeConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
@@ -524,34 +522,12 @@ public final class TownsteadConfig {
                          "In-game: run /townstead calendar set-profile <id> for tab-completed picking.",
                          "Admin override via /townstead calendar set-profile takes precedence over this value at runtime.")
                 .define("profile", "auto");
-        CALENDAR_TIME_MODE = b
-                .translation("townstead.configuration.calendar.timeMode")
-                .comment("How the calendar advances over time.",
-                         "  normal       - Calendar tracks Minecraft's day counter directly. Pairs cleanly",
-                         "                 with Time Control and other day-cycle mods (the calendar rides",
-                         "                 whatever MC time those mods produce - no extra integration needed).",
-                         "                 Default. Use this for vanilla pacing or for 1 MC day = 1 real day",
-                         "                 pacing via a day-stretching mod.",
-                         "  real_clock   - Same as normal during play, but on world load Townstead also adds",
-                         "                 the real-world days that elapsed since the world was last saved.",
-                         "                 Villagers visibly age while you're away; the calendar advances even",
-                         "                 when the game is off. Year-rollover-safe (doesn't depend on Time",
-                         "                 Control's sync mode). Compatible with day-cycle mods on top.")
-                .define("timeMode", "normal",
-                        o -> o instanceof String s && (s.equals("normal") || s.equals("real_clock")));
-        VILLAGER_AGING_MODE = b
-                .translation("townstead.configuration.calendar.villagerAgingMode")
-                .comment("How villager aging couples to real-world time. Both modes use the same aging",
-                         "rate (see agingScale); this only controls whether aging tracks wall-clock time",
-                         "or played time.",
-                         "  default    - Aging advances only while you're playing and in-world time passes.",
-                         "               Best for RPG-style play. This is the default.",
-                         "  real_clock - Aging tracks real-world time: villagers keep aging while you're",
-                         "               away (with timeMode=real_clock). Long-haul, life-sim style. Note:",
-                         "               independent of the timeMode setting below, though the two pair",
-                         "               naturally when both real_clock.")
-                .define("villagerAgingMode", "default",
-                        o -> o instanceof String s && (s.equals("default") || s.equals("real_clock")));
+        CALENDAR_REAL_CLOCK = b
+                .translation("townstead.configuration.calendar.realClockCalendar")
+                .comment("When true, the calendar also advances by the real-world days that elapsed while",
+                         "the game was off (added on world load). When false, it tracks Minecraft's day",
+                         "counter only. Compatible with day-cycle mods either way.")
+                .define("realClockCalendar", false);
         AGING_SCALE = b
                 .translation("townstead.configuration.calendar.agingScale")
                 .comment("Game-days per narrative (\"dog-years\") year — the single, species-neutral aging",
@@ -559,9 +535,7 @@ public final class TownsteadConfig {
                          "races simply author more narrative years in their life-cycle gene and so take",
                          "proportionally more game-days to live. Calendar-independent.",
                          "Default 8.0: a 90-narrative-year human life takes ~720 game-days (~2 years on the",
-                         "default 365-day calendar). Raise it to slow all aging, lower it to speed all aging.",
-                         "In default aging-mode these are played game-days; in real_clock mode aging tracks",
-                         "real-world time instead.")
+                         "default 365-day calendar). Raise it to slow all aging, lower it to speed all aging.")
                 .defineInRange("agingScale", 8.0, 0.01, 100000.0);
         DISABLE_VILLAGER_AGING = b
                 .translation("townstead.configuration.calendar.disableVillagerAging")
@@ -738,16 +712,11 @@ public final class TownsteadConfig {
     }
 
     public static String getCalendarTimeMode() {
-        return CALENDAR_TIME_MODE.get();
+        return CALENDAR_REAL_CLOCK.get() ? "real_clock" : "normal";
     }
 
     public static boolean isCalendarRealClockMode() {
-        return "real_clock".equals(CALENDAR_TIME_MODE.get());
-    }
-
-    /** True when aging tracks real-world time (villagers age while away with timeMode=real_clock). */
-    public static boolean isRealClockAging() {
-        return "real_clock".equals(VILLAGER_AGING_MODE.get());
+        return CALENDAR_REAL_CLOCK.get();
     }
 
     /** Game-days per narrative year — the species-neutral aging rate (see agingScale config). */
