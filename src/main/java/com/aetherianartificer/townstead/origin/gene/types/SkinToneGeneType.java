@@ -19,6 +19,8 @@ import java.util.Locale;
  *   <li>{@code screen} — lightens / hue-shifts; <b>black</b> is the identity.</li>
  *   <li>{@code overlay} — darkens below mid-grey, lightens above it; <b>#808080</b> is the
  *       identity (one tint covers both directions).</li>
+ *   <li>{@code color} — keeps the base's brightness but takes the tint's hue+saturation; the
+ *       only mode that desaturates (e.g. ashen dark-elf skin over a brown base).</li>
  * </ul>
  * {@code strength} (0–1, default 1) scales how strongly the tint applies. Legacy {@code from}/
  * {@code to} genes are read by their {@code from}.
@@ -54,6 +56,7 @@ public final class SkinToneGeneType implements GeneType {
         switch (s.toLowerCase(Locale.ROOT)) {
             case "screen":  return 1;
             case "overlay": return 2;
+            case "color":   return 3;
             default:        return 0; // multiply
         }
     }

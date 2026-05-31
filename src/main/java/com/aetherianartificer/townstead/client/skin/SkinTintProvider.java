@@ -1,16 +1,18 @@
 package com.aetherianartificer.townstead.client.skin;
 
-import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.world.entity.LivingEntity;
 
 import java.util.OptionalInt;
 
 /**
- * Resolves a villager's skin tint as a packed RGB (no alpha), or empty to leave
- * MCA's native skin untouched. Implementations must read only client-visible,
- * server-synced data and be deterministic, so every client computes the same
- * colour for the same villager. Register via {@link SkinTintRegistry}.
+ * Resolves an entity's skin tint as a packed RGB (no alpha), or empty to leave
+ * MCA's native skin untouched. Works for any genetics-rendered entity: MCA
+ * villagers and players using the villager player-model both reach MCA's
+ * {@code SkinLayer}. Implementations must read only client-visible, server-synced
+ * data and be deterministic, so every client computes the same colour for the
+ * same entity. Register via {@link SkinTintRegistry}.
  */
 public interface SkinTintProvider {
 
-    OptionalInt resolve(VillagerEntityMCA villager);
+    OptionalInt resolve(LivingEntity entity);
 }

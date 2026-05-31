@@ -150,10 +150,9 @@ public class OriginTraitsWidget extends ScrollPane {
             int sx = right - w;
             // Preview the race's actual skin range: a light→dark slice of vanilla skin run through
             // this gene's exact tint + blend + strength (white tint → the plain human gradient).
-            int mode = gene.blendMode();
-            int eff = SkinBlend.applyStrength(gene.colorFrom(), mode, gene.blendStrength());
-            int light = SkinBlend.rgb(0xF1E4C9, eff, mode);
-            int dark = SkinBlend.rgb(0x3A2418, eff, mode);
+            int packed = SkinBlend.pack(gene.colorFrom(), gene.blendMode(), gene.blendStrength());
+            int light = SkinBlend.blend(0xF1E4C9, packed);
+            int dark = SkinBlend.blend(0x3A2418, packed);
             GeneVisuals.drawSwatch(g, light, dark, sx, cy + (CHIP_H - h) / 2, w, h);
             return sx - 1;
         }

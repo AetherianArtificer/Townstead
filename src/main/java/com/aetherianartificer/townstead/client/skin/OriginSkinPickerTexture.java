@@ -14,9 +14,9 @@ import java.util.Optional;
 /**
  * Builds a tinted copy of MCA's {@code villager_skin} colormap so the Body page's skin picker
  * square shows the origin's actual skin field (the same blend the skin-layer mixin applies to the
- * rendered villager) — WYSIWYG. Keyed by the packed {@code (mode<<24 | tintRGB)} the tint provider
- * produces; results are cached as registered {@link DynamicTexture}s. White-multiply (identity)
- * returns MCA's original colormap so vanilla/Overworlder pickers are untouched.
+ * rendered villager) — WYSIWYG. Keyed by the packed tint the provider produces (see
+ * {@link SkinBlend#pack}); results are cached as registered {@link DynamicTexture}s. White-multiply
+ * (identity) returns MCA's original colormap so vanilla/Overworlder pickers are untouched.
  */
 public final class OriginSkinPickerTexture {
 
@@ -34,14 +34,13 @@ public final class OriginSkinPickerTexture {
     private static int srcW, srcH;
     private static final Map<Integer, ResourceLocation> CACHE = new HashMap<>();
 
-    /** Texture for the picker background given the provider's packed {@code (mode<<24 | tintRGB)}. */
+    /** Texture for the picker background given the provider's packed tint ({@link SkinBlend#pack}). */
     public static ResourceLocation forTint(int packed) {
-        int mode = (packed >>> 24) & 0xFF;
-        int tint = packed & 0xFFFFFF;
-        if (mode == 0 && tint == 0xFFFFFF) return SKIN_COLORMAP;   // multiply white = identity = vanilla
+        // White-multiply is the identity at any strength, so reuse MCA's untouched colormap.
+        if (SkinBlend.packMode(packed) == 0 && SkinBlend.packTint(packed) == 0xFFFFFF) return SKIN_COLORMAP;
         ResourceLocation cached = CACHE.get(packed);
         if (cached != null) return cached;
-        ResourceLocation rl = generate(packed, tint, mode);
+        ResourceLocation rl = generate(packed);
         if (rl == null) return SKIN_COLORMAP;                     // source unavailable: leave it vanilla
         CACHE.put(packed, rl);
         return rl;
@@ -56,7 +55,7 @@ public final class OriginSkinPickerTexture {
                 || (rl != null && "townstead".equals(rl.getNamespace()) && rl.getPath().startsWith("origin_skin_picker/"));
     }
 
-    private static ResourceLocation generate(int packed, int tint, int mode) {
+    private static ResourceLocation generate(int packed) {
         if (!loadSource()) return null;
         NativeImage img = new NativeImage(srcW, srcH, false);
         for (int y = 0; y < srcH; y++) {
@@ -64,7 +63,7 @@ public final class OriginSkinPickerTexture {
                 int abgr = srcPixels[y * srcW + x];
                 int a = (abgr >>> 24) & 0xFF;
                 int baseRgb = ((abgr & 0xFF) << 16) | (((abgr >> 8) & 0xFF) << 8) | ((abgr >> 16) & 0xFF);
-                int out = SkinBlend.rgb(baseRgb, tint, mode);
+                int out = SkinBlend.blend(baseRgb, packed);
                 int or = (out >> 16) & 0xFF, og = (out >> 8) & 0xFF, ob = out & 0xFF;
                 img.setPixelRGBA(x, y, (a << 24) | (ob << 16) | (og << 8) | or);   // back to ABGR
             }

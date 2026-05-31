@@ -251,6 +251,13 @@ public final class TownsteadNetwork {
         if (result.targetId() != com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF) {
             Entity tracked = sp.serverLevel().getEntity(result.targetId());
             if (tracked != null) sendToTrackingEntity(tracked, sync);
+        } else {
+            // Self-origin change: also re-key by the player's network id so their own
+            // model (sent to themselves) and bystanders' views (tracking sync) re-tint.
+            com.aetherianartificer.townstead.origin.OriginSyncS2CPayload entitySync =
+                    new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(sp.getId(), result.originId());
+            sendToPlayer(sp, entitySync);
+            sendToTrackingEntity(sp, entitySync);
         }
     }
 

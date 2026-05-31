@@ -4,7 +4,7 @@ import com.aetherianartificer.townstead.client.origin.OriginCatalogClient;
 import com.aetherianartificer.townstead.client.origin.OriginClientStore;
 import com.aetherianartificer.townstead.origin.GeneCatalogEntry;
 import com.aetherianartificer.townstead.origin.OriginCatalogEntry;
-import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.world.entity.LivingEntity;
 
 import java.util.OptionalInt;
 
@@ -21,20 +21,17 @@ import java.util.OptionalInt;
 public final class OriginSkinTintProvider implements SkinTintProvider {
 
     @Override
-    public OptionalInt resolve(VillagerEntityMCA villager) {
-        String originId = OriginClientStore.get(villager.getId());
+    public OptionalInt resolve(LivingEntity entity) {
+        String originId = OriginClientStore.get(entity.getId());
         if (originId.isEmpty()) return OptionalInt.empty();
         OriginCatalogEntry origin = OriginCatalogClient.origin(originId);
         if (origin == null) return OptionalInt.empty();
         for (OriginCatalogEntry.Inherited inherited : origin.inheritedGenes()) {
             GeneCatalogEntry gene = OriginCatalogClient.gene(inherited.geneId());
             if (gene != null && gene.isColor()) {
-                int mode = gene.blendMode();
-                // Fold strength into the tint (lerp toward the mode's identity); the blend is linear
-                // in the tint, so this equals applying the blend at partial strength.
-                int eff = SkinBlend.applyStrength(gene.colorFrom(), mode, gene.blendStrength());
-                // High byte = blend mode (the skin mixin unpacks it); low 24 = the effective tint RGB.
-                return OptionalInt.of((mode << 24) | (eff & 0xFFFFFF));
+                // Packed tint+mode+strength; the skin mixin and picker unpack it via SkinBlend.
+                return OptionalInt.of(SkinBlend.pack(
+                        gene.colorFrom(), gene.blendMode(), gene.blendStrength()));
             }
         }
         return OptionalInt.empty();

@@ -1264,6 +1264,13 @@ public class Townstead {
             if (result.targetId() != com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF) {
                 Entity tracked = sp.serverLevel().getEntity(result.targetId());
                 if (tracked != null) PacketDistributor.sendToPlayersTrackingEntity(tracked, sync);
+            } else {
+                // Self-origin change: also re-key by the player's network id so their own
+                // model (sent to themselves) and bystanders' views (tracking sync) re-tint.
+                com.aetherianartificer.townstead.origin.OriginSyncS2CPayload entitySync =
+                        new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(sp.getId(), result.originId());
+                PacketDistributor.sendToPlayer(sp, entitySync);
+                PacketDistributor.sendToPlayersTrackingEntity(sp, entitySync);
             }
         });
     }
@@ -2092,6 +2099,23 @@ public class Townstead {
 
     private void onStartTracking(PlayerEvent.StartTracking event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
+
+        // Tracked player: send their origin keyed by network id so the observer's
+        // skin-tint layer can paint their genetics model. Players don't receive the
+        // villager life/needs syncs that follow.
+        if (event.getTarget() instanceof ServerPlayer trackedPlayer) {
+            com.aetherianartificer.townstead.origin.OriginSyncS2CPayload pSync =
+                    new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(
+                            trackedPlayer.getId(),
+                            com.aetherianartificer.townstead.origin.PlayerOrigin.getOriginId(trackedPlayer));
+            //? if neoforge {
+            PacketDistributor.sendToPlayer(sp, pSync);
+            //?} else if forge {
+            /*TownsteadNetwork.sendToPlayer(sp, pSync);
+            *///?}
+            return;
+        }
+
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
 
         // Make sure stage durations are rolled and a birth is stamped before the
@@ -2465,16 +2489,22 @@ public class Townstead {
             com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload catalog =
                     new com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload(
                             originSnap.origins(), originSnap.genes());
+            String selfOriginId = com.aetherianartificer.townstead.origin.PlayerOrigin.getOriginId(sp);
             com.aetherianartificer.townstead.origin.OriginSyncS2CPayload self =
                     new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(
-                            com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF,
-                            com.aetherianartificer.townstead.origin.PlayerOrigin.getOriginId(sp));
+                            com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF, selfOriginId);
+            // Also keyed by the player's network id so the skin-tint layer can paint their
+            // own genetics model (the SELF entry is only used by the editor's picker).
+            com.aetherianartificer.townstead.origin.OriginSyncS2CPayload selfEntity =
+                    new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(sp.getId(), selfOriginId);
             //? if neoforge {
             PacketDistributor.sendToPlayer(sp, catalog);
             PacketDistributor.sendToPlayer(sp, self);
+            PacketDistributor.sendToPlayer(sp, selfEntity);
             //?} else if forge {
             /*TownsteadNetwork.sendToPlayer(sp, catalog);
             TownsteadNetwork.sendToPlayer(sp, self);
+            TownsteadNetwork.sendToPlayer(sp, selfEntity);
             *///?}
         } catch (Exception ex) {
             LOGGER.error("Failed to send origin data to {}", sp.getName().getString(), ex);

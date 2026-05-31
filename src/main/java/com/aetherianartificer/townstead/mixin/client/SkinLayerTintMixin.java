@@ -3,7 +3,6 @@ package com.aetherianartificer.townstead.mixin.client;
 import com.aetherianartificer.townstead.client.skin.SkinBlend;
 import com.aetherianartificer.townstead.client.skin.SkinTintRegistry;
 import net.conczin.mca.client.render.layer.SkinLayer;
-import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -29,35 +28,29 @@ public abstract class SkinLayerTintMixin<T extends LivingEntity, M extends Human
     //? if neoforge {
     @Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, require = 1)
     private void townstead$tintSkin(T entity, float partialTick, CallbackInfoReturnable<Integer> cir) {
-        if (entity instanceof VillagerEntityMCA villager) {
-            OptionalInt tint = SkinTintRegistry.resolve(villager);
-            if (tint.isPresent()) {
-                int base = cir.getReturnValue();
-                int v = tint.getAsInt();
-                int mode = (v >>> 24) & 0xFF;
-                int r = SkinBlend.channel((base >> 16) & 0xFF, (v >> 16) & 0xFF, mode);
-                int g = SkinBlend.channel((base >> 8) & 0xFF, (v >> 8) & 0xFF, mode);
-                int b = SkinBlend.channel(base & 0xFF, v & 0xFF, mode);
-                cir.setReturnValue((base & 0xFF000000) | (r << 16) | (g << 8) | b);
-            }
+        OptionalInt tint = SkinTintRegistry.resolve(entity);
+        if (tint.isPresent()) {
+            int base = cir.getReturnValue();
+            int blended = SkinBlend.blend(base & 0xFFFFFF, tint.getAsInt());
+            cir.setReturnValue((base & 0xFF000000) | blended);
         }
     }
     //?} else {
     /*@Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, require = 1)
     private void townstead$tintSkin(T entity, float partialTick, CallbackInfoReturnable<float[]> cir) {
-        if (entity instanceof VillagerEntityMCA villager) {
-            OptionalInt tint = SkinTintRegistry.resolve(villager);
-            if (tint.isPresent()) {
-                float[] base = cir.getReturnValue();
-                int v = tint.getAsInt();
-                int mode = (v >>> 24) & 0xFF;
-                cir.setReturnValue(new float[]{
-                        SkinBlend.channel(Math.round(base[0] * 255f), (v >> 16) & 0xFF, mode) / 255f,
-                        SkinBlend.channel(Math.round(base[1] * 255f), (v >> 8) & 0xFF, mode) / 255f,
-                        SkinBlend.channel(Math.round(base[2] * 255f), v & 0xFF, mode) / 255f,
-                        base.length > 3 ? base[3] : 1.0f
-                });
-            }
+        OptionalInt tint = SkinTintRegistry.resolve(entity);
+        if (tint.isPresent()) {
+            float[] base = cir.getReturnValue();
+            int baseRgb = (Math.round(base[0] * 255f) << 16)
+                    | (Math.round(base[1] * 255f) << 8)
+                    | Math.round(base[2] * 255f);
+            int blended = SkinBlend.blend(baseRgb, tint.getAsInt());
+            cir.setReturnValue(new float[]{
+                    ((blended >> 16) & 0xFF) / 255f,
+                    ((blended >> 8) & 0xFF) / 255f,
+                    (blended & 0xFF) / 255f,
+                    base.length > 3 ? base[3] : 1.0f
+            });
         }
     }
     *///?}
