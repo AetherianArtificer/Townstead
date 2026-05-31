@@ -2338,6 +2338,7 @@ public class Townstead {
         float[] stageNarrativeMin;
         float[] stageNarrativeMax;
         int currentStageIndex = -1;
+        int seniorStageIndex = -1;
         float narrativeAge = 0f;
         // Apparent-years per game-day. When a cycle has no explicit narrative_age,
         // apparent age derives as bioAgeDays * narrativeRate (the inverse of the
@@ -2366,6 +2367,10 @@ public class Townstead {
                         .representativeMcaAge(cycle.stageAt(i).presentsAs());
                 stageNarrativeMin[i] = cycle.stageAt(i).narrativeStart();
                 stageNarrativeMax[i] = cycle.stageAt(i).narrativeEnd();
+                if (seniorStageIndex < 0
+                        && cycle.stageAt(i).presentsAs() == com.aetherianartificer.townstead.origin.CanonicalStage.SENIOR) {
+                    seniorStageIndex = i;
+                }
             }
             if (immortal && !lifeState.currentStageId().isEmpty()) {
                 // Immortal: report the frozen stage, not the calendar-derived one.
@@ -2415,7 +2420,7 @@ public class Townstead {
                 isSenior, seniorPermil,
                 bioAgeDays, immortal, currentStageIndex,
                 stageDays, stageKeys, stageFallbacks, narrativeAge, stageScales, stageModelAges,
-                stageNarrativeMin, stageNarrativeMax, narrativeRate
+                stageNarrativeMin, stageNarrativeMax, narrativeRate, seniorStageIndex
         );
     }
 

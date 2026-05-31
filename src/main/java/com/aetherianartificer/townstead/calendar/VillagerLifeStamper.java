@@ -75,9 +75,11 @@ public final class VillagerLifeStamper {
             stamped = true;
         }
 
-        // Re-broadcast on a self-heal re-roll too, not just on the first birth stamp,
-        // so an already-born villager's refreshed stageDays reach tracking clients.
+        // Resolve + commit the current stage NOW (sets isSenior, applies senior effects)
+        // rather than waiting up to a full day for LifeStageTicker, so the broadcast below
+        // carries the correct senior flag and hair desaturation starts immediately.
         if (stamped || rolled) {
+            com.aetherianartificer.townstead.origin.LifeStageProgression.tickResolveStage(villager);
             broadcastFreshStamp(villager);
         }
     }

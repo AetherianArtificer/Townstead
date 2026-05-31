@@ -20,18 +20,39 @@ public final class SeniorHairDesat {
     private static final int TARGET_G = 0xBC;
     private static final int TARGET_B = 0xBC;
 
+    // Editor preview override: the editor's villager is a throwaway client entity with
+    // no committed snapshot, so the age slider pushes a transient senior-progress (0..1)
+    // here keyed by the preview entity id. -1 = no override. Mirrors LifeStageScale.
+    private static final java.util.Map<Integer, Float> PREVIEW_PROGRESS = new java.util.concurrent.ConcurrentHashMap<>();
+
     private SeniorHairDesat() {}
+
+    /** Editor: set the previewed senior progress (0..1) for an entity id. */
+    public static void setPreviewProgress(int entityId, float progress) {
+        PREVIEW_PROGRESS.put(entityId, Math.max(0f, Math.min(1f, progress)));
+    }
+
+    public static void clearPreviewProgress(int entityId) {
+        PREVIEW_PROGRESS.remove(entityId);
+    }
 
     /**
      * Sigmoid-curved progress factor in {@code [0,1]} for a tracked villager,
      * or {@code 0} if not senior / unknown. Result is how far the hair colour
-     * should be lerped toward grey.
+     * should be lerped toward grey. The editor preview override wins when present.
      */
     public static float lerpFactor(@Nullable VillagerEntityMCA villager) {
         if (villager == null) return 0f;
-        LifeClientStore.Snapshot snap = LifeClientStore.get(villager.getId());
-        if (snap == null || !snap.isSenior()) return 0f;
-        float p = snap.seniorProgress();
+        Float override = PREVIEW_PROGRESS.get(villager.getId());
+        float p;
+        if (override != null) {
+            p = override;
+        } else {
+            LifeClientStore.Snapshot snap = LifeClientStore.get(villager.getId());
+            if (snap == null || !snap.isSenior()) return 0f;
+            p = snap.seniorProgress();
+        }
+        if (p <= 0f) return 0f;
         // Centred at p=0.5 so it's "mostly grey by mid-senior" rather than tail-loaded.
         double sig = 1.0 / (1.0 + Math.exp(-10.0 * (p - 0.5)));
         if (sig < 0.0) sig = 0.0;

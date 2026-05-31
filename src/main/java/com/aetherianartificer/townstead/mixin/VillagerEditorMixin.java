@@ -20,6 +20,7 @@ import com.aetherianartificer.townstead.calendar.CalendarClientStore;
 import com.aetherianartificer.townstead.calendar.LifeClientStore;
 import com.aetherianartificer.townstead.calendar.LifeData;
 import com.aetherianartificer.townstead.client.gui.life.LifeAgeSlider;
+import com.aetherianartificer.townstead.client.skin.SeniorHairDesat;
 import com.aetherianartificer.townstead.origin.LifeStageScale;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.client.gui.VillagerEditorScreen;
@@ -401,12 +402,14 @@ public abstract class VillagerEditorMixin extends Screen {
                     ageRefresh.run();
                     townstead$previewAge(townstead$modelAgeForBio(snap, bio),
                             LifeStageScale.interpolate(snap.stageScales(), snap.stageDays(), bio));
+                    SeniorHairDesat.setPreviewProgress(villager.getId(), snap.seniorProgressForBio(bio));
                 });
         addRenderableWidget(slider);
         int bio0 = townstead$bioForSliderValue(snap, slider.sliderValue());
         bioRef[0] = bio0;
         townstead$previewAge(townstead$modelAgeForBio(snap, bio0),
                 LifeStageScale.interpolate(snap.stageScales(), snap.stageDays(), bio0));
+        SeniorHairDesat.setPreviewProgress(villager.getId(), snap.seniorProgressForBio(bio0));
         ageRefresh.run();
 
         // Editable "< Month > < Day >" birthday row — celebrated date only, decoupled
@@ -498,9 +501,11 @@ public abstract class VillagerEditorMixin extends Screen {
                     villagerData.putInt(LifeData.EDITOR_KEY_FROZEN_STAGE_INDEX, idx);
                     ageRefresh.run();
                     townstead$previewAge(townstead$modelAgeAtIndex(snap, idx), townstead$scaleAtIndex(snap, idx));
+                    SeniorHairDesat.setPreviewProgress(villager.getId(), townstead$frozenSeniorProgress(snap, idx));
                 });
         addRenderableWidget(slider);
         townstead$previewAge(townstead$modelAgeAtIndex(snap, start), townstead$scaleAtIndex(snap, start));
+        SeniorHairDesat.setPreviewProgress(villager.getId(), townstead$frozenSeniorProgress(snap, start));
         ageRefresh.run();
 
         townstead$shiftBelow(sy + sh + 2, TOWNSTEAD_LIFE_SHIFT);
@@ -588,6 +593,12 @@ public abstract class VillagerEditorMixin extends Screen {
             cum += d;
         }
         return ages[ages.length - 1];
+    }
+
+    /** Immortal preview: full grey when the frozen stage is the senior stage, else none. */
+    @Unique
+    private float townstead$frozenSeniorProgress(LifeClientStore.Snapshot snap, int idx) {
+        return snap.seniorStageIndex() >= 0 && idx == snap.seniorStageIndex() ? 1f : 0f;
     }
 
     /** Immortal: show the stage's mid appearance, off the AgeState boundary. */
@@ -736,6 +747,7 @@ public abstract class VillagerEditorMixin extends Screen {
         FatigueClientStore.clearOnChange();
         LifeClientStore.clearOnChange();
         LifeStageScale.clearPreviewOverride(villager.getId());
+        SeniorHairDesat.clearPreviewProgress(villager.getId());
         townstead$hungerDisplay = null;
         townstead$thirstDisplay = null;
         townstead$fatigueDisplay = null;

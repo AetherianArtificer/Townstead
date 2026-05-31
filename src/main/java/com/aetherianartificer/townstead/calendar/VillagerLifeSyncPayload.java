@@ -42,7 +42,8 @@ public record VillagerLifeSyncPayload(
         int[] stageModelAges,
         float[] stageNarrativeMin,
         float[] stageNarrativeMax,
-        float narrativeRate
+        float narrativeRate,
+        int seniorStageIndex
 //? if neoforge {
 ) implements CustomPacketPayload {
 //?} else {
@@ -74,7 +75,7 @@ public record VillagerLifeSyncPayload(
                 birthMonthKey, birthMonthFallback, ageYears, stamped, isSenior, seniorProgressPermil,
                 bioAgeDays, immortal, currentStageIndex, stageDays, stageLabelKeys, stageLabelFallbacks,
                 narrativeAge, stageScales, stageModelAges, stageNarrativeMin, stageNarrativeMax,
-                narrativeRate);
+                narrativeRate, seniorStageIndex);
     }
 
     //? if forge {
@@ -121,6 +122,7 @@ public record VillagerLifeSyncPayload(
         buf.writeVarInt(narrMax == null ? 0 : narrMax.length);
         if (narrMax != null) for (float v : narrMax) buf.writeFloat(v);
         buf.writeFloat(p.narrativeRate());
+        buf.writeInt(p.seniorStageIndex());
     }
 
     public static VillagerLifeSyncPayload read(FriendlyByteBuf buf) {
@@ -161,13 +163,14 @@ public record VillagerLifeSyncPayload(
         float[] stageNarrativeMax = new float[narrMaxCount];
         for (int i = 0; i < narrMaxCount; i++) stageNarrativeMax[i] = buf.readFloat();
         float narrativeRate = buf.readFloat();
+        int seniorStageIndex = buf.readInt();
         return new VillagerLifeSyncPayload(
                 entityId, birthYear, birthMonthIndex, birthDayOfMonth,
                 birthMonthKey, birthMonthFallback, ageYears, stamped,
                 isSenior, seniorProgressPermil,
                 bioAgeDays, immortal, currentStageIndex,
                 stageDays, keys, fallbacks, narrativeAge, stageScales, stageModelAges,
-                stageNarrativeMin, stageNarrativeMax, narrativeRate
+                stageNarrativeMin, stageNarrativeMax, narrativeRate, seniorStageIndex
         );
     }
 }

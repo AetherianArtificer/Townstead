@@ -35,7 +35,8 @@ public final class LifeClientStore {
             int[] stageModelAges,
             float[] stageNarrativeMin,
             float[] stageNarrativeMax,
-            float narrativeRate
+            float narrativeRate,
+            int seniorStageIndex
     ) {
         /** Real age in game-years = elapsed game-days / calendar year length. */
         public int realAgeYears(int daysPerYear) {
@@ -49,6 +50,23 @@ public final class LifeClientStore {
         /** 0.0 at start of senior stage, 1.0 at end; 0 when not senior. */
         public float seniorProgress() {
             return isSenior ? Math.max(0f, Math.min(1f, seniorProgressPermil / 1000f)) : 0f;
+        }
+
+        /**
+         * Senior-stage progress (0..1) for an arbitrary biological age, for the editor
+         * preview — independent of the committed {@code isSenior}/{@code seniorProgressPermil}.
+         * Returns 0 before the senior stage (or if the cycle has no senior stage), ramps
+         * 0→1 across it, and stays 1 past its end.
+         */
+        public float seniorProgressForBio(int bioAge) {
+            if (seniorStageIndex < 0 || stageDays == null || seniorStageIndex >= stageDays.length) {
+                return 0f;
+            }
+            int before = 0;
+            for (int i = 0; i < seniorStageIndex; i++) before += Math.max(0, stageDays[i]);
+            int span = Math.max(1, stageDays[seniorStageIndex]);
+            float p = (bioAge - before) / (float) span;
+            return p < 0f ? 0f : (p > 1f ? 1f : p);
         }
 
         public boolean hasCycle() {
@@ -175,7 +193,8 @@ public final class LifeClientStore {
                 payload.stageModelAges(),
                 payload.stageNarrativeMin(),
                 payload.stageNarrativeMax(),
-                payload.narrativeRate()
+                payload.narrativeRate(),
+                payload.seniorStageIndex()
         ));
         if (onChange != null) onChange.run();
     }
