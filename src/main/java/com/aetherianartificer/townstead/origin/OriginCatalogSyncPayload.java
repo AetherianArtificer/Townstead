@@ -18,10 +18,12 @@ import java.util.List;
  * Sent on login and datapack reload.
  */
 //? if neoforge {
-public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes)
+public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes,
+                                       List<TraitCatalogEntry> traits)
         implements CustomPacketPayload {
 //?} else {
-/*public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes) {
+/*public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes,
+                                       List<TraitCatalogEntry> traits) {
 *///?}
 
     //? if neoforge {
@@ -79,6 +81,14 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             buf.writeUtf(g.locus());
             buf.writeVarInt(g.weight());
         }
+        buf.writeVarInt(traits.size());
+        for (TraitCatalogEntry t : traits) {
+            buf.writeUtf(t.id());
+            buf.writeFloat(t.chance());
+            buf.writeFloat(t.inherit());
+            buf.writeBoolean(t.usableOnPlayer());
+            buf.writeBoolean(t.hidden());
+        }
     }
 
     public static OriginCatalogSyncPayload read(FriendlyByteBuf buf) {
@@ -115,6 +125,13 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                     buf.readUtf(), buf.readFloat(),
                     buf.readVarInt(), buf.readUtf(), buf.readVarInt()));
         }
-        return new OriginCatalogSyncPayload(entries, genes);
+        int k = buf.readVarInt();
+        List<TraitCatalogEntry> traits = new ArrayList<>(k);
+        for (int i = 0; i < k; i++) {
+            traits.add(new TraitCatalogEntry(
+                    buf.readUtf(), buf.readFloat(), buf.readFloat(),
+                    buf.readBoolean(), buf.readBoolean()));
+        }
+        return new OriginCatalogSyncPayload(entries, genes, traits);
     }
 }

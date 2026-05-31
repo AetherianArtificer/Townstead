@@ -67,7 +67,7 @@ public final class LifeStageProgression {
         }
 
         // Immortal + stage recorded: hold the recorded stage fixed.
-        if (life.immortal() && !life.currentStageId().isEmpty()) {
+        if (isImmortal(villager, life) && !life.currentStageId().isEmpty()) {
             return resolveFromRecordedStage(life, cycle, requested);
         }
 
@@ -96,7 +96,7 @@ public final class LifeStageProgression {
         MinecraftServer server = villager.level().getServer();
         if (server == null) return true;
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
-        if (life.immortal() || !life.hasBirth() || !life.hasStageDays()) return true;
+        if (isImmortal(villager, life) || !life.hasBirth() || !life.hasStageDays()) return true;
 
         LifeCycle cycle = resolveCycle(life);
         if (cycle == null || cycle.isEmpty() || life.stageDaysLength() != cycle.size()) return true;
@@ -108,6 +108,15 @@ public final class LifeStageProgression {
 
         AgeState body = villager.getAgeState();
         return canonicalToMca(resolved.stage().presentsAs(), body) == body;
+    }
+
+    /**
+     * Operational immortality: the non-heritable potion flag ({@link TownsteadVillager.Life#immortal})
+     * OR a heritable trait conferring {@code life.immortal}. Both pin the life stage.
+     */
+    private static boolean isImmortal(VillagerEntityMCA villager, TownsteadVillager.Life life) {
+        return life.immortal()
+                || com.aetherianartificer.townstead.origin.trait.TraitEffects.isImmortal(villager);
     }
 
     @Nullable
@@ -214,7 +223,7 @@ public final class LifeStageProgression {
         MinecraftServer server = villager.level().getServer();
         if (server == null) return false;
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
-        if (life.immortal() && !life.currentStageId().isEmpty()) return false;
+        if (isImmortal(villager, life) && !life.currentStageId().isEmpty()) return false;
         if (!life.hasBirth() || !life.hasStageDays()) return false;
 
         LifeCycle cycle = resolveCycle(life);

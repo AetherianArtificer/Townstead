@@ -1114,6 +1114,16 @@
   "townstead.stage.teen": "Teen",
   "townstead.stage.adult": "Adult",
   "townstead.stage.senior": "Senior",
-  "item.townstead.immortality_elixir": "Immortality Elixir",
-  "item.townstead.mortality_elixir": "Mortality Elixir"
+  "effect.townstead.immortality": "Immortality",
+  "effect.townstead.mortality": "Mortality",
+  "trait.townstead_origins:immortal": "Immortal",
+  "traitDescription.townstead_origins:immortal": "Does not age and cannot die of old age.",
+  "item.minecraft.potion.effect.townstead_immortality": "Potion of Immortality",
+  "item.minecraft.splash_potion.effect.townstead_immortality": "Splash Potion of Immortality",
+  "item.minecraft.lingering_potion.effect.townstead_immortality": "Lingering Potion of Immortality",
+  "item.minecraft.tipped_arrow.effect.townstead_immortality": "Arrow of Immortality",
+  "item.minecraft.potion.effect.townstead_mortality": "Potion of Mortality",
+  "item.minecraft.splash_potion.effect.townstead_mortality": "Splash Potion of Mortality",
+  "item.minecraft.lingering_potion.effect.townstead_mortality": "Lingering Potion of Mortality",
+  "item.minecraft.tipped_arrow.effect.townstead_mortality": "Arrow of Mortality"
 }

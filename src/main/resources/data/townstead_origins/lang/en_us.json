@@ -18,6 +18,8 @@
   "gene.townstead_origins.human_life_cycle.desc": "Ages through baby, child, teen, adult, and senior stages at a human pace.",
   "gene.townstead_origins.warm_skin": "Warm Skin Tone",
   "gene.townstead_origins.warm_skin.desc": "A warm, pale-to-deep skin-tone spectrum.",
+  "gene.townstead_origins.immortal": "Immortal",
+  "gene.townstead_origins.immortal.desc": "Does not age and cannot die of old age.",
   "origin.townstead_origins.stage.baby": "Baby",
   "origin.townstead_origins.stage.toddler": "Toddler",
   "origin.townstead_origins.stage.child": "Child",

@@ -27,6 +27,18 @@ public final class OriginCatalogClient {
             genes.put(g.id(), g);
         }
         GENES = Map.copyOf(genes);
+        // Bridge data-pack traits into MCA's registry client-side so the editor lists them.
+        // (enabledTraits comes from the server via MCA's own config sync.) Defensive against MCA drift.
+        boolean any = false;
+        for (com.aetherianartificer.townstead.origin.TraitCatalogEntry t : payload.traits()) {
+            try {
+                net.conczin.mca.entity.ai.Traits.registerTrait(t.id(), t.chance(), t.inherit(), t.usableOnPlayer());
+                any = true;
+            } catch (Throwable ignored) {
+                // Older/newer MCA without this exact signature — skip; trait just won't list.
+            }
+        }
+        if (any) com.aetherianartificer.townstead.origin.trait.TraitJsonLoader.enableRegisteredTraits();
     }
 
     public static List<OriginCatalogEntry> origins() {

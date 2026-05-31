@@ -27,6 +27,7 @@ public final class OriginSpawnHandler {
         TownsteadVillager state = TownsteadVillagers.get(villager);
         state.life().setOrigin(originId.toString());
         OriginGenes.clamp(villager, OriginRegistry.effectiveGenome(originId));
+        rollTraitGenes(villager, state, originId);
         rollAndStoreStageDays(villager, state, originId);
     }
 
@@ -53,6 +54,24 @@ public final class OriginSpawnHandler {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Roll each trait-granting gene the origin expresses once at spawn and grant the matching
+     * MCA trait. A gene's occurrence ({@code force}/{@code delta}) is the spawn probability;
+     * ≥1.0 is guaranteed. MCA owns membership (persisted, synced, heritable); Townstead's effect
+     * data rides alongside via {@link com.aetherianartificer.townstead.origin.trait.TraitRegistry}.
+     */
+    private static void rollTraitGenes(VillagerEntityMCA villager, TownsteadVillager state, ResourceLocation originId) {
+        for (com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType.Instance gene
+                : OriginRegistry.traitGenes(originId)) {
+            net.conczin.mca.entity.ai.Traits.Trait trait =
+                    net.conczin.mca.entity.ai.Traits.Trait.valueOf(gene.trait());
+            if (trait == net.conczin.mca.entity.ai.Traits.UNKNOWN) continue; // not a registered trait
+            if (gene.delta() >= 1.0f || villager.getRandom().nextFloat() < gene.delta()) {
+                villager.getTraits().addTrait(trait);
+            }
+        }
     }
 
     private static void rollAndStoreStageDays(VillagerEntityMCA villager, TownsteadVillager state, ResourceLocation originId) {

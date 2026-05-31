@@ -33,7 +33,8 @@ public abstract class VillagerEntityMCAImmortalityMixin {
     private void townstead$skipAgeWhenImmortal(int age, CallbackInfo ci) {
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;
         if (self.level().isClientSide) return;
-        if (TownsteadVillagers.get(self).life().immortal()) {
+        if (TownsteadVillagers.get(self).life().immortal()
+                || com.aetherianartificer.townstead.origin.trait.TraitEffects.isImmortal(self)) {
             ci.cancel();
         }
     }

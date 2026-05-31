@@ -118,6 +118,22 @@ public final class OriginRegistry {
         return best == null ? null : (LifeCycleGeneType.Instance) best.instance();
     }
 
+    /** The trait-granting genes an origin expresses (each carries its trait id + occurrence). */
+    public static java.util.List<com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType.Instance>
+            traitGenes(@Nullable ResourceLocation id) {
+        Genome genome = effectiveGenome(id);
+        java.util.List<com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType.Instance> out =
+                new java.util.ArrayList<>();
+        for (InheritedGene inherited : genome.inheritedGenes()) {
+            Gene gene = GeneRegistry.byId(inherited.geneId());
+            if (gene != null && gene.instance()
+                    instanceof com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType.Instance t) {
+                out.add(t);
+            }
+        }
+        return out;
+    }
+
     /** Locus resolution for cycle alleles: dominant beats recessive, then higher weight; otherwise the incumbent holds. */
     private static boolean cycleAlleleWins(Gene challenger, Gene incumbent) {
         boolean challengerDominant = challenger.dominance() == Dominance.DOMINANT;

@@ -1,0 +1,9 @@
+{
+  "chance": 0.0,
+  "inherit": 1.0,
+  "usable_on_player": true,
+  "hidden": false,
+  "effects": [
+    { "life.immortal": true }
+  ]
+}

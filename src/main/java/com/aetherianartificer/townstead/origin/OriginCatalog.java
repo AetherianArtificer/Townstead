@@ -22,11 +22,17 @@ public final class OriginCatalog {
 
     private OriginCatalog() {}
 
-    public record Snapshot(List<OriginCatalogEntry> origins, List<GeneCatalogEntry> genes) {}
+    public record Snapshot(List<OriginCatalogEntry> origins, List<GeneCatalogEntry> genes,
+                           List<TraitCatalogEntry> traits) {}
 
     public static Snapshot build() {
         List<OriginCatalogEntry> origins = new ArrayList<>();
         Map<ResourceLocation, GeneCatalogEntry> genes = new LinkedHashMap<>();
+        List<TraitCatalogEntry> traits = new ArrayList<>();
+        for (com.aetherianartificer.townstead.origin.trait.DataTrait t
+                : com.aetherianartificer.townstead.origin.trait.TraitRegistry.all()) {
+            traits.add(new TraitCatalogEntry(t.id(), t.chance(), t.inherit(), t.usableOnPlayer(), t.hidden()));
+        }
 
         for (Origin origin : OriginRegistry.all()) {
             String name = origin.displayName().getString();
@@ -56,7 +62,7 @@ public final class OriginCatalog {
                     name(HeritageRegistry.byId(origin.heritage())),
                     views, ranges));
         }
-        return new Snapshot(origins, new ArrayList<>(genes.values()));
+        return new Snapshot(origins, new ArrayList<>(genes.values()), traits);
     }
 
     private static GeneCatalogEntry toGeneEntry(ResourceLocation geneId) {

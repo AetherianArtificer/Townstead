@@ -1,0 +1,9 @@
+{
+  "type": "townstead_origins:trait_occurrence",
+  "display_name": { "translate": "gene.townstead_origins.immortal" },
+  "description": { "translate": "gene.townstead_origins.immortal.desc" },
+  "category": "Lifespan",
+  "dominance": "dominant",
+  "trait": "townstead_origins:immortal",
+  "force": true
+}

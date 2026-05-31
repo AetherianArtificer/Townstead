@@ -276,19 +276,41 @@ public class Townstead {
     public static final Supplier<Item> CALENDAR_ITEM = ITEMS.register("calendar",
             () -> new BlockItem(CALENDAR_BLOCK.get(), new Item.Properties()));
 
-    // ── Immortality elixirs ──
+    // ── Immortality / mortality potions ──
+    // Brewed like vanilla potions (Awkward + Enchanted Golden Apple -> Immortality;
+    // Immortality + Fermented Spider Eye -> Mortality) and thrown as splash potions
+    // at MCA villagers. The marker effect (LifePotionEffect) flips the immortality flag.
 
-    public static final Supplier<Item> IMMORTALITY_ELIXIR = ITEMS.register("immortality_elixir",
-            () -> new com.aetherianartificer.townstead.item.LifeFreezeElixir(
-                    true,
-                    new Item.Properties().stacksTo(16)
-                            .rarity(net.minecraft.world.item.Rarity.RARE)));
+    private static final DeferredRegister<net.minecraft.world.effect.MobEffect> MOB_EFFECTS =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.MOB_EFFECT, MOD_ID);
+    private static final DeferredRegister<net.minecraft.world.item.alchemy.Potion> POTIONS =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.POTION, MOD_ID);
 
-    public static final Supplier<Item> MORTALITY_ELIXIR = ITEMS.register("mortality_elixir",
-            () -> new com.aetherianartificer.townstead.item.LifeFreezeElixir(
-                    false,
-                    new Item.Properties().stacksTo(16)
-                            .rarity(net.minecraft.world.item.Rarity.UNCOMMON)));
+    //? if neoforge {
+    public static final net.neoforged.neoforge.registries.DeferredHolder<net.minecraft.world.effect.MobEffect, net.minecraft.world.effect.MobEffect> IMMORTALITY_EFFECT =
+            MOB_EFFECTS.register("immortality", () -> new com.aetherianartificer.townstead.item.LifePotionEffect(true, 0xE8C547));
+    public static final net.neoforged.neoforge.registries.DeferredHolder<net.minecraft.world.effect.MobEffect, net.minecraft.world.effect.MobEffect> MORTALITY_EFFECT =
+            MOB_EFFECTS.register("mortality", () -> new com.aetherianartificer.townstead.item.LifePotionEffect(false, 0x9A9A9A));
+
+    public static final net.neoforged.neoforge.registries.DeferredHolder<net.minecraft.world.item.alchemy.Potion, net.minecraft.world.item.alchemy.Potion> IMMORTALITY_POTION =
+            POTIONS.register("immortality", () -> new net.minecraft.world.item.alchemy.Potion("townstead_immortality",
+                    new net.minecraft.world.effect.MobEffectInstance(IMMORTALITY_EFFECT, 1)));
+    public static final net.neoforged.neoforge.registries.DeferredHolder<net.minecraft.world.item.alchemy.Potion, net.minecraft.world.item.alchemy.Potion> MORTALITY_POTION =
+            POTIONS.register("mortality", () -> new net.minecraft.world.item.alchemy.Potion("townstead_mortality",
+                    new net.minecraft.world.effect.MobEffectInstance(MORTALITY_EFFECT, 1)));
+    //?} else {
+    /*public static final net.minecraftforge.registries.RegistryObject<net.minecraft.world.effect.MobEffect> IMMORTALITY_EFFECT =
+            MOB_EFFECTS.register("immortality", () -> new com.aetherianartificer.townstead.item.LifePotionEffect(true, 0xE8C547));
+    public static final net.minecraftforge.registries.RegistryObject<net.minecraft.world.effect.MobEffect> MORTALITY_EFFECT =
+            MOB_EFFECTS.register("mortality", () -> new com.aetherianartificer.townstead.item.LifePotionEffect(false, 0x9A9A9A));
+
+    public static final net.minecraftforge.registries.RegistryObject<net.minecraft.world.item.alchemy.Potion> IMMORTALITY_POTION =
+            POTIONS.register("immortality", () -> new net.minecraft.world.item.alchemy.Potion("townstead_immortality",
+                    new net.minecraft.world.effect.MobEffectInstance(IMMORTALITY_EFFECT.get(), 1)));
+    public static final net.minecraftforge.registries.RegistryObject<net.minecraft.world.item.alchemy.Potion> MORTALITY_POTION =
+            POTIONS.register("mortality", () -> new net.minecraft.world.item.alchemy.Potion("townstead_mortality",
+                    new net.minecraft.world.effect.MobEffectInstance(MORTALITY_EFFECT.get(), 1)));
+    *///?}
 
     public static final Supplier<BlockEntityType<FieldPostBlockEntity>> FIELD_POST_BE =
             BLOCK_ENTITY_TYPES.register("field_post",
@@ -318,10 +340,41 @@ public class Townstead {
                                     output.accept(variant.get());
                                 }
                                 output.accept(CALENDAR_ITEM.get());
-                                output.accept(IMMORTALITY_ELIXIR.get());
-                                output.accept(MORTALITY_ELIXIR.get());
+                                townstead$addLifePotions(output);
                             })
                             .build());
+
+    /** Adds the drinkable + splash variants of both life potions to the Townstead tab. */
+    private static void townstead$addLifePotions(net.minecraft.world.item.CreativeModeTab.Output output) {
+        //? if neoforge {
+        output.accept(net.minecraft.world.item.alchemy.PotionContents.createItemStack(net.minecraft.world.item.Items.POTION, IMMORTALITY_POTION));
+        output.accept(net.minecraft.world.item.alchemy.PotionContents.createItemStack(net.minecraft.world.item.Items.SPLASH_POTION, IMMORTALITY_POTION));
+        output.accept(net.minecraft.world.item.alchemy.PotionContents.createItemStack(net.minecraft.world.item.Items.POTION, MORTALITY_POTION));
+        output.accept(net.minecraft.world.item.alchemy.PotionContents.createItemStack(net.minecraft.world.item.Items.SPLASH_POTION, MORTALITY_POTION));
+        //?} else {
+        /*output.accept(net.minecraft.world.item.alchemy.PotionUtils.setPotion(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.POTION), IMMORTALITY_POTION.get()));
+        output.accept(net.minecraft.world.item.alchemy.PotionUtils.setPotion(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SPLASH_POTION), IMMORTALITY_POTION.get()));
+        output.accept(net.minecraft.world.item.alchemy.PotionUtils.setPotion(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.POTION), MORTALITY_POTION.get()));
+        output.accept(net.minecraft.world.item.alchemy.PotionUtils.setPotion(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SPLASH_POTION), MORTALITY_POTION.get()));
+        *///?}
+    }
+
+    //? if forge {
+    /*private static void townstead$registerLifeBrewing() {
+        try {
+            java.lang.reflect.Method addMix = net.minecraftforge.fml.util.ObfuscationReflectionHelper.findMethod(
+                    net.minecraft.world.item.alchemy.PotionBrewing.class, "m_43513_",
+                    net.minecraft.world.item.alchemy.Potion.class, Item.class,
+                    net.minecraft.world.item.alchemy.Potion.class);
+            addMix.invoke(null, net.minecraft.world.item.alchemy.Potions.AWKWARD,
+                    net.minecraft.world.item.Items.ENCHANTED_GOLDEN_APPLE, IMMORTALITY_POTION.get());
+            addMix.invoke(null, IMMORTALITY_POTION.get(),
+                    net.minecraft.world.item.Items.FERMENTED_SPIDER_EYE, MORTALITY_POTION.get());
+        } catch (Exception e) {
+            LOGGER.error("Failed to register Townstead potion brewing recipes", e);
+        }
+    }
+    *///?}
 
     //? if neoforge {
     public static final Supplier<MenuType<FieldPostMenu>> FIELD_POST_MENU =
@@ -339,6 +392,8 @@ public class Townstead {
         PROFESSIONS.register(modBus);
         BLOCKS.register(modBus);
         ITEMS.register(modBus);
+        MOB_EFFECTS.register(modBus);
+        POTIONS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         MENU_TYPES.register(modBus);
         CREATIVE_MODE_TABS.register(modBus);
@@ -379,6 +434,24 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent e) -> {
             if (e.getEntity() instanceof VillagerEntityMCA villager && !villager.level().isClientSide) {
                 com.aetherianartificer.townstead.origin.OriginSpawnHandler.onTrueSpawn(villager);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.brewing.RegisterBrewingRecipesEvent e) -> {
+            net.minecraft.world.item.alchemy.PotionBrewing.Builder b = e.getBuilder();
+            b.addMix(net.minecraft.world.item.alchemy.Potions.AWKWARD,
+                    net.minecraft.world.item.Items.ENCHANTED_GOLDEN_APPLE, IMMORTALITY_POTION);
+            b.addMix(IMMORTALITY_POTION,
+                    net.minecraft.world.item.Items.FERMENTED_SPIDER_EYE, MORTALITY_POTION);
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+            if (e.getTarget() instanceof VillagerEntityMCA villager
+                    && com.aetherianartificer.townstead.item.VillagerPotionFeeding.isFeedable(e.getItemStack())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.sidedSuccess(villager.level().isClientSide));
+                if (!villager.level().isClientSide) {
+                    com.aetherianartificer.townstead.item.VillagerPotionFeeding.feed(
+                            e.getEntity(), villager, e.getItemStack(), e.getHand());
+                }
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
@@ -456,6 +529,8 @@ public class Townstead {
         PROFESSIONS.register(modBus);
         BLOCKS.register(modBus);
         ITEMS.register(modBus);
+        MOB_EFFECTS.register(modBus);
+        POTIONS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         MENU_TYPES.register(modBus);
         CREATIVE_MODE_TABS.register(modBus);
@@ -499,6 +574,17 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.MobSpawnEvent.FinalizeSpawn e) -> {
             if (e.getEntity() instanceof VillagerEntityMCA villager && !villager.level().isClientSide) {
                 com.aetherianartificer.townstead.origin.OriginSpawnHandler.onTrueSpawn(villager);
+            }
+        });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+            if (e.getTarget() instanceof VillagerEntityMCA villager
+                    && com.aetherianartificer.townstead.item.VillagerPotionFeeding.isFeedable(e.getItemStack())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.sidedSuccess(villager.level().isClientSide));
+                if (!villager.level().isClientSide) {
+                    com.aetherianartificer.townstead.item.VillagerPotionFeeding.feed(
+                            e.getEntity(), villager, e.getItemStack(), e.getHand());
+                }
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
@@ -628,6 +714,9 @@ public class Townstead {
             }
         });
         event.enqueueWork(RusticDelightThirstCompat::register);
+        //? if forge {
+        /*event.enqueueWork(Townstead::townstead$registerLifeBrewing);
+        *///?}
         event.enqueueWork(() -> {
             com.aetherianartificer.townstead.reaction.backend.ReactionBackends.register(
                     new com.aetherianartificer.townstead.reaction.backend.EmotecraftReactionBackend());
@@ -667,6 +756,10 @@ public class Townstead {
                     new com.aetherianartificer.townstead.origin.gene.types.SkinToneGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.AttachmentGeneType());
+
+            // Trait effect palette (data-pack traits compose these; see TraitJsonLoader)
+            com.aetherianartificer.townstead.origin.trait.effect.TraitEffectTypes.register(
+                    new com.aetherianartificer.townstead.origin.trait.effect.types.SetImmortalEffectType());
         });
     }
 
@@ -681,6 +774,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.origin.HeritageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.OriginJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.gene.GeneJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.trait.TraitJsonLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
@@ -2346,7 +2440,8 @@ public class Townstead {
 
         long today = com.aetherianartificer.townstead.calendar.TownsteadCalendar.lifeDay(server);
         int bioAgeDays = (int) Math.max(0L, today - birthDay);
-        boolean immortal = lifeState.immortal();
+        boolean immortal = lifeState.immortal()
+                || com.aetherianartificer.townstead.origin.trait.TraitEffects.isImmortal(villager);
 
         net.minecraft.resources.ResourceLocation originId =
                 net.minecraft.resources.ResourceLocation.tryParse(lifeState.originId());
@@ -2488,7 +2583,7 @@ public class Townstead {
                     com.aetherianartificer.townstead.origin.OriginCatalog.build();
             com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload catalog =
                     new com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload(
-                            originSnap.origins(), originSnap.genes());
+                            originSnap.origins(), originSnap.genes(), originSnap.traits());
             String selfOriginId = com.aetherianartificer.townstead.origin.PlayerOrigin.getOriginId(sp);
             com.aetherianartificer.townstead.origin.OriginSyncS2CPayload self =
                     new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(

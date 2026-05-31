@@ -34,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.5+1.21.1.jar"))
+    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.7+1.21.1.jar"))
     compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
