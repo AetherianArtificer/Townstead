@@ -204,10 +204,12 @@ public final class GridScanner {
         int minZ = postPos.getZ() - radius, maxZ = postPos.getZ() + radius;
         int minY = postPos.getY() - 4, maxY = postPos.getY() + 4;
 
-        // Scan villager inventories
+        // Scan farmer inventories (seeds in transit from storage to the ground are still village
+        // supply; other professions holding seeds aren't, so they don't count).
         net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1);
         for (net.minecraft.world.entity.Entity entity : level.getEntities((net.minecraft.world.entity.Entity) null, area, e -> true)) {
-            if (entity instanceof net.minecraft.world.entity.npc.AbstractVillager villager) {
+            if (entity instanceof net.minecraft.world.entity.npc.Villager villager
+                    && villager.getVillagerData().getProfession() == net.minecraft.world.entity.npc.VillagerProfession.FARMER) {
                 net.minecraft.world.SimpleContainer inv = villager.getInventory();
                 for (int i = 0; i < inv.getContainerSize(); i++) {
                     countSeed(inv.getItem(i), counts);
