@@ -40,11 +40,11 @@ public final class OriginJsonLoader extends SimpleJsonResourceReloadListener {
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), ctx, lang);
                 ResourceLocation species = OriginJsonParsing.optionalId(obj, "species", ctx, LOGGER);
                 ResourceLocation ancestry = OriginJsonParsing.optionalId(obj, "ancestry", ctx, LOGGER);
-                ResourceLocation heritage = OriginJsonParsing.optionalId(obj, "heritage", ctx, LOGGER);
+                ResourceLocation lineage = OriginJsonParsing.optionalId(obj, "lineage", ctx, LOGGER);
                 Demonym demonym = OriginJsonParsing.demonym(obj, ctx, lang);
                 Component backstory = OriginJsonParsing.backstory(obj, ctx, lang);
                 Genome overrides = OriginJsonParsing.genome(obj, "genome_overrides", ctx, LOGGER);
-                parsed.put(file, new Origin(file, displayName, species, ancestry, heritage, demonym, backstory, overrides));
+                parsed.put(file, new Origin(file, displayName, species, ancestry, lineage, demonym, backstory, overrides));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse origin {}: {}", file, ex.getMessage());
             }

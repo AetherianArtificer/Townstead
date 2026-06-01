@@ -1,0 +1,4 @@
+{
+  "label": { "translate": "chronotype.variant.early_bird" },
+  "sleep_hours": [21, 22, 23, 0, 1, 2, 3, 4]
+}

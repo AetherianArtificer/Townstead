@@ -164,6 +164,34 @@ final class GeneVisuals {
         g.fill(bandL, y, Math.max(bandL + 1, bandR), y + h, fill);
     }
 
+    /** Qualitative palette for a variant gene's options, cycled by index. */
+    private static final int[] VARIANT_PALETTE = {
+            0xFFD8B45A, 0xFF9FB0C0, 0xFF7A6CC4, 0xFF6FBF8A, 0xFFCF7F9A, 0xFFC9A77F,
+    };
+
+    static int variantColor(int index) {
+        return VARIANT_PALETTE[Math.floorMod(index, VARIANT_PALETTE.length)];
+    }
+
+    /** A categorical distribution bar: one segment per variant, width proportional to its weight. */
+    static void drawWeightBar(GuiGraphics g, int[] weights, int x, int y, int w, int h) {
+        g.fill(x, y, x + w, y + h, 0xFF0A0A0A);
+        int total = 0;
+        for (int wt : weights) total += Math.max(0, wt);
+        if (total > 0) {
+            int cx = x;
+            for (int i = 0; i < weights.length; i++) {
+                int end = (i == weights.length - 1) ? x + w : cx + Math.round(Math.max(0, weights[i]) / (float) total * w);
+                if (end > cx) g.fill(cx, y, Math.min(x + w, end), y + h, 0xFF000000 | (variantColor(i) & 0xFFFFFF));
+                cx = end;
+            }
+        }
+        g.fill(x - 1, y - 1, x + w + 1, y, 0xFF101010);
+        g.fill(x - 1, y + h, x + w + 1, y + h + 1, 0xFF101010);
+        g.fill(x - 1, y, x, y + h, 0xFF101010);
+        g.fill(x + w, y, x + w + 1, y + h, 0xFF101010);
+    }
+
     static void drawBorder(GuiGraphics g, int x1, int y1, int x2, int y2, int color, boolean dashed) {
         if (!dashed) {
             g.fill(x1, y1, x2, y1 + 1, color);

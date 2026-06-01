@@ -7,7 +7,7 @@ import java.util.Optional;
 
 /**
  * The ordered list of {@link LifeStage}s an origin progresses through. Lives
- * on {@link Ancestry}/{@link Heritage}/{@link Origin} just like {@link Genome};
+ * on {@link Ancestry}/{@link Lineage}/{@link Origin} just like {@link Genome};
  * the effective cycle is resolved by {@link OriginRegistry#effectiveLifeCycle}.
  *
  * <p>Composition is replace-not-merge: a later layer's non-empty cycle fully
@@ -99,7 +99,7 @@ public record LifeCycle(List<LifeStage> stages) {
     }
 
     /**
-     * The fallback when no origin/ancestry/heritage declares one. Six canonical
+     * The fallback when no origin/ancestry/lineage declares one. Six canonical
      * stages whose base day-counts equal their apparent-year spans (baby 2, …,
      * adult 47, senior 25 = 90 total), so apparent age derives linearly as
      * {@code daysAlive / agingScale}. The spawn-time aging scale then stretches

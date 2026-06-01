@@ -55,7 +55,7 @@ public class OriginDescriptionWidget extends ScrollPane {
         if (origin == null) return "";
         StringBuilder sb = new StringBuilder();
         if (!origin.speciesName().isEmpty()) sb.append(origin.speciesName());
-        String second = !origin.heritageName().isEmpty() ? origin.heritageName() : origin.ancestryName();
+        String second = !origin.lineageName().isEmpty() ? origin.lineageName() : origin.ancestryName();
         if (!second.isEmpty()) {
             if (sb.length() > 0) sb.append(" > ");
             sb.append(second);

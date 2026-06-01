@@ -1,5 +1,8 @@
 package com.aetherianartificer.townstead.origin;
 
+import com.aetherianartificer.townstead.origin.gene.Gene;
+import com.aetherianartificer.townstead.origin.gene.GeneRegistry;
+import com.aetherianartificer.townstead.origin.gene.InheritedGene;
 import com.aetherianartificer.townstead.origin.gene.types.LifeCycleGeneType;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -28,6 +31,7 @@ public final class OriginSpawnHandler {
         state.life().setOrigin(originId.toString());
         OriginGenes.clamp(villager, OriginRegistry.effectiveGenome(originId));
         rollTraitGenes(villager, state, originId);
+        rollVariantGenes(villager, state, originId);
         rollAndStoreStageDays(villager, state, originId);
     }
 
@@ -43,6 +47,9 @@ public final class OriginSpawnHandler {
         }
         ResourceLocation originId = ResourceLocation.tryParse(state.life().originId());
         if (originId == null) originId = OriginRegistry.DEFAULT_ID;
+        // Legacy villagers predate the variant-gene system: roll any chronotype (or other
+        // variant gene) they're missing once, on load, so expression is purely gene-driven.
+        rollVariantGenes(villager, state, originId);
         LifeCycle cycle = OriginRegistry.effectiveLifeCycle(originId);
         // Re-roll when the stored stageDays don't match the current cycle — either a
         // different length (origin reassigned), a re-authored shape, or a changed
@@ -72,6 +79,42 @@ public final class OriginSpawnHandler {
                 villager.getTraits().addTrait(trait);
             }
         }
+    }
+
+    /**
+     * Roll each variant gene (a weighted pick-one) the origin expresses, storing the winning
+     * variant id, but only where one isn't already carried — so this is safe to call both at
+     * spawn (rolls all) and on load to backfill legacy villagers (fills the gaps). The grant
+     * list is locus-collapsed, so at a shared slot (e.g. the chronotype locus) only the most
+     * specific gene is rolled. The carried variant is the genotype; expression (sleep window, …)
+     * is derived from it on read.
+     */
+    private static void rollVariantGenes(VillagerEntityMCA villager, TownsteadVillager state, ResourceLocation originId) {
+        for (InheritedGene inherited : OriginRegistry.effectiveInheritedGenes(originId)) {
+            Gene gene = GeneRegistry.byId(inherited.geneId());
+            if (gene == null || !gene.hasVariants()) continue;
+            if (state.life().hasCarriedVariant(gene.id().toString())) continue;
+            com.aetherianartificer.townstead.origin.gene.GeneVariant chosen =
+                    rollVariant(gene, villager.getRandom());
+            if (chosen != null) {
+                state.life().setCarriedVariant(gene.id().toString(), chosen.id());
+            }
+        }
+    }
+
+    @org.jetbrains.annotations.Nullable
+    private static com.aetherianartificer.townstead.origin.gene.GeneVariant rollVariant(
+            Gene gene, net.minecraft.util.RandomSource random) {
+        java.util.List<com.aetherianartificer.townstead.origin.gene.GeneVariant> variants = gene.variants();
+        int total = 0;
+        for (com.aetherianartificer.townstead.origin.gene.GeneVariant v : variants) total += Math.max(0, v.weight());
+        if (total <= 0) return variants.get(0);
+        int roll = random.nextInt(total);
+        for (com.aetherianartificer.townstead.origin.gene.GeneVariant v : variants) {
+            roll -= Math.max(0, v.weight());
+            if (roll < 0) return v;
+        }
+        return variants.get(variants.size() - 1);
     }
 
     private static void rollAndStoreStageDays(VillagerEntityMCA villager, TownsteadVillager state, ResourceLocation originId) {

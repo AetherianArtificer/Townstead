@@ -9,7 +9,6 @@ import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.shift.ShiftSetPayload;
 import com.aetherianartificer.townstead.shift.ShiftWeekSetPayload;
-import com.aetherianartificer.townstead.shift.template.Chronotype;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplate;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateApplyPayload;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateClientStore;
@@ -144,7 +143,7 @@ public class ShiftManagerScreen extends Screen {
     private List<UUID> shiftVillagerUuids = List.of();
     private List<UUID> filteredUuids = List.of();
     private final Map<UUID, String> shiftVillagerNames = new HashMap<>();
-    private final Map<UUID, Chronotype> shiftVillagerChronotypes = new HashMap<>();
+    private final Map<UUID, ChronoView> shiftVillagerChronotypes = new HashMap<>();
     private final Map<UUID, String> shiftVillagerTemplateIds = new HashMap<>();
     private final Map<UUID, int[]> shiftEdits = new HashMap<>();
     private final Set<UUID> selectedVillagers = new LinkedHashSet<>();
@@ -492,7 +491,7 @@ public class ShiftManagerScreen extends Screen {
 
     private void renderGridRow(GuiGraphics g, UUID uuid, int rowY, int mouseX, int mouseY) {
         int[] shifts = shiftEdits.containsKey(uuid) ? shiftEdits.get(uuid) : ShiftClientStore.get(uuid);
-        Chronotype c = chronotypeOf(uuid);
+        ChronoView c = chronotypeOf(uuid);
 
         for (int h = 0; h < ShiftData.HOURS_PER_DAY; h++) {
             int cellX = gridLeft + h * cellW;
@@ -501,7 +500,7 @@ public class ShiftManagerScreen extends Screen {
             if (ord < 0 || ord >= ShiftData.ORDINAL_COLORS.length) ord = ShiftData.ORD_IDLE;
             g.fill(cellX, cellY, cellX + cellW - 1, cellY + CELL_H - 1, ShiftData.ORDINAL_COLORS[ord]);
 
-            if (c.isPreferredSleepHour(h)) {
+            if (c.isSleepHour(h)) {
                 g.fill(cellX, cellY, cellX + cellW - 1, cellY + 2, SLEEP_BAND_COLOR);
                 g.fill(cellX, cellY + CELL_H - 3, cellX + cellW - 1, cellY + CELL_H - 1, SLEEP_BAND_COLOR);
             }
@@ -580,8 +579,8 @@ public class ShiftManagerScreen extends Screen {
                     int level = resident.professionLevel();
                     String levelKey = "townstead.profession.level." + Math.min(Math.max(level, 1), 5);
                     String levelName = Component.translatable(levelKey).getString();
-                    Chronotype c = chronotypeOf(uuid);
-                    String chronoStr = Component.translatable(c.translationKey()).getString();
+                    ChronoView c = chronotypeOf(uuid);
+                    String chronoStr = c.displayLabel();
                     g.renderTooltip(this.font,
                             Component.literal(profName + " - " + levelName + " - " + chronoStr),
                             mouseX, mouseY);
@@ -1220,7 +1219,7 @@ public class ShiftManagerScreen extends Screen {
         String name = modalRenameInput.getValue().trim();
         if (name.isEmpty() || name.equals(t.displayName())) { cancelRename(); return; }
         // Upsert by id; the server keeps the same id and replaces the name.
-        java.util.Optional<String> chrono = t.chronotype().map(Enum::name);
+        java.util.Optional<String> chrono = t.chronotype();
         ShiftTemplateSavePayload payload = new ShiftTemplateSavePayload(
                 t.id().toString(), name, effectiveTemplateShifts(t),
                 chrono.isPresent() ? chrono : java.util.Optional.empty());
@@ -1257,7 +1256,7 @@ public class ShiftManagerScreen extends Screen {
         }
         modalTemplateEdits.put(t.id(), next);
         // Send save: same id, same name, new shifts; server upserts in place.
-        java.util.Optional<String> chrono = t.chronotype().map(Enum::name);
+        java.util.Optional<String> chrono = t.chronotype();
         ShiftTemplateSavePayload payload = new ShiftTemplateSavePayload(
                 t.id().toString(), t.displayName(), next,
                 chrono.isPresent() ? chrono : java.util.Optional.empty());
@@ -1309,7 +1308,7 @@ public class ShiftManagerScreen extends Screen {
             modalSaveAsActive = false;
             return;
         }
-        Optional<String> chronoName = Optional.of(chronotypeOf(modalTarget).name());
+        Optional<String> chronoName = Optional.of(chronotypeOf(modalTarget).id());
         ShiftTemplateSavePayload payload =
                 new ShiftTemplateSavePayload("", name, Arrays.copyOf(shifts, shifts.length), chronoName);
         //? if neoforge {
@@ -1358,7 +1357,7 @@ public class ShiftManagerScreen extends Screen {
         ShiftTemplate t = ShiftTemplateClientStore.find(modalSelectedId);
         if (t == null || modalTarget == null) return;
         String name = t.displayName() + " (copy)";
-        Optional<String> chrono = t.chronotype().map(Enum::name);
+        Optional<String> chrono = t.chronotype();
         ShiftTemplateSavePayload payload =
                 new ShiftTemplateSavePayload("", name, t.copyShifts(), chrono);
         //? if neoforge {
@@ -1756,7 +1755,8 @@ public class ShiftManagerScreen extends Screen {
             UUID uuid = resident.villagerUuid();
             shiftVillagerUuids.add(uuid);
             shiftVillagerNames.put(uuid, resident.name());
-            shiftVillagerChronotypes.put(uuid, Chronotype.fromName(resident.chronotype()));
+            shiftVillagerChronotypes.put(uuid, new ChronoView(
+                    resident.chronotype(), resident.chronotypeLabel(), resident.sleepHours()));
             shiftVillagerTemplateIds.put(uuid, resident.templateId());
             ShiftClientStore.set(uuid, resident.shifts());
         }
@@ -1851,9 +1851,26 @@ public class ShiftManagerScreen extends Screen {
         if (weeklyApplyPlanButton != null) weeklyApplyPlanButton.active = hasTarget;
     }
 
-    private Chronotype chronotypeOf(UUID uuid) {
-        return shiftVillagerChronotypes.getOrDefault(uuid, Chronotype.STANDARD);
+    private ChronoView chronotypeOf(UUID uuid) {
+        return shiftVillagerChronotypes.getOrDefault(uuid, DEFAULT_CHRONO);
     }
+
+    /** Client view of a villager's chronotype: id + resolved label + sleep window (tick-hours). */
+    private record ChronoView(String id, String label, int[] sleepHours) {
+        boolean isSleepHour(int tickHour) {
+            int h = Math.floorMod(tickHour, 24);
+            for (int s : sleepHours) {
+                if (s == h) return true;
+            }
+            return false;
+        }
+
+        String displayLabel() {
+            return label == null || label.isEmpty() ? id : label;
+        }
+    }
+
+    private static final ChronoView DEFAULT_CHRONO = new ChronoView("standard", "", new int[0]);
 
     private String templateLabelFor(UUID uuid) {
         String id = shiftVillagerTemplateIds.get(uuid);

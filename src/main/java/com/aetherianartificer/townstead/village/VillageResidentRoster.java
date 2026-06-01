@@ -1,11 +1,10 @@
 package com.aetherianartificer.townstead.village;
 
-import com.aetherianartificer.townstead.shift.template.Chronotype;
+import com.aetherianartificer.townstead.origin.chronotype.Chronotypes;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.AgeState;
-import net.conczin.mca.entity.ai.relationship.Personality;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -38,11 +37,7 @@ public final class VillageResidentRoster {
             VillagerEntityMCA villager = findResident(player, residentUuid);
             if (villager == null) continue;
             if (AgeState.byCurrentAge(villager.getAge()) != AgeState.ADULT) continue;
-            Personality personality = null;
-            try {
-                personality = villager.getVillagerBrain().getPersonality();
-            } catch (Throwable ignored) {}
-            Chronotype chronotype = Chronotype.fromPersonality(personality);
+            Chronotypes.Resolved chronotype = Chronotypes.resolve(villager);
             TownsteadVillager state = TownsteadVillagers.get(villager);
             residents.add(new VillageResidentClientStore.Resident(
                     villager.getUUID(),
@@ -50,7 +45,9 @@ public final class VillageResidentRoster {
                     professionKey(villager.getVillagerData().getProfession()),
                     villager.getVillagerData().getLevel(),
                     state.schedule().copyShifts(),
-                    chronotype.name(),
+                    chronotype.id(),
+                    chronotype.label(),
+                    chronotype.sleepHours(),
                     state.schedule().templateId()
             ));
         }

@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,7 @@ import java.util.Objects;
 
 /**
  * Server-side registry of data-pack-loaded {@link Origin}, plus the genome
- * resolution that composes species/ancestry/heritage into the effective genome
+ * resolution that composes species/ancestry/lineage into the effective genome
  * a villager is given. Populated by {@link OriginJsonLoader}.
  */
 public final class OriginRegistry {
@@ -67,27 +68,46 @@ public final class OriginRegistry {
     }
 
     /**
-     * Compose the genome bottom-up: ancestry (or, for a heritage-based origin,
-     * the union of the heritage's ancestries then its overrides) → the origin's
+     * Compose the genome bottom-up: ancestry (or, for a lineage-based origin,
+     * the union of the lineage's ancestries then its overrides) → the origin's
      * own overrides. Per-gene entries replace; tag lists union. Missing refs are
      * skipped (they leave the base un-narrowed).
      */
     public static Genome effectiveGenome(Origin origin) {
         Genome base = Genome.EMPTY;
-        if (origin.heritage() != null) {
-            Heritage heritage = HeritageRegistry.byId(origin.heritage());
-            if (heritage != null) {
-                for (ResourceLocation ancestryId : heritage.ancestries()) {
+        if (origin.lineage() != null) {
+            Lineage lineage = LineageRegistry.byId(origin.lineage());
+            if (lineage != null) {
+                for (ResourceLocation ancestryId : lineage.ancestries()) {
                     Ancestry ancestry = AncestryRegistry.byId(ancestryId);
                     if (ancestry != null) base = base.mergedWith(ancestry.genome());
                 }
-                base = base.mergedWith(heritage.genomeOverrides());
+                base = base.mergedWith(lineage.genomeOverrides());
             }
         } else if (origin.ancestry() != null) {
             Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
             if (ancestry != null) base = ancestry.genome();
         }
         return base.mergedWith(origin.genomeOverrides());
+    }
+
+    /**
+     * The origin's inherited genes with same-locus alleles collapsed to the last-declared
+     * (most specific) one, so a lineage's chronotype gene replaces the ancestry's rather
+     * than both being rolled and shown. Locus-less genes are all kept, in order. This is the
+     * effective grant list for rolling and for the picker display.
+     */
+    public static List<InheritedGene> effectiveInheritedGenes(@Nullable ResourceLocation id) {
+        List<InheritedGene> raw = effectiveGenome(id).inheritedGenes();
+        LinkedHashMap<Object, InheritedGene> byKey = new LinkedHashMap<>();
+        int i = 0;
+        for (InheritedGene ig : raw) {
+            Gene gene = GeneRegistry.byId(ig.geneId());
+            Object key = gene != null && gene.locus() != null ? gene.locus() : "#" + i + ":" + ig.geneId();
+            byKey.put(key, ig);
+            i++;
+        }
+        return new ArrayList<>(byKey.values());
     }
 
     /**
@@ -142,13 +162,13 @@ public final class OriginRegistry {
         return challenger.weight() > incumbent.weight();
     }
 
-    /** The origin's demonym, falling back to its heritage's then its ancestry's. */
+    /** The origin's demonym, falling back to its lineage's then its ancestry's. */
     @Nullable
     public static Demonym resolveDemonym(Origin origin) {
         if (origin.demonym() != null) return origin.demonym();
-        if (origin.heritage() != null) {
-            Heritage heritage = HeritageRegistry.byId(origin.heritage());
-            if (heritage != null && heritage.demonym() != null) return heritage.demonym();
+        if (origin.lineage() != null) {
+            Lineage lineage = LineageRegistry.byId(origin.lineage());
+            if (lineage != null && lineage.demonym() != null) return lineage.demonym();
         }
         if (origin.ancestry() != null) {
             Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
@@ -157,13 +177,13 @@ public final class OriginRegistry {
         return null;
     }
 
-    /** The origin's backstory, falling back to its heritage's then its ancestry's. */
+    /** The origin's backstory, falling back to its lineage's then its ancestry's. */
     @Nullable
     public static Component resolveBackstory(Origin origin) {
         if (origin.backstory() != null) return origin.backstory();
-        if (origin.heritage() != null) {
-            Heritage heritage = HeritageRegistry.byId(origin.heritage());
-            if (heritage != null && heritage.backstory() != null) return heritage.backstory();
+        if (origin.lineage() != null) {
+            Lineage lineage = LineageRegistry.byId(origin.lineage());
+            if (lineage != null && lineage.backstory() != null) return lineage.backstory();
         }
         if (origin.ancestry() != null) {
             Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());

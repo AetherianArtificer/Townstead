@@ -18,7 +18,7 @@ public record OriginCatalogEntry(
         String backstory,
         String speciesName,
         String ancestryName,
-        String heritageName,
+        String lineageName,
         List<Inherited> inheritedGenes,
         List<GeneRangeView> geneRanges
 ) {

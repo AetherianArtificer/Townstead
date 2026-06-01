@@ -42,7 +42,7 @@ public final class OriginCatalog {
             Component backstory = OriginRegistry.resolveBackstory(origin);
 
             Genome genome = OriginRegistry.effectiveGenome(origin);
-            List<InheritedGene> inherited = genome.inheritedGenes();
+            List<InheritedGene> inherited = OriginRegistry.effectiveInheritedGenes(origin.id());
             List<OriginCatalogEntry.Inherited> views = new ArrayList<>(inherited.size());
             for (InheritedGene gene : inherited) {
                 views.add(new OriginCatalogEntry.Inherited(gene.geneId().toString(), gene.occurrence()));
@@ -59,7 +59,7 @@ public final class OriginCatalog {
                     backstory != null ? backstory.getString() : "",
                     name(SpeciesRegistry.byId(origin.species())),
                     name(AncestryRegistry.byId(origin.ancestry())),
-                    name(HeritageRegistry.byId(origin.heritage())),
+                    name(LineageRegistry.byId(origin.lineage())),
                     views, ranges));
         }
         return new Snapshot(origins, new ArrayList<>(genes.values()), traits);
@@ -69,9 +69,15 @@ public final class OriginCatalog {
         Gene gene = GeneRegistry.byId(geneId);
         if (gene == null) {
             return new GeneCatalogEntry(geneId.toString(), geneId.getPath(), "", "general",
-                    GeneDisplay.Kind.BOOLEAN.ordinal(), 0f, 1f, "", 0f, 0, "", 1);
+                    GeneDisplay.Kind.BOOLEAN.ordinal(), 0f, 1f, "", 0f, 0, "", 1, List.of());
         }
         GeneDisplay display = gene.display();
+        List<GeneCatalogEntry.Variant> variants = new ArrayList<>();
+        if (gene.hasVariants()) {
+            for (com.aetherianartificer.townstead.origin.gene.GeneVariant v : gene.variants()) {
+                variants.add(new GeneCatalogEntry.Variant(v.id(), v.label().getString(), v.weight()));
+            }
+        }
         return new GeneCatalogEntry(
                 geneId.toString(),
                 gene.displayName().getString(),
@@ -82,7 +88,8 @@ public final class OriginCatalog {
                 display.targetId(), display.amount(),
                 gene.dominance().ordinal(),
                 gene.locus() != null ? gene.locus().toString() : "",
-                gene.weight());
+                gene.weight(),
+                variants);
     }
 
     private static String name(Species species) {
@@ -93,7 +100,7 @@ public final class OriginCatalog {
         return ancestry != null ? ancestry.displayName().getString() : "";
     }
 
-    private static String name(Heritage heritage) {
-        return heritage != null ? heritage.displayName().getString() : "";
+    private static String name(Lineage lineage) {
+        return lineage != null ? lineage.displayName().getString() : "";
     }
 }

@@ -6,8 +6,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * The named, selectable top-level entry a villager carries. References a species
- * and either an ancestry or a heritage, and supplies a demonym + backstory
- * (overriding the referenced ancestry/heritage when present). Its effective
+ * and either an ancestry or a lineage, and supplies a demonym + backstory
+ * (overriding the referenced ancestry/lineage when present). Its effective
  * genome is resolved by {@link OriginRegistry#effectiveGenome}.
  *
  * <p>Loaded from {@code data/<ns>/origin/<path>.json}. The built-in
@@ -18,7 +18,7 @@ public record Origin(
         Component displayName,
         @Nullable ResourceLocation species,
         @Nullable ResourceLocation ancestry,
-        @Nullable ResourceLocation heritage,
+        @Nullable ResourceLocation lineage,
         @Nullable Demonym demonym,
         @Nullable Component backstory,
         Genome genomeOverrides

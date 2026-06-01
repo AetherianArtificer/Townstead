@@ -8,24 +8,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Server-side registry of data-pack-loaded {@link Heritage}. Populated by
- * {@link HeritageJsonLoader} on each resource reload. None ship built-in.
+ * Server-side registry of data-pack-loaded {@link Lineage}. Populated by
+ * {@link LineageJsonLoader} on each resource reload. None ship built-in.
  */
-public final class HeritageRegistry {
-    private static volatile Map<ResourceLocation, Heritage> ENTRIES = Map.of();
+public final class LineageRegistry {
+    private static volatile Map<ResourceLocation, Lineage> ENTRIES = Map.of();
 
-    private HeritageRegistry() {}
+    private LineageRegistry() {}
 
-    static void replaceAll(Map<ResourceLocation, Heritage> next) {
+    static void replaceAll(Map<ResourceLocation, Lineage> next) {
         ENTRIES = Map.copyOf(new LinkedHashMap<>(next));
     }
 
     @Nullable
-    public static Heritage byId(ResourceLocation id) {
+    public static Lineage byId(ResourceLocation id) {
         return id == null ? null : ENTRIES.get(id);
     }
 
-    public static List<Heritage> all() {
+    public static List<Lineage> all() {
         return List.copyOf(ENTRIES.values());
     }
 

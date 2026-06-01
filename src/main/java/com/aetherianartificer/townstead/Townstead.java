@@ -771,8 +771,9 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.calendar.CalendarProfileJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.SpeciesJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.AncestryJsonLoader());
-        event.addListener(new com.aetherianartificer.townstead.origin.HeritageJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.LineageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.OriginJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.chronotype.ChronotypeCatalogLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.gene.GeneJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.trait.TraitJsonLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
@@ -1722,8 +1723,7 @@ public class Townstead {
             } catch (Exception ex) { return null; }
             if (!ShiftTemplate.USER_NAMESPACE.equals(id.getNamespace())) return null;
         }
-        java.util.Optional<com.aetherianartificer.townstead.shift.template.Chronotype> chrono =
-                payload.chronotypeName().map(com.aetherianartificer.townstead.shift.template.Chronotype::fromName);
+        java.util.Optional<String> chrono = payload.chronotypeName();
         try {
             return new ShiftTemplate(id, name, payload.shifts(), chrono, false);
         } catch (IllegalArgumentException ex) {

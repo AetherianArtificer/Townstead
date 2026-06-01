@@ -73,6 +73,14 @@ public class OriginTraitsWidget extends ScrollPane {
 
     private record ChipData(GeneCatalogEntry gene, float occurrence) {}
 
+    /** A variant gene's roll weights, in the gene's authored variant order. */
+    private static int[] weightsOf(GeneCatalogEntry gene) {
+        List<GeneCatalogEntry.Variant> vs = gene.variants();
+        int[] out = new int[vs.size()];
+        for (int i = 0; i < vs.size(); i++) out[i] = vs.get(i).weight();
+        return out;
+    }
+
     @Override
     protected int renderContent(GuiGraphics g, int left, int top, int innerW,
                                 int innerTop, int innerBottom, int mouseX, int mouseY) {
@@ -139,7 +147,8 @@ public class OriginTraitsWidget extends ScrollPane {
 
         int valueLeft = renderValue(g, mc, gene, occurrence, x2 - 5, cy);
         int nameMaxW = valueLeft - 4 - nameX;
-        String name = nameMaxW > 8 ? GeneVisuals.truncate(mc.font, gene.name(), nameMaxW) : gene.name();
+        String label = gene.name();
+        String name = nameMaxW > 8 ? GeneVisuals.truncate(mc.font, label, nameMaxW) : label;
         g.drawString(mc.font, name, nameX, textY, hovered ? 0xFFFFFFFF : 0xFFE6E6E6, false);
     }
 
@@ -170,6 +179,12 @@ public class OriginTraitsWidget extends ScrollPane {
             g.drawString(mc.font, t, right - tw, cy + (CHIP_H - 8) / 2, 0xFFC9A77F, false);
             return right - tw - 1;
         }
+        if (gene.isVariants() && !gene.variants().isEmpty()) {
+            int w = 34, h = 6;
+            int sx = right - w;
+            GeneVisuals.drawWeightBar(g, weightsOf(gene), sx, cy + (CHIP_H - h) / 2, w, h);
+            return sx - 1;
+        }
         int pct = Math.round(occ * 100f);
         if (pct < 100) {
             String t = pct + "%";
@@ -189,6 +204,22 @@ public class OriginTraitsWidget extends ScrollPane {
         }
         lines.add(Component.empty());
         lines.add(stat("Category", gene.category()));
+        if (gene.isVariants() && !gene.variants().isEmpty()) {
+            int[] weights = weightsOf(gene);
+            lines.add(Component.empty());
+            int total = 0;
+            for (int wt : weights) total += Math.max(0, wt);
+            for (int i = 0; i < gene.variants().size() && i < weights.length; i++) {
+                GeneCatalogEntry.Variant v = gene.variants().get(i);
+                int pct = total > 0 ? Math.round(Math.max(0, weights[i]) / (float) total * 100f) : 0;
+                final int col = GeneVisuals.variantColor(i) & 0xFFFFFF;
+                lines.add(Component.literal("■ ")
+                        .withStyle(s -> s.withColor(net.minecraft.network.chat.TextColor.fromRgb(col)))
+                        .append(Component.literal(v.label()).withStyle(ChatFormatting.GRAY))
+                        .append(Component.literal("  " + pct + "%").withStyle(ChatFormatting.DARK_GRAY)));
+            }
+            return lines;
+        }
         lines.add(Component.literal("Dominance: ").withStyle(ChatFormatting.DARK_GRAY)
                 .append(Component.literal(gene.isRecessive() ? "Recessive" : "Dominant")
                         .withStyle(gene.isRecessive() ? ChatFormatting.GRAY : ChatFormatting.GOLD)));

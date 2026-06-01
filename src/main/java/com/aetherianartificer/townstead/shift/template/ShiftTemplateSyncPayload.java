@@ -53,7 +53,7 @@ public record ShiftTemplateSyncPayload(List<ShiftTemplate> templates) implements
             buf.writeVarInt(shifts.length);
             for (int s : shifts) buf.writeVarInt(s);
             buf.writeBoolean(t.chronotype().isPresent());
-            t.chronotype().ifPresent(c -> buf.writeUtf(c.name()));
+            t.chronotype().ifPresent(buf::writeUtf);
             buf.writeBoolean(t.builtIn());
         }
     }
@@ -67,8 +67,8 @@ public record ShiftTemplateSyncPayload(List<ShiftTemplate> templates) implements
             int len = buf.readVarInt();
             int[] shifts = new int[len];
             for (int j = 0; j < len; j++) shifts[j] = buf.readVarInt();
-            Optional<Chronotype> chrono = buf.readBoolean()
-                    ? Optional.of(Chronotype.fromName(buf.readUtf()))
+            Optional<String> chrono = buf.readBoolean()
+                    ? Optional.of(buf.readUtf())
                     : Optional.empty();
             boolean builtIn = buf.readBoolean();
             try {

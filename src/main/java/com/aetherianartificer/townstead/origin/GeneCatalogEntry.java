@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.origin.gene.GeneDisplay;
 
+import java.util.List;
+
 /**
  * One gene's display data for the catalog sync / picker, flattened to primitives
  * so the client renders it without the server-only {@code GeneRegistry} or Java
@@ -27,8 +29,20 @@ public record GeneCatalogEntry(
         float amount,
         int dominanceOrdinal,
         String locus,
-        int weight
+        int weight,
+        List<Variant> variants
 ) {
+    public GeneCatalogEntry {
+        variants = variants == null ? List.of() : List.copyOf(variants);
+    }
+
+    /** One option of a VARIANTS gene: its id, resolved label, and roll weight. */
+    public record Variant(String id, String label, int weight) {}
+
+    public boolean isVariants() {
+        return displayKind == GeneDisplay.Kind.VARIANTS.ordinal();
+    }
+
     public boolean isRange() {
         return displayKind == GeneDisplay.Kind.RANGE.ordinal();
     }
