@@ -6,19 +6,18 @@ import com.aetherianartificer.townstead.origin.gene.GeneVariant;
 import com.aetherianartificer.townstead.origin.gene.types.ChronotypeGeneType;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Resolves a villager's chronotype from the chronotype gene it carries. A race grants
  * one chronotype gene (they share the {@link #LOCUS} slot); the villager carries the
  * variant rolled at birth. Expression is derived (never frozen): read the carried variant
- * id off the gene that sits at the locus and look up its sleep window. Legacy villagers
- * with no carried variant fall back to a personality-derived band so saves keep their feel.
+ * id off the gene that sits at the locus and look up its sleep window. Legacy villagers have
+ * their chronotype rolled once on load ({@code OriginSpawnHandler.backfillIfMissing}), so every
+ * villager ends up purely gene-driven.
  */
 public final class Chronotypes {
 
@@ -28,8 +27,6 @@ public final class Chronotypes {
 
     /** Standard 11 PM .. 7 AM as tick-hours (0 == 6 AM); used only when nothing resolves. */
     private static final int[] DEFAULT_SLEEP = {17, 18, 19, 20, 21, 22, 23, 0};
-
-    private static final Map<String, String> BY_PERSONALITY_NAME = buildPersonalityMap();
 
     private Chronotypes() {}
 
@@ -61,18 +58,9 @@ public final class Chronotypes {
                 return fromGene(gene, e.getValue());
             }
         }
-        return fromCatalog(fallbackVariant(villager));
-    }
-
-    /** Personality-derived fallback variant for villagers with no carried chronotype. */
-    public static String fallbackVariant(VillagerEntityMCA villager) {
-        Personality personality = null;
-        try {
-            personality = villager.getVillagerBrain().getPersonality();
-        } catch (Throwable ignored) {}
-        return personality == null
-                ? DEFAULT_VARIANT
-                : BY_PERSONALITY_NAME.getOrDefault(personality.name(), DEFAULT_VARIANT);
+        // Backfill rolls a carried variant on load, so this only covers the brief window
+        // before that runs (or a setup with no chronotype gene loaded).
+        return fromCatalog(DEFAULT_VARIANT);
     }
 
     /** Resolve a carried variant against the gene that granted it (window baked at load). */
@@ -113,35 +101,5 @@ public final class Chronotypes {
             if (v.id().equals(variantId)) return v;
         }
         return null;
-    }
-
-    private static Map<String, String> buildPersonalityMap() {
-        Map<String, String> m = new HashMap<>();
-        // Early birds: cheerful, outgoing, calm-but-active types
-        m.put("UPBEAT", "early_bird");
-        m.put("PEACEFUL", "early_bird");
-        m.put("EXTROVERTED", "early_bird");
-        m.put("ANXIOUS", "early_bird");
-        m.put("PEPPY", "early_bird");
-        m.put("ATHLETIC", "early_bird");
-        m.put("CONFIDENT", "early_bird");
-        // Standard: the default for unknown/UNASSIGNED
-        m.put("FRIENDLY", "standard");
-        m.put("INTROVERTED", "standard");
-        m.put("ODD", "standard");
-        m.put("SENSITIVE", "standard");
-        m.put("PLAYFUL", "standard");
-        m.put("WITTY", "standard");
-        m.put("UNASSIGNED", "standard");
-        m.put("SHY", "standard");
-        // Night owls: brooding, lazy, or hedonistic types
-        m.put("FLIRTY", "night_owl");
-        m.put("GLOOMY", "night_owl");
-        m.put("GREEDY", "night_owl");
-        m.put("RELAXED", "night_owl");
-        m.put("CRABBY", "night_owl");
-        m.put("GRUMPY", "night_owl");
-        m.put("LAZY", "night_owl");
-        return m;
     }
 }

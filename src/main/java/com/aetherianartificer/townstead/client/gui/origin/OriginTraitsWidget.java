@@ -180,7 +180,7 @@ public class OriginTraitsWidget extends ScrollPane {
             return right - tw - 1;
         }
         if (gene.isVariants() && !gene.variants().isEmpty()) {
-            int w = 36, h = 6;
+            int w = 34, h = 6;
             int sx = right - w;
             GeneVisuals.drawWeightBar(g, weightsOf(gene), sx, cy + (CHIP_H - h) / 2, w, h);
             return sx - 1;
