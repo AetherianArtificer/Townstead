@@ -39,9 +39,14 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
                             shifts[shiftIndex] = buf.readVarInt();
                         }
                         String chronotype = buf.readUtf();
+                        String chronotypeLabel = buf.readUtf();
+                        int sleepLength = buf.readVarInt();
+                        int[] sleepHours = new int[sleepLength];
+                        for (int s = 0; s < sleepLength; s++) sleepHours[s] = buf.readVarInt();
                         String templateId = buf.readUtf();
                         residents.add(new VillageResidentClientStore.Resident(
-                                villagerUuid, name, professionId, professionLevel, shifts, chronotype, templateId));
+                                villagerUuid, name, professionId, professionLevel, shifts,
+                                chronotype, chronotypeLabel, sleepHours, templateId));
                     }
                     return new VillageResidentsSyncPayload(residents);
                 }
@@ -60,6 +65,9 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
                             buf.writeVarInt(shift);
                         }
                         buf.writeUtf(resident.chronotype());
+                        buf.writeUtf(resident.chronotypeLabel());
+                        buf.writeVarInt(resident.sleepHours().length);
+                        for (int s : resident.sleepHours()) buf.writeVarInt(s);
                         buf.writeUtf(resident.templateId());
                     }
                 }
@@ -91,6 +99,9 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
                 buf.writeVarInt(shift);
             }
             buf.writeUtf(resident.chronotype());
+            buf.writeUtf(resident.chronotypeLabel());
+            buf.writeVarInt(resident.sleepHours().length);
+            for (int s : resident.sleepHours()) buf.writeVarInt(s);
             buf.writeUtf(resident.templateId());
         }
     }
@@ -109,9 +120,14 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
                 shifts[shiftIndex] = buf.readVarInt();
             }
             String chronotype = buf.readUtf();
+            String chronotypeLabel = buf.readUtf();
+            int sleepLength = buf.readVarInt();
+            int[] sleepHours = new int[sleepLength];
+            for (int s = 0; s < sleepLength; s++) sleepHours[s] = buf.readVarInt();
             String templateId = buf.readUtf();
             residents.add(new VillageResidentClientStore.Resident(
-                    villagerUuid, name, professionId, professionLevel, shifts, chronotype, templateId));
+                    villagerUuid, name, professionId, professionLevel, shifts,
+                    chronotype, chronotypeLabel, sleepHours, templateId));
         }
         return new VillageResidentsSyncPayload(residents);
     }

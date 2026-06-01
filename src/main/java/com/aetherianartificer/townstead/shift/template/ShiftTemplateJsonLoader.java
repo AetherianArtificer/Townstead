@@ -57,10 +57,10 @@ public final class ShiftTemplateJsonLoader extends SimpleJsonResourceReloadListe
                 } else {
                     name = file.getPath();
                 }
-                Optional<Chronotype> chrono = Optional.empty();
+                Optional<String> chrono = Optional.empty();
                 if (obj.has("chronotype")) {
                     String c = GsonHelper.getAsString(obj, "chronotype");
-                    if (c != null && !c.isBlank()) chrono = Optional.of(Chronotype.fromName(c));
+                    if (c != null && !c.isBlank()) chrono = Optional.of(c);
                 }
                 JsonArray arr = GsonHelper.getAsJsonArray(obj, "shifts");
                 if (arr.size() != ShiftData.HOURS_PER_DAY) {

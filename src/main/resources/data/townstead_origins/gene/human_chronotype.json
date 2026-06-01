@@ -1,0 +1,12 @@
+{
+  "type": "townstead_origins:chronotype",
+  "display_name": { "translate": "chronotype.mix.diurnal" },
+  "category": "Activity",
+  "locus": "townstead_origins:chronotypes",
+  "variants": {
+    "early_bird": { "weight": 20 },
+    "standard":   { "weight": 55 },
+    "night_owl":  { "weight": 20 },
+    "nocturnal":  { "weight": 5 }
+  }
+}

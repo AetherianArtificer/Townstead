@@ -14,7 +14,9 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -48,11 +50,6 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                     LOGGER.warn("Skipping gene {} — unknown type '{}'", file, typeKey);
                     continue;
                 }
-                GeneInstance instance = type.get().parse(obj, lang);
-                if (instance == null) {
-                    LOGGER.warn("Skipping gene {} — invalid config for type '{}'", file, typeKey);
-                    continue;
-                }
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), file.toString(), lang);
                 Component description = obj.has("description")
                         ? DataPackLang.parseComponent(obj.get("description"), file + ".description", lang)
@@ -63,13 +60,58 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                         ? DataPackLang.parseId(GsonHelper.getAsString(obj, "locus", ""))
                         : null;
                 int weight = Math.max(1, GsonHelper.getAsInt(obj, "weight", 1));
+
+                List<GeneVariant> variants = parseVariants(file, obj, type.get(), displayName, weight, lang);
+                if (variants.isEmpty()) {
+                    LOGGER.warn("Skipping gene {} — invalid config for type '{}'", file, typeKey);
+                    continue;
+                }
                 parsed.put(file, new Gene(file, displayName, description, category,
-                        dominance, locus, weight, instance));
+                        dominance, locus, weight, variants));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse gene {}: {}", file, ex.getMessage());
             }
         }
         GeneRegistry.replaceAll(parsed);
         LOGGER.info("Loaded {} genes", parsed.size());
+    }
+
+    /**
+     * Parse a gene's variants. A {@code variants} object (keyed by variant id) means a
+     * weighted pick-one gene: each entry carries a {@code weight}, an optional {@code label},
+     * and either its own type config or a bare reference resolved by the type (e.g. a shared
+     * catalog window). Otherwise the whole object is one implicit variant whose config is read
+     * from the top level — preserving the simple single-value form.
+     */
+    private static List<GeneVariant> parseVariants(ResourceLocation file, JsonObject obj, GeneType type,
+                                                   Component displayName, int geneWeight, Map<String, String> lang) {
+        List<GeneVariant> variants = new ArrayList<>();
+        if (obj.has("variants") && obj.get("variants").isJsonObject()) {
+            for (Map.Entry<String, JsonElement> e : obj.getAsJsonObject("variants").entrySet()) {
+                if (!e.getValue().isJsonObject()) continue;
+                String id = e.getKey();
+                JsonObject vo = e.getValue().getAsJsonObject();
+                GeneInstance instance = type.parseVariant(id, vo, lang);
+                if (instance == null) {
+                    LOGGER.warn("Gene {} — variant '{}' has invalid config, skipping", file, id);
+                    continue;
+                }
+                Component label;
+                if (vo.has("label")) {
+                    label = DataPackLang.parseComponent(vo.get("label"), file + ".variant." + id, lang);
+                } else {
+                    Component fallback = type.variantLabel(id);
+                    label = fallback != null ? fallback : displayName;
+                }
+                int weight = Math.max(1, GsonHelper.getAsInt(vo, "weight", geneWeight));
+                variants.add(new GeneVariant(id, label, weight, instance));
+            }
+        } else {
+            GeneInstance instance = type.parse(obj, lang);
+            if (instance != null) {
+                variants.add(new GeneVariant(file.getPath(), displayName, geneWeight, instance));
+            }
+        }
+        return variants;
     }
 }

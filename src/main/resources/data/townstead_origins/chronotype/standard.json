@@ -1,0 +1,4 @@
+{
+  "label": { "translate": "chronotype.variant.standard" },
+  "sleep_hours": [23, 0, 1, 2, 3, 4, 5, 6]
+}

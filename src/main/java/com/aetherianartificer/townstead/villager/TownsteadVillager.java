@@ -757,6 +757,11 @@ public final class TownsteadVillager {
         // Display (apparent age, stage, senior progress) reads this instead of the live day,
         // so it stops advancing with the calendar. Long.MIN_VALUE = not frozen.
         private long agingFrozenDay = Long.MIN_VALUE;
+        // Carried genes: for each variant gene the villager expresses, the variant id
+        // rolled at birth (geneId -> variantId, e.g. townstead_origins:chronotype -> night_owl).
+        // The genotype the villager holds; expression (sleep window, etc.) is derived from it,
+        // so gene therapy / inheritance can swap a variant and re-resolve for free.
+        private final java.util.Map<String, String> carriedVariants = new java.util.HashMap<>();
 
         public long birthWorldDay() {
             return birthWorldDay;
@@ -888,6 +893,32 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** Read-only view of the carried {@code geneId → variantId} genotype entries. */
+        public java.util.Map<String, String> carriedVariants() {
+            return java.util.Collections.unmodifiableMap(carriedVariants);
+        }
+
+        /** The variant id this villager carries for {@code geneId}, or empty if none. */
+        public String carriedVariant(String geneId) {
+            if (geneId == null) return "";
+            return carriedVariants.getOrDefault(geneId, "");
+        }
+
+        public boolean hasCarriedVariant(String geneId) {
+            return geneId != null && carriedVariants.containsKey(geneId);
+        }
+
+        /** Stamp (or clear, when {@code variantId} is null/empty) the carried variant for a gene. */
+        public void setCarriedVariant(String geneId, String variantId) {
+            if (geneId == null || geneId.isEmpty()) return;
+            if (variantId == null || variantId.isEmpty()) {
+                carriedVariants.remove(geneId);
+            } else {
+                carriedVariants.put(geneId, variantId);
+            }
+            markDirty();
+        }
+
         public CompoundTag toTag() {
             CompoundTag tag = new CompoundTag();
             if (hasBirth()) {
@@ -912,6 +943,13 @@ public final class TownsteadVillager {
             if (isSenior) tag.putBoolean("isSenior", true);
             if (fertility > 0f) tag.putFloat("fertility", fertility);
             if (agingFrozenDay != Long.MIN_VALUE) tag.putLong("agingFrozenDay", agingFrozenDay);
+            if (!carriedVariants.isEmpty()) {
+                CompoundTag cv = new CompoundTag();
+                for (Map.Entry<String, String> e : carriedVariants.entrySet()) {
+                    cv.putString(e.getKey(), e.getValue());
+                }
+                tag.put("carriedVariants", cv);
+            }
             return tag;
         }
 
@@ -933,6 +971,11 @@ public final class TownsteadVillager {
             isSenior = tag.getBoolean("isSenior");
             fertility = tag.getFloat("fertility");
             agingFrozenDay = tag.contains("agingFrozenDay") ? tag.getLong("agingFrozenDay") : Long.MIN_VALUE;
+            carriedVariants.clear();
+            if (tag.contains("carriedVariants")) {
+                CompoundTag cv = tag.getCompound("carriedVariants");
+                for (String k : cv.getAllKeys()) carriedVariants.put(k, cv.getString(k));
+            }
             markDirty();
         }
     }

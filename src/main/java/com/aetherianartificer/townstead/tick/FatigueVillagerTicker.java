@@ -11,7 +11,7 @@ import com.aetherianartificer.townstead.fatigue.RestCoordinator;
 import com.aetherianartificer.townstead.fatigue.RestDebugData;
 import com.aetherianartificer.townstead.fatigue.RestDecision;
 import com.aetherianartificer.townstead.fatigue.SleepReason;
-import com.aetherianartificer.townstead.shift.template.Chronotype;
+import com.aetherianartificer.townstead.origin.chronotype.Chronotypes;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -83,8 +83,8 @@ public final class FatigueVillagerTicker {
         long dayTime = level.getDayTime();
         if (state.lastFatigueDayTime < 0) state.lastFatigueDayTime = dayTime;
 
-        Chronotype chronotype = chronotypeOf(self);
-        boolean isNocturnal = chronotype == Chronotype.NIGHT_OWL;
+        Chronotypes.Resolved chronotype = Chronotypes.resolve(self);
+        boolean isNocturnal = chronotype.isNocturnal();
         boolean inBed = self.isSleeping();
         Activity activity = currentScheduleActivity(self);
         boolean inCombat = self.getVillagerBrain().isPanicking()
@@ -93,7 +93,7 @@ public final class FatigueVillagerTicker {
         boolean isCycleAligned = isCycleAligned(isNocturnal, timeOfDay);
         // Precise chronotype sleep window governs BED recovery: sleeping inside
         // the villager's assigned hours recovers fully, off-window naps recover
-        // slowly. tick-hour 0 == 6 AM == dayTime 0, matching Chronotype + the UI.
+        // slowly. tick-hour 0 == 6 AM == dayTime 0, matching the sleep window + the UI.
         int tickHour = (int) (timeOfDay / 1000L);
         boolean inSleepWindow = chronotype.isPreferredSleepHour(tickHour);
 
@@ -306,17 +306,6 @@ public final class FatigueVillagerTicker {
             EmergencyBedClaims.releaseAll(level, self.getUUID());
             STATE.remove(self.getId());
         }
-    }
-
-    private static Chronotype chronotypeOf(VillagerEntityMCA self) {
-        Personality personality = null;
-        try {
-            VillagerBrain<?> brain = self.getVillagerBrain();
-            personality = brain.getPersonality();
-        } catch (Throwable ignored) {}
-        // Unified with the schedule UI's Chronotype mapping so fatigue-alignment
-        // matches the per-villager band shown on the shift screen.
-        return Chronotype.fromPersonality(personality);
     }
 
     /**

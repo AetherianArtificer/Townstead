@@ -38,7 +38,6 @@ import com.aetherianartificer.townstead.shift.weekplan.WeekPlanRegistry;
 import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSavePayload;
 import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSavedData;
 import com.aetherianartificer.townstead.shift.weekplan.WeekPlanSyncPayload;
-import com.aetherianartificer.townstead.shift.template.Chronotype;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplate;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateApplyPayload;
 import com.aetherianartificer.townstead.shift.template.ShiftTemplateClientStore;
@@ -617,7 +616,7 @@ public final class TownsteadNetwork {
             } catch (Exception ex) { return; }
             if (!ShiftTemplate.USER_NAMESPACE.equals(id.getNamespace())) return;
         }
-        java.util.Optional<Chronotype> chrono = payload.chronotypeName().map(Chronotype::fromName);
+        java.util.Optional<String> chrono = payload.chronotypeName();
         ShiftTemplate template;
         try {
             template = new ShiftTemplate(id, name, payload.shifts(), chrono, false);

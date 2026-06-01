@@ -67,7 +67,7 @@ final class OriginJsonParsing {
         return DataPackLang.parseComponent(obj.get("backstory"), context + ".backstory", langIndex);
     }
 
-    /** Parse a {@code genome}/{@code genome_overrides} block ({@code genes} map + {@code tags} list). */
+    /** Parse a {@code genome}/{@code genome_overrides} block ({@code genes} map + {@code inherited_genes} list). */
     static Genome genome(JsonObject obj, String key, String context, Logger log) {
         if (!obj.has(key) || !obj.get(key).isJsonObject()) return Genome.EMPTY;
         JsonObject g = obj.getAsJsonObject(key);

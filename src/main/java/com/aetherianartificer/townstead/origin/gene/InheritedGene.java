@@ -5,8 +5,11 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * One gene a race passes down as part of its genome, with the per-race base
  * {@code occurrence} (presence probability for boolean trait genes; ignored for
- * range genes, which always express). Influence genes add deltas to this base at
- * runtime (deferred).
+ * range genes, which always express).
+ *
+ * <p>A variant gene's per-race distribution and naming live in the gene itself
+ * (its {@code variants} weights and {@code display_name}), so a race references it
+ * by bare id like any other gene — no per-reference overrides here.</p>
  */
 public record InheritedGene(ResourceLocation geneId, float occurrence) {
     public InheritedGene {

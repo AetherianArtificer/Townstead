@@ -75,8 +75,8 @@ public class ShiftTemplateSavedData extends SavedData {
             }
             if (shifts.length != ShiftData.HOURS_PER_DAY) continue;
             try {
-                Optional<Chronotype> chrono = chronoStr != null && !chronoStr.isBlank()
-                        ? Optional.of(Chronotype.fromName(chronoStr))
+                Optional<String> chrono = chronoStr != null && !chronoStr.isBlank()
+                        ? Optional.of(normalizeChronotype(chronoStr))
                         : Optional.empty();
                 ShiftTemplate template = new ShiftTemplate(id, name, shifts, chrono, false);
                 data.templates.put(id, template);
@@ -98,7 +98,7 @@ public class ShiftTemplateSavedData extends SavedData {
             entry.putString(KEY_ID, template.id().toString());
             entry.putString(KEY_NAME, template.displayName());
             entry.putIntArray(KEY_SHIFTS, template.copyShifts());
-            template.chronotype().ifPresent(c -> entry.putString(KEY_CHRONO, c.name()));
+            template.chronotype().ifPresent(c -> entry.putString(KEY_CHRONO, c));
             list.add(entry);
         }
         tag.put(KEY_TEMPLATES, list);
@@ -131,5 +131,15 @@ public class ShiftTemplateSavedData extends SavedData {
 
     public List<ShiftTemplate> snapshot() {
         return new ArrayList<>(templates.values());
+    }
+
+    /** Map legacy enum-name chronotype tags (saved before the variant-gene rework) to variant ids. */
+    private static String normalizeChronotype(String c) {
+        switch (c.toUpperCase(java.util.Locale.ROOT)) {
+            case "EARLY_BIRD": case "LARK": return "early_bird";
+            case "NIGHT_OWL": case "OWL": return "night_owl";
+            case "STANDARD": return "standard";
+            default: return c;
+        }
     }
 }

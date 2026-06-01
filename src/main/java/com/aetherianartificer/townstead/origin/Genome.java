@@ -19,7 +19,7 @@ import java.util.Map;
  *       lego "blocks", shown in the Origins viewer.</li>
  * </ul>
  *
- * <p>Composed bottom-up (ancestry → heritage → origin) via {@link #mergedWith}:
+ * <p>Composed bottom-up (ancestry → lineage → origin) via {@link #mergedWith}:
  * a later layer's MCA gene entries replace the same key; inherited genes merge by
  * gene id with the later layer's entry (occurrence) winning.</p>
  */

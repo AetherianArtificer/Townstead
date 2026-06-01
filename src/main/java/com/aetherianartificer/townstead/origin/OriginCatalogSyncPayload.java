@@ -53,7 +53,7 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             buf.writeUtf(e.backstory());
             buf.writeUtf(e.speciesName());
             buf.writeUtf(e.ancestryName());
-            buf.writeUtf(e.heritageName());
+            buf.writeUtf(e.lineageName());
             buf.writeVarInt(e.inheritedGenes().size());
             for (OriginCatalogEntry.Inherited in : e.inheritedGenes()) {
                 buf.writeUtf(in.geneId());
@@ -80,6 +80,12 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             buf.writeVarInt(g.dominanceOrdinal());
             buf.writeUtf(g.locus());
             buf.writeVarInt(g.weight());
+            buf.writeVarInt(g.variants().size());
+            for (GeneCatalogEntry.Variant v : g.variants()) {
+                buf.writeUtf(v.id());
+                buf.writeUtf(v.label());
+                buf.writeVarInt(v.weight());
+            }
         }
         buf.writeVarInt(traits.size());
         for (TraitCatalogEntry t : traits) {
@@ -102,11 +108,13 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             String backstory = buf.readUtf();
             String speciesName = buf.readUtf();
             String ancestryName = buf.readUtf();
-            String heritageName = buf.readUtf();
+            String lineageName = buf.readUtf();
             int gn = buf.readVarInt();
             List<OriginCatalogEntry.Inherited> inherited = new ArrayList<>(gn);
             for (int j = 0; j < gn; j++) {
-                inherited.add(new OriginCatalogEntry.Inherited(buf.readUtf(), buf.readFloat()));
+                String igid = buf.readUtf();
+                float iocc = buf.readFloat();
+                inherited.add(new OriginCatalogEntry.Inherited(igid, iocc));
             }
             int rn = buf.readVarInt();
             List<OriginCatalogEntry.GeneRangeView> ranges = new ArrayList<>(rn);
@@ -114,16 +122,30 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                 ranges.add(new OriginCatalogEntry.GeneRangeView(buf.readUtf(), buf.readFloat(), buf.readFloat()));
             }
             entries.add(new OriginCatalogEntry(id, name, singular, plural, backstory,
-                    speciesName, ancestryName, heritageName, inherited, ranges));
+                    speciesName, ancestryName, lineageName, inherited, ranges));
         }
         int m = buf.readVarInt();
         List<GeneCatalogEntry> genes = new ArrayList<>(m);
         for (int i = 0; i < m; i++) {
-            genes.add(new GeneCatalogEntry(
-                    buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
-                    buf.readVarInt(), buf.readFloat(), buf.readFloat(),
-                    buf.readUtf(), buf.readFloat(),
-                    buf.readVarInt(), buf.readUtf(), buf.readVarInt()));
+            String gid = buf.readUtf();
+            String gname = buf.readUtf();
+            String gdesc = buf.readUtf();
+            String gcat = buf.readUtf();
+            int kind = buf.readVarInt();
+            float gmin = buf.readFloat();
+            float gmax = buf.readFloat();
+            String gtarget = buf.readUtf();
+            float gamount = buf.readFloat();
+            int gdom = buf.readVarInt();
+            String glocus = buf.readUtf();
+            int gweight = buf.readVarInt();
+            int vn = buf.readVarInt();
+            List<GeneCatalogEntry.Variant> variants = new ArrayList<>(vn);
+            for (int j = 0; j < vn; j++) {
+                variants.add(new GeneCatalogEntry.Variant(buf.readUtf(), buf.readUtf(), buf.readVarInt()));
+            }
+            genes.add(new GeneCatalogEntry(gid, gname, gdesc, gcat, kind, gmin, gmax,
+                    gtarget, gamount, gdom, glocus, gweight, variants));
         }
         int k = buf.readVarInt();
         List<TraitCatalogEntry> traits = new ArrayList<>(k);

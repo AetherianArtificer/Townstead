@@ -18,21 +18,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Loads {@link Heritage} from {@code data/<ns>/heritage/*.json}. */
-public final class HeritageJsonLoader extends SimpleJsonResourceReloadListener {
+/** Loads {@link Lineage} from {@code data/<ns>/lineage/*.json}. */
+public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/HeritageJsonLoader");
+    private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/LineageJsonLoader");
     private static final Gson GSON = new Gson();
 
-    public HeritageJsonLoader() {
-        super(GSON, "heritage");
+    public LineageJsonLoader() {
+        super(GSON, "lineage");
     }
 
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resourceManager,
                          ProfilerFiller profiler) {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
-        Map<ResourceLocation, Heritage> parsed = new LinkedHashMap<>();
+        Map<ResourceLocation, Lineage> parsed = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             String ctx = file.toString();
@@ -43,12 +43,12 @@ public final class HeritageJsonLoader extends SimpleJsonResourceReloadListener {
                 Demonym demonym = OriginJsonParsing.demonym(obj, ctx, lang);
                 Component backstory = OriginJsonParsing.backstory(obj, ctx, lang);
                 Genome overrides = OriginJsonParsing.genome(obj, "genome_overrides", ctx, LOGGER);
-                parsed.put(file, new Heritage(file, displayName, ancestries, demonym, backstory, overrides));
+                parsed.put(file, new Lineage(file, displayName, ancestries, demonym, backstory, overrides));
             } catch (Exception ex) {
-                LOGGER.warn("Failed to parse heritage {}: {}", file, ex.getMessage());
+                LOGGER.warn("Failed to parse lineage {}: {}", file, ex.getMessage());
             }
         }
-        HeritageRegistry.replaceAll(parsed);
-        LOGGER.info("Loaded {} origin heritages", parsed.size());
+        LineageRegistry.replaceAll(parsed);
+        LOGGER.info("Loaded {} origin lineages", parsed.size());
     }
 }

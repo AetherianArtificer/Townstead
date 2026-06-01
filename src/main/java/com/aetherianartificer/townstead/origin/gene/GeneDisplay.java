@@ -12,13 +12,18 @@ package com.aetherianartificer.townstead.origin.gene;
  *       ({@code targetId} carries {@code "rrggbb-rrggbb"}); drawn as a gradient swatch.</li>
  *   <li>{@link Kind#ATTACHMENT}: a cosmetic model part ({@code targetId} carries the
  *       attachment id, e.g. {@code townstead_origins:elf_ears}); a presence chip.</li>
+ *   <li>{@link Kind#VARIANTS}: a weighted pick-one gene; drawn as a categorical
+ *       menu (race = options + weights, individual = the expressed option). The
+ *       variant list rides the catalog separately, not in this descriptor.</li>
  * </ul>
  */
 public record GeneDisplay(Kind kind, float min, float max, String targetId, float amount) {
 
-    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT }
+    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS }
 
     public static final GeneDisplay PRESENCE = new GeneDisplay(Kind.BOOLEAN, 0f, 1f, "", 0f);
+
+    public static final GeneDisplay VARIANTS = new GeneDisplay(Kind.VARIANTS, 0f, 1f, "", 0f);
 
     public static GeneDisplay range(float min, float max) {
         float lo = clamp01(min);

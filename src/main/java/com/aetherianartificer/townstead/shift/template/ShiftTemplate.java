@@ -14,7 +14,7 @@ import java.util.Optional;
  * `townstead_user` so the namespaces cannot collide.
  */
 public record ShiftTemplate(ResourceLocation id, String displayName, int[] shifts,
-                            Optional<Chronotype> chronotype, boolean builtIn) {
+                            Optional<String> chronotype, boolean builtIn) {
 
     public static final String USER_NAMESPACE = "townstead_user";
 

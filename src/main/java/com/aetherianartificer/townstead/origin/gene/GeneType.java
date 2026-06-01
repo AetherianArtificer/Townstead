@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.origin.gene;
 
 import com.google.gson.JsonObject;
+import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 
@@ -27,6 +29,24 @@ public interface GeneType {
      */
     default GeneInstance parse(JsonObject json, Map<String, String> lang) {
         return parse(json);
+    }
+
+    /**
+     * Parse one variant of a multi-variant gene. {@code variantId} is the variant's key in
+     * the gene's {@code variants} map; types that draw on a shared catalog (e.g. chronotype)
+     * use it to resolve a weight-only reference. Defaults to {@link #parse(JsonObject, Map)}.
+     */
+    default GeneInstance parseVariant(String variantId, JsonObject json, Map<String, String> lang) {
+        return parse(json, lang);
+    }
+
+    /**
+     * A type-supplied fallback label for a variant id (e.g. a shared catalog label), used
+     * when the variant entry has no {@code label} of its own. {@code null} = no fallback.
+     */
+    @Nullable
+    default Component variantLabel(String variantId) {
+        return null;
     }
 
     // Future behavior hooks (effect application, model rendering) will be added
