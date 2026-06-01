@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.calendar.CalendarStamp;
 import com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload;
 import com.aetherianartificer.townstead.calendar.CalendarStampClientStore;
 import com.aetherianartificer.townstead.calendar.CalendarStampSavedData;
+import com.aetherianartificer.townstead.client.accessibility.Accessibility;
 import com.aetherianartificer.townstead.client.gui.fieldpost.FrameRenderer;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
@@ -268,6 +269,7 @@ public class CalendarScreen extends Screen {
         float dt = Math.min(0.1f, (now - drawerAnimLastMs) / 1000f);
         drawerAnimLastMs = now;
         float target = stampMode ? 1f : 0f;
+        if (Accessibility.isReduceMotion()) { drawerAnim = target; return; }
         float step = dt * (1000f / DRAWER_ANIM_MS);
         if (drawerAnim < target)      drawerAnim = Math.min(target, drawerAnim + step);
         else if (drawerAnim > target) drawerAnim = Math.max(target, drawerAnim - step);

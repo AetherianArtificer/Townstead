@@ -86,7 +86,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
-    public static final ModConfigSpec.BooleanValue DIALOGUE_REDUCE_MOTION;
+    public static final ModConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ModConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -167,7 +167,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
-    public static final ForgeConfigSpec.BooleanValue DIALOGUE_REDUCE_MOTION;
+    public static final ForgeConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ForgeConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -597,9 +597,9 @@ public final class TownsteadConfig {
         clientBuilder.pop();
 
         clientBuilder.translation("townstead.configuration.accessibility").push("accessibility");
-        DIALOGUE_REDUCE_MOTION = clientBuilder
+        REDUCE_MOTION = clientBuilder
                 .translation("townstead.configuration.accessibility.reduceMotion")
-                .comment("Disable text animation effects (wave, shake, bounce, scale) in dialogue. Emotion colors still apply.")
+                .comment("Reduce non-essential motion across Townstead UI: dialogue text effects (wave, shake, bounce, scale), the calendar stamp drawer slide, and similar. Emotion colors still apply.")
                 .define("reduceMotion", false);
         DIALOGUE_DISABLE_PARTICLES = clientBuilder
                 .translation("townstead.configuration.accessibility.disableParticles")
