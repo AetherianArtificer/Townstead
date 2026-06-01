@@ -53,11 +53,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_CELL_COOLDOWN_TICKS;
     public static final ModConfigSpec.IntValue FARMER_PATHFAIL_MAX_RETRIES;
     public static final ModConfigSpec.IntValue FARMER_IDLE_BACKOFF_TICKS;
-    public static final ModConfigSpec.IntValue FARMER_SEED_RESERVE;
-    public static final ModConfigSpec.IntValue FARMER_MAX_CLUSTERS;
-    public static final ModConfigSpec.IntValue FARMER_MAX_PLOTS;
     public static final ModConfigSpec.BooleanValue ENABLE_FARMER_WATER_PLACEMENT;
-    public static final ModConfigSpec.IntValue FARMER_WATER_PLACEMENTS_PER_DAY;
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_SEARCH_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_GROOM_RADIUS;
@@ -134,11 +130,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue FARMER_CELL_COOLDOWN_TICKS;
     public static final ForgeConfigSpec.IntValue FARMER_PATHFAIL_MAX_RETRIES;
     public static final ForgeConfigSpec.IntValue FARMER_IDLE_BACKOFF_TICKS;
-    public static final ForgeConfigSpec.IntValue FARMER_SEED_RESERVE;
-    public static final ForgeConfigSpec.IntValue FARMER_MAX_CLUSTERS;
-    public static final ForgeConfigSpec.IntValue FARMER_MAX_PLOTS;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FARMER_WATER_PLACEMENT;
-    public static final ForgeConfigSpec.IntValue FARMER_WATER_PLACEMENTS_PER_DAY;
     public static final ForgeConfigSpec.IntValue FARMER_WATER_SOURCE_SEARCH_RADIUS;
     public static final ForgeConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
     public static final ForgeConfigSpec.IntValue FARMER_GROOM_RADIUS;
@@ -321,26 +313,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.farming.farmerIdleBackoffTicks")
                 .comment("Ticks to wait before reacquiring work after no valid target.")
                 .defineInRange("farmerIdleBackoffTicks", 60, 0, 1200);
-        FARMER_SEED_RESERVE = b
-                .translation("townstead.configuration.farming.farmerSeedReserve")
-                .comment("Minimum seed count to keep before allowing expansion tilling.")
-                .defineInRange("farmerSeedReserve", 8, 0, 64);
-        FARMER_MAX_CLUSTERS = b
-                .translation("townstead.configuration.farming.farmerMaxClusters")
-                .comment("Maximum planned connected plot clusters per farm area.")
-                .defineInRange("farmerMaxClusters", 6, 1, 64);
-        FARMER_MAX_PLOTS = b
-                .translation("townstead.configuration.farming.farmerMaxPlots")
-                .comment("Maximum planned soil plot cells per farm area.")
-                .defineInRange("farmerMaxPlots", 192, 16, 1024);
         ENABLE_FARMER_WATER_PLACEMENT = b
                 .translation("townstead.configuration.farming.enableFarmerWaterPlacement")
                 .comment("Allow farmers to place water sources in cells painted Water in the plot planner.")
                 .define("enableFarmerWaterPlacement", true);
-        FARMER_WATER_PLACEMENTS_PER_DAY = b
-                .translation("townstead.configuration.farming.farmerWaterPlacementsPerDay")
-                .comment("Maximum water source placements a farmer can perform per Minecraft day.")
-                .defineInRange("farmerWaterPlacementsPerDay", 2, 0, 16);
         FARMER_WATER_SOURCE_SEARCH_RADIUS = b
                 .translation("townstead.configuration.farming.farmerWaterSourceSearchRadius")
                 .comment("Maximum horizontal distance farmers may travel to find water for bucket refills.")
