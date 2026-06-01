@@ -2418,6 +2418,10 @@ public class Townstead {
                 : new String[] { "", "" };
         com.aetherianartificer.townstead.villager.TownsteadVillager.Life lifeState =
                 com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life();
+        // Day used for apparent-age, stage, and senior-progress display. Frozen at the day
+        // aging was disabled when "villagers do not age" is on, so the readouts stop climbing.
+        long today = com.aetherianartificer.townstead.origin.LifeStageProgression.agingDisplayDay(
+                lifeState, com.aetherianartificer.townstead.calendar.TownsteadCalendar.lifeDay(server));
         // Celebrated birthday (month/day) is decoupled from birthWorldDay/age: if set,
         // it overrides the age-derived month/day in the display. The year stays the
         // age-derived one (it's not shown anyway).
@@ -2438,7 +2442,6 @@ public class Townstead {
                 ? com.aetherianartificer.townstead.origin.LifeStageProgression.seniorProgressPermil(villager)
                 : 0;
 
-        long today = com.aetherianartificer.townstead.calendar.TownsteadCalendar.lifeDay(server);
         int bioAgeDays = (int) Math.max(0L, today - birthDay);
         boolean immortal = lifeState.immortal()
                 || com.aetherianartificer.townstead.origin.trait.TraitEffects.isImmortal(villager);

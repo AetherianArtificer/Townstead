@@ -121,8 +121,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private boolean cachedHasWaterBucket;
     private int cachedSeedCount;
     private long cachedInventoryTick;
-    private long waterPlacementDay = Long.MIN_VALUE;
-    private int waterPlacementsToday = 0;
 
     private final Map<Long, Long> recentlyWorkedCells = new HashMap<>();
     private final WorkTargetProgress targetProgress = new WorkTargetProgress();
@@ -340,8 +338,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         farmBlueprint = null;
         lastHarvestPos = null;
         lastHarvestTick = Long.MIN_VALUE;
-        waterPlacementDay = Long.MIN_VALUE;
-        waterPlacementsToday = 0;
         recentlyWorkedCells.clear();
         targetFailures.reset();
         townstead$resetWorksiteTargeting();
@@ -527,7 +523,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                 townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
                 return;
             }
-            if (cachedSeedCount >= townstead$seedReserve(villager) && cachedTillTarget != null) {
+            if (cachedHasSeed && cachedTillTarget != null) {
                 actionType = ActionType.TILL;
                 targetPos = cachedTillTarget;
                 townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
@@ -1162,48 +1158,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return false;
     }
 
-    private boolean townstead$canAttemptWaterPlacement(ServerLevel level, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get()) return false;
-        if (cachedFieldPost != null && !cachedFieldPost.isWaterEnabled()) return false;
-        return townstead$hasWaterPlacementBudget(gameTime);
-    }
-
-    private boolean townstead$hasWaterPlacementBudget(long gameTime) {
-        long day = gameTime / 24000L;
-        if (day != waterPlacementDay) {
-            waterPlacementDay = day;
-            waterPlacementsToday = 0;
-        }
-        return waterPlacementsToday < townstead$waterPlacementsPerDay();
-    }
-
-    private void townstead$recordWaterPlacement(long gameTime) {
-        long day = gameTime / 24000L;
-        if (day != waterPlacementDay) {
-            waterPlacementDay = day;
-            waterPlacementsToday = 0;
-        }
-        waterPlacementsToday++;
-    }
-
-    private BlockPos townstead$findNearestWaterPlacementSpot(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (farmBlueprint == null || farmBlueprint.isEmpty()) return null;
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (com.aetherianartificer.townstead.farming.cellplan.PlannedCell cell : farmBlueprint.cells()) {
-            if (cell.desiredSoil() != com.aetherianartificer.townstead.farming.cellplan.SoilType.WATER) continue;
-            BlockPos soilPos = cell.soilPos();
-            if (townstead$isBlacklisted(soilPos, gameTime)) continue;
-            if (!townstead$canPlaceWaterAt(level, soilPos)) continue;
-            double dist = villager.distanceToSqr(soilPos.getX() + 0.5, soilPos.getY() + 0.5, soilPos.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = soilPos.immutable();
-            }
-        }
-        return best;
-    }
-
     private boolean townstead$canPlaceWaterAt(ServerLevel level, BlockPos soilPos) {
         // Only cells explicitly painted as WATER in the plan accept water placement.
         PlannedCell cell = farmBlueprint == null ? null : farmBlueprint.cellAt(soilPos);
@@ -1325,8 +1279,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
                     s -> s.getItem() instanceof HoeItem, s -> 1, farmAnchor);
         }
-        int desiredSeedCount = Math.max(1, townstead$seedReserve(villager));
-        if (townstead$countSeeds(inv) < desiredSeedCount) {
+        if (townstead$countSeeds(inv) < 1) {
             NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
                     this::townstead$isSeed, ItemStack::getCount, farmAnchor);
         }
@@ -1648,35 +1601,18 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private int townstead$cellCooldownTicks() {
-        return TownsteadConfig.ENABLE_FARMER_STABILITY_V2.get() ? TownsteadConfig.FARMER_CELL_COOLDOWN_TICKS.get() : 0;
+        return TownsteadConfig.FARMER_CELL_COOLDOWN_TICKS.get();
     }
 
     private int townstead$pathfailMaxRetries() {
-        return TownsteadConfig.ENABLE_FARMER_STABILITY_V2.get() ? TownsteadConfig.FARMER_PATHFAIL_MAX_RETRIES.get() : 10;
+        return TownsteadConfig.FARMER_PATHFAIL_MAX_RETRIES.get();
     }
 
     private int townstead$idleBackoffTicks(VillagerEntityMCA villager) {
-        int base = TownsteadConfig.ENABLE_FARMER_STABILITY_V2.get() ? TownsteadConfig.FARMER_IDLE_BACKOFF_TICKS.get() : 20;
+        int base = TownsteadConfig.FARMER_IDLE_BACKOFF_TICKS.get();
         return townstead$scaleInt(base, townstead$profile(villager).idleBackoffScale(), 10, 200);
     }
 
-    private int townstead$seedReserve(VillagerEntityMCA villager) {
-        int base = TownsteadConfig.ENABLE_FARMER_STABILITY_V2.get() ? TownsteadConfig.FARMER_SEED_RESERVE.get() : 0;
-        int value = base + townstead$profile(villager).seedReserveBonus();
-        return Math.max(0, value);
-    }
-
-    private int townstead$maxPlots() {
-        return TownsteadConfig.FARMER_MAX_PLOTS.get();
-    }
-
-    private int townstead$maxClusters() {
-        return TownsteadConfig.FARMER_MAX_CLUSTERS.get();
-    }
-
-    private int townstead$waterPlacementsPerDay() {
-        return Math.max(0, TownsteadConfig.FARMER_WATER_PLACEMENTS_PER_DAY.get());
-    }
 
     private String townstead$detectCropPatternHint(SimpleContainer inv) {
         if (!FarmerCropCompatRegistry.hasAnyLoadedProvider()) return null;
@@ -1709,34 +1645,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private int townstead$groomScanIntervalTicks() {
         return Math.max(20, TownsteadConfig.FARMER_GROOM_SCAN_INTERVAL_TICKS.get());
-    }
-
-    private int townstead$maxClustersForTier(int tier, VillagerEntityMCA villager) {
-        int cap = Math.max(1, townstead$maxClusters());
-        int normalized = Math.max(1, Math.min(tier, 5));
-        int target = switch (normalized) {
-            case 1 -> 1;
-            case 2 -> 2;
-            case 3 -> 3;
-            case 4 -> 4;
-            default -> cap;
-        };
-        int scaled = townstead$scaleInt(target, townstead$profile(villager).expansionScale(), 1, cap);
-        return Math.min(cap, scaled);
-    }
-
-    private int townstead$maxPlotsForTier(int tier, VillagerEntityMCA villager) {
-        int cap = Math.max(16, townstead$maxPlots());
-        int normalized = Math.max(1, Math.min(tier, 5));
-        int target = switch (normalized) {
-            case 1 -> Math.max(24, cap / 3);
-            case 2 -> Math.max(32, cap / 2);
-            case 3 -> Math.max(48, (cap * 2) / 3);
-            case 4 -> Math.max(64, (cap * 5) / 6);
-            default -> cap;
-        };
-        int scaled = townstead$scaleInt(target, townstead$profile(villager).expansionScale(), 16, cap);
-        return Math.min(cap, scaled);
     }
 
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {

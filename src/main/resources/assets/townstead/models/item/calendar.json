@@ -1,3 +1,10 @@
 {
-  "parent": "townstead:block/calendar_wall"
+  "parent": "townstead:block/calendar_wall",
+  "display": {
+    "gui": {
+      "rotation": [30, 225, 0],
+      "translation": [3.0, -1.6, 0],
+      "scale": [0.7, 0.7, 0.7]
+    }
+  }
 }

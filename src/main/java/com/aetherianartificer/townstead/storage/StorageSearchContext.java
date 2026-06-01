@@ -105,11 +105,16 @@ public final class StorageSearchContext {
     }
 
     public void forEachUniqueItemHandler(BlockPos pos, UniqueHandlerConsumer consumer) {
-        Set<Integer> seen = new HashSet<>();
+        // The unsided handler is the block's full inventory; when present it's authoritative. Some
+        // blocks return a different wrapper instance for sided vs unsided lookups over the same
+        // inventory, which identity dedup can't collapse, so visiting both double-counts the contents.
+        // Only probe sides when there's no unsided handler.
         IItemHandler unsided = getItemHandler(pos, null);
-        if (unsided != null && seen.add(System.identityHashCode(unsided))) {
+        if (unsided != null) {
             consumer.accept(null, unsided);
+            return;
         }
+        Set<Integer> seen = new HashSet<>();
         for (Direction side : Direction.values()) {
             IItemHandler sided = getItemHandler(pos, side);
             if (sided == null) continue;

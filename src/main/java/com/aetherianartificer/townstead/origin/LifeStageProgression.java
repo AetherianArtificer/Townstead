@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.calendar.TownsteadCalendar;
 import com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
@@ -29,6 +30,31 @@ import org.jetbrains.annotations.Nullable;
 public final class LifeStageProgression {
 
     private LifeStageProgression() {}
+
+    /**
+     * Maintain the apparent-age freeze stamp and return the day to treat as "now" for
+     * display. When villager aging is disabled, stamp the current day on first sight and
+     * hold it, so displayed apparent age / stage / senior progress stop advancing with the
+     * calendar; when aging is enabled, clear any stale stamp so display resumes live.
+     * Steady state touches nothing (no NBT churn).
+     */
+    public static long agingDisplayDay(TownsteadVillager.Life life, long today) {
+        if (life == null) return today;
+        if (TownsteadConfig.isVillagerAgingDisabled()) {
+            if (!life.hasAgingFrozenDay()) life.setAgingFrozenDay(today);
+            return life.agingFrozenDay();
+        }
+        if (life.hasAgingFrozenDay()) life.clearAgingFrozenDay();
+        return today;
+    }
+
+    /** Read-only variant: honor an existing freeze stamp without creating or clearing one. */
+    public static long agingDisplayDayView(TownsteadVillager.Life life, long today) {
+        if (life != null && TownsteadConfig.isVillagerAgingDisabled() && life.hasAgingFrozenDay()) {
+            return life.agingFrozenDay();
+        }
+        return today;
+    }
 
     /**
      * Resolve the MCA {@link AgeState} this villager should be in right now.
@@ -66,8 +92,11 @@ public final class LifeStageProgression {
             stampBirthForRequested(life, cycle, requested, today);
         }
 
-        // Immortal + stage recorded: hold the recorded stage fixed.
-        if (isImmortal(villager, life) && !life.currentStageId().isEmpty()) {
+        // Immortal (or aging globally disabled) + stage recorded: hold the recorded stage fixed.
+        // With no stage recorded yet we fall through once to resolve the current stage and
+        // commit it, then freeze on that from here on.
+        if ((isImmortal(villager, life) || TownsteadConfig.isVillagerAgingDisabled())
+                && !life.currentStageId().isEmpty()) {
             return resolveFromRecordedStage(life, cycle, requested);
         }
 
@@ -223,6 +252,10 @@ public final class LifeStageProgression {
         MinecraftServer server = villager.level().getServer();
         if (server == null) return false;
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        // Maintain the apparent-age freeze stamp even for unsynced villagers, so it lands
+        // within a day of the toggle rather than whenever a player next observes them.
+        agingDisplayDay(life, TownsteadCalendar.lifeDay(server));
+        if (TownsteadConfig.isVillagerAgingDisabled()) return false;
         if (isImmortal(villager, life) && !life.currentStageId().isEmpty()) return false;
         if (!life.hasBirth() || !life.hasStageDays()) return false;
 
@@ -313,7 +346,7 @@ public final class LifeStageProgression {
 
         int[] days = life.stageDays();
         long cumulative = LifeStageResolver.cumulativeDaysBefore(days, seniorIndex);
-        long today = TownsteadCalendar.lifeDay(server);
+        long today = agingDisplayDayView(life, TownsteadCalendar.lifeDay(server));
         long daysAlive = Math.max(0L, today - life.birthWorldDay());
         long daysIntoSenior = daysAlive - cumulative;
         int seniorSpan = Math.max(1, days[seniorIndex]);

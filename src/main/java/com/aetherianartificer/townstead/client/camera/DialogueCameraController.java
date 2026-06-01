@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.client.camera;
 
+import com.aetherianartificer.townstead.client.accessibility.Accessibility;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
@@ -55,7 +56,10 @@ public class DialogueCameraController {
         float targetYaw = computeTargetYaw(player);
         float targetPitch = computeTargetPitch(player);
 
-        float lerpFactor = 1.0f - (float) Math.exp(-APPROACH_SPEED * dt);
+        // Reduce motion: snap to the villager instead of gliding.
+        float lerpFactor = Accessibility.isReduceMotion()
+                ? 1f
+                : 1.0f - (float) Math.exp(-APPROACH_SPEED * dt);
         currentYaw = lerpAngle(lerpFactor, currentYaw, targetYaw);
         currentPitch = Mth.lerp(lerpFactor, currentPitch, targetPitch);
 
@@ -93,7 +97,9 @@ public class DialogueCameraController {
     }
 
     private void updateRestore(LocalPlayer player, float dt) {
-        float lerpFactor = 1.0f - (float) Math.exp(-RESTORE_SPEED * dt);
+        float lerpFactor = Accessibility.isReduceMotion()
+                ? 1f
+                : 1.0f - (float) Math.exp(-RESTORE_SPEED * dt);
         currentYaw = lerpAngle(lerpFactor, currentYaw, originalYaw);
         currentPitch = Mth.lerp(lerpFactor, currentPitch, originalPitch);
 

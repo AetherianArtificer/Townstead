@@ -1,30 +1,22 @@
 package com.aetherianartificer.townstead.client.gui.dialogue;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.client.accessibility.Accessibility;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Options;
 
 /**
- * Centralized accessibility queries for the RPG dialogue system.
- * Reads from both Minecraft's built-in options and Townstead's config.
+ * Dialogue-specific accessibility toggles (backed by the {@code DIALOGUE_*}
+ * config). Mod-wide queries live in {@link Accessibility}; the passthroughs
+ * below are kept so existing dialogue call sites stay terse.
  */
 public final class DialogueAccessibility {
     private DialogueAccessibility() {}
-
-    /**
-     * Effect intensity multiplier (0.0 = disabled, 1.0 = full).
-     * Respects both Minecraft's Screen Effect Scale and Townstead's Reduce Motion.
-     */
-    public static float effectIntensity() {
-        if (isReduceMotion()) return 0f;
-        return (float) options().screenEffectScale().get().doubleValue();
-    }
 
     /** Whether screen-space and world-space dialogue particles are enabled. */
     public static boolean particlesEnabled() {
         if (safeGet(TownsteadConfig.DIALOGUE_DISABLE_PARTICLES)) return false;
         // Also respect hideLightningFlash — particles can strobe
-        return !options().hideLightningFlash().get();
+        return !Minecraft.getInstance().options.hideLightningFlash().get();
     }
 
     /** Whether the camera should rotate to face the villager. */
@@ -32,39 +24,14 @@ public final class DialogueAccessibility {
         return !safeGet(TownsteadConfig.DIALOGUE_DISABLE_CAMERA);
     }
 
-    /** Whether the narrator should read dialogue text aloud. */
-    public static boolean narratorEnabled() {
-        return options().narrator().get().shouldNarrateChat();
-    }
-
-    /** Whether emotion color tints should be applied (respects Chat Colors setting). */
-    public static boolean emotionColorsEnabled() {
-        return options().chatColors().get();
-    }
-
-    /** Extra line spacing from Minecraft's Chat Line Spacing option. */
-    public static float lineSpacingExtra() {
-        return (float) options().chatLineSpacing().get().doubleValue();
-    }
-
-    /** Background alpha multiplier from Minecraft's Text Background Opacity. */
-    public static float backgroundAlpha() {
-        return (float) options().textBackgroundOpacity().get().doubleValue();
-    }
-
-    /** Whether high contrast mode is enabled. */
-    public static boolean highContrast() {
-        return options().highContrast().get();
-    }
-
-    /** Whether Townstead's reduce motion config is enabled. */
-    public static boolean isReduceMotion() {
-        return safeGet(TownsteadConfig.DIALOGUE_REDUCE_MOTION);
-    }
-
-    private static Options options() {
-        return Minecraft.getInstance().options;
-    }
+    // ── Mod-wide passthroughs (delegate to Accessibility) ────────────────────
+    public static boolean isReduceMotion()      { return Accessibility.isReduceMotion(); }
+    public static float effectIntensity()       { return Accessibility.effectIntensity(); }
+    public static boolean narratorEnabled()     { return Accessibility.narratorEnabled(); }
+    public static boolean emotionColorsEnabled(){ return Accessibility.emotionColorsEnabled(); }
+    public static float lineSpacingExtra()      { return Accessibility.lineSpacingExtra(); }
+    public static float backgroundAlpha()       { return Accessibility.backgroundAlpha(); }
+    public static boolean highContrast()        { return Accessibility.highContrast(); }
 
     //? if neoforge {
     private static boolean safeGet(net.neoforged.neoforge.common.ModConfigSpec.BooleanValue value) {

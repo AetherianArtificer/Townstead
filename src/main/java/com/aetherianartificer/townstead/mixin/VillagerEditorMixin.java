@@ -4,8 +4,6 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
-import com.aetherianartificer.townstead.compat.butchery.ButcherSettings;
-import com.aetherianartificer.townstead.compat.butchery.ButcheryCompat;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
@@ -32,7 +30,6 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.npc.VillagerProfession;
 //? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
 //?}
@@ -69,7 +66,6 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique private boolean townstead$hungerDirty;
     @Unique private boolean townstead$thirstDirty;
     @Unique private boolean townstead$fatigueDirty;
-    @Unique private ButcherSettings.SlaughterOverride townstead$editorSlaughterOverride;
     @Unique private boolean townstead$lifeBuilt;
 
     @Inject(method = "setPage", remap = false, at = @At("TAIL"))
@@ -222,24 +218,6 @@ public abstract class VillagerEditorMixin extends Screen {
             );
         }
 
-        // Butcher-only: per-villager slaughter toggle.
-        if (ButcheryCompat.isLoaded()
-                && villager.getVillagerData().getProfession() == VillagerProfession.BUTCHER) {
-            int slaughterY = rowY;
-            townstead$editorSlaughterOverride = villagerData.contains(
-                    ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE)
-                    ? ButcherSettings.SlaughterOverride.fromCode(
-                            villagerData.getByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE))
-                    : ButcherSettings.SlaughterOverride.FOLLOW_CONFIG;
-            Button[] slaughterButton = new Button[1];
-            slaughterButton[0] = addRenderableWidget(
-                    Button.builder(townstead$slaughterLabel(), b -> {
-                        townstead$cycleSlaughterOverride();
-                        slaughterButton[0].setMessage(townstead$slaughterLabel());
-                    }).pos(width / 2, slaughterY).size(dataWidth, 20).build()
-            );
-        }
-
         // Register callback: when server sync arrives, update the display
         // (only if user hasn't manually edited yet)
         if (hungerAvailable) {
@@ -295,8 +273,7 @@ public abstract class VillagerEditorMixin extends Screen {
     @Inject(method = "setPage", remap = false, at = @At("TAIL"))
     private void townstead$addLifeStageControls(String page, CallbackInfo ci) {
         townstead$lifeBuilt = false;
-        boolean lifePage = "general".equals(page) || "debug".equals(page);
-        if (lifePage) {
+        if ("general".equals(page)) {
             // The tracking-start push is unreliable for villagers loaded after login,
             // so pull a fresh snapshot from the server on open and rebuild the page
             // once it lands (the General slider swap is structural, not just a label).
@@ -310,8 +287,6 @@ public abstract class VillagerEditorMixin extends Screen {
         if (snap == null || !snap.hasCycle()) return;
         if ("general".equals(page)) {
             townstead$replaceAgeSlider(snap);
-        } else if ("debug".equals(page)) {
-            townstead$addLifeDebugReadout(snap);
         }
         townstead$lifeBuilt = true;
     }
@@ -332,7 +307,7 @@ public abstract class VillagerEditorMixin extends Screen {
         return () -> {
             if (townstead$lifeBuilt) return;
             if (this.minecraft == null || this.minecraft.screen != this) return;
-            if (!("general".equals(this.page) || "debug".equals(this.page))) return;
+            if (!"general".equals(this.page)) return;
             LifeClientStore.Snapshot snap = LifeClientStore.get(villager.getId());
             if (snap != null && snap.hasCycle()) {
                 setPage(this.page); // rebuild now that the data is present
@@ -635,93 +610,6 @@ public abstract class VillagerEditorMixin extends Screen {
     }
 
     @Unique
-    private void townstead$addLifeDebugReadout(LifeClientStore.Snapshot snap) {
-        boolean hungerAvailable = TownsteadConfig.isVillagerHungerEnabled();
-        boolean thirstAvailable = ThirstBridgeResolver.isActive() && TownsteadConfig.isVillagerThirstEnabled();
-        boolean fatigueAvailable = TownsteadConfig.isVillagerFatigueEnabled();
-        boolean butcher = ButcheryCompat.isLoaded()
-                && villager.getVillagerData().getProfession() == VillagerProfession.BUTCHER;
-        int rows = (hungerAvailable ? 1 : 0) + (thirstAvailable ? 1 : 0)
-                + (fatigueAvailable ? 1 : 0) + (butcher ? 1 : 0);
-        int dataWidth = 175;
-        int y = height / 2 - 80 + 130 + rows * 24 + 8;
-
-        addRenderableWidget(Button.builder(
-                snap.immortal() ? townstead$frozenReadout(snap, snap.currentStageIndex())
-                                : townstead$lifeReadout(snap, snap.bioAgeDays()),
-                b -> {}).pos(width / 2, y).size(dataWidth, 20).build());
-
-        int seniorPct = snap.seniorProgressPermil() / 10;
-        Component line2 = Component.translatable("townstead.life_stage.editor_debug",
-                snap.immortal()
-                        ? Component.translatable("gui.yes")
-                        : Component.translatable("gui.no"),
-                seniorPct);
-        addRenderableWidget(Button.builder(line2, b -> {})
-                .pos(width / 2, y + 24).size(dataWidth, 20).build());
-
-        townstead$addDobPicker(snap, y + 48);
-    }
-
-    @Unique
-    private void townstead$addDobPicker(LifeClientStore.Snapshot snap, int topY) {
-        CalendarClientStore.Snapshot cal = CalendarClientStore.get();
-        if (cal == null) return;
-
-        int[] ymd = {
-                villagerData.contains(LifeData.EDITOR_KEY_BIRTH_YEAR)
-                        ? villagerData.getInt(LifeData.EDITOR_KEY_BIRTH_YEAR) : snap.birthYear(),
-                Math.max(1, villagerData.contains(LifeData.EDITOR_KEY_BIRTH_MONTH)
-                        ? villagerData.getInt(LifeData.EDITOR_KEY_BIRTH_MONTH) : snap.birthMonthIndex()),
-                Math.max(1, villagerData.contains(LifeData.EDITOR_KEY_BIRTH_DAY)
-                        ? villagerData.getInt(LifeData.EDITOR_KEY_BIRTH_DAY) : snap.birthDayOfMonth())
-        };
-
-        // Celebrated birthday only (month/day); decoupled from age. ymd[0] (year) is just
-        // for month-name/length lookup and is never written.
-        int dataWidth = 175;
-        int bw = 22;
-        int monthY = topY, dayY = topY + 24;
-
-        Button monthDisp = addRenderableWidget(Button.builder(Component.empty(), b -> {})
-                .pos(width / 2 + bw, monthY).size(dataWidth - bw * 2, 20).build());
-        Button dayDisp = addRenderableWidget(Button.builder(Component.empty(), b -> {})
-                .pos(width / 2 + bw, dayY).size(dataWidth - bw * 2, 20).build());
-
-        Runnable display = () -> {
-            int monthCount = Math.max(1, cal.monthsForYear(ymd[0]).size());
-            ymd[1] = Math.max(1, Math.min(ymd[1], monthCount));
-            int maxDay = Math.max(1, cal.daysInMonth(ymd[0], ymd[1]));
-            ymd[2] = Math.max(1, Math.min(ymd[2], maxDay));
-            monthDisp.setMessage(cal.monthsForYear(ymd[0]).get(ymd[1] - 1).commonName());
-            dayDisp.setMessage(Component.translatable("townstead.life_stage.dob_day", ymd[2]));
-        };
-        Runnable commit = () -> {
-            display.run();
-            villagerData.putInt(LifeData.EDITOR_KEY_BIRTH_MONTH, ymd[1]);
-            villagerData.putInt(LifeData.EDITOR_KEY_BIRTH_DAY, ymd[2]);
-        };
-
-        addRenderableWidget(Button.builder(Component.literal("<"), b -> {
-            int mc = Math.max(1, cal.monthsForYear(ymd[0]).size());
-            ymd[1] = ymd[1] <= 1 ? mc : ymd[1] - 1;
-            commit.run();
-        }).pos(width / 2, monthY).size(bw, 20).build());
-        addRenderableWidget(Button.builder(Component.literal(">"), b -> {
-            int mc = Math.max(1, cal.monthsForYear(ymd[0]).size());
-            ymd[1] = ymd[1] >= mc ? 1 : ymd[1] + 1;
-            commit.run();
-        }).pos(width / 2 + dataWidth - bw, monthY).size(bw, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("-1"), b -> { ymd[2] -= 1; commit.run(); })
-                .pos(width / 2, dayY).size(bw, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("+1"), b -> { ymd[2] += 1; commit.run(); })
-                .pos(width / 2 + dataWidth - bw, dayY).size(bw, 20).build());
-
-        display.run(); // initial display only — no editor-key write, so an untouched DOB is never clobbered
-    }
-
-    @Unique
     private Component townstead$lifeReadout(LifeClientStore.Snapshot snap, int bioAgeDays) {
         int idx = snap.stageIndexForBioAge(bioAgeDays);
         Component stage = idx >= 0 ? snap.stageLabel(idx)
@@ -838,23 +726,6 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique
     private Component townstead$fatigueLabel() {
         return Component.translatable("townstead.energy.editor", FatigueData.toEnergy(townstead$editorFatigue));
-    }
-
-    @Unique
-    private void townstead$cycleSlaughterOverride() {
-        townstead$editorSlaughterOverride = townstead$editorSlaughterOverride.next();
-        villagerData.putByte(ButcherSettings.EDITOR_KEY_SLAUGHTER_OVERRIDE,
-                townstead$editorSlaughterOverride.code);
-    }
-
-    @Unique
-    private Component townstead$slaughterLabel() {
-        String subKey = switch (townstead$editorSlaughterOverride) {
-            case FOLLOW_CONFIG -> "follow";
-            case ENABLED -> "enabled";
-            case DISABLED -> "disabled";
-        };
-        return Component.translatable("townstead.butchery.slaughter." + subKey);
     }
 
     @Unique

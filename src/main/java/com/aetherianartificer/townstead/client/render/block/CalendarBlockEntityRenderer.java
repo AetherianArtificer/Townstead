@@ -165,9 +165,12 @@ public class CalendarBlockEntityRenderer implements BlockEntityRenderer<Calendar
      * face's outward direction and step the matrix to just outside the
      * banner/tile front plane. Subtleties recorded the hard way:
      * <ul>
-     *   <li>Yaw is {@code facing.toYRot()} (not its 180° complement), so the
-     *       glyph quads' default +Z normal ends up pointing toward the viewer,
-     *       not back-culled.</li>
+     *   <li>Yaw is {@code -facing.toYRot()}: blockstate {@code y} rotations are
+     *       applied as a negative (clockwise) model rotation, and the glyph
+     *       quad's default +Z normal must end up matching the banner's -Z front
+     *       normal (physical model rotation + 180°). North/south are 180°-apart
+     *       so the sign doesn't matter, but east/west break if the yaw isn't
+     *       negated, landing the text on the opposite side of the block.</li>
      *   <li>The visible face sits OPPOSITE the FACING direction from the block
      *       centre (the panel hangs against the wall opposite the viewer), so
      *       the depth step is in pose {@code -Z}; overshooting puts text into
@@ -185,7 +188,7 @@ public class CalendarBlockEntityRenderer implements BlockEntityRenderer<Calendar
     private static final float FLOOR_FACE_DEPTH = -0.46875f;
 
     private static void orientToFace(PoseStack poseStack, AttachFace face, Direction facing) {
-        poseStack.mulPose(Axis.YP.rotationDegrees(facing.toYRot()));
+        poseStack.mulPose(Axis.YP.rotationDegrees(-facing.toYRot()));
 
         if (face == AttachFace.WALL) {
             poseStack.translate(0.0, 0.0, WALL_FACE_DEPTH);

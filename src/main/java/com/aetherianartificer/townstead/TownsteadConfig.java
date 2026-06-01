@@ -48,16 +48,11 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_FARM_ASSIST;
     public static final ModConfigSpec.BooleanValue ENABLE_WORK_SUPPLY_AUTOMATION;
     public static final ModConfigSpec.BooleanValue ENABLE_HARVEST_OUTPUT_STORAGE;
-    public static final ModConfigSpec.BooleanValue ENABLE_FARMER_STABILITY_V2;
     public static final ModConfigSpec.IntValue FARMER_FARM_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_CELL_COOLDOWN_TICKS;
     public static final ModConfigSpec.IntValue FARMER_PATHFAIL_MAX_RETRIES;
     public static final ModConfigSpec.IntValue FARMER_IDLE_BACKOFF_TICKS;
-    public static final ModConfigSpec.IntValue FARMER_SEED_RESERVE;
-    public static final ModConfigSpec.IntValue FARMER_MAX_CLUSTERS;
-    public static final ModConfigSpec.IntValue FARMER_MAX_PLOTS;
     public static final ModConfigSpec.BooleanValue ENABLE_FARMER_WATER_PLACEMENT;
-    public static final ModConfigSpec.IntValue FARMER_WATER_PLACEMENTS_PER_DAY;
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_SEARCH_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_GROOM_RADIUS;
@@ -86,7 +81,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
-    public static final ModConfigSpec.BooleanValue DIALOGUE_REDUCE_MOTION;
+    public static final ModConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ModConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -101,9 +96,9 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
-    public static final ModConfigSpec.ConfigValue<String> CALENDAR_TIME_MODE;
-    public static final ModConfigSpec.ConfigValue<String> VILLAGER_AGING_MODE;
+    public static final ModConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ModConfigSpec.DoubleValue AGING_SCALE;
+    public static final ModConfigSpec.BooleanValue DISABLE_VILLAGER_AGING;
     public static final ModConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
     public static final ModConfigSpec.IntValue CALENDAR_START_YEAR_MIN;
     public static final ModConfigSpec.IntValue CALENDAR_START_YEAR_MAX;
@@ -129,16 +124,11 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_FARM_ASSIST;
     public static final ForgeConfigSpec.BooleanValue ENABLE_WORK_SUPPLY_AUTOMATION;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HARVEST_OUTPUT_STORAGE;
-    public static final ForgeConfigSpec.BooleanValue ENABLE_FARMER_STABILITY_V2;
     public static final ForgeConfigSpec.IntValue FARMER_FARM_RADIUS;
     public static final ForgeConfigSpec.IntValue FARMER_CELL_COOLDOWN_TICKS;
     public static final ForgeConfigSpec.IntValue FARMER_PATHFAIL_MAX_RETRIES;
     public static final ForgeConfigSpec.IntValue FARMER_IDLE_BACKOFF_TICKS;
-    public static final ForgeConfigSpec.IntValue FARMER_SEED_RESERVE;
-    public static final ForgeConfigSpec.IntValue FARMER_MAX_CLUSTERS;
-    public static final ForgeConfigSpec.IntValue FARMER_MAX_PLOTS;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FARMER_WATER_PLACEMENT;
-    public static final ForgeConfigSpec.IntValue FARMER_WATER_PLACEMENTS_PER_DAY;
     public static final ForgeConfigSpec.IntValue FARMER_WATER_SOURCE_SEARCH_RADIUS;
     public static final ForgeConfigSpec.IntValue FARMER_WATER_SOURCE_VERTICAL_RADIUS;
     public static final ForgeConfigSpec.IntValue FARMER_GROOM_RADIUS;
@@ -167,7 +157,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
-    public static final ForgeConfigSpec.BooleanValue DIALOGUE_REDUCE_MOTION;
+    public static final ForgeConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ForgeConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -182,9 +172,9 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
-    public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_TIME_MODE;
-    public static final ForgeConfigSpec.ConfigValue<String> VILLAGER_AGING_MODE;
+    public static final ForgeConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ForgeConfigSpec.DoubleValue AGING_SCALE;
+    public static final ForgeConfigSpec.BooleanValue DISABLE_VILLAGER_AGING;
     public static final ForgeConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
     public static final ForgeConfigSpec.IntValue CALENDAR_START_YEAR_MIN;
     public static final ForgeConfigSpec.IntValue CALENDAR_START_YEAR_MAX;
@@ -301,10 +291,6 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.farming.enableFarmAssist")
                 .comment("Enable lightweight farming assist: anti-trample and idle unstuck nudges for harvest chore.")
                 .define("enableFarmAssist", true);
-        ENABLE_FARMER_STABILITY_V2 = b
-                .translation("townstead.configuration.farming.enableFarmerStabilityV2")
-                .comment("Enable Townstead farmer stabilization (anti-thrash, retries, blocked states).")
-                .define("enableFarmerStabilityV2", true);
         FARMER_FARM_RADIUS = b
                 .translation("townstead.configuration.farming.farmerFarmRadius")
                 .comment("Maximum horizontal farm radius around anchor used by farmer AI.")
@@ -321,26 +307,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.farming.farmerIdleBackoffTicks")
                 .comment("Ticks to wait before reacquiring work after no valid target.")
                 .defineInRange("farmerIdleBackoffTicks", 60, 0, 1200);
-        FARMER_SEED_RESERVE = b
-                .translation("townstead.configuration.farming.farmerSeedReserve")
-                .comment("Minimum seed count to keep before allowing expansion tilling.")
-                .defineInRange("farmerSeedReserve", 8, 0, 64);
-        FARMER_MAX_CLUSTERS = b
-                .translation("townstead.configuration.farming.farmerMaxClusters")
-                .comment("Maximum planned connected plot clusters per farm area.")
-                .defineInRange("farmerMaxClusters", 6, 1, 64);
-        FARMER_MAX_PLOTS = b
-                .translation("townstead.configuration.farming.farmerMaxPlots")
-                .comment("Maximum planned soil plot cells per farm area.")
-                .defineInRange("farmerMaxPlots", 192, 16, 1024);
         ENABLE_FARMER_WATER_PLACEMENT = b
                 .translation("townstead.configuration.farming.enableFarmerWaterPlacement")
                 .comment("Allow farmers to place water sources in cells painted Water in the plot planner.")
                 .define("enableFarmerWaterPlacement", true);
-        FARMER_WATER_PLACEMENTS_PER_DAY = b
-                .translation("townstead.configuration.farming.farmerWaterPlacementsPerDay")
-                .comment("Maximum water source placements a farmer can perform per Minecraft day.")
-                .defineInRange("farmerWaterPlacementsPerDay", 2, 0, 16);
         FARMER_WATER_SOURCE_SEARCH_RADIUS = b
                 .translation("townstead.configuration.farming.farmerWaterSourceSearchRadius")
                 .comment("Maximum horizontal distance farmers may travel to find water for bucket refills.")
@@ -522,34 +492,12 @@ public final class TownsteadConfig {
                          "In-game: run /townstead calendar set-profile <id> for tab-completed picking.",
                          "Admin override via /townstead calendar set-profile takes precedence over this value at runtime.")
                 .define("profile", "auto");
-        CALENDAR_TIME_MODE = b
-                .translation("townstead.configuration.calendar.timeMode")
-                .comment("How the calendar advances over time.",
-                         "  normal       - Calendar tracks Minecraft's day counter directly. Pairs cleanly",
-                         "                 with Time Control and other day-cycle mods (the calendar rides",
-                         "                 whatever MC time those mods produce - no extra integration needed).",
-                         "                 Default. Use this for vanilla pacing or for 1 MC day = 1 real day",
-                         "                 pacing via a day-stretching mod.",
-                         "  real_clock   - Same as normal during play, but on world load Townstead also adds",
-                         "                 the real-world days that elapsed since the world was last saved.",
-                         "                 Villagers visibly age while you're away; the calendar advances even",
-                         "                 when the game is off. Year-rollover-safe (doesn't depend on Time",
-                         "                 Control's sync mode). Compatible with day-cycle mods on top.")
-                .define("timeMode", "normal",
-                        o -> o instanceof String s && (s.equals("normal") || s.equals("real_clock")));
-        VILLAGER_AGING_MODE = b
-                .translation("townstead.configuration.calendar.villagerAgingMode")
-                .comment("How villager aging couples to real-world time. Both modes use the same aging",
-                         "rate (see agingScale); this only controls whether aging tracks wall-clock time",
-                         "or played time.",
-                         "  default    - Aging advances only while you're playing and in-world time passes.",
-                         "               Best for RPG-style play. This is the default.",
-                         "  real_clock - Aging tracks real-world time: villagers keep aging while you're",
-                         "               away (with timeMode=real_clock). Long-haul, life-sim style. Note:",
-                         "               independent of the timeMode setting below, though the two pair",
-                         "               naturally when both real_clock.")
-                .define("villagerAgingMode", "default",
-                        o -> o instanceof String s && (s.equals("default") || s.equals("real_clock")));
+        CALENDAR_REAL_CLOCK = b
+                .translation("townstead.configuration.calendar.realClockCalendar")
+                .comment("When true, the calendar also advances by the real-world days that elapsed while",
+                         "the game was off (added on world load). When false, it tracks Minecraft's day",
+                         "counter only. Compatible with day-cycle mods either way.")
+                .define("realClockCalendar", false);
         AGING_SCALE = b
                 .translation("townstead.configuration.calendar.agingScale")
                 .comment("Game-days per narrative (\"dog-years\") year — the single, species-neutral aging",
@@ -557,10 +505,13 @@ public final class TownsteadConfig {
                          "races simply author more narrative years in their life-cycle gene and so take",
                          "proportionally more game-days to live. Calendar-independent.",
                          "Default 8.0: a 90-narrative-year human life takes ~720 game-days (~2 years on the",
-                         "default 365-day calendar). Raise it to slow all aging, lower it to speed all aging.",
-                         "In default aging-mode these are played game-days; in real_clock mode aging tracks",
-                         "real-world time instead.")
+                         "default 365-day calendar). Raise it to slow all aging, lower it to speed all aging.")
                 .defineInRange("agingScale", 8.0, 0.01, 100000.0);
+        DISABLE_VILLAGER_AGING = b
+                .translation("townstead.configuration.calendar.disableVillagerAging")
+                .comment("When true, villagers hold their current life stage and apparent age, and the",
+                         "away-time age catch-up is skipped. Animals still grow normally while loaded.")
+                .define("disableVillagerAging", false);
         CALENDAR_RANDOMIZE_START = b
                 .translation("townstead.configuration.calendar.randomizeStart")
                 .comment("APPLIES ONLY TO NEW WORLDS. Editing this on an existing save has no effect.",
@@ -616,9 +567,9 @@ public final class TownsteadConfig {
         clientBuilder.pop();
 
         clientBuilder.translation("townstead.configuration.accessibility").push("accessibility");
-        DIALOGUE_REDUCE_MOTION = clientBuilder
+        REDUCE_MOTION = clientBuilder
                 .translation("townstead.configuration.accessibility.reduceMotion")
-                .comment("Disable text animation effects (wave, shake, bounce, scale) in dialogue. Emotion colors still apply.")
+                .comment("Reduce non-essential motion across Townstead UI: dialogue text effects (wave, shake, bounce, scale), the calendar stamp drawer slide, and similar. Emotion colors still apply.")
                 .define("reduceMotion", false);
         DIALOGUE_DISABLE_PARTICLES = clientBuilder
                 .translation("townstead.configuration.accessibility.disableParticles")
@@ -731,21 +682,21 @@ public final class TownsteadConfig {
     }
 
     public static String getCalendarTimeMode() {
-        return CALENDAR_TIME_MODE.get();
+        return CALENDAR_REAL_CLOCK.get() ? "real_clock" : "normal";
     }
 
     public static boolean isCalendarRealClockMode() {
-        return "real_clock".equals(CALENDAR_TIME_MODE.get());
-    }
-
-    /** True when aging tracks real-world time (villagers age while away with timeMode=real_clock). */
-    public static boolean isRealClockAging() {
-        return "real_clock".equals(VILLAGER_AGING_MODE.get());
+        return CALENDAR_REAL_CLOCK.get();
     }
 
     /** Game-days per narrative year — the species-neutral aging rate (see agingScale config). */
     public static double getAgingScale() {
         return AGING_SCALE.get();
+    }
+
+    /** True when villagers should never change life stage and away-time age catch-up is suppressed. */
+    public static boolean isVillagerAgingDisabled() {
+        return DISABLE_VILLAGER_AGING.get();
     }
 
     public static boolean isCalendarRandomizeStartEnabled() {

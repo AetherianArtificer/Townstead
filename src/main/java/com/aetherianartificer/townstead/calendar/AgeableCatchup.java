@@ -70,7 +70,10 @@ public final class AgeableCatchup {
         if (!(entity instanceof AgeableMob mob)) return;
         long currentDay = TownsteadCalendar.lifeDay(server);
         CompoundTag nbt = mob.getPersistentData();
-        if (nbt.contains(NBT_KEY_LAST_SEEN_WORLD_DAY)) {
+        // Keep refreshing the stamp even when aging is off, so re-enabling later doesn't
+        // fast-forward all the time that elapsed while it was disabled.
+        if (!com.aetherianartificer.townstead.TownsteadConfig.isVillagerAgingDisabled()
+                && nbt.contains(NBT_KEY_LAST_SEEN_WORLD_DAY)) {
             long stored = nbt.getLong(NBT_KEY_LAST_SEEN_WORLD_DAY);
             long deltaDays = currentDay - stored;
             if (deltaDays > 0L) {
@@ -90,6 +93,7 @@ public final class AgeableCatchup {
      */
     public static void applyBulkCatchup(MinecraftServer server, int catchupDays) {
         if (server == null || catchupDays <= 0) return;
+        if (com.aetherianartificer.townstead.TownsteadConfig.isVillagerAgingDisabled()) return;
         long deltaTicks = (long) catchupDays * TICKS_PER_MC_DAY;
         long currentDay = TownsteadCalendar.lifeDay(server);
         for (ServerLevel level : server.getAllLevels()) {

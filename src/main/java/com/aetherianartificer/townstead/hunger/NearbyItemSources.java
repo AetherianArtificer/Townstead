@@ -180,8 +180,13 @@ public final class NearbyItemSources {
                 if (handler != null) {
                     for (int i = 0; i < handler.getSlots(); i++) {
                         int beforeCount = stack.getCount();
-                        stack = handler.insertItem(i, stack, false);
-                        if (stack.getCount() != beforeCount) {
+                        // insertItem must not mutate its input; it returns the remainder. Shrink the
+                        // caller's stack in place by what was accepted — reassigning the local would
+                        // leave the caller holding the original and duplicate the deposited items.
+                        ItemStack remainder = handler.insertItem(i, stack, false);
+                        int inserted = beforeCount - remainder.getCount();
+                        if (inserted > 0) {
+                            stack.shrink(inserted);
                             NearbyStorageIndex.invalidate(level, observed.pos());
                         }
                         if (stack.isEmpty()) return true;
@@ -238,8 +243,12 @@ public final class NearbyItemSources {
                     if (handler != null) {
                         for (int i = 0; i < handler.getSlots(); i++) {
                             int beforeCount = stack.getCount();
-                            stack = handler.insertItem(i, stack, false);
-                            if (stack.getCount() != beforeCount) {
+                            // Shrink in place by what was accepted (see insertIntoNearbyStorage);
+                            // reassigning the local would dupe items into handler-only storage.
+                            ItemStack remainder = handler.insertItem(i, stack, false);
+                            int inserted = beforeCount - remainder.getCount();
+                            if (inserted > 0) {
+                                stack.shrink(inserted);
                                 NearbyStorageIndex.invalidate(level, observed.pos());
                             }
                             if (stack.isEmpty()) return true;

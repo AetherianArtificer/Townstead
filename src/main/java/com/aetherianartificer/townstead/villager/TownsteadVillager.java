@@ -753,6 +753,10 @@ public final class TownsteadVillager {
         private boolean immortal;
         private boolean isSenior;
         private float fertility;
+        // Apparent-age freeze: when "villagers do not age" is on, the day aging was frozen.
+        // Display (apparent age, stage, senior progress) reads this instead of the live day,
+        // so it stops advancing with the calendar. Long.MIN_VALUE = not frozen.
+        private long agingFrozenDay = Long.MIN_VALUE;
 
         public long birthWorldDay() {
             return birthWorldDay;
@@ -870,6 +874,20 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        public boolean hasAgingFrozenDay() { return agingFrozenDay != Long.MIN_VALUE; }
+
+        public long agingFrozenDay() { return agingFrozenDay; }
+
+        public void setAgingFrozenDay(long worldDay) {
+            agingFrozenDay = worldDay;
+            markDirty();
+        }
+
+        public void clearAgingFrozenDay() {
+            agingFrozenDay = Long.MIN_VALUE;
+            markDirty();
+        }
+
         public CompoundTag toTag() {
             CompoundTag tag = new CompoundTag();
             if (hasBirth()) {
@@ -893,6 +911,7 @@ public final class TownsteadVillager {
             if (immortal) tag.putBoolean("immortal", true);
             if (isSenior) tag.putBoolean("isSenior", true);
             if (fertility > 0f) tag.putFloat("fertility", fertility);
+            if (agingFrozenDay != Long.MIN_VALUE) tag.putLong("agingFrozenDay", agingFrozenDay);
             return tag;
         }
 
@@ -913,6 +932,7 @@ public final class TownsteadVillager {
             immortal = tag.getBoolean("immortal");
             isSenior = tag.getBoolean("isSenior");
             fertility = tag.getFloat("fertility");
+            agingFrozenDay = tag.contains("agingFrozenDay") ? tag.getLong("agingFrozenDay") : Long.MIN_VALUE;
             markDirty();
         }
     }
