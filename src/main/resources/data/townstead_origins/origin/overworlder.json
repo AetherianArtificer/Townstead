@@ -6,5 +6,8 @@
     "singular": { "translate": "origin.townstead_origins.origin.overworlder.demonym.singular" },
     "plural": { "translate": "origin.townstead_origins.origin.overworlder.demonym.plural" }
   },
-  "backstory": { "translate": "origin.townstead_origins.origin.overworlder.backstory" }
+  "backstory": { "translate": "origin.townstead_origins.origin.overworlder.backstory" },
+  "spawn_bias": {
+    "default": 8
+  }
 }

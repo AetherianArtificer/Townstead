@@ -69,6 +69,49 @@ public final class Heredity {
     }
 
     /**
+     * Seed a mixed-ancestry founder by admixing several same-species origins at the
+     * given fractions: heritage is the fraction-weighted sum of each origin's seed
+     * heritage, and each of the two allele copies at a locus is drawn from a
+     * fraction-weighted contributing origin's freshly-seeded genotype (true
+     * admixture). The stored origin id is the dominant (largest-share) contributor,
+     * which drives the life cycle, traits and body metrics; the genotype and
+     * heritage carry the real blend. Falls back to a plain founder for a single share.
+     */
+    public static void seedMixedFounder(TownsteadVillager.Life life,
+                                        List<OriginSelector.Weighted> mix, RandomSource random) {
+        if (mix.size() < 2) {
+            ResourceLocation only = mix.isEmpty() ? OriginRegistry.DEFAULT_ID
+                    : ResourceLocation.tryParse(mix.get(0).originId().toString());
+            seedFounder(life, only == null ? OriginRegistry.DEFAULT_ID : only, random);
+            return;
+        }
+
+        java.util.List<Genotype> genotypes = new java.util.ArrayList<>(mix.size());
+        float[] fractions = new float[mix.size()];
+        java.util.Map<ResourceLocation, Float> heritage = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < mix.size(); i++) {
+            OriginSelector.Weighted w = mix.get(i);
+            fractions[i] = w.fraction();
+            genotypes.add(seedGenotype(w.originId(), random));
+            OriginRegistry.seedHeritage(w.originId()).fractions()
+                    .forEach((ancestry, share) -> heritage.merge(ancestry, share * w.fraction(), Float::sum));
+        }
+
+        Set<ResourceLocation> loci = new LinkedHashSet<>();
+        for (Genotype g : genotypes) loci.addAll(g.loci());
+        Genotype childGenes = new Genotype();
+        for (ResourceLocation locus : loci) {
+            childGenes.set(locus, drawAdmixed(genotypes, fractions, locus, random),
+                    drawAdmixed(genotypes, fractions, locus, random));
+        }
+
+        life.setGenotype(childGenes);
+        life.setHeritage(new Heritage(heritage));
+        life.setOrigin(dominantOrigin(mix));
+        recomputeExpressed(life);
+    }
+
+    /**
      * Fill in any diploid genes a loaded villager lacks without disturbing what it
      * already carries: an existing locus is kept; a legacy expressed variant becomes
      * a homozygous pair; everything else is rolled. Self-heals saves from before the
@@ -190,6 +233,30 @@ public final class Heredity {
         Allele[] pair = parent.at(locus);
         if (pair == null) return Allele.WILD;
         return pair[random.nextInt(2)];
+    }
+
+    /** One admixed allele: pick a contributor by fraction, take one of its alleles at the locus. */
+    private static Allele drawAdmixed(List<Genotype> genotypes, float[] fractions,
+                                      ResourceLocation locus, RandomSource random) {
+        return draw(genotypes.get(weightedIndex(fractions, random)), locus, random);
+    }
+
+    private static int weightedIndex(float[] weights, RandomSource random) {
+        float total = 0f;
+        for (float w : weights) total += Math.max(0f, w);
+        if (total <= 0f) return 0;
+        float roll = random.nextFloat() * total;
+        for (int i = 0; i < weights.length; i++) {
+            roll -= Math.max(0f, weights[i]);
+            if (roll < 0f) return i;
+        }
+        return weights.length - 1;
+    }
+
+    private static String dominantOrigin(List<OriginSelector.Weighted> mix) {
+        OriginSelector.Weighted best = mix.get(0);
+        for (OriginSelector.Weighted w : mix) if (w.fraction() > best.fraction()) best = w;
+        return best.originId().toString();
     }
 
     private static Allele rollAllele(Gene gene, InheritedGene ref, RandomSource random) {

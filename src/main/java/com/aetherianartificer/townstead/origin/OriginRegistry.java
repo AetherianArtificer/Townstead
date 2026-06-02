@@ -83,6 +83,57 @@ public final class OriginRegistry {
         return Heritage.EMPTY;
     }
 
+    /**
+     * Effective spawn bias for an origin, composed bottom-up the same way as the
+     * genome: ancestry (or the union of a lineage's ancestries, then the lineage)
+     * → the origin's own bias, each level overriding per key and replacing the
+     * default if it sets one. Drives the biome-weighted founder roll.
+     */
+    public static SpawnBias effectiveSpawnBias(@Nullable ResourceLocation id) {
+        Origin origin = resolveOrDefault(id);
+        if (origin == null) return SpawnBias.EMPTY;
+        SpawnBias bias = SpawnBias.EMPTY;
+        Lineage lineage = origin.lineage() != null ? LineageRegistry.byId(origin.lineage()) : null;
+        if (lineage != null) {
+            for (ResourceLocation ancestryId : lineage.ancestries()) {
+                Ancestry ancestry = AncestryRegistry.byId(ancestryId);
+                if (ancestry != null) bias = bias.mergedWith(ancestry.spawnBias());
+            }
+            bias = bias.mergedWith(lineage.spawnBias());
+        } else if (origin.ancestry() != null) {
+            // Lineage missing/unloaded — degrade to the declared ancestry's bias.
+            Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
+            if (ancestry != null) bias = bias.mergedWith(ancestry.spawnBias());
+        }
+        return bias.mergedWith(origin.spawnBias());
+    }
+
+    /**
+     * The species an origin belongs to: its own {@code species}, else its
+     * ancestry's, else the first species among its lineage's ancestries.
+     * {@code null} if none resolves. Used to gate mixing within a species.
+     */
+    @Nullable
+    public static ResourceLocation effectiveSpecies(@Nullable ResourceLocation id) {
+        Origin origin = resolveOrDefault(id);
+        if (origin == null) return null;
+        if (origin.species() != null) return origin.species();
+        if (origin.ancestry() != null) {
+            Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
+            if (ancestry != null && ancestry.species() != null) return ancestry.species();
+        }
+        if (origin.lineage() != null) {
+            Lineage lineage = LineageRegistry.byId(origin.lineage());
+            if (lineage != null) {
+                for (ResourceLocation ancestryId : lineage.ancestries()) {
+                    Ancestry ancestry = AncestryRegistry.byId(ancestryId);
+                    if (ancestry != null && ancestry.species() != null) return ancestry.species();
+                }
+            }
+        }
+        return null;
+    }
+
     /** Effective genome for an origin id, falling back to the default origin. */
     public static Genome effectiveGenome(@Nullable ResourceLocation id) {
         Origin origin = resolveOrDefault(id);
@@ -97,16 +148,17 @@ public final class OriginRegistry {
      */
     public static Genome effectiveGenome(Origin origin) {
         Genome base = Genome.EMPTY;
-        if (origin.lineage() != null) {
-            Lineage lineage = LineageRegistry.byId(origin.lineage());
-            if (lineage != null) {
-                for (ResourceLocation ancestryId : lineage.ancestries()) {
-                    Ancestry ancestry = AncestryRegistry.byId(ancestryId);
-                    if (ancestry != null) base = base.mergedWith(ancestry.genome());
-                }
-                base = base.mergedWith(lineage.genome());
+        Lineage lineage = origin.lineage() != null ? LineageRegistry.byId(origin.lineage()) : null;
+        if (lineage != null) {
+            for (ResourceLocation ancestryId : lineage.ancestries()) {
+                Ancestry ancestry = AncestryRegistry.byId(ancestryId);
+                if (ancestry != null) base = base.mergedWith(ancestry.genome());
             }
+            base = base.mergedWith(lineage.genome());
         } else if (origin.ancestry() != null) {
+            // Either an ancestry-based origin, or a lineage-based one whose lineage
+            // failed to load — degrade to the declared ancestry rather than a blank
+            // genome (a Dark Elf becomes a plain Elf, not a featureless villager).
             Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
             if (ancestry != null) base = ancestry.genome();
         }

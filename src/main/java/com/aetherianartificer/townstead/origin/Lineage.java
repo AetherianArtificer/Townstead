@@ -24,10 +24,12 @@ public record Lineage(
         List<ResourceLocation> ancestries,
         @Nullable Demonym demonym,
         @Nullable Component backstory,
-        Genome genome
+        Genome genome,
+        SpawnBias spawnBias
 ) {
     public Lineage {
         ancestries = ancestries == null ? List.of() : List.copyOf(ancestries);
         genome = genome == null ? Genome.EMPTY : genome;
+        spawnBias = spawnBias == null ? SpawnBias.EMPTY : spawnBias;
     }
 }
