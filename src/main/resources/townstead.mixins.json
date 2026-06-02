@@ -3,6 +3,7 @@
   "package": "com.aetherianartificer.townstead.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BabyItemInheritanceMixin",
     "BuildingValidateOpenAirMixin",
     "ChefsDelightProfessionGuardMixin",
     "FarmBlockMixin",
@@ -20,6 +21,7 @@
     "VillagerEntityMCAImmortalityMixin",
     "VillagerEntityMCALifeStageMixin",
     "PathNavigationFenceGateMixin",
+    "PregnancyInheritanceMixin",
     "VillagerHungerMixin",
     "VillagerServerTickMixin",
     "WalkNodeEvaluatorFenceGateMixin"

@@ -6,26 +6,11 @@
     "plural": { "translate": "origin.townstead_origins.ancestry.human.demonym.plural" }
   },
   "backstory": { "translate": "origin.townstead_origins.ancestry.human.backstory" },
-  "genome": {
-    "genes": {
-      "size":        { "min": 0.0, "max": 1.0 },
-      "width":       { "min": 0.0, "max": 1.0 },
-      "breast":      { "min": 0.0, "max": 1.0 },
-      "melanin":     { "min": 0.0, "max": 1.0 },
-      "hemoglobin":  { "min": 0.0, "max": 1.0 },
-      "eumelanin":   { "min": 0.0, "max": 1.0 },
-      "pheomelanin": { "min": 0.0, "max": 1.0 },
-      "skin":        { "min": 0.0, "max": 1.0 },
-      "face":        { "min": 0.0, "max": 1.0 },
-      "voice":       { "min": 0.0, "max": 1.0 },
-      "voice_tone":  { "min": 0.0, "max": 1.0 }
-    },
-    "inherited_genes": [
-      "townstead_origins:warm_skin",
-      "townstead_origins:omnivore",
-      "townstead_origins:water_drinker",
-      "townstead_origins:human_chronotype",
-      "townstead_origins:human_life_cycle"
-    ]
-  }
+  "genes": [
+    "townstead_origins:warm_skin",
+    "townstead_origins:omnivore",
+    "townstead_origins:water_drinker",
+    "townstead_origins:human_chronotype",
+    "townstead_origins:human_life_cycle"
+  ]
 }

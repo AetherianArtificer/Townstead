@@ -6,44 +6,39 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * What a race contributes to its genome:
- * <ul>
- *   <li>{@code genes} — per-gene {@link GeneRange}s over MCA's standard float genes
- *       (size, melanin, …), used only to clamp those on assignment. Owned by the
- *       Body/Head editor tabs; not shown in the Origins viewer.</li>
- *   <li>{@code inheritedGenes} — the custom genes (from the {@code GeneRegistry}) this
- *       race passes down, each with a base occurrence ({@link InheritedGene}). The
- *       lego "blocks", shown in the Origins viewer.</li>
- * </ul>
+ * What a race contributes to its genome: a single ordered list of the genes (from
+ * the {@code GeneRegistry}) it carries. This is the unified gene array — body
+ * metrics (size, melanin via {@code body_metric} genes), appearance, diet, life
+ * cycle, traits and variant genes all live here, referenced by id. There is no
+ * separate MCA-float map anymore; a body-metric gene carries its own range and is
+ * resolved from the registry when needed.
  *
- * <p>Composed bottom-up (ancestry → lineage → origin) via {@link #mergedWith}:
- * a later layer's MCA gene entries replace the same key; inherited genes merge by
- * gene id with the later layer's entry (occurrence) winning.</p>
+ * <p>Composed bottom-up (ancestry → lineage → origin) via {@link #mergedWith}: a
+ * later layer's entry for the same gene id replaces the earlier one. Cross-gene
+ * collapsing at a shared locus is done later, in
+ * {@link OriginRegistry#effectiveInheritedGenes}.</p>
  */
-public record Genome(Map<String, GeneRange> genes, List<InheritedGene> inheritedGenes) {
-    public static final Genome EMPTY = new Genome(Map.of(), List.of());
+public record Genome(List<InheritedGene> genes) {
+
+    public static final Genome EMPTY = new Genome(List.of());
 
     public Genome {
-        genes = Map.copyOf(genes);
-        inheritedGenes = List.copyOf(inheritedGenes);
+        genes = List.copyOf(genes);
     }
 
     public boolean isEmpty() {
-        return genes.isEmpty() && inheritedGenes.isEmpty();
+        return genes.isEmpty();
     }
 
-    /** Layer {@code override} on top (override wins per MCA gene; inherited genes merge by id). */
+    /** Layer {@code override} on top: its entries replace same-id genes; new ones append. */
     public Genome mergedWith(Genome override) {
         if (override == null || override.isEmpty()) return this;
         if (this.isEmpty()) return override;
-        Map<String, GeneRange> mergedGenes = new LinkedHashMap<>(this.genes);
-        mergedGenes.putAll(override.genes);
         LinkedHashMap<ResourceLocation, InheritedGene> merged = new LinkedHashMap<>();
-        for (InheritedGene gene : this.inheritedGenes) merged.put(gene.geneId(), gene);
-        for (InheritedGene gene : override.inheritedGenes) merged.put(gene.geneId(), gene);
-        return new Genome(mergedGenes, new ArrayList<>(merged.values()));
+        for (InheritedGene gene : this.genes) merged.put(gene.geneId(), gene);
+        for (InheritedGene gene : override.genes) merged.put(gene.geneId(), gene);
+        return new Genome(new ArrayList<>(merged.values()));
     }
 }

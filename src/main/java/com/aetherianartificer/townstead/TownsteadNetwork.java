@@ -236,6 +236,26 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload::write,
                 com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload::read,
                 TownsteadNetwork::handleOriginCatalogSync);
+        registerC2S(com.aetherianartificer.townstead.origin.HeritageRequestC2SPayload.class,
+                com.aetherianartificer.townstead.origin.HeritageRequestC2SPayload::write,
+                com.aetherianartificer.townstead.origin.HeritageRequestC2SPayload::read,
+                TownsteadNetwork::handleHeritageRequest);
+        registerS2C(com.aetherianartificer.townstead.origin.HeritageSyncPayload.class,
+                com.aetherianartificer.townstead.origin.HeritageSyncPayload::write,
+                com.aetherianartificer.townstead.origin.HeritageSyncPayload::read,
+                TownsteadNetwork::handleHeritageSync);
+    }
+
+    private static void handleHeritageRequest(
+            com.aetherianartificer.townstead.origin.HeritageRequestC2SPayload payload, ServerPlayer sp) {
+        VillagerEntityMCA villager = findVillager(sp.getServer(), payload.villagerUuid());
+        sendToPlayer(sp, villager != null
+                ? com.aetherianartificer.townstead.origin.HeritageView.build(villager)
+                : com.aetherianartificer.townstead.origin.HeritageSyncPayload.unavailable(payload.villagerUuid()));
+    }
+
+    private static void handleHeritageSync(com.aetherianartificer.townstead.origin.HeritageSyncPayload payload) {
+        com.aetherianartificer.townstead.client.origin.HeritageClientStore.setFrom(payload);
     }
 
     private static void handleOriginSet(

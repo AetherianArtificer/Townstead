@@ -11,7 +11,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -67,48 +66,31 @@ final class OriginJsonParsing {
         return DataPackLang.parseComponent(obj.get("backstory"), context + ".backstory", langIndex);
     }
 
-    /** Parse a {@code genome}/{@code genome_overrides} block ({@code genes} map + {@code inherited_genes} list). */
-    static Genome genome(JsonObject obj, String key, String context, Logger log) {
-        if (!obj.has(key) || !obj.get(key).isJsonObject()) return Genome.EMPTY;
-        JsonObject g = obj.getAsJsonObject(key);
-
-        Map<String, GeneRange> genes = new LinkedHashMap<>();
-        if (g.has("genes") && g.get("genes").isJsonObject()) {
-            for (Map.Entry<String, JsonElement> e : g.getAsJsonObject("genes").entrySet()) {
-                String normKey = OriginGenes.normalizeKey(e.getKey());
-                if (!OriginGenes.isKnown(normKey)) {
-                    log.warn("{} — unknown gene '{}', skipping", context, e.getKey());
+    /**
+     * Parse the unified {@code genes} array: one list of gene references, each a
+     * bare id string or {@code { "gene": id, "occurrence": x }}. Body metrics,
+     * appearance, diet, life cycle and traits are all just gene ids here.
+     */
+    static Genome genes(JsonObject obj, String context, Logger log) {
+        if (!obj.has("genes") || !obj.get("genes").isJsonArray()) return Genome.EMPTY;
+        List<com.aetherianartificer.townstead.origin.gene.InheritedGene> genes = new ArrayList<>();
+        for (JsonElement t : obj.getAsJsonArray("genes")) {
+            if (t.isJsonObject()) {
+                JsonObject go = t.getAsJsonObject();
+                ResourceLocation gene = DataPackLang.parseId(GsonHelper.getAsString(go, "gene", ""));
+                if (gene == null) {
+                    log.warn("{} — gene entry has no valid 'gene' id, skipping", context);
                     continue;
                 }
-                if (!e.getValue().isJsonObject()) {
-                    log.warn("{} — gene '{}' must be an object with min/max, skipping", context, e.getKey());
-                    continue;
-                }
-                JsonObject range = e.getValue().getAsJsonObject();
-                float min = GsonHelper.getAsFloat(range, "min", 0f);
-                float max = GsonHelper.getAsFloat(range, "max", 1f);
-                genes.put(normKey, new GeneRange(min, max));
-            }
-        }
-
-        List<com.aetherianartificer.townstead.origin.gene.InheritedGene> inheritedGenes = new ArrayList<>();
-        if (g.has("inherited_genes") && g.get("inherited_genes").isJsonArray()) {
-            for (JsonElement t : g.getAsJsonArray("inherited_genes")) {
-                if (t.isJsonObject()) {
-                    JsonObject go = t.getAsJsonObject();
-                    ResourceLocation gene = DataPackLang.parseId(GsonHelper.getAsString(go, "gene", ""));
-                    if (gene == null) continue;
-                    float occurrence = GsonHelper.getAsFloat(go, "occurrence", 1.0f);
-                    inheritedGenes.add(new com.aetherianartificer.townstead.origin.gene.InheritedGene(gene, occurrence));
-                } else if (t.isJsonPrimitive()) {
-                    ResourceLocation gene = DataPackLang.parseId(t.getAsString());
-                    if (gene != null) {
-                        inheritedGenes.add(com.aetherianartificer.townstead.origin.gene.InheritedGene.of(gene));
-                    }
+                float occurrence = GsonHelper.getAsFloat(go, "occurrence", 1.0f);
+                genes.add(new com.aetherianartificer.townstead.origin.gene.InheritedGene(gene, occurrence));
+            } else if (t.isJsonPrimitive()) {
+                ResourceLocation gene = DataPackLang.parseId(t.getAsString());
+                if (gene != null) {
+                    genes.add(com.aetherianartificer.townstead.origin.gene.InheritedGene.of(gene));
                 }
             }
         }
-
-        return new Genome(genes, inheritedGenes);
+        return new Genome(genes);
     }
 }

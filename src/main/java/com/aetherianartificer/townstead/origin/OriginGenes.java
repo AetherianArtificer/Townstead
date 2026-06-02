@@ -1,10 +1,15 @@
 package com.aetherianartificer.townstead.origin;
 
+import com.aetherianartificer.townstead.origin.gene.Gene;
+import com.aetherianartificer.townstead.origin.gene.GeneRegistry;
+import com.aetherianartificer.townstead.origin.gene.InheritedGene;
+import com.aetherianartificer.townstead.origin.gene.types.BodyMetricGeneType;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Genetics;
 import net.minecraft.util.RandomSource;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -70,15 +75,32 @@ public final class OriginGenes {
     }
 
     /**
-     * Roll each gene the genome constrains into its range and write it onto the
-     * villager's genetics; genes the genome does not mention are left as MCA
-     * rolled them. A full {@code [0,1]} range therefore reproduces MCA's own
-     * uniform roll (Overworlder's deliberate no-op).
+     * Resolve the body-metric genes in a (locus-collapsed) gene list to a
+     * {@code target → range} map over MCA's float genes. The list should be the
+     * effective, locus-collapsed grant list, so a lineage's size gene has already
+     * replaced its ancestry's; here we just read each body-metric gene's range.
      */
-    public static void apply(VillagerEntityMCA villager, Genome genome, RandomSource random) {
-        if (genome == null || genome.genes().isEmpty()) return;
+    public static Map<String, GeneRange> resolveBodyMetrics(List<InheritedGene> genes) {
+        if (genes == null || genes.isEmpty()) return Map.of();
+        LinkedHashMap<String, GeneRange> out = new LinkedHashMap<>();
+        for (InheritedGene ref : genes) {
+            Gene gene = GeneRegistry.byId(ref.geneId());
+            if (gene != null && gene.instance() instanceof BodyMetricGeneType.Instance metric) {
+                out.put(metric.target(), metric.range());
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Roll each constrained MCA float into its range and write it onto the
+     * villager; floats not in the map are left as MCA rolled them. A full
+     * {@code [0,1]} range reproduces MCA's own uniform roll (Overworlder's no-op).
+     */
+    public static void apply(VillagerEntityMCA villager, Map<String, GeneRange> targetRanges, RandomSource random) {
+        if (targetRanges == null || targetRanges.isEmpty()) return;
         Genetics genetics = villager.getGenetics();
-        for (Map.Entry<String, GeneRange> entry : genome.genes().entrySet()) {
+        for (Map.Entry<String, GeneRange> entry : targetRanges.entrySet()) {
             Genetics.GeneType type = BY_KEY.get(entry.getKey());
             if (type != null) {
                 genetics.setGene(type, entry.getValue().sample(random));
@@ -87,15 +109,14 @@ public final class OriginGenes {
     }
 
     /**
-     * Pull each constrained gene into the genome's range, preserving in-range
-     * values (non-destructive). Used when assigning an origin to an existing
-     * villager in the editor. A full {@code [0,1]} range leaves every gene
-     * untouched (Overworlder's no-op).
+     * Pull each constrained MCA float into its range, preserving in-range values
+     * (non-destructive). Used when assigning an origin to an existing villager and
+     * when re-clamping a bred child's blended floats to its heritage.
      */
-    public static void clamp(VillagerEntityMCA villager, Genome genome) {
-        if (genome == null || genome.genes().isEmpty()) return;
+    public static void clamp(VillagerEntityMCA villager, Map<String, GeneRange> targetRanges) {
+        if (targetRanges == null || targetRanges.isEmpty()) return;
         Genetics genetics = villager.getGenetics();
-        for (Map.Entry<String, GeneRange> entry : genome.genes().entrySet()) {
+        for (Map.Entry<String, GeneRange> entry : targetRanges.entrySet()) {
             Genetics.GeneType type = BY_KEY.get(entry.getKey());
             if (type == null) continue;
             GeneRange range = entry.getValue();

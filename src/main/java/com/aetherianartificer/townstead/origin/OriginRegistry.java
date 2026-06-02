@@ -61,6 +61,28 @@ public final class OriginRegistry {
         return ENTRIES.get(DEFAULT_ID);
     }
 
+    /**
+     * The ancestry-fraction vector a founder of this origin is seeded with: a single
+     * ancestry at 1.0 for an ancestry-based origin, or an even split across a
+     * lineage's listed ancestries. Heritage tracks ancestry, not lineage, so a
+     * pure Dark Elf seeds {@code {elf:1}} (its "Dark Elf" name comes from the origin).
+     */
+    public static Heritage seedHeritage(@Nullable ResourceLocation id) {
+        Origin origin = resolveOrDefault(id);
+        if (origin == null) return Heritage.EMPTY;
+        if (origin.ancestry() != null) return Heritage.pure(origin.ancestry());
+        if (origin.lineage() != null) {
+            Lineage lineage = LineageRegistry.byId(origin.lineage());
+            if (lineage != null && !lineage.ancestries().isEmpty()) {
+                Map<ResourceLocation, Float> shares = new LinkedHashMap<>();
+                float share = 1f / lineage.ancestries().size();
+                for (ResourceLocation ancestry : lineage.ancestries()) shares.merge(ancestry, share, Float::sum);
+                return new Heritage(shares);
+            }
+        }
+        return Heritage.EMPTY;
+    }
+
     /** Effective genome for an origin id, falling back to the default origin. */
     public static Genome effectiveGenome(@Nullable ResourceLocation id) {
         Origin origin = resolveOrDefault(id);
@@ -82,13 +104,13 @@ public final class OriginRegistry {
                     Ancestry ancestry = AncestryRegistry.byId(ancestryId);
                     if (ancestry != null) base = base.mergedWith(ancestry.genome());
                 }
-                base = base.mergedWith(lineage.genomeOverrides());
+                base = base.mergedWith(lineage.genome());
             }
         } else if (origin.ancestry() != null) {
             Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
             if (ancestry != null) base = ancestry.genome();
         }
-        return base.mergedWith(origin.genomeOverrides());
+        return base.mergedWith(origin.genome());
     }
 
     /**
@@ -98,7 +120,7 @@ public final class OriginRegistry {
      * effective grant list for rolling and for the picker display.
      */
     public static List<InheritedGene> effectiveInheritedGenes(@Nullable ResourceLocation id) {
-        List<InheritedGene> raw = effectiveGenome(id).inheritedGenes();
+        List<InheritedGene> raw = effectiveGenome(id).genes();
         LinkedHashMap<Object, InheritedGene> byKey = new LinkedHashMap<>();
         int i = 0;
         for (InheritedGene ig : raw) {
@@ -130,7 +152,7 @@ public final class OriginRegistry {
     public static LifeCycleGeneType.Instance effectiveCycleGene(@Nullable ResourceLocation id) {
         Genome genome = effectiveGenome(id);
         Gene best = null;
-        for (InheritedGene inherited : genome.inheritedGenes()) {
+        for (InheritedGene inherited : genome.genes()) {
             Gene gene = GeneRegistry.byId(inherited.geneId());
             if (gene == null || !(gene.instance() instanceof LifeCycleGeneType.Instance)) continue;
             if (best == null || cycleAlleleWins(gene, best)) best = gene;
@@ -144,7 +166,7 @@ public final class OriginRegistry {
         Genome genome = effectiveGenome(id);
         java.util.List<com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType.Instance> out =
                 new java.util.ArrayList<>();
-        for (InheritedGene inherited : genome.inheritedGenes()) {
+        for (InheritedGene inherited : genome.genes()) {
             Gene gene = GeneRegistry.byId(inherited.geneId());
             if (gene != null && gene.instance()
                     instanceof com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType.Instance t) {

@@ -150,7 +150,7 @@ public abstract class VillagerEditorOriginMixin extends Screen {
         for (OriginCatalogEntry.GeneRangeView r : entry.geneRanges()) {
             ranges.put(r.key(), new GeneRange(r.min(), r.max()));
         }
-        OriginGenes.apply(villager, new Genome(ranges, List.of()), villager.getRandom());
+        OriginGenes.apply(villager, ranges, villager.getRandom());
         OriginClientStore.set(villager.getId(), entry.id());   // so the skin-tint layer paints the preview
         townstead$previewDirty = true;
     }

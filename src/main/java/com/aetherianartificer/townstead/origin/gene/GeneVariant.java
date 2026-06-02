@@ -8,11 +8,11 @@ import net.minecraft.network.chat.Component;
  * one is rolled at birth (weighted by {@link #weight}) and carried on the
  * villager. Simple genes have a single implicit variant.
  *
- * <p>The framework owns {@code id}/{@code label}/{@code weight}; the gene's
+ * <p>The framework owns {@code id}/{@code displayName}/{@code weight}; the gene's
  * {@link GeneType} owns {@link #instance} (the type-specific config it reads to
  * manifest the variant).</p>
  */
-public record GeneVariant(String id, Component label, int weight, GeneInstance instance) {
+public record GeneVariant(String id, Component displayName, int weight, GeneInstance instance) {
     public GeneVariant {
         weight = Math.max(1, weight);
     }

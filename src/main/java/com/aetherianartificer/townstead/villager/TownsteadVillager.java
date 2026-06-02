@@ -757,11 +757,21 @@ public final class TownsteadVillager {
         // Display (apparent age, stage, senior progress) reads this instead of the live day,
         // so it stops advancing with the calendar. Long.MIN_VALUE = not frozen.
         private long agingFrozenDay = Long.MIN_VALUE;
-        // Carried genes: for each variant gene the villager expresses, the variant id
-        // rolled at birth (geneId -> variantId, e.g. townstead_origins:chronotype -> night_owl).
-        // The genotype the villager holds; expression (sleep window, etc.) is derived from it,
-        // so gene therapy / inheritance can swap a variant and re-resolve for free.
+        // Expressed phenotype cache: for each variant gene the villager expresses, the
+        // variant id currently showing (geneId -> variantId, e.g. chronotype -> night_owl).
+        // This is the dominant-resolved projection of {@link #genotype} that existing read
+        // sites (sleep window, skin tint) consume; it is recomputed when the genotype changes.
         private final java.util.Map<String, String> carriedVariants = new java.util.HashMap<>();
+        // The diploid heritable truth: two alleles per discrete locus. The expressed
+        // phenotype above is derived from this; inheritance draws one allele per locus
+        // from each parent. Continuous body floats live on MCA's genetics, not here.
+        private com.aetherianartificer.townstead.origin.gene.Genotype genotype =
+                new com.aetherianartificer.townstead.origin.gene.Genotype();
+        // Realized ancestry composition (the "23andMe" vector) that drives the displayed
+        // race name via the HeritageRegistry; a founder is seeded from its origin, a child
+        // blends its parents.
+        private com.aetherianartificer.townstead.origin.Heritage heritage =
+                com.aetherianartificer.townstead.origin.Heritage.EMPTY;
 
         public long birthWorldDay() {
             return birthWorldDay;
@@ -919,6 +929,34 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** The diploid genotype (two alleles per locus); the heritable source of truth. */
+        public com.aetherianartificer.townstead.origin.gene.Genotype genotype() {
+            return genotype;
+        }
+
+        public boolean hasGenotype() {
+            return !genotype.isEmpty();
+        }
+
+        public void setGenotype(com.aetherianartificer.townstead.origin.gene.Genotype value) {
+            genotype = value == null ? new com.aetherianartificer.townstead.origin.gene.Genotype() : value;
+            markDirty();
+        }
+
+        /** The villager's realized ancestry composition (drives the displayed race name). */
+        public com.aetherianartificer.townstead.origin.Heritage heritage() {
+            return heritage;
+        }
+
+        public boolean hasHeritage() {
+            return !heritage.isEmpty();
+        }
+
+        public void setHeritage(com.aetherianartificer.townstead.origin.Heritage value) {
+            heritage = value == null ? com.aetherianartificer.townstead.origin.Heritage.EMPTY : value;
+            markDirty();
+        }
+
         public CompoundTag toTag() {
             CompoundTag tag = new CompoundTag();
             if (hasBirth()) {
@@ -950,6 +988,8 @@ public final class TownsteadVillager {
                 }
                 tag.put("carriedVariants", cv);
             }
+            if (!genotype.isEmpty()) tag.put("genotype", genotype.toTag());
+            if (!heritage.isEmpty()) tag.put("heritage", heritage.toTag());
             return tag;
         }
 
@@ -976,6 +1016,12 @@ public final class TownsteadVillager {
                 CompoundTag cv = tag.getCompound("carriedVariants");
                 for (String k : cv.getAllKeys()) carriedVariants.put(k, cv.getString(k));
             }
+            genotype = tag.contains("genotype")
+                    ? com.aetherianartificer.townstead.origin.gene.Genotype.fromTag(tag.getCompound("genotype"))
+                    : new com.aetherianartificer.townstead.origin.gene.Genotype();
+            heritage = tag.contains("heritage")
+                    ? com.aetherianartificer.townstead.origin.Heritage.fromTag(tag.getCompound("heritage"))
+                    : com.aetherianartificer.townstead.origin.Heritage.EMPTY;
             markDirty();
         }
     }

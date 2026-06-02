@@ -756,6 +756,8 @@ public class Townstead {
                     new com.aetherianartificer.townstead.origin.gene.types.SkinToneGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.AttachmentGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.BodyMetricGeneType());
 
             // Trait effect palette (data-pack traits compose these; see TraitJsonLoader)
             com.aetherianartificer.townstead.origin.trait.effect.TraitEffectTypes.register(
@@ -773,6 +775,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.origin.AncestryJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.LineageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.OriginJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.HeritageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.chronotype.ChronotypeCatalogLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.gene.GeneJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.trait.TraitJsonLoader());
@@ -1290,6 +1293,37 @@ public class Townstead {
                 com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload.STREAM_CODEC,
                 this::handleOriginCatalogSync
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.origin.HeritageRequestC2SPayload.TYPE,
+                com.aetherianartificer.townstead.origin.HeritageRequestC2SPayload.STREAM_CODEC,
+                this::handleHeritageRequest
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.origin.HeritageSyncPayload.TYPE,
+                com.aetherianartificer.townstead.origin.HeritageSyncPayload.STREAM_CODEC,
+                this::handleHeritageSync
+        );
+    }
+
+    private void handleHeritageRequest(
+            com.aetherianartificer.townstead.origin.HeritageRequestC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            VillagerEntityMCA villager = townstead$findVillager(sp.getServer(), payload.villagerUuid());
+            PacketDistributor.sendToPlayer(sp, villager != null
+                    ? com.aetherianartificer.townstead.origin.HeritageView.build(villager)
+                    : com.aetherianartificer.townstead.origin.HeritageSyncPayload.unavailable(payload.villagerUuid()));
+        });
+    }
+
+    private void handleHeritageSync(
+            com.aetherianartificer.townstead.origin.HeritageSyncPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.client.origin.HeritageClientStore.setFrom(payload));
     }
 
     private void handleCalendarSync(

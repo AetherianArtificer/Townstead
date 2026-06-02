@@ -9,8 +9,8 @@ import java.util.List;
 /**
  * A lineage: a named specialization of an ancestry (e.g. Dark Elf under Elf), with its
  * own nomenclature. When an origin references a lineage, the composed genome starts from
- * the union of the lineage's listed ancestries' genomes, then {@link #genomeOverrides()}
- * is layered on top.
+ * the union of the lineage's listed ancestries' genomes, then this lineage's own
+ * {@link #genome()} is layered on top.
  *
  * <p>(A future Heritage tier will sit above this for cross-ancestry hybrids like
  * half-elves; a lineage is a branch of a single ancestry.)</p>
@@ -24,10 +24,10 @@ public record Lineage(
         List<ResourceLocation> ancestries,
         @Nullable Demonym demonym,
         @Nullable Component backstory,
-        Genome genomeOverrides
+        Genome genome
 ) {
     public Lineage {
         ancestries = ancestries == null ? List.of() : List.copyOf(ancestries);
-        genomeOverrides = genomeOverrides == null ? Genome.EMPTY : genomeOverrides;
+        genome = genome == null ? Genome.EMPTY : genome;
     }
 }
