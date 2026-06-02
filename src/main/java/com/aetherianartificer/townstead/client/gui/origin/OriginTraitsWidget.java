@@ -203,7 +203,8 @@ public class OriginTraitsWidget extends ScrollPane {
             lines.add(Component.literal(gene.description()).withStyle(ChatFormatting.GRAY));
         }
         lines.add(Component.empty());
-        lines.add(stat("Category", gene.category()));
+        lines.add(Component.translatable("townstead.heritage.tooltip.category", gene.category())
+                .withStyle(ChatFormatting.DARK_GRAY));
         if (gene.isVariants() && !gene.variants().isEmpty()) {
             int[] weights = weightsOf(gene);
             lines.add(Component.empty());
@@ -220,22 +221,23 @@ public class OriginTraitsWidget extends ScrollPane {
             }
             return lines;
         }
-        lines.add(Component.literal("Dominance: ").withStyle(ChatFormatting.DARK_GRAY)
-                .append(Component.literal(gene.isRecessive() ? "Recessive" : "Dominant")
-                        .withStyle(gene.isRecessive() ? ChatFormatting.GRAY : ChatFormatting.GOLD)));
+        boolean recessive = gene.isRecessive();
+        lines.add(Component.translatable("townstead.heritage.tooltip.dominance",
+                        Component.translatable(recessive ? "townstead.heritage.tooltip.recessive"
+                                        : "townstead.heritage.tooltip.dominant")
+                                .withStyle(recessive ? ChatFormatting.GRAY : ChatFormatting.GOLD))
+                .withStyle(ChatFormatting.DARK_GRAY));
         if (gene.isInfluence()) {
             int pct = Math.round(gene.amount() * 100f);
-            lines.add(Component.literal("Effect: ").withStyle(ChatFormatting.DARK_GRAY)
-                    .append(Component.literal(GeneVisuals.prettify(gene.targetId()) + " " + (pct >= 0 ? "+" : "") + pct + "%")
-                            .withStyle(ChatFormatting.YELLOW)));
+            lines.add(Component.translatable("townstead.heritage.tooltip.effect",
+                            Component.literal(GeneVisuals.prettify(gene.targetId()) + " " + (pct >= 0 ? "+" : "") + pct + "%")
+                                    .withStyle(ChatFormatting.YELLOW))
+                    .withStyle(ChatFormatting.DARK_GRAY));
         } else if (Math.round(hit.occurrence() * 100f) < 100) {
-            lines.add(stat("Occurrence", Math.round(hit.occurrence() * 100f) + "%"));
+            lines.add(Component.translatable("townstead.heritage.tooltip.occurrence",
+                            Math.round(hit.occurrence() * 100f) + "%")
+                    .withStyle(ChatFormatting.DARK_GRAY));
         }
         return lines;
-    }
-
-    private static Component stat(String label, String value) {
-        return Component.literal(label + ": ").withStyle(ChatFormatting.DARK_GRAY)
-                .append(Component.literal(value).withStyle(ChatFormatting.GRAY));
     }
 }

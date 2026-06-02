@@ -35,11 +35,17 @@ public final class OriginCatalog {
         }
 
         for (Origin origin : OriginRegistry.all()) {
-            String name = origin.displayName().getString();
+            Component nameC = origin.displayName();
+            String name = nameC.getString();
             Demonym demonym = OriginRegistry.resolveDemonym(origin);
-            String singular = demonym != null ? demonym.singular().getString() : name;
-            String plural = demonym != null ? demonym.plural().getString() : name;
+            Component singC = demonym != null ? demonym.singular() : nameC;
+            Component plurC = demonym != null ? demonym.plural() : nameC;
+            String singular = singC.getString();
+            String plural = plurC.getString();
             Component backstory = OriginRegistry.resolveBackstory(origin);
+            Species spc = SpeciesRegistry.byId(origin.species());
+            Ancestry anc = AncestryRegistry.byId(origin.ancestry());
+            Lineage lin = LineageRegistry.byId(origin.lineage());
 
             List<InheritedGene> inherited = OriginRegistry.effectiveInheritedGenes(origin.id());
             List<OriginCatalogEntry.Inherited> views = new ArrayList<>(inherited.size());
@@ -63,10 +69,12 @@ public final class OriginCatalog {
             origins.add(new OriginCatalogEntry(
                     origin.id().toString(), name, singular, plural,
                     backstory != null ? backstory.getString() : "",
-                    name(SpeciesRegistry.byId(origin.species())),
-                    name(AncestryRegistry.byId(origin.ancestry())),
-                    name(LineageRegistry.byId(origin.lineage())),
-                    views, ranges));
+                    name(spc), name(anc), name(lin),
+                    views, ranges,
+                    keyOf(nameC), keyOf(singC), keyOf(plurC), keyOf(backstory),
+                    keyOf(spc != null ? spc.displayName() : null),
+                    keyOf(anc != null ? anc.displayName() : null),
+                    keyOf(lin != null ? lin.displayName() : null)));
         }
         return new Snapshot(origins, new ArrayList<>(genes.values()), traits);
     }
@@ -75,13 +83,14 @@ public final class OriginCatalog {
         Gene gene = GeneRegistry.byId(geneId);
         if (gene == null) {
             return new GeneCatalogEntry(geneId.toString(), geneId.getPath(), "", "general",
-                    GeneDisplay.Kind.BOOLEAN.ordinal(), 0f, 1f, "", 0f, 0, "", 1, List.of());
+                    GeneDisplay.Kind.BOOLEAN.ordinal(), 0f, 1f, "", 0f, 0, "", 1, List.of(), "", "");
         }
         GeneDisplay display = gene.display();
         List<GeneCatalogEntry.Variant> variants = new ArrayList<>();
         if (gene.hasVariants()) {
             for (com.aetherianartificer.townstead.origin.gene.GeneVariant v : gene.variants()) {
-                variants.add(new GeneCatalogEntry.Variant(v.id(), v.displayName().getString(), v.weight()));
+                variants.add(new GeneCatalogEntry.Variant(
+                        v.id(), v.displayName().getString(), v.weight(), keyOf(v.displayName())));
             }
         }
         return new GeneCatalogEntry(
@@ -95,7 +104,17 @@ public final class OriginCatalog {
                 gene.dominance().ordinal(),
                 gene.locus() != null ? gene.locus().toString() : "",
                 gene.weight(),
-                variants);
+                variants,
+                keyOf(gene.displayName()),
+                keyOf(gene.description()));
+    }
+
+    /** Translate key of a Component when it is a {@code translatable}, else "" (literal). */
+    private static String keyOf(Component c) {
+        if (c != null && c.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tc) {
+            return tc.getKey();
+        }
+        return "";
     }
 
     private static String name(Species species) {
