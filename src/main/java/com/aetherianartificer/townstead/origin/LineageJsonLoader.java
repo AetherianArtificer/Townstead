@@ -42,8 +42,9 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
                 List<ResourceLocation> ancestries = OriginJsonParsing.idList(obj, "ancestries");
                 Demonym demonym = OriginJsonParsing.demonym(obj, ctx, lang);
                 Component backstory = OriginJsonParsing.backstory(obj, ctx, lang);
-                Genome overrides = OriginJsonParsing.genome(obj, "genome_overrides", ctx, LOGGER);
-                parsed.put(file, new Lineage(file, displayName, ancestries, demonym, backstory, overrides));
+                Genome genome = OriginJsonParsing.genes(obj, ctx, LOGGER);
+                SpawnBias spawnBias = OriginJsonParsing.spawnBias(obj, ctx, LOGGER);
+                parsed.put(file, new Lineage(file, displayName, ancestries, demonym, backstory, genome, spawnBias));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse lineage {}: {}", file, ex.getMessage());
             }

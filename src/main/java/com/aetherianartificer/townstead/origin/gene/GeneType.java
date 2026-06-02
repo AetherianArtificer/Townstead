@@ -49,6 +49,18 @@ public interface GeneType {
         return null;
     }
 
+    /**
+     * A type-derived locus for a gene that declares none, so genes of this type
+     * that occupy the same conceptual slot collapse and inherit as alleles of one
+     * another (e.g. all body-metric genes targeting MCA's {@code size} share a
+     * locus). {@code null} = the gene's own id is its locus. The instance passed is
+     * the gene's first variant's parsed config.
+     */
+    @Nullable
+    default net.minecraft.resources.ResourceLocation defaultLocus(GeneInstance instance) {
+        return null;
+    }
+
     // Future behavior hooks (effect application, model rendering) will be added
     // here as the gene catalogue grows; this iteration is framework + display only.
 }

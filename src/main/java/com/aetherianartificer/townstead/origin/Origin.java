@@ -21,9 +21,11 @@ public record Origin(
         @Nullable ResourceLocation lineage,
         @Nullable Demonym demonym,
         @Nullable Component backstory,
-        Genome genomeOverrides
+        Genome genome,
+        SpawnBias spawnBias
 ) {
     public Origin {
-        genomeOverrides = genomeOverrides == null ? Genome.EMPTY : genomeOverrides;
+        genome = genome == null ? Genome.EMPTY : genome;
+        spawnBias = spawnBias == null ? SpawnBias.EMPTY : spawnBias;
     }
 }

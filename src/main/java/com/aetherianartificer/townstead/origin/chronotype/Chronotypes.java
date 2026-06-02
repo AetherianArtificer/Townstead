@@ -68,7 +68,7 @@ public final class Chronotypes {
         GeneVariant v = findVariant(gene, variantId);
         if (v == null) v = gene.variants().get(0);
         if (v.instance() instanceof ChronotypeGeneType.Instance ci && ci.sleepHours().length > 0) {
-            return new Resolved(v.id(), v.label().getString(), ci.sleepHours());
+            return new Resolved(v.id(), v.displayName().getString(), ci.sleepHours());
         }
         return fromCatalog(variantId);
     }

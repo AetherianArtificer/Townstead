@@ -61,6 +61,79 @@ public final class OriginRegistry {
         return ENTRIES.get(DEFAULT_ID);
     }
 
+    /**
+     * The ancestry-fraction vector a founder of this origin is seeded with: a single
+     * ancestry at 1.0 for an ancestry-based origin, or an even split across a
+     * lineage's listed ancestries. Heritage tracks ancestry, not lineage, so a
+     * pure Dark Elf seeds {@code {elf:1}} (its "Dark Elf" name comes from the origin).
+     */
+    public static Heritage seedHeritage(@Nullable ResourceLocation id) {
+        Origin origin = resolveOrDefault(id);
+        if (origin == null) return Heritage.EMPTY;
+        if (origin.ancestry() != null) return Heritage.pure(origin.ancestry());
+        if (origin.lineage() != null) {
+            Lineage lineage = LineageRegistry.byId(origin.lineage());
+            if (lineage != null && !lineage.ancestries().isEmpty()) {
+                Map<ResourceLocation, Float> shares = new LinkedHashMap<>();
+                float share = 1f / lineage.ancestries().size();
+                for (ResourceLocation ancestry : lineage.ancestries()) shares.merge(ancestry, share, Float::sum);
+                return new Heritage(shares);
+            }
+        }
+        return Heritage.EMPTY;
+    }
+
+    /**
+     * Effective spawn bias for an origin, composed bottom-up the same way as the
+     * genome: ancestry (or the union of a lineage's ancestries, then the lineage)
+     * → the origin's own bias, each level overriding per key and replacing the
+     * default if it sets one. Drives the biome-weighted founder roll.
+     */
+    public static SpawnBias effectiveSpawnBias(@Nullable ResourceLocation id) {
+        Origin origin = resolveOrDefault(id);
+        if (origin == null) return SpawnBias.EMPTY;
+        SpawnBias bias = SpawnBias.EMPTY;
+        Lineage lineage = origin.lineage() != null ? LineageRegistry.byId(origin.lineage()) : null;
+        if (lineage != null) {
+            for (ResourceLocation ancestryId : lineage.ancestries()) {
+                Ancestry ancestry = AncestryRegistry.byId(ancestryId);
+                if (ancestry != null) bias = bias.mergedWith(ancestry.spawnBias());
+            }
+            bias = bias.mergedWith(lineage.spawnBias());
+        } else if (origin.ancestry() != null) {
+            // Lineage missing/unloaded — degrade to the declared ancestry's bias.
+            Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
+            if (ancestry != null) bias = bias.mergedWith(ancestry.spawnBias());
+        }
+        return bias.mergedWith(origin.spawnBias());
+    }
+
+    /**
+     * The species an origin belongs to: its own {@code species}, else its
+     * ancestry's, else the first species among its lineage's ancestries.
+     * {@code null} if none resolves. Used to gate mixing within a species.
+     */
+    @Nullable
+    public static ResourceLocation effectiveSpecies(@Nullable ResourceLocation id) {
+        Origin origin = resolveOrDefault(id);
+        if (origin == null) return null;
+        if (origin.species() != null) return origin.species();
+        if (origin.ancestry() != null) {
+            Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
+            if (ancestry != null && ancestry.species() != null) return ancestry.species();
+        }
+        if (origin.lineage() != null) {
+            Lineage lineage = LineageRegistry.byId(origin.lineage());
+            if (lineage != null) {
+                for (ResourceLocation ancestryId : lineage.ancestries()) {
+                    Ancestry ancestry = AncestryRegistry.byId(ancestryId);
+                    if (ancestry != null && ancestry.species() != null) return ancestry.species();
+                }
+            }
+        }
+        return null;
+    }
+
     /** Effective genome for an origin id, falling back to the default origin. */
     public static Genome effectiveGenome(@Nullable ResourceLocation id) {
         Origin origin = resolveOrDefault(id);
@@ -75,20 +148,21 @@ public final class OriginRegistry {
      */
     public static Genome effectiveGenome(Origin origin) {
         Genome base = Genome.EMPTY;
-        if (origin.lineage() != null) {
-            Lineage lineage = LineageRegistry.byId(origin.lineage());
-            if (lineage != null) {
-                for (ResourceLocation ancestryId : lineage.ancestries()) {
-                    Ancestry ancestry = AncestryRegistry.byId(ancestryId);
-                    if (ancestry != null) base = base.mergedWith(ancestry.genome());
-                }
-                base = base.mergedWith(lineage.genomeOverrides());
+        Lineage lineage = origin.lineage() != null ? LineageRegistry.byId(origin.lineage()) : null;
+        if (lineage != null) {
+            for (ResourceLocation ancestryId : lineage.ancestries()) {
+                Ancestry ancestry = AncestryRegistry.byId(ancestryId);
+                if (ancestry != null) base = base.mergedWith(ancestry.genome());
             }
+            base = base.mergedWith(lineage.genome());
         } else if (origin.ancestry() != null) {
+            // Either an ancestry-based origin, or a lineage-based one whose lineage
+            // failed to load — degrade to the declared ancestry rather than a blank
+            // genome (a Dark Elf becomes a plain Elf, not a featureless villager).
             Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
             if (ancestry != null) base = ancestry.genome();
         }
-        return base.mergedWith(origin.genomeOverrides());
+        return base.mergedWith(origin.genome());
     }
 
     /**
@@ -98,7 +172,7 @@ public final class OriginRegistry {
      * effective grant list for rolling and for the picker display.
      */
     public static List<InheritedGene> effectiveInheritedGenes(@Nullable ResourceLocation id) {
-        List<InheritedGene> raw = effectiveGenome(id).inheritedGenes();
+        List<InheritedGene> raw = effectiveGenome(id).genes();
         LinkedHashMap<Object, InheritedGene> byKey = new LinkedHashMap<>();
         int i = 0;
         for (InheritedGene ig : raw) {
@@ -130,7 +204,7 @@ public final class OriginRegistry {
     public static LifeCycleGeneType.Instance effectiveCycleGene(@Nullable ResourceLocation id) {
         Genome genome = effectiveGenome(id);
         Gene best = null;
-        for (InheritedGene inherited : genome.inheritedGenes()) {
+        for (InheritedGene inherited : genome.genes()) {
             Gene gene = GeneRegistry.byId(inherited.geneId());
             if (gene == null || !(gene.instance() instanceof LifeCycleGeneType.Instance)) continue;
             if (best == null || cycleAlleleWins(gene, best)) best = gene;
@@ -144,7 +218,7 @@ public final class OriginRegistry {
         Genome genome = effectiveGenome(id);
         java.util.List<com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType.Instance> out =
                 new java.util.ArrayList<>();
-        for (InheritedGene inherited : genome.inheritedGenes()) {
+        for (InheritedGene inherited : genome.genes()) {
             Gene gene = GeneRegistry.byId(inherited.geneId());
             if (gene != null && gene.instance()
                     instanceof com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType.Instance t) {

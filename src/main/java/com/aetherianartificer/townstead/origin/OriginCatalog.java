@@ -41,16 +41,22 @@ public final class OriginCatalog {
             String plural = demonym != null ? demonym.plural().getString() : name;
             Component backstory = OriginRegistry.resolveBackstory(origin);
 
-            Genome genome = OriginRegistry.effectiveGenome(origin);
             List<InheritedGene> inherited = OriginRegistry.effectiveInheritedGenes(origin.id());
             List<OriginCatalogEntry.Inherited> views = new ArrayList<>(inherited.size());
             for (InheritedGene gene : inherited) {
+                Gene def = GeneRegistry.byId(gene.geneId());
+                // Body metrics render as ranges in the Body tab, not as viewer chips.
+                if (def != null && def.instance() instanceof
+                        com.aetherianartificer.townstead.origin.gene.types.BodyMetricGeneType.Instance) {
+                    continue;
+                }
                 views.add(new OriginCatalogEntry.Inherited(gene.geneId().toString(), gene.occurrence()));
                 genes.computeIfAbsent(gene.geneId(), OriginCatalog::toGeneEntry);
             }
 
-            List<OriginCatalogEntry.GeneRangeView> ranges = new ArrayList<>(genome.genes().size());
-            for (Map.Entry<String, GeneRange> r : genome.genes().entrySet()) {
+            Map<String, GeneRange> metrics = OriginGenes.resolveBodyMetrics(inherited);
+            List<OriginCatalogEntry.GeneRangeView> ranges = new ArrayList<>(metrics.size());
+            for (Map.Entry<String, GeneRange> r : metrics.entrySet()) {
                 ranges.add(new OriginCatalogEntry.GeneRangeView(r.getKey(), r.getValue().min(), r.getValue().max()));
             }
 
@@ -75,7 +81,7 @@ public final class OriginCatalog {
         List<GeneCatalogEntry.Variant> variants = new ArrayList<>();
         if (gene.hasVariants()) {
             for (com.aetherianartificer.townstead.origin.gene.GeneVariant v : gene.variants()) {
-                variants.add(new GeneCatalogEntry.Variant(v.id(), v.label().getString(), v.weight()));
+                variants.add(new GeneCatalogEntry.Variant(v.id(), v.displayName().getString(), v.weight()));
             }
         }
         return new GeneCatalogEntry(

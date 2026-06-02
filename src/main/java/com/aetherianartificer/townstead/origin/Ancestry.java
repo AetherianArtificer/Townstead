@@ -19,9 +19,11 @@ public record Ancestry(
         @Nullable ResourceLocation species,
         @Nullable Demonym demonym,
         @Nullable Component backstory,
-        Genome genome
+        Genome genome,
+        SpawnBias spawnBias
 ) {
     public Ancestry {
         genome = genome == null ? Genome.EMPTY : genome;
+        spawnBias = spawnBias == null ? SpawnBias.EMPTY : spawnBias;
     }
 }

@@ -41,8 +41,9 @@ public final class AncestryJsonLoader extends SimpleJsonResourceReloadListener {
                 ResourceLocation species = OriginJsonParsing.optionalId(obj, "species", ctx, LOGGER);
                 Demonym demonym = OriginJsonParsing.demonym(obj, ctx, lang);
                 Component backstory = OriginJsonParsing.backstory(obj, ctx, lang);
-                Genome genome = OriginJsonParsing.genome(obj, "genome", ctx, LOGGER);
-                parsed.put(file, new Ancestry(file, displayName, species, demonym, backstory, genome));
+                Genome genome = OriginJsonParsing.genes(obj, ctx, LOGGER);
+                SpawnBias spawnBias = OriginJsonParsing.spawnBias(obj, ctx, LOGGER);
+                parsed.put(file, new Ancestry(file, displayName, species, demonym, backstory, genome, spawnBias));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse ancestry {}: {}", file, ex.getMessage());
             }

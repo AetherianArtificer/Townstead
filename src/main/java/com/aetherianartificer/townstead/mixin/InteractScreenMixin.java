@@ -47,6 +47,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
@@ -126,6 +127,33 @@ public abstract class InteractScreenMixin extends Screen {
         }
     }
     *///?}
+
+    // Click MCA's "genes" icon to open the full read-only Heritage view (the icon's
+    // hover still shows MCA's quick gene tooltip). mouseClicked is a vanilla-signature
+    // method, so the Forge build targets its SRG name; both pass remap=false.
+    //? if >=1.21 {
+    @Inject(method = "mouseClicked", remap = false, at = @At("HEAD"), cancellable = true)
+    private void townstead$openHeritageOnGenesClick(double mouseX, double mouseY, int button,
+            CallbackInfoReturnable<Boolean> cir) {
+        townstead$tryOpenHeritage(button, cir);
+    }
+    //?} else {
+    /*@Inject(method = "m_6375_", remap = false, at = @At("HEAD"), cancellable = true)
+    private void townstead$openHeritageOnGenesClick(double mouseX, double mouseY, int button,
+            CallbackInfoReturnable<Boolean> cir) {
+        townstead$tryOpenHeritage(button, cir);
+    }
+    *///?}
+
+    @Unique
+    private void townstead$tryOpenHeritage(int button, CallbackInfoReturnable<Boolean> cir) {
+        if (button != 0) return;
+        if (((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("genes")) {
+            townstead$transitioning = true;
+            com.aetherianartificer.townstead.client.gui.origin.HeritageScreen.open(villager);
+            cir.setReturnValue(true);
+        }
+    }
 
     @Inject(method = "init", at = @At("TAIL"))
     private void townstead$hidePoseButtonWhenNoEmoteSource(CallbackInfo ci) {

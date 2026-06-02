@@ -1117,5 +1117,19 @@
   "item.minecraft.potion.effect.townstead_mortality": "Potion of Mortality",
   "item.minecraft.splash_potion.effect.townstead_mortality": "Splash Potion of Mortality",
   "item.minecraft.lingering_potion.effect.townstead_mortality": "Lingering Potion of Mortality",
-  "item.minecraft.tipped_arrow.effect.townstead_mortality": "Arrow of Mortality"
+  "item.minecraft.tipped_arrow.effect.townstead_mortality": "Arrow of Mortality",
+  "townstead.heritage.title": "Heritage",
+  "townstead.heritage.loading": "Reading lineage...",
+  "townstead.heritage.unavailable": "Heritage unavailable (not loaded)",
+  "townstead.heritage.of_line": "of the %s line",
+  "townstead.heritage.ancestry": "Ancestry",
+  "townstead.heritage.genes": "Genes",
+  "townstead.heritage.carries": "carries",
+  "townstead.heritage.carrier": "carrier",
+  "townstead.heritage.tooltip.category": "Category: %s",
+  "townstead.heritage.tooltip.dominance": "Dominance: %s",
+  "townstead.heritage.tooltip.dominant": "Dominant",
+  "townstead.heritage.tooltip.recessive": "Recessive",
+  "townstead.heritage.tooltip.carrier_wild": "Shows %s, but only one copy — some children may not inherit it.",
+  "townstead.heritage.tooltip.carrier": "Shows %s, but carries a hidden %s that can pass to children."
 }

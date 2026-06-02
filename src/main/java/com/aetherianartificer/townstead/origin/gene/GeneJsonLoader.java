@@ -66,6 +66,9 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                     LOGGER.warn("Skipping gene {} — invalid config for type '{}'", file, typeKey);
                     continue;
                 }
+                if (locus == null) {
+                    locus = type.get().defaultLocus(variants.get(0).instance());
+                }
                 parsed.put(file, new Gene(file, displayName, description, category,
                         dominance, locus, weight, variants));
             } catch (Exception ex) {
@@ -96,15 +99,15 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                     LOGGER.warn("Gene {} — variant '{}' has invalid config, skipping", file, id);
                     continue;
                 }
-                Component label;
-                if (vo.has("label")) {
-                    label = DataPackLang.parseComponent(vo.get("label"), file + ".variant." + id, lang);
+                Component variantName;
+                if (vo.has("display_name")) {
+                    variantName = DataPackLang.parseComponent(vo.get("display_name"), file + ".variant." + id, lang);
                 } else {
                     Component fallback = type.variantLabel(id);
-                    label = fallback != null ? fallback : displayName;
+                    variantName = fallback != null ? fallback : displayName;
                 }
                 int weight = Math.max(1, GsonHelper.getAsInt(vo, "weight", geneWeight));
-                variants.add(new GeneVariant(id, label, weight, instance));
+                variants.add(new GeneVariant(id, variantName, weight, instance));
             }
         } else {
             GeneInstance instance = type.parse(obj, lang);

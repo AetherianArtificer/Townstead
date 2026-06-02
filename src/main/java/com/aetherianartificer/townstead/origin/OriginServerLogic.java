@@ -52,14 +52,22 @@ public final class OriginServerLogic {
         }
         ResourceLocation id = resolveKnown(originId);
         if (id == null) return null;
+        boolean changed = !id.toString().equals(state.life().originId());
         state.life().setOrigin(id.toString());
+        // Reseed the diploid genotype + heritage to the new origin. MCA's *float*
+        // genes (size/skin-tone) are committed separately by the editor's WYSIWYG
+        // preview, but the diploid layer (ears, skin variant, chronotype, diet, the
+        // Heritage screen, cosmetic expression) is origin-derived and lives only
+        // server-side, so it must be rolled here or it stays empty/stale. Reroll only
+        // on an actual change (or when none exists yet), so re-applying the same
+        // origin doesn't randomize an existing villager — matching the picker preview.
+        if (changed || !state.life().hasGenotype()) {
+            Heredity.seedFounder(state.life(), id, villager.getRandom());
+        }
         // Flush now: the origin lives in a data attachment that only persists when
         // the snapshot is written, and the periodic flush may not run before the
         // world saves/exits — which lost the origin (and so the skin tint) on reload.
         TownsteadVillagers.flush(villager);
-        // Genes are committed by the editor's WYSIWYG preview via MCA's
-        // syncVillagerData (client rolls within the origin's ranges, then saves by
-        // UUID); here we only record the origin id.
         return new Result(villager.getId(), id.toString());
     }
 
