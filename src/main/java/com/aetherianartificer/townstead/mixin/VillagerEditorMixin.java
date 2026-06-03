@@ -23,6 +23,7 @@ import com.aetherianartificer.townstead.origin.LifeStageScale;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.client.gui.VillagerEditorScreen;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.util.compat.ButtonWidget;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -50,6 +51,8 @@ public abstract class VillagerEditorMixin extends Screen {
     // MCA's `villager` is a throwaway client preview entity; the real villager's
     // identity is this UUID. Key all life lookups/requests on it, not getId().
     @Shadow(remap = false) @Final protected java.util.UUID villagerUUID;
+    // Bottom-anchored "Done" button; must stay put when the life-stage row shift runs.
+    @Shadow(remap = false) private ButtonWidget doneWidget;
 
     @Shadow(remap = false) protected abstract void setPage(String page);
 
@@ -490,7 +493,7 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique
     private void townstead$shiftBelow(int below, int dy) {
         for (GuiEventListener child : this.children()) {
-            if (child instanceof AbstractWidget w && w.getY() >= below) w.setY(w.getY() + dy);
+            if (child instanceof AbstractWidget w && w != doneWidget && w.getY() >= below) w.setY(w.getY() + dy);
         }
     }
 
