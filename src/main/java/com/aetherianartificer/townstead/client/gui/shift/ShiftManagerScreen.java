@@ -860,8 +860,9 @@ public class ShiftManagerScreen extends Screen {
 
         // Type tag (hidden while renaming, since the EditBox overlaps it)
         if (!renamingThis) {
-            String tag = t.builtIn() ? "Built-in" : "Custom";
-            g.drawString(this.font, Component.literal(tag), titleX, top + tagOff, 0xFFA0A0A0, false);
+            Component tag = Component.translatable(t.builtIn()
+                    ? "townstead.shift.template.builtin_tag" : "townstead.shift.template.custom_tag");
+            g.drawString(this.font, tag, titleX, top + tagOff, 0xFFA0A0A0, false);
         }
 
         // Preview grid — matches the outside grid (CELL_H, same cell colors)
@@ -2555,8 +2556,8 @@ public class ShiftManagerScreen extends Screen {
         // Hide the type tag while the rename box is up (the EditBox overlaps it).
         boolean renamingThis = weekPlanRenaming && !p.builtIn() && weekPlanRenameInput != null;
         if (!renamingThis) {
-            String tag = p.builtIn()
-                    ? Component.translatable("townstead.weekplan.builtin_tag").getString() : "Custom";
+            Component tag = Component.translatable(p.builtIn()
+                    ? "townstead.weekplan.builtin_tag" : "townstead.shift.template.custom_tag");
             g.drawString(this.font, tag, titleX, titleY + this.font.lineHeight + 2, 0xFFA0A0A0, false);
         }
 

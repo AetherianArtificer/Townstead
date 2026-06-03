@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.Townstead;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 //? if neoforge {
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -65,6 +66,13 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                 buf.writeFloat(r.min());
                 buf.writeFloat(r.max());
             }
+            buf.writeUtf(e.nameKey());
+            buf.writeUtf(e.demonymSingularKey());
+            buf.writeUtf(e.demonymPluralKey());
+            buf.writeUtf(e.backstoryKey());
+            buf.writeUtf(e.speciesNameKey());
+            buf.writeUtf(e.ancestryNameKey());
+            buf.writeUtf(e.lineageNameKey());
         }
         buf.writeVarInt(genes.size());
         for (GeneCatalogEntry g : genes) {
@@ -85,7 +93,10 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                 buf.writeUtf(v.id());
                 buf.writeUtf(v.label());
                 buf.writeVarInt(v.weight());
+                buf.writeUtf(v.labelKey());
             }
+            buf.writeUtf(g.nameKey());
+            buf.writeUtf(g.descriptionKey());
         }
         buf.writeVarInt(traits.size());
         for (TraitCatalogEntry t : traits) {
@@ -121,8 +132,24 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             for (int j = 0; j < rn; j++) {
                 ranges.add(new OriginCatalogEntry.GeneRangeView(buf.readUtf(), buf.readFloat(), buf.readFloat()));
             }
-            entries.add(new OriginCatalogEntry(id, name, singular, plural, backstory,
-                    speciesName, ancestryName, lineageName, inherited, ranges));
+            String nameKey = buf.readUtf();
+            String singularKey = buf.readUtf();
+            String pluralKey = buf.readUtf();
+            String backstoryKey = buf.readUtf();
+            String speciesNameKey = buf.readUtf();
+            String ancestryNameKey = buf.readUtf();
+            String lineageNameKey = buf.readUtf();
+            entries.add(new OriginCatalogEntry(id,
+                    localize(nameKey, name),
+                    localize(singularKey, singular),
+                    localize(pluralKey, plural),
+                    localize(backstoryKey, backstory),
+                    localize(speciesNameKey, speciesName),
+                    localize(ancestryNameKey, ancestryName),
+                    localize(lineageNameKey, lineageName),
+                    inherited, ranges,
+                    nameKey, singularKey, pluralKey, backstoryKey,
+                    speciesNameKey, ancestryNameKey, lineageNameKey));
         }
         int m = buf.readVarInt();
         List<GeneCatalogEntry> genes = new ArrayList<>(m);
@@ -142,10 +169,18 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             int vn = buf.readVarInt();
             List<GeneCatalogEntry.Variant> variants = new ArrayList<>(vn);
             for (int j = 0; j < vn; j++) {
-                variants.add(new GeneCatalogEntry.Variant(buf.readUtf(), buf.readUtf(), buf.readVarInt()));
+                String vid = buf.readUtf();
+                String vlabel = buf.readUtf();
+                int vweight = buf.readVarInt();
+                String vlabelKey = buf.readUtf();
+                variants.add(new GeneCatalogEntry.Variant(vid, localize(vlabelKey, vlabel), vweight, vlabelKey));
             }
-            genes.add(new GeneCatalogEntry(gid, gname, gdesc, gcat, kind, gmin, gmax,
-                    gtarget, gamount, gdom, glocus, gweight, variants));
+            String gNameKey = buf.readUtf();
+            String gDescKey = buf.readUtf();
+            genes.add(new GeneCatalogEntry(gid, localize(gNameKey, gname), localize(gDescKey, gdesc),
+                    gcat, kind, gmin, gmax,
+                    gtarget, gamount, gdom, glocus, gweight, variants,
+                    gNameKey, gDescKey));
         }
         int k = buf.readVarInt();
         List<TraitCatalogEntry> traits = new ArrayList<>(k);
@@ -155,5 +190,18 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                     buf.readBoolean(), buf.readBoolean()));
         }
         return new OriginCatalogSyncPayload(entries, genes, traits);
+    }
+
+    /**
+     * Resolve a synced display string in the reading client's locale: when a
+     * translate key travelled with it, render {@code translatableWithFallback}
+     * (client lang table → localized, else the English fallback); otherwise the
+     * value was a literal and is returned as-is. Read runs client-side (S2C), so
+     * this resolves against the client's {@code Language}.
+     */
+    private static String localize(String key, String fallback) {
+        return (key == null || key.isEmpty())
+                ? fallback
+                : Component.translatableWithFallback(key, fallback).getString();
     }
 }

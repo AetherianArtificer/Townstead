@@ -44,3 +44,5 @@ assets/mca/
 .mca-extract/
 roadmap/
 tools/
+# Parked stub-locale translations (MCA upstream is English; revisit later)
+localization-parked/

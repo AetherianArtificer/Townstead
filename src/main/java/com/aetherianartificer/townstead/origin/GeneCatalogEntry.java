@@ -30,14 +30,18 @@ public record GeneCatalogEntry(
         int dominanceOrdinal,
         String locus,
         int weight,
-        List<Variant> variants
+        List<Variant> variants,
+        // Translate keys for name/description, resolved into the strings above by a
+        // localized client at sync-read time (empty when the source was literal).
+        String nameKey,
+        String descriptionKey
 ) {
     public GeneCatalogEntry {
         variants = variants == null ? List.of() : List.copyOf(variants);
     }
 
-    /** One option of a VARIANTS gene: its id, resolved label, and roll weight. */
-    public record Variant(String id, String label, int weight) {}
+    /** One option of a VARIANTS gene: its id, resolved label, roll weight, and the label's translate key. */
+    public record Variant(String id, String label, int weight, String labelKey) {}
 
     public boolean isVariants() {
         return displayKind == GeneDisplay.Kind.VARIANTS.ordinal();
