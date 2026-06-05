@@ -37,9 +37,9 @@ import org.jetbrains.annotations.Nullable;
  * Placement model mirrors {@code FaceAttachedHorizontalDirectionalBlock}:
  * {@link AttachFace#WALL} for vertical mounts (hung on a wall, faces outward
  * in the FACING direction), {@link AttachFace#FLOOR} for flat-on-top mounts
- * (lies on the upper face of the block below). Ceiling is intentionally
- * skipped — a calendar dangling face-down is awkward and the model wouldn't
- * read.
+ * (lies on the upper face of the block below), and {@link AttachFace#CEILING}
+ * for flush-under mounts (the floor model flipped, hung beneath the block
+ * above).
  */
 public class CalendarBlock extends Block implements SimpleWaterloggedBlock, EntityBlock {
     public static final EnumProperty<AttachFace> ATTACH_FACE = BlockStateProperties.ATTACH_FACE;
@@ -49,6 +49,7 @@ public class CalendarBlock extends Block implements SimpleWaterloggedBlock, Enti
     // Thin 1px panel against the surface — wall variant projects out, floor variant
     // lies flat on top. The vanilla blockstate model rotates the same panel shape.
     private static final VoxelShape SHAPE_FLOOR = Block.box(0.5, 0.0, 0.5, 15.5, 1.0, 15.5);
+    private static final VoxelShape SHAPE_CEILING = Block.box(0.5, 15.0, 0.5, 15.5, 16.0, 15.5);
     private static final VoxelShape SHAPE_WALL_NORTH = Block.box(0.5, 0.5, 15.0, 15.5, 15.5, 16.0);
     private static final VoxelShape SHAPE_WALL_SOUTH = Block.box(0.5, 0.5, 0.0, 15.5, 15.5, 1.0);
     private static final VoxelShape SHAPE_WALL_WEST = Block.box(15.0, 0.5, 0.5, 16.0, 15.5, 15.5);
@@ -71,6 +72,7 @@ public class CalendarBlock extends Block implements SimpleWaterloggedBlock, Enti
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
         AttachFace face = state.getValue(ATTACH_FACE);
         if (face == AttachFace.FLOOR) return SHAPE_FLOOR;
+        if (face == AttachFace.CEILING) return SHAPE_CEILING;
         // WALL — pick by horizontal FACING
         return switch (state.getValue(FACING)) {
             case NORTH -> SHAPE_WALL_NORTH;
@@ -91,14 +93,15 @@ public class CalendarBlock extends Block implements SimpleWaterloggedBlock, Enti
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext ctx) {
         Direction clicked = ctx.getClickedFace();
-        AttachFace face = clicked == Direction.UP
-                ? AttachFace.FLOOR
-                : (clicked == Direction.DOWN ? null : AttachFace.WALL);
-        if (face == null) return null; // ceiling not supported
+        AttachFace face = switch (clicked) {
+            case UP -> AttachFace.FLOOR;
+            case DOWN -> AttachFace.CEILING;
+            default -> AttachFace.WALL;
+        };
 
-        Direction facing = (face == AttachFace.FLOOR)
-                ? ctx.getHorizontalDirection().getOpposite()
-                : clicked; // wall: face out from the wall
+        Direction facing = (face == AttachFace.WALL)
+                ? clicked // wall: face out from the wall
+                : ctx.getHorizontalDirection().getOpposite();
 
         FluidState fluid = ctx.getLevel().getFluidState(ctx.getClickedPos());
         return defaultBlockState()
@@ -110,9 +113,11 @@ public class CalendarBlock extends Block implements SimpleWaterloggedBlock, Enti
     @Override
     public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
         AttachFace face = state.getValue(ATTACH_FACE);
-        Direction supportSide = (face == AttachFace.FLOOR)
-                ? Direction.DOWN
-                : state.getValue(FACING).getOpposite();
+        Direction supportSide = switch (face) {
+            case FLOOR -> Direction.DOWN;
+            case CEILING -> Direction.UP;
+            default -> state.getValue(FACING).getOpposite();
+        };
         BlockPos supportPos = pos.relative(supportSide);
         return !level.getBlockState(supportPos).isAir();
     }

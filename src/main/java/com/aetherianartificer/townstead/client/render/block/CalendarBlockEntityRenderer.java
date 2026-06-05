@@ -192,6 +192,11 @@ public class CalendarBlockEntityRenderer implements BlockEntityRenderer<Calendar
 
         if (face == AttachFace.WALL) {
             poseStack.translate(0.0, 0.0, WALL_FACE_DEPTH);
+        } else if (face == AttachFace.CEILING) {
+            // Floor model flipped (x:180 in the blockstate): tip the text frame
+            // the other way so it lands on the now-downward parchment face.
+            poseStack.mulPose(Axis.XP.rotationDegrees(90.0f));
+            poseStack.translate(0.0, 0.0, FLOOR_FACE_DEPTH);
         } else {
             poseStack.mulPose(Axis.XP.rotationDegrees(-90.0f));
             poseStack.translate(0.0, 0.0, FLOOR_FACE_DEPTH);

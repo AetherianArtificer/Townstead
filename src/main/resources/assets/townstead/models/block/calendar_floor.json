@@ -1,10 +1,11 @@
 {
-  "_comment": "Floor variant: panel lies flat on top of supporting block. Wood frame strips ring a recessed parchment inset on the top face.",
+  "_comment": "Floor variant: panel lies flat on top of supporting block. Wood frame strips ring a recessed inset on the top face, split into a crimson banner strip (far/+z edge, holds the month name) and a parchment-toned day tile (fills the rest). Mirrors calendar_wall.json so the BER's month/day text always has a coloured backing. The ceiling variant reuses this model flipped (x:180) in the blockstate.",
   "parent": "block/block",
   "textures": {
     "particle": "minecraft:block/dark_oak_planks",
     "frame": "minecraft:block/dark_oak_planks",
-    "face": "minecraft:block/white_concrete"
+    "banner": "minecraft:block/red_terracotta",
+    "tile": "minecraft:block/white_concrete"
   },
   "elements": [
     {
@@ -60,11 +61,21 @@
       }
     },
     {
-      "name": "parchment_inset",
+      "name": "tile_inset",
       "from": [2.5, 0, 2.5],
+      "to":   [13.5, 0.5, 10.5],
+      "faces": {
+        "up":   { "texture": "#tile" },
+        "down": { "texture": "#frame" }
+      }
+    },
+    {
+      "name": "banner_inset",
+      "from": [2.5, 0, 10.5],
       "to":   [13.5, 0.5, 13.5],
       "faces": {
-        "up": { "texture": "#face" }
+        "up":   { "texture": "#banner" },
+        "down": { "texture": "#frame" }
       }
     }
   ]
