@@ -33,6 +33,8 @@ public final class OriginServerLogic {
     public static Result applyOrRequest(ServerPlayer sp, int entityId, String originId) {
         boolean request = originId == null || originId.isEmpty();
 
+        if (entityId == OriginSetC2SPayload.NONE) return null;
+
         if (entityId == OriginSetC2SPayload.SELF) {
             if (request) {
                 return new Result(OriginSetC2SPayload.SELF, orDefault(PlayerOrigin.getOriginId(sp)));

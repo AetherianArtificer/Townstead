@@ -41,9 +41,17 @@ public final class OriginGenes {
     private static Map<String, Genetics.GeneType> buildIndex() {
         Map<String, Genetics.GeneType> index = new LinkedHashMap<>();
         for (Genetics.GeneType type : ORDERED) {
-            index.put(normalizeKey(type.key()), type);
+            index.put(mcaKey(type), type);
         }
         return Map.copyOf(index);
+    }
+
+    // MCA's GeneType.key() differs by version: 1.21 returns "Size", 1.20.1 returns
+    // "gene_size". Drop the 1.20.1 "gene" prefix so both normalize to the author-facing
+    // "size"/"voice_tone"/... that a gene's "target" uses.
+    private static String mcaKey(Genetics.GeneType type) {
+        String k = normalizeKey(type.key());
+        return k.length() > 4 && k.startsWith("gene") ? k.substring(4) : k;
     }
 
     /** Capture all MCA float genes (fixed order) so a preview can be reverted. */

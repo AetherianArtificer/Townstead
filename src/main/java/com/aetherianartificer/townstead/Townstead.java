@@ -516,8 +516,10 @@ public class Townstead {
         try {
             Class.forName("net.minecraft.client.Minecraft");
             NeoForge.EVENT_BUS.addListener(
-                    (net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) ->
-                            com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear());
+                    (net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) -> {
+                        com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear();
+                        com.aetherianartificer.townstead.client.origin.OriginClientStore.clear();
+                    });
         } catch (Exception ignored) {
             // Dedicated server: no client-side playback registry to clear.
         }
@@ -643,8 +645,10 @@ public class Townstead {
         try {
             Class.forName("net.minecraft.client.Minecraft");
             MinecraftForge.EVENT_BUS.addListener(
-                    (net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) ->
-                            com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear());
+                    (net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) -> {
+                        com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear();
+                        com.aetherianartificer.townstead.client.origin.OriginClientStore.clear();
+                    });
         } catch (Exception ignored) {
             // Dedicated server: no client-side playback registry to clear.
         }

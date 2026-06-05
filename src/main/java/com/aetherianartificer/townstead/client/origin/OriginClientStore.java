@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Client-side current-origin cache, keyed by network entity id (or
  * {@link OriginSetC2SPayload#SELF} for the player's own origin). Fed by
  * {@code OriginSyncS2CPayload}; read live by the picker to highlight the current
- * row. Cleared on logout.
+ * row and by the skin-tint layer. Cleared on logout (see {@code Townstead}).
  */
 public final class OriginClientStore {
 
@@ -28,6 +28,11 @@ public final class OriginClientStore {
 
     public static String getSelf() {
         return get(OriginSetC2SPayload.SELF);
+    }
+
+    /** Drop a single entry; used to evict an editor's throwaway dummy when its screen closes. */
+    public static void remove(int entityId) {
+        BY_ENTITY.remove(entityId);
     }
 
     public static void clear() {

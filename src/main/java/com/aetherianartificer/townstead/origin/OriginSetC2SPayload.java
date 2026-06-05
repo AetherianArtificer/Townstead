@@ -23,6 +23,9 @@ public record OriginSetC2SPayload(int entityId, String originId) implements Cust
 
     public static final int SELF = -1;
 
+    /** No valid target (e.g. the edited villager couldn't be resolved client-side); the server ignores it. */
+    public static final int NONE = Integer.MIN_VALUE;
+
     //? if neoforge {
     public static final Type<OriginSetC2SPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "origin_set_c2s"));
