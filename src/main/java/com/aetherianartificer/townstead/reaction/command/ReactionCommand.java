@@ -35,10 +35,10 @@ import java.util.concurrent.CompletableFuture;
  * Debug commands for the reaction system:
  * <ul>
  *   <li>{@code /townstead reaction list} prints all registered reactions.
- *   <li>{@code /townstead reaction fire <id>} fires on the MCA villager
+ *   <li>{@code /townstead reaction play <id>} plays on the MCA villager
  *       the caller is looking at (or the nearest one within 16 blocks
  *       if the crosshair isn't on a villager).
- *   <li>{@code /townstead reaction fire <id> <target>} fires on an
+ *   <li>{@code /townstead reaction play <id> <target>} plays on an
  *       explicit selector target.
  * </ul>
  */
@@ -53,14 +53,14 @@ public final class ReactionCommand {
         dispatcher.register(
                 Commands.literal("townstead").then(Commands.literal("reaction")
                         .then(Commands.literal("list").executes(c -> list(c.getSource())))
-                        .then(Commands.literal("fire")
+                        .then(Commands.literal("play")
                                 .then(Commands.argument("id", StringArgumentType.string())
                                         .suggests(reactionIds)
-                                        .executes(c -> fireAuto(
+                                        .executes(c -> playAuto(
                                                 c.getSource(),
                                                 StringArgumentType.getString(c, "id")))
                                         .then(Commands.argument("target", EntityArgument.entity())
-                                                .executes(c -> fireExplicit(
+                                                .executes(c -> playExplicit(
                                                         c.getSource(),
                                                         StringArgumentType.getString(c, "id"),
                                                         EntityArgument.getEntity(c, "target"))))))));
@@ -86,7 +86,7 @@ public final class ReactionCommand {
         return sorted.size();
     }
 
-    private static int fireAuto(CommandSourceStack source, String idRaw) {
+    private static int playAuto(CommandSourceStack source, String idRaw) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
             source.sendFailure(Component.literal("This form must be run by a player. Supply <target> instead."));
@@ -98,18 +98,18 @@ public final class ReactionCommand {
                     + (int) LOOK_RANGE + " blocks)."));
             return 0;
         }
-        return doFire(source, villager, idRaw);
+        return play(source, villager, idRaw);
     }
 
-    private static int fireExplicit(CommandSourceStack source, String idRaw, Entity target) {
+    private static int playExplicit(CommandSourceStack source, String idRaw, Entity target) {
         if (!(target instanceof VillagerEntityMCA villager)) {
             source.sendFailure(Component.literal("Target must be an MCA villager."));
             return 0;
         }
-        return doFire(source, villager, idRaw);
+        return play(source, villager, idRaw);
     }
 
-    private static int doFire(CommandSourceStack source, VillagerEntityMCA villager, String idRaw) {
+    private static int play(CommandSourceStack source, VillagerEntityMCA villager, String idRaw) {
         ResourceLocation id = parseId(source, idRaw);
         if (id == null) return 0;
         if (ReactionRegistry.get(id).isEmpty()) {
@@ -120,11 +120,13 @@ public final class ReactionCommand {
         boolean played = ReactionDispatcher.fire(level, (LivingEntity) villager, id,
                 ReactionContext.command(villager.blockPosition()));
         if (played) {
-            source.sendSuccess(() -> Component.literal("Fired " + id + " on " + villager.getName().getString() + "."),
+            source.sendSuccess(() -> Component.literal("Playing reaction " + id + " on "
+                            + villager.getName().getString() + "."),
                     false);
             return 1;
         }
-        source.sendFailure(Component.literal("Reaction " + id + " did not fire (cooldown, chance, or no candidate)."));
+        source.sendFailure(Component.literal("Reaction " + id
+                + " did not play (cooldown, chance, or no candidate)."));
         return 0;
     }
 

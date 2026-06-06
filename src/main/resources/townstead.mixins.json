@@ -15,6 +15,7 @@
     "GetVillageResponseLargePacketMixin",
     "GetVillageResponseSlimPayloadMixin",
     "ReportBuildingMessageMixin",
+    "ServerLocaleChangeMixin",
     "TombstoneRevivalMixin",
     "VillagerEatSafetyMixin",
     "VillagerEditorBirthMixin",

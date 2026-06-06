@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Reader;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.UnaryOperator;
 
@@ -22,10 +24,10 @@ import java.util.function.UnaryOperator;
  * <p>Data packs reach the server but {@code assets/} resource-pack content does
  * not, so any {@code { "translate": … }} string a data pack defines would render
  * as a raw key on clients without a paired resource pack. This util scans
- * {@code data/<ns>/lang/en_us.json} sidecars (Townstead-private convention; same
- * JSON shape as a standard MC lang file) and resolves translate keys into the
- * Component's fallback slot, which the relevant sync packets carry to clients.
- * Resource packs can still override the key for other locales.</p>
+ * {@code data/<ns>/lang/<locale>.json} sidecars (Townstead-private convention;
+ * same JSON shape as a standard MC lang file). English values become the
+ * default fallbacks; per-player sync can replace them with values for the
+ * receiving player's locale. Resource packs can still override the keys.</p>
  *
  * <p>The scan uses {@link ResourceManager#listResources} rather than
  * {@code getNamespaces()} because on 1.20.1 Forge a data-only namespace can be
@@ -38,7 +40,10 @@ public final class DataPackLang {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/DataPackLang");
     private static final Gson GSON = new Gson();
-    private static final String LANG_SIDECAR_PATH = "lang/en_us.json";
+    private static final String LANG_PREFIX = "lang/";
+    private static final String LANG_SUFFIX = ".json";
+    private static final String DEFAULT_LOCALE = "en_us";
+    private static volatile Map<String, Map<String, String>> LOCALES = Map.of();
 
     private DataPackLang() {}
 
@@ -60,21 +65,28 @@ public final class DataPackLang {
         }
     }
 
-    /** Merge every {@code data/<ns>/lang/en_us.json} into one (key → English) map. */
+    /** Load all locale sidecars and return the merged English fallback map. */
     public static Map<String, String> loadLangIndex(ResourceManager rm) {
         return loadLangIndex(rm, UnaryOperator.identity());
     }
 
     /**
      * As {@link #loadLangIndex(ResourceManager)}, applying {@code valueTransform}
-     * to each value (e.g. the calendar's named-placeholder rewrite). Silently
-     * skips namespaces without a sidecar; warns on malformed files.
+     * to each value (e.g. the calendar's named-placeholder rewrite). Loads all
+     * locales, skips namespaces without sidecars, and warns on malformed files.
      */
     public static Map<String, String> loadLangIndex(ResourceManager rm, UnaryOperator<String> valueTransform) {
-        Map<String, String> out = new HashMap<>();
+        Map<String, Map<String, String>> locales = new LinkedHashMap<>();
         Map<ResourceLocation, Resource> sidecars =
-                rm.listResources("lang", loc -> loc.getPath().equals(LANG_SIDECAR_PATH));
+                rm.listResources("lang", loc -> {
+                    String path = loc.getPath();
+                    return path.startsWith(LANG_PREFIX) && path.endsWith(LANG_SUFFIX);
+                });
         for (Map.Entry<ResourceLocation, Resource> sidecar : sidecars.entrySet()) {
+            String path = sidecar.getKey().getPath();
+            String locale = normalizeLocale(path.substring(
+                    LANG_PREFIX.length(), path.length() - LANG_SUFFIX.length()));
+            Map<String, String> out = locales.computeIfAbsent(locale, ignored -> new HashMap<>());
             try (Reader r = sidecar.getValue().openAsReader()) {
                 JsonElement el = GSON.fromJson(r, JsonElement.class);
                 if (el == null || !el.isJsonObject()) continue;
@@ -88,7 +100,28 @@ public final class DataPackLang {
                 LOGGER.warn("Failed to read lang sidecar {}: {}", sidecar.getKey(), ex.getMessage());
             }
         }
-        return out;
+        Map<String, Map<String, String>> immutable = new LinkedHashMap<>();
+        for (Map.Entry<String, Map<String, String>> entry : locales.entrySet()) {
+            immutable.put(entry.getKey(), Map.copyOf(entry.getValue()));
+        }
+        LOCALES = Map.copyOf(immutable);
+        return LOCALES.getOrDefault(DEFAULT_LOCALE, Map.of());
+    }
+
+    /** Resolve a key for a player locale, then English, then the supplied fallback. */
+    public static String resolveFallback(String key, String locale, String fallback) {
+        if (key == null || key.isEmpty()) return fallback != null ? fallback : "";
+        String normalized = normalizeLocale(locale);
+        String resolved = LOCALES.getOrDefault(normalized, Map.of()).get(key);
+        if (resolved == null && !DEFAULT_LOCALE.equals(normalized)) {
+            resolved = LOCALES.getOrDefault(DEFAULT_LOCALE, Map.of()).get(key);
+        }
+        return resolved != null ? resolved : (fallback != null ? fallback : "");
+    }
+
+    private static String normalizeLocale(String locale) {
+        if (locale == null || locale.isBlank()) return DEFAULT_LOCALE;
+        return locale.toLowerCase(Locale.ROOT).replace('-', '_');
     }
 
     /**

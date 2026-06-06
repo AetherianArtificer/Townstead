@@ -32,6 +32,14 @@ public final class ComponentSync {
         return new String[] { "", c.getString() };
     }
 
+    /** Extract a pair whose fallback is resolved from data-pack locale sidecars. */
+    public static String[] extract(Component c, String locale) {
+        String[] pair = extract(c);
+        pair[1] = com.aetherianartificer.townstead.data.DataPackLang.resolveFallback(
+                pair[0], locale, pair[1]);
+        return pair;
+    }
+
     /**
      * Rebuild a Component from a (key, fallback) pair. Empty key returns a
      * literal of the fallback; empty fallback returns a translatable without
