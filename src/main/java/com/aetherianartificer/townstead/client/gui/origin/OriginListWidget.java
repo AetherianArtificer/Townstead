@@ -8,7 +8,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.network.chat.Component;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -78,10 +77,12 @@ public class OriginListWidget extends ObjectSelectionList<OriginListWidget.Row> 
         rebuild();
     }
 
-    /** (Re)build rows from the synced catalog, grouped by species, applying the filter. */
+    /** (Re)build rows from the synced catalog, grouped by species and alphabetized, applying the filter. */
     public void rebuild() {
         clearEntries();
-        Map<String, List<OriginCatalogEntry>> bySpecies = new LinkedHashMap<>();
+        // TreeMap keeps the species groups in alphabetical order; each group's origins are sorted by
+        // display name below. With a single species (no headers) this is just a flat A→Z origin list.
+        Map<String, List<OriginCatalogEntry>> bySpecies = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         for (OriginCatalogEntry e : OriginCatalogClient.origins()) {
             if (!filter.isEmpty()
                     && !e.name().toLowerCase(Locale.ROOT).contains(filter)
@@ -92,6 +93,7 @@ public class OriginListWidget extends ObjectSelectionList<OriginListWidget.Row> 
         }
         boolean grouped = bySpecies.size() > 1;
         for (Map.Entry<String, List<OriginCatalogEntry>> group : bySpecies.entrySet()) {
+            group.getValue().sort(java.util.Comparator.comparing(OriginCatalogEntry::name, String.CASE_INSENSITIVE_ORDER));
             if (grouped && !group.getKey().isEmpty()) {
                 addEntry(new Row(this, null, group.getKey()));
             }
