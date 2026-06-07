@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -301,7 +302,18 @@ public final class NearbyStorageIndex {
 
         searchContext.forEachUniqueItemHandler(immutablePos, (side, handler) -> {
             for (int i = 0; i < handler.getSlots(); i++) {
-                ItemStack stack = handler.getStackInSlot(i);
+                ItemStack stack;
+                try {
+                    stack = handler.getStackInSlot(i);
+                } catch (IndexOutOfBoundsException e) {
+                    Townstead.LOGGER.warn(
+                            "Broken IItemHandler {} at {}",
+                            handler.getClass().getName(),
+                            immutablePos,
+                            e
+                    );
+                    break;
+                }
                 if (stack.isEmpty()) continue;
                 allSlots.add(new SlotView(immutablePos, null, true, i, side, stack.copy()));
             }
