@@ -63,6 +63,32 @@ public record GeneCatalogEntry(
         return displayKind == GeneDisplay.Kind.ATTACHMENT.ordinal();
     }
 
+    /** True when this gene carries per-part render multipliers (a stocky-build "Proportions" gene). */
+    public boolean isProportions() {
+        return displayKind == GeneDisplay.Kind.PROPORTIONS.ordinal();
+    }
+
+    /**
+     * Render multiplier for a model-part group ({@code "head"}/{@code "arms"}/{@code "legs"}/{@code "body"})
+     * from a PROPORTIONS gene, parsed from {@code targetId} {@code "head=1.0;arms=1.0;..."}.
+     * Returns {@link Float#NaN} when the part isn't listed (that part keeps MCA's normal squash).
+     */
+    public float proportionScale(String part) {
+        if (targetId == null || targetId.isEmpty()) return Float.NaN;
+        for (String entry : targetId.split(";")) {
+            int eq = entry.indexOf('=');
+            if (eq <= 0) continue;
+            if (entry.substring(0, eq).equals(part)) {
+                try {
+                    return Float.parseFloat(entry.substring(eq + 1).trim());
+                } catch (NumberFormatException e) {
+                    return Float.NaN;
+                }
+            }
+        }
+        return Float.NaN;
+    }
+
     /** For ATTACHMENT genes, the attachment id (rides in {@code targetId}). */
     public String attachmentId() { return targetId; }
 

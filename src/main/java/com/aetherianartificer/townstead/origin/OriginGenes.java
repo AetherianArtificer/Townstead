@@ -93,8 +93,13 @@ public final class OriginGenes {
         LinkedHashMap<String, GeneRange> out = new LinkedHashMap<>();
         for (InheritedGene ref : genes) {
             Gene gene = GeneRegistry.byId(ref.geneId());
-            if (gene != null && gene.instance() instanceof BodyMetricGeneType.Instance metric) {
+            if (gene == null) continue;
+            if (gene.instance() instanceof BodyMetricGeneType.Instance metric) {
                 out.put(metric.target(), metric.range());
+            } else if (gene.instance() instanceof
+                    com.aetherianartificer.townstead.origin.gene.types.ProportionsGeneType.Instance prop) {
+                // A bundled "Proportions" gene carries several MCA floats; spread them in.
+                out.putAll(prop.bodyMetrics());
             }
         }
         return out;

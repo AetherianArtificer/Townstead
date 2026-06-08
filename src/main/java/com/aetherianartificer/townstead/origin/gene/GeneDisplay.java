@@ -19,7 +19,7 @@ package com.aetherianartificer.townstead.origin.gene;
  */
 public record GeneDisplay(Kind kind, float min, float max, String targetId, float amount) {
 
-    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS }
+    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS }
 
     public static final GeneDisplay PRESENCE = new GeneDisplay(Kind.BOOLEAN, 0f, 1f, "", 0f);
 
@@ -50,6 +50,25 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
     /** A cosmetic attachment (model part); the attachment id rides in {@code targetId}. */
     public static GeneDisplay attachment(String attachmentId) {
         return new GeneDisplay(Kind.ATTACHMENT, 0f, 1f, attachmentId == null ? "" : attachmentId, 0f);
+    }
+
+    /**
+     * Per-part render multipliers for a stocky build (e.g. dwarves): each listed part has the body
+     * squash neutralized and is then scaled by its factor (1.0 = proportioned, no resize). The
+     * part→factor map packs into {@code targetId} as {@code "head=1.0;arms=1.0;legs=1.0"}; the head/
+     * limb render mixin and catalog unpack it. The gene's body-metric ranges (size/width) ride the
+     * server side (MCA floats), not this descriptor.
+     */
+    public static GeneDisplay proportions(java.util.Map<String, Float> partScales) {
+        StringBuilder packed = new StringBuilder();
+        if (partScales != null) {
+            for (java.util.Map.Entry<String, Float> e : partScales.entrySet()) {
+                if (packed.length() > 0) packed.append(';');
+                packed.append(e.getKey()).append('=')
+                        .append(String.format(java.util.Locale.ROOT, "%.4f", e.getValue()));
+            }
+        }
+        return new GeneDisplay(Kind.PROPORTIONS, 0f, 1f, packed.toString(), 0f);
     }
 
     private static float clamp01(float v) {

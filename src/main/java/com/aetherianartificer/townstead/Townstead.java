@@ -760,6 +760,8 @@ public class Townstead {
                     new com.aetherianartificer.townstead.origin.gene.types.AttachmentGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.BodyMetricGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.ProportionsGeneType());
 
             // Trait effect palette (data-pack traits compose these; see TraitJsonLoader)
             com.aetherianartificer.townstead.origin.trait.effect.TraitEffectTypes.register(

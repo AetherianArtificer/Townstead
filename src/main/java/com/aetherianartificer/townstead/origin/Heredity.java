@@ -46,6 +46,7 @@ public final class Heredity {
     public static boolean isDiploid(Gene gene) {
         GeneInstance instance = gene.instance();
         return !(instance instanceof BodyMetricGeneType.Instance)
+                && !(instance instanceof com.aetherianartificer.townstead.origin.gene.types.ProportionsGeneType.Instance)
                 && !(instance instanceof TraitOccurrenceGeneType.Instance)
                 && !(instance instanceof LifeCycleGeneType.Instance);
     }
