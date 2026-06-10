@@ -35,7 +35,9 @@
     "EntityFluidPushMixin",
     "EntityCollisionPreventMixin",
     "EntityGroundedMixin",
-    "FoodDataNaturalRegenMixin"
+    "FoodDataNaturalRegenMixin",
+    "LivingEntitySoundMixin",
+    "EntityStepSoundMixin"
   ],
   "client": [
     "compat.stardewhud.StardewHudDateMixin",

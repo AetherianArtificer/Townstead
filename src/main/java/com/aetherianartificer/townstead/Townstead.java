@@ -565,10 +565,32 @@ public class Townstead {
                 e.setProblem(net.minecraft.world.entity.player.Player.BedSleepingProblem.OTHER_PROBLEM);
             }
         });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent e) -> {
+            if (com.aetherianartificer.townstead.origin.mobsignore.MobsIgnore.shouldIgnore(
+                    e.getEntity(), e.getNewAboutToBeSetTarget())) {
+                e.setCanceled(true);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.PlayLevelSoundEvent.AtEntity e) -> {
+            if (e.getEntity() instanceof net.minecraft.world.entity.LivingEntity le && e.getSound() != null
+                    && com.aetherianartificer.townstead.origin.sound.PreventSounds.shouldPrevent(le,
+                            e.getSound().unwrapKey().map(net.minecraft.resources.ResourceKey::location).orElse(null))) {
+                e.setCanceled(true);
+            }
+        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingFallEvent e) ->
                 com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onLand(e.getEntity()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerWakeUpEvent e) ->
                 com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onWakeUp(e.getEntity()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingEvent.LivingJumpEvent e) ->
+                com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onJump(e.getEntity()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityStruckByLightningEvent e) -> {
+            if (e.getEntity() instanceof net.minecraft.world.entity.LivingEntity living) {
+                com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onStruckByLightning(living);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingEquipmentChangeEvent e) ->
+                com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onEquip(e.getEntity()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingHealEvent e) -> {
             if (com.aetherianartificer.townstead.origin.NaturalRegen.isSuppressed(e.getEntity())) {
                 e.setCanceled(true);
@@ -580,8 +602,9 @@ public class Townstead {
             else e.setAmount(scaled);
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerEvent.BreakSpeed e) ->
-                e.setNewSpeed(com.aetherianartificer.townstead.origin.modifier.GeneModifiers.modify(e.getEntity(),
-                        com.aetherianartificer.townstead.origin.gene.types.ModifierGeneType.Modifier.BREAK_SPEED, e.getNewSpeed())));
+                e.setNewSpeed(com.aetherianartificer.townstead.origin.ability.GeneAbilityTicker.aerialBreakSpeed(e.getEntity(),
+                        com.aetherianartificer.townstead.origin.modifier.GeneModifiers.modify(e.getEntity(),
+                                com.aetherianartificer.townstead.origin.gene.types.ModifierGeneType.Modifier.BREAK_SPEED, e.getNewSpeed()))));
         townstead$registerEmotePlaybackClear();
         registerDialogueConditions();
         LOGGER.info("Townstead loaded");
@@ -791,10 +814,32 @@ public class Townstead {
                 e.setResult(net.minecraft.world.entity.player.Player.BedSleepingProblem.OTHER_PROBLEM);
             }
         });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingChangeTargetEvent e) -> {
+            if (com.aetherianartificer.townstead.origin.mobsignore.MobsIgnore.shouldIgnore(
+                    e.getEntity(), e.getNewTarget())) {
+                e.setCanceled(true);
+            }
+        });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.PlayLevelSoundEvent.AtEntity e) -> {
+            if (e.getEntity() instanceof net.minecraft.world.entity.LivingEntity le && e.getSound() != null
+                    && com.aetherianartificer.townstead.origin.sound.PreventSounds.shouldPrevent(le,
+                            e.getSound().unwrapKey().map(net.minecraft.resources.ResourceKey::location).orElse(null))) {
+                e.setCanceled(true);
+            }
+        });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingFallEvent e) ->
                 com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onLand(e.getEntity()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerWakeUpEvent e) ->
                 com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onWakeUp(e.getEntity()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingEvent.LivingJumpEvent e) ->
+                com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onJump(e.getEntity()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityStruckByLightningEvent e) -> {
+            if (e.getEntity() instanceof net.minecraft.world.entity.LivingEntity living) {
+                com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onStruckByLightning(living);
+            }
+        });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent e) ->
+                com.aetherianartificer.townstead.origin.trigger.GeneTriggers.onEquip(e.getEntity()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingHealEvent e) -> {
             if (com.aetherianartificer.townstead.origin.NaturalRegen.isSuppressed(e.getEntity())) {
                 e.setCanceled(true);
@@ -806,8 +851,9 @@ public class Townstead {
             else e.setAmount(scaled);
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerEvent.BreakSpeed e) ->
-                e.setNewSpeed(com.aetherianartificer.townstead.origin.modifier.GeneModifiers.modify(e.getEntity(),
-                        com.aetherianartificer.townstead.origin.gene.types.ModifierGeneType.Modifier.BREAK_SPEED, e.getNewSpeed())));
+                e.setNewSpeed(com.aetherianartificer.townstead.origin.ability.GeneAbilityTicker.aerialBreakSpeed(e.getEntity(),
+                        com.aetherianartificer.townstead.origin.modifier.GeneModifiers.modify(e.getEntity(),
+                                com.aetherianartificer.townstead.origin.gene.types.ModifierGeneType.Modifier.BREAK_SPEED, e.getNewSpeed()))));
         registerDialogueConditions();
         LOGGER.info("Townstead loaded");
     }
@@ -960,6 +1006,12 @@ public class Townstead {
                     new com.aetherianartificer.townstead.origin.gene.types.ModifierGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.PreventGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.MobsIgnoreGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.CustomSoundGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.PreventSoundGeneType());
 
             // Condition types that gate conditioned genes (Apoli entity-condition subset)
             registerConditionTypes();
@@ -1025,6 +1077,20 @@ public class Townstead {
                         "townstead_origins:in_thunderstorm", ctx -> ctx.level().isThundering() && ctx.level().isRainingAt(ctx.pos())),
                 new com.aetherianartificer.townstead.habitus.condition.types.StateConditionType(
                         "townstead_origins:exposed_to_sun", ctx -> ctx.level().isDay() && !ctx.level().isRaining() && ctx.level().canSeeSky(ctx.pos())),
+                // Apugli additions
+                new com.aetherianartificer.townstead.habitus.condition.types.StateConditionType(
+                        "townstead_origins:raining", ctx -> ctx.level().isRaining()),
+                new com.aetherianartificer.townstead.habitus.condition.types.StateConditionType(
+                        "townstead_origins:thundering", ctx -> ctx.level().isThundering()),
+                new com.aetherianartificer.townstead.habitus.condition.types.StateConditionType(
+                        "townstead_origins:grounded", ctx -> ctx.entity().onGround()),
+                new com.aetherianartificer.townstead.habitus.condition.types.StateConditionType(
+                        "townstead_origins:hostile", ctx -> ctx.entity() instanceof net.minecraft.world.entity.monster.Enemy),
+                // Apoli audit (c): snowing on the entity
+                new com.aetherianartificer.townstead.habitus.condition.types.StateConditionType(
+                        "townstead_origins:in_snow", ctx -> ctx.level().isRaining() && ctx.level().canSeeSky(ctx.pos())
+                                && ctx.level().getBiome(ctx.pos()).value().getPrecipitationAt(ctx.pos())
+                                        == net.minecraft.world.level.biome.Biome.Precipitation.SNOW),
         };
         for (var state : states) {
             com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(state);
@@ -1042,6 +1108,9 @@ public class Townstead {
                         "townstead_origins:xp_levels", ctx -> ctx.entity() instanceof net.minecraft.world.entity.player.Player p ? p.experienceLevel : Double.NaN),
                 new com.aetherianartificer.townstead.habitus.condition.types.NumericConditionType(
                         "townstead_origins:xp_points", ctx -> ctx.entity() instanceof net.minecraft.world.entity.player.Player p ? p.totalExperience : Double.NaN),
+                // Apugli: max_health
+                new com.aetherianartificer.townstead.habitus.condition.types.NumericConditionType(
+                        "townstead_origins:max_health", ctx -> ctx.entity().getMaxHealth()),
         };
         for (var numeric : numerics) {
             com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(numeric);
@@ -1072,6 +1141,20 @@ public class Townstead {
                 new com.aetherianartificer.townstead.habitus.condition.types.EquippedItemConditionType());
         com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.habitus.condition.types.InventoryConditionType());
+        com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.habitus.condition.types.VelocityConditionType());
+        com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.habitus.condition.types.StatusEffectTagConditionType());
+        com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.habitus.condition.types.StructureConditionType());
+        com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.habitus.condition.types.EntityInRadiusConditionType());
+        com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.habitus.condition.types.BlockInRadiusConditionType());
+        com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.habitus.condition.types.OnCooldownConditionType());
+        com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.origin.condition.types.CompareResourceConditionType());
         com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.origin.condition.types.ResourceConditionType());
         com.aetherianartificer.townstead.habitus.condition.ConditionTypes.register(
@@ -1255,6 +1338,15 @@ public class Townstead {
                 new com.aetherianartificer.townstead.habitus.action.types.RunBlockActionType());
         com.aetherianartificer.townstead.habitus.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.habitus.action.types.EquippedItemActionType());
+        // Apugli entity actions
+        com.aetherianartificer.townstead.habitus.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.habitus.action.types.SetNoGravityActionType());
+        com.aetherianartificer.townstead.habitus.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.habitus.action.types.SpawnItemActionType());
+        com.aetherianartificer.townstead.habitus.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.habitus.action.types.ResourceTransferActionType());
+        com.aetherianartificer.townstead.habitus.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.habitus.action.types.ItemCooldownActionType());
         registerBlockActionTypes();
         registerItemActionTypes();
     }
@@ -1268,6 +1360,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.habitus.action.item.types.HolderActionItemActionType());
         com.aetherianartificer.townstead.habitus.action.item.ItemActionTypes.register(
                 new com.aetherianartificer.townstead.habitus.action.item.types.RemoveEnchantmentItemActionType());
+        com.aetherianartificer.townstead.habitus.action.item.ItemActionTypes.register(
+                new com.aetherianartificer.townstead.habitus.action.item.types.CooldownItemActionType());
     }
 
     private static void registerBlockActionTypes() {
@@ -1289,6 +1383,11 @@ public class Townstead {
                 new com.aetherianartificer.townstead.habitus.action.block.types.AreaOfEffectBlockActionType());
         com.aetherianartificer.townstead.habitus.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.habitus.action.block.types.OffsetBlockActionType());
+        // Apugli block actions
+        com.aetherianartificer.townstead.habitus.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.habitus.action.block.types.DestroyBlockActionType());
+        com.aetherianartificer.townstead.habitus.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.habitus.action.block.types.ScheduleTickBlockActionType());
     }
 
     private void addReloadListeners(AddReloadListenerEvent event) {

@@ -49,6 +49,24 @@ public final class GeneTriggers {
         fire(entity, Trigger.WHEN_WAKE_UP, null, null, 0f);
     }
 
+    /** The bearer jumped (Apugli {@code action_on_jump}); self-only. */
+    public static void onJump(LivingEntity entity) {
+        if (entity.level().isClientSide) return;
+        fire(entity, Trigger.WHEN_JUMP, null, null, 0f);
+    }
+
+    /** The bearer was struck by lightning (Apugli {@code action_when_lightning_struck}); self-only. */
+    public static void onStruckByLightning(LivingEntity entity) {
+        if (entity.level().isClientSide) return;
+        fire(entity, Trigger.WHEN_STRUCK_BY_LIGHTNING, null, null, 0f);
+    }
+
+    /** The bearer's equipment changed (Apugli {@code action_on_equip}); self-only. */
+    public static void onEquip(LivingEntity entity) {
+        if (entity.level().isClientSide) return;
+        fire(entity, Trigger.WHEN_EQUIP, null, null, 0f);
+    }
+
     private static void fire(LivingEntity bearer, Trigger trigger, @Nullable LivingEntity other,
                              @Nullable DamageSource source, float amount) {
         List<TriggerGeneType.Instance> triggers = Powers.componentsOf(bearer, TriggerGeneType.Instance.class);

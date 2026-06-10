@@ -142,6 +142,10 @@ public final class GeneAbilityTicker {
             case INVISIBILITY -> removeHidden(entity, MobEffects.INVISIBILITY);
             case SWIMMING -> removeHidden(entity, MobEffects.DOLPHINS_GRACE);
             case CREATIVE_FLIGHT -> revokeFlight(entity);
+            case SPRINTING -> {
+                if (entity.isSprinting()) entity.setSprinting(false);
+            }
+            case HOVER -> entity.setNoGravity(false);
             default -> { }
         }
     }
@@ -265,7 +269,28 @@ public final class GeneAbilityTicker {
                     player.onUpdateAbilities();
                 }
             }
+            case SPRINTING -> {
+                if (!entity.isSprinting()) entity.setSprinting(true);
+            }
+            case HOVER -> {
+                entity.setNoGravity(true);
+                Vec3 m = entity.getDeltaMovement();
+                if (m.y < 0) entity.setDeltaMovement(m.x, 0, m.z);
+                entity.fallDistance = 0f;
+            }
         }
+    }
+
+    /**
+     * Break-speed multiplier for {@code aerial_affinity}: cancels vanilla's 5x airborne
+     * mining penalty so the player breaks blocks at normal speed off the ground. Called
+     * from the {@code BreakSpeed} event after other modifiers.
+     */
+    public static float aerialBreakSpeed(Player player, float current) {
+        if (!player.onGround() && Abilities.isActive(player, Ability.AERIAL_AFFINITY)) {
+            return current * 5f;
+        }
+        return current;
     }
 
     // A short, ambient, particle-less, icon-less effect re-added each interval. The

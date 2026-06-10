@@ -63,6 +63,38 @@ public final class ApoliActionTranslator {
             }
             case "extinguish": return typed("extinguish");
             case "apply_effect": return applyEffect(apoli);
+            case "exhaust": {
+                JsonObject out = typed("exhaust");
+                out.addProperty("amount", GsonHelper.getAsFloat(apoli, "amount", 0f));
+                return out;
+            }
+            case "change_resource": {
+                JsonObject out = typed("change_resource");
+                out.addProperty("resource", GsonHelper.getAsString(apoli, "resource", ""));
+                out.addProperty("amount", GsonHelper.getAsInt(apoli, "change", GsonHelper.getAsInt(apoli, "amount", 0)));
+                return out;
+            }
+            case "execute_command": {
+                JsonObject out = typed("execute_command");
+                out.addProperty("command", GsonHelper.getAsString(apoli, "command", ""));
+                return out;
+            }
+            case "spawn_entity": {
+                JsonObject out = typed("spawn_entity");
+                out.addProperty("entity", GsonHelper.getAsString(apoli, "entity_type", ""));
+                return out;
+            }
+            case "set_no_gravity": {
+                JsonObject out = typed("set_no_gravity");
+                out.addProperty("gravity", GsonHelper.getAsBoolean(apoli, "gravity", false));
+                return out;
+            }
+            case "item_cooldown": {
+                JsonObject out = typed("item_cooldown");
+                out.addProperty("item", GsonHelper.getAsString(apoli, "item", ""));
+                out.addProperty("cooldown", GsonHelper.getAsInt(apoli, "cooldown", 20));
+                return out;
+            }
             case "and": return translate(apoli.get("actions"));
             default: return null;
         }

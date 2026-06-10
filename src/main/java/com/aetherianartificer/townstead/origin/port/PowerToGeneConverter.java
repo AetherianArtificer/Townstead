@@ -91,6 +91,11 @@ public final class PowerToGeneConverter {
             case "phasing": return ability("phasing");
             case "grounded": return ability("grounded");
             case "modify_falling": return ability("slow_fall");
+            // Apugli innate abilities
+            case "aerial_affinity": return ability("aerial_affinity");
+            case "hover": return ability("hover");
+            case "sprinting": return ability("sprinting");
+            case "mobs_ignore": return mobsIgnoreGene(power);
             case "modify_damage_taken": return damageGene(power);
             case "modify_healing": return modifierGene(power, "healing");
             case "modify_damage_dealt": return modifierGene(power, "damage_dealt");
@@ -124,6 +129,13 @@ public final class PowerToGeneConverter {
             case "attacker_action_when_hit": return triggerGene("when_hurt", "other", power);
             case "target_action_on_hit":
             case "action_on_hit": return triggerGene("when_attack", "other", power);
+            // Apugli triggers
+            case "action_on_jump": return triggerGene("when_jump", "self", power);
+            case "action_when_lightning_struck": return triggerGene("when_struck_by_lightning", "self", power);
+            case "action_on_equip": return triggerGene("when_equip", "self", power);
+            case "action_when_harmed": return triggerGene("when_hurt", "self", power);
+            case "action_on_target_death": return triggerGene("when_kill", "self", power);
+            case "action_on_target_hurt": return triggerGene("when_attack", "other", power);
             default: return null;
         }
     }
@@ -175,6 +187,22 @@ public final class PowerToGeneConverter {
         JsonObject gene = base("restrict_equipment");
         gene.addProperty("category", "ability");
         gene.add("slots", slots);
+        return gene;
+    }
+
+    private static JsonObject mobsIgnoreGene(JsonObject power) {
+        JsonObject gene = base("mobs_ignore");
+        gene.addProperty("category", "ability");
+        // Both filters are optional and best-effort: a filter that falls outside the
+        // supported subset is dropped (the gene still pacifies mobs, just unfiltered).
+        if (power.has("mob_condition") && power.get("mob_condition").isJsonObject()) {
+            JsonObject mob = ApoliConditionTranslator.translate(power.getAsJsonObject("mob_condition"));
+            if (mob != null) gene.add("mob_condition", mob);
+        }
+        if (power.has("bientity_condition") && power.get("bientity_condition").isJsonObject()) {
+            JsonObject bi = ApoliBiEntityConditionTranslator.translate(power.getAsJsonObject("bientity_condition"));
+            if (bi != null) gene.add("bientity_condition", bi);
+        }
         return gene;
     }
 

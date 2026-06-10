@@ -31,7 +31,8 @@ import java.util.Locale;
  * {@code fluid}, {@code exposed_to_sky}, {@code light_level}, {@code height},
  * {@code hardness}, {@code blast_resistance}, {@code slipperiness}, {@code replaceable},
  * {@code movement_blocking}, {@code light_blocking}, {@code water_loggable},
- * {@code block_entity}, {@code distance_from_coordinates}; meta {@code offset} /
+ * {@code block_entity}, {@code distance_from_coordinates}; the Apugli weather/air leaves
+ * {@code air}, {@code in_rain}, {@code raining}, {@code thundering}; meta {@code offset} /
  * {@code adjacent}; and {@code and}/{@code or}/{@code constant}. {@code "inverted":true}
  * negates. ({@code material} is deprecated; {@code attachable}/{@code command}/{@code nbt}
  * are deferred.)
@@ -95,6 +96,14 @@ public final class BlockConditions {
             }
             case "exposed_to_sky":
                 return Level::canSeeSky;
+            case "air":
+                return (level, pos) -> level.getBlockState(pos).isAir();
+            case "in_rain":
+                return Level::isRainingAt;
+            case "raining":
+                return (level, pos) -> level.isRaining();
+            case "thundering":
+                return (level, pos) -> level.isThundering();
             case "light_level": {
                 int min = GsonHelper.getAsInt(json, "min", 0);
                 int max = GsonHelper.getAsInt(json, "max", 15);

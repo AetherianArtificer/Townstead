@@ -30,7 +30,8 @@ public final class TriggerGeneType implements GeneType {
 
     public static final String KEY = "townstead_origins:trigger";
 
-    public enum Trigger { WHEN_HURT, WHEN_ATTACK, WHEN_KILL, WHEN_DEATH, WHEN_LAND, WHEN_WAKE_UP }
+    public enum Trigger { WHEN_HURT, WHEN_ATTACK, WHEN_KILL, WHEN_DEATH, WHEN_LAND, WHEN_WAKE_UP,
+        WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP }
 
     public enum Target { SELF, OTHER }
 
@@ -72,6 +73,10 @@ public final class TriggerGeneType implements GeneType {
             case "when_death", "on_death", "death" -> Trigger.WHEN_DEATH;
             case "when_land", "on_land", "land" -> Trigger.WHEN_LAND;
             case "when_wake_up", "on_wake_up", "wake_up", "wakeup" -> Trigger.WHEN_WAKE_UP;
+            case "when_jump", "on_jump", "jump" -> Trigger.WHEN_JUMP;
+            case "when_struck_by_lightning", "when_lightning_struck", "on_lightning_struck", "lightning_struck" ->
+                    Trigger.WHEN_STRUCK_BY_LIGHTNING;
+            case "when_equip", "on_equip", "equip" -> Trigger.WHEN_EQUIP;
             default -> null;
         };
     }

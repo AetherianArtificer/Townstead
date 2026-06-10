@@ -18,7 +18,8 @@ import java.util.List;
  * Parses an item-condition JSON into an {@link ItemCondition}. Parity-clean subset:
  * {@code amount}, {@code empty}, {@code durability}, {@code relative_durability},
  * {@code is_damageable}, {@code enchantable}, {@code ingredient} (item id or tag), plus
- * the version-guarded {@code enchantment}, {@code food}, {@code fireproof}; with
+ * the version-guarded {@code enchantment} (alias {@code base_enchantment}), {@code food},
+ * {@code fireproof}; with
  * {@code and}/{@code or}/{@code constant}. {@code "inverted":true} negates.
  * ({@code smeltable}/{@code fuel} need the divergent recipe/fuel API, and
  * {@code nbt}/{@code armor_value}/{@code is_equippable}/{@code meat} hit the
@@ -96,7 +97,8 @@ public final class ItemConditions {
                     /*return stack.getItem().isFireResistant();
                     *///?}
                 };
-            case "enchantment": {
+            case "enchantment":
+            case "base_enchantment": {
                 ResourceLocation id = json.has("enchantment")
                         ? DataPackLang.parseId(GsonHelper.getAsString(json, "enchantment", "")) : null;
                 int min = GsonHelper.getAsInt(json, "min", 1);

@@ -23,6 +23,7 @@ import java.util.List;
  * Parses a damage-condition JSON into a {@link DamageCondition}. Non-deprecated Apoli
  * subset: {@code amount} ({@code min}/{@code max}), {@code in_tag} (damage-type tag),
  * {@code type} (damage-type id), {@code name} (source message id), {@code projectile},
+ * {@code magic} (Apugli; direct or indirect magic damage),
  * and {@code attacker} (an entity condition on the source's attacker); plus
  * {@code and}/{@code or}/{@code constant}. {@code "inverted":true} negates. (The six
  * deprecated flag conditions — fire, explosive, falling, etc. — are just
@@ -68,6 +69,9 @@ public final class DamageConditions {
             }
             case "projectile":
                 return (source, amount) -> source.is(DamageTypeTags.IS_PROJECTILE);
+            case "magic":
+                return (source, amount) -> source.is(net.minecraft.world.damagesource.DamageTypes.MAGIC)
+                        || source.is(net.minecraft.world.damagesource.DamageTypes.INDIRECT_MAGIC);
             case "attacker": {
                 Condition inner = Conditions.parse(json.get("condition"));
                 if (inner == null) return null;

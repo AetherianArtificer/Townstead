@@ -1,23 +1,22 @@
 package com.aetherianartificer.townstead.habitus.action.types;
 
-import com.aetherianartificer.townstead.data.DataPackLang;
 import com.aetherianartificer.townstead.habitus.action.Action;
 import com.aetherianartificer.townstead.habitus.action.ActionType;
+import com.aetherianartificer.townstead.habitus.sound.SoundSpec;
 import com.google.gson.JsonObject;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.GsonHelper;
 
 import java.util.Locale;
 
 /**
- * Plays a sound at the actor (Apoli's {@code play_sound}). The raw {@code SoundEvent}
- * overload of {@code playSound} exists on both branches, so no version guard is needed.
+ * Plays a sound at the actor (Apoli's {@code play_sound}). The sound is a {@link SoundSpec},
+ * so it accepts a single id, a {@code {sound,volume,pitch}} object, or a weighted
+ * {@code "sounds"} array (Apugli's {@code weighted_sound_event}).
  *
  * <p>JSON: {@code { "type":"townstead_origins:play_sound", "sound":"minecraft:entity.player.levelup",
- * "volume":1.0, "pitch":1.0 }}</p>
+ * "volume":1.0, "pitch":1.0 }} or {@code { "type":"townstead_origins:play_sound",
+ * "sounds":[ { "sound":"minecraft:entity.cat.purr", "weight":3 }, { "sound":"minecraft:entity.cat.ambient" } ] }}</p>
  */
 public final class PlaySoundActionType implements ActionType {
 
@@ -30,17 +29,11 @@ public final class PlaySoundActionType implements ActionType {
 
     @Override
     public Action parse(JsonObject json) {
-        ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "sound", ""));
-        if (id == null) return null;
-        float volume = GsonHelper.getAsFloat(json, "volume", 1.0f);
-        float pitch = GsonHelper.getAsFloat(json, "pitch", 1.0f);
+        SoundSpec spec = SoundSpec.read(json);
+        if (spec == null) return null;
         SoundSource source = parseSource(GsonHelper.getAsString(json, "category", "neutral"));
-        return ctx -> {
-            SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(id);
-            if (sound == null) return;
-            ctx.entity().level().playSound(null, ctx.entity().getX(), ctx.entity().getY(), ctx.entity().getZ(),
-                    sound, source, volume, pitch);
-        };
+        return ctx -> spec.playAt(ctx.entity().level(), ctx.entity().getX(), ctx.entity().getY(),
+                ctx.entity().getZ(), source, ctx.entity().getRandom());
     }
 
     private static SoundSource parseSource(String raw) {
