@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.pheno.lang.command;
 
+import com.aetherianartificer.townstead.origin.gene.GeneRegistry;
 import com.aetherianartificer.townstead.pheno.capability.Capabilities;
 import com.aetherianartificer.townstead.pheno.capability.CapabilityContribution;
 import com.aetherianartificer.townstead.pheno.capability.CapabilityView;
@@ -8,19 +9,33 @@ import com.aetherianartificer.townstead.pheno.capability.ValueKind;
 import com.aetherianartificer.townstead.pheno.lang.PhenoDiagnostics;
 import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostic;
 import com.aetherianartificer.townstead.pheno.lang.compile.Severity;
+import com.aetherianartificer.townstead.pheno.lang.normalize.PhenoNormalizer;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * {@code /pheno} authoring commands (op level 2). {@code /pheno validate} reports the
@@ -31,6 +46,7 @@ import java.util.Locale;
 public final class PhenoCommand {
 
     private static final int MAX_LINES = 60;
+    private static final Gson PRETTY = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     private PhenoCommand() {}
 
@@ -40,7 +56,50 @@ public final class PhenoCommand {
                 .then(Commands.literal("validate").executes(c -> validate(c.getSource())))
                 .then(Commands.literal("explain")
                         .then(Commands.argument("target", EntityArgument.entity())
-                                .executes(c -> explain(c.getSource(), EntityArgument.getEntity(c, "target"))))));
+                                .executes(c -> explain(c.getSource(), EntityArgument.getEntity(c, "target")))))
+                .then(Commands.literal("expand")
+                        .then(Commands.argument("gene", StringArgumentType.string())
+                                .suggests(SUGGEST_GENES)
+                                .executes(c -> expand(c.getSource(), StringArgumentType.getString(c, "gene"))))));
+    }
+
+    private static final SuggestionProvider<CommandSourceStack> SUGGEST_GENES = (c, b) ->
+            SharedSuggestionProvider.suggest(GeneRegistry.all().stream().map(g -> g.id().toString()), b);
+
+    private static int expand(CommandSourceStack source, String geneId) {
+        ResourceLocation id = ResourceLocation.tryParse(geneId);
+        if (id == null) {
+            source.sendFailure(Component.literal("Pheno expand: '" + geneId + "' is not a valid id."));
+            return 0;
+        }
+        ResourceLocation file = ResourceLocation.tryParse(id.getNamespace() + ":gene/" + id.getPath() + ".json");
+        Optional<Resource> resource = file == null ? Optional.empty()
+                : source.getServer().getResourceManager().getResource(file);
+        if (resource.isEmpty()) {
+            source.sendFailure(Component.literal("Pheno expand: gene resource not found: " + geneId));
+            return 0;
+        }
+        try (Reader reader = new InputStreamReader(resource.get().open(), StandardCharsets.UTF_8)) {
+            JsonObject raw = JsonParser.parseReader(reader).getAsJsonObject();
+            JsonObject canonical = PhenoNormalizer.normalize(raw);
+            source.sendSuccess(() -> Component.literal("Canonical form of " + geneId + ":")
+                    .withStyle(ChatFormatting.GOLD), false);
+            String[] lines = PRETTY.toJson(canonical).split("\n");
+            int shown = 0;
+            for (String l : lines) {
+                if (shown++ >= MAX_LINES) {
+                    source.sendSuccess(() -> Component.literal("... (truncated; full output in latest.log)")
+                            .withStyle(ChatFormatting.GRAY), false);
+                    break;
+                }
+                String line = l;
+                source.sendSuccess(() -> Component.literal(line).withStyle(ChatFormatting.WHITE), false);
+            }
+            return 1;
+        } catch (Exception ex) {
+            source.sendFailure(Component.literal("Pheno expand: failed to read " + geneId + ": " + ex.getMessage()));
+            return 0;
+        }
     }
 
     private static int explain(CommandSourceStack source, Entity target) throws CommandSyntaxException {

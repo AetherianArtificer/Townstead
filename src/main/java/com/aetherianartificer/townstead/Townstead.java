@@ -1067,6 +1067,8 @@ public class Townstead {
             // Read-side genetics feed for the capability layer (provenance for /pheno explain)
             com.aetherianartificer.townstead.pheno.capability.Capabilities.register(
                     new com.aetherianartificer.townstead.origin.capability.GeneCapabilitySource());
+            // Node schemas (one source of truth for normalization, validation, and generated docs)
+            com.aetherianartificer.townstead.pheno.lang.schema.PhenoSchemas.registerAll();
 
             // Trait effect palette (data-pack traits compose these; see TraitJsonLoader)
             com.aetherianartificer.townstead.origin.trait.effect.TraitEffectTypes.register(

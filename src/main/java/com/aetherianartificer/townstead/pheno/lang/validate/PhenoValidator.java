@@ -7,7 +7,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 
@@ -66,7 +65,7 @@ public final class PhenoValidator {
     /** Follow the canonical typed child slots of an object of {@code parentDomain}. */
     private static void descend(JsonObject obj, NodeDomain parentDomain, JsonPath path, Diagnostics diag) {
         for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
-            NodeDomain child = childDomain(parentDomain, e.getKey());
+            NodeDomain child = ChildSlots.childDomain(parentDomain, e.getKey());
             if (child == null) continue;
             visit(e.getValue(), child, path.field(e.getKey()), diag);
         }
@@ -86,54 +85,4 @@ public final class PhenoValidator {
         }
     }
 
-    /**
-     * The domain of a child slot given its parent's domain, or {@code null} when the key is not
-     * a typed slot the validator descends. Only unambiguous slots are mapped.
-     */
-    @Nullable
-    private static NodeDomain childDomain(NodeDomain parent, String key) {
-        switch (parent) {
-            case GENE:
-            case ACTION:
-                switch (key) {
-                    case "action":
-                    case "entity_action":
-                    case "actions":
-                    case "bientity_action":
-                        return NodeDomain.ACTION;
-                    case "condition":
-                    case "conditions":
-                    case "mob_condition":
-                        return NodeDomain.CONDITION;
-                    case "block_action":
-                        return NodeDomain.BLOCK_ACTION;
-                    case "item_action":
-                        return NodeDomain.ITEM_ACTION;
-                    case "bientity_condition":
-                        return NodeDomain.BIENTITY_CONDITION;
-                    default:
-                        return null;
-                }
-            case CONDITION:
-                switch (key) {
-                    case "condition":
-                    case "conditions":
-                        return NodeDomain.CONDITION;
-                    case "bientity_condition":
-                        return NodeDomain.BIENTITY_CONDITION;
-                    default:
-                        return null;
-                }
-            case BLOCK_ACTION:
-                return key.equals("block_action") ? NodeDomain.BLOCK_ACTION : null;
-            case ITEM_ACTION:
-                if (key.equals("item_action")) return NodeDomain.ITEM_ACTION;
-                if (key.equals("action")) return NodeDomain.ACTION;
-                return null;
-            default:
-                // Bi-entity subtrees mix entity and bi-entity conditions under the same key, so
-                // they are left un-descended rather than risk a wrong finding.
-                return null;
-        }
-    }
 }

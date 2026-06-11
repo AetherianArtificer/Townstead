@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.pheno.lang.PhenoDiagnostics;
 import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostic;
 import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostics;
 import com.aetherianartificer.townstead.pheno.lang.compile.Severity;
+import com.aetherianartificer.townstead.pheno.lang.normalize.PhenoNormalizer;
 import com.aetherianartificer.townstead.pheno.lang.validate.PhenoValidator;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -50,6 +51,7 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                obj = PhenoNormalizer.normalize(obj);
                 PhenoValidator.validateGene(file, obj, diagnostics);
                 String typeKey = GsonHelper.getAsString(obj, "type", "");
                 Optional<GeneType> type = GeneTypes.get(typeKey);
