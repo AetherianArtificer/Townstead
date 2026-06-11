@@ -1161,6 +1161,9 @@ public class Townstead {
         }
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.BrightnessConditionType());
+        // Consolidated environment query (weather/exposure/time/biome/dimension/effects in one block)
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.EnvironmentConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.TimeOfDayConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
