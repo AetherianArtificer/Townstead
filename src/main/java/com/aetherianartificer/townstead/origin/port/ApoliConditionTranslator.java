@@ -15,6 +15,9 @@ import java.util.Locale;
  */
 public final class ApoliConditionTranslator {
 
+    /** Set by {@link PowerToGeneConverter#convert} so {@code power_active} can derive the toggle gene id. */
+    static String geneNamespace = "townstead_origins";
+
     private ApoliConditionTranslator() {}
 
     @Nullable
@@ -30,7 +33,7 @@ public final class ApoliConditionTranslator {
     @Nullable
     private static JsonObject base(String type, JsonObject apoli) {
         switch (type) {
-            // Field-less states (Apoli + Apugli; namespace already stripped)
+            // Field-less states (namespace already stripped)
             case "in_rain": return simple("in_rain");
             case "on_fire": return simple("on_fire");
             case "sneaking": return simple("sneaking");
@@ -86,6 +89,16 @@ public final class ApoliConditionTranslator {
                 return out;
             }
             // Id / tag copies
+            case "block_collision": {
+                JsonObject out = simple("block");
+                out.addProperty("x", GsonHelper.getAsInt(apoli, "offset_x", 0));
+                out.addProperty("y", GsonHelper.getAsInt(apoli, "offset_y", 0));
+                out.addProperty("z", GsonHelper.getAsInt(apoli, "offset_z", 0));
+                JsonObject bc = new JsonObject();
+                bc.addProperty("type", "townstead_origins:movement_blocking");
+                out.add("block_condition", bc);
+                return out;
+            }
             case "dimension": return copyString(apoli, "dimension", "townstead_origins:dimension", "dimension");
             case "biome": return apoli.has("biome")
                     ? copyString(apoli, "biome", "townstead_origins:biome", "biome") : null;
@@ -107,6 +120,14 @@ public final class ApoliConditionTranslator {
             case "constant": {
                 JsonObject out = simple("constant");
                 out.addProperty("value", GsonHelper.getAsBoolean(apoli, "value", true));
+                return out;
+            }
+            case "power_active":
+            case "power_type": {
+                String power = GsonHelper.getAsString(apoli, "power", "");
+                if (power.isEmpty()) return null;
+                JsonObject out = simple("toggled");
+                out.addProperty("gene", PowerToGeneConverter.geneIdString(geneNamespace, power));
                 return out;
             }
             default: return null;

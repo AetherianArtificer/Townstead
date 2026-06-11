@@ -1,9 +1,9 @@
 package com.aetherianartificer.townstead.origin.gene.types;
 
-import com.aetherianartificer.townstead.habitus.action.Action;
-import com.aetherianartificer.townstead.habitus.action.Actions;
-import com.aetherianartificer.townstead.habitus.condition.Condition;
-import com.aetherianartificer.townstead.habitus.condition.Conditions;
+import com.aetherianartificer.townstead.pheno.action.Action;
+import com.aetherianartificer.townstead.pheno.action.Actions;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.aetherianartificer.townstead.origin.gene.GeneDisplay;
 import com.aetherianartificer.townstead.origin.gene.GeneInstance;
 import com.aetherianartificer.townstead.origin.gene.GeneType;
@@ -31,12 +31,12 @@ public final class TriggerGeneType implements GeneType {
     public static final String KEY = "townstead_origins:trigger";
 
     public enum Trigger { WHEN_HURT, WHEN_ATTACK, WHEN_KILL, WHEN_DEATH, WHEN_LAND, WHEN_WAKE_UP,
-        WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP }
+        WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP, WHEN_ITEM_USE }
 
     public enum Target { SELF, OTHER }
 
     public record Instance(Trigger trigger, Target target, Action action, @Nullable Condition condition,
-                           @Nullable com.aetherianartificer.townstead.habitus.condition.damage.DamageCondition damageCondition)
+                           @Nullable com.aetherianartificer.townstead.pheno.condition.damage.DamageCondition damageCondition)
             implements GeneInstance {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
@@ -56,9 +56,9 @@ public final class TriggerGeneType implements GeneType {
         Target target = "other".equalsIgnoreCase(GsonHelper.getAsString(json, "target", "self"))
                 ? Target.OTHER : Target.SELF;
         Condition condition = json.has("condition") ? Conditions.parse(json.get("condition")) : null;
-        com.aetherianartificer.townstead.habitus.condition.damage.DamageCondition damageCondition =
+        com.aetherianartificer.townstead.pheno.condition.damage.DamageCondition damageCondition =
                 json.has("damage_condition")
-                        ? com.aetherianartificer.townstead.habitus.condition.damage.DamageConditions.parse(
+                        ? com.aetherianartificer.townstead.pheno.condition.damage.DamageConditions.parse(
                                 json.get("damage_condition"))
                         : null;
         return new Instance(trigger, target, action, condition, damageCondition);
@@ -77,6 +77,7 @@ public final class TriggerGeneType implements GeneType {
             case "when_struck_by_lightning", "when_lightning_struck", "on_lightning_struck", "lightning_struck" ->
                     Trigger.WHEN_STRUCK_BY_LIGHTNING;
             case "when_equip", "on_equip", "equip" -> Trigger.WHEN_EQUIP;
+            case "when_item_use", "on_item_use", "item_use", "action_on_item_use" -> Trigger.WHEN_ITEM_USE;
             default -> null;
         };
     }

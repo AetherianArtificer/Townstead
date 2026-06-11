@@ -17,9 +17,10 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Server-side registry of data-pack-loaded {@link Origin}, plus the genome
- * resolution that composes species/ancestry/lineage into the effective genome
- * a villager is given. Populated by {@link OriginJsonLoader}.
+ * Server-side registry of data-pack-loaded selectable {@link Origin} assignment
+ * profiles, plus founder genome resolution across species, ancestry and lineage.
+ * Heritage is the realised inherited identity and is stored separately.
+ * Populated by {@link OriginJsonLoader}.
  */
 public final class OriginRegistry {
 
@@ -84,7 +85,7 @@ public final class OriginRegistry {
     }
 
     /**
-     * Effective spawn bias for an origin, composed bottom-up the same way as the
+     * Effective spawn bias for an assignment profile, composed bottom-up the same way as the
      * genome: ancestry (or the union of a lineage's ancestries, then the lineage)
      * → the origin's own bias, each level overriding per key and replacing the
      * default if it sets one. Drives the biome-weighted founder roll.
@@ -109,7 +110,7 @@ public final class OriginRegistry {
     }
 
     /**
-     * The species an origin belongs to: its own {@code species}, else its
+     * The species an assignment profile selects: its own {@code species}, else its
      * ancestry's, else the first species among its lineage's ancestries.
      * {@code null} if none resolves. Used to gate mixing within a species.
      */
@@ -138,17 +139,17 @@ public final class OriginRegistry {
         return null;
     }
 
-    /** Effective genome for an origin id, falling back to the default origin. */
+    /** Effective founder genome for an assignment-profile id, falling back to the default profile. */
     public static Genome effectiveGenome(@Nullable ResourceLocation id) {
         Origin origin = resolveOrDefault(id);
         return origin == null ? Genome.EMPTY : effectiveGenome(origin);
     }
 
     /**
-     * Compose the genome bottom-up: species → ancestry (or, for a lineage-based
-     * origin, the union of the lineage's ancestries then its overrides) → the
-     * origin's own overrides. Per-gene entries replace; tag lists union. Missing
-     * refs are skipped (they leave the base un-narrowed).
+     * Compose a founder genome from the selected species, ancestry and lineage,
+     * followed by assignment-profile overrides. This is composition for initial
+     * assignment, not a claim that the profile is a biological tier after lineage.
+     * Per-gene entries replace; missing references are skipped.
      */
     public static Genome effectiveGenome(Origin origin) {
         Genome base = Genome.EMPTY;
@@ -165,7 +166,7 @@ public final class OriginRegistry {
             }
             base = base.mergedWith(lineage.genome());
         } else if (origin.ancestry() != null) {
-            // Either an ancestry-based origin, or a lineage-based one whose lineage
+            // Either an ancestry-based assignment profile, or a lineage-based one whose lineage
             // failed to load — degrade to the declared ancestry rather than a blank
             // genome (a Dark Elf becomes a plain Elf, not a featureless villager).
             Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
@@ -175,7 +176,7 @@ public final class OriginRegistry {
     }
 
     /**
-     * The origin's inherited genes with same-locus alleles collapsed to the last-declared
+     * The assignment profile's founder genes with same-locus alleles collapsed to the last-declared
      * (most specific) one, so a lineage's chronotype gene replaces the ancestry's rather
      * than both being rolled and shown. Locus-less genes are all kept, in order. This is the
      * effective grant list for rolling and for the picker display.
@@ -194,8 +195,8 @@ public final class OriginRegistry {
     }
 
     /**
-     * Effective life cycle for an origin id, drawn from the Life Cycle gene the
-     * origin's genome expresses. Falls back to {@link LifeCycle#defaultHumanLike()}
+     * Effective founder life cycle for an assignment-profile id, drawn from the
+     * composed genome. Falls back to {@link LifeCycle#defaultHumanLike()}
      * when no cycle gene is inherited.
      */
     public static LifeCycle effectiveLifeCycle(@Nullable ResourceLocation id) {
@@ -245,7 +246,7 @@ public final class OriginRegistry {
         return challenger.weight() > incumbent.weight();
     }
 
-    /** The origin's demonym, falling back to its lineage's then its ancestry's. */
+    /** The assignment profile's demonym, falling back to its lineage's then its ancestry's. */
     @Nullable
     public static Demonym resolveDemonym(Origin origin) {
         if (origin.demonym() != null) return origin.demonym();
@@ -260,7 +261,7 @@ public final class OriginRegistry {
         return null;
     }
 
-    /** The origin's backstory, falling back to its lineage's then its ancestry's. */
+    /** The assignment profile's backstory, falling back to its lineage's then its ancestry's. */
     @Nullable
     public static Component resolveBackstory(Origin origin) {
         if (origin.backstory() != null) return origin.backstory();

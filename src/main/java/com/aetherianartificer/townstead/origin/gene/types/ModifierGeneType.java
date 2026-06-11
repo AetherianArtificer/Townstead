@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.origin.gene.types;
 
-import com.aetherianartificer.townstead.habitus.condition.Condition;
-import com.aetherianartificer.townstead.habitus.condition.Conditions;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.aetherianartificer.townstead.origin.gene.GeneDisplay;
 import com.aetherianartificer.townstead.origin.gene.GeneInstance;
 import com.aetherianartificer.townstead.origin.gene.GeneType;
@@ -31,7 +31,8 @@ public final class ModifierGeneType implements GeneType {
     public static final String KEY = "townstead_origins:modifier";
 
     public enum Modifier {
-        HEALING("healing"), DAMAGE_DEALT("damage_dealt"), BREAK_SPEED("break_speed");
+        HEALING("healing"), DAMAGE_DEALT("damage_dealt"), BREAK_SPEED("break_speed"), JUMP("jump"),
+        EXHAUSTION("exhaustion");
 
         private final String key;
 

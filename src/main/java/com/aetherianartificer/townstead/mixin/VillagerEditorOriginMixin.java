@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.client.gui.origin.OriginPicker;
 import com.aetherianartificer.townstead.client.origin.OriginClientStore;
+import com.aetherianartificer.townstead.client.origin.PreviewParticles;
+import net.minecraft.client.gui.GuiGraphics;
 import com.aetherianartificer.townstead.client.skin.OriginSkinPickerTexture;
 import com.aetherianartificer.townstead.client.skin.SkinTintRegistry;
 import com.aetherianartificer.townstead.mixin.accessor.ColorPickerWidgetAccessor;
@@ -70,6 +72,21 @@ public abstract class VillagerEditorOriginMixin extends Screen {
     private void townstead$appendOriginsPage(CallbackInfoReturnable<String[]> cir) {
         if ((Object) this instanceof DestinyScreen) return;
         cir.setReturnValue(OriginPicker.insertOriginsPage(cir.getReturnValue()));
+    }
+
+    // Draw the previewed origin's ambient particles around the model (the real emitter is
+    // server-side and never runs in this GUI). Matches MCA's entity render box:
+    // x = width/2 - DATA_WIDTH(175), y = height/2, half-height 75.
+    //? if neoforge {
+    @Inject(method = "render", remap = false, at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_88315_", remap = false, at = @At("TAIL"))
+    *///?}
+    private void townstead$renderPreviewParticles(GuiGraphics context, int mouseX, int mouseY, float delta,
+                                                  CallbackInfo ci) {
+        int x = this.width / 2 - 175;
+        int y = this.height / 2;
+        PreviewParticles.render(context, villager, x, y - 75, x + 175, y + 75);
     }
 
     // Leaving any page (or rebuilding one) drops an un-applied preview first, so a
@@ -215,6 +232,7 @@ public abstract class VillagerEditorOriginMixin extends Screen {
     public void removed() {
         super.removed();
         OriginClientStore.remove(villager.getId());
+        PreviewParticles.clear();
     }
 
     @Unique

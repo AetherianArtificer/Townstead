@@ -159,6 +159,32 @@ public record GeneCatalogEntry(
         }
     }
 
+    /** True when this gene emits ambient particles (emitter params ride in {@code targetId}). */
+    public boolean isParticle() {
+        return displayKind == GeneDisplay.Kind.PARTICLE.ordinal();
+    }
+
+    /** PARTICLE emitter params, parsed from {@code targetId} {@code "particleId;count;spread;speed;yOffset"}. */
+    public String particleId() { return particlePart(0, ""); }
+    public int particleCount() { return (int) particleFloat(1, 1f); }
+    public float particleSpread() { return particleFloat(2, 0.4f); }
+    public float particleSpeed() { return particleFloat(3, 0f); }
+    public float particleYOffset() { return particleFloat(4, 0.6f); }
+
+    private String particlePart(int idx, String fallback) {
+        if (targetId == null || targetId.isEmpty()) return fallback;
+        String[] parts = targetId.split(";");
+        return idx < parts.length ? parts[idx] : fallback;
+    }
+
+    private float particleFloat(int idx, float fallback) {
+        try {
+            return Float.parseFloat(particlePart(idx, Float.toString(fallback)).trim());
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
     public boolean isRecessive() {
         return dominanceOrdinal == com.aetherianartificer.townstead.origin.gene.Dominance.RECESSIVE.ordinal();
     }

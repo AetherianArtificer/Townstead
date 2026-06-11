@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Translates an Apoli bi-entity-condition JSON into the Townstead bi-entity subset
- * (see {@code habitus/condition/bientity}). The scoped metas
+ * (see {@code pheno/condition/bientity}). The scoped metas
  * ({@code actor_condition}/{@code target_condition}/{@code both}/{@code either}) recurse
  * into {@link ApoliConditionTranslator} for their inner entity condition; the directional
  * metas ({@code invert}/{@code undirected}) recurse into this translator. Returns

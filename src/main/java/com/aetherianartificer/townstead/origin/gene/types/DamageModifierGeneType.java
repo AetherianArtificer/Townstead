@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin.gene.types;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
-import com.aetherianartificer.townstead.habitus.condition.Condition;
-import com.aetherianartificer.townstead.habitus.condition.Conditions;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.aetherianartificer.townstead.origin.gene.GeneDisplay;
 import com.aetherianartificer.townstead.origin.gene.GeneInstance;
 import com.aetherianartificer.townstead.origin.gene.GeneType;
@@ -30,7 +30,7 @@ public final class DamageModifierGeneType implements GeneType {
                            @Nullable ResourceLocation damageType,
                            float modifier,
                            @Nullable Condition condition,
-                           @Nullable com.aetherianartificer.townstead.habitus.condition.damage.DamageCondition damageCondition)
+                           @Nullable com.aetherianartificer.townstead.pheno.condition.damage.DamageCondition damageCondition)
             implements GeneInstance {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
@@ -51,9 +51,9 @@ public final class DamageModifierGeneType implements GeneType {
         ResourceLocation damageType = json.has("damage_type")
                 ? DataPackLang.parseId(GsonHelper.getAsString(json, "damage_type", ""))
                 : null;
-        com.aetherianartificer.townstead.habitus.condition.damage.DamageCondition damageCondition =
+        com.aetherianartificer.townstead.pheno.condition.damage.DamageCondition damageCondition =
                 json.has("damage_condition")
-                        ? com.aetherianartificer.townstead.habitus.condition.damage.DamageConditions.parse(
+                        ? com.aetherianartificer.townstead.pheno.condition.damage.DamageConditions.parse(
                                 json.get("damage_condition"))
                         : null;
         if (damageTag == null && damageType == null && damageCondition == null) return null;

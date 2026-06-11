@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.origin.condition.types;
 
-import com.aetherianartificer.townstead.habitus.condition.Condition;
-import com.aetherianartificer.townstead.habitus.condition.ConditionType;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.ConditionType;
 import com.aetherianartificer.townstead.origin.ability.Abilities;
 import com.aetherianartificer.townstead.origin.ability.Ability;
 import com.google.gson.JsonObject;

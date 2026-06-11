@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Server → client: the selectable origins (lineage names + granted gene ids) plus
- * a gene dictionary (id → display data) covering every gene any origin grants, so
+ * Server → client: the selectable assignment profiles (lineage names + granted gene ids) plus
+ * a gene dictionary (id → display data) covering every gene any profile grants, so
  * the picker renders fully on a client whose datapack-driven registries are empty.
  * Sent on login and datapack reload.
  */

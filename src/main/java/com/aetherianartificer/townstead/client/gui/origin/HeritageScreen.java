@@ -117,7 +117,7 @@ public class HeritageScreen extends Screen {
         int centerX = (x0 + x1) / 2;
         int y = y0 + PAD;
 
-        // Headline: race name, then the supporting origin/lineage line.
+        // Headline: heritage name, then the supporting assignment-profile/lineage line.
         g.drawCenteredString(font, Component.literal(data.raceName()), centerX, y, 0xFFFFFFFF);
         y += 13;
         if (!data.originName().isEmpty() && !data.originName().equals(data.raceName())) {

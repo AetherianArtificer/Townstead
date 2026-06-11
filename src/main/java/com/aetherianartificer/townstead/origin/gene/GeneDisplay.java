@@ -19,7 +19,7 @@ package com.aetherianartificer.townstead.origin.gene;
  */
 public record GeneDisplay(Kind kind, float min, float max, String targetId, float amount) {
 
-    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY }
+    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY, PARTICLE }
 
     public static final GeneDisplay PRESENCE = new GeneDisplay(Kind.BOOLEAN, 0f, 1f, "", 0f);
 
@@ -98,6 +98,23 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
      */
     public static GeneDisplay overlay(String texture, float alpha) {
         return new GeneDisplay(Kind.OVERLAY, Math.max(0f, Math.min(1f, alpha)), 1f, texture == null ? "" : texture, 0f);
+    }
+
+    /**
+     * An ambient particle emitter; the emitter parameters pack into {@code targetId} as
+     * {@code "particleId;count;spread;speed;yOffset"} so the picker preview can render a
+     * matching screen-space approximation (the in-world emitter stays server-side). A
+     * presence chip in the list.
+     */
+    public static GeneDisplay particle(net.minecraft.resources.ResourceLocation particle, int count,
+                                       float spread, float speed, float yOffset) {
+        String packed = (particle == null ? "" : particle.toString()) + ";" + count + ";"
+                + fmt(spread) + ";" + fmt(speed) + ";" + fmt(yOffset);
+        return new GeneDisplay(Kind.PARTICLE, 0f, 1f, packed, 0f);
+    }
+
+    private static String fmt(float v) {
+        return String.format(java.util.Locale.ROOT, "%.4f", v);
     }
 
     private static float clamp01(float v) {

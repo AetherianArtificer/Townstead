@@ -33,10 +33,10 @@ public final class ExpressedGenes {
 
     /**
      * Expressed gene instances of the given type carried by the entity. Delegates to
-     * the {@link com.aetherianartificer.townstead.habitus.power.Powers} facade so callers see
+     * the {@link com.aetherianartificer.townstead.pheno.power.Powers} facade so callers see
      * every source's components, not just genes.
      */
     public static <T extends GeneInstance> List<T> instancesOf(LivingEntity entity, Class<T> type) {
-        return com.aetherianartificer.townstead.habitus.power.Powers.componentsOf(entity, type);
+        return com.aetherianartificer.townstead.pheno.power.Powers.componentsOf(entity, type);
     }
 }

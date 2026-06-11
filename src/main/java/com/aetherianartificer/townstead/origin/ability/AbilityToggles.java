@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin.ability;
 
 import com.aetherianartificer.townstead.origin.gene.types.AbilityGeneType;
-import com.aetherianartificer.townstead.habitus.power.Power;
-import com.aetherianartificer.townstead.habitus.power.Powers;
+import com.aetherianartificer.townstead.pheno.power.Power;
+import com.aetherianartificer.townstead.pheno.power.Powers;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;

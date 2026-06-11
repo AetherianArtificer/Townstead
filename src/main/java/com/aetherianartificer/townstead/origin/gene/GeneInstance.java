@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.origin.gene;
 
-import com.aetherianartificer.townstead.habitus.power.PowerComponent;
+import com.aetherianartificer.townstead.pheno.power.PowerComponent;
 
 /**
  * One parsed gene's type-specific config (like {@code TriggerInstance}). The genetics

@@ -2,6 +2,11 @@ package com.aetherianartificer.townstead.origin.gene;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.pheno.lang.PhenoDiagnostics;
+import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostic;
+import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostics;
+import com.aetherianartificer.townstead.pheno.lang.compile.Severity;
+import com.aetherianartificer.townstead.pheno.lang.validate.PhenoValidator;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -40,10 +45,12 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                          ProfilerFiller profiler) {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Gene> parsed = new LinkedHashMap<>();
+        Diagnostics diagnostics = new Diagnostics();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                PhenoValidator.validateGene(file, obj, diagnostics);
                 String typeKey = GsonHelper.getAsString(obj, "type", "");
                 Optional<GeneType> type = GeneTypes.get(typeKey);
                 if (type.isEmpty()) {
@@ -76,7 +83,14 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
             }
         }
         GeneRegistry.replaceAll(parsed);
-        LOGGER.info("Loaded {} genes", parsed.size());
+        PhenoDiagnostics.replace(diagnostics.all());
+        for (Diagnostic d : diagnostics.all()) {
+            if (d.severity() == Severity.ERROR) LOGGER.warn("pheno: {}", d.render());
+        }
+        int errors = diagnostics.count(Severity.ERROR);
+        LOGGER.info("Loaded {} genes ({} pheno diagnostic{})",
+                parsed.size(), diagnostics.all().size(), diagnostics.all().size() == 1 ? "" : "s");
+        if (errors > 0) LOGGER.warn("pheno: {} error diagnostic(s); run /pheno validate for detail", errors);
     }
 
     /**

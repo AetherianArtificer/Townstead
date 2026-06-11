@@ -1,13 +1,21 @@
 package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.pheno.power.Power;
+import com.aetherianartificer.townstead.pheno.power.Powers;
+import com.aetherianartificer.townstead.origin.ability.GeneAbilityTicker;
+import com.aetherianartificer.townstead.origin.attribute.GeneAttributeApplier;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Branch-agnostic server handling for {@link OriginSetC2SPayload}: resolves the
@@ -41,8 +49,11 @@ public final class OriginServerLogic {
             }
             ResourceLocation id = resolveKnown(originId);
             if (id == null) return null;
+            boolean changed = !id.toString().equals(orDefault(PlayerOrigin.getOriginId(sp)));
+            List<Power> oldGenes = changed ? new ArrayList<>(Powers.active(sp)) : List.of();
             PlayerOrigin.setOriginId(sp, id.toString());
             StartingEquipment.grant(sp);
+            if (changed) resetPassives(sp, oldGenes);
             return new Result(OriginSetC2SPayload.SELF, id.toString());
         }
 
@@ -56,6 +67,7 @@ public final class OriginServerLogic {
         ResourceLocation id = resolveKnown(originId);
         if (id == null) return null;
         boolean changed = !id.toString().equals(state.life().originId());
+        List<Power> oldGenes = changed ? new ArrayList<>(Powers.active(villager)) : List.of();
         state.life().setOrigin(id.toString());
         // Reseed the diploid genotype + heritage to the new origin. MCA's *float*
         // genes (size/skin-tone) are committed separately by the editor's WYSIWYG
@@ -71,7 +83,20 @@ public final class OriginServerLogic {
         // the snapshot is written, and the periodic flush may not run before the
         // world saves/exits — which lost the origin (and so the skin tint) on reload.
         TownsteadVillagers.flush(villager);
+        if (changed) resetPassives(villager, oldGenes);
         return new Result(villager.getId(), id.toString());
+    }
+
+    /**
+     * Clear the old origin's lingering passive state on a change. The ability/attribute
+     * tickers only ever undo a gene they are still iterating, so a gene that leaves the
+     * expressed set would orphan its applied state (a stuck no-gravity/sprint flag, glow
+     * tag, or attribute modifier). The convergent tickers re-apply the new origin's set
+     * on their next pass.
+     */
+    private static void resetPassives(LivingEntity entity, List<Power> oldGenes) {
+        GeneAbilityTicker.resetPassives(entity);
+        GeneAttributeApplier.removeFor(entity, oldGenes);
     }
 
     @Nullable

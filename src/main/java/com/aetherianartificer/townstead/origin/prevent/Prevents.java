@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.origin.prevent;
 
 import com.aetherianartificer.townstead.origin.ExpressedGenes;
-import com.aetherianartificer.townstead.habitus.condition.ConditionContext;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.origin.gene.types.PreventGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.PreventGeneType.What;
 import net.minecraft.world.entity.LivingEntity;

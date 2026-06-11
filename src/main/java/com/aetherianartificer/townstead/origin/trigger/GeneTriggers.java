@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin.trigger;
 
-import com.aetherianartificer.townstead.habitus.power.Powers;
-import com.aetherianartificer.townstead.habitus.action.ActionContext;
-import com.aetherianartificer.townstead.habitus.condition.ConditionContext;
+import com.aetherianartificer.townstead.pheno.power.Powers;
+import com.aetherianartificer.townstead.pheno.action.ActionContext;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.origin.gene.types.TriggerGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.TriggerGeneType.Target;
 import com.aetherianartificer.townstead.origin.gene.types.TriggerGeneType.Trigger;
@@ -65,6 +65,12 @@ public final class GeneTriggers {
     public static void onEquip(LivingEntity entity) {
         if (entity.level().isClientSide) return;
         fire(entity, Trigger.WHEN_EQUIP, null, null, 0f);
+    }
+
+    /** The bearer finished using/consuming an item (Origins {@code action_on_item_use}); self-only. */
+    public static void onItemUse(LivingEntity entity) {
+        if (entity.level().isClientSide) return;
+        fire(entity, Trigger.WHEN_ITEM_USE, null, null, 0f);
     }
 
     private static void fire(LivingEntity bearer, Trigger trigger, @Nullable LivingEntity other,

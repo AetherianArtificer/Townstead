@@ -1,10 +1,10 @@
 package com.aetherianartificer.townstead.origin.ability;
 
-import com.aetherianartificer.townstead.habitus.power.Power;
-import com.aetherianartificer.townstead.habitus.power.PowerComponent;
-import com.aetherianartificer.townstead.habitus.power.Powers;
-import com.aetherianartificer.townstead.habitus.action.ActionContext;
-import com.aetherianartificer.townstead.habitus.condition.ConditionContext;
+import com.aetherianartificer.townstead.pheno.power.Power;
+import com.aetherianartificer.townstead.pheno.power.PowerComponent;
+import com.aetherianartificer.townstead.pheno.power.Powers;
+import com.aetherianartificer.townstead.pheno.action.ActionContext;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.origin.gene.types.AbilityGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.ActionOverTimeGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.AuraGeneType;
@@ -12,6 +12,7 @@ import com.aetherianartificer.townstead.origin.gene.types.EffectImmunityGeneType
 import com.aetherianartificer.townstead.origin.gene.types.GlowGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.ParticleGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.RestrictEquipmentGeneType;
+import com.aetherianartificer.townstead.origin.gene.types.ScareMobGeneType;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -42,6 +43,20 @@ public final class GeneAbilityTicker {
 
     private GeneAbilityTicker() {}
 
+    /**
+     * Clears every persistent passive-ability state this ticker can set (the hidden
+     * effects, the no-gravity / sprinting / fly flags, and the glow tag). Called on an
+     * origin change: the convergent {@link #tick} only ever clears a gene it is still
+     * iterating, so a gene that leaves the expressed set would otherwise orphan its
+     * applied state. {@code clear} is idempotent, so a blanket pass is safe; the next
+     * tick re-applies whatever the new origin grants.
+     */
+    public static void resetPassives(LivingEntity entity) {
+        if (entity.level().isClientSide) return;
+        for (Ability ability : Ability.values()) clear(entity, ability);
+        if (entity.hasGlowingTag()) entity.setGlowingTag(false);
+    }
+
     public static void tick(LivingEntity entity) {
         if (entity.level().isClientSide) return;
         if ((entity.level().getGameTime() + entity.getId()) % INTERVAL != 0) return;
@@ -57,6 +72,7 @@ public final class GeneAbilityTicker {
         List<AuraGeneType.Instance> auras = new java.util.ArrayList<>();
         List<EffectImmunityGeneType.Instance> immunities = new java.util.ArrayList<>();
         List<ActionOverTimeGeneType.Instance> overTime = new java.util.ArrayList<>();
+        List<ScareMobGeneType.Instance> scares = new java.util.ArrayList<>();
         for (Power gene : expressed) {
             PowerComponent instance = gene.component();
             if (instance instanceof AbilityGeneType.Instance ability) {
@@ -73,6 +89,10 @@ public final class GeneAbilityTicker {
                 immunities.add(immunity);
             } else if (instance instanceof ActionOverTimeGeneType.Instance aot) {
                 overTime.add(aot);
+            } else if (instance instanceof ScareMobGeneType.Instance scare) {
+                scares.add(scare);
+            } else if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.StackingEffectGeneType.Instance stacking) {
+                com.aetherianartificer.townstead.origin.effect.StackingEffects.apply(entity, gene.id(), stacking, ctx);
             }
         }
         applyGlow(entity, glows, ctx);
@@ -81,6 +101,23 @@ public final class GeneAbilityTicker {
         applyAuras(entity, auras, ctx);
         applyEffectImmunity(entity, immunities);
         applyActionsOverTime(entity, overTime, ctx);
+        applyScare(entity, scares);
+    }
+
+    private static void applyScare(LivingEntity entity, List<ScareMobGeneType.Instance> scares) {
+        if (scares.isEmpty()) return;
+        for (ScareMobGeneType.Instance scare : scares) {
+            var nearby = entity.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class,
+                    entity.getBoundingBox().inflate(scare.radius()));
+            for (net.minecraft.world.entity.Mob mob : nearby) {
+                if (mob == entity || !scare.matches(mob)) continue;
+                if (mob.getTarget() == entity) mob.setTarget(null);
+                Vec3 away = mob.position().subtract(entity.position());
+                if (away.lengthSqr() < 1.0e-4) continue;
+                away = away.normalize().scale(scare.radius());
+                mob.getNavigation().moveTo(mob.getX() + away.x, mob.getY() + away.y, mob.getZ() + away.z, 1.3);
+            }
+        }
     }
 
     private static void applyActionsOverTime(LivingEntity entity, List<ActionOverTimeGeneType.Instance> overTime,

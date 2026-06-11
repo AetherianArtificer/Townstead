@@ -8,12 +8,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Per-biome / per-dimension spawn weighting for an origin, authored on
- * ancestries, lineages and origins and composed into one effective bias by
+ * Per-biome / per-dimension founder weighting, authored on ancestries, lineages
+ * and selectable assignment profiles and composed into one effective bias by
  * {@link OriginRegistry#effectiveSpawnBias}. A weight is resolved most-specific
  * first: exact biome, then any matching biome tag, then dimension, then the
  * {@code default} (1.0 when unset). An empty bias is a flat weight of 1.0
- * everywhere, so an origin with no {@code spawn_bias} is a uniform baseline.
+ * everywhere, so a profile with no {@code spawn_bias} is a uniform baseline.
  *
  * <p>Authored as {@code spawn_bias: { default, biomes{}, biome_tags{}, dimensions{} }}.</p>
  */

@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.origin.damage;
 
 import com.aetherianartificer.townstead.origin.ExpressedGenes;
-import com.aetherianartificer.townstead.habitus.condition.ConditionContext;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.origin.gene.types.DamageModifierGeneType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;

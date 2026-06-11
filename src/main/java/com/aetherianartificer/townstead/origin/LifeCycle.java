@@ -6,9 +6,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The ordered list of {@link LifeStage}s an origin progresses through. Lives
- * on {@link Ancestry}/{@link Lineage}/{@link Origin} just like {@link Genome};
- * the effective cycle is resolved by {@link OriginRegistry#effectiveLifeCycle}.
+ * The ordered list of {@link LifeStage}s an individual progresses through.
+ * It is contributed through species, ancestry and lineage genes, with optional
+ * founder-assignment overrides from {@link Origin}; the effective cycle is
+ * resolved by {@link OriginRegistry#effectiveLifeCycle}.
  *
  * <p>Composition is replace-not-merge: a later layer's non-empty cycle fully
  * overrides the earlier layer. A butterfly origin doesn't want to inherit
@@ -99,7 +100,7 @@ public record LifeCycle(List<LifeStage> stages) {
     }
 
     /**
-     * The fallback when no origin/ancestry/lineage declares one. Six canonical
+     * The fallback when no selected species, ancestry, lineage, or assignment profile declares one. Six canonical
      * stages whose base day-counts equal their apparent-year spans (baby 2, …,
      * adult 47, senior 25 = 90 total), so apparent age derives linearly as
      * {@code daysAlive / agingScale}. The spawn-time aging scale then stretches

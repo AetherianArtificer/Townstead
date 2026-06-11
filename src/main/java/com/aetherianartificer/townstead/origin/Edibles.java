@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.origin;
 
-import com.aetherianartificer.townstead.habitus.action.ActionContext;
+import com.aetherianartificer.townstead.pheno.action.ActionContext;
 import com.aetherianartificer.townstead.origin.gene.Gene;
 import com.aetherianartificer.townstead.origin.gene.types.EdibleGeneType;
 import net.minecraft.core.registries.BuiltInRegistries;

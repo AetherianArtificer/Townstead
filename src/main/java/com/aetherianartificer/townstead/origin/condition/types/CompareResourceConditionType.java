@@ -1,9 +1,9 @@
 package com.aetherianartificer.townstead.origin.condition.types;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
-import com.aetherianartificer.townstead.habitus.condition.Comparison;
-import com.aetherianartificer.townstead.habitus.condition.Condition;
-import com.aetherianartificer.townstead.habitus.condition.ConditionType;
+import com.aetherianartificer.townstead.pheno.condition.Comparison;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.ConditionType;
 import com.aetherianartificer.townstead.origin.ability.ResourceValues;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;

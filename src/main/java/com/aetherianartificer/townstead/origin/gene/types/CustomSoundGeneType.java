@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.origin.gene.types;
 
-import com.aetherianartificer.townstead.habitus.sound.SoundSpec;
+import com.aetherianartificer.townstead.pheno.sound.SoundSpec;
 import com.aetherianartificer.townstead.origin.gene.GeneDisplay;
 import com.aetherianartificer.townstead.origin.gene.GeneInstance;
 import com.aetherianartificer.townstead.origin.gene.GeneType;

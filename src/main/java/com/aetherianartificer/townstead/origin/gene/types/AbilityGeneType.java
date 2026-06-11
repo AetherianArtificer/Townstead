@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin.gene.types;
 
 import com.aetherianartificer.townstead.origin.ability.Ability;
-import com.aetherianartificer.townstead.habitus.condition.Condition;
-import com.aetherianartificer.townstead.habitus.condition.Conditions;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.aetherianartificer.townstead.origin.gene.GeneDisplay;
 import com.aetherianartificer.townstead.origin.gene.GeneInstance;
 import com.aetherianartificer.townstead.origin.gene.GeneType;

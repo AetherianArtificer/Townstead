@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin.condition.types;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
-import com.aetherianartificer.townstead.habitus.condition.Condition;
-import com.aetherianartificer.townstead.habitus.condition.ConditionType;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.ConditionType;
 import com.aetherianartificer.townstead.origin.ability.ResourceValues;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
@@ -11,7 +11,7 @@ import net.minecraft.util.GsonHelper;
 /**
  * True when the entity's value for a {@code resource} gene is within {@code [min, max]}
  * (Apoli's {@code resource}). A genetics-specific condition, so it lives in {@code origin}
- * (which depends on habitus) rather than the shared layer.
+ * (which depends on pheno) rather than the shared layer.
  *
  * <p>JSON: {@code { "type":"townstead_origins:resource", "resource":"my_pack:mana", "min":1 }}</p>
  */

@@ -3,8 +3,8 @@ package com.aetherianartificer.townstead.origin.ability;
 import com.aetherianartificer.townstead.origin.gene.Gene;
 import com.aetherianartificer.townstead.origin.gene.GeneRegistry;
 import com.aetherianartificer.townstead.origin.gene.types.ResourceGeneType;
-import com.aetherianartificer.townstead.habitus.power.Power;
-import com.aetherianartificer.townstead.habitus.power.Powers;
+import com.aetherianartificer.townstead.pheno.power.Power;
+import com.aetherianartificer.townstead.pheno.power.Powers;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -38,8 +38,14 @@ public final class ResourceValues {
     public static void change(LivingEntity entity, ResourceLocation geneId, int delta) {
         ResourceGeneType.Instance instance = instanceOf(geneId);
         if (instance == null) return;
-        int current = get(entity, geneId);
-        int next = Math.max(instance.min(), Math.min(instance.max(), current + delta));
+        set(entity, geneId, get(entity, geneId) + delta);
+    }
+
+    /** Set a resource to {@code value}, clamped to the gene's range (Apoli's {@code operation:"set"}). */
+    public static void set(LivingEntity entity, ResourceLocation geneId, int value) {
+        ResourceGeneType.Instance instance = instanceOf(geneId);
+        if (instance == null) return;
+        int next = Math.max(instance.min(), Math.min(instance.max(), value));
         VALUES.computeIfAbsent(entity.getUUID(), k -> new ConcurrentHashMap<>()).put(geneId, next);
     }
 

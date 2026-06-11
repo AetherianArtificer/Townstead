@@ -37,7 +37,10 @@
     "EntityGroundedMixin",
     "FoodDataNaturalRegenMixin",
     "LivingEntitySoundMixin",
-    "EntityStepSoundMixin"
+    "EntityStepSoundMixin",
+    "PlayerExhaustionMixin",
+    "EntityGameEventMixin",
+    "SlotResultGateMixin"
   ],
   "client": [
     "compat.stardewhud.StardewHudDateMixin",

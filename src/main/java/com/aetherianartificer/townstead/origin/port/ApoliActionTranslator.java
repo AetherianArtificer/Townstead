@@ -72,6 +72,7 @@ public final class ApoliActionTranslator {
                 JsonObject out = typed("change_resource");
                 out.addProperty("resource", GsonHelper.getAsString(apoli, "resource", ""));
                 out.addProperty("amount", GsonHelper.getAsInt(apoli, "change", GsonHelper.getAsInt(apoli, "amount", 0)));
+                out.addProperty("operation", GsonHelper.getAsString(apoli, "operation", "add"));
                 return out;
             }
             case "execute_command": {
@@ -82,6 +83,15 @@ public final class ApoliActionTranslator {
             case "spawn_entity": {
                 JsonObject out = typed("spawn_entity");
                 out.addProperty("entity", GsonHelper.getAsString(apoli, "entity_type", ""));
+                return out;
+            }
+            case "give": {
+                JsonObject stack = apoli.has("stack") && apoli.get("stack").isJsonObject()
+                        ? apoli.getAsJsonObject("stack") : null;
+                if (stack == null || !stack.has("item")) return null;
+                JsonObject out = typed("give");
+                out.addProperty("item", GsonHelper.getAsString(stack, "item", ""));
+                out.addProperty("count", GsonHelper.getAsInt(stack, "count", 1));
                 return out;
             }
             case "set_no_gravity": {

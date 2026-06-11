@@ -6,9 +6,10 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * The shape/base-model category of a villager (Humanoid, and later Ribbit,
  * Kobold, …), and the bottom layer of the genome. A species can grant
- * {@code genes} that every ancestry/lineage/origin under it inherits (so
+ * {@code genes} shared by its ancestries and lineages, and therefore by
+ * assignment profiles that select them (so
  * species-wide traits — a Ribbit's swimming, no-armor build — live here, not
- * repeated per origin). {@code shape} is an identifier reserved for model
+ * repeated per assignment profile). {@code shape} is an identifier reserved for model
  * selection; {@code humanoid} maps to MCA's default villager model.
  *
  * <p>Loaded from {@code data/<ns>/species/<path>.json}. {@code admixture_chance}

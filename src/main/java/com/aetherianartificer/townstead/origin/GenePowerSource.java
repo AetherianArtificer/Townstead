@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.origin.gene.Gene;
-import com.aetherianartificer.townstead.habitus.power.Power;
-import com.aetherianartificer.townstead.habitus.power.PowerSource;
+import com.aetherianartificer.townstead.pheno.power.Power;
+import com.aetherianartificer.townstead.pheno.power.PowerSource;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.List;

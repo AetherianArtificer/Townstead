@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin.fx;
 
-import com.aetherianartificer.townstead.habitus.power.Power;
-import com.aetherianartificer.townstead.habitus.power.Powers;
-import com.aetherianartificer.townstead.habitus.condition.ConditionContext;
+import com.aetherianartificer.townstead.pheno.power.Power;
+import com.aetherianartificer.townstead.pheno.power.Powers;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.origin.gene.types.OverlayGeneType;
 import net.minecraft.server.level.ServerPlayer;
 

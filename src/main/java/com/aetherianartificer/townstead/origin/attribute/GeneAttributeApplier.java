@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin.attribute;
 
-import com.aetherianartificer.townstead.habitus.power.Power;
-import com.aetherianartificer.townstead.habitus.power.Powers;
-import com.aetherianartificer.townstead.habitus.condition.ConditionContext;
+import com.aetherianartificer.townstead.pheno.power.Power;
+import com.aetherianartificer.townstead.pheno.power.Powers;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.origin.gene.types.AttributeGeneType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -43,6 +43,37 @@ public final class GeneAttributeApplier {
                 applyOne(entity, gene.id(), instance, ctx);
             }
         }
+    }
+
+    /**
+     * Removes the modifiers for a set of (old) attribute genes. Called on an origin
+     * change with the entity's previously-expressed genes: the convergent {@link #tick}
+     * only removes a modifier while still iterating its gene, so a gene that leaves the
+     * expressed set would orphan its modifier until reload. The next tick re-adds
+     * whatever the new origin grants.
+     */
+    public static void removeFor(LivingEntity entity, java.util.List<Power> oldGenes) {
+        if (entity.level().isClientSide) return;
+        for (Power gene : oldGenes) {
+            if (gene.component() instanceof AttributeGeneType.Instance instance && instance.attribute() != null) {
+                removeOne(entity, gene.id(), instance);
+            }
+        }
+    }
+
+    private static void removeOne(LivingEntity entity, ResourceLocation geneId, AttributeGeneType.Instance instance) {
+        //? if neoforge {
+        Holder<Attribute> holder = BuiltInRegistries.ATTRIBUTE
+                .getHolder(ResourceKey.create(Registries.ATTRIBUTE, instance.attribute())).orElse(null);
+        if (holder == null) return;
+        AttributeInstance attr = entity.getAttribute(holder);
+        if (attr != null) attr.removeModifier(modifierId(geneId));
+        //?} else {
+        /*Attribute attribute = BuiltInRegistries.ATTRIBUTE.get(instance.attribute());
+        if (attribute == null) return;
+        AttributeInstance attr = entity.getAttribute(attribute);
+        if (attr != null) attr.removeModifier(modifierUuid(geneId));
+        *///?}
     }
 
     private static void applyOne(LivingEntity entity, ResourceLocation geneId,

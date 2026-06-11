@@ -16,7 +16,7 @@ import java.util.UUID;
  * Server → client: one villager's realized heritage for the read-only Heritage
  * screen, keyed by the villager's UUID. Everything is pre-resolved to display
  * strings (the client's data-pack registries are empty): the race name, the
- * supporting origin/lineage name, the ancestry-fraction breakdown, and the diploid
+ * supporting assignment-profile/lineage name, the ancestry-fraction breakdown, and the diploid
  * gene rows (each locus' two alleles and which one is expressed). Built by
  * {@link HeritageView}. An empty {@code raceName} means the villager could not be
  * resolved (e.g. unloaded), and the screen shows "unavailable".

@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin.condition.types;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
-import com.aetherianartificer.townstead.habitus.condition.Condition;
-import com.aetherianartificer.townstead.habitus.condition.ConditionType;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.ConditionType;
 import com.aetherianartificer.townstead.origin.PlayerOrigin;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.gson.JsonObject;

@@ -5,10 +5,12 @@ import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * The named, selectable top-level entry a villager carries. References a species
- * and either an ancestry or a lineage, and supplies a demonym + backstory
- * (overriding the referenced ancestry/lineage when present). Its effective
- * genome is resolved by {@link OriginRegistry#effectiveGenome}.
+ * A named, selectable assignment profile in the Origins system. It is not a
+ * biological tier after lineage: it points to a species and either an ancestry
+ * or lineage, then supplies founder defaults and optional presentation/genome
+ * overrides. The individual's realised inherited identity is {@link Heritage}.
+ * Its effective founder genome is resolved by
+ * {@link OriginRegistry#effectiveGenome}.
  *
  * <p>Loaded from {@code data/<ns>/origin/<path>.json}. The built-in
  * {@code townstead_origins:overworlder} is Humanoid / Human with default ranges.</p>

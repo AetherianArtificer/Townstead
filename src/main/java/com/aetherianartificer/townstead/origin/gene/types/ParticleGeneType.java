@@ -1,8 +1,8 @@
 package com.aetherianartificer.townstead.origin.gene.types;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
-import com.aetherianartificer.townstead.habitus.condition.Condition;
-import com.aetherianartificer.townstead.habitus.condition.Conditions;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.aetherianartificer.townstead.origin.gene.GeneDisplay;
 import com.aetherianartificer.townstead.origin.gene.GeneInstance;
 import com.aetherianartificer.townstead.origin.gene.GeneType;
@@ -31,7 +31,9 @@ public final class ParticleGeneType implements GeneType {
     public record Instance(ResourceLocation particle, int count, float spread, float speed, float yOffset,
                            @Nullable Condition condition) implements GeneInstance {
         @Override public String typeKey() { return KEY; }
-        @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
+        @Override public GeneDisplay display() {
+            return GeneDisplay.particle(particle, count, spread, speed, yOffset);
+        }
     }
 
     @Override

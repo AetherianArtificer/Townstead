@@ -50,6 +50,6 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
             }
         }
         LineageRegistry.replaceAll(parsed);
-        LOGGER.info("Loaded {} origin lineages", parsed.size());
+        LOGGER.info("Loaded {} Origins lineages", parsed.size());
     }
 }

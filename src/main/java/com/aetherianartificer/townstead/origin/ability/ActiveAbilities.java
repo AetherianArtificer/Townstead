@@ -1,9 +1,9 @@
 package com.aetherianartificer.townstead.origin.ability;
 
-import com.aetherianartificer.townstead.habitus.power.Power;
-import com.aetherianartificer.townstead.habitus.power.Powers;
-import com.aetherianartificer.townstead.habitus.action.ActionContext;
-import com.aetherianartificer.townstead.habitus.condition.ConditionContext;
+import com.aetherianartificer.townstead.pheno.power.Power;
+import com.aetherianartificer.townstead.pheno.power.Powers;
+import com.aetherianartificer.townstead.pheno.action.ActionContext;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.origin.gene.types.AbilityGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.ActiveAbilityGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.ActiveAbilityGeneType.AiTrigger;
@@ -40,7 +40,7 @@ public final class ActiveAbilities {
     /** One slot-bound thing: an active ability (momentary) or a toggle ability (on/off). */
     public record Slotted(ResourceLocation geneId, int declaredSlot, GeneInstanceKind kind, Object instance) {}
 
-    public enum GeneInstanceKind { ACTIVE, TOGGLE }
+    public enum GeneInstanceKind { ACTIVE, TOGGLE, INVENTORY }
 
     public static List<Resolved> resolve(LivingEntity entity) {
         List<Resolved> out = new ArrayList<>();
@@ -61,6 +61,12 @@ public final class ActiveAbilities {
             } else if (gene.component() instanceof AbilityGeneType.Instance ability
                     && ability.mode() == AbilityGeneType.Mode.TOGGLE) {
                 out.add(new Slotted(gene.id(), ability.slot(), GeneInstanceKind.TOGGLE, ability));
+            } else if (gene.component()
+                    instanceof com.aetherianartificer.townstead.origin.gene.types.ToggleGeneType.Instance toggle) {
+                out.add(new Slotted(gene.id(), toggle.slot(), GeneInstanceKind.TOGGLE, toggle));
+            } else if (gene.component()
+                    instanceof com.aetherianartificer.townstead.origin.gene.types.InventoryGeneType.Instance inventory) {
+                out.add(new Slotted(gene.id(), inventory.slot(), GeneInstanceKind.INVENTORY, inventory));
             }
         }
         return out;
@@ -91,6 +97,11 @@ public final class ActiveAbilities {
         if (slotted.kind() == GeneInstanceKind.TOGGLE) {
             AbilityToggles.flip(player, slotted.geneId());
             AbilityToggles.syncTo(player);
+            return true;
+        }
+        if (slotted.kind() == GeneInstanceKind.INVENTORY) {
+            com.aetherianartificer.townstead.origin.inventory.PersonalInventory.open(player, slotted.geneId(),
+                    ((com.aetherianartificer.townstead.origin.gene.types.InventoryGeneType.Instance) slotted.instance()).size());
             return true;
         }
         return fire(player, new Resolved(slotted.geneId(), (ActiveAbilityGeneType.Instance) slotted.instance()));
