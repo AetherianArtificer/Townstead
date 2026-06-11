@@ -30,6 +30,11 @@ public enum ProfessionXpType {
         return id;
     }
 
+    /** This built-in expressed as the unified runtime spec. */
+    public ProgressionSpec spec() {
+        return new ProgressionSpec(tierThresholds, dailyXpCap, maxXp);
+    }
+
     public int dailyXpCap() {
         return dailyXpCap;
     }

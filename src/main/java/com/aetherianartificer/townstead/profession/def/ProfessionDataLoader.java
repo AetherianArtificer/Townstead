@@ -101,6 +101,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
 
         List<Integer> tiers = new ArrayList<>();
         int dailyCap = 0;
+        int maxXp = ProgressionTrack.DEFAULT_MAX_XP;
         if (obj.has("progression") && obj.get("progression").isJsonObject()) {
             JsonObject prog = obj.getAsJsonObject("progression");
             if (prog.has("tiers") && prog.get("tiers").isJsonArray()) {
@@ -109,6 +110,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 }
             }
             dailyCap = GsonHelper.getAsInt(prog, "daily_cap", 0);
+            maxXp = GsonHelper.getAsInt(prog, "max_xp", ProgressionTrack.DEFAULT_MAX_XP);
         }
         if (tiers.isEmpty()) tiers.add(0);
 
@@ -126,7 +128,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         }
 
         return new ProfessionDef(id, name, description,
-                new ProgressionTrack(List.copyOf(tiers), dailyCap),
+                new ProgressionTrack(List.copyOf(tiers), dailyCap, maxXp),
                 UnlockModel.fromString(unlock),
                 GsonHelper.getAsInt(obj, "points_per_tier", 1),
                 RetrainingPolicy.fromString(retraining),
