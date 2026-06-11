@@ -10,6 +10,8 @@ import com.aetherianartificer.townstead.pheno.capability.ValueKind;
 import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.pheno.power.Power;
 import com.aetherianartificer.townstead.pheno.power.Powers;
+import com.aetherianartificer.townstead.profession.def.SkillDefs;
+import com.aetherianartificer.townstead.profession.skill.LearnedSkills;
 import com.aetherianartificer.townstead.pheno.lang.PhenoDiagnostics;
 import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostic;
 import com.aetherianartificer.townstead.pheno.lang.compile.Severity;
@@ -73,7 +75,80 @@ public final class PhenoCommand {
                 .then(Commands.literal("dump").executes(c -> dump(c.getSource())))
                 .then(Commands.literal("parity")
                         .then(Commands.argument("target", EntityArgument.entity())
-                                .executes(c -> parity(c.getSource(), EntityArgument.getEntity(c, "target"))))));
+                                .executes(c -> parity(c.getSource(), EntityArgument.getEntity(c, "target")))))
+                .then(Commands.literal("skills")
+                        .then(Commands.argument("target", EntityArgument.entity())
+                                .executes(c -> skills(c.getSource(), EntityArgument.getEntity(c, "target")))))
+                .then(Commands.literal("learn")
+                        .then(Commands.argument("target", EntityArgument.entity())
+                                .then(Commands.argument("skill", StringArgumentType.string()).suggests(SUGGEST_SKILLS)
+                                        .executes(c -> learn(c.getSource(), EntityArgument.getEntity(c, "target"),
+                                                StringArgumentType.getString(c, "skill"))))))
+                .then(Commands.literal("forget")
+                        .then(Commands.argument("target", EntityArgument.entity())
+                                .then(Commands.argument("skill", StringArgumentType.string()).suggests(SUGGEST_SKILLS)
+                                        .executes(c -> forget(c.getSource(), EntityArgument.getEntity(c, "target"),
+                                                StringArgumentType.getString(c, "skill")))))));
+    }
+
+    private static final SuggestionProvider<CommandSourceStack> SUGGEST_SKILLS = (c, b) ->
+            SharedSuggestionProvider.suggest(SkillDefs.all().keySet().stream().map(ResourceLocation::toString), b);
+
+    private static int skills(CommandSourceStack source, Entity target) {
+        if (!(target instanceof LivingEntity living)) {
+            source.sendFailure(Component.literal("Pheno skills: target is not a living entity."));
+            return 0;
+        }
+        Set<ResourceLocation> learned = LearnedSkills.learned(living);
+        if (learned.isEmpty()) {
+            source.sendSuccess(() -> Component.literal(target.getName().getString() + " has learned no skills.")
+                    .withStyle(ChatFormatting.GRAY), false);
+            return 1;
+        }
+        source.sendSuccess(() -> Component.literal("Learned skills of " + target.getName().getString() + ":")
+                .withStyle(ChatFormatting.GOLD), false);
+        for (ResourceLocation id : learned) {
+            source.sendSuccess(() -> Component.literal("  " + id).withStyle(ChatFormatting.AQUA), false);
+        }
+        return 1;
+    }
+
+    private static int learn(CommandSourceStack source, Entity target, String skill) {
+        if (!(target instanceof LivingEntity living)) {
+            source.sendFailure(Component.literal("Pheno learn: target is not a living entity."));
+            return 0;
+        }
+        ResourceLocation id = ResourceLocation.tryParse(skill);
+        if (id == null) {
+            source.sendFailure(Component.literal("Pheno learn: '" + skill + "' is not a valid id."));
+            return 0;
+        }
+        LearnedSkills.Result result = LearnedSkills.learn(living, id);
+        if (result.ok()) {
+            source.sendSuccess(() -> Component.literal(target.getName().getString() + " learned " + id)
+                    .withStyle(ChatFormatting.GREEN), false);
+            return 1;
+        }
+        source.sendFailure(Component.literal("Cannot learn " + id + ": " + result.error()));
+        return 0;
+    }
+
+    private static int forget(CommandSourceStack source, Entity target, String skill) {
+        if (!(target instanceof LivingEntity living)) {
+            source.sendFailure(Component.literal("Pheno forget: target is not a living entity."));
+            return 0;
+        }
+        ResourceLocation id = ResourceLocation.tryParse(skill);
+        if (id == null) {
+            source.sendFailure(Component.literal("Pheno forget: '" + skill + "' is not a valid id."));
+            return 0;
+        }
+        boolean removed = LearnedSkills.forget(living, id);
+        source.sendSuccess(() -> Component.literal(removed
+                ? target.getName().getString() + " forgot " + id
+                : target.getName().getString() + " had not learned " + id)
+                .withStyle(removed ? ChatFormatting.GREEN : ChatFormatting.GRAY), false);
+        return removed ? 1 : 0;
     }
 
     /**

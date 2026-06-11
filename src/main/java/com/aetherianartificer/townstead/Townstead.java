@@ -1067,6 +1067,9 @@ public class Townstead {
             // Read-side genetics feed for the capability layer (provenance for /pheno explain)
             com.aetherianartificer.townstead.pheno.capability.Capabilities.register(
                     new com.aetherianartificer.townstead.origin.capability.GeneCapabilitySource());
+            // Learned-skill feed for the capability layer (professions blend with genetics)
+            com.aetherianartificer.townstead.pheno.capability.Capabilities.register(
+                    new com.aetherianartificer.townstead.profession.skill.ProfessionCapabilitySource());
             // Node schemas (one source of truth for normalization, validation, and generated docs)
             com.aetherianartificer.townstead.pheno.lang.schema.PhenoSchemas.registerAll();
 
