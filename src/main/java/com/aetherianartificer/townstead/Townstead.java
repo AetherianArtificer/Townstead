@@ -1452,6 +1452,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.origin.HeritageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.chronotype.ChronotypeCatalogLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.gene.GeneJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.trait.TraitJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.attachment.AttachmentServerLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();

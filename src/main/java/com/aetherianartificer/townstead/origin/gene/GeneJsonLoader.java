@@ -85,7 +85,7 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
             }
         }
         GeneRegistry.replaceAll(parsed);
-        PhenoDiagnostics.replace(diagnostics.all());
+        PhenoDiagnostics.replace("gene", diagnostics.all());
         for (Diagnostic d : diagnostics.all()) {
             if (d.severity() == Severity.ERROR) LOGGER.warn("pheno: {}", d.render());
         }
