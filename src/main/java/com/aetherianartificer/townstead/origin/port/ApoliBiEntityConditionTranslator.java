@@ -33,6 +33,7 @@ public final class ApoliBiEntityConditionTranslator {
             // Relationship leaves (no fields)
             case "attack_target": return simple("attack_target");
             case "attacker": return simple("attacker");
+            case "prime_adversary": return simple("prime_adversary");
             case "can_see": return simple("can_see");
             case "owner": return simple("owner");
             case "riding": return simple("riding");
@@ -62,6 +63,20 @@ public final class ApoliBiEntityConditionTranslator {
                 if (set.isEmpty()) return null;
                 JsonObject out = simple("collection_contains");
                 out.addProperty("collection", set);
+                return out;
+            }
+            // Apugli compare_dimensions: the actor's live size against the target's, per axis
+            case "compare_dimensions": {
+                JsonObject out = simple("compare_dimensions");
+                out.addProperty("which", ApoliConditionTranslator.whichFromSet(apoli));
+                out.addProperty("comparison", GsonHelper.getAsString(apoli, "comparison", ">="));
+                return out;
+            }
+            // Apugli compare_scales (Pehkui): the actor's scale against the target's, per axis
+            case "compare_scales": {
+                JsonObject out = simple("compare_scales");
+                out.addProperty("which", ApoliConditionTranslator.whichFromScaleType(apoli));
+                out.addProperty("comparison", GsonHelper.getAsString(apoli, "comparison", ">="));
                 return out;
             }
             // Apugli hits-on-target: how many times the actor has hit the target, against the implicit counter

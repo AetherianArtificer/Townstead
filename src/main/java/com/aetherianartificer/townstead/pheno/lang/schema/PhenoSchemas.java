@@ -89,6 +89,19 @@ public final class PhenoSchemas {
                 .field(of("condition", PhenoType.CONDITION))
                 .primaryChild("action").build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:resource", NodeDomain.GENE)
+                .doc("A meter in [min,max] that regenerates regen per regen_interval ticks; spent by "
+                        + "abilities and moved by change_resource. Declarable standalone or inline in a "
+                        + "gene's root resources section (keyed by name, granted alongside that gene).")
+                .field(of("min", PhenoType.INT))
+                .field(of("max", PhenoType.INT))
+                .field(of("start", PhenoType.INT))
+                .field(of("regen", PhenoType.INT))
+                .field(of("regen_interval", PhenoType.INT))
+                .field(of("color", PhenoType.COLOR))
+                .field(of("on_reach", PhenoType.OBJECT).asList()
+                        .doc("Edge-triggered { at|every, do, then } when the meter crosses a threshold upward.")).build());
+
         // --- Action wrappers (the context transitions and meta combinators) ---
         NodeSchemas.register(NodeSchema.of("pheno:actor_action", NodeDomain.ACTION)
                 .doc("Runs the inner action on the actor (self).")
@@ -125,6 +138,52 @@ public final class PhenoSchemas {
                 .field(of("item", PhenoType.ID))
                 .field(of("cooldown", PhenoType.DURATION)).build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:jump", NodeDomain.ACTION)
+                .doc("Makes the entity jump (the vanilla impulse, respecting Jump Boost), scaled by "
+                        + "strength; clears fall distance so a mid-air jump banks no fall damage.")
+                .field(of("strength", PhenoType.FLOAT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:emit_game_event", NodeDomain.ACTION)
+                .doc("Emits a vanilla game event from the entity (Apoli emit_game_event).")
+                .field(required("event", PhenoType.ID)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:zombify_villager", NodeDomain.ACTION)
+                .doc("Turns the entity (any Mob, incl. MCA villagers) into a zombie villager "
+                        + "(Apugli zombify_villager).").build());
+
+        // --- Raycast family (ray is a selector; these are its action companions) ---
+        NodeSchemas.register(NodeSchema.of("pheno:at", NodeDomain.ACTION)
+                .doc("Runs a block action at blocks chosen from an entity context (a ray's block hit, a "
+                        + "place, a region): the bridge from an entity action to a block action.")
+                .field(required("blocks", PhenoType.OBJECT).doc("A block selector (e.g. { type: pheno:ray, stop_on: block })."))
+                .field(required("do", PhenoType.BLOCK_ACTION)).primaryChild("do").build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:beam", NodeDomain.ACTION)
+                .doc("Draws a line of particles from the caster's eyes along a ray to its impact point "
+                        + "(the beam half of Apoli/Apugli raycast).")
+                .field(required("particle", PhenoType.ID))
+                .field(of("spacing", PhenoType.FLOAT))
+                .field(of("distance", PhenoType.FLOAT))
+                .field(of("direction", PhenoType.FLOAT).asList())
+                .field(of("space", PhenoType.STRING).doc("world (default) or local (look-relative)."))
+                .field(of("toward", PhenoType.STRING).doc("A role to aim at (e.g. target).")).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:cloud", NodeDomain.ACTION)
+                .doc("Spawns a lingering field that runs do on each entity inside it every cycle, for "
+                        + "duration, growing/shrinking over time and on use (Apoli spawn_effect_cloud, "
+                        + "Apugli spawn_custom_effect_cloud). do runs with the inside entity as entity() "
+                        + "and the owner as other().")
+                .field(of("radius", PhenoType.FLOAT))
+                .field(of("grow_per_tick", PhenoType.FLOAT))
+                .field(of("shrink_on_use", PhenoType.FLOAT))
+                .field(of("wait_time", PhenoType.INT))
+                .field(of("duration", PhenoType.INT))
+                .field(of("reapply_delay", PhenoType.INT))
+                .field(of("height", PhenoType.FLOAT))
+                .field(of("particle", PhenoType.ID))
+                .field(of("where", PhenoType.BIENTITY_CONDITION).doc("A gate on (owner, inside)."))
+                .field(required("do", PhenoType.ACTION)).primaryChild("do").build());
+
         // --- Block actions ---
         NodeSchemas.register(NodeSchema.of("pheno:offset", NodeDomain.BLOCK_ACTION)
                 .doc("Shifts the target position before running the inner block action.")
@@ -142,6 +201,12 @@ public final class PhenoSchemas {
                 .field(of("biome", PhenoType.TAG_OR_ID).asList())
                 .field(of("dimension", PhenoType.ID).asList())
                 .field(of("effects", PhenoType.OBJECT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:step_height", NodeDomain.GENE)
+                .doc("Raises how high the entity steps up by amount (Apugli step_height's upper_height), "
+                        + "resolving the per-version step-height attribute.")
+                .field(of("amount", PhenoType.FLOAT))
+                .field(of("condition", PhenoType.CONDITION)).build());
 
         // --- Collection store (Apoli entity_set family) ---
         NodeSchemas.register(NodeSchema.of("pheno:collection", NodeDomain.GENE)
@@ -182,6 +247,42 @@ public final class PhenoSchemas {
                 .field(required("collection", PhenoType.ID))
                 .field(of("comparison", PhenoType.STRING))
                 .field(of("compare_to", PhenoType.INT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:dimensions", NodeDomain.CONDITION)
+                .doc("The entity's live bounding-box size within [min,max] (Apugli dimensions, the "
+                        + "physical size, not the world dimension).")
+                .field(of("which", PhenoType.STRING).doc("width, height, or both (default)."))
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:compare_dimensions", NodeDomain.BIENTITY_CONDITION)
+                .doc("The actor's live size against the target's, per axis (Apugli compare_dimensions).")
+                .field(of("which", PhenoType.STRING).doc("width, height, or both (default)."))
+                .field(of("comparison", PhenoType.STRING)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:fluid_height", NodeDomain.CONDITION)
+                .doc("The height of the given fluid tag the entity stands in, within [min,max] (Apoli fluid_height).")
+                .field(required("fluid", PhenoType.ID))
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:passenger_recursive", NodeDomain.CONDITION)
+                .doc("Compares the recursive passenger count against compare_to (Apoli passenger_recursive).")
+                .field(of("comparison", PhenoType.STRING))
+                .field(of("compare_to", PhenoType.INT))
+                .field(of("where", PhenoType.BIENTITY_CONDITION).doc("Optional gate on (holder, passenger).")).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:scale", NodeDomain.CONDITION)
+                .doc("The entity's scale within [min,max] (Apugli/Pehkui scale, read from MCA villager "
+                        + "scale factors; 1.0 for non-villagers).")
+                .field(of("which", PhenoType.STRING).doc("width (horizontal), height (vertical), or both (default)."))
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:compare_scales", NodeDomain.BIENTITY_CONDITION)
+                .doc("The actor's scale against the target's, per axis (Apugli/Pehkui compare_scales).")
+                .field(of("which", PhenoType.STRING).doc("width, height, or both (default)."))
+                .field(of("comparison", PhenoType.STRING)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:for_each", NodeDomain.ACTION)
                 .doc("Runs do once per collection member, holder as entity() and member as other(), gated "

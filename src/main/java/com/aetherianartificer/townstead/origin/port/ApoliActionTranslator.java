@@ -6,6 +6,8 @@ import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Locale;
+
 /**
  * Translates an Apoli entity-action JSON into the Townstead {@code action} subset
  * (see {@code origin/action}), for porting {@code active_self} powers, plus
@@ -64,6 +66,10 @@ public final class ApoliActionTranslator {
             case "extinguish": return typed("extinguish");
             case "apply_effect": return applyEffect(apoli);
             case "action_on_set": return actionOnSet(apoli);
+            case "raycast": return raycast(apoli);
+            case "explosion_raycast": return explosionRaycast(apoli);
+            case "spawn_effect_cloud":
+            case "spawn_custom_effect_cloud": return spawnCloud(apoli);
             case "exhaust": {
                 JsonObject out = typed("exhaust");
                 out.addProperty("amount", GsonHelper.getAsFloat(apoli, "amount", 0f));
@@ -85,6 +91,28 @@ public final class ApoliActionTranslator {
                 JsonObject out = typed("spawn_entity");
                 out.addProperty("entity", GsonHelper.getAsString(apoli, "entity_type", ""));
                 return out;
+            }
+            case "emit_game_event": {
+                JsonObject out = typed("emit_game_event");
+                out.addProperty("event", GsonHelper.getAsString(apoli, "event", ""));
+                return out;
+            }
+            case "zombify_villager": return typed("zombify_villager");
+            case "set_resource": {
+                JsonObject out = typed("change_resource");
+                out.addProperty("resource", GsonHelper.getAsString(apoli, "resource", ""));
+                out.addProperty("amount", GsonHelper.getAsInt(apoli, "value", 0));
+                out.addProperty("operation", "set");
+                return out;
+            }
+            case "selector_action": {
+                JsonElement inner = translateBiEntity(apoli.get("bientity_action"));
+                if (inner == null || !inner.isJsonObject()) return null;
+                JsonObject selector = new JsonObject();
+                selector.addProperty("type", "pheno:command");
+                selector.addProperty("selector", GsonHelper.getAsString(apoli, "selector", "@e"));
+                inner.getAsJsonObject().add("on", selector);
+                return inner;
             }
             case "give": {
                 JsonObject stack = apoli.has("stack") && apoli.get("stack").isJsonObject()
@@ -181,6 +209,8 @@ public final class ApoliActionTranslator {
             case "add_to_set": return changeCollection(apoli, "add");
             case "remove_from_set": return changeCollection(apoli, "remove");
             case "change_hits_on_target": return changeHitsOnTarget(apoli);
+            case "raycast_between": return raycastBetween(apoli);
+            case "spawn_custom_effect_cloud": return spawnCloudBiEntity(apoli);
             default: return null;
         }
     }
@@ -227,6 +257,191 @@ public final class ApoliActionTranslator {
         if (apoli.has("limit")) out.addProperty("limit", GsonHelper.getAsInt(apoli, "limit", 0));
         out.addProperty("order", GsonHelper.getAsBoolean(apoli, "reverse", false) ? "newest_first" : "oldest_first");
         return out;
+    }
+
+    /**
+     * raycast -> the beam (if it draws particles) plus the bientity action run on what the ray hits
+     * ({@code on: pheno:ray}). Block sub-actions are not translated (there is no Apoli block-action
+     * translator yet); the native pheno:ray/pheno:at let an author wire those by hand.
+     */
+    @Nullable
+    private static JsonElement raycast(JsonObject apoli) {
+        JsonArray out = new JsonArray();
+        JsonElement beam = beam(apoli, false);
+        if (beam != null) out.add(beam);
+        if (apoli.has("bientity_action")) {
+            JsonElement inner = translateBiEntity(apoli.get("bientity_action"));
+            if (inner != null && inner.isJsonObject()) {
+                inner.getAsJsonObject().add("on", rayObject(apoli, "entity", false));
+                out.add(inner);
+            }
+        }
+        JsonElement block = blockAt(apoli, false);
+        if (block != null) out.add(block);
+        return out.isEmpty() ? null : (out.size() == 1 ? out.get(0) : out);
+    }
+
+    /** block_action run at the ray's block hit, via pheno:at over the block-form pheno:ray selector. */
+    @Nullable
+    private static JsonElement blockAt(JsonObject apoli, boolean toward) {
+        if (!apoli.has("block_action")) return null;
+        JsonElement inner = ApoliBlockActionTranslator.translate(apoli.get("block_action"));
+        if (inner == null) return null;
+        JsonObject at = typed("at");
+        at.add("blocks", rayObject(apoli, "block", toward));
+        at.add("do", inner);
+        return at;
+    }
+
+    /** explosion_raycast -> explode at the ray's block hit, plus the beam. */
+    @Nullable
+    private static JsonElement explosionRaycast(JsonObject apoli) {
+        JsonObject explode = typed("explode");
+        if (apoli.has("power")) explode.addProperty("power", GsonHelper.getAsFloat(apoli, "power", 2.0f));
+        explode.addProperty("fire", GsonHelper.getAsBoolean(apoli, "create_fire", false));
+        String destruction = GsonHelper.getAsString(apoli, "destruction_type", "keep").toLowerCase(Locale.ROOT);
+        explode.addProperty("destroy", destruction.contains("destroy") || destruction.contains("break"));
+        JsonObject at = typed("at");
+        at.add("blocks", rayObject(apoli, "block", false));
+        at.add("do", explode);
+        JsonElement beam = beam(apoli, false);
+        if (beam == null) return at;
+        JsonArray out = new JsonArray();
+        out.add(at);
+        out.add(beam);
+        return out;
+    }
+
+    /**
+     * raycast_between -> the beam toward the target, plus its block_action run at the block in the way
+     * (pheno:at over a target-aimed block ray), now that block actions translate.
+     */
+    @Nullable
+    private static JsonElement raycastBetween(JsonObject apoli) {
+        JsonArray out = new JsonArray();
+        JsonElement beam = beam(apoli, true);
+        if (beam != null) out.add(beam);
+        JsonElement block = blockAt(apoli, true);
+        if (block != null) out.add(block);
+        return out.isEmpty() ? null : (out.size() == 1 ? out.get(0) : out);
+    }
+
+    /**
+     * spawn_effect_cloud / spawn_custom_effect_cloud -> a pheno:cloud. Its {@code do} is the owner's
+     * action on the entities inside, taken from {@code owner_target_bientity_action} (wrapped in
+     * {@code invert}, since the cloud runs do as inside=entity()/owner=other()), or the status effect
+     * for the Apoli base. powers_to_apply and the cloud-as-actor hooks are not modeled.
+     */
+    @Nullable
+    private static JsonElement spawnCloud(JsonObject apoli) {
+        JsonObject out = typed("cloud");
+        JsonElement doAction;
+        if (apoli.has("owner_target_bientity_action")) {
+            JsonElement inner = translateBiEntity(apoli.get("owner_target_bientity_action"));
+            doAction = inner == null ? null : invertWrap(inner);
+        } else {
+            doAction = applyEffect(apoli);
+        }
+        if (doAction == null) return null;
+        out.add("do", doAction);
+        copyNumber(apoli, "radius", out, "radius");
+        copyNumber(apoli, "radius_per_tick", out, "grow_per_tick");
+        copyNumber(apoli, "radius_on_use", out, "shrink_on_use");
+        copyNumber(apoli, "wait_time", out, "wait_time");
+        copyNumber(apoli, "duration", out, "duration");
+        copyNumber(apoli, "reapplication_delay", out, "reapply_delay");
+        copyNumber(apoli, "height_increase", out, "height");
+        String particle = particleId(apoli.get("particle"));
+        if (particle != null) out.addProperty("particle", particle);
+        if (apoli.has("owner_target_bientity_condition") && apoli.get("owner_target_bientity_condition").isJsonObject()) {
+            JsonObject where = ApoliBiEntityConditionTranslator.translate(apoli.getAsJsonObject("owner_target_bientity_condition"));
+            if (where != null) out.add("where", where);
+        }
+        return out;
+    }
+
+    /** The bi-entity variant spawns at the actor or target (spawn_target); the bearer stays owner. */
+    @Nullable
+    private static JsonElement spawnCloudBiEntity(JsonObject apoli) {
+        JsonElement cloud = spawnCloud(apoli);
+        if (!(cloud instanceof JsonObject c)) return null;
+        c.addProperty("on", GsonHelper.getAsString(apoli, "spawn_target", "target").equalsIgnoreCase("actor")
+                ? "self" : "target");
+        JsonObject wrap = typed("actor_action");
+        wrap.add("action", c);
+        return wrap;
+    }
+
+    private static JsonObject invertWrap(JsonElement inner) {
+        JsonObject out = typed("invert");
+        out.add("action", inner);
+        return out;
+    }
+
+    private static void copyNumber(JsonObject from, String fromKey, JsonObject to, String toKey) {
+        if (from.has(fromKey) && from.get(fromKey).isJsonPrimitive()) {
+            to.addProperty(toKey, GsonHelper.getAsDouble(from, fromKey, 0));
+        }
+    }
+
+    /** The pheno:ray selector object from Apoli's shared ray fields. */
+    private static JsonObject rayObject(JsonObject apoli, String stopOn, boolean toward) {
+        JsonObject ray = new JsonObject();
+        ray.addProperty("type", "pheno:ray");
+        if (apoli.has("distance") && apoli.get("distance").isJsonPrimitive()) {
+            ray.addProperty("distance", GsonHelper.getAsDouble(apoli, "distance", 0));
+        }
+        JsonArray dir = apoli.has("direction") ? vector(apoli.get("direction")) : null;
+        if (dir != null) ray.add("direction", dir);
+        if (apoli.has("space")) ray.addProperty("space",
+                GsonHelper.getAsString(apoli, "space", "world").toLowerCase(Locale.ROOT).contains("local") ? "local" : "world");
+        if (apoli.has("pierce")) ray.addProperty("pierce", GsonHelper.getAsBoolean(apoli, "pierce", false));
+        if (toward) ray.addProperty("toward", "target");
+        ray.addProperty("stop_on", stopOn);
+        return ray;
+    }
+
+    /** pheno:beam carrying the same ray config, when the source draws particles. */
+    @Nullable
+    private static JsonObject beam(JsonObject apoli, boolean toward) {
+        String particle = particleId(apoli.get("particle"));
+        if (particle == null) return null;
+        JsonObject out = typed("beam");
+        out.addProperty("particle", particle);
+        if (apoli.has("spacing")) out.addProperty("spacing", GsonHelper.getAsDouble(apoli, "spacing", 0.5));
+        if (apoli.has("distance") && apoli.get("distance").isJsonPrimitive()) {
+            out.addProperty("distance", GsonHelper.getAsDouble(apoli, "distance", 0));
+        }
+        JsonArray dir = apoli.has("direction") ? vector(apoli.get("direction")) : null;
+        if (dir != null) out.add("direction", dir);
+        if (apoli.has("space")) out.addProperty("space",
+                GsonHelper.getAsString(apoli, "space", "world").toLowerCase(Locale.ROOT).contains("local") ? "local" : "world");
+        if (toward) out.addProperty("toward", "target");
+        return out;
+    }
+
+    @Nullable
+    private static JsonArray vector(JsonElement element) {
+        if (element.isJsonArray()) return element.getAsJsonArray();
+        if (element.isJsonObject()) {
+            JsonObject o = element.getAsJsonObject();
+            JsonArray a = new JsonArray();
+            a.add(GsonHelper.getAsDouble(o, "x", 0));
+            a.add(GsonHelper.getAsDouble(o, "y", 0));
+            a.add(GsonHelper.getAsDouble(o, "z", 0));
+            return a;
+        }
+        return null;
+    }
+
+    @Nullable
+    private static String particleId(@Nullable JsonElement element) {
+        if (element == null) return null;
+        if (element.isJsonPrimitive()) return element.getAsString();
+        if (element.isJsonObject() && element.getAsJsonObject().has("type")) {
+            return GsonHelper.getAsString(element.getAsJsonObject(), "type", "");
+        }
+        return null;
     }
 
     @Nullable

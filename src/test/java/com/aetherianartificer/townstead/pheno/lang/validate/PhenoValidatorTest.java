@@ -59,6 +59,37 @@ class PhenoValidatorTest {
     }
 
     @Test
+    void inlineResourceFieldMismatchIsFlaggedUnderItsName() {
+        Diagnostics diag = validate("{ 'type':'pheno:trigger', 'trigger':'press', 'key':'jump',"
+                + " 'action':{'type':'townstead_origins:heal','amount':1},"
+                + " 'resources':{ 'jumps':{ 'max':'lots' } } }");
+        assertTrue(has(diag, "$.resources.jumps.max", "number"),
+                "a non-numeric resource max must be flagged at $.resources.jumps.max");
+    }
+
+    @Test
+    void resourcesMustBeAnObjectOfMeters() {
+        Diagnostics diag = validate("{ 'type':'pheno:trigger', 'trigger':'press', 'key':'jump',"
+                + " 'action':{'type':'townstead_origins:heal','amount':1}, 'resources':[ 'jumps' ] }");
+        assertTrue(has(diag, "$.resources", "object of named resource meters"),
+                "a non-object resources block must be flagged at $.resources");
+    }
+
+    @Test
+    void wellFormedInlineResourceHasNoFieldDiagnostics() {
+        // Type-resolution depends on the live registry (empty in unit tests), so only field-shape
+        // diagnostics are meaningful here, mirroring wellFormedGeneHasNoFieldDiagnostics.
+        Diagnostics diag = validate("{ 'type':'pheno:trigger', 'trigger':'press', 'key':'jump',"
+                + " 'action':{'type':'townstead_origins:heal','amount':1},"
+                + " 'resources':{ 'jumps':{ 'min':0, 'max':3, 'start':0 } } }");
+        for (Diagnostic d : diag.all()) {
+            if (!d.jsonPath().startsWith("$.resources")) continue;
+            assertFalse(d.message().contains("Missing required field") || d.message().contains("Expected"),
+                    "well-formed inline resource should produce no field diagnostics, got: " + d.render());
+        }
+    }
+
+    @Test
     void wellFormedGeneHasNoFieldDiagnostics() {
         Diagnostics diag = validate(
                 "{ 'type':'pheno:active_ability',"

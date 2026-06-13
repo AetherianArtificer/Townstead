@@ -37,6 +37,17 @@ class PhenoNormalizerTest {
     }
 
     @Test
+    void pressTriggerSugarLifts() {
+        JsonObject out = PhenoNormalizer.normalize(obj(
+                "{ 'schema':'townstead:gene/v2', 'gene':{'category':'ability'},"
+                        + " 'on':{'press':'jump'}, 'do':{'type':'pheno:jump'} }"));
+        assertEquals("pheno:trigger", out.get("type").getAsString());
+        assertEquals("press", out.get("trigger").getAsString());
+        assertEquals("jump", out.get("key").getAsString());
+        assertEquals("pheno:jump", out.getAsJsonObject("action").get("type").getAsString());
+    }
+
+    @Test
     void durationUnitConverts() {
         JsonObject out = PhenoNormalizer.normalize(obj(
                 "{ 'schema':'townstead:gene/v2', 'type':'pheno:active_ability',"

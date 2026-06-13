@@ -1,8 +1,10 @@
 package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.origin.gene.Gene;
+import com.aetherianartificer.townstead.origin.gene.GeneRegistry;
 import com.aetherianartificer.townstead.pheno.power.Power;
 import com.aetherianartificer.townstead.pheno.power.PowerSource;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.List;
@@ -18,6 +20,11 @@ public final class GenePowerSource implements PowerSource {
     public void collect(LivingEntity entity, List<Power> out) {
         for (Gene gene : Heredity.expressedGenes(ExpressedGenes.genotypeOf(entity))) {
             out.add(new Power(gene.id(), gene.instance()));
+            // Companion resources declared inline ride along their parent's expression.
+            for (ResourceLocation companionId : GeneRegistry.companionsOf(gene.id())) {
+                Gene companion = GeneRegistry.byId(companionId);
+                if (companion != null) out.add(new Power(companion.id(), companion.instance()));
+            }
         }
     }
 }

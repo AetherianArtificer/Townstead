@@ -424,6 +424,7 @@ public class Townstead {
             townstead$profile("server.memory_lifecycle", () ->
                     com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.tick(e.getServer()));
             com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
+            com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityJoinLevelEvent e) -> {
             if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
@@ -472,8 +473,10 @@ public class Townstead {
                 WeekPlanRegistry.clearServer());
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) ->
                 com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.clearAll());
-        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) ->
-                com.aetherianartificer.townstead.pheno.action.ActionScheduler.clear());
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) -> {
+                com.aetherianartificer.townstead.pheno.action.ActionScheduler.clear();
+                com.aetherianartificer.townstead.pheno.field.CloudManager.clear();
+        });
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
             if (e.getEntity() instanceof ServerPlayer sp) {
                 townstead$sendShiftTemplateSync(sp);
@@ -686,6 +689,7 @@ public class Townstead {
                 townstead$profile("server.memory_lifecycle", () ->
                         com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.tick(e.getServer()));
                 com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
+                com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityJoinLevelEvent e) -> {
@@ -728,8 +732,10 @@ public class Townstead {
                 WeekPlanRegistry.clearServer());
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) ->
                 com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.clearAll());
-        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) ->
-                com.aetherianartificer.townstead.pheno.action.ActionScheduler.clear());
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) -> {
+                com.aetherianartificer.townstead.pheno.action.ActionScheduler.clear();
+                com.aetherianartificer.townstead.pheno.field.CloudManager.clear();
+        });
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
             if (e.getEntity() instanceof ServerPlayer sp) {
                 TownsteadNetwork.sendShiftTemplateSync(sp);
@@ -999,6 +1005,8 @@ public class Townstead {
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.AttributeGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.StepHeightGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.SkinToneGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.AttachmentGeneType());
@@ -1107,6 +1115,10 @@ public class Townstead {
                         "pheno:sprinting", ctx -> ctx.entity().isSprinting()),
                 new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
                         "pheno:moving", ctx -> ctx.entity().getDeltaMovement().horizontalDistanceSqr() > 1.0e-6),
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:crawling", ctx -> ctx.entity().isVisuallyCrawling()),
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:exists", ctx -> true),
                 new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
                         "pheno:submerged", ctx -> ctx.entity().isUnderWater()),
                 new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
@@ -1258,6 +1270,14 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.origin.collection.CollectionHasConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.DimensionsConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.FluidHeightConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.PassengerRecursiveConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.origin.condition.types.ScaleConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.CountConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.SelectionTestConditionType(
@@ -1296,6 +1316,9 @@ public class Townstead {
                         }),
                 new com.aetherianartificer.townstead.pheno.condition.bientity.types.SimpleBiConditionType(
                         "pheno:equal", (a, t) -> a == t),
+                // The actor is the target's kill-credit holder (Apugli prime_adversary).
+                new com.aetherianartificer.townstead.pheno.condition.bientity.types.SimpleBiConditionType(
+                        "pheno:prime_adversary", (a, t) -> t.getKillCredit() == a),
         };
         for (var type : simple) {
             com.aetherianartificer.townstead.pheno.condition.bientity.BiEntityConditionTypes.register(type);
@@ -1327,6 +1350,10 @@ public class Townstead {
                 new com.aetherianartificer.townstead.origin.collection.CollectionContainsConditionType());
         com.aetherianartificer.townstead.pheno.condition.bientity.BiEntityConditionTypes.register(
                 new com.aetherianartificer.townstead.origin.collection.CollectionCountConditionType());
+        com.aetherianartificer.townstead.pheno.condition.bientity.BiEntityConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.bientity.types.CompareDimensionsBiConditionType());
+        com.aetherianartificer.townstead.pheno.condition.bientity.BiEntityConditionTypes.register(
+                new com.aetherianartificer.townstead.origin.condition.types.CompareScalesBiConditionType());
     }
 
     private static void registerSelectorTypes() {
@@ -1336,6 +1363,10 @@ public class Townstead {
                 new com.aetherianartificer.townstead.origin.collection.CollectionBlockSelectorType());
         com.aetherianartificer.townstead.pheno.selector.SelectorTypes.register(
                 new com.aetherianartificer.townstead.pheno.selector.types.CommandSelectorType());
+        com.aetherianartificer.townstead.pheno.selector.SelectorTypes.register(
+                new com.aetherianartificer.townstead.pheno.selector.types.RaySelectorType());
+        com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
+                new com.aetherianartificer.townstead.pheno.selector.types.RayBlockSelectorType());
         // Value sources (the object form of a number)
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.CountValueType());
@@ -1347,6 +1378,16 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.origin.collection.ForEachActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.AtActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.SpawnCloudActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.BeamActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.EmitGameEventActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.ZombifyVillagerActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.ApplyEffectActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.HealActionType());
@@ -1354,6 +1395,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.action.types.DamageActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.VelocityActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.JumpActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.FireActionType(
                         com.aetherianartificer.townstead.pheno.action.types.FireActionType.IGNITE_KEY, true));
@@ -2067,6 +2110,11 @@ public class Townstead {
                 com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload.STREAM_CODEC,
                 this::handleActivateAbility
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload.TYPE,
+                com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload.STREAM_CODEC,
+                this::handleKeyPress
+        );
         registrar.playToClient(
                 com.aetherianartificer.townstead.origin.OriginSyncS2CPayload.TYPE,
                 com.aetherianartificer.townstead.origin.OriginSyncS2CPayload.STREAM_CODEC,
@@ -2242,6 +2290,17 @@ public class Townstead {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.origin.ability.ActiveAbilities.activate(sp, payload.slot());
+            }
+        });
+    }
+
+    private void handleKeyPress(
+            com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer sp) {
+                com.aetherianartificer.townstead.origin.trigger.GeneTriggers.firePress(sp, payload.key());
             }
         });
     }

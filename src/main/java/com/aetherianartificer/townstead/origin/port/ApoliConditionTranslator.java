@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.origin.port;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
 import org.jetbrains.annotations.Nullable;
@@ -51,6 +52,8 @@ public final class ApoliConditionTranslator {
             case "using_item": return simple("using_item");
             case "fall_flying": return simple("fall_flying");
             case "climbing": return simple("climbing");
+            case "crawling": return simple("crawling");
+            case "exists": return simple("exists");
             case "raining": return simple("raining");
             case "thundering": return simple("thundering");
             case "hostile": return simple("hostile");
@@ -65,6 +68,27 @@ public final class ApoliConditionTranslator {
             case "fall_distance": return numeric("fall_distance", apoli);
             case "food_level": return numeric("food_level", apoli);
             case "saturation_level": return numeric("saturation_level", apoli);
+            case "relative_health": {
+                JsonObject out = numeric("health", apoli);
+                out.addProperty("relative", true);
+                return out;
+            }
+            case "fluid_height": {
+                if (!apoli.has("fluid")) return null;
+                JsonObject out = numeric("fluid_height", apoli);
+                out.addProperty("fluid", GsonHelper.getAsString(apoli, "fluid", ""));
+                return out;
+            }
+            case "passenger_recursive": {
+                JsonObject out = simple("passenger_recursive");
+                out.addProperty("comparison", GsonHelper.getAsString(apoli, "comparison", ">="));
+                out.addProperty("compare_to", GsonHelper.getAsInt(apoli, "compare_to", 1));
+                if (apoli.has("bientity_condition") && apoli.get("bientity_condition").isJsonObject()) {
+                    JsonObject where = ApoliBiEntityConditionTranslator.translate(apoli.getAsJsonObject("bientity_condition"));
+                    if (where != null) out.add("where", where);
+                }
+                return out;
+            }
             case "velocity": {
                 JsonObject out = numeric("velocity", apoli);
                 if (apoli.has("axis")) out.addProperty("axis", GsonHelper.getAsString(apoli, "axis", "total"));
@@ -100,8 +124,7 @@ public final class ApoliConditionTranslator {
                 return out;
             }
             case "dimension": return copyString(apoli, "dimension", "pheno:dimension", "dimension");
-            case "biome": return apoli.has("biome")
-                    ? copyString(apoli, "biome", "pheno:biome", "biome") : null;
+            case "biome": return biome(apoli);
             case "entity_type": return copyString(apoli, "entity_type", "pheno:entity_type", "entity_type");
             case "gamemode": return copyString(apoli, "gamemode", "pheno:gamemode", "gamemode");
             case "entity_group": return copyString(apoli, "group", "pheno:entity_group", "group");
@@ -113,6 +136,16 @@ public final class ApoliConditionTranslator {
                 out.addProperty("collection", set);
                 out.addProperty("comparison", GsonHelper.getAsString(apoli, "comparison", ">="));
                 out.addProperty("compare_to", GsonHelper.getAsInt(apoli, "compare_to", 0));
+                return out;
+            }
+            case "dimensions": {
+                JsonObject out = numeric("dimensions", apoli);
+                out.addProperty("which", whichFromSet(apoli));
+                return out;
+            }
+            case "scale": {
+                JsonObject out = numeric("scale", apoli);
+                out.addProperty("which", whichFromScaleType(apoli));
                 return out;
             }
             case "on_cooldown": return copyString(apoli, "item", "pheno:on_cooldown", "item");
@@ -193,6 +226,160 @@ public final class ApoliConditionTranslator {
         out.addProperty("type", type);
         out.add("conditions", translated);
         return out;
+    }
+
+    /**
+     * Apoli's entity {@code biome} condition: a single {@code biome} id, a {@code biomes} list (an OR),
+     * or a nested biome sub-{@code condition} ({@code category}/{@code in_tag}/{@code temperature}/
+     * {@code precipitation}). {@code category} is the deprecated tag alias, so it maps to a biome tag.
+     */
+    @Nullable
+    private static JsonObject biome(JsonObject apoli) {
+        if (apoli.has("condition") && apoli.get("condition").isJsonObject()) {
+            return biomeSubCondition(apoli.getAsJsonObject("condition"));
+        }
+        if (apoli.has("biome")) {
+            JsonObject out = simple("biome");
+            out.addProperty("biome", GsonHelper.getAsString(apoli, "biome", ""));
+            return out;
+        }
+        if (apoli.has("biomes") && apoli.get("biomes").isJsonArray()) {
+            JsonArray ids = apoli.getAsJsonArray("biomes");
+            if (ids.isEmpty()) return null;
+            if (ids.size() == 1) {
+                JsonObject out = simple("biome");
+                out.addProperty("biome", ids.get(0).getAsString());
+                return out;
+            }
+            JsonArray conditions = new JsonArray();
+            for (JsonElement id : ids) {
+                JsonObject one = simple("biome");
+                one.addProperty("biome", id.getAsString());
+                conditions.add(one);
+            }
+            JsonObject or = new JsonObject();
+            or.addProperty("type", "pheno:or");
+            or.add("conditions", conditions);
+            return or;
+        }
+        return null;
+    }
+
+    /** An Apoli biome sub-condition to a pheno:biome entity condition (tag for category/in_tag). */
+    @Nullable
+    private static JsonObject biomeSubCondition(JsonObject sub) {
+        String type = stripNamespace(GsonHelper.getAsString(sub, "type", ""));
+        switch (type) {
+            case "category": {
+                String category = GsonHelper.getAsString(sub, "category", "");
+                if (category.isEmpty()) return null;
+                JsonObject out = simple("biome");
+                out.addProperty("biome_tag", categoryTag(category));
+                return out;
+            }
+            case "in_tag": {
+                String tag = GsonHelper.getAsString(sub, "tag", "");
+                if (tag.isEmpty()) return null;
+                JsonObject out = simple("biome");
+                out.addProperty("biome_tag", tag);
+                return out;
+            }
+            case "temperature": {
+                JsonObject inner = new JsonObject();
+                inner.addProperty("type", "pheno:temperature");
+                String comparison = GsonHelper.getAsString(sub, "comparison", ">=");
+                float compareTo = GsonHelper.getAsFloat(sub, "compare_to", 0f);
+                if (comparison.startsWith(">")) inner.addProperty("min", compareTo);
+                else if (comparison.startsWith("<")) inner.addProperty("max", compareTo);
+                else { inner.addProperty("min", compareTo); inner.addProperty("max", compareTo); }
+                JsonObject out = simple("biome");
+                out.add("condition", inner);
+                return out;
+            }
+            case "precipitation": {
+                JsonObject inner = new JsonObject();
+                inner.addProperty("type", "pheno:precipitation");
+                inner.addProperty("precipitation", GsonHelper.getAsString(sub, "precipitation", "rain").toLowerCase(Locale.ROOT));
+                JsonObject out = simple("biome");
+                out.add("condition", inner);
+                return out;
+            }
+            // high_humidity is intentionally not translated: reading biome downfall needs a private
+            // accessor with no uniform public API in modern MC (see pheno BiomeConditions). Skip-logged.
+            default: return null;
+        }
+    }
+
+    /**
+     * Apoli's deprecated biome category to a modern biome tag: the geographic categories with an exact
+     * vanilla {@code is_*} tag map there; the rest fall back to Apoli's own {@code apoli:category/*} tag
+     * (faithful, but needs those tags present).
+     */
+    private static String categoryTag(String category) {
+        return CATEGORY_TAGS.getOrDefault(category.toLowerCase(Locale.ROOT),
+                "apoli:category/" + category.toLowerCase(Locale.ROOT));
+    }
+
+    private static final java.util.Map<String, String> CATEGORY_TAGS = java.util.Map.ofEntries(
+            java.util.Map.entry("forest", "minecraft:is_forest"),
+            java.util.Map.entry("ocean", "minecraft:is_ocean"),
+            java.util.Map.entry("river", "minecraft:is_river"),
+            java.util.Map.entry("beach", "minecraft:is_beach"),
+            java.util.Map.entry("taiga", "minecraft:is_taiga"),
+            java.util.Map.entry("jungle", "minecraft:is_jungle"),
+            java.util.Map.entry("savanna", "minecraft:is_savanna"),
+            java.util.Map.entry("mesa", "minecraft:is_badlands"),
+            java.util.Map.entry("badlands", "minecraft:is_badlands"),
+            java.util.Map.entry("extreme_hills", "minecraft:is_mountain"),
+            java.util.Map.entry("mountain", "minecraft:is_mountain"),
+            java.util.Map.entry("nether", "minecraft:is_nether"),
+            java.util.Map.entry("the_end", "minecraft:is_end"),
+            java.util.Map.entry("end", "minecraft:is_end"));
+
+    /** Apugli's {@code dimensions} enum set (width/height) to our {@code which} ({@code both} by default). */
+    static String whichFromSet(JsonObject apoli) {
+        if (!apoli.has("dimensions")) return "both";
+        boolean width = false;
+        boolean height = false;
+        JsonElement set = apoli.get("dimensions");
+        if (set.isJsonArray()) {
+            for (JsonElement e : set.getAsJsonArray()) {
+                String s = e.getAsString().toLowerCase(Locale.ROOT);
+                if (s.contains("width")) width = true;
+                if (s.contains("height")) height = true;
+            }
+        } else if (set.isJsonPrimitive()) {
+            String s = set.getAsString().toLowerCase(Locale.ROOT);
+            width = s.contains("width");
+            height = s.contains("height");
+        }
+        if (width && !height) return "width";
+        if (height && !width) return "height";
+        return "both";
+    }
+
+    /** Pehkui scale_type/scale_types ids to our {@code which}: width/height by name, else both. */
+    static String whichFromScaleType(JsonObject apoli) {
+        boolean width = false;
+        boolean height = false;
+        for (String key : new String[]{"scale_type", "scale_types"}) {
+            if (!apoli.has(key)) continue;
+            JsonElement value = apoli.get(key);
+            if (value.isJsonArray()) {
+                for (JsonElement e : value.getAsJsonArray()) {
+                    String s = e.getAsString().toLowerCase(Locale.ROOT);
+                    if (s.contains("width")) width = true;
+                    if (s.contains("height")) height = true;
+                }
+            } else if (value.isJsonPrimitive()) {
+                String s = value.getAsString().toLowerCase(Locale.ROOT);
+                if (s.contains("width")) width = true;
+                if (s.contains("height")) height = true;
+            }
+        }
+        if (width && !height) return "width";
+        if (height && !width) return "height";
+        return "both";
     }
 
     static String stripNamespace(String type) {

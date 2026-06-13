@@ -80,12 +80,17 @@ public final class PhenoNormalizer {
         root.remove("gene");
     }
 
-    /** {@code { "on": "attack", "do": {...} }} -> a trigger gene. */
+    /** {@code { "on": "attack", "do": {...} }} -> a trigger gene; {@code { "on": { "press": "jump" } }} too. */
     private static void liftTriggerSugar(JsonObject root) {
         if (!root.has("on") || root.has("type")) return;
-        String on = GsonHelper.getAsString(root, "on", "");
+        JsonElement on = root.get("on");
         root.addProperty("type", "pheno:trigger");
-        root.addProperty("trigger", triggerName(on));
+        if (on.isJsonObject() && on.getAsJsonObject().has("press")) {
+            root.addProperty("trigger", "press");
+            root.addProperty("key", GsonHelper.getAsString(on.getAsJsonObject(), "press", "jump"));
+        } else {
+            root.addProperty("trigger", triggerName(on.getAsString()));
+        }
         if (!root.has("target")) root.addProperty("target", "self");
         if (root.has("do") && !root.has("action")) root.add("action", root.get("do"));
         root.remove("on");

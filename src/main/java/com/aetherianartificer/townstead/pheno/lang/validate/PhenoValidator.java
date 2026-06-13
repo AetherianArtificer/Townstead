@@ -42,6 +42,7 @@ public final class PhenoValidator {
                     "Unknown gene type '" + type + "'.",
                     "Check the type id and that the providing mod is loaded.");
         }
+        validateResources(root, diag);
         // A variants block holds per-variant config objects (each governed by the gene's own
         // type); descend each in place. Otherwise the behavior tree starts at the root and the
         // gene's required fields are checked against its schema.
@@ -59,6 +60,37 @@ public final class PhenoValidator {
         } else {
             checkFields(root, type, JsonPath.ROOT, diag);
             descend(root, NodeDomain.GENE, JsonPath.ROOT, diag);
+        }
+    }
+
+    /**
+     * Validate a gene's root {@code resources} section: an object of named meters, each validated
+     * as a {@code pheno:resource} node (the type defaults to that when omitted, matching how the
+     * loader peels the block into companion genes).
+     */
+    private static void validateResources(JsonObject root, Diagnostics diag) {
+        if (!root.has("resources")) return;
+        JsonPath base = JsonPath.ROOT.field("resources");
+        JsonElement block = root.get("resources");
+        if (!block.isJsonObject()) {
+            diag.error(base, "Expected an object of named resource meters.",
+                    "Use { \"name\": { \"max\": 100, ... } }.");
+            return;
+        }
+        for (Map.Entry<String, JsonElement> e : block.getAsJsonObject().entrySet()) {
+            JsonPath path = base.field(e.getKey());
+            if (!e.getValue().isJsonObject()) {
+                diag.error(path, "Expected a resource object.", "Use { \"max\": 100, ... }.");
+                continue;
+            }
+            JsonObject entry = e.getValue().getAsJsonObject();
+            String type = entry.has("type") ? GsonHelper.getAsString(entry, "type", "") : "pheno:resource";
+            if (!type.isEmpty() && !NodeDomain.GENE.resolves(type)) {
+                diag.error(path.field("type"), "Unknown gene type '" + type + "'.",
+                        "Check the type id and that the providing mod is loaded.");
+            }
+            checkFields(entry, type, path, diag);
+            descend(entry, NodeDomain.GENE, path, diag);
         }
     }
 

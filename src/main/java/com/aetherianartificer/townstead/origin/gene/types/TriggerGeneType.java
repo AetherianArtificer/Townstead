@@ -31,12 +31,13 @@ public final class TriggerGeneType implements GeneType {
     public static final String KEY = "pheno:trigger";
 
     public enum Trigger { WHEN_HURT, WHEN_ATTACK, WHEN_KILL, WHEN_DEATH, WHEN_LAND, WHEN_WAKE_UP,
-        WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP, WHEN_ITEM_USE }
+        WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP, WHEN_ITEM_USE, PRESS }
 
     public enum Target { SELF, OTHER }
 
     public record Instance(Trigger trigger, Target target, Action action, @Nullable Condition condition,
-                           @Nullable com.aetherianartificer.townstead.pheno.condition.damage.DamageCondition damageCondition)
+                           @Nullable com.aetherianartificer.townstead.pheno.condition.damage.DamageCondition damageCondition,
+                           @Nullable String key)
             implements GeneInstance {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
@@ -61,7 +62,9 @@ public final class TriggerGeneType implements GeneType {
                         ? com.aetherianartificer.townstead.pheno.condition.damage.DamageConditions.parse(
                                 json.get("damage_condition"))
                         : null;
-        return new Instance(trigger, target, action, condition, damageCondition);
+        // The keybind name is only meaningful for the press trigger.
+        String key = trigger == Trigger.PRESS ? GsonHelper.getAsString(json, "key", "jump") : null;
+        return new Instance(trigger, target, action, condition, damageCondition, key);
     }
 
     @Nullable
@@ -78,6 +81,7 @@ public final class TriggerGeneType implements GeneType {
                     Trigger.WHEN_STRUCK_BY_LIGHTNING;
             case "when_equip", "on_equip", "equip" -> Trigger.WHEN_EQUIP;
             case "when_item_use", "on_item_use", "item_use", "action_on_item_use" -> Trigger.WHEN_ITEM_USE;
+            case "press", "key", "key_press" -> Trigger.PRESS;
             default -> null;
         };
     }

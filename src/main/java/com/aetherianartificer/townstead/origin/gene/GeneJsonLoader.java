@@ -46,6 +46,7 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                          ProfilerFiller profiler) {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Gene> parsed = new LinkedHashMap<>();
+        Map<ResourceLocation, List<ResourceLocation>> companions = new LinkedHashMap<>();
         Diagnostics diagnostics = new Diagnostics();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
@@ -53,6 +54,7 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
                 obj = PhenoNormalizer.normalize(obj);
                 PhenoValidator.validateGene(file, obj, diagnostics);
+                Map<ResourceLocation, JsonObject> companionConfigs = GeneCompanions.extract(file, obj);
                 String typeKey = GsonHelper.getAsString(obj, "type", "");
                 Optional<GeneType> type = GeneTypes.get(typeKey);
                 if (type.isEmpty()) {
@@ -80,11 +82,12 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 }
                 parsed.put(file, new Gene(file, displayName, description, category,
                         dominance, locus, weight, variants));
+                registerCompanions(file, companionConfigs, lang, parsed, companions);
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse gene {}: {}", file, ex.getMessage());
             }
         }
-        GeneRegistry.replaceAll(parsed);
+        GeneRegistry.replaceAll(parsed, companions);
         PhenoDiagnostics.replace("gene", diagnostics.all());
         for (Diagnostic d : diagnostics.all()) {
             if (d.severity() == Severity.ERROR) LOGGER.warn("pheno: {}", d.render());
@@ -93,6 +96,39 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
         LOGGER.info("Loaded {} genes ({} pheno diagnostic{})",
                 parsed.size(), diagnostics.all().size(), diagnostics.all().size() == 1 ? "" : "s");
         if (errors > 0) LOGGER.warn("pheno: {} error diagnostic(s); run /pheno validate for detail", errors);
+    }
+
+    /**
+     * Register a gene's inline companion resources as real {@code pheno:resource} genes keyed by
+     * the derived id {@code <parentId>/<name>}, and record the parent->companions link so they
+     * ride along the parent's expression. Skipped silently when a config is invalid.
+     */
+    private static void registerCompanions(ResourceLocation parent, Map<ResourceLocation, JsonObject> configs,
+                                           Map<String, String> lang, Map<ResourceLocation, Gene> parsed,
+                                           Map<ResourceLocation, List<ResourceLocation>> companions) {
+        if (configs.isEmpty()) return;
+        List<ResourceLocation> ids = new ArrayList<>();
+        for (Map.Entry<ResourceLocation, JsonObject> e : configs.entrySet()) {
+            ResourceLocation id = e.getKey();
+            JsonObject config = e.getValue();
+            Optional<GeneType> type = GeneTypes.get(GsonHelper.getAsString(config, "type", ""));
+            if (type.isEmpty()) {
+                LOGGER.warn("Gene {} — companion resource '{}' has unknown type, skipping", parent, id);
+                continue;
+            }
+            GeneInstance instance = type.get().parse(config, lang);
+            if (instance == null) {
+                LOGGER.warn("Gene {} — companion resource '{}' has invalid config, skipping", parent, id);
+                continue;
+            }
+            String shortName = id.getPath().substring(id.getPath().lastIndexOf('/') + 1);
+            Component name = Component.literal(shortName);
+            ResourceLocation locus = type.get().defaultLocus(instance);
+            parsed.put(id, new Gene(id, name, null, "resource", Dominance.fromString("recessive"),
+                    locus, 1, List.of(new GeneVariant(shortName, name, 1, instance))));
+            ids.add(id);
+        }
+        if (!ids.isEmpty()) companions.put(parent, ids);
     }
 
     /**

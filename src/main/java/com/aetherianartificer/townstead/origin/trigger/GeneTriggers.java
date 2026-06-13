@@ -73,6 +73,22 @@ public final class GeneTriggers {
         fire(entity, Trigger.WHEN_ITEM_USE, null, null, 0f);
     }
 
+    /** Fired by the key-press packet handler: run the entity's press triggers bound to {@code key}. */
+    public static void firePress(LivingEntity entity, String key) {
+        if (entity.level().isClientSide) return;
+        List<TriggerGeneType.Instance> triggers = Powers.componentsOf(entity, TriggerGeneType.Instance.class);
+        if (triggers.isEmpty()) return;
+        ConditionContext ctx = null;
+        for (TriggerGeneType.Instance t : triggers) {
+            if (t.trigger() != Trigger.PRESS || t.key() == null || !t.key().equalsIgnoreCase(key)) continue;
+            if (t.condition() != null) {
+                if (ctx == null) ctx = new ConditionContext(entity);
+                if (!t.condition().test(ctx)) continue;
+            }
+            t.action().run(new ActionContext(entity));
+        }
+    }
+
     private static void fire(LivingEntity bearer, Trigger trigger, @Nullable LivingEntity other,
                              @Nullable DamageSource source, float amount) {
         List<TriggerGeneType.Instance> triggers = Powers.componentsOf(bearer, TriggerGeneType.Instance.class);

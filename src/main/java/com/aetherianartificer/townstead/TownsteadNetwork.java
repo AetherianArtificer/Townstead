@@ -232,6 +232,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload::write,
                 com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload::read,
                 TownsteadNetwork::handleActivateAbility);
+        registerC2S(com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload.class,
+                com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload::write,
+                com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload::read,
+                TownsteadNetwork::handleKeyPress);
         registerS2C(com.aetherianartificer.townstead.origin.OriginSyncS2CPayload.class,
                 com.aetherianartificer.townstead.origin.OriginSyncS2CPayload::write,
                 com.aetherianartificer.townstead.origin.OriginSyncS2CPayload::read,
@@ -327,6 +331,11 @@ public final class TownsteadNetwork {
     private static void handleActivateAbility(
             com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload payload, ServerPlayer sp) {
         com.aetherianartificer.townstead.origin.ability.ActiveAbilities.activate(sp, payload.slot());
+    }
+
+    private static void handleKeyPress(
+            com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload payload, ServerPlayer sp) {
+        com.aetherianartificer.townstead.origin.trigger.GeneTriggers.firePress(sp, payload.key());
     }
 
     private static void handleOriginSync(com.aetherianartificer.townstead.origin.OriginSyncS2CPayload payload) {

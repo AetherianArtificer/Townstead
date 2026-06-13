@@ -116,7 +116,7 @@ public final class PowerToGeneConverter {
             case "modify_falling": return ability("slow_fall");
             case "aerial_affinity": return ability("aerial_affinity");
             case "hover": return ability("hover");
-            case "sprinting": return ability("sprinting");
+            case "sprinting": return sprintingGene(power);
             case "mobs_ignore": return mobsIgnoreGene(power);
             case "invulnerability": return invulnerabilityGene(power);
             case "modify_damage_taken": return damageGene(power);
@@ -133,6 +133,7 @@ public final class PowerToGeneConverter {
             case "prevent_item_use": return preventItemUseGene(power);
             case "effect_immunity": return effectImmunityGene(power);
             case "keep_inventory": return keepInventoryGene();
+            case "step_height": return stepHeightGene(power);
             case "entity_set": return collectionGene(power);
             case "disable_regen": return disableRegenGene();
             case "burn": return burnGene(power);
@@ -176,6 +177,20 @@ public final class PowerToGeneConverter {
             case "action_on_item_use": return triggerGene("when_item_use", "self", power);
             default: return null;
         }
+    }
+
+    /**
+     * step_height -> a pheno:step_height gene from the step-up half (upper_height). The step-down
+     * correction (lower_height) and allow_jump_after have no Pheno/vanilla equivalent and are dropped.
+     */
+    @Nullable
+    private static JsonObject stepHeightGene(JsonObject power) {
+        double upper = GsonHelper.getAsDouble(power, "upper_height", 0);
+        if (upper <= 0) return null;
+        JsonObject gene = base("step_height");
+        gene.addProperty("category", "ability");
+        gene.addProperty("amount", upper);
+        return gene;
     }
 
     /** entity_set -> a pheno:collection (of:entity) gene, porting its add/remove hooks. tick_rate is dropped. */
@@ -241,6 +256,21 @@ public final class PowerToGeneConverter {
         JsonObject gene = base("ability");
         gene.addProperty("category", "ability");
         gene.addProperty("ability", ability);
+        return gene;
+    }
+
+    /**
+     * sprinting -> the sprinting ability (force-sprint). Apugli's {@code requires_input} (sprint only
+     * while moving) becomes a {@code pheno:moving} gate on the ability, which the ability ticker
+     * already honors, so it needs no runtime hook.
+     */
+    private static JsonObject sprintingGene(JsonObject power) {
+        JsonObject gene = ability("sprinting");
+        if (GsonHelper.getAsBoolean(power, "requires_input", false)) {
+            JsonObject moving = new JsonObject();
+            moving.addProperty("type", "pheno:moving");
+            gene.add("condition", moving);
+        }
         return gene;
     }
 
