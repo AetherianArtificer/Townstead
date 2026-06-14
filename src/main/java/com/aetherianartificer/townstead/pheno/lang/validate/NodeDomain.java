@@ -30,6 +30,10 @@ public enum NodeDomain {
     },
     ITEM_ACTION("item action") {
         @Override public boolean resolves(String key) { return ItemActionTypes.get(key).isPresent(); }
+    },
+    /** Plain data records (attachments, ...) with no behavior-node registry to resolve against. */
+    DATA("data") {
+        @Override public boolean resolves(String key) { return false; }
     };
 
     private final String label;

@@ -11,11 +11,11 @@ import net.minecraft.util.GsonHelper;
  * the {@code diet} value is stored to gate Townstead's hunger nourishment in a
  * later effects phase.
  *
- * <p>JSON: {@code { "type":"pheno:diet", "diet":"omnivore" }}</p>
+ * <p>JSON: {@code { "type":"townstead_origins:diet", "diet":"omnivore" }}</p>
  */
 public final class DietGeneType implements GeneType {
 
-    public static final String KEY = "pheno:diet";
+    public static final String KEY = "townstead_origins:diet";
 
     public record Instance(String diet) implements GeneInstance {
         @Override public String typeKey() { return KEY; }

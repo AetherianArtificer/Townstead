@@ -27,7 +27,7 @@ import java.util.TreeSet;
  */
 public final class ChronotypeGeneType implements GeneType {
 
-    public static final String KEY = "pheno:chronotype";
+    public static final String KEY = "townstead_origins:chronotype";
 
     /** Sleep window as tick-hours (0 == 6 AM), sorted and de-duplicated. */
     public record Instance(int[] sleepHours) implements GeneInstance {

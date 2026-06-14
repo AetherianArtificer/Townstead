@@ -115,7 +115,20 @@ public final class PhenoValidator {
      */
     private static void checkFields(JsonObject obj, String type, JsonPath path, Diagnostics diag) {
         NodeSchema schema = NodeSchemas.get(type);
-        if (schema == null) return;
+        if (schema != null) checkFields(obj, schema, path, diag);
+    }
+
+    /**
+     * Validate a plain data record's fields against a schema (attachments and other non-behavior
+     * files), reusing the same required/type/list checks the gene validator uses. No behavior-tree
+     * descent, so it is safe for files that carry no {@code pheno:} nodes.
+     */
+    public static void validateData(ResourceLocation resource, JsonObject obj, NodeSchema schema, Diagnostics diag) {
+        diag.forResource(resource);
+        checkFields(obj, schema, JsonPath.ROOT, diag);
+    }
+
+    private static void checkFields(JsonObject obj, NodeSchema schema, JsonPath path, Diagnostics diag) {
         for (FieldSchema field : schema.fields()) {
             boolean present = obj.has(field.name());
             if (field.required() && !present) {

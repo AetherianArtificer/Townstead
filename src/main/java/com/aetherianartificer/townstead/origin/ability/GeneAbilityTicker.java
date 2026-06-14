@@ -13,6 +13,8 @@ import com.aetherianartificer.townstead.origin.gene.types.GlowGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.ParticleGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.RestrictEquipmentGeneType;
 import com.aetherianartificer.townstead.origin.gene.types.ScareMobGeneType;
+import com.aetherianartificer.townstead.origin.hazard.AvoidStrategy;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -21,10 +23,15 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.EnumSet;
 import java.util.List;
 
 /**
@@ -55,6 +62,10 @@ public final class GeneAbilityTicker {
         if (entity.level().isClientSide) return;
         for (Ability ability : Ability.values()) clear(entity, ability);
         if (entity.hasGlowingTag()) entity.setGlowingTag(false);
+        // Clear hazard path-avoidance; the next tick re-applies whatever the new origin's genes imply.
+        if (entity instanceof PathfinderMob mob) {
+            for (AvoidStrategy strategy : AvoidStrategy.values()) strategy.installProactive(mob, false);
+        }
     }
 
     public static void tick(LivingEntity entity) {
@@ -101,7 +112,48 @@ public final class GeneAbilityTicker {
         applyAuras(entity, auras, ctx);
         applyEffectImmunity(entity, immunities);
         applyActionsOverTime(entity, overTime, ctx);
+        applyHazardAvoidance(entity, overTime, ctx);
         applyScare(entity, scares);
+    }
+
+    /**
+     * Drives AI avoidance of the environmental hazards an entity's genes impose on it. Two layers:
+     * proactive (keep the pathfinder routing around the hazard, e.g. sunlit tiles) which is set
+     * while the gene is present, and reactive (walk to the nearest safe spot) which fires only while
+     * the hazard condition is currently true. Brain-based MCA villagers are steered via the
+     * WALK_TARGET memory; players are not pathfinders, so they simply take the effect.
+     */
+    private static void applyHazardAvoidance(LivingEntity entity, List<ActionOverTimeGeneType.Instance> overTime,
+                                             ConditionContext ctx) {
+        if (overTime.isEmpty() || !(entity instanceof PathfinderMob mob)) return;
+        EnumSet<AvoidStrategy> triggered = EnumSet.noneOf(AvoidStrategy.class);
+        for (ActionOverTimeGeneType.Instance aot : overTime) {
+            AvoidStrategy strategy = aot.avoid();
+            if (strategy == null) continue;
+            strategy.installProactive(mob, true);
+            if (aot.condition() == null || aot.condition().test(ctx)) triggered.add(strategy);
+        }
+        if (!triggered.isEmpty()) fleeToSafety(mob, triggered);
+    }
+
+    /** Walk the mob toward a nearby spot that is safe from every currently-triggered hazard. */
+    private static void fleeToSafety(PathfinderMob mob, EnumSet<AvoidStrategy> hazards) {
+        Level level = mob.level();
+        BlockPos origin = mob.blockPosition();
+        BlockPos safe = null;
+        for (int i = 0; i < 10 && safe == null; i++) {
+            BlockPos pos = origin.offset(mob.getRandom().nextInt(17) - 8,
+                    mob.getRandom().nextInt(7) - 3, mob.getRandom().nextInt(17) - 8);
+            if (!level.isEmptyBlock(pos) || level.isEmptyBlock(pos.below())) continue;
+            boolean allSafe = true;
+            for (AvoidStrategy hazard : hazards) {
+                if (!hazard.safeAt(level, pos)) { allSafe = false; break; }
+            }
+            if (allSafe) safe = pos;
+        }
+        if (safe != null) {
+            mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(safe, 1.1f, 1));
+        }
     }
 
     private static void applyScare(LivingEntity entity, List<ScareMobGeneType.Instance> scares) {

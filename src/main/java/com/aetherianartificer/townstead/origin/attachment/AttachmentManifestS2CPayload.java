@@ -17,10 +17,10 @@ import java.util.List;
  * against its on-disk cache and requests only the blobs it lacks.
  */
 //? if neoforge {
-public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<AttachmentSlotDef> slots)
+public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<AttachmentPointDef> slots)
         implements CustomPacketPayload {
 //?} else {
-/*public record AttachmentManifestS2CPayload(java.util.List<AttachmentDef> defs, java.util.List<AttachmentSlotDef> slots) {
+/*public record AttachmentManifestS2CPayload(java.util.List<AttachmentDef> defs, java.util.List<AttachmentPointDef> slots) {
 *///?}
 
     //? if neoforge {
@@ -46,7 +46,8 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             buf.writeUtf(def.id());
             buf.writeUtf(def.geoSha1());
             buf.writeUtf(def.textureSha1());
-            buf.writeUtf(def.slot() == null ? "" : def.slot());
+            buf.writeUtf(def.targetTag() == null ? "" : def.targetTag());
+            buf.writeUtf(def.targetPoint() == null ? "" : def.targetPoint());
             buf.writeUtf(def.bone());
             writeVec(buf, def.offset());
             writeVec(buf, def.rotation());
@@ -54,10 +55,12 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             buf.writeInt(def.tint());
         }
         buf.writeVarInt(slots.size());
-        for (AttachmentSlotDef slot : slots) {
-            buf.writeUtf(slot.id());
-            buf.writeUtf(slot.bone());
-            writeVec(buf, slot.offset());
+        for (AttachmentPointDef point : slots) {
+            buf.writeUtf(point.id());
+            buf.writeUtf(point.bone());
+            writeVec(buf, point.offset());
+            buf.writeVarInt(point.tags().size());
+            for (String tag : point.tags()) buf.writeUtf(tag);
         }
     }
 
@@ -68,18 +71,26 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             String id = buf.readUtf();
             String geo = buf.readUtf();
             String tex = buf.readUtf();
-            String slot = buf.readUtf();
+            String targetTag = buf.readUtf();
+            String targetPoint = buf.readUtf();
             String bone = buf.readUtf();
             float[] offset = readVec(buf);
             float[] rotation = readVec(buf);
             float scale = buf.readFloat();
             int tint = buf.readInt();
-            defs.add(new AttachmentDef(id, geo, tex, slot.isEmpty() ? null : slot, bone, offset, rotation, scale, tint));
+            defs.add(new AttachmentDef(id, geo, tex, targetTag.isEmpty() ? null : targetTag,
+                    targetPoint.isEmpty() ? null : targetPoint, bone, offset, rotation, scale, tint));
         }
         int slotCount = buf.readVarInt();
-        List<AttachmentSlotDef> slots = new ArrayList<>(slotCount);
+        List<AttachmentPointDef> slots = new ArrayList<>(slotCount);
         for (int i = 0; i < slotCount; i++) {
-            slots.add(new AttachmentSlotDef(buf.readUtf(), buf.readUtf(), readVec(buf)));
+            String id = buf.readUtf();
+            String bone = buf.readUtf();
+            float[] offset = readVec(buf);
+            int tagCount = buf.readVarInt();
+            List<String> tags = new ArrayList<>(tagCount);
+            for (int t = 0; t < tagCount; t++) tags.add(buf.readUtf());
+            slots.add(new AttachmentPointDef(id, bone, offset, tags));
         }
         return new AttachmentManifestS2CPayload(defs, slots);
     }

@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.pheno.action.Action;
 import com.aetherianartificer.townstead.pheno.action.Actions;
 import com.aetherianartificer.townstead.pheno.condition.Condition;
 import com.aetherianartificer.townstead.pheno.condition.Conditions;
+import com.aetherianartificer.townstead.origin.hazard.AvoidStrategy;
 import com.aetherianartificer.townstead.origin.gene.GeneDisplay;
 import com.aetherianartificer.townstead.origin.gene.GeneInstance;
 import com.aetherianartificer.townstead.origin.gene.GeneType;
@@ -26,7 +27,8 @@ public final class ActionOverTimeGeneType implements GeneType {
 
     public static final String KEY = "pheno:action_over_time";
 
-    public record Instance(Action action, int interval, @Nullable Condition condition)
+    public record Instance(Action action, int interval, @Nullable Condition condition,
+                           @Nullable AvoidStrategy avoid)
             implements GeneInstance {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
@@ -43,6 +45,9 @@ public final class ActionOverTimeGeneType implements GeneType {
         if (action == null) return null;
         int interval = Math.max(1, GsonHelper.getAsInt(json, "interval", 20));
         Condition condition = json.has("condition") ? Conditions.parse(json.get("condition")) : null;
-        return new Instance(action, interval, condition);
+        // The "damage source" derived once here and cached on the parsed gene: a harmful periodic
+        // action under a positional condition becomes a spatial hazard the AI flees (GeneAbilityTicker).
+        AvoidStrategy avoid = AvoidStrategy.derive(json.get("action"), json.get("condition"));
+        return new Instance(action, interval, condition, avoid);
     }
 }

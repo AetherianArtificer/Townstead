@@ -6,7 +6,7 @@ import com.aetherianartificer.townstead.client.origin.OriginClientStore;
 import com.aetherianartificer.townstead.origin.GeneCatalogEntry;
 import com.aetherianartificer.townstead.origin.OriginCatalogEntry;
 import com.aetherianartificer.townstead.origin.attachment.AttachmentDef;
-import com.aetherianartificer.townstead.origin.attachment.AttachmentSlotDef;
+import com.aetherianartificer.townstead.origin.attachment.AttachmentPointDef;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -52,40 +52,50 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
             ModelPart geometry = AttachmentClient.geometry(def.geoSha1());
             ResourceLocation texture = AttachmentClient.texture(def.textureSha1());
             if (geometry == null || texture == null) continue;
-            ModelPart bone = bones.resolve(anchorBone(def)).orElse(null);
-            if (bone == null) continue;
 
-            float[] offset = anchorOffset(def);
-            pose.pushPose();
-            bone.translateAndRotate(pose);
-            pose.translate(offset[0] / 16f, offset[1] / 16f, offset[2] / 16f);
-            float[] rotation = def.rotation();
-            if (rotation[2] != 0f) pose.mulPose(Axis.ZP.rotationDegrees(rotation[2]));
-            if (rotation[1] != 0f) pose.mulPose(Axis.YP.rotationDegrees(rotation[1]));
-            if (rotation[0] != 0f) pose.mulPose(Axis.XP.rotationDegrees(rotation[0]));
-            if (def.scale() != 1f) pose.scale(def.scale(), def.scale(), def.scale());
+            // One attachment can fill several points (a tag matching both ears), so render an
+            // instance at each resolved anchor.
+            for (Anchor anchor : anchorsFor(def)) {
+                ModelPart bone = bones.resolve(anchor.bone()).orElse(null);
+                if (bone == null) continue;
 
-            VertexConsumer buffer = buffers.getBuffer(RenderType.entityCutoutNoCull(texture));
-            renderPart(geometry, pose, buffer, light, def.tint());
-            pose.popPose();
+                float[] base = anchor.offset();
+                pose.pushPose();
+                bone.translateAndRotate(pose);
+                pose.translate((base[0] + def.offset()[0]) / 16f, (base[1] + def.offset()[1]) / 16f,
+                        (base[2] + def.offset()[2]) / 16f);
+                float[] rotation = def.rotation();
+                if (rotation[2] != 0f) pose.mulPose(Axis.ZP.rotationDegrees(rotation[2]));
+                if (rotation[1] != 0f) pose.mulPose(Axis.YP.rotationDegrees(rotation[1]));
+                if (rotation[0] != 0f) pose.mulPose(Axis.XP.rotationDegrees(rotation[0]));
+                if (def.scale() != 1f) pose.scale(def.scale(), def.scale(), def.scale());
+
+                VertexConsumer buffer = buffers.getBuffer(RenderType.entityCutoutNoCull(texture));
+                renderPart(geometry, pose, buffer, light, def.tint());
+                pose.popPose();
+            }
         }
     }
 
-    private static String anchorBone(AttachmentDef def) {
-        if (def.slot() != null) {
-            AttachmentSlotDef slot = AttachmentClient.slot(def.slot());
-            if (slot != null) return slot.bone();
-        }
-        return def.bone();
-    }
+    /** A resolved anchor: a model bone and the point's base offset (pixels). */
+    private record Anchor(String bone, float[] offset) {}
 
-    private static float[] anchorOffset(AttachmentDef def) {
-        float[] base = {0, 0, 0};
-        if (def.slot() != null) {
-            AttachmentSlotDef slot = AttachmentClient.slot(def.slot());
-            if (slot != null) base = slot.offset();
+    private static final float[] NO_OFFSET = {0, 0, 0};
+
+    /** Tag (every matching point) -> explicit point -> direct bone. */
+    private static List<Anchor> anchorsFor(AttachmentDef def) {
+        if (def.targetTag() != null) {
+            List<Anchor> out = new ArrayList<>();
+            for (AttachmentPointDef point : AttachmentClient.pointsWithTag(def.targetTag())) {
+                out.add(new Anchor(point.bone(), point.offset()));
+            }
+            return out;
         }
-        return new float[]{base[0] + def.offset()[0], base[1] + def.offset()[1], base[2] + def.offset()[2]};
+        if (def.targetPoint() != null) {
+            AttachmentPointDef point = AttachmentClient.slot(def.targetPoint());
+            if (point != null) return List.of(new Anchor(point.bone(), point.offset()));
+        }
+        return List.of(new Anchor(def.bone(), NO_OFFSET));
     }
 
     private static void renderPart(ModelPart part, PoseStack pose, VertexConsumer buffer, int light, int tint) {

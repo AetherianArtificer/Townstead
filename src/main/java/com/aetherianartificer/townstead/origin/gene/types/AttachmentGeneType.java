@@ -13,12 +13,12 @@ import net.minecraft.util.GsonHelper;
  * villager's model so it follows animation. Display-only data here; the render
  * layer and Bedrock-geometry loader are the client half.
  *
- * <p>JSON: {@code { "type":"pheno:attachment",
- * "attachment":"pheno:elf_ears" }}</p>
+ * <p>JSON: {@code { "type":"townstead_origins:attachment",
+ * "attachment":"townstead_origins:elf_ears" }}</p>
  */
 public final class AttachmentGeneType implements GeneType {
 
-    public static final String KEY = "pheno:attachment";
+    public static final String KEY = "townstead_origins:attachment";
 
     public record Instance(String attachmentId) implements GeneInstance {
         @Override public String typeKey() { return KEY; }

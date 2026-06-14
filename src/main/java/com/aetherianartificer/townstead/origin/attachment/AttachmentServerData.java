@@ -17,12 +17,12 @@ public final class AttachmentServerData {
     public record Blob(byte[] bytes, int kind) {}
 
     private static volatile List<AttachmentDef> definitions = List.of();
-    private static volatile List<AttachmentSlotDef> slots = List.of();
+    private static volatile List<AttachmentPointDef> slots = List.of();
     private static volatile Map<String, Blob> blobs = Map.of();
 
     private AttachmentServerData() {}
 
-    public static void set(List<AttachmentDef> defs, List<AttachmentSlotDef> slotDefs, Map<String, Blob> blobStore) {
+    public static void set(List<AttachmentDef> defs, List<AttachmentPointDef> slotDefs, Map<String, Blob> blobStore) {
         definitions = List.copyOf(defs);
         slots = List.copyOf(slotDefs);
         blobs = Map.copyOf(blobStore);
@@ -32,7 +32,7 @@ public final class AttachmentServerData {
         return definitions;
     }
 
-    public static List<AttachmentSlotDef> slots() {
+    public static List<AttachmentPointDef> slots() {
         return slots;
     }
 

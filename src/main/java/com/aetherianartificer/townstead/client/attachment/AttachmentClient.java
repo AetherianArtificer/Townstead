@@ -5,7 +5,7 @@ import com.aetherianartificer.townstead.client.attachment.geo.BedrockGeometryLoa
 import com.aetherianartificer.townstead.origin.attachment.AttachmentDef;
 import com.aetherianartificer.townstead.origin.attachment.AttachmentRequestC2SPayload;
 import com.aetherianartificer.townstead.origin.attachment.AttachmentServerData;
-import com.aetherianartificer.townstead.origin.attachment.AttachmentSlotDef;
+import com.aetherianartificer.townstead.origin.attachment.AttachmentPointDef;
 import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AttachmentClient {
 
     private static final Map<String, AttachmentDef> DEFS = new ConcurrentHashMap<>();
-    private static final Map<String, AttachmentSlotDef> SLOTS = new ConcurrentHashMap<>();
+    private static final Map<String, AttachmentPointDef> SLOTS = new ConcurrentHashMap<>();
     private static final Map<String, ModelPart> GEO = new ConcurrentHashMap<>();
     private static final Map<String, ResourceLocation> TEXTURES = new ConcurrentHashMap<>();
     private static final Map<String, Buffer> BUFFERS = new ConcurrentHashMap<>();
@@ -50,11 +50,11 @@ public final class AttachmentClient {
         }
     }
 
-    public static void onManifest(List<AttachmentDef> defs, List<AttachmentSlotDef> slots) {
+    public static void onManifest(List<AttachmentDef> defs, List<AttachmentPointDef> slots) {
         DEFS.clear();
         SLOTS.clear();
         for (AttachmentDef def : defs) DEFS.put(def.id(), def);
-        for (AttachmentSlotDef slot : slots) SLOTS.put(slot.id(), slot);
+        for (AttachmentPointDef slot : slots) SLOTS.put(slot.id(), slot);
 
         Map<String, Integer> needed = new LinkedHashMap<>();
         for (AttachmentDef def : defs) {
@@ -114,8 +114,17 @@ public final class AttachmentClient {
         return DEFS.get(id);
     }
 
-    public static AttachmentSlotDef slot(String id) {
+    public static AttachmentPointDef slot(String id) {
         return SLOTS.get(id);
+    }
+
+    /** Every synced point carrying {@code tag} (so one attachment can fill several, e.g. both ears). */
+    public static List<AttachmentPointDef> pointsWithTag(String tag) {
+        List<AttachmentPointDef> out = new ArrayList<>();
+        for (AttachmentPointDef point : SLOTS.values()) {
+            if (point.tags().contains(tag)) out.add(point);
+        }
+        return out;
     }
 
     public static ModelPart geometry(String sha1) {

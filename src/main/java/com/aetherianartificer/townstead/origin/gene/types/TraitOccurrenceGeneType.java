@@ -17,12 +17,12 @@ import net.minecraft.util.GsonHelper;
  * it via {@code villager.getTraits().addTrait} with this gene's occurrence as the
  * probability ({@code force}/{@code delta} ≥ 1.0 = guaranteed).</p>
  *
- * <p>JSON: {@code { "type":"pheno:trait_occurrence", "trait":"dwarfism",
+ * <p>JSON: {@code { "type":"townstead_origins:trait_occurrence", "trait":"dwarfism",
  * "force":true }} or {@code { ..., "trait":"albinism", "delta":0.25 }}</p>
  */
 public final class TraitOccurrenceGeneType implements GeneType {
 
-    public static final String KEY = "pheno:trait_occurrence";
+    public static final String KEY = "townstead_origins:trait_occurrence";
 
     public record Instance(String trait, float delta) implements GeneInstance {
         @Override

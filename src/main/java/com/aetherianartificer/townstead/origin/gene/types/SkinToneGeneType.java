@@ -25,12 +25,12 @@ import java.util.Locale;
  * {@code strength} (0–1, default 1) scales how strongly the tint applies. Legacy {@code from}/
  * {@code to} genes are read by their {@code from}.
  *
- * <p>JSON: {@code { "type":"pheno:skin_tone", "tint":"#8A8FA0", "blend":"multiply",
+ * <p>JSON: {@code { "type":"townstead_origins:skin_tone", "tint":"#8A8FA0", "blend":"multiply",
  * "strength":1.0 }}</p>
  */
 public final class SkinToneGeneType implements GeneType {
 
-    public static final String KEY = "pheno:skin_tone";
+    public static final String KEY = "townstead_origins:skin_tone";
 
     /** Blend ordinals (shared with the skin-layer mixin): 0 multiply, 1 screen, 2 overlay. */
     public record Instance(int tint, int blend, float strength) implements GeneInstance {

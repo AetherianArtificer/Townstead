@@ -2,7 +2,6 @@ package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.data.DataPackLang;
-import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -37,17 +36,59 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
-                TownsteadSchema.validate(obj, "townstead:species/v1");
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), file.toString(), lang);
-                String shape = GsonHelper.getAsString(obj, "shape", "humanoid");
+                Rig rig = parseRig(obj);
+                Hold hold = parseHold(obj);
                 float admixture = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(obj, "admixture_chance", 0f)));
                 Genome genome = OriginJsonParsing.genes(obj, file.toString(), LOGGER);
-                parsed.put(file, new Species(file, displayName, shape, admixture, genome));
+                parsed.put(file, new Species(file, displayName, rig, hold, admixture, genome));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse species {}: {}", file, ex.getMessage());
             }
         }
         SpeciesRegistry.replaceAll(parsed);
         LOGGER.info("Loaded {} origin species", parsed.size());
+    }
+
+    /**
+     * The species' rig. v2: {@code "rig": { "base": "minecraft:spider" }}. v1 fallback: the legacy
+     * {@code "shape"} string, where {@code humanoid} maps to the MCA villager model.
+     */
+    private static Rig parseRig(JsonObject obj) {
+        if (obj.has("rig") && obj.get("rig").isJsonObject()) {
+            JsonObject rig = obj.getAsJsonObject("rig");
+            return new Rig(GsonHelper.getAsString(rig, "base", "mca:villager"),
+                    GsonHelper.getAsFloat(rig, "scale", 1.0f));
+        }
+        String shape = GsonHelper.getAsString(obj, "shape", "humanoid");
+        return "humanoid".equals(shape) ? Rig.VILLAGER : new Rig(shape, 1.0f);
+    }
+
+    /**
+     * {@code "hold": { "mainhand": { "bone": "right_arm", "offset": [x,y,z], "rotation": [x,y,z] }, ... }}
+     * -> per-hand anchor bone + offset (pixels) + rotation (degrees). A hand key omitted (null grip)
+     * means that hand cannot hold; an absent {@code hold} block means the rig holds nothing.
+     */
+    private static Hold parseHold(JsonObject obj) {
+        if (!obj.has("hold") || !obj.get("hold").isJsonObject()) return Hold.NONE;
+        JsonObject hold = obj.getAsJsonObject("hold");
+        return new Hold(parseGrip(hold, "mainhand"), parseGrip(hold, "offhand"));
+    }
+
+    /** One hand's grip, or null when the hand is absent (cannot hold). */
+    private static Hold.Grip parseGrip(JsonObject hold, String key) {
+        if (!hold.has(key) || !hold.get(key).isJsonObject()) return null;
+        JsonObject grip = hold.getAsJsonObject(key);
+        String bone = GsonHelper.getAsString(grip, "bone", "");
+        return new Hold.Grip(bone, readVec3(grip, "offset"), readVec3(grip, "rotation"));
+    }
+
+    private static float[] readVec3(JsonObject obj, String key) {
+        float[] out = new float[]{0f, 0f, 0f};
+        if (obj.has(key) && obj.get(key).isJsonArray()) {
+            var arr = obj.getAsJsonArray(key);
+            for (int i = 0; i < 3 && i < arr.size(); i++) out[i] = arr.get(i).getAsFloat();
+        }
+        return out;
     }
 }

@@ -34,8 +34,8 @@ import java.util.Map;
  * <p>JSON:</p>
  * <pre>{@code
  * {
- *   "type": "pheno:life_cycle",
- *   "locus": "pheno:life_cycle",
+ *   "type": "townstead_origins:life_cycle",
+ *   "locus": "townstead_origins:life_cycle",
  *   "variance": 0.15,
  *   "stages": [
  *     { "id": "baby", "label": { "translate": "..." }, "presents_as": "baby", "days": 4 },
@@ -52,7 +52,7 @@ import java.util.Map;
  */
 public final class LifeCycleGeneType implements GeneType {
 
-    public static final String KEY = "pheno:life_cycle";
+    public static final String KEY = "townstead_origins:life_cycle";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/LifeCycleGene");
 

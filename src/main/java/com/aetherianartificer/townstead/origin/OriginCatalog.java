@@ -74,7 +74,10 @@ public final class OriginCatalog {
                     keyOf(nameC), keyOf(singC), keyOf(plurC), keyOf(backstory),
                     keyOf(spc != null ? spc.displayName() : null),
                     keyOf(anc != null ? anc.displayName() : null),
-                    keyOf(lin != null ? lin.displayName() : null)));
+                    keyOf(lin != null ? lin.displayName() : null),
+                    spc != null ? spc.rig().base() : Rig.VILLAGER.base(),
+                    spc != null ? spc.rig().scale() : Rig.VILLAGER.scale(),
+                    spc != null ? spc.hold() : Hold.NONE));
         }
         return new Snapshot(origins, new ArrayList<>(genes.values()), traits);
     }

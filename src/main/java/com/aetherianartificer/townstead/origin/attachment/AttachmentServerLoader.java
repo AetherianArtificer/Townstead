@@ -1,6 +1,10 @@
 package com.aetherianartificer.townstead.origin.attachment;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.pheno.lang.PhenoDiagnostics;
+import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostics;
+import com.aetherianartificer.townstead.pheno.lang.compile.Severity;
+import com.aetherianartificer.townstead.pheno.lang.validate.PhenoValidator;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -21,29 +25,31 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Server data loader for attachments. Reads {@code data/<ns>/attachments/<id>.json}
- * definitions plus their referenced geometry ({@code attachments/geo/<name>.geo.json})
- * and texture ({@code attachments/textures/<name>.png}) bytes, hashes the blobs
- * (SHA-1), and fills {@link AttachmentServerData}. Slots come from
- * {@code data/<ns>/attachment_slots/<id>.json}. The bytes are then synced + cached
+ * Server data loader for attachments. Reads {@code data/<ns>/attachment/<id>.json}
+ * definitions plus their referenced geometry ({@code attachment/geo/<name>.geo.json})
+ * and texture ({@code attachment/textures/<name>.png}) bytes, hashes the blobs
+ * (SHA-1), and fills {@link AttachmentServerData}. Attachment points come from
+ * {@code data/<ns>/attachment_point/<id>.json}. The bytes are then synced + cached
  * client-side, so a pack needs no resource pack.
  */
 public final class AttachmentServerLoader implements ResourceManagerReloadListener {
 
     private static final int MAX_TEXTURE_BYTES = 8 * 1024 * 1024;
-    private static final String DIR = "attachments";
-    private static final String SLOT_DIR = "attachment_slots";
+    private static final String DIR = "attachment";
+    private static final String SLOT_DIR = "attachment_point";
 
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
         List<AttachmentDef> defs = new ArrayList<>();
-        List<AttachmentSlotDef> slots = new ArrayList<>();
+        List<AttachmentPointDef> slots = new ArrayList<>();
         Map<String, AttachmentServerData.Blob> blobs = new LinkedHashMap<>();
+        Diagnostics diagnostics = new Diagnostics();
 
         manager.listResources(DIR, rl -> isTopLevelJson(rl.getPath())).forEach((file, resource) -> {
             String id = idFrom(file.getNamespace(), file.getPath(), DIR);
             JsonObject json = readJson(resource);
             if (id == null || json == null) return;
+            PhenoValidator.validateData(file, json, AttachmentSchemas.ATTACHMENT, diagnostics);
             try {
                 AttachmentDef def = parseDef(manager, file.getNamespace(), id, json, blobs);
                 if (def != null) defs.add(def);
@@ -56,12 +62,18 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
             String id = idFrom(file.getNamespace(), file.getPath(), SLOT_DIR);
             JsonObject json = readJson(resource);
             if (id == null || json == null) return;
-            slots.add(new AttachmentSlotDef(id, GsonHelper.getAsString(json, "bone", "body"), readVec(json, "offset")));
+            PhenoValidator.validateData(file, json, AttachmentSchemas.ATTACHMENT_POINT, diagnostics);
+            slots.add(new AttachmentPointDef(id, GsonHelper.getAsString(json, "bone", "body"),
+                    readVec(json, "offset"), readTags(json)));
         });
 
         AttachmentServerData.set(defs, slots, blobs);
-        Townstead.LOGGER.info("Loaded {} attachment definitions, {} slots, {} blobs",
-                defs.size(), slots.size(), blobs.size());
+        PhenoDiagnostics.replace("attachment", diagnostics.all());
+        int errors = diagnostics.count(Severity.ERROR);
+        Townstead.LOGGER.info("Loaded {} attachment definitions, {} points, {} blobs ({} diagnostic{})",
+                defs.size(), slots.size(), blobs.size(), diagnostics.all().size(),
+                diagnostics.all().size() == 1 ? "" : "s");
+        if (errors > 0) Townstead.LOGGER.warn("attachment: {} error diagnostic(s); run /pheno validate for detail", errors);
     }
 
     private static AttachmentDef parseDef(ResourceManager manager, String ns, String id, JsonObject json,
@@ -81,12 +93,22 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
         blobs.put(geoSha, new AttachmentServerData.Blob(geo, AttachmentServerData.KIND_GEO));
         blobs.put(texSha, new AttachmentServerData.Blob(tex, AttachmentServerData.KIND_TEXTURE));
 
-        String slot = json.has("slot") ? GsonHelper.getAsString(json, "slot", "") : null;
+        String targetTag = null;
+        String targetPoint = null;
+        if (json.has("target") && json.get("target").isJsonObject()) {
+            JsonObject target = json.getAsJsonObject("target");
+            targetTag = emptyToNull(GsonHelper.getAsString(target, "tag", ""));
+            targetPoint = emptyToNull(GsonHelper.getAsString(target, "point", ""));
+        }
         String bone = GsonHelper.getAsString(json, "bone", "body");
         float scale = GsonHelper.getAsFloat(json, "scale", 1f);
         int tint = parseHex(GsonHelper.getAsString(json, "tint", "#FFFFFF"));
-        return new AttachmentDef(id, geoSha, texSha, slot == null || slot.isEmpty() ? null : slot, bone,
+        return new AttachmentDef(id, geoSha, texSha, targetTag, targetPoint, bone,
                 readVec(json, "offset"), readVec(json, "rotation"), scale, tint);
+    }
+
+    private static String emptyToNull(String s) {
+        return s == null || s.isEmpty() ? null : s;
     }
 
     private static ResourceLocation resolve(String defNs, String ref, String subdir, String suffix) {
@@ -134,6 +156,14 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static List<String> readTags(JsonObject json) {
+        List<String> tags = new ArrayList<>();
+        if (json.has("tags") && json.get("tags").isJsonArray()) {
+            for (var element : json.getAsJsonArray("tags")) tags.add(element.getAsString());
+        }
+        return tags;
     }
 
     private static float[] readVec(JsonObject json, String key) {

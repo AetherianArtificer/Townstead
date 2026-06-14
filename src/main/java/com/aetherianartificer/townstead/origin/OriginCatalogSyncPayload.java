@@ -73,6 +73,10 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             buf.writeUtf(e.speciesNameKey());
             buf.writeUtf(e.ancestryNameKey());
             buf.writeUtf(e.lineageNameKey());
+            buf.writeUtf(e.rigBase());
+            buf.writeFloat(e.rigScale());
+            writeGrip(buf, e.hold().mainhand());
+            writeGrip(buf, e.hold().offhand());
         }
         buf.writeVarInt(genes.size());
         for (GeneCatalogEntry g : genes) {
@@ -139,6 +143,9 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             String speciesNameKey = buf.readUtf();
             String ancestryNameKey = buf.readUtf();
             String lineageNameKey = buf.readUtf();
+            String rigBase = buf.readUtf();
+            float rigScale = buf.readFloat();
+            Hold hold = new Hold(readGrip(buf), readGrip(buf));
             entries.add(new OriginCatalogEntry(id,
                     localize(nameKey, name),
                     localize(singularKey, singular),
@@ -149,7 +156,8 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                     localize(lineageNameKey, lineageName),
                     inherited, ranges,
                     nameKey, singularKey, pluralKey, backstoryKey,
-                    speciesNameKey, ancestryNameKey, lineageNameKey));
+                    speciesNameKey, ancestryNameKey, lineageNameKey,
+                    rigBase, rigScale, hold));
         }
         int m = buf.readVarInt();
         List<GeneCatalogEntry> genes = new ArrayList<>(m);
@@ -190,6 +198,24 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                     buf.readBoolean(), buf.readBoolean()));
         }
         return new OriginCatalogSyncPayload(entries, genes, traits);
+    }
+
+    /** Write one hand's grip: a present flag, then (if present) bone + offset vec3 + rotation vec3. */
+    private static void writeGrip(FriendlyByteBuf buf, Hold.Grip grip) {
+        buf.writeBoolean(grip != null);
+        if (grip == null) return;
+        buf.writeUtf(grip.bone());
+        for (int k = 0; k < 3; k++) buf.writeFloat(grip.offset()[k]);
+        for (int k = 0; k < 3; k++) buf.writeFloat(grip.rotation()[k]);
+    }
+
+    /** Read one hand's grip, or null when the present flag is false (hand cannot hold). */
+    private static Hold.Grip readGrip(FriendlyByteBuf buf) {
+        if (!buf.readBoolean()) return null;
+        String bone = buf.readUtf();
+        float[] offset = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+        float[] rotation = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+        return new Hold.Grip(bone, offset, rotation);
     }
 
     /**
