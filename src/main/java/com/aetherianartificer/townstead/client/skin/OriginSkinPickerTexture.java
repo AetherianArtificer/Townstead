@@ -33,6 +33,7 @@ public final class OriginSkinPickerTexture {
     private static int[] srcPixels;   // ABGR, as NativeImage stores them
     private static int srcW, srcH;
     private static final Map<Integer, ResourceLocation> CACHE = new HashMap<>();
+    private static final Map<Integer, ResourceLocation> HUE_CACHE = new HashMap<>();
 
     /** Texture for the picker background given the provider's packed tint ({@link SkinBlend#pack}). */
     public static ResourceLocation forTint(int packed) {
@@ -40,9 +41,23 @@ public final class OriginSkinPickerTexture {
         if (SkinBlend.packMode(packed) == 0 && SkinBlend.packTint(packed) == 0xFFFFFF) return SKIN_COLORMAP;
         ResourceLocation cached = CACHE.get(packed);
         if (cached != null) return cached;
-        ResourceLocation rl = generate(packed);
+        ResourceLocation rl = generate(Integer.toHexString(packed), base -> SkinBlend.blend(base, packed));
         if (rl == null) return SKIN_COLORMAP;                     // source unavailable: leave it vanilla
         CACHE.put(packed, rl);
+        return rl;
+    }
+
+    /**
+     * Texture for a palette-tone picker: MCA's skin gradient shaded to {@code hue} with the very same
+     * {@link SkinBlend#shadeByLuma} the rig render uses, so the picker square is WYSIWYG with the
+     * rendered tone (pick a spot, that is the tone you get).
+     */
+    public static ResourceLocation forPaletteHue(int hue) {
+        ResourceLocation cached = HUE_CACHE.get(hue);
+        if (cached != null) return cached;
+        ResourceLocation rl = generate("hue_" + Integer.toHexString(hue), base -> SkinBlend.shadeByLuma(hue, base));
+        if (rl == null) return SKIN_COLORMAP;
+        HUE_CACHE.put(hue, rl);
         return rl;
     }
 
@@ -55,7 +70,7 @@ public final class OriginSkinPickerTexture {
                 || (rl != null && "townstead".equals(rl.getNamespace()) && rl.getPath().startsWith("origin_skin_picker/"));
     }
 
-    private static ResourceLocation generate(int packed) {
+    private static ResourceLocation generate(String nameSuffix, java.util.function.IntUnaryOperator perPixel) {
         if (!loadSource()) return null;
         NativeImage img = new NativeImage(srcW, srcH, false);
         for (int y = 0; y < srcH; y++) {
@@ -63,16 +78,16 @@ public final class OriginSkinPickerTexture {
                 int abgr = srcPixels[y * srcW + x];
                 int a = (abgr >>> 24) & 0xFF;
                 int baseRgb = ((abgr & 0xFF) << 16) | (((abgr >> 8) & 0xFF) << 8) | ((abgr >> 16) & 0xFF);
-                int out = SkinBlend.blend(baseRgb, packed);
+                int out = perPixel.applyAsInt(baseRgb);
                 int or = (out >> 16) & 0xFF, og = (out >> 8) & 0xFF, ob = out & 0xFF;
                 img.setPixelRGBA(x, y, (a << 24) | (ob << 16) | (og << 8) | or);   // back to ABGR
             }
         }
         DynamicTexture tex = new DynamicTexture(img);
         //? if >=1.21 {
-        ResourceLocation rl = ResourceLocation.fromNamespaceAndPath("townstead", "origin_skin_picker/" + Integer.toHexString(packed));
+        ResourceLocation rl = ResourceLocation.fromNamespaceAndPath("townstead", "origin_skin_picker/" + nameSuffix);
         //?} else {
-        /*ResourceLocation rl = new ResourceLocation("townstead", "origin_skin_picker/" + Integer.toHexString(packed));
+        /*ResourceLocation rl = new ResourceLocation("townstead", "origin_skin_picker/" + nameSuffix);
         *///?}
         Minecraft.getInstance().getTextureManager().register(rl, tex);
         return rl;

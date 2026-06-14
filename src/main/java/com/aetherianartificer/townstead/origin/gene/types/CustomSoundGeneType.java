@@ -4,11 +4,14 @@ import com.aetherianartificer.townstead.pheno.sound.SoundSpec;
 import com.aetherianartificer.townstead.origin.gene.GeneDisplay;
 import com.aetherianartificer.townstead.origin.gene.GeneInstance;
 import com.aetherianartificer.townstead.origin.gene.GeneType;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Replaces one of the bearer's intrinsic sounds (Apugli's {@code custom_hurt_sound} /
@@ -26,7 +29,8 @@ public final class CustomSoundGeneType implements GeneType {
     public static final String KEY = "pheno:custom_sound";
 
     public enum Slot {
-        HURT("hurt"), DEATH("death"), STEP("step");
+        AMBIENT("ambient"), HURT("hurt"), DEATH("death"), STEP("step"),
+        GREET("greet"), YES("yes"), NO("no"), SURPRISE("surprise"), CELEBRATE("celebrate");
 
         private final String key;
 
@@ -41,7 +45,8 @@ public final class CustomSoundGeneType implements GeneType {
         }
     }
 
-    public record Instance(Slot slot, SoundSpec sound) implements GeneInstance {
+    /** A voice: one or more slots mapped to their replacement sound. */
+    public record Instance(Map<Slot, SoundSpec> sounds) implements GeneInstance {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
     }
@@ -53,9 +58,20 @@ public final class CustomSoundGeneType implements GeneType {
 
     @Override
     public GeneInstance parse(JsonObject json) {
-        Slot slot = Slot.byKey(GsonHelper.getAsString(json, "slot", ""));
-        if (slot == null) return null;
-        SoundSpec sound = SoundSpec.parse(json.get("sound"));
-        return sound == null ? null : new Instance(slot, sound);
+        Map<Slot, SoundSpec> sounds = new EnumMap<>(Slot.class);
+        if (json.has("sounds") && json.get("sounds").isJsonObject()) {
+            // A full voice: { "sounds": { "ambient": "...", "hurt": "...", "death": "..." } }.
+            for (Map.Entry<String, JsonElement> e : json.getAsJsonObject("sounds").entrySet()) {
+                Slot slot = Slot.byKey(e.getKey());
+                SoundSpec sound = SoundSpec.parse(e.getValue());
+                if (slot != null && sound != null) sounds.put(slot, sound);
+            }
+        } else {
+            // A single slot: { "slot": "hurt", "sound": "..." }.
+            Slot slot = Slot.byKey(GsonHelper.getAsString(json, "slot", ""));
+            SoundSpec sound = SoundSpec.parse(json.get("sound"));
+            if (slot != null && sound != null) sounds.put(slot, sound);
+        }
+        return sounds.isEmpty() ? null : new Instance(Map.copyOf(sounds));
     }
 }

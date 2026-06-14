@@ -72,6 +72,8 @@ public final class VillagerServerTickDispatcher {
         profile("villager.life_stage", () -> LifeStageTicker.tick(villager));
         profile("villager.gene_ability", () ->
                 com.aetherianartificer.townstead.origin.ability.GeneAbilityTicker.tick(villager));
+        profile("villager.disposition", () ->
+                com.aetherianartificer.townstead.origin.disposition.DispositionReactions.tick(villager));
         profile("villager.gene_attribute", () ->
                 com.aetherianartificer.townstead.origin.attribute.GeneAttributeApplier.tick(villager));
         profile("villager.active_ability", () ->

@@ -98,6 +98,7 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                 buf.writeUtf(v.label());
                 buf.writeVarInt(v.weight());
                 buf.writeUtf(v.labelKey());
+                buf.writeInt(v.tint());
             }
             buf.writeUtf(g.nameKey());
             buf.writeUtf(g.descriptionKey());
@@ -181,7 +182,8 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                 String vlabel = buf.readUtf();
                 int vweight = buf.readVarInt();
                 String vlabelKey = buf.readUtf();
-                variants.add(new GeneCatalogEntry.Variant(vid, localize(vlabelKey, vlabel), vweight, vlabelKey));
+                int vtint = buf.readInt();
+                variants.add(new GeneCatalogEntry.Variant(vid, localize(vlabelKey, vlabel), vweight, vlabelKey, vtint));
             }
             String gNameKey = buf.readUtf();
             String gDescKey = buf.readUtf();

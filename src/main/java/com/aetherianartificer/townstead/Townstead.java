@@ -580,7 +580,9 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent e) -> {
             if (com.aetherianartificer.townstead.origin.mobsignore.MobsIgnore.shouldIgnore(
-                    e.getEntity(), e.getNewAboutToBeSetTarget())) {
+                    e.getEntity(), e.getNewAboutToBeSetTarget())
+                    || com.aetherianartificer.townstead.origin.disposition.Dispositions.areFriendly(
+                            e.getEntity(), e.getNewAboutToBeSetTarget())) {
                 e.setCanceled(true);
             }
         });
@@ -852,7 +854,9 @@ public class Townstead {
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingChangeTargetEvent e) -> {
             if (com.aetherianartificer.townstead.origin.mobsignore.MobsIgnore.shouldIgnore(
-                    e.getEntity(), e.getNewTarget())) {
+                    e.getEntity(), e.getNewTarget())
+                    || com.aetherianartificer.townstead.origin.disposition.Dispositions.areFriendly(
+                            e.getEntity(), e.getNewTarget())) {
                 e.setCanceled(true);
             }
         });
@@ -1088,6 +1092,10 @@ public class Townstead {
             // The genetics source feeding the shared Power facade (professions will add another later)
             com.aetherianartificer.townstead.pheno.power.Powers.register(
                     new com.aetherianartificer.townstead.origin.GenePowerSource());
+            // How entities react without factions, from data-pack group relations; the faction
+            // system will register an authoritative source over this later.
+            com.aetherianartificer.townstead.origin.disposition.Dispositions.register(
+                    new com.aetherianartificer.townstead.origin.disposition.DataDispositionSource());
             // Read-side genetics feed for the capability layer (provenance for /pheno explain)
             com.aetherianartificer.townstead.pheno.capability.Capabilities.register(
                     new com.aetherianartificer.townstead.origin.capability.GeneCapabilitySource());
@@ -1552,6 +1560,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.origin.HeritageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.chronotype.ChronotypeCatalogLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.gene.GeneJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.disposition.DispositionRelationsLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.trait.TraitJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.attachment.AttachmentServerLoader());
@@ -2106,6 +2115,11 @@ public class Townstead {
                 this::handleOriginSet
         );
         registrar.playToServer(
+                com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload.TYPE,
+                com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload.STREAM_CODEC,
+                this::handleSetGeneVariant
+        );
+        registrar.playToServer(
                 com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload.TYPE,
                 com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload.STREAM_CODEC,
                 this::handleActivateAbility
@@ -2279,6 +2293,25 @@ public class Townstead {
                         com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload.forEntity(sp.getId(), sp);
                 PacketDistributor.sendToPlayer(sp, selfGenes);
                 PacketDistributor.sendToPlayersTrackingEntity(sp, selfGenes);
+            }
+        });
+    }
+
+    private void handleSetGeneVariant(
+            com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            int target = com.aetherianartificer.townstead.origin.OriginServerLogic.setVariant(
+                    sp, payload.entityId(), payload.geneId(), payload.variantId());
+            if (target == com.aetherianartificer.townstead.origin.OriginSetC2SPayload.NONE) return;
+            Entity entity = sp.serverLevel().getEntity(target);
+            if (entity instanceof net.minecraft.world.entity.LivingEntity living) {
+                com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload genes =
+                        com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload.forEntity(target, living);
+                PacketDistributor.sendToPlayer(sp, genes);
+                PacketDistributor.sendToPlayersTrackingEntity(entity, genes);
             }
         });
     }

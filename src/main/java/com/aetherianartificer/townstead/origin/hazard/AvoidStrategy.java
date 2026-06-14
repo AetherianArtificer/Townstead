@@ -54,10 +54,21 @@ public enum AvoidStrategy {
         }
     }
 
-    /** True when the position is safe from this hazard, used to pick a flee target. */
+    /** True when the position is safe from this hazard, used to pick a flee/roam target. */
     public boolean safeAt(Level level, BlockPos pos) {
         return switch (this) {
             case SUNLIGHT -> !level.canSeeSky(pos);
+        };
+    }
+
+    /**
+     * True when this hazard is a live threat outside right now, so a safe-but-idle mob should still
+     * roam the safe zone rather than stand. False (e.g. sunlight at night or in rain) hands the mob
+     * back to its normal wander entirely.
+     */
+    public boolean activeNow(Level level) {
+        return switch (this) {
+            case SUNLIGHT -> level.isDay() && !level.isRaining();
         };
     }
 

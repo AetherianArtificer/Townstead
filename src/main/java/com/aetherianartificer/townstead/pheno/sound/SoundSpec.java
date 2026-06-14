@@ -21,14 +21,14 @@ import java.util.List;
  * data types, unified). Parses one of:
  * <ul>
  *   <li>a bare id string ({@code "minecraft:entity.cat.purr"}),</li>
- *   <li>an object {@code { "sound", "volume", "pitch" }},</li>
- *   <li>an array of {@code { "sound", "volume", "pitch", "weight" }} for a weighted pick.</li>
+ *   <li>an object {@code { "sound", "volume", "pitch", "chance" }} ({@code chance} 0..1 gates whether it plays),</li>
+ *   <li>an array of {@code { "sound", "volume", "pitch", "chance", "weight" }} for a weighted pick.</li>
  * </ul>
  * Lives in pheno so any source (genetics now, professions later) emits sounds the same way.
  */
 public final class SoundSpec {
 
-    public record Entry(SoundEvent sound, float volume, float pitch, int weight) {}
+    public record Entry(SoundEvent sound, float volume, float pitch, float chance, int weight) {}
 
     private final List<Entry> entries;
     private final int totalWeight;
@@ -72,23 +72,24 @@ public final class SoundSpec {
     @Nullable
     private static Entry entry(JsonElement element) {
         if (element.isJsonPrimitive()) {
-            return entry(DataPackLang.parseId(element.getAsString()), 1f, 1f, 1);
+            return entry(DataPackLang.parseId(element.getAsString()), 1f, 1f, 1f, 1);
         }
         if (element.isJsonObject()) {
             JsonObject obj = element.getAsJsonObject();
             return entry(DataPackLang.parseId(GsonHelper.getAsString(obj, "sound", "")),
                     GsonHelper.getAsFloat(obj, "volume", 1f),
                     GsonHelper.getAsFloat(obj, "pitch", 1f),
+                    GsonHelper.getAsFloat(obj, "chance", 1f),
                     GsonHelper.getAsInt(obj, "weight", 1));
         }
         return null;
     }
 
     @Nullable
-    private static Entry entry(@Nullable ResourceLocation id, float volume, float pitch, int weight) {
+    private static Entry entry(@Nullable ResourceLocation id, float volume, float pitch, float chance, int weight) {
         if (id == null) return null;
         SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(id);
-        return sound == null ? null : new Entry(sound, volume, pitch, weight);
+        return sound == null ? null : new Entry(sound, volume, pitch, chance, weight);
     }
 
     /** Weighted pick (a single-entry spec always returns that entry). */

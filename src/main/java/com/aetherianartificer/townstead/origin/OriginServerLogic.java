@@ -1,6 +1,11 @@
 package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.origin.gene.Allele;
+import com.aetherianartificer.townstead.origin.gene.Gene;
+import com.aetherianartificer.townstead.origin.gene.GeneRegistry;
+import com.aetherianartificer.townstead.origin.gene.GeneVariant;
+import com.aetherianartificer.townstead.origin.gene.Genotype;
 import com.aetherianartificer.townstead.pheno.power.Power;
 import com.aetherianartificer.townstead.pheno.power.Powers;
 import com.aetherianartificer.townstead.origin.ability.GeneAbilityTicker;
@@ -85,6 +90,40 @@ public final class OriginServerLogic {
         TownsteadVillagers.flush(villager);
         if (changed) resetPassives(villager, oldGenes);
         return new Result(villager.getId(), id.toString());
+    }
+
+    /**
+     * Pin a target's carried variant for one variant gene (the editor's variant picker). Sets both
+     * genotype alleles to the chosen variant so it expresses, persists, and inherits like a roll,
+     * then returns the resolved entity id for re-sync, or {@link OriginSetC2SPayload#NONE} if invalid.
+     */
+    public static int setVariant(ServerPlayer sp, int entityId, String geneId, String variantId) {
+        ResourceLocation gid = DataPackLang.parseId(geneId);
+        if (gid == null) return OriginSetC2SPayload.NONE;
+        Gene gene = GeneRegistry.byId(gid);
+        if (gene == null || !gene.hasVariants()) return OriginSetC2SPayload.NONE;
+        boolean valid = false;
+        for (GeneVariant v : gene.variants()) {
+            if (v.id().equals(variantId)) { valid = true; break; }
+        }
+        if (!valid) return OriginSetC2SPayload.NONE;
+        ResourceLocation locus = Heredity.locusOf(gene);
+        Allele allele = Allele.of(gid, variantId);
+
+        if (entityId == OriginSetC2SPayload.SELF) {
+            Genotype genotype = PlayerOrigin.getGenotype(sp);
+            if (genotype.isEmpty()) return OriginSetC2SPayload.NONE;
+            genotype.set(locus, allele, allele);
+            PlayerOrigin.setGenotype(sp, genotype);
+            return sp.getId();
+        }
+        Entity entity = sp.serverLevel().getEntity(entityId);
+        if (!(entity instanceof VillagerEntityMCA villager)) return OriginSetC2SPayload.NONE;
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        state.life().genotype().set(locus, allele, allele);
+        Heredity.recomputeExpressed(state.life());
+        TownsteadVillagers.flush(villager);
+        return villager.getId();
     }
 
     /**

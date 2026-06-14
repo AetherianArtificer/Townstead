@@ -92,8 +92,11 @@ public final class OriginCatalog {
         List<GeneCatalogEntry.Variant> variants = new ArrayList<>();
         if (gene.hasVariants()) {
             for (com.aetherianartificer.townstead.origin.gene.GeneVariant v : gene.variants()) {
+                int tint = v.instance() instanceof
+                        com.aetherianartificer.townstead.origin.gene.types.SkinToneGeneType.Instance st
+                        ? st.tint() : -1;
                 variants.add(new GeneCatalogEntry.Variant(
-                        v.id(), v.displayName().getString(), v.weight(), keyOf(v.displayName())));
+                        v.id(), v.displayName().getString(), v.weight(), keyOf(v.displayName()), tint));
             }
         }
         return new GeneCatalogEntry(

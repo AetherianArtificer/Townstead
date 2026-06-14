@@ -126,22 +126,65 @@ public final class GeneAbilityTicker {
     private static void applyHazardAvoidance(LivingEntity entity, List<ActionOverTimeGeneType.Instance> overTime,
                                              ConditionContext ctx) {
         if (overTime.isEmpty() || !(entity instanceof PathfinderMob mob)) return;
-        EnumSet<AvoidStrategy> triggered = EnumSet.noneOf(AvoidStrategy.class);
+        EnumSet<AvoidStrategy> present = EnumSet.noneOf(AvoidStrategy.class);
+        boolean inDanger = false;
         for (ActionOverTimeGeneType.Instance aot : overTime) {
             AvoidStrategy strategy = aot.avoid();
             if (strategy == null) continue;
+            present.add(strategy);
             strategy.installProactive(mob, true);
-            if (aot.condition() == null || aot.condition().test(ctx)) triggered.add(strategy);
+            if (aot.condition() == null || aot.condition().test(ctx)) inDanger = true;
         }
-        if (!triggered.isEmpty()) fleeToSafety(mob, triggered);
+        if (!present.isEmpty()) steerToSafety(mob, present, inDanger);
     }
 
-    /** Walk the mob toward a nearby spot that is safe from every currently-triggered hazard. */
-    private static void fleeToSafety(PathfinderMob mob, EnumSet<AvoidStrategy> hazards) {
+    /**
+     * Keep a hazard-bearing mob out of danger without freezing it. Caught in the hazard: head
+     * urgently to the nearest safe spot. Safe but the hazard is still active outside (e.g. daytime
+     * sun): keep wandering, picking a fresh safe spot whenever idle so it roams the shade instead of
+     * standing. Outside the hazard's active window (night, rain): leave it to its normal brain.
+     */
+    private static void steerToSafety(PathfinderMob mob, EnumSet<AvoidStrategy> hazards, boolean inDanger) {
+        if (inDanger) {
+            BlockPos safe = safeSpot(mob, hazards);
+            if (safe != null) mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(safe, 1.2f, 0));
+            return;
+        }
+        Level level = mob.level();
+        boolean activeOutside = false;
+        for (AvoidStrategy hazard : hazards) {
+            if (hazard.activeNow(level)) { activeOutside = true; break; }
+        }
+        // Only nudge an idle wanderer; if it already has somewhere to be, don't fight that.
+        if (!activeOutside || mob.getBrain().hasMemoryValue(MemoryModuleType.WALK_TARGET)) return;
+        // Deep in cover (underground, well-roofed): no danger nearby, so let it act normal — the
+        // always-on proactive avoidance already keeps its pathing from stepping out. Only steer when
+        // exposure is actually close (a cave mouth, the edge of tree shade).
+        if (!nearExposure(mob, hazards)) return;
+        BlockPos roam = safeSpot(mob, hazards);
+        if (roam != null) mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(roam, 0.6f, 1));
+    }
+
+    /** True when a hazard-exposed block sits within a few blocks, i.e. the mob is at an edge not deep cover. */
+    private static boolean nearExposure(PathfinderMob mob, EnumSet<AvoidStrategy> hazards) {
+        Level level = mob.level();
+        BlockPos base = mob.blockPosition();
+        for (int dx = -3; dx <= 3; dx += 3) {
+            for (int dz = -3; dz <= 3; dz += 3) {
+                BlockPos pos = base.offset(dx, 0, dz);
+                for (AvoidStrategy hazard : hazards) {
+                    if (!hazard.safeAt(level, pos)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** A random nearby stand-able spot safe from every hazard, or null if none found in a few tries. */
+    private static BlockPos safeSpot(PathfinderMob mob, EnumSet<AvoidStrategy> hazards) {
         Level level = mob.level();
         BlockPos origin = mob.blockPosition();
-        BlockPos safe = null;
-        for (int i = 0; i < 10 && safe == null; i++) {
+        for (int i = 0; i < 10; i++) {
             BlockPos pos = origin.offset(mob.getRandom().nextInt(17) - 8,
                     mob.getRandom().nextInt(7) - 3, mob.getRandom().nextInt(17) - 8);
             if (!level.isEmptyBlock(pos) || level.isEmptyBlock(pos.below())) continue;
@@ -149,11 +192,9 @@ public final class GeneAbilityTicker {
             for (AvoidStrategy hazard : hazards) {
                 if (!hazard.safeAt(level, pos)) { allSafe = false; break; }
             }
-            if (allSafe) safe = pos;
+            if (allSafe) return pos;
         }
-        if (safe != null) {
-            mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(safe, 1.1f, 1));
-        }
+        return null;
     }
 
     private static void applyScare(LivingEntity entity, List<ScareMobGeneType.Instance> scares) {

@@ -19,6 +19,7 @@ public final class OriginClientStore {
 
     private static final Map<Integer, String> BY_ENTITY = new ConcurrentHashMap<>();
     private static final Map<Integer, Set<String>> EXPRESSED = new ConcurrentHashMap<>();
+    private static final Map<Integer, Map<String, String>> VARIANTS = new ConcurrentHashMap<>();
     private static final Map<Integer, Set<String>> TOGGLES = new ConcurrentHashMap<>();
 
     private OriginClientStore() {}
@@ -36,20 +37,40 @@ public final class OriginClientStore {
         return get(OriginSetC2SPayload.SELF);
     }
 
-    /** Store an entity's expressed gene ids (allele encodings reduced to gene ids). */
+    /**
+     * Store an entity's expressed alleles: gene ids (for the expressed set) and, for variant genes,
+     * the rolled variant id keyed by gene id (so a per-entity skin-tone variant can be resolved).
+     */
     public static void setExpressed(int entityId, List<String> alleleEncodings) {
         Set<String> ids = ConcurrentHashMap.newKeySet();
+        Map<String, String> variants = new ConcurrentHashMap<>();
         for (String encoded : alleleEncodings) {
             if (encoded == null || encoded.isEmpty() || encoded.equals("~")) continue;
             int hash = encoded.indexOf('#');
-            ids.add(hash < 0 ? encoded : encoded.substring(0, hash));
+            if (hash < 0) {
+                ids.add(encoded);
+            } else {
+                ids.add(encoded.substring(0, hash));
+                variants.put(encoded.substring(0, hash), encoded.substring(hash + 1));
+            }
         }
         EXPRESSED.put(entityId, ids);
+        VARIANTS.put(entityId, variants);
     }
 
     /** The gene ids the entity expresses, or an empty set if not yet synced. */
     public static Set<String> expressedGenes(int entityId) {
         return EXPRESSED.getOrDefault(entityId, Set.of());
+    }
+
+    /** The entity's rolled variant id per variant-gene id, or an empty map if not yet synced. */
+    public static Map<String, String> carriedVariants(int entityId) {
+        return VARIANTS.getOrDefault(entityId, Map.of());
+    }
+
+    /** Override one carried variant client-side (the editor's live preview before the server commits). */
+    public static void setCarriedVariant(int entityId, String geneId, String variantId) {
+        VARIANTS.computeIfAbsent(entityId, k -> new ConcurrentHashMap<>()).put(geneId, variantId);
     }
 
     /** Whether the entity is known to express the given gene id. */

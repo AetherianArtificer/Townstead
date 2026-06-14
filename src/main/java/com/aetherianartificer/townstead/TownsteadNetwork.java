@@ -228,6 +228,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.origin.OriginSetC2SPayload::write,
                 com.aetherianartificer.townstead.origin.OriginSetC2SPayload::read,
                 TownsteadNetwork::handleOriginSet);
+        registerC2S(com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload.class,
+                com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload::write,
+                com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload::read,
+                TownsteadNetwork::handleSetGeneVariant);
         registerC2S(com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload.class,
                 com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload::write,
                 com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload::read,
@@ -292,6 +296,20 @@ public final class TownsteadNetwork {
 
     private static void handleHeritageSync(com.aetherianartificer.townstead.origin.HeritageSyncPayload payload) {
         com.aetherianartificer.townstead.client.origin.HeritageClientStore.setFrom(payload);
+    }
+
+    private static void handleSetGeneVariant(
+            com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload payload, ServerPlayer sp) {
+        int target = com.aetherianartificer.townstead.origin.OriginServerLogic.setVariant(
+                sp, payload.entityId(), payload.geneId(), payload.variantId());
+        if (target == com.aetherianartificer.townstead.origin.OriginSetC2SPayload.NONE) return;
+        Entity entity = sp.serverLevel().getEntity(target);
+        if (entity instanceof net.minecraft.world.entity.LivingEntity living) {
+            com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload genes =
+                    com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload.forEntity(target, living);
+            sendToPlayer(sp, genes);
+            sendToTrackingEntity(entity, genes);
+        }
     }
 
     private static void handleOriginSet(

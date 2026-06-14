@@ -59,10 +59,15 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
             pose.scale(scale, scale, scale);
             pose.translate(0f, -1.501f, 0f);
         }
+        // Per-entity tint: MCA's per-villager skin value shifted by the origin's authored skin_tone,
+        // so a village spans a palette of tones instead of every rig being identical.
+        int tone = RigSkinTone.forEntity(entity);
         //? if neoforge {
-        model.renderToBuffer(pose, buffer, light, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
+        model.renderToBuffer(pose, buffer, light, OverlayTexture.NO_OVERLAY, tone);
         //?} else {
-        /*model.renderToBuffer(pose, buffer, light, OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
+        /*model.renderToBuffer(pose, buffer, light, OverlayTexture.NO_OVERLAY,
+                ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
+                ((tone >>> 24) & 0xFF) / 255f);
         *///?}
 
         // Held items, anchored to the rig bone the species names for each hand, inside the same

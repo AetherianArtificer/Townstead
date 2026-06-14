@@ -37,6 +37,7 @@
     "EntityGroundedMixin",
     "FoodDataNaturalRegenMixin",
     "LivingEntitySoundMixin",
+    "VillagerSoundMixin",
     "EntityStepSoundMixin",
     "PlayerPhenoMixin",
     "EntityGameEventMixin",

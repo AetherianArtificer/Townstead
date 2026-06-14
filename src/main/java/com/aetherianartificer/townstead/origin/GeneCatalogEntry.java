@@ -40,8 +40,12 @@ public record GeneCatalogEntry(
         variants = variants == null ? List.of() : List.copyOf(variants);
     }
 
-    /** One option of a VARIANTS gene: its id, resolved label, roll weight, and the label's translate key. */
-    public record Variant(String id, String label, int weight, String labelKey) {}
+    /**
+     * One option of a VARIANTS gene: its id, resolved label, roll weight, the label's translate key,
+     * and a colour tint ({@code 0xRRGGBB}, or {@code -1} when the variant carries none) so a rolled
+     * skin-tone variant renders per entity.
+     */
+    public record Variant(String id, String label, int weight, String labelKey, int tint) {}
 
     public boolean isVariants() {
         return displayKind == GeneDisplay.Kind.VARIANTS.ordinal();

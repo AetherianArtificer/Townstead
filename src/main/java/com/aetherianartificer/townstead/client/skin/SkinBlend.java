@@ -70,6 +70,20 @@ public final class SkinBlend {
         return (r << 16) | (g << 8) | b;
     }
 
+    /**
+     * Shade a {@code hue} by a skin colour's brightness, bounded so the result stays a plausible tone
+     * (a dark skin darkens it but never to black; a light one lightens it but never blows out). Used
+     * by the rig-tone render and its WYSIWYG picker so both match. Skin luma 0..1 maps to a 0.6..1.15
+     * multiplier on the hue.
+     */
+    public static int shadeByLuma(int hue, int skinRgb) {
+        float k = 0.6f + 0.55f * (luma(skinRgb) / 255f);
+        int r = clamp255(Math.round(((hue >> 16) & 0xFF) * k));
+        int g = clamp255(Math.round(((hue >> 8) & 0xFF) * k));
+        int b = clamp255(Math.round((hue & 0xFF) * k));
+        return (r << 16) | (g << 8) | b;
+    }
+
     private static float luma(int rgb) {
         return 0.299f * ((rgb >> 16) & 0xFF) + 0.587f * ((rgb >> 8) & 0xFF) + 0.114f * (rgb & 0xFF);
     }

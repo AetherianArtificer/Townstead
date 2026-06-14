@@ -1,14 +1,19 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.client.gui.origin.OriginPicker;
+import com.aetherianartificer.townstead.client.gui.origin.VariantPickerWidget;
 import com.aetherianartificer.townstead.client.origin.OriginClientStore;
 import com.aetherianartificer.townstead.client.origin.PreviewParticles;
 import net.minecraft.client.gui.GuiGraphics;
 import com.aetherianartificer.townstead.client.skin.OriginSkinPickerTexture;
 import com.aetherianartificer.townstead.client.skin.SkinTintRegistry;
+import com.aetherianartificer.townstead.client.species.RigSkinTone;
 import com.aetherianartificer.townstead.mixin.accessor.ColorPickerWidgetAccessor;
+import com.aetherianartificer.townstead.origin.GeneCatalogEntry;
 import com.aetherianartificer.townstead.origin.GeneRange;
 import com.aetherianartificer.townstead.origin.Genome;
+import com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload;
+import net.minecraft.network.chat.Component;
 import com.aetherianartificer.townstead.origin.OriginCatalogEntry;
 import com.aetherianartificer.townstead.origin.OriginGenes;
 import com.aetherianartificer.townstead.origin.OriginRegistry;
@@ -31,6 +36,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -128,8 +134,12 @@ public abstract class VillagerEditorOriginMixin extends Screen {
         townstead$previewDirty = false;
 
         // On the Body page, repaint MCA's skin color-picker square to the origin's tinted skin
-        // field so the picker is WYSIWYG with the rendered villager.
-        if ("body".equals(page)) townstead$recolorSkinPicker();
+        // field so the picker is WYSIWYG with the rendered villager, and add the tone-variant
+        // cycler above it for palette species (a conditional/optional field).
+        if ("body".equals(page)) {
+            townstead$recolorSkinPicker();
+            townstead$addTonePicker();
+        }
 
         if (!"origins".equals(page)) return;
 
@@ -198,9 +208,17 @@ public abstract class VillagerEditorOriginMixin extends Screen {
     /** Repaint MCA's Body skin-picker square (the one using villager_skin.png) to this origin's tinted skin. */
     @Unique
     private void townstead$recolorSkinPicker() {
-        java.util.OptionalInt tint = SkinTintRegistry.resolve(villager);
-        if (tint.isEmpty()) return;
-        ResourceLocation tex = OriginSkinPickerTexture.forTint(tint.getAsInt());
+        ResourceLocation tex;
+        // A palette species (skin_tone with tinted variants) previews its tone hue shaded across the
+        // gradient; everything else uses the single-tint origin shift. Same path as the fantasy races.
+        int hue = RigSkinTone.paletteHue(villager);
+        if (hue >= 0) {
+            tex = OriginSkinPickerTexture.forPaletteHue(hue);
+        } else {
+            java.util.OptionalInt tint = SkinTintRegistry.resolve(villager);
+            if (tint.isEmpty()) return;
+            tex = OriginSkinPickerTexture.forTint(tint.getAsInt());
+        }
         for (GuiEventListener child : children()) {
             // The Body page has two 2-D pickers (skin + hair) and 1-D HSV sliders (a subclass);
             // the skin one is the non-subclass ColorPickerWidget still bound to villager_skin.png.
@@ -210,6 +228,82 @@ public abstract class VillagerEditorOriginMixin extends Screen {
                 ((ColorPickerWidgetAccessor) picker).townstead$setTexture(tex);
             }
         }
+    }
+
+    /**
+     * Add a {@code "< Tone >"} cycler above the skin picker, but only for a palette species
+     * (an origin whose {@code skin_tone} gene carries tinted variants). Cycling previews the chosen
+     * tone live on the dummy (and its swatch) and commits the carried variant to the real target.
+     * This conditional field is the template for the rest of the appearance editor.
+     */
+    @Unique
+    private void townstead$addTonePicker() {
+        GeneCatalogEntry palette = RigSkinTone.paletteGene(villager);
+        if (palette == null) return;
+        List<GeneCatalogEntry.Variant> opts = new ArrayList<>();
+        for (GeneCatalogEntry.Variant v : palette.variants()) {
+            if (v.tint() >= 0) opts.add(v);
+        }
+        if (opts.isEmpty()) return;
+        ColorPickerWidget skin = townstead$findSkinPicker();
+        if (skin == null) return;
+        // Drop the skin swatch to free a row directly above it for the cycler (it sits in the gap
+        // between Previous/Next and the swatch). The page rebuilds on every setPage, so the swatch
+        // starts at its original Y each time and this shift doesn't accumulate.
+        int rowHeight = 20;
+        int pickerY = skin.getY();
+        skin.setY(pickerY + rowHeight + 2);
+        String geneId = palette.id();
+        // Start from the REAL target's carried variant (synced by start-tracking); the editor dummy
+        // has no synced allele, so seed it to match the picker, the model, and the swatch on open.
+        String current = OriginClientStore.carriedVariants(townstead$target).get(geneId);
+        int start = 0;
+        for (int i = 0; i < opts.size(); i++) {
+            if (opts.get(i).id().equals(current)) { start = i; break; }
+        }
+        OriginClientStore.setCarriedVariant(villager.getId(), geneId, opts.get(start).id());
+        townstead$recolorSkinPicker();
+        int[] idx = { start };
+        VariantPickerWidget[] picker = new VariantPickerWidget[1];
+        picker[0] = new VariantPickerWidget(skin.getX(), pickerY, skin.getWidth(), rowHeight,
+                townstead$toneLabel(opts.get(start).label()),
+                delta -> {
+                    idx[0] = Math.floorMod(idx[0] + delta, opts.size());
+                    String variantId = opts.get(idx[0]).id();
+                    picker[0].setMessage(townstead$toneLabel(opts.get(idx[0]).label()));
+                    OriginClientStore.setCarriedVariant(villager.getId(), geneId, variantId);   // live preview
+                    townstead$recolorSkinPicker();                                              // swatch follows
+                    townstead$sendSetVariant(townstead$target, geneId, variantId);              // commit
+                });
+        addRenderableWidget(picker[0]);
+    }
+
+    @Unique
+    private Component townstead$toneLabel(String label) {
+        return Component.literal("< " + label + " >");
+    }
+
+    @Unique
+    private ColorPickerWidget townstead$findSkinPicker() {
+        for (GuiEventListener child : children()) {
+            if (child instanceof ColorPickerWidget picker
+                    && !(child instanceof HorizontalColorPickerWidget)
+                    && OriginSkinPickerTexture.isSkinPickerTexture(((ColorPickerWidgetAccessor) picker).townstead$getTexture())) {
+                return picker;
+            }
+        }
+        return null;
+    }
+
+    @Unique
+    private void townstead$sendSetVariant(int target, String geneId, String variantId) {
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new SetGeneVariantC2SPayload(target, geneId, variantId));
+        //?} else if forge {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(
+                new SetGeneVariantC2SPayload(target, geneId, variantId));
+        *///?}
     }
 
     @Unique
