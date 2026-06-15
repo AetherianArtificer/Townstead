@@ -6,11 +6,10 @@ import com.aetherianartificer.townstead.data.DataPackLang;
 import com.aetherianartificer.townstead.origin.Animations;
 import com.aetherianartificer.townstead.origin.Hold;
 import com.aetherianartificer.townstead.origin.OriginCatalogEntry;
-import net.minecraft.client.Minecraft;
+import com.aetherianartificer.townstead.origin.rig.RigDefinition;
 import net.minecraft.client.model.HumanoidModel;
-import net.minecraft.client.model.SkeletonModel;
+import net.minecraft.client.model.geom.LayerDefinitions;
 import net.minecraft.client.model.geom.ModelLayerLocation;
-import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.resources.ResourceLocation;
@@ -44,9 +43,19 @@ public final class RigModels {
                 ? VILLAGER : origin.rigBase();
     }
 
-    /** True when the rig is a supported non-villager model (so the swap should engage). */
+    /**
+     * True when the rig resolves to a renderable alternate definition, so the swap engages. Limited to
+     * {@code entity_layer} rigs for now: a {@code geometry} rig has no bakeable model until that loader
+     * lands, and treating it as alternate would suppress the villager body and render nothing.
+     */
     public static boolean isAlternate(String rigBase) {
-        return rigBase != null && !rigBase.equals(VILLAGER) && layerFor(rigBase) != null;
+        RigDefinition def = OriginCatalogClient.rig(rigBase);
+        return def != null && def.modelType() == RigDefinition.ModelType.ENTITY_LAYER;
+    }
+
+    /** The resolved rig definition for a rig id (vanilla aliases applied), or null if unknown. */
+    public static RigDefinition definition(String rigBase) {
+        return OriginCatalogClient.rig(rigBase);
     }
 
     /** The cached humanoid model for a rig, baked from its vanilla model layer; null if unsupported. */
@@ -63,21 +72,47 @@ public final class RigModels {
     }
 
     /**
-     * Bake the rig's root part from the vanilla {@link LayerDefinition} directly, NOT through
-     * {@code EntityModelSet.bakeLayer}: that path is intercepted by Entity Model Features, which
-     * returns a CEM/Fresh-Animations part that re-poses its own bones at render and stomps every pose
-     * we set. Baking plain bones means animation is driven only by us, and (next) by the animation
-     * bridge in a controlled, layerable way, the same model the MCA models use. Rigs without a mapped
-     * vanilla definition fall back to the registry bake.
+     * Bake the rig's root part from its definition. An {@code entity_layer} rig bakes the named
+     * vanilla/mod model layer's {@link LayerDefinition} directly (see {@link #bakeLayer}); a
+     * {@code geometry} rig (custom {@code .geo.json}) is a later phase and bakes nothing yet.
      */
     private static ModelPart bakeRoot(String rigBase) {
-        LayerDefinition def = switch (rigBase) {
-            case "minecraft:skeleton" -> SkeletonModel.createBodyLayer();
-            default -> null;
-        };
-        if (def != null) return def.bakeRoot();
-        ModelLayerLocation layer = layerFor(rigBase);
-        return layer == null ? null : Minecraft.getInstance().getEntityModels().bakeLayer(layer);
+        RigDefinition def = OriginCatalogClient.rig(rigBase);
+        if (def == null || def.modelType() != RigDefinition.ModelType.ENTITY_LAYER) return null;
+        return bakeLayer(new ModelLayerLocation(DataPackLang.parseId(def.modelRef()), def.modelLayer()));
+    }
+
+    /**
+     * Bake a vanilla layer definition's root directly, NOT through {@code EntityModelSet.bakeLayer}:
+     * that path is intercepted by Entity Model Features, which returns a CEM/Fresh-Animations part
+     * that re-poses its own bones at render and stomps every pose we set. {@code createRoots()} builds
+     * every vanilla layer definition once; {@code bakeRoot()} on the body or armor definition stays
+     * EMF-free, and the animation bridge drives the bones instead.
+     */
+    private static ModelPart bakeLayer(ModelLayerLocation loc) {
+        if (loc == null) return null;
+        if (layerDefs == null) layerDefs = LayerDefinitions.createRoots();
+        LayerDefinition def = layerDefs.get(loc);
+        return def == null ? null : def.bakeRoot();
+    }
+
+    /** Bake a layer from an {@code "ns:path#layer"} reference (default layer {@code main}). */
+    private static ModelPart bakeLayerRef(String ref) {
+        if (ref == null || ref.isEmpty()) return null;
+        int hash = ref.indexOf('#');
+        String id = hash >= 0 ? ref.substring(0, hash) : ref;
+        String layer = hash >= 0 ? ref.substring(hash + 1) : "main";
+        return bakeLayer(new ModelLayerLocation(DataPackLang.parseId(id), layer));
+    }
+
+    /** The baked root part for a rig (baking it if needed), so the bridge can resolve bones by name. */
+    public static ModelPart root(String rigBase) {
+        ModelPart root = ROOTS.get(rigBase);
+        if (root == null) {
+            model(rigBase);
+            root = ROOTS.get(rigBase);
+        }
+        return root;
     }
 
     /**
@@ -115,6 +150,14 @@ public final class RigModels {
         return origin == null || origin.rigScale() <= 0f ? 1.0f : origin.rigScale();
     }
 
+    /** Whether this entity's species shows breasts (true unless a species opts out). */
+    public static boolean breasts(LivingEntity entity) {
+        String originId = OriginClientStore.get(entity.getId());
+        if (originId == null || originId.isEmpty()) return true;
+        OriginCatalogEntry origin = OriginCatalogClient.origin(originId);
+        return origin == null || origin.breasts();
+    }
+
     /** The species' per-state animation sources for this entity (humanoid default; never null). */
     public static Animations animations(LivingEntity entity) {
         String originId = OriginClientStore.get(entity.getId());
@@ -136,20 +179,24 @@ public final class RigModels {
     }
 
     public static ResourceLocation texture(String rigBase) {
-        return switch (rigBase) {
-            case "minecraft:skeleton" -> DataPackLang.parseId("minecraft:textures/entity/skeleton/skeleton.png");
-            case "minecraft:zombie" -> DataPackLang.parseId("minecraft:textures/entity/zombie/zombie.png");
-            case "minecraft:husk" -> DataPackLang.parseId("minecraft:textures/entity/zombie/husk.png");
-            default -> null;
-        };
+        RigDefinition def = OriginCatalogClient.rig(rigBase);
+        if (def == null || def.texture() == null || def.texture().isEmpty()) return null;
+        return DataPackLang.parseId(def.texture());
     }
 
-    private static ModelLayerLocation layerFor(String rigBase) {
-        return switch (rigBase) {
-            case "minecraft:skeleton" -> ModelLayers.SKELETON;
-            case "minecraft:zombie" -> ModelLayers.ZOMBIE;
-            case "minecraft:husk" -> ModelLayers.HUSK;
-            default -> null;
-        };
+    // All vanilla layer definitions, built once. Used to bake body and armor models by bakeRoot()
+    // directly, which bypasses the EMF-intercepted EntityModelSet.bakeLayer.
+    private static Map<ModelLayerLocation, LayerDefinition> layerDefs;
+
+    /**
+     * Bake the rig's armor model part (inner = leggings/boots, outer = helmet/chest/arms) from the
+     * definition's armor layers, so worn armor takes the rig's proportions (e.g. a skeleton's thin
+     * arms and legs) instead of the wide humanoid default. Null when the rig declares no armor layers,
+     * leaving the caller to fall back to a generic humanoid armor mesh.
+     */
+    public static ModelPart bakeArmorPart(String rigBase, boolean inner) {
+        RigDefinition def = OriginCatalogClient.rig(rigBase);
+        if (def == null || def.armorType() != RigDefinition.ArmorType.LAYERS) return null;
+        return bakeLayerRef(inner ? def.armorInner() : def.armorOuter());
     }
 }

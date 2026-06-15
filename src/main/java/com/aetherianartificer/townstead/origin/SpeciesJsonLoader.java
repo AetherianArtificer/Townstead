@@ -43,9 +43,15 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
                 Rig rig = parseRig(obj);
                 Hold hold = parseHold(obj);
                 Animations animations = parseAnimations(obj);
+                // Breasts default to the rig: MCA's villager body has the part and shows it, so a
+                // villager-derived species keeps it without saying so; any other rig defaults to none.
+                // An explicit "breasts" always wins (e.g. a humanoid custom rig that wants them).
+                boolean breasts = obj.has("breasts")
+                        ? GsonHelper.getAsBoolean(obj, "breasts", true)
+                        : rig.base().equals(Rig.VILLAGER.base());
                 float admixture = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(obj, "admixture_chance", 0f)));
                 Genome genome = OriginJsonParsing.genes(obj, file.toString(), LOGGER);
-                parsed.put(file, new Species(file, displayName, rig, hold, animations, admixture, genome));
+                parsed.put(file, new Species(file, displayName, rig, hold, animations, breasts, admixture, genome));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse species {}: {}", file, ex.getMessage());
             }

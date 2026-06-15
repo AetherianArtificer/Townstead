@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.client.animation;
 
+import com.aetherianartificer.townstead.origin.rig.RigDefinition;
 import net.conczin.mca.client.model.VillagerEntityModelMCA;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
@@ -38,8 +39,25 @@ public final class AnimationTargetMap<T extends LivingEntity> {
         }
     }
 
+    /**
+     * Build a target map for an alternate species rig by resolving each animation channel to the
+     * bone the rig's definition names for it (arbitrary author names supported). For a vanilla body
+     * the bone map is the identity (channel == bone, {@code headwear -> hat}), so this resolves to the
+     * same parts {@link #forMcaModel} would, keeping the existing rigs pixel-identical.
+     */
+    private AnimationTargetMap(ModelPart root, RigDefinition def) {
+        for (String channel : RigDefinition.CHANNELS) {
+            String bone = def.boneFor(channel);
+            if (root.hasChild(bone)) targets.put(channel, root.getChild(bone));
+        }
+    }
+
     public static <T extends LivingEntity> AnimationTargetMap<T> forMcaModel(HumanoidModel<T> model) {
         return new AnimationTargetMap<>(model);
+    }
+
+    public static <T extends LivingEntity> AnimationTargetMap<T> forRig(ModelPart root, RigDefinition def) {
+        return new AnimationTargetMap<>(root, def);
     }
 
     public Optional<ModelPart> resolve(String target) {

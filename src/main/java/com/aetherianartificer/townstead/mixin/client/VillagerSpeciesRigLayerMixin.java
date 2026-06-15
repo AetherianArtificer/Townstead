@@ -36,6 +36,6 @@ public abstract class VillagerSpeciesRigLayerMixin<T extends Mob & VillagerLike<
     private void townstead$addRigLayer(Mob villager, PoseStack matrices, float tickDelta, CallbackInfo ci) {
         if (townstead$rigLayerAdded) return;
         townstead$rigLayerAdded = true;
-        this.addLayer(new SpeciesRigLayer<>(this, RigModels.VILLAGER_HOST_BASELINE));
+        this.addLayer(new SpeciesRigLayer<>(this, RigModels.VILLAGER_HOST_BASELINE, true));
     }
 }

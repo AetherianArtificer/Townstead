@@ -53,9 +53,43 @@ public final class McaAnimationBridge {
         EmotecraftEventBridge.ensureRegistered();
     }
 
+    /** Drive an MCA host/player model: targets resolve from the model's standard humanoid parts. */
     public static <T extends LivingEntity> void apply(
             T entity,
             HumanoidModel<T> model,
+            float limbAngle,
+            float limbDistance,
+            float animationProgress,
+            float headYaw,
+            float headPitch
+    ) {
+        apply(entity, model, null, null, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
+    }
+
+    /**
+     * Drive an alternate species rig: targets resolve through the rig definition's bone map, so a
+     * custom rig with arbitrary bone names is animated by the same sources. {@code rigRoot}/{@code
+     * rigDef} non-null select the rig target map; both null falls back to the MCA humanoid map.
+     */
+    public static <T extends LivingEntity> void applyRig(
+            T entity,
+            HumanoidModel<T> model,
+            ModelPart rigRoot,
+            com.aetherianartificer.townstead.origin.rig.RigDefinition rigDef,
+            float limbAngle,
+            float limbDistance,
+            float animationProgress,
+            float headYaw,
+            float headPitch
+    ) {
+        apply(entity, model, rigRoot, rigDef, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
+    }
+
+    private static <T extends LivingEntity> void apply(
+            T entity,
+            HumanoidModel<T> model,
+            ModelPart rigRoot,
+            com.aetherianartificer.townstead.origin.rig.RigDefinition rigDef,
             float limbAngle,
             float limbDistance,
             float animationProgress,
@@ -99,7 +133,9 @@ public final class McaAnimationBridge {
         McaRigScale rigScale = McaRigScale.from(entity, model);
         AnimationSourceContext<T> context = new AnimationSourceContext<>(
                 entity, model, parameters, rigScale, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
-        AnimationTargetMap<T> targets = AnimationTargetMap.forMcaModel(model);
+        AnimationTargetMap<T> targets = (rigRoot != null && rigDef != null)
+                ? AnimationTargetMap.forRig(rigRoot, rigDef)
+                : AnimationTargetMap.forMcaModel(model);
 
         // Capture breasts' rest-pose offset relative to body's rest pose. MCA's
         // applyVillagerDimensions has just written breasts.xyz in absolute model

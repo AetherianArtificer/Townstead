@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.client.origin;
 import com.aetherianartificer.townstead.origin.GeneCatalogEntry;
 import com.aetherianartificer.townstead.origin.OriginCatalogEntry;
 import com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload;
+import com.aetherianartificer.townstead.origin.rig.RigDefinition;
+import com.aetherianartificer.townstead.origin.rig.RigRegistry;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,6 +19,7 @@ public final class OriginCatalogClient {
 
     private static volatile List<OriginCatalogEntry> ORIGINS = List.of();
     private static volatile Map<String, GeneCatalogEntry> GENES = Map.of();
+    private static volatile Map<String, RigDefinition> RIGS = Map.of();
 
     private OriginCatalogClient() {}
 
@@ -27,6 +30,11 @@ public final class OriginCatalogClient {
             genes.put(g.id(), g);
         }
         GENES = Map.copyOf(genes);
+        Map<String, RigDefinition> rigs = new LinkedHashMap<>();
+        for (RigDefinition r : payload.rigs()) {
+            rigs.put(r.id(), r);
+        }
+        RIGS = Map.copyOf(rigs);
         // Bridge data-pack traits into MCA's registry client-side so the editor lists them.
         // (enabledTraits comes from the server via MCA's own config sync.) Defensive against MCA drift.
         boolean any = false;
@@ -57,6 +65,11 @@ public final class OriginCatalogClient {
     /** Gene display data for a granted-gene id, or {@code null} if unknown. */
     public static GeneCatalogEntry gene(String id) {
         return GENES.get(id);
+    }
+
+    /** The synced rig definition for a rig id (resolving vanilla aliases), or {@code null} if unknown. */
+    public static RigDefinition rig(String id) {
+        return RigRegistry.resolve(RIGS, id);
     }
 
     public static boolean isEmpty() {

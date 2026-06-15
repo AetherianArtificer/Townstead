@@ -29,14 +29,21 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
     // scaling before layers run, so each needs its own factor to match.
     private final float hostBaseline;
 
-    // fly: the rig's forward glide lean for creative flight, pivoted around mid-body. Tuning hooks
-    // (built without an in-game reference; adjust if the glide reads too steep or too shallow).
-    private static final float FLY_PIVOT_Y = 1.0f;
-    private static final float FLY_LEAN_DEGREES = 50f;
+    // Whether to draw the entity's worn armor fitted to the rig (see RigArmorRenderer). The villager
+    // host enables this and suppresses MCA's host armor; the player host leaves it off so the player's
+    // own working armor path is untouched.
+    private final boolean renderArmor;
 
-    public SpeciesRigLayer(RenderLayerParent<T, M> parent, float hostBaseline) {
+    // fly: the rig's forward glide lean for creative flight, scaled by horizontal speed so it stays
+    // upright while hovering and leans into a glide while moving. Pivoted around mid-body.
+    private static final float FLY_PIVOT_Y = 0.9f;
+    private static final float FLY_LEAN_PER_SPEED = 45f; // degrees per block/tick of horizontal speed
+    private static final float FLY_MAX_LEAN = 35f;
+
+    public SpeciesRigLayer(RenderLayerParent<T, M> parent, float hostBaseline, boolean renderArmor) {
         super(parent);
         this.hostBaseline = hostBaseline;
+        this.renderArmor = renderArmor;
     }
 
     @Override
@@ -50,16 +57,8 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         ResourceLocation texture = RigModels.texture(rigBase);
         if (model == null || texture == null) return;
 
-        // Feed the per-frame state the entity renderer normally sets before setupAnim, so the rig
-        // animates like a real held-item mob: attackTime drives the weapon swing, the arm pose holds
-        // the item out (vs the empty-hand bob), and baby/crouch match the entity.
         Animations anim = RigModels.animations(entity);
-        prepareModel(model, entity, partialTick, anim);
-        model.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-        // Route the rig through the shared animation bridge so Fresh-Animations/EMF (resolved via the
-        // species' provider chain), the origin pose layer, and Emotecraft all land on its bones,
-        // layered EMF -> Origin -> Emote. The rig is a plain HumanoidModel, which the bridge handles.
-        McaAnimationBridge.apply((LivingEntity) entity, model, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+        poseRig(model, entity, anim, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, partialTick);
         VertexConsumer buffer = buffers.getBuffer(model.renderType(texture));
         float scale = hostBaseline * RigModels.scaleFor(entity);
         pose.pushPose();
@@ -75,9 +74,14 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         // standing bolt-upright. Elytra fall-flying is already posed by setupAnim, and sleep is
         // inherited from the host renderer's lay-down transform, so neither needs handling here.
         if (anim.isHumanoid(Animations.State.FLY) && creativeFlying(entity)) {
-            pose.translate(0f, FLY_PIVOT_Y, 0f);
-            pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(FLY_LEAN_DEGREES));
-            pose.translate(0f, -FLY_PIVOT_Y, 0f);
+            net.minecraft.world.phys.Vec3 vel = entity.getDeltaMovement();
+            float speed = (float) Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+            float lean = Math.min(speed * FLY_LEAN_PER_SPEED, FLY_MAX_LEAN);
+            if (lean > 0.5f) {
+                pose.translate(0f, FLY_PIVOT_Y, 0f);
+                pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(lean));
+                pose.translate(0f, -FLY_PIVOT_Y, 0f);
+            }
         }
         // Per-entity tint: MCA's per-villager skin value shifted by the origin's authored skin_tone,
         // so a village spans a palette of tones instead of every rig being identical.
@@ -90,12 +94,40 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
 
+        // Worn armor, fitted to the rig (same model proportions, pose, and scale), drawn before held
+        // items like vanilla. The rig model is already posed above, which the armor layer copies from.
+        // MCA's villager-shaped host armor is suppressed for these entities by HostArmorSuppressMixin.
+        if (renderArmor) {
+            RigArmorRenderer.render(entity, rigBase, model, texture, pose, buffers, light,
+                    limbSwing, limbSwingAmount, partialTick, ageInTicks, netHeadYaw, headPitch);
+        }
+
         // Held items, anchored to the rig bone the species names for each hand, inside the same
         // scaled pose so they match the grip. A null grip (hand can't hold) renders nothing. The
         // vanilla item layer is suppressed for alternate rigs by HeldItemSuppressMixin.
         renderHeld(entity, rigBase, entity.getMainHandItem(), pose, buffers, light, scale, false);
         renderHeld(entity, rigBase, entity.getOffhandItem(), pose, buffers, light, scale, true);
         pose.popPose();
+    }
+
+    /**
+     * Fully pose the rig model from the entity: the per-frame render state ({@link #prepareModel}),
+     * the model's own {@code setupAnim} (walk/idle/crouch base pose), then the shared animation bridge
+     * so Fresh-Animations/EMF (resolved via the species' provider chain), the origin pose layer, and
+     * Emotecraft land on its bones, layered EMF -&gt; Origin -&gt; Emote. The rig is a plain
+     * {@link HumanoidModel}, which the bridge handles. Shared with {@link RigArmorSync} so the host
+     * body model (the armor's pose source) can be driven from this exact pose.
+     */
+    public static void poseRig(HumanoidModel<LivingEntity> model, LivingEntity entity, Animations anim,
+                               float limbSwing, float limbSwingAmount, float ageInTicks,
+                               float netHeadYaw, float headPitch, float partialTick) {
+        prepareModel(model, entity, partialTick, anim);
+        model.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+        // Route the bridge through the rig's bone map, so sources land on the bones the rig names for
+        // each channel. For a vanilla body the map is identity, so this matches the old behavior.
+        String rigBase = RigModels.rigBaseFor(entity);
+        McaAnimationBridge.applyRig(entity, model, RigModels.root(rigBase), RigModels.definition(rigBase),
+                limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
     }
 
     /**

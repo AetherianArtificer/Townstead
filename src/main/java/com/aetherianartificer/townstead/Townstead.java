@@ -1560,6 +1560,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.origin.HeritageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.chronotype.ChronotypeCatalogLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.gene.GeneJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.origin.rig.RigJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.disposition.DispositionRelationsLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.trait.TraitJsonLoader());
@@ -3639,7 +3640,7 @@ public class Townstead {
                     com.aetherianartificer.townstead.origin.OriginCatalog.build();
             com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload catalog =
                     new com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload(
-                            originSnap.origins(), originSnap.genes(), originSnap.traits());
+                            originSnap.origins(), originSnap.genes(), originSnap.traits(), originSnap.rigs());
             String selfOriginId = com.aetherianartificer.townstead.origin.PlayerOrigin.getOriginId(sp);
             com.aetherianartificer.townstead.origin.OriginSyncS2CPayload self =
                     new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(

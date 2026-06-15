@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.origin.rig.RigDefinition;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 //? if neoforge {
@@ -22,11 +23,11 @@ import java.util.Map;
  */
 //? if neoforge {
 public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes,
-                                       List<TraitCatalogEntry> traits)
+                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs)
         implements CustomPacketPayload {
 //?} else {
 /*public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes,
-                                       List<TraitCatalogEntry> traits) {
+                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs) {
 *///?}
 
     //? if neoforge {
@@ -80,6 +81,7 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             writeGrip(buf, e.hold().mainhand());
             writeGrip(buf, e.hold().offhand());
             writeAnimations(buf, e.animations());
+            buf.writeBoolean(e.breasts());
         }
         buf.writeVarInt(genes.size());
         for (GeneCatalogEntry g : genes) {
@@ -114,6 +116,8 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             buf.writeBoolean(t.usableOnPlayer());
             buf.writeBoolean(t.hidden());
         }
+        buf.writeVarInt(rigs.size());
+        for (RigDefinition r : rigs) writeRig(buf, r);
     }
 
     public static OriginCatalogSyncPayload read(FriendlyByteBuf buf) {
@@ -151,6 +155,7 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             float rigScale = buf.readFloat();
             Hold hold = new Hold(readGrip(buf), readGrip(buf));
             Animations animations = readAnimations(buf);
+            boolean breasts = buf.readBoolean();
             entries.add(new OriginCatalogEntry(id,
                     localize(nameKey, name),
                     localize(singularKey, singular),
@@ -162,7 +167,7 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                     inherited, ranges,
                     nameKey, singularKey, pluralKey, backstoryKey,
                     speciesNameKey, ancestryNameKey, lineageNameKey,
-                    rigBase, rigScale, hold, animations));
+                    rigBase, rigScale, hold, animations, breasts));
         }
         int m = buf.readVarInt();
         List<GeneCatalogEntry> genes = new ArrayList<>(m);
@@ -203,7 +208,51 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                     buf.readUtf(), buf.readFloat(), buf.readFloat(),
                     buf.readBoolean(), buf.readBoolean()));
         }
-        return new OriginCatalogSyncPayload(entries, genes, traits);
+        int rn = buf.readVarInt();
+        List<RigDefinition> rigs = new ArrayList<>(rn);
+        for (int i = 0; i < rn; i++) rigs.add(readRig(buf));
+        return new OriginCatalogSyncPayload(entries, genes, traits, rigs);
+    }
+
+    /** Serialize a rig definition: model source, texture, bone map, and armor spec. */
+    private static void writeRig(FriendlyByteBuf buf, RigDefinition r) {
+        buf.writeUtf(r.id());
+        buf.writeByte(r.modelType().ordinal());
+        buf.writeUtf(r.modelRef());
+        buf.writeUtf(r.modelLayer());
+        buf.writeUtf(r.texture());
+        buf.writeVarInt(r.bones().size());
+        for (Map.Entry<String, String> e : r.bones().entrySet()) {
+            buf.writeUtf(e.getKey());
+            buf.writeUtf(e.getValue());
+        }
+        buf.writeByte(r.armorType().ordinal());
+        writeNullableUtf(buf, r.armorInner());
+        writeNullableUtf(buf, r.armorOuter());
+    }
+
+    private static RigDefinition readRig(FriendlyByteBuf buf) {
+        String id = buf.readUtf();
+        RigDefinition.ModelType modelType = RigDefinition.ModelType.values()[buf.readByte()];
+        String modelRef = buf.readUtf();
+        String modelLayer = buf.readUtf();
+        String texture = buf.readUtf();
+        int bn = buf.readVarInt();
+        Map<String, String> bones = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < bn; i++) bones.put(buf.readUtf(), buf.readUtf());
+        RigDefinition.ArmorType armorType = RigDefinition.ArmorType.values()[buf.readByte()];
+        String inner = readNullableUtf(buf);
+        String outer = readNullableUtf(buf);
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer);
+    }
+
+    private static void writeNullableUtf(FriendlyByteBuf buf, String value) {
+        buf.writeBoolean(value != null);
+        if (value != null) buf.writeUtf(value);
+    }
+
+    private static String readNullableUtf(FriendlyByteBuf buf) {
+        return buf.readBoolean() ? buf.readUtf() : null;
     }
 
     /** Write one hand's grip: a present flag, then (if present) bone + offset vec3 + rotation vec3. */

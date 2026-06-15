@@ -23,7 +23,8 @@ public final class OriginCatalog {
     private OriginCatalog() {}
 
     public record Snapshot(List<OriginCatalogEntry> origins, List<GeneCatalogEntry> genes,
-                           List<TraitCatalogEntry> traits) {}
+                           List<TraitCatalogEntry> traits,
+                           List<com.aetherianartificer.townstead.origin.rig.RigDefinition> rigs) {}
 
     public static Snapshot build() {
         List<OriginCatalogEntry> origins = new ArrayList<>();
@@ -78,9 +79,11 @@ public final class OriginCatalog {
                     spc != null ? spc.rig().base() : Rig.VILLAGER.base(),
                     spc != null ? spc.rig().scale() : Rig.VILLAGER.scale(),
                     spc != null ? spc.hold() : Hold.NONE,
-                    spc != null ? spc.animations() : Animations.DEFAULT));
+                    spc != null ? spc.animations() : Animations.DEFAULT,
+                    spc == null || spc.breasts()));
         }
-        return new Snapshot(origins, new ArrayList<>(genes.values()), traits);
+        return new Snapshot(origins, new ArrayList<>(genes.values()), traits,
+                com.aetherianartificer.townstead.origin.rig.RigRegistry.all());
     }
 
     private static GeneCatalogEntry toGeneEntry(ResourceLocation geneId) {

@@ -30,6 +30,6 @@ public abstract class PlayerSpeciesRigLayerMixin
 
     @Inject(method = "<init>(Lnet/minecraft/client/renderer/entity/EntityRendererProvider$Context;Z)V", at = @At("TAIL"))
     private void townstead$addRigLayer(EntityRendererProvider.Context ctx, boolean slim, CallbackInfo ci) {
-        this.addLayer(new SpeciesRigLayer<>(this, RigModels.PLAYER_HOST_BASELINE));
+        this.addLayer(new SpeciesRigLayer<>(this, RigModels.PLAYER_HOST_BASELINE, false));
     }
 }
