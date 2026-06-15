@@ -39,7 +39,9 @@ public record OriginCatalogEntry(
         // The species' uniform render scale for that rig.
         float rigScale,
         // The species' held-item anchoring (per-hand bone + offset/rotation, or null grips).
-        Hold hold
+        Hold hold,
+        // The species' per-state animation sources, so the client rig renderer poses crouch/sleep/fly.
+        Animations animations
 ) {
     /** A gene this origin inherits, with its base occurrence (presence probability). */
     public record Inherited(String geneId, float occurrence) {}

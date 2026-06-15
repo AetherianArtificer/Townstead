@@ -14,9 +14,10 @@ import net.minecraft.resources.ResourceLocation;
  * is the per-founder probability that a spawn of this species is a mixed-ancestry
  * blend of two or more of its origins instead of a single one (0 disables it).</p>
  */
-public record Species(ResourceLocation id, Component displayName, Rig rig, Hold hold, float admixtureChance,
-                      Genome genome) {
+public record Species(ResourceLocation id, Component displayName, Rig rig, Hold hold, Animations animations,
+                      float admixtureChance, Genome genome) {
     public Species {
         hold = hold == null ? Hold.NONE : hold;
+        animations = animations == null ? Animations.DEFAULT : animations;
     }
 }

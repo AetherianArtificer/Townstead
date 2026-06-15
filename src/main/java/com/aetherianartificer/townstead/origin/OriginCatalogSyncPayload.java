@@ -10,7 +10,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Server → client: the selectable assignment profiles (lineage names + granted gene ids) plus
@@ -77,6 +79,7 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             buf.writeFloat(e.rigScale());
             writeGrip(buf, e.hold().mainhand());
             writeGrip(buf, e.hold().offhand());
+            writeAnimations(buf, e.animations());
         }
         buf.writeVarInt(genes.size());
         for (GeneCatalogEntry g : genes) {
@@ -147,6 +150,7 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             String rigBase = buf.readUtf();
             float rigScale = buf.readFloat();
             Hold hold = new Hold(readGrip(buf), readGrip(buf));
+            Animations animations = readAnimations(buf);
             entries.add(new OriginCatalogEntry(id,
                     localize(nameKey, name),
                     localize(singularKey, singular),
@@ -158,7 +162,7 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                     inherited, ranges,
                     nameKey, singularKey, pluralKey, backstoryKey,
                     speciesNameKey, ancestryNameKey, lineageNameKey,
-                    rigBase, rigScale, hold));
+                    rigBase, rigScale, hold, animations));
         }
         int m = buf.readVarInt();
         List<GeneCatalogEntry> genes = new ArrayList<>(m);
@@ -218,6 +222,25 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
         float[] offset = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
         float[] rotation = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
         return new Hold.Grip(bone, offset, rotation);
+    }
+
+    /** Write each animation state's resolved source (one byte) then the provider chain. */
+    private static void writeAnimations(FriendlyByteBuf buf, Animations animations) {
+        Animations a = animations == null ? Animations.DEFAULT : animations;
+        for (Animations.State state : Animations.State.values()) buf.writeByte(a.source(state).ordinal());
+        buf.writeVarInt(a.providers().size());
+        for (String provider : a.providers()) buf.writeUtf(provider);
+    }
+
+    private static Animations readAnimations(FriendlyByteBuf buf) {
+        Map<Animations.State, Animations.Source> map = new EnumMap<>(Animations.State.class);
+        for (Animations.State state : Animations.State.values()) {
+            map.put(state, Animations.Source.values()[buf.readByte()]);
+        }
+        int pn = buf.readVarInt();
+        List<String> providers = new ArrayList<>(pn);
+        for (int i = 0; i < pn; i++) providers.add(buf.readUtf());
+        return new Animations(map, providers);
     }
 
     /**

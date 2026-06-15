@@ -14,7 +14,10 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Loads {@link Species} from {@code data/<ns>/species/*.json}. */
@@ -39,9 +42,10 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), file.toString(), lang);
                 Rig rig = parseRig(obj);
                 Hold hold = parseHold(obj);
+                Animations animations = parseAnimations(obj);
                 float admixture = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(obj, "admixture_chance", 0f)));
                 Genome genome = OriginJsonParsing.genes(obj, file.toString(), LOGGER);
-                parsed.put(file, new Species(file, displayName, rig, hold, admixture, genome));
+                parsed.put(file, new Species(file, displayName, rig, hold, animations, admixture, genome));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse species {}: {}", file, ex.getMessage());
             }
@@ -81,6 +85,28 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
         JsonObject grip = hold.getAsJsonObject(key);
         String bone = GsonHelper.getAsString(grip, "bone", "");
         return new Hold.Grip(bone, readVec3(grip, "offset"), readVec3(grip, "rotation"));
+    }
+
+    /**
+     * {@code "animations": { "crouch": "humanoid", "sleep": "humanoid", "fly": "humanoid" }} -> a
+     * per-state source. Unknown states/sources are skipped; unlisted states default to humanoid
+     * (opt-out), so the block is written to disable a state or redirect it.
+     */
+    private static Animations parseAnimations(JsonObject obj) {
+        if (!obj.has("animations") || !obj.get("animations").isJsonObject()) return Animations.DEFAULT;
+        JsonObject a = obj.getAsJsonObject("animations");
+        Map<Animations.State, Animations.Source> map = new EnumMap<>(Animations.State.class);
+        for (Map.Entry<String, JsonElement> e : a.entrySet()) {
+            Animations.State state = Animations.State.byKey(e.getKey());
+            if (state == null || !e.getValue().isJsonPrimitive()) continue;
+            map.put(state, Animations.Source.byKey(e.getValue().getAsString(), Animations.Source.HUMANOID));
+        }
+        List<String> providers = new ArrayList<>();
+        if (a.has("providers") && a.get("providers").isJsonArray()) {
+            for (JsonElement p : a.getAsJsonArray("providers")) if (p.isJsonPrimitive()) providers.add(p.getAsString());
+        }
+        return map.isEmpty() && providers.isEmpty() ? Animations.DEFAULT
+                : new Animations(Map.copyOf(map), List.copyOf(providers));
     }
 
     private static float[] readVec3(JsonObject obj, String key) {

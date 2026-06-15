@@ -1,14 +1,18 @@
 package com.aetherianartificer.townstead.client.animation;
 
-import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.client.animation.cem.CemAnimationProgram;
+import com.aetherianartificer.townstead.client.species.RigModels;
+import com.aetherianartificer.townstead.data.DataPackLang;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.world.entity.LivingEntity;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -28,27 +32,18 @@ import java.util.Optional;
  */
 public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
     private static final String ID = "emf";
-    //? if neoforge {
-    private static final List<ResourceLocation> PLAYER_CEM_CANDIDATES = List.of(
-            ResourceLocation.fromNamespaceAndPath("minecraft", "emf/cem/player.jem"),
-            ResourceLocation.fromNamespaceAndPath("minecraft", "optifine/cem/player.jem")
-    );
-    //?} else {
-    /*private static final List<ResourceLocation> PLAYER_CEM_CANDIDATES = List.of(
-            new ResourceLocation("minecraft", "emf/cem/player.jem"),
-            new ResourceLocation("minecraft", "optifine/cem/player.jem")
-    );
-    *///?}
+    /** Used when an entity has no authored provider chain (normal players/villagers): the player CEM. */
+    private static final List<String> DEFAULT_CHAIN = List.of("minecraft:player");
 
-    private boolean resolved;
-    private ResourceLocation cachedLocation;
-    private Optional<CemAnimationProgram> program = Optional.empty();
+    // CEM programs cached per resolved file, since the resolved identity now varies per entity.
+    private final Map<ResourceLocation, Optional<CemAnimationProgram>> programs = new HashMap<>();
+    // Resolved CEM file per identity, so the pack-stack walk runs once per identity, not per frame.
+    private final Map<String, Optional<ResourceLocation>> identities = new HashMap<>();
 
-    /** Drop the cached CEM program so the next render re-resolves and reloads. */
+    /** Drop cached CEM programs and resolutions so the next render re-resolves and reloads. */
     public void invalidate() {
-        resolved = false;
-        cachedLocation = null;
-        program = Optional.empty();
+        programs.clear();
+        identities.clear();
     }
 
     @Override
@@ -58,7 +53,8 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
 
     @Override
     public boolean isAvailable() {
-        return isEmfLoaded() && resolvePlayerCem().isPresent();
+        // Per-entity resolution happens in collectTransforms; here we only gate on EMF being present.
+        return isEmfLoaded();
     }
 
     @Override
@@ -67,43 +63,36 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
         return activeProgram.map(cemAnimationProgram -> cemAnimationProgram.evaluate(context)).orElseGet(List::of);
     }
 
-    private void logDiagnostics(AnimationSourceContext context) {
-        boolean emfLoaded = isEmfLoaded();
-        boolean apiPresent = hasEmfAnimationApi();
-        boolean modelHasEmfRoot = modelHasEmfRoot(context.model());
-        boolean emfRootHasAnimation = modelHasEmfRoot && emfRootHasAnimation(context.model());
-        boolean focusedEvaluatorAvailable = program.isPresent();
-        boolean evaluatedVectorAccess = modelHasEmfRoot && emfRootHasAnimation;
-
-        Townstead.LOGGER.info(
-                "[AnimationBridge] source={} emfLoaded={} playerCem={} emfApiPresent={} modelHasEmfRoot={} emfRootHasAnimation={} focusedEvaluatorAvailable={} evaluatedVectorAccess={} action={}",
-                ID,
-                emfLoaded,
-                cachedLocation == null ? "none" : cachedLocation.toString(),
-                apiPresent,
-                modelHasEmfRoot,
-                emfRootHasAnimation,
-                focusedEvaluatorAvailable,
-                evaluatedVectorAccess,
-                focusedEvaluatorAvailable ? "apply_focused_evaluator" : "skip");
+    /** Resolve the CEM file for this entity by walking its provider chain (fall-through), cached. */
+    private ResourceLocation resolveCem(LivingEntity entity) {
+        List<String> chain = RigModels.animations(entity).providers();
+        if (chain.isEmpty()) chain = DEFAULT_CHAIN;
+        for (String identity : chain) {
+            if (identity.equalsIgnoreCase("humanoid")) return null;  // the base; no CEM, our setupAnim is the floor
+            Optional<ResourceLocation> cem =
+                    identities.computeIfAbsent(identity, id -> Optional.ofNullable(resolveCemForIdentity(id)));
+            if (cem.isPresent()) return cem.get();
+        }
+        return null;
     }
 
-    private static Optional<ResourceLocation> resolvePlayerCem() {
+    /** First existing emf/optifine CEM file for one identity, top pack wins; null if none loaded. */
+    private static ResourceLocation resolveCemForIdentity(String identity) {
         Minecraft client = Minecraft.getInstance();
-        if (client == null || client.getResourceManager() == null) return Optional.empty();
+        if (client == null || client.getResourceManager() == null) return null;
+        String path = identity.contains(":") ? identity.substring(identity.indexOf(':') + 1) : identity;
+        List<ResourceLocation> candidates = List.of(
+                DataPackLang.parseId("minecraft:emf/cem/" + path + ".jem"),
+                DataPackLang.parseId("minecraft:optifine/cem/" + path + ".jem"));
+        // listPacks() is load order (topmost last); walk in reverse so a higher pack wins.
         List<PackResources> packs = client.getResourceManager().listPacks().toList();
-        // listPacks() returns packs in load order; the topmost (highest-priority)
-        // pack is at the end. Walk in reverse so a higher pack's optifine/cem/
-        // beats a lower pack's emf/cem/.
         for (int i = packs.size() - 1; i >= 0; i--) {
             PackResources pack = packs.get(i);
-            for (ResourceLocation candidate : PLAYER_CEM_CANDIDATES) {
-                if (pack.getResource(PackType.CLIENT_RESOURCES, candidate) != null) {
-                    return Optional.of(candidate);
-                }
+            for (ResourceLocation candidate : candidates) {
+                if (candidate != null && pack.getResource(PackType.CLIENT_RESOURCES, candidate) != null) return candidate;
             }
         }
-        return Optional.empty();
+        return null;
     }
 
     private static boolean hasEmfAnimationApi() {
@@ -127,37 +116,8 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
         }
     }
 
-    private static boolean modelHasEmfRoot(Object model) {
-        try {
-            Class<?> iemfModel = Class.forName("traben.entity_model_features.models.IEMFModel");
-            if (!iemfModel.isInstance(model)) return false;
-            Method isEmfModel = iemfModel.getMethod("emf$isEMFModel");
-            Method getRoot = iemfModel.getMethod("emf$getEMFRootModel");
-            return Boolean.TRUE.equals(isEmfModel.invoke(model)) && getRoot.invoke(model) != null;
-        } catch (ReflectiveOperationException ignored) {
-            return false;
-        }
-    }
-
-    private static boolean emfRootHasAnimation(Object model) {
-        try {
-            Class<?> iemfModel = Class.forName("traben.entity_model_features.models.IEMFModel");
-            Method getRoot = iemfModel.getMethod("emf$getEMFRootModel");
-            Object root = getRoot.invoke(model);
-            if (root == null) return false;
-            Method hasAnimation = root.getClass().getMethod("hasAnimation");
-            return Boolean.TRUE.equals(hasAnimation.invoke(root));
-        } catch (ReflectiveOperationException ignored) {
-            return false;
-        }
-    }
-
     private Optional<CemAnimationProgram> program(AnimationSourceContext context) {
-        if (resolved) return program;
-        resolved = true;
-        cachedLocation = resolvePlayerCem().orElse(null);
-        program = cachedLocation == null ? Optional.empty() : CemAnimationProgram.load(cachedLocation);
-        logDiagnostics(context);
-        return program;
+        ResourceLocation loc = resolveCem(context.entity());
+        return loc == null ? Optional.empty() : programs.computeIfAbsent(loc, CemAnimationProgram::load);
     }
 }

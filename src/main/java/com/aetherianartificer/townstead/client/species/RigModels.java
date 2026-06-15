@@ -3,13 +3,16 @@ package com.aetherianartificer.townstead.client.species;
 import com.aetherianartificer.townstead.client.origin.OriginCatalogClient;
 import com.aetherianartificer.townstead.client.origin.OriginClientStore;
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.origin.Animations;
 import com.aetherianartificer.townstead.origin.Hold;
 import com.aetherianartificer.townstead.origin.OriginCatalogEntry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.SkeletonModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -49,15 +52,32 @@ public final class RigModels {
     /** The cached humanoid model for a rig, baked from its vanilla model layer; null if unsupported. */
     public static HumanoidModel<LivingEntity> model(String rigBase) {
         if (MODELS.containsKey(rigBase)) return MODELS.get(rigBase);
-        ModelLayerLocation layer = layerFor(rigBase);
         HumanoidModel<LivingEntity> model = null;
-        if (layer != null) {
-            ModelPart part = Minecraft.getInstance().getEntityModels().bakeLayer(layer);
+        ModelPart part = bakeRoot(rigBase);
+        if (part != null) {
             model = new HumanoidModel<>(part);
             ROOTS.put(rigBase, part);
         }
         MODELS.put(rigBase, model);
         return model;
+    }
+
+    /**
+     * Bake the rig's root part from the vanilla {@link LayerDefinition} directly, NOT through
+     * {@code EntityModelSet.bakeLayer}: that path is intercepted by Entity Model Features, which
+     * returns a CEM/Fresh-Animations part that re-poses its own bones at render and stomps every pose
+     * we set. Baking plain bones means animation is driven only by us, and (next) by the animation
+     * bridge in a controlled, layerable way, the same model the MCA models use. Rigs without a mapped
+     * vanilla definition fall back to the registry bake.
+     */
+    private static ModelPart bakeRoot(String rigBase) {
+        LayerDefinition def = switch (rigBase) {
+            case "minecraft:skeleton" -> SkeletonModel.createBodyLayer();
+            default -> null;
+        };
+        if (def != null) return def.bakeRoot();
+        ModelLayerLocation layer = layerFor(rigBase);
+        return layer == null ? null : Minecraft.getInstance().getEntityModels().bakeLayer(layer);
     }
 
     /**
@@ -93,6 +113,14 @@ public final class RigModels {
         if (originId == null || originId.isEmpty()) return 1.0f;
         OriginCatalogEntry origin = OriginCatalogClient.origin(originId);
         return origin == null || origin.rigScale() <= 0f ? 1.0f : origin.rigScale();
+    }
+
+    /** The species' per-state animation sources for this entity (humanoid default; never null). */
+    public static Animations animations(LivingEntity entity) {
+        String originId = OriginClientStore.get(entity.getId());
+        if (originId == null || originId.isEmpty()) return Animations.DEFAULT;
+        OriginCatalogEntry origin = OriginCatalogClient.origin(originId);
+        return origin == null || origin.animations() == null ? Animations.DEFAULT : origin.animations();
     }
 
     /**

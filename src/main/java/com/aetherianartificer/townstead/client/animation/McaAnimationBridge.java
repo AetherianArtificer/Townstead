@@ -22,13 +22,17 @@ import java.util.List;
 
 public final class McaAnimationBridge {
     private static final EmfAnimationSourceAdapter EMF_ADAPTER = new EmfAnimationSourceAdapter();
+    private static final OriginAnimationSourceAdapter ORIGIN_ADAPTER = new OriginAnimationSourceAdapter();
     private static final EmotecraftAnimationSourceAdapter EMOTE_ADAPTER = new EmotecraftAnimationSourceAdapter();
     // NOTE: DebugAnimationSourceAdapter is intentionally NOT registered here. It waves every
     // villager's right arm and keys off DEBUG_VILLAGER_AI, which is the general AI-logging flag —
     // leaving it wired in meant turning on AI debug logging visibly animated all villagers. Re-add
     // it locally only when specifically testing the animation hook.
+    // Order is layered, last writer wins: EMF/Fresh-Animations is the base, the origin pose layer
+    // (crouch/...) overrides it, and an Emotecraft emote overrides that on the bones it animates.
     private static final List<AnimationSourceAdapter> SOURCES = List.of(
             EMF_ADAPTER,
+            ORIGIN_ADAPTER,
             EMOTE_ADAPTER
     );
 
