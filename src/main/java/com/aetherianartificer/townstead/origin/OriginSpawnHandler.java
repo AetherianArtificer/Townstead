@@ -53,8 +53,14 @@ public final class OriginSpawnHandler {
         // per-species chance of a mixed-ancestry blend instead. A mix seeds its own
         // heritage + genotype; its body metrics, traits and life cycle are blended
         // from the contributors by share (the parentless analogue of MCA's blend).
-        OriginSelector.Selection selection =
-                OriginSelector.select(villager.level(), villager.blockPosition(), villager.getRandom());
+        //
+        // Inside an existing village, constrain the selection: drop origins whose disposition group
+        // clashes with the resident majority (so a hostile species never spawns into a peaceful town)
+        // and honor any spawner building's authored origin policy. Outside a village, no constraint.
+        VillageSpawnContext village = VillageSpawnContext.resolve(villager);
+        OriginSelector.Selection selection = village.active()
+                ? OriginSelector.select(villager.level(), villager.blockPosition(), villager.getRandom(), village::allows)
+                : OriginSelector.select(villager.level(), villager.blockPosition(), villager.getRandom());
         if (selection.isMixed()) {
             List<OriginSelector.Weighted> mix = selection.mix();
             Heredity.seedMixedFounder(state.life(), mix, villager.getRandom());
@@ -72,7 +78,10 @@ public final class OriginSpawnHandler {
             return;
         }
 
-        ResourceLocation originId = selection.single() != null ? selection.single() : OriginRegistry.DEFAULT_ID;
+        // Empty selection (everything filtered out in a village) falls back to the village's own
+        // majority origin, which is compatible by construction; else the default.
+        ResourceLocation originId = selection.single() != null ? selection.single()
+                : village.fallbackOrigin() != null ? village.fallbackOrigin() : OriginRegistry.DEFAULT_ID;
         state.life().setOrigin(originId.toString());
         assignPersonality(villager, state, originId);
         // Founder: re-roll within the origin's ranges (not clamp). MCA's centeredRandom roll sits at

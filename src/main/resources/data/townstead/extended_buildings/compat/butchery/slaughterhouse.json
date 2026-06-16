@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "butchery:hook"
+  },
+  "spirit": {
+    "pastoral": 8,
+    "industrious": 4
+  }
+}

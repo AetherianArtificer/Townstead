@@ -4,6 +4,8 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
+import com.aetherianartificer.townstead.origin.building.BuildingSpawnPolicies;
+import com.aetherianartificer.townstead.origin.building.BuildingSpawnPolicy;
 import com.aetherianartificer.townstead.spirit.BuildingSpiritIndex;
 import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import com.google.gson.Gson;
@@ -107,8 +109,17 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
             }
         }
 
-        scanLegacyBuildingTypes(resourceManager);
+        // Legacy sources first, then the canonical extended_buildings last so it wins on conflict.
+        // blocks/priority of every building_type are cached so an extended_buildings enclosure block
+        // (which derives perimeter/interior from the MCA blocks map) can resolve them cross-file.
+        Map<String, Map<String, Integer>> blocksByType = new HashMap<>();
+        Map<String, Integer> priorityByType = new HashMap<>();
+        Map<String, BuildingSpawnPolicy> spawnPolicies = new HashMap<>();
+        scanLegacyBuildingTypes(resourceManager, blocksByType, priorityByType);
         scanSpiritCompanions(resourceManager);
+        scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
+        scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies);
+        BuildingSpawnPolicies.replaceAll(spawnPolicies);
         DATA_THEME = THEME;
         CLIENT_THEME_RESOURCE_MANAGER = null;
 
@@ -216,7 +227,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         }
     }
 
-    private static void scanLegacyBuildingTypes(ResourceManager resourceManager) {
+    private static void scanLegacyBuildingTypes(ResourceManager resourceManager,
+            Map<String, Map<String, Integer>> blocksByType, Map<String, Integer> priorityByType) {
         Map<ResourceLocation, Resource> resources = resourceManager.listResources("building_types",
                 id -> id.getPath().endsWith(".json"));
         for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
@@ -229,6 +241,12 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
                 JsonObject json = GSON.fromJson(reader, JsonObject.class);
                 if (json == null) continue;
+                // Cache every type's blocks + priority so an extended_buildings enclosure block can
+                // derive its perimeter/interior from the MCA building definition without re-reading.
+                blocksByType.put(buildingType, readBlocks(json, location));
+                priorityByType.put(buildingType, GsonHelper.getAsInt(json, "priority", 0));
+                // Legacy inline townstead* fields (deprecated; extended_buildings is canonical and
+                // overrides these). Kept so MCA building_types from older packs still feed our systems.
                 if (json.has("townsteadNodeItem")) {
                     ResourceLocation parsed = ResourceLocation.tryParse(
                             GsonHelper.getAsString(json, "townsteadNodeItem"));
@@ -241,7 +259,15 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
                 }
                 if (json.has("townsteadEnclosure")) {
-                    parseEnclosureSpec(buildingType, json, location);
+                    JsonElement marker = json.get("townsteadEnclosure");
+                    int minInterior = 4;
+                    int maxInterior = 1024;
+                    if (marker != null && marker.isJsonObject()) {
+                        minInterior = GsonHelper.getAsInt(marker.getAsJsonObject(), "minInterior", minInterior);
+                        maxInterior = GsonHelper.getAsInt(marker.getAsJsonObject(), "maxInterior", maxInterior);
+                    }
+                    registerEnclosure(buildingType, readBlocks(json, location),
+                            GsonHelper.getAsInt(json, "priority", 0), minInterior, maxInterior);
                 }
             } catch (Exception ex) {
                 LOGGER.debug("Skipped legacy building_type scan for '{}': {}", location, ex.getMessage());
@@ -249,27 +275,11 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         }
     }
 
-    /**
-     * Pull a {@code townsteadEnclosure} spec out of a building_type JSON and
-     * register it with {@link EnclosureTypeIndex}. Perimeter and interior
-     * requirements are derived from the sibling {@code blocks} map: fences /
-     * fence-gates / walls become perimeter requirements, everything else
-     * becomes interior signatures that drive classification.
-     */
-    private static void parseEnclosureSpec(String buildingType, JsonObject json, ResourceLocation source) {
-        JsonElement marker = json.get("townsteadEnclosure");
-        if (marker == null) return;
-        int minInterior = 4;
-        int maxInterior = 1024;
-        if (marker.isJsonObject()) {
-            JsonObject enc = marker.getAsJsonObject();
-            minInterior = GsonHelper.getAsInt(enc, "minInterior", minInterior);
-            maxInterior = GsonHelper.getAsInt(enc, "maxInterior", maxInterior);
-        }
+    /** Read a building's {@code blocks} requirement map ({@code blockId -> count}), or empty. */
+    private static Map<String, Integer> readBlocks(JsonObject json, ResourceLocation source) {
         Map<String, Integer> blocks = new HashMap<>();
         if (json.has("blocks") && json.get("blocks").isJsonObject()) {
-            JsonObject b = json.getAsJsonObject("blocks");
-            for (Map.Entry<String, JsonElement> e : b.entrySet()) {
+            for (Map.Entry<String, JsonElement> e : json.getAsJsonObject("blocks").entrySet()) {
                 try {
                     blocks.put(e.getKey(), e.getValue().getAsInt());
                 } catch (Exception ex) {
@@ -277,7 +287,16 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 }
             }
         }
-        int priority = GsonHelper.getAsInt(json, "priority", 0);
+        return blocks;
+    }
+
+    /**
+     * Register an enclosure type with {@link EnclosureTypeIndex}. Perimeter and interior requirements
+     * are derived from the building's {@code blocks} map: fences / fence-gates / walls become perimeter
+     * requirements, everything else becomes interior signatures that drive classification.
+     */
+    private static void registerEnclosure(String buildingType, Map<String, Integer> blocks,
+            int priority, int minInterior, int maxInterior) {
         EnclosureTypeIndex.Spec spec = EnclosureTypeIndex.parseSpec(
                 buildingType, priority, blocks, minInterior, maxInterior);
         EnclosureTypeIndex.register(spec);
@@ -312,6 +331,80 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
             } catch (Exception ex) {
                 LOGGER.debug("Skipped spirit companion scan for '{}': {}", location, ex.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Legacy {@code data/<ns>/building_spawn/<type>.json} reader (deprecated; superseded by the
+     * {@code spawn} block of {@code extended_buildings}). Kept so older packs still feed spawn policy.
+     */
+    private static void scanLegacyBuildingSpawn(ResourceManager resourceManager,
+            Map<String, BuildingSpawnPolicy> out) {
+        Map<ResourceLocation, Resource> resources = resourceManager.listResources("building_spawn",
+                id -> id.getPath().endsWith(".json"));
+        for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
+            String path = entry.getKey().getPath();
+            if (!path.startsWith("building_spawn/") || !path.endsWith(".json")) continue;
+            String buildingType = path.substring("building_spawn/".length(), path.length() - ".json".length());
+            try (InputStream in = entry.getValue().open();
+                    InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                JsonObject json = GSON.fromJson(reader, JsonObject.class);
+                if (json != null) out.put(buildingType, BuildingSpawnPolicy.parse(json));
+            } catch (Exception ex) {
+                LOGGER.debug("Skipped legacy building_spawn scan for '{}': {}", entry.getKey(), ex.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Canonical {@code data/<ns>/extended_buildings/<building_type>.json}: all Townstead per-building
+     * data in one file, keyed by MCA building-type id, so MCA's own {@code building_types} JSON stays
+     * vanilla. Blocks: {@code catalog} (node_item/hide), {@code spirit}, {@code spawn}, {@code enclosure}.
+     * Runs after the legacy readers and overrides them. The {@code enclosure} block derives its
+     * perimeter/interior from the building's MCA {@code blocks} map (cached in {@code blocksByType}).
+     */
+    private static void scanExtendedBuildings(ResourceManager resourceManager,
+            Map<String, Map<String, Integer>> blocksByType, Map<String, Integer> priorityByType,
+            Map<String, BuildingSpawnPolicy> spawnPolicies) {
+        Map<ResourceLocation, Resource> resources = resourceManager.listResources("extended_buildings",
+                id -> id.getPath().endsWith(".json"));
+        for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
+            ResourceLocation location = entry.getKey();
+            String path = location.getPath();
+            if (!path.startsWith("extended_buildings/") || !path.endsWith(".json")) continue;
+            String buildingType = path.substring("extended_buildings/".length(), path.length() - ".json".length());
+            try (InputStream in = entry.getValue().open();
+                    InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                JsonObject json = GSON.fromJson(reader, JsonObject.class);
+                if (json == null) continue;
+                TownsteadSchema.validate(json, "townstead:extended_building/v1");
+
+                if (json.has("catalog") && json.get("catalog").isJsonObject()) {
+                    JsonObject cat = json.getAsJsonObject("catalog");
+                    Optional<ResourceLocation> nodeItem = Optional.empty();
+                    if (cat.has("node_item")) {
+                        ResourceLocation parsed = ResourceLocation.tryParse(GsonHelper.getAsString(cat, "node_item"));
+                        if (parsed != null) nodeItem = Optional.of(parsed);
+                    }
+                    boolean hide = GsonHelper.getAsBoolean(cat, "hide", false);
+                    putOverride(buildingType, new BuildingOverride(nodeItem, hide), true);
+                }
+                if (json.has("spirit") && json.get("spirit").isJsonObject()) {
+                    Map<String, Integer> spirit = parseSpiritMap(json.getAsJsonObject("spirit"), location);
+                    if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
+                }
+                if (json.has("spawn") && json.get("spawn").isJsonObject()) {
+                    spawnPolicies.put(buildingType, BuildingSpawnPolicy.parse(json.getAsJsonObject("spawn")));
+                }
+                if (json.has("enclosure") && json.get("enclosure").isJsonObject()) {
+                    JsonObject enc = json.getAsJsonObject("enclosure");
+                    Map<String, Integer> blocks = blocksByType.getOrDefault(buildingType, Map.of());
+                    registerEnclosure(buildingType, blocks, priorityByType.getOrDefault(buildingType, 0),
+                            GsonHelper.getAsInt(enc, "minInterior", 4), GsonHelper.getAsInt(enc, "maxInterior", 1024));
+                }
+            } catch (Exception ex) {
+                LOGGER.warn("Rejected extended_buildings entry '{}': {}", location, ex.getMessage());
             }
         }
     }

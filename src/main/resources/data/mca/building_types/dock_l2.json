@@ -5,8 +5,6 @@
   "icon": true,
   "iconU": 241,
   "iconV": 188,
-  "townsteadNodeItem": "minecraft:birch_boat",
-  "townsteadSpirit": { "nautical": 10, "industrious": 5 },
   "blocks": {
     "#townstead:dock_surfaces": 24,
     "#minecraft:fences": 6,

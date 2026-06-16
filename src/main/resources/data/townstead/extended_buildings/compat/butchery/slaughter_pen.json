@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "butchery:blood_grate"
+  },
+  "spirit": {
+    "pastoral": 4,
+    "industrious": 2
+  },
+  "enclosure": {
+    "minInterior": 4,
+    "maxInterior": 1024
+  }
+}

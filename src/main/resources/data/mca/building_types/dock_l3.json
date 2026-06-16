@@ -5,8 +5,6 @@
   "icon": true,
   "iconU": 242,
   "iconV": 188,
-  "townsteadNodeItem": "minecraft:oak_chest_boat",
-  "townsteadSpirit": { "nautical": 20, "industrious": 10 },
   "blocks": {
     "#townstead:dock_surfaces": 48,
     "#minecraft:fences": 12,

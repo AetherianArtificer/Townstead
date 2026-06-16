@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "rusticdelight:coffee_beans"
+  },
+  "spirit": {
+    "commercial": 5,
+    "pastoral": 2
+  }
+}

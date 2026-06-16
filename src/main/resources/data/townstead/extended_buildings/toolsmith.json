@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "spirit": {
+    "industrious": 5
+  }
+}

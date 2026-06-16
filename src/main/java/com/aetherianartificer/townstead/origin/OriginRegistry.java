@@ -238,6 +238,24 @@ public final class OriginRegistry {
         return out;
     }
 
+    /**
+     * The creature {@code entity_group} an origin expresses (undead, arthropod, ...), or
+     * {@link com.aetherianartificer.townstead.origin.gene.types.EntityGroupGeneType.Group#DEFAULT}
+     * when it inherits none. Lets the disposition layer resolve a not-yet-spawned origin's group.
+     */
+    public static com.aetherianartificer.townstead.origin.gene.types.EntityGroupGeneType.Group
+            effectiveEntityGroup(@Nullable ResourceLocation id) {
+        Genome genome = effectiveGenome(id);
+        for (InheritedGene inherited : genome.genes()) {
+            Gene gene = GeneRegistry.byId(inherited.geneId());
+            if (gene != null && gene.instance()
+                    instanceof com.aetherianartificer.townstead.origin.gene.types.EntityGroupGeneType.Instance g) {
+                return g.group();
+            }
+        }
+        return com.aetherianartificer.townstead.origin.gene.types.EntityGroupGeneType.Group.DEFAULT;
+    }
+
     /** Locus resolution for cycle alleles: dominant beats recessive, then higher weight; otherwise the incumbent holds. */
     private static boolean cycleAlleleWins(Gene challenger, Gene incumbent) {
         boolean challengerDominant = challenger.dominance() == Dominance.DOMINANT;

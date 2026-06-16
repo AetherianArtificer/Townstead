@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "farmersdelight:stove"
+  },
+  "spirit": {
+    "pastoral": 18,
+    "commercial": 9
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "farmersdelight:cutting_board"
+  },
+  "spirit": {
+    "pastoral": 8,
+    "commercial": 4
+  }
+}

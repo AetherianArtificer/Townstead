@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:campfire"
+  },
+  "spirit": {
+    "pastoral": 5,
+    "commercial": 2
+  }
+}

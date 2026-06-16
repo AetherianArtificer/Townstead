@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:hay_block"
+  },
+  "spirit": {
+    "pastoral": 6
+  },
+  "enclosure": {
+    "minInterior": 4,
+    "maxInterior": 1024
+  }
+}

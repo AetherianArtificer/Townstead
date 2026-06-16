@@ -1,7 +1,10 @@
 package com.aetherianartificer.townstead.origin.disposition;
 
 import com.aetherianartificer.townstead.origin.EntityGroups;
+import com.aetherianartificer.townstead.origin.OriginRegistry;
 import com.aetherianartificer.townstead.origin.gene.types.EntityGroupGeneType.Group;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Locale;
@@ -22,5 +25,29 @@ public final class DispositionGroups {
         if (gene != Group.DEFAULT) return gene.name().toLowerCase(Locale.ROOT);
         String byMembers = DispositionRelations.groupOf(entity.getType());
         return byMembers != null ? byMembers : "default";
+    }
+
+    /**
+     * The group an origin would resolve to before it is spawned: its {@code entity_group} gene first,
+     * else the membership of the body entity type it spawns as ({@code bodyType}), else {@code default}.
+     * Mirrors {@link #of(LivingEntity)} for a candidate origin during spawn selection.
+     */
+    public static String ofOrigin(ResourceLocation originId, EntityType<?> bodyType) {
+        Group gene = OriginRegistry.effectiveEntityGroup(originId);
+        if (gene != Group.DEFAULT) return gene.name().toLowerCase(Locale.ROOT);
+        String byMembers = DispositionRelations.groupOf(bodyType);
+        return byMembers != null ? byMembers : "default";
+    }
+
+    /**
+     * Whether two groups clash: either regards the other as hostile. Symmetric so a one-sided
+     * authored enmity still blocks a mixed settlement (the aggressor or the victim is enough).
+     */
+    public static boolean clash(String a, String b) {
+        if (a == null || b == null || a.equals(b)) return false;
+        DispositionRelations.GroupDef da = DispositionRelations.relations(a);
+        DispositionRelations.GroupDef db = DispositionRelations.relations(b);
+        if (da != null && da.hostile().contains(b)) return true;
+        return db != null && db.hostile().contains(a);
     }
 }

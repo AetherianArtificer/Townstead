@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Chooses a founder's origin at spawn from the loaded origins, weighted by each
@@ -39,20 +40,32 @@ public final class OriginSelector {
     private static final float MIX_GROW_CHANCE = 0.5f;
 
     public static Selection select(Level level, BlockPos pos, RandomSource random) {
+        Selection s = select(level, pos, random, id -> true);
+        // No filter applied: preserve the old "no origin matched -> default" guarantee.
+        return s.single() == null && s.mix() == null ? new Selection(OriginRegistry.DEFAULT_ID, null) : s;
+    }
+
+    /**
+     * As {@link #select(Level, BlockPos, RandomSource)} but constrained to origins {@code allowed}
+     * accepts (the village/building spawn filter). Returns an empty selection (both fields null) when
+     * nothing compatible passes, so the caller can substitute a guaranteed-compatible fallback.
+     */
+    public static Selection select(Level level, BlockPos pos, RandomSource random,
+                                   Predicate<ResourceLocation> allowed) {
         Holder<Biome> biome = level.getBiome(pos);
         ResourceLocation biomeId = biome.unwrapKey().map(ResourceKey::location).orElse(null);
         Set<ResourceLocation> tagIds = new HashSet<>();
         biome.tags().forEach(t -> tagIds.add(t.location()));
         ResourceLocation dimId = level.dimension().location();
 
-        ResourceLocation chosen = weightedPick(OriginRegistry.all(), biomeId, tagIds, dimId, random);
-        if (chosen == null) chosen = OriginRegistry.DEFAULT_ID;
+        ResourceLocation chosen = weightedPick(OriginRegistry.all(), biomeId, tagIds, dimId, random, allowed);
+        if (chosen == null) return new Selection(null, null);
 
         ResourceLocation speciesId = OriginRegistry.effectiveSpecies(chosen);
         Species species = SpeciesRegistry.byId(speciesId);
         float chance = species == null ? 0f : species.admixtureChance();
         if (chance > 0f && random.nextFloat() < chance) {
-            List<Weighted> mix = rollMix(speciesId, biomeId, tagIds, dimId, random);
+            List<Weighted> mix = rollMix(speciesId, biomeId, tagIds, dimId, random, allowed);
             if (mix.size() > 1) return new Selection(null, mix);
         }
         return new Selection(chosen, null);
@@ -61,22 +74,26 @@ public final class OriginSelector {
     @Nullable
     private static ResourceLocation weightedPick(List<Origin> origins, @Nullable ResourceLocation biomeId,
                                                  Set<ResourceLocation> tagIds, @Nullable ResourceLocation dimId,
-                                                 RandomSource random) {
+                                                 RandomSource random, Predicate<ResourceLocation> allowed) {
         if (origins.isEmpty()) return null;
         float[] weights = new float[origins.size()];
         float total = 0f;
         for (int i = 0; i < origins.size(); i++) {
+            if (!allowed.test(origins.get(i).id())) continue;   // filtered out: weight stays 0
             float w = OriginRegistry.effectiveSpawnBias(origins.get(i).id()).weight(biomeId, tagIds, dimId);
             weights[i] = Math.max(0f, w);
             total += weights[i];
         }
         if (total <= 0f) return null;
         float roll = random.nextFloat() * total;
+        ResourceLocation last = null;
         for (int i = 0; i < origins.size(); i++) {
+            if (weights[i] <= 0f) continue;
+            last = origins.get(i).id();
             roll -= weights[i];
-            if (roll < 0f) return origins.get(i).id();
+            if (roll < 0f) return last;
         }
-        return origins.get(origins.size() - 1).id();
+        return last;   // last positive-weight origin (float-rounding fallback; never a filtered-out one)
     }
 
     /**
@@ -86,10 +103,10 @@ public final class OriginSelector {
      */
     private static List<Weighted> rollMix(@Nullable ResourceLocation speciesId, @Nullable ResourceLocation biomeId,
                                           Set<ResourceLocation> tagIds, @Nullable ResourceLocation dimId,
-                                          RandomSource random) {
+                                          RandomSource random, Predicate<ResourceLocation> allowed) {
         List<Origin> pool = new ArrayList<>();
         for (Origin o : OriginRegistry.all()) {
-            if (Objects.equals(OriginRegistry.effectiveSpecies(o.id()), speciesId)) pool.add(o);
+            if (allowed.test(o.id()) && Objects.equals(OriginRegistry.effectiveSpecies(o.id()), speciesId)) pool.add(o);
         }
         if (pool.size() < 2) return List.of();
 
@@ -99,7 +116,7 @@ public final class OriginSelector {
         List<Origin> remaining = new ArrayList<>(pool);
         List<ResourceLocation> picked = new ArrayList<>(count);
         for (int n = 0; n < count && !remaining.isEmpty(); n++) {
-            ResourceLocation pick = weightedPick(remaining, biomeId, tagIds, dimId, random);
+            ResourceLocation pick = weightedPick(remaining, biomeId, tagIds, dimId, random, allowed);
             if (pick == null) pick = remaining.get(random.nextInt(remaining.size())).id();
             final ResourceLocation chosen = pick;
             picked.add(chosen);

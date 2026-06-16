@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:smoker"
+  },
+  "spirit": {
+    "pastoral": 4,
+    "industrious": 2
+  }
+}
