@@ -51,6 +51,8 @@ public abstract class PlayerFirstPersonRigMixin {
                                                   AbstractClientPlayer player, boolean left) {
         String rigBase = RigModels.rigBaseFor(player);
         if (!RigModels.isAlternate(rigBase)) return false;
+        // A non-humanoid rig has no first-person arm to draw; fall through to the vanilla hand.
+        if (RigModels.isGeneric(rigBase)) return false;
         HumanoidModel<LivingEntity> model = RigModels.model(rigBase);
         ResourceLocation texture = RigModels.texture(rigBase);
         if (model == null || texture == null) return false;

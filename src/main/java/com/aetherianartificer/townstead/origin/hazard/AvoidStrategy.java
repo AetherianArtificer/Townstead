@@ -89,7 +89,17 @@ public enum AvoidStrategy {
     private static boolean exposesTo(@Nullable JsonElement condition, String token) {
         if (condition == null || !condition.isJsonObject()) return false;
         JsonObject obj = condition.getAsJsonObject();
-        if (!"pheno:environment".equals(GsonHelper.getAsString(obj, "type", ""))) return false;
+        String type = GsonHelper.getAsString(obj, "type", "");
+        // A composite gate (e.g. environment(sun) ANDed with a head-cover/grace check) still flees the
+        // hazard: descend its positive children to find the exposing environment leaf.
+        if (("pheno:and".equals(type) || "pheno:or".equals(type)) && obj.get("conditions") != null
+                && obj.get("conditions").isJsonArray()) {
+            for (JsonElement child : obj.getAsJsonArray("conditions")) {
+                if (exposesTo(child, token)) return true;
+            }
+            return false;
+        }
+        if (!"pheno:environment".equals(type)) return false;
         JsonElement exposure = obj.get("exposure");
         if (exposure == null) return false;
         if (exposure.isJsonArray()) {

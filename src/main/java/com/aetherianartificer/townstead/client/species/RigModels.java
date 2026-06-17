@@ -7,7 +7,9 @@ import com.aetherianartificer.townstead.origin.Animations;
 import com.aetherianartificer.townstead.origin.Hold;
 import com.aetherianartificer.townstead.origin.OriginCatalogEntry;
 import com.aetherianartificer.townstead.origin.rig.RigDefinition;
+import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.SpiderModel;
 import net.minecraft.client.model.geom.LayerDefinitions;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;
@@ -17,6 +19,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Client registry mapping a species {@code rig.base} to a vanilla humanoid model + texture, so an
@@ -31,6 +34,14 @@ public final class RigModels {
     private static final Map<String, HumanoidModel<LivingEntity>> MODELS = new HashMap<>();
     // The baked root part per rig, kept so held-item anchoring can resolve a bone by its geo name.
     private static final Map<String, ModelPart> ROOTS = new HashMap<>();
+
+    // Non-humanoid vanilla model classes, instantiated from the rig's baked layer root so the model's
+    // own setupAnim provides body-plan-correct animation (a spider's 8-leg gait, etc.). Keyed by the
+    // rig's modelRef, the vanilla model id the data pack names: the one Java seam a custom body plan
+    // needs, since a model class is code. Everything else (which layer, texture, scale) stays data.
+    private static final Map<String, Function<ModelPart, EntityModel<LivingEntity>>> GENERIC_FACTORIES =
+            Map.of("minecraft:spider", root -> new SpiderModel<>(root));
+    private static final Map<String, EntityModel<LivingEntity>> GENERIC_MODELS = new HashMap<>();
 
     private RigModels() {}
 
@@ -68,6 +79,42 @@ public final class RigModels {
             ROOTS.put(rigBase, part);
         }
         MODELS.put(rigBase, model);
+        return model;
+    }
+
+    /**
+     * True when the rig's model is a registered non-humanoid vanilla model, so it renders through the
+     * generic path ({@link #genericModel}) instead of the humanoid one. The humanoid path is unchanged
+     * for every existing rig; only a rig whose {@code modelRef} has a {@link #GENERIC_FACTORIES} entry
+     * (e.g. {@code minecraft:spider}) takes the generic branch.
+     */
+    public static boolean isGeneric(String rigBase) {
+        RigDefinition def = OriginCatalogClient.rig(rigBase);
+        return def != null && def.modelType() == RigDefinition.ModelType.ENTITY_LAYER
+                && GENERIC_FACTORIES.containsKey(def.modelRef());
+    }
+
+    /**
+     * The cached non-humanoid model for a generic rig: the rig's vanilla layer baked EMF-free, wrapped
+     * in its real vanilla model class (so {@code setupAnim} animates the body plan), or null if the rig
+     * is not a registered generic model. The baked root is kept in {@link #ROOTS} so a face overlay can
+     * still resolve a bone (e.g. the spider's {@code head}) by name.
+     */
+    public static EntityModel<LivingEntity> genericModel(String rigBase) {
+        if (GENERIC_MODELS.containsKey(rigBase)) return GENERIC_MODELS.get(rigBase);
+        EntityModel<LivingEntity> model = null;
+        RigDefinition def = OriginCatalogClient.rig(rigBase);
+        if (def != null && def.modelType() == RigDefinition.ModelType.ENTITY_LAYER) {
+            Function<ModelPart, EntityModel<LivingEntity>> factory = GENERIC_FACTORIES.get(def.modelRef());
+            if (factory != null) {
+                ModelPart part = bakeLayer(new ModelLayerLocation(DataPackLang.parseId(def.modelRef()), def.modelLayer()));
+                if (part != null) {
+                    model = factory.apply(part);
+                    ROOTS.put(rigBase, part);
+                }
+            }
+        }
+        GENERIC_MODELS.put(rigBase, model);
         return model;
     }
 

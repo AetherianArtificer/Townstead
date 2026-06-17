@@ -1283,6 +1283,8 @@ public class Townstead {
                         "pheno:not",
                         com.aetherianartificer.townstead.pheno.condition.types.LogicConditionType.Mode.NOT));
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.SinceSpawnConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.ChanceConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.ConstantConditionType());

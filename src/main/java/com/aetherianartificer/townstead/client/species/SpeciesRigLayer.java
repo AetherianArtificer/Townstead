@@ -53,6 +53,14 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         String rigBase = RigModels.rigBaseFor(entity);
         if (entity.isInvisible()) return;
         if (!RigModels.isAlternate(rigBase)) return;
+        // Non-humanoid rigs (spider, etc.) render through a lean branch that drives the vanilla model's
+        // own setupAnim; the humanoid path below (arm poses, crouch, held items, fitted armor) does not
+        // apply to them.
+        if (RigModels.isGeneric(rigBase)) {
+            renderGeneric(pose, buffers, light, entity, limbSwing, limbSwingAmount, partialTick,
+                    ageInTicks, netHeadYaw, headPitch, rigBase);
+            return;
+        }
         HumanoidModel<LivingEntity> model = RigModels.model(rigBase);
         ResourceLocation texture = RigModels.texture(rigBase);
         if (model == null || texture == null) return;
@@ -111,6 +119,42 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         // vanilla item layer is suppressed for alternate rigs by HeldItemSuppressMixin.
         renderHeld(entity, rigBase, entity.getMainHandItem(), pose, buffers, light, scale, false);
         renderHeld(entity, rigBase, entity.getOffhandItem(), pose, buffers, light, scale, true);
+        pose.popPose();
+    }
+
+    /**
+     * Render a non-humanoid rig: bake/instantiate the vanilla model (e.g. a spider), let its own
+     * {@code setupAnim} pose the body plan from the entity's walk state, and draw it with the per-entity
+     * tint. No humanoid extras (arm pose, crouch, held items, fitted armor) apply; a custom face still
+     * draws if the rig declares one, since it resolves its bone by name from the baked root.
+     */
+    private void renderGeneric(PoseStack pose, MultiBufferSource buffers, int light, T entity,
+                               float limbSwing, float limbSwingAmount, float partialTick, float ageInTicks,
+                               float netHeadYaw, float headPitch, String rigBase) {
+        EntityModel<LivingEntity> model = RigModels.genericModel(rigBase);
+        ResourceLocation texture = RigModels.texture(rigBase);
+        if (model == null || texture == null) return;
+        model.attackTime = entity.getAttackAnim(partialTick);
+        model.young = entity.isBaby();
+        model.riding = entity.isPassenger();
+        model.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+        VertexConsumer buffer = buffers.getBuffer(model.renderType(texture));
+        float scale = hostBaseline * RigModels.scaleFor(entity);
+        pose.pushPose();
+        if (scale != 1f) {
+            pose.translate(0f, 1.501f, 0f);
+            pose.scale(scale, scale, scale);
+            pose.translate(0f, -1.501f, 0f);
+        }
+        int tone = RigSkinTone.forEntity(entity);
+        //? if neoforge {
+        model.renderToBuffer(pose, buffer, light, OverlayTexture.NO_OVERLAY, tone);
+        //?} else {
+        /*model.renderToBuffer(pose, buffer, light, OverlayTexture.NO_OVERLAY,
+                ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
+                ((tone >>> 24) & 0xFF) / 255f);
+        *///?}
+        SpeciesFace.render(entity, rigBase, pose, buffers, light, partialTick);
         pose.popPose();
     }
 

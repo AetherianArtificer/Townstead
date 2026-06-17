@@ -37,6 +37,9 @@ public final class RigArmorSync {
                                         float netHeadYaw, float headPitch) {
         String rigBase = RigModels.rigBaseFor(entity);
         if (!RigModels.isAlternate(rigBase)) return false;
+        // A non-humanoid rig has no humanoid host pose to copy and wears no fitted armor; leave the host
+        // to MCA's own pose (its body is suppressed from rendering anyway).
+        if (RigModels.isGeneric(rigBase)) return false;
         HumanoidModel<LivingEntity> rig = RigModels.model(rigBase);
         if (rig == null) return false;
         Animations anim = RigModels.animations(entity);

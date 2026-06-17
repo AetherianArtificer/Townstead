@@ -16,7 +16,9 @@ import java.util.Locale;
  * {@code offhand}, {@code head}, {@code chest}, {@code legs} or {@code feet}.
  *
  * <p>JSON: {@code { "type":"pheno:equipped_item", "slot":"head",
- * "item_condition":{ "type":"pheno:enchantment", "enchantment":"minecraft:aqua_affinity" } }}</p>
+ * "item_condition":{ "type":"pheno:enchantment", "enchantment":"minecraft:aqua_affinity" } }}.
+ * {@code item_condition} is optional: omit it to test only that the slot holds any item (e.g. "is
+ * the head covered"), which with {@code "inverted":true} reads as "that slot is empty".</p>
  */
 public final class EquippedItemConditionType implements ConditionType {
 
@@ -30,6 +32,10 @@ public final class EquippedItemConditionType implements ConditionType {
     @Override
     public Condition parse(JsonObject json) {
         EquipmentSlot slot = parseSlot(GsonHelper.getAsString(json, "slot", "mainhand"));
+        // No item_condition: test only that the slot is occupied (any item present).
+        if (!json.has("item_condition")) {
+            return ctx -> !ctx.entity().getItemBySlot(slot).isEmpty();
+        }
         ItemCondition item = ItemConditions.parse(json.get("item_condition"));
         if (item == null) return null;
         return ctx -> item.test(ctx.level(), ctx.entity().getItemBySlot(slot));
