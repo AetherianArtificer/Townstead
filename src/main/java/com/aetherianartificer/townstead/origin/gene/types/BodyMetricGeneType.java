@@ -18,13 +18,13 @@ import org.jetbrains.annotations.Nullable;
  * blended value on a bred villager. The value itself lives on MCA's genetics
  * (continuous, blended at breeding), not in the diploid {@link com.aetherianartificer.townstead.origin.gene.Genotype}.
  *
- * <p>JSON: {@code { "type":"townstead_origins:body_metric", "target":"size",
+ * <p>JSON: {@code { "type":"pheno:body_metric", "target":"size",
  * "min":0.55, "max":0.75 }}. Genes targeting the same MCA float share an
  * auto-derived locus, so a lineage's size gene replaces its ancestry's.</p>
  */
 public final class BodyMetricGeneType implements GeneType {
 
-    public static final String KEY = "townstead_origins:body_metric";
+    public static final String KEY = "pheno:body_metric";
 
     /** Auto-locus namespace for body metrics (one locus per MCA float target). */
     private static final String LOCUS_NS = "townstead_origins";

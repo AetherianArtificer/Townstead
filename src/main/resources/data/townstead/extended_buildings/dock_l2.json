@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:birch_boat"
+  },
+  "spirit": {
+    "nautical": 10,
+    "industrious": 5
+  }
+}

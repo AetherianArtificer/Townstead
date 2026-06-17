@@ -1,8 +1,9 @@
 {
+    "schema": "townstead:reaction/v2",
     "display_name": "Dance",
     "tags": ["social", "celebration", "dancing"],
-    "cooldown_ticks": 600,
-    "chance": 0.6,
+    "cooldown": "30s",
+    "chance": "60%",
     "mirror_radius": 5,
     "mirror_chance": 0.2,
     "triggers": [
@@ -11,11 +12,14 @@
         { "type": "gesture", "emote": "emotecraft:kazotsky_kick" },
         { "type": "gesture", "emote": "emotecraft:roblox_potion_dance" }
     ],
-    "bindings": [
+    "choices": [
         {
-            "ref": ["emotecraft:club_penguin_dance", "emotecraft:roblox_potion_dance", "emotecraft:kazotsky_kick"],
+            "animation": {
+                "type": "emotecraft",
+                "ids": ["club_penguin_dance", "roblox_potion_dance", "kazotsky_kick"],
+                "shots": 2
+            },
             "weight": 3,
-            "shots": 2,
             "personality_weights": {
                 "playful": 3.0,
                 "upbeat": 2.0,
@@ -24,19 +28,32 @@
                 "anxious": 0.3,
                 "default": 1.0
             },
-            "particles": { "id": "minecraft:note", "count": 6, "spread": [0.5, 1.0, 0.5], "y_offset": 2.0 }
+            "do": {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:note",
+                "count": 6,
+                "spread": 0.5
+            }
         },
         {
-            "ref": "emotecraft:twerk",
+            "animation": {
+                "type": "emotecraft",
+                "id": "twerk",
+                "shots": 6
+            },
             "weight": 1,
-            "shots": 6,
             "personality_weights": {
                 "playful": 4.0,
                 "odd": 3.0,
                 "flirty": 2.0,
                 "default": 0.0
             },
-            "particles": { "id": "minecraft:note", "count": 8, "spread": [0.5, 1.0, 0.5], "y_offset": 2.0 }
+            "do": {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:note",
+                "count": 8,
+                "spread": 0.5
+            }
         }
     ]
 }

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.shift.template;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -47,6 +48,7 @@ public final class ShiftTemplateJsonLoader extends SimpleJsonResourceReloadListe
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                TownsteadSchema.validate(obj, "townstead:shift_template/v1");
                 String name;
                 if (obj.has("name_key")) {
                     String key = GsonHelper.getAsString(obj, "name_key");

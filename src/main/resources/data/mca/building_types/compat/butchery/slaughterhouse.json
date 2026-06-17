@@ -5,8 +5,6 @@
   "icon": true,
   "iconU": 243,
   "iconV": 192,
-  "townsteadNodeItem": "butchery:hook",
-  "townsteadSpirit": { "pastoral": 8, "industrious": 4 },
   "blocks": {
     "butchery:hook": 3,
     "butchery:basin": 2,

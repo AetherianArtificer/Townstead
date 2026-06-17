@@ -22,7 +22,7 @@ public final class OriginSkinTintProvider implements SkinTintProvider {
 
     @Override
     public OptionalInt resolve(LivingEntity entity) {
-        String originId = OriginClientStore.get(entity.getId());
+        String originId = OriginClientStore.resolve(entity);
         if (originId.isEmpty()) return OptionalInt.empty();
         OriginCatalogEntry origin = OriginCatalogClient.origin(originId);
         if (origin == null) return OptionalInt.empty();

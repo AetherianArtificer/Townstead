@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.calendar;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -126,6 +127,7 @@ public final class CalendarProfileJsonLoader extends SimpleJsonResourceReloadLis
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                TownsteadSchema.validate(obj, "townstead:calendar/v1");
                 Component displayName = parseComponent(obj.get("display_name"), file.toString(), langIndex);
                 int daysPerWeek = GsonHelper.getAsInt(obj, "days_per_week", 7);
                 if (daysPerWeek <= 0) {

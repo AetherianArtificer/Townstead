@@ -26,6 +26,7 @@ public final class LifeClientStore {
             int seniorProgressPermil,
             int bioAgeDays,
             boolean immortal,
+            boolean ageless,
             int currentStageIndex,
             int[] stageDays,
             String[] stageLabelKeys,
@@ -36,8 +37,28 @@ public final class LifeClientStore {
             float[] stageNarrativeMin,
             float[] stageNarrativeMax,
             float narrativeRate,
-            int seniorStageIndex
+            int seniorStageIndex,
+            String personalityName,
+            String personalityDesc,
+            String[] personalityPoolRefs,
+            String[] personalityPoolNames
     ) {
+        /** True when this villager carries a custom (data-pack) personality whose name should be shown. */
+        public boolean hasCustomPersonality() {
+            return personalityName != null && !personalityName.isEmpty();
+        }
+
+        /** The personality refs this villager's origin allows (custom ids or base-enum names); for the editor picker. */
+        public String[] personalityPool() {
+            return personalityPoolRefs == null ? new String[0] : personalityPoolRefs;
+        }
+
+        /** The resolved display name for a pool ref at {@code index} (empty for a bare base-enum ref). */
+        public String personalityPoolName(int index) {
+            return personalityPoolNames != null && index >= 0 && index < personalityPoolNames.length
+                    ? personalityPoolNames[index] : "";
+        }
+
         /** Real age in game-years = elapsed game-days / calendar year length. */
         public int realAgeYears(int daysPerYear) {
             return bioAgeDays / Math.max(1, daysPerYear);
@@ -184,6 +205,7 @@ public final class LifeClientStore {
                 payload.seniorProgressPermil(),
                 payload.bioAgeDays(),
                 payload.immortal(),
+                payload.ageless(),
                 payload.currentStageIndex(),
                 payload.stageDays(),
                 payload.stageLabelKeys(),
@@ -194,7 +216,11 @@ public final class LifeClientStore {
                 payload.stageNarrativeMin(),
                 payload.stageNarrativeMax(),
                 payload.narrativeRate(),
-                payload.seniorStageIndex()
+                payload.seniorStageIndex(),
+                payload.personalityName(),
+                payload.personalityDesc(),
+                payload.personalityPoolRefs(),
+                payload.personalityPoolNames()
         ));
         if (onChange != null) onChange.run();
     }

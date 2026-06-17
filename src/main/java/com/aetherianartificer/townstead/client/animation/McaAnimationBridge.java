@@ -22,13 +22,17 @@ import java.util.List;
 
 public final class McaAnimationBridge {
     private static final EmfAnimationSourceAdapter EMF_ADAPTER = new EmfAnimationSourceAdapter();
+    private static final OriginAnimationSourceAdapter ORIGIN_ADAPTER = new OriginAnimationSourceAdapter();
     private static final EmotecraftAnimationSourceAdapter EMOTE_ADAPTER = new EmotecraftAnimationSourceAdapter();
     // NOTE: DebugAnimationSourceAdapter is intentionally NOT registered here. It waves every
     // villager's right arm and keys off DEBUG_VILLAGER_AI, which is the general AI-logging flag —
     // leaving it wired in meant turning on AI debug logging visibly animated all villagers. Re-add
     // it locally only when specifically testing the animation hook.
+    // Order is layered, last writer wins: EMF/Fresh-Animations is the base, the origin pose layer
+    // (crouch/...) overrides it, and an Emotecraft emote overrides that on the bones it animates.
     private static final List<AnimationSourceAdapter> SOURCES = List.of(
             EMF_ADAPTER,
+            ORIGIN_ADAPTER,
             EMOTE_ADAPTER
     );
 
@@ -49,9 +53,43 @@ public final class McaAnimationBridge {
         EmotecraftEventBridge.ensureRegistered();
     }
 
+    /** Drive an MCA host/player model: targets resolve from the model's standard humanoid parts. */
     public static <T extends LivingEntity> void apply(
             T entity,
             HumanoidModel<T> model,
+            float limbAngle,
+            float limbDistance,
+            float animationProgress,
+            float headYaw,
+            float headPitch
+    ) {
+        apply(entity, model, null, null, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
+    }
+
+    /**
+     * Drive an alternate species rig: targets resolve through the rig definition's bone map, so a
+     * custom rig with arbitrary bone names is animated by the same sources. {@code rigRoot}/{@code
+     * rigDef} non-null select the rig target map; both null falls back to the MCA humanoid map.
+     */
+    public static <T extends LivingEntity> void applyRig(
+            T entity,
+            HumanoidModel<T> model,
+            ModelPart rigRoot,
+            com.aetherianartificer.townstead.origin.rig.RigDefinition rigDef,
+            float limbAngle,
+            float limbDistance,
+            float animationProgress,
+            float headYaw,
+            float headPitch
+    ) {
+        apply(entity, model, rigRoot, rigDef, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
+    }
+
+    private static <T extends LivingEntity> void apply(
+            T entity,
+            HumanoidModel<T> model,
+            ModelPart rigRoot,
+            com.aetherianartificer.townstead.origin.rig.RigDefinition rigDef,
             float limbAngle,
             float limbDistance,
             float animationProgress,
@@ -95,7 +133,9 @@ public final class McaAnimationBridge {
         McaRigScale rigScale = McaRigScale.from(entity, model);
         AnimationSourceContext<T> context = new AnimationSourceContext<>(
                 entity, model, parameters, rigScale, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
-        AnimationTargetMap<T> targets = AnimationTargetMap.forMcaModel(model);
+        AnimationTargetMap<T> targets = (rigRoot != null && rigDef != null)
+                ? AnimationTargetMap.forRig(rigRoot, rigDef)
+                : AnimationTargetMap.forMcaModel(model);
 
         // Capture breasts' rest-pose offset relative to body's rest pose. MCA's
         // applyVillagerDimensions has just written breasts.xyz in absolute model

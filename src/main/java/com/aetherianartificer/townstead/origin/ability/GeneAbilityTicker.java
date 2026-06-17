@@ -1,0 +1,438 @@
+package com.aetherianartificer.townstead.origin.ability;
+
+import com.aetherianartificer.townstead.pheno.power.Power;
+import com.aetherianartificer.townstead.pheno.power.PowerComponent;
+import com.aetherianartificer.townstead.pheno.power.Powers;
+import com.aetherianartificer.townstead.pheno.action.ActionContext;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
+import com.aetherianartificer.townstead.origin.gene.types.AbilityGeneType;
+import com.aetherianartificer.townstead.origin.gene.types.ActionOverTimeGeneType;
+import com.aetherianartificer.townstead.origin.gene.types.AuraGeneType;
+import com.aetherianartificer.townstead.origin.gene.types.EffectImmunityGeneType;
+import com.aetherianartificer.townstead.origin.gene.types.GlowGeneType;
+import com.aetherianartificer.townstead.origin.gene.types.ParticleGeneType;
+import com.aetherianartificer.townstead.origin.gene.types.RestrictEquipmentGeneType;
+import com.aetherianartificer.townstead.origin.gene.types.ScareMobGeneType;
+import com.aetherianartificer.townstead.origin.hazard.AvoidStrategy;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.memory.WalkTarget;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+
+import java.util.EnumSet;
+import java.util.List;
+
+/**
+ * Server-side per-tick enforcement of an entity's expressed passive genes:
+ * abilities (effects/movement/flags), glow, ambient particles, and equipment
+ * restrictions. Throttled so it runs roughly every {@value #INTERVAL} ticks, spread
+ * across entities by id. Called for villagers (tick dispatcher) and players (tick
+ * event). Player-only abilities are skipped on villagers.
+ */
+public final class GeneAbilityTicker {
+
+    private static final int INTERVAL = 10;
+    // Kept well above vanilla's 200-tick night-vision flicker threshold so the
+    // re-applied effect never enters the "about to expire" fade (which read as a pulse).
+    private static final int EFFECT_DURATION = 300;
+
+    private GeneAbilityTicker() {}
+
+    /**
+     * Clears every persistent passive-ability state this ticker can set (the hidden
+     * effects, the no-gravity / sprinting / fly flags, and the glow tag). Called on an
+     * origin change: the convergent {@link #tick} only ever clears a gene it is still
+     * iterating, so a gene that leaves the expressed set would otherwise orphan its
+     * applied state. {@code clear} is idempotent, so a blanket pass is safe; the next
+     * tick re-applies whatever the new origin grants.
+     */
+    public static void resetPassives(LivingEntity entity) {
+        if (entity.level().isClientSide) return;
+        for (Ability ability : Ability.values()) clear(entity, ability);
+        if (entity.hasGlowingTag()) entity.setGlowingTag(false);
+        // Clear hazard path-avoidance; the next tick re-applies whatever the new origin's genes imply.
+        if (entity instanceof PathfinderMob mob) {
+            for (AvoidStrategy strategy : AvoidStrategy.values()) strategy.installProactive(mob, false);
+        }
+    }
+
+    public static void tick(LivingEntity entity) {
+        if (entity.level().isClientSide) return;
+        if ((entity.level().getGameTime() + entity.getId()) % INTERVAL != 0) return;
+
+        List<Power> expressed = Powers.active(entity);
+        if (expressed.isEmpty()) return;
+
+        boolean isPlayer = entity instanceof Player;
+        ConditionContext ctx = new ConditionContext(entity);
+        List<GlowGeneType.Instance> glows = new java.util.ArrayList<>();
+        List<ParticleGeneType.Instance> particles = new java.util.ArrayList<>();
+        List<RestrictEquipmentGeneType.Instance> restricts = new java.util.ArrayList<>();
+        List<AuraGeneType.Instance> auras = new java.util.ArrayList<>();
+        List<EffectImmunityGeneType.Instance> immunities = new java.util.ArrayList<>();
+        List<ActionOverTimeGeneType.Instance> overTime = new java.util.ArrayList<>();
+        List<ScareMobGeneType.Instance> scares = new java.util.ArrayList<>();
+        for (Power gene : expressed) {
+            PowerComponent instance = gene.component();
+            if (instance instanceof AbilityGeneType.Instance ability) {
+                applyAbility(entity, gene.id(), ability, isPlayer, ctx);
+            } else if (instance instanceof GlowGeneType.Instance glow) {
+                glows.add(glow);
+            } else if (instance instanceof ParticleGeneType.Instance particle) {
+                particles.add(particle);
+            } else if (instance instanceof RestrictEquipmentGeneType.Instance restrict) {
+                restricts.add(restrict);
+            } else if (instance instanceof AuraGeneType.Instance aura) {
+                auras.add(aura);
+            } else if (instance instanceof EffectImmunityGeneType.Instance immunity) {
+                immunities.add(immunity);
+            } else if (instance instanceof ActionOverTimeGeneType.Instance aot) {
+                overTime.add(aot);
+            } else if (instance instanceof ScareMobGeneType.Instance scare) {
+                scares.add(scare);
+            } else if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.StackingEffectGeneType.Instance stacking) {
+                com.aetherianartificer.townstead.origin.effect.StackingEffects.apply(entity, gene.id(), stacking, ctx);
+            }
+        }
+        applyGlow(entity, glows, ctx);
+        applyParticles(entity, particles, ctx);
+        applyRestrictions(entity, restricts, ctx);
+        applyAuras(entity, auras, ctx);
+        applyEffectImmunity(entity, immunities);
+        applyActionsOverTime(entity, overTime, ctx);
+        applyHazardAvoidance(entity, overTime, ctx);
+        applyScare(entity, scares);
+    }
+
+    /**
+     * Drives AI avoidance of the environmental hazards an entity's genes impose on it. Two layers:
+     * proactive (keep the pathfinder routing around the hazard, e.g. sunlit tiles) which is set
+     * while the gene is present, and reactive (walk to the nearest safe spot) which fires only while
+     * the hazard condition is currently true. Brain-based MCA villagers are steered via the
+     * WALK_TARGET memory; players are not pathfinders, so they simply take the effect.
+     */
+    private static void applyHazardAvoidance(LivingEntity entity, List<ActionOverTimeGeneType.Instance> overTime,
+                                             ConditionContext ctx) {
+        if (overTime.isEmpty() || !(entity instanceof PathfinderMob mob)) return;
+        EnumSet<AvoidStrategy> present = EnumSet.noneOf(AvoidStrategy.class);
+        boolean inDanger = false;
+        for (ActionOverTimeGeneType.Instance aot : overTime) {
+            AvoidStrategy strategy = aot.avoid();
+            if (strategy == null) continue;
+            present.add(strategy);
+            strategy.installProactive(mob, true);
+            if (aot.condition() == null || aot.condition().test(ctx)) inDanger = true;
+        }
+        if (!present.isEmpty()) steerToSafety(mob, present, inDanger);
+    }
+
+    /**
+     * Keep a hazard-bearing mob out of danger without freezing it. Caught in the hazard: head
+     * urgently to the nearest safe spot. Safe but the hazard is still active outside (e.g. daytime
+     * sun): keep wandering, picking a fresh safe spot whenever idle so it roams the shade instead of
+     * standing. Outside the hazard's active window (night, rain): leave it to its normal brain.
+     */
+    private static void steerToSafety(PathfinderMob mob, EnumSet<AvoidStrategy> hazards, boolean inDanger) {
+        if (inDanger) {
+            BlockPos safe = safeSpot(mob, hazards);
+            if (safe != null) mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(safe, 1.2f, 0));
+            return;
+        }
+        Level level = mob.level();
+        boolean activeOutside = false;
+        for (AvoidStrategy hazard : hazards) {
+            if (hazard.activeNow(level)) { activeOutside = true; break; }
+        }
+        // Only nudge an idle wanderer; if it already has somewhere to be, don't fight that.
+        if (!activeOutside || mob.getBrain().hasMemoryValue(MemoryModuleType.WALK_TARGET)) return;
+        // Deep in cover (underground, well-roofed): no danger nearby, so let it act normal — the
+        // always-on proactive avoidance already keeps its pathing from stepping out. Only steer when
+        // exposure is actually close (a cave mouth, the edge of tree shade).
+        if (!nearExposure(mob, hazards)) return;
+        BlockPos roam = safeSpot(mob, hazards);
+        if (roam != null) mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(roam, 0.6f, 1));
+    }
+
+    /** True when a hazard-exposed block sits within a few blocks, i.e. the mob is at an edge not deep cover. */
+    private static boolean nearExposure(PathfinderMob mob, EnumSet<AvoidStrategy> hazards) {
+        Level level = mob.level();
+        BlockPos base = mob.blockPosition();
+        for (int dx = -3; dx <= 3; dx += 3) {
+            for (int dz = -3; dz <= 3; dz += 3) {
+                BlockPos pos = base.offset(dx, 0, dz);
+                for (AvoidStrategy hazard : hazards) {
+                    if (!hazard.safeAt(level, pos)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** A random nearby stand-able spot safe from every hazard, or null if none found in a few tries. */
+    private static BlockPos safeSpot(PathfinderMob mob, EnumSet<AvoidStrategy> hazards) {
+        Level level = mob.level();
+        BlockPos origin = mob.blockPosition();
+        for (int i = 0; i < 10; i++) {
+            BlockPos pos = origin.offset(mob.getRandom().nextInt(17) - 8,
+                    mob.getRandom().nextInt(7) - 3, mob.getRandom().nextInt(17) - 8);
+            if (!level.isEmptyBlock(pos) || level.isEmptyBlock(pos.below())) continue;
+            boolean allSafe = true;
+            for (AvoidStrategy hazard : hazards) {
+                if (!hazard.safeAt(level, pos)) { allSafe = false; break; }
+            }
+            if (allSafe) return pos;
+        }
+        return null;
+    }
+
+    private static void applyScare(LivingEntity entity, List<ScareMobGeneType.Instance> scares) {
+        if (scares.isEmpty()) return;
+        for (ScareMobGeneType.Instance scare : scares) {
+            var nearby = entity.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class,
+                    entity.getBoundingBox().inflate(scare.radius()));
+            for (net.minecraft.world.entity.Mob mob : nearby) {
+                if (mob == entity || !scare.matches(mob)) continue;
+                if (mob.getTarget() == entity) mob.setTarget(null);
+                Vec3 away = mob.position().subtract(entity.position());
+                if (away.lengthSqr() < 1.0e-4) continue;
+                away = away.normalize().scale(scare.radius());
+                mob.getNavigation().moveTo(mob.getX() + away.x, mob.getY() + away.y, mob.getZ() + away.z, 1.3);
+            }
+        }
+    }
+
+    private static void applyActionsOverTime(LivingEntity entity, List<ActionOverTimeGeneType.Instance> overTime,
+                                             ConditionContext ctx) {
+        if (overTime.isEmpty()) return;
+        for (ActionOverTimeGeneType.Instance aot : overTime) {
+            // tickCount advances ~INTERVAL between passes, so this fires once per the gene's period.
+            if (entity.tickCount % aot.interval() >= INTERVAL) continue;
+            if (aot.condition() != null && !aot.condition().test(ctx)) continue;
+            aot.action().run(new ActionContext(entity));
+        }
+    }
+
+    private static void applyEffectImmunity(LivingEntity entity, List<EffectImmunityGeneType.Instance> immunities) {
+        if (immunities.isEmpty() || entity.getActiveEffects().isEmpty()) return;
+        boolean all = false;
+        java.util.Set<ResourceLocation> ids = new java.util.HashSet<>();
+        for (EffectImmunityGeneType.Instance immunity : immunities) {
+            if (immunity.all()) all = true;
+            ids.addAll(immunity.effects());
+        }
+        List<MobEffectInstance> toRemove = new java.util.ArrayList<>();
+        for (MobEffectInstance active : entity.getActiveEffects()) {
+            ResourceLocation id = effectId(active);
+            if (all || (id != null && ids.contains(id))) toRemove.add(active);
+        }
+        for (MobEffectInstance active : toRemove) entity.removeEffect(active.getEffect());
+    }
+
+    private static ResourceLocation effectId(MobEffectInstance instance) {
+        //? if neoforge {
+        return BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect().value());
+        //?} else {
+        /*return BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect());
+        *///?}
+    }
+
+    private static void applyAbility(LivingEntity entity, ResourceLocation geneId,
+                                     AbilityGeneType.Instance gene, boolean isPlayer, ConditionContext ctx) {
+        if (gene.ability().playerOnly() && !isPlayer) return;
+        boolean active = gene.mode() == AbilityGeneType.Mode.TOGGLE
+                ? AbilityToggles.isOn(entity, geneId)
+                : gene.condition() == null || gene.condition().test(ctx);
+        if (active) {
+            apply(entity, gene.ability());
+        } else {
+            clear(entity, gene.ability());
+        }
+    }
+
+    // Undo an effect-backed ability the tick it switches off (toggle released or
+    // condition failed), so e.g. night vision ends at once instead of lingering out its
+    // renewed duration. Only our own hidden instance is touched, never a potion's.
+    private static void clear(LivingEntity entity, Ability ability) {
+        switch (ability) {
+            case NIGHT_VISION, LAVA_VISION -> removeHidden(entity, MobEffects.NIGHT_VISION);
+            case WATER_BREATHING -> removeHidden(entity, MobEffects.WATER_BREATHING);
+            case SLOW_FALL -> removeHidden(entity, MobEffects.SLOW_FALLING);
+            case INVISIBILITY -> removeHidden(entity, MobEffects.INVISIBILITY);
+            case SWIMMING -> removeHidden(entity, MobEffects.DOLPHINS_GRACE);
+            case CREATIVE_FLIGHT -> revokeFlight(entity);
+            case SPRINTING -> {
+                if (entity.isSprinting()) entity.setSprinting(false);
+            }
+            case HOVER -> entity.setNoGravity(false);
+            default -> { }
+        }
+    }
+
+    private static void removeHidden(LivingEntity entity,
+            //? if neoforge {
+            net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect
+            //?} else {
+            /*net.minecraft.world.effect.MobEffect effect
+            *///?}
+    ) {
+        MobEffectInstance active = entity.getEffect(effect);
+        if (active != null && active.isAmbient() && !active.isVisible() && !active.showIcon()) {
+            entity.removeEffect(effect);
+        }
+    }
+
+    private static void revokeFlight(LivingEntity entity) {
+        if (entity instanceof Player player && !player.isCreative() && !player.isSpectator()
+                && player.getAbilities().mayfly) {
+            player.getAbilities().mayfly = false;
+            player.getAbilities().flying = false;
+            player.onUpdateAbilities();
+        }
+    }
+
+    private static void applyAuras(LivingEntity entity, List<AuraGeneType.Instance> auras, ConditionContext ctx) {
+        if (auras.isEmpty()) return;
+        for (AuraGeneType.Instance aura : auras) {
+            // tickCount advances ~INTERVAL between passes, so this fires once per the aura's period.
+            if (entity.tickCount % aura.interval() >= INTERVAL) continue;
+            if (aura.condition() != null && !aura.condition().test(ctx)) continue;
+            var nearby = entity.level().getEntitiesOfClass(LivingEntity.class,
+                    entity.getBoundingBox().inflate(aura.radius()));
+            for (LivingEntity target : nearby) {
+                if (target == entity && !aura.includeSelf()) continue;
+                aura.action().run(new ActionContext(target));
+            }
+        }
+    }
+
+    private static void applyParticles(LivingEntity entity, List<ParticleGeneType.Instance> particles,
+                                       ConditionContext ctx) {
+        if (particles.isEmpty() || !(entity.level() instanceof ServerLevel level)) return;
+        for (ParticleGeneType.Instance particle : particles) {
+            if (particle.condition() != null && !particle.condition().test(ctx)) continue;
+            if (!(BuiltInRegistries.PARTICLE_TYPE.get(particle.particle()) instanceof SimpleParticleType options)) {
+                continue;
+            }
+            // Send per-viewer with the force flag: the broadcast overload hardcodes
+            // longDistance=false, which the client's Minimal/Decreased particle setting
+            // culls. A racial trait particle should show regardless of that setting.
+            double dx = entity.getBbWidth() * particle.spread();
+            double dy = entity.getBbHeight() * particle.spread();
+            for (net.minecraft.server.level.ServerPlayer viewer : level.players()) {
+                if (viewer.distanceToSqr(entity) > 1024.0) continue;
+                level.sendParticles(viewer, options, true,
+                        entity.getX(), entity.getY(particle.yOffset()), entity.getZ(),
+                        particle.count(), dx, dy, dx, particle.speed());
+            }
+        }
+    }
+
+    private static void applyRestrictions(LivingEntity entity, List<RestrictEquipmentGeneType.Instance> restricts,
+                                          ConditionContext ctx) {
+        if (restricts.isEmpty()) return;
+        for (RestrictEquipmentGeneType.Instance restrict : restricts) {
+            if (restrict.condition() != null && !restrict.condition().test(ctx)) continue;
+            for (EquipmentSlot slot : restrict.slots()) {
+                ItemStack stack = entity.getItemBySlot(slot);
+                if (stack.isEmpty()) continue;
+                entity.setItemSlot(slot, ItemStack.EMPTY);
+                if (entity instanceof Player player) {
+                    if (!player.getInventory().add(stack)) player.drop(stack, false);
+                } else {
+                    entity.spawnAtLocation(stack);
+                }
+            }
+        }
+    }
+
+    private static void applyGlow(LivingEntity entity, List<GlowGeneType.Instance> glows, ConditionContext ctx) {
+        if (glows.isEmpty()) return;
+        boolean shouldGlow = false;
+        for (GlowGeneType.Instance glow : glows) {
+            if (glow.condition() == null || glow.condition().test(ctx)) {
+                shouldGlow = true;
+                break;
+            }
+        }
+        if (entity.hasGlowingTag() != shouldGlow) entity.setGlowingTag(shouldGlow);
+    }
+
+    private static void apply(LivingEntity entity, Ability ability) {
+        switch (ability) {
+            case NIGHT_VISION -> entity.addEffect(hidden(MobEffects.NIGHT_VISION));
+            case WATER_BREATHING -> {
+                if (entity.isUnderWater()) entity.addEffect(hidden(MobEffects.WATER_BREATHING));
+            }
+            case SLOW_FALL -> {
+                if (!entity.onGround() && entity.getDeltaMovement().y < 0) entity.addEffect(hidden(MobEffects.SLOW_FALLING));
+            }
+            case LAVA_VISION -> {
+                if (entity.isInLava()) entity.addEffect(hidden(MobEffects.NIGHT_VISION));
+            }
+            case FIRE_IMMUNITY -> {
+                if (entity.getRemainingFireTicks() > 0) entity.setRemainingFireTicks(0);
+            }
+            case INVISIBILITY -> entity.addEffect(hidden(MobEffects.INVISIBILITY));
+            case SWIMMING -> entity.addEffect(hidden(MobEffects.DOLPHINS_GRACE));
+            case CLIMBING -> {
+                if (entity.horizontalCollision) {
+                    Vec3 m = entity.getDeltaMovement();
+                    entity.setDeltaMovement(m.x, 0.2, m.z);
+                    entity.fallDistance = 0f;
+                }
+            }
+            case CREATIVE_FLIGHT -> {
+                if (entity instanceof Player player && !player.getAbilities().mayfly) {
+                    player.getAbilities().mayfly = true;
+                    player.onUpdateAbilities();
+                }
+            }
+            case SPRINTING -> {
+                if (!entity.isSprinting()) entity.setSprinting(true);
+            }
+            case HOVER -> {
+                entity.setNoGravity(true);
+                Vec3 m = entity.getDeltaMovement();
+                if (m.y < 0) entity.setDeltaMovement(m.x, 0, m.z);
+                entity.fallDistance = 0f;
+            }
+        }
+    }
+
+    /**
+     * Break-speed multiplier for {@code aerial_affinity}: cancels vanilla's 5x airborne
+     * mining penalty so the player breaks blocks at normal speed off the ground. Called
+     * from the {@code BreakSpeed} event after other modifiers.
+     */
+    public static float aerialBreakSpeed(Player player, float current) {
+        if (!player.onGround() && Abilities.isActive(player, Ability.AERIAL_AFFINITY)) {
+            return current * 5f;
+        }
+        return current;
+    }
+
+    // A short, ambient, particle-less, icon-less effect re-added each interval. The
+    // MobEffects field type (MobEffect on 1.20.1, Holder on 1.21.1) matches the
+    // constructor on both branches, so no version guard is needed.
+    private static MobEffectInstance hidden(
+            //? if neoforge {
+            net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect
+            //?} else {
+            /*net.minecraft.world.effect.MobEffect effect
+            *///?}
+    ) {
+        return new MobEffectInstance(effect, EFFECT_DURATION, 0, true, false, false);
+    }
+}

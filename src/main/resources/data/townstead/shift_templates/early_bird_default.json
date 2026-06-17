@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:shift_template/v1",
   "name_key": "townstead.shift.template.early_bird_default.name",
   "chronotype": "early_bird",
   "shifts": [1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 0, 2, 0, 3, 3, 3, 3, 3, 3, 3, 3, 0]

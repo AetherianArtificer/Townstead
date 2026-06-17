@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
+import com.aetherianartificer.townstead.origin.needs.NeedSuppression;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -56,6 +57,24 @@ public final class ThirstVillagerTicker {
 
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
+
+        // A liquid:"none" race does not drink: pin thirst full so it never decays and the refuel task
+        // never fires. The interact screen hides the icon client-side from the same hydration gene.
+        if (NeedSuppression.suppressesThirst(self)) {
+            needs.setDrinkingMode(false);
+            if (needs.thirst() != ThirstData.MAX_THIRST) needs.setThirst(ThirstData.MAX_THIRST);
+            if (needs.quenched() != ThirstData.MAX_THIRST) needs.setQuenched(ThirstData.MAX_THIRST);
+            removeSpeedModifier(self);
+            int pinnedThirst = needs.thirst();
+            int pinnedQuenched = needs.quenched();
+            if (pinnedThirst != state.lastSyncedThirst || pinnedQuenched != state.lastSyncedQuenched) {
+                state.lastSyncedThirst = pinnedThirst;
+                state.lastSyncedQuenched = pinnedQuenched;
+                pushThirst(self, needs.thirstTag());
+            }
+            return;
+        }
+
         long gameTime = level.getGameTime();
 
         if (gameTime >= state.nextBiomeModifierSampleTick) {
@@ -148,17 +167,20 @@ public final class ThirstVillagerTicker {
         if (thirstLevel != state.lastSyncedThirst || quenchedLevel != state.lastSyncedQuenched || thirstChanged) {
             state.lastSyncedThirst = thirstLevel;
             state.lastSyncedQuenched = quenchedLevel;
-            net.minecraft.nbt.CompoundTag thirst = needs.thirstTag();
-            //? if neoforge {
-            PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
-            //?} else if forge {
-            /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
-            *///?}
+            pushThirst(self, needs.thirstTag());
         }
 
         if (!self.isAlive() || self.isRemoved()) {
             STATE.remove(self.getId());
         }
+    }
+
+    private static void pushThirst(VillagerEntityMCA self, net.minecraft.nbt.CompoundTag thirst) {
+        //? if neoforge {
+        PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
+        //?} else if forge {
+        /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$thirstSync(self, thirst));
+        *///?}
     }
 
     private static boolean shouldApplyDehydrationDamage(ServerLevel level) {

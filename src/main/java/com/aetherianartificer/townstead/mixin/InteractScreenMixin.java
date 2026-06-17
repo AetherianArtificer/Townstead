@@ -204,6 +204,31 @@ public abstract class InteractScreenMixin extends Screen {
                         .withStyle(ChatFormatting.DARK_GRAY));
     }
 
+    // Show a custom (data-pack) personality's name/description instead of the base MCA enum it reskins,
+    // resolved server-side and carried on the life sync. Personality.getName/getDescription are MCA
+    // methods (no remap), so one target covers both stonecutter versions.
+    @Redirect(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE",
+                    target = "Lnet/conczin/mca/entity/ai/relationship/Personality;getName()Lnet/minecraft/network/chat/Component;"))
+    private Component townstead$personalityName(net.conczin.mca.entity.ai.relationship.Personality personality) {
+        com.aetherianartificer.townstead.calendar.LifeClientStore.Snapshot life =
+                com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.asEntity().getId());
+        return life != null && life.hasCustomPersonality()
+                ? Component.literal(life.personalityName())
+                : personality.getName();
+    }
+
+    @Redirect(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE",
+                    target = "Lnet/conczin/mca/entity/ai/relationship/Personality;getDescription()Lnet/minecraft/network/chat/Component;"))
+    private Component townstead$personalityDescription(net.conczin.mca.entity.ai.relationship.Personality personality) {
+        com.aetherianartificer.townstead.calendar.LifeClientStore.Snapshot life =
+                com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.asEntity().getId());
+        return life != null && life.personalityDesc() != null && !life.personalityDesc().isEmpty()
+                ? Component.literal(life.personalityDesc())
+                : personality.getDescription();
+    }
+
     @Inject(method = "drawTextPopups", remap = false, at = @At("TAIL"))
     private void townstead$drawHungerStatus(GuiGraphics context, CallbackInfo ci) {
         int entityId = villager.asEntity().getId();

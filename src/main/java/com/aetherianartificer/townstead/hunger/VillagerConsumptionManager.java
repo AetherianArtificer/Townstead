@@ -148,7 +148,8 @@ public final class VillagerConsumptionManager {
         *///?}
         if (food == null) return false;
         int before = needs.hunger();
-        needs.applyFood(food);
+        float foodScale = com.aetherianartificer.townstead.origin.hook.PhenoHooks.foodMultiplier(recipient);
+        needs.applyFood(food, foodScale);
         needs.setLastAteTime(recipient.level().getGameTime());
         applyFoodEffects(recipient, stack);
         if (stack.is(Items.CHORUS_FRUIT) && TownsteadConfig.ENABLE_CHORUS_FRUIT_TELEPORT.get()) {

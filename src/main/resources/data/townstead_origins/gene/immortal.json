@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:gene/v2",
   "type": "townstead_origins:trait_occurrence",
   "display_name": { "translate": "gene.townstead_origins.immortal" },
   "description": { "translate": "gene.townstead_origins.immortal.desc" },

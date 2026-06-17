@@ -64,7 +64,7 @@ public final class HeritageRegistry {
         }
         if (best != null) return new Resolved(best.displayName(), best.demonym());
 
-        // No named blend matched. A near-pure villager keeps its founder origin/lineage
+        // No named blend matched. A near-pure villager keeps its founder assignment-profile/lineage
         // name (a pure "Dark Elf" stays "Dark Elf", not the coarser ancestry "Elf"); a
         // genuine blend with no authored profile gets a generated "A-B" label.
         List<ResourceLocation> ranked = heritage.ranked();

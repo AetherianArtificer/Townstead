@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:oak_boat"
+  },
+  "spirit": {
+    "nautical": 5
+  }
+}

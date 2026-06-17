@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "farmersdelight:cooking_pot"
+  },
+  "spirit": {
+    "pastoral": 12,
+    "commercial": 6
+  }
+}

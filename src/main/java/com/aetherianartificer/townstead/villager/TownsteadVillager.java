@@ -16,9 +16,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.food.FoodProperties;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -282,13 +285,22 @@ public final class TownsteadVillager {
         }
 
         public int applyFood(FoodProperties food) {
+            return applyFood(food, 1f);
+        }
+
+        /**
+         * Applies a food's hunger/saturation, scaling its nutrition by {@code nutritionMultiplier}
+         * (the eater's {@code food} modifier, resolved by the caller, which holds the entity).
+         */
+        public int applyFood(FoodProperties food, float nutritionMultiplier) {
             //? if >=1.21 {
-            int nutrition = food.nutrition();
+            int rawNutrition = food.nutrition();
             float satMod = food.saturation();
             //?} else {
-            /*int nutrition = food.getNutrition();
+            /*int rawNutrition = food.getNutrition();
             float satMod = food.getSaturationModifier();
             *///?}
+            int nutrition = Math.max(0, Math.round(rawNutrition * nutritionMultiplier));
             int hungerRestored = (int)(nutrition * HungerData.FOOD_SCALE);
             hunger = Math.min(hunger + hungerRestored, HungerData.MAX_HUNGER);
             float satRestored = Math.min(nutrition * satMod * HungerData.FOOD_SCALE, hunger);
@@ -747,10 +759,15 @@ public final class TownsteadVillager {
         private int birthMonth;
         private int birthDay;
         private String originId = "";
+        private String personalityId = "";
         private int[] stageDays = EMPTY_INT_ARRAY;
         private int cycleFingerprint;
         private String currentStageId = "";
         private boolean immortal;
+        // Granted agelessness (the Potion of Agelessness). Separate from the immortal flag (which the
+        // immortal trait/gene keeps) and from a species' intrinsic ageless life cycle; all three pin
+        // the life stage via LifeStageProgression.isAgeless.
+        private boolean ageless;
         private boolean isSenior;
         private float fertility;
         // Apparent-age freeze: when "villagers do not age" is on, the day aging was frozen.
@@ -762,6 +779,11 @@ public final class TownsteadVillager {
         // This is the dominant-resolved projection of {@link #genotype} that existing read
         // sites (sleep window, skin tint) consume; it is recomputed when the genotype changes.
         private final java.util.Map<String, String> carriedVariants = new java.util.HashMap<>();
+        // Expressed allele encodings ("geneId" or "geneId#variant") for EVERY expressed locus, the same
+        // list the per-entity render sync ships. Persisted so a reconstructed entity (CarryOn rebuilds
+        // from NBT with a fresh untracked id, never synced) can still render its real genetics
+        // (attachments, hidden features). Recomputed alongside carriedVariants whenever the genotype changes.
+        private java.util.List<String> expressedAlleles = new java.util.ArrayList<>();
         // The diploid heritable truth: two alleles per discrete locus. The expressed
         // phenotype above is derived from this; inheritance draws one allele per locus
         // from each parent. Continuous body floats live on MCA's genetics, not here.
@@ -821,6 +843,21 @@ public final class TownsteadVillager {
         }
 
         /**
+         * The villager's personality reference: a custom {@code PersonalityDef} id or a bare base-enum
+         * name, rolled from the origin's allowlist at spawn. Empty when the origin defines no policy
+         * (then MCA's own personality stands). Drives the display name and the voice tier; MCA's
+         * mechanics ride the base enum this maps to (set on the brain at spawn).
+         */
+        public String personalityId() {
+            return personalityId;
+        }
+
+        public void setPersonalityId(String id) {
+            personalityId = id == null ? "" : id;
+            markDirty();
+        }
+
+        /**
          * Per-stage day durations rolled at spawn, aligned to the origin's
          * {@link com.aetherianartificer.townstead.origin.LifeCycle} stage order.
          * Length 0 until the spawn handler rolls; mismatch with the current
@@ -868,6 +905,15 @@ public final class TownsteadVillager {
 
         public void setImmortal(boolean value) {
             immortal = value;
+            markDirty();
+        }
+
+        public boolean ageless() {
+            return ageless;
+        }
+
+        public void setAgeless(boolean value) {
+            ageless = value;
             markDirty();
         }
 
@@ -929,6 +975,16 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** Expressed allele encodings for every expressed locus (render sync + persistence). */
+        public java.util.List<String> expressedAlleles() {
+            return java.util.Collections.unmodifiableList(expressedAlleles);
+        }
+
+        public void setExpressedAlleles(java.util.List<String> encodings) {
+            expressedAlleles = encodings == null ? new java.util.ArrayList<>() : new java.util.ArrayList<>(encodings);
+            markDirty();
+        }
+
         /** The diploid genotype (two alleles per locus); the heritable source of truth. */
         public com.aetherianartificer.townstead.origin.gene.Genotype genotype() {
             return genotype;
@@ -968,6 +1024,9 @@ public final class TownsteadVillager {
             if (hasOrigin()) {
                 tag.putString("originId", originId);
             }
+            if (!personalityId.isEmpty()) {
+                tag.putString("personalityId", personalityId);
+            }
             if (stageDays.length > 0) {
                 tag.putIntArray("stageDays", stageDays.clone());
             }
@@ -978,6 +1037,7 @@ public final class TownsteadVillager {
                 tag.putString("currentStageId", currentStageId);
             }
             if (immortal) tag.putBoolean("immortal", true);
+            if (ageless) tag.putBoolean("ageless", true);
             if (isSenior) tag.putBoolean("isSenior", true);
             if (fertility > 0f) tag.putFloat("fertility", fertility);
             if (agingFrozenDay != Long.MIN_VALUE) tag.putLong("agingFrozenDay", agingFrozenDay);
@@ -987,6 +1047,11 @@ public final class TownsteadVillager {
                     cv.putString(e.getKey(), e.getValue());
                 }
                 tag.put("carriedVariants", cv);
+            }
+            if (!expressedAlleles.isEmpty()) {
+                ListTag list = new ListTag();
+                for (String e : expressedAlleles) list.add(StringTag.valueOf(e));
+                tag.put("expressedAlleles", list);
             }
             if (!genotype.isEmpty()) tag.put("genotype", genotype.toTag());
             if (!heritage.isEmpty()) tag.put("heritage", heritage.toTag());
@@ -1004,10 +1069,12 @@ public final class TownsteadVillager {
             birthMonth = tag.getInt("birthMonth");
             birthDay = tag.getInt("birthDay");
             originId = tag.getString("originId");
+            personalityId = tag.getString("personalityId");
             stageDays = tag.contains("stageDays") ? tag.getIntArray("stageDays") : EMPTY_INT_ARRAY;
             cycleFingerprint = tag.getInt("cycleFingerprint");
             currentStageId = tag.getString("currentStageId");
             immortal = tag.getBoolean("immortal");
+            ageless = tag.getBoolean("ageless");
             isSenior = tag.getBoolean("isSenior");
             fertility = tag.getFloat("fertility");
             agingFrozenDay = tag.contains("agingFrozenDay") ? tag.getLong("agingFrozenDay") : Long.MIN_VALUE;
@@ -1015,6 +1082,11 @@ public final class TownsteadVillager {
             if (tag.contains("carriedVariants")) {
                 CompoundTag cv = tag.getCompound("carriedVariants");
                 for (String k : cv.getAllKeys()) carriedVariants.put(k, cv.getString(k));
+            }
+            expressedAlleles.clear();
+            if (tag.contains("expressedAlleles")) {
+                ListTag list = tag.getList("expressedAlleles", Tag.TAG_STRING);
+                for (int i = 0; i < list.size(); i++) expressedAlleles.add(list.getString(i));
             }
             genotype = tag.contains("genotype")
                     ? com.aetherianartificer.townstead.origin.gene.Genotype.fromTag(tag.getCompound("genotype"))
@@ -1038,6 +1110,8 @@ public final class TownsteadVillager {
         private final Map<String, Long> cooldowns = new HashMap<>();
         private int lastSeenShopTier = -1;
         private final Map<String, ProfessionXp> xpByProfession = new HashMap<>();
+        private final Set<ResourceLocation> learnedSkills = new LinkedHashSet<>();
+        private final Map<String, Integer> skillPoints = new HashMap<>();
 
         public String lastProfession() {
             return lastProfession;
@@ -1107,6 +1181,49 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** Durable learned-skill set; the source of truth professions grant capabilities from. */
+        public Set<ResourceLocation> learnedSkills() {
+            return Collections.unmodifiableSet(learnedSkills);
+        }
+
+        public boolean hasSkill(ResourceLocation skillId) {
+            return skillId != null && learnedSkills.contains(skillId);
+        }
+
+        public boolean addSkill(ResourceLocation skillId) {
+            if (skillId == null || !learnedSkills.add(skillId)) return false;
+            markDirty();
+            return true;
+        }
+
+        public boolean removeSkill(ResourceLocation skillId) {
+            if (skillId == null || !learnedSkills.remove(skillId)) return false;
+            markDirty();
+            return true;
+        }
+
+        /** Unspent skill points for a profession (POINTS/HYBRID unlock models). */
+        public int skillPoints(String professionId) {
+            if (professionId == null) return 0;
+            return Math.max(0, skillPoints.getOrDefault(professionId, 0));
+        }
+
+        public void setSkillPoints(String professionId, int points) {
+            if (professionId == null || professionId.isBlank()) return;
+            int clamped = Math.max(0, points);
+            if (clamped == 0) {
+                skillPoints.remove(professionId);
+            } else {
+                skillPoints.put(professionId, clamped);
+            }
+            markDirty();
+        }
+
+        public void addSkillPoints(String professionId, int delta) {
+            if (professionId == null || professionId.isBlank() || delta == 0) return;
+            setSkillPoints(professionId, skillPoints(professionId) + delta);
+        }
+
         public void setTradeBackfillLevel(String key, int level) {
             if (key == null || key.isBlank()) return;
             int clamped = Math.max(0, level);
@@ -1157,6 +1274,17 @@ public final class TownsteadVillager {
                 xpAll.put(entry.getKey(), xp);
             }
             tag.put("professionXp", xpAll);
+            if (!learnedSkills.isEmpty()) {
+                ListTag skills = new ListTag();
+                for (ResourceLocation id : learnedSkills) skills.add(StringTag.valueOf(id.toString()));
+                tag.put("learnedSkills", skills);
+            }
+            CompoundTag points = new CompoundTag();
+            for (Map.Entry<String, Integer> entry : skillPoints.entrySet()) {
+                int value = Math.max(0, entry.getValue());
+                if (value > 0) points.putInt(entry.getKey(), value);
+            }
+            if (!points.isEmpty()) tag.put("skillPoints", points);
             return tag;
         }
 
@@ -1195,6 +1323,18 @@ public final class TownsteadVillager {
                         xp.getLong("lastTierUp"),
                         xp.getLong("xpDay"),
                         xp.getInt("xpToday")));
+            }
+            learnedSkills.clear();
+            ListTag skills = tag.getList("learnedSkills", Tag.TAG_STRING);
+            for (int i = 0; i < skills.size(); i++) {
+                ResourceLocation id = ResourceLocation.tryParse(skills.getString(i));
+                if (id != null) learnedSkills.add(id);
+            }
+            skillPoints.clear();
+            CompoundTag points = tag.getCompound("skillPoints");
+            for (String key : points.getAllKeys()) {
+                int value = Math.max(0, points.getInt(key));
+                if (value > 0) skillPoints.put(key, value);
             }
             markDirty();
         }

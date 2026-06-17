@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:calendar/v1",
   "display_name": { "translate": "calendar_profile.townstead_calendar.ecliptic.name" },
   "days_per_week": 7,
   "months": [

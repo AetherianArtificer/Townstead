@@ -70,6 +70,7 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique private boolean townstead$thirstDirty;
     @Unique private boolean townstead$fatigueDirty;
     @Unique private boolean townstead$lifeBuilt;
+    @Unique private String townstead$lifeSig;
 
     @Inject(method = "setPage", remap = false, at = @At("TAIL"))
     private void townstead$addHungerDebug(String page, CallbackInfo ci) {
@@ -292,6 +293,7 @@ public abstract class VillagerEditorMixin extends Screen {
             townstead$replaceAgeSlider(snap);
         }
         townstead$lifeBuilt = true;
+        townstead$lifeSig = townstead$lifeSig(snap);
     }
 
     @Unique
@@ -308,14 +310,25 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique
     private Runnable townstead$onLifeSyncArrived() {
         return () -> {
-            if (townstead$lifeBuilt) return;
             if (this.minecraft == null || this.minecraft.screen != this) return;
             if (!"general".equals(this.page)) return;
             LifeClientStore.Snapshot snap = LifeClientStore.get(villager.getId());
-            if (snap != null && snap.hasCycle()) {
-                setPage(this.page); // rebuild now that the data is present
-            }
+            if (snap == null || !snap.hasCycle()) return;
+            // Rebuild only when the authoritative sync changes what we'd display (especially the
+            // frozen-vs-mortal control). An equal signature means no change, so we don't loop on the
+            // re-request our own rebuild fires. This fixes the stale-cache case where the first build
+            // showed the wrong control and the old guard then blocked the corrective rebuild.
+            if (townstead$lifeSig(snap).equals(townstead$lifeSig)) return;
+            setPage(this.page); // rebuild with the changed data
         };
+    }
+
+    /** Signature of the snapshot fields that decide which life control is built and its start value. */
+    @Unique
+    private static String townstead$lifeSig(LifeClientStore.Snapshot snap) {
+        if (snap == null) return "";
+        return (snap.immortal() ? "I" : "") + (snap.ageless() ? "A" : "")
+                + ":" + snap.currentStageIndex() + ":" + snap.bioAgeDays() + ":" + snap.stageCount();
     }
 
     @Unique
@@ -337,7 +350,10 @@ public abstract class VillagerEditorMixin extends Screen {
         int sh = mcaSlider.getHeight();
         removeWidget(mcaSlider);
 
-        if (snap.immortal()) townstead$buildImmortalLife(snap, sx, sy, sw, sh);
+        // Stage-frozen (immortal OR ageless, e.g. skeletons) gets the frozen-stage picker; everyone
+        // else gets the bio-age slider. Ageless villagers ignore birth, so the bio-age slider would
+        // be a no-op for them.
+        if (snap.immortal() || snap.ageless()) townstead$buildImmortalLife(snap, sx, sy, sw, sh);
         else townstead$buildMortalLife(snap, sx, sy, sw, sh);
     }
 

@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:catalog_group/v1",
   "label": "Livestock Pens",
   "match_prefix": "pen",
   "layout": "grid",

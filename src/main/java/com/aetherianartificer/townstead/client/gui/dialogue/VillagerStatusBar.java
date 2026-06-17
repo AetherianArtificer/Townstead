@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.gui.dialogue;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.client.origin.ClientNeeds;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
@@ -51,15 +52,15 @@ public class VillagerStatusBar {
     public void render(GuiGraphics graphics, int baseX, int baseY) {
         int iconX = baseX;
 
-        // Hunger icon (conditional)
-        if (TownsteadConfig.isVillagerHungerEnabled()) {
+        // Hunger icon (conditional; a suppress-need gene hides it for this villager)
+        if (TownsteadConfig.isVillagerHungerEnabled() && !ClientNeeds.suppresses(entityId, "hunger")) {
             renderHungerIcon(graphics, iconX, baseY);
             iconX += ICON_SPACING;
         }
 
         // Thirst icon (conditional)
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
-        if (bridge != null && TownsteadConfig.isVillagerThirstEnabled()) {
+        if (bridge != null && TownsteadConfig.isVillagerThirstEnabled() && !ClientNeeds.suppresses(entityId, "thirst")) {
             renderThirstIcon(graphics, iconX, baseY, bridge);
             iconX += ICON_SPACING;
         }
@@ -73,7 +74,7 @@ public class VillagerStatusBar {
     public void renderTooltips(GuiGraphics graphics, Font font, int mouseX, int mouseY, int baseX, int baseY) {
         int iconX = baseX;
 
-        if (TownsteadConfig.isVillagerHungerEnabled()) {
+        if (TownsteadConfig.isVillagerHungerEnabled() && !ClientNeeds.suppresses(entityId, "hunger")) {
             if (isHovering(mouseX, mouseY, iconX, baseY)) {
                 int hunger = HungerClientStore.get(entityId);
                 HungerData.HungerState state = HungerData.getState(hunger);
@@ -87,7 +88,7 @@ public class VillagerStatusBar {
         }
 
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
-        if (bridge != null && TownsteadConfig.isVillagerThirstEnabled()) {
+        if (bridge != null && TownsteadConfig.isVillagerThirstEnabled() && !ClientNeeds.suppresses(entityId, "thirst")) {
             if (isHovering(mouseX, mouseY, iconX, baseY)) {
                 int thirst = ThirstClientStore.getThirst(entityId);
                 ThirstData.ThirstState thirstState = ThirstData.getState(thirst);

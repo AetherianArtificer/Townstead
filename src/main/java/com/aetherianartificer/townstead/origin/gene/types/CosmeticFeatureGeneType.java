@@ -14,12 +14,12 @@ import org.jetbrains.annotations.Nullable;
  * doesn't (e.g. horns, a glow, webbed hands). Display-complete; applying/rendering
  * the feature is a deferred phase.
  *
- * <p>JSON: {@code { "type":"townstead_origins:cosmetic_feature", "feature":"fae_glow",
- * "model":"townstead_origins:part/fae_glow" }}</p>
+ * <p>JSON: {@code { "type":"pheno:cosmetic_feature", "feature":"fae_glow",
+ * "model":"pheno:part/fae_glow" }}</p>
  */
 public final class CosmeticFeatureGeneType implements GeneType {
 
-    public static final String KEY = "townstead_origins:cosmetic_feature";
+    public static final String KEY = "pheno:cosmetic_feature";
 
     public record Instance(String feature, @Nullable ResourceLocation model) implements GeneInstance {
         @Override

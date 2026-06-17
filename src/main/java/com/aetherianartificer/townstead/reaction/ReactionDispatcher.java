@@ -13,6 +13,8 @@ import com.aetherianartificer.townstead.reaction.trigger.types.GestureTriggerTyp
 import com.aetherianartificer.townstead.reaction.trigger.types.IdleSpotTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.TaskTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.TimeTriggerType;
+import com.aetherianartificer.townstead.pheno.action.ActionContext;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.resources.ResourceLocation;
@@ -67,12 +69,18 @@ public final class ReactionDispatcher {
         if (!context.contextTags().containsAll(reaction.conditions().requiredTags())) {
             return false;
         }
+        if (reaction.phenoCondition().isPresent()
+                && !reaction.phenoCondition().get().test(new ConditionContext(villager))) {
+            return false;
+        }
 
         String personalityKey = personalityKey(villager);
         List<ReactionBinding> candidates = new ArrayList<>(reaction.bindings().size());
         List<Double> weights = new ArrayList<>(reaction.bindings().size());
         for (ReactionBinding binding : reaction.bindings()) {
             if (!context.contextTags().containsAll(binding.requiredTags())) continue;
+            if (binding.phenoCondition().isPresent()
+                    && !binding.phenoCondition().get().test(new ConditionContext(villager))) continue;
             // Filter by per-binding cooldown before personality so a binding
             // on cooldown is never picked.
             if (binding.cooldownTicks() > 0
@@ -111,6 +119,9 @@ public final class ReactionDispatcher {
         }
 
         ReactionSideEffects.emit(level, villager, chosen.sound(), chosen.particles());
+        LivingEntity counterpart = context.playerCause();
+        chosen.phenoAction().ifPresent(action -> action.run(new ActionContext(villager, counterpart)));
+        reaction.phenoAction().ifPresent(action -> action.run(new ActionContext(villager, counterpart)));
         // allow_movement bindings skip the lock entirely so the villager
         // can keep walking while the animation plays on top.
         if (!chosen.allowMovement()) {

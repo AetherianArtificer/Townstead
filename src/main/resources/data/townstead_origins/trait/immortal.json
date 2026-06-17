@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:trait/v1",
   "chance": 0.0,
   "inherit": 1.0,
   "usable_on_player": true,

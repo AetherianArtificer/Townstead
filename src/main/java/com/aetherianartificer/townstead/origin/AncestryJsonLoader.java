@@ -2,6 +2,10 @@ package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.data.TownsteadSchema;
+import com.aetherianartificer.townstead.origin.personality.Personalities;
+import com.aetherianartificer.townstead.origin.personality.PersonalityPolicies;
+import com.aetherianartificer.townstead.origin.personality.PersonalityPolicyRegistry;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -32,11 +36,13 @@ public final class AncestryJsonLoader extends SimpleJsonResourceReloadListener {
                          ProfilerFiller profiler) {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Ancestry> parsed = new LinkedHashMap<>();
+        Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             String ctx = file.toString();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), ctx);
+                TownsteadSchema.validate(obj, "townstead:ancestry/v1");
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), ctx, lang);
                 ResourceLocation species = OriginJsonParsing.optionalId(obj, "species", ctx, LOGGER);
                 Demonym demonym = OriginJsonParsing.demonym(obj, ctx, lang);
@@ -44,11 +50,13 @@ public final class AncestryJsonLoader extends SimpleJsonResourceReloadListener {
                 Genome genome = OriginJsonParsing.genes(obj, ctx, LOGGER);
                 SpawnBias spawnBias = OriginJsonParsing.spawnBias(obj, ctx, LOGGER);
                 parsed.put(file, new Ancestry(file, displayName, species, demonym, backstory, genome, spawnBias));
+                policies.put(file, PersonalityPolicies.parse(obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse ancestry {}: {}", file, ex.getMessage());
             }
         }
         AncestryRegistry.replaceAll(parsed);
+        PersonalityPolicyRegistry.setAncestry(policies);
         LOGGER.info("Loaded {} origin ancestries", parsed.size());
     }
 }

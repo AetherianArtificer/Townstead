@@ -34,7 +34,8 @@ public abstract class VillagerEntityMCAImmortalityMixin {
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;
         if (self.level().isClientSide) return;
         if (TownsteadVillagers.get(self).life().immortal()
-                || com.aetherianartificer.townstead.origin.trait.TraitEffects.isImmortal(self)) {
+                || com.aetherianartificer.townstead.origin.trait.TraitEffects.isImmortal(self)
+                || com.aetherianartificer.townstead.origin.LifeStageProgression.isAgeless(TownsteadVillagers.get(self).life())) {
             ci.cancel();
         }
     }

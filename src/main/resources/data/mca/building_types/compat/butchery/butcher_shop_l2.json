@@ -5,8 +5,6 @@
   "icon": true,
   "iconU": 241,
   "iconV": 192,
-  "townsteadNodeItem": "butchery:basin",
-  "townsteadSpirit": { "pastoral": 8, "industrious": 4 },
   "blocks": {
     "#townstead:compat/butchery/butcher_shop_heat_sources": 1,
     "#butchery:wooden_butchers_table": 1,

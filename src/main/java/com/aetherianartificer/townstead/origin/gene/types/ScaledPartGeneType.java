@@ -14,12 +14,12 @@ import org.jetbrains.annotations.Nullable;
  * (e.g. ear size, tusk length). Display-complete; the actual scaling/rendering
  * is a deferred phase (needs per-villager values + custom render layers).
  *
- * <p>JSON: {@code { "type":"townstead_origins:scaled_part", "part":"ears",
- * "min":0.6, "max":1.0, "model":"townstead_origins:part/elf_ears" }}</p>
+ * <p>JSON: {@code { "type":"pheno:scaled_part", "part":"ears",
+ * "min":0.6, "max":1.0, "model":"pheno:part/elf_ears" }}</p>
  */
 public final class ScaledPartGeneType implements GeneType {
 
-    public static final String KEY = "townstead_origins:scaled_part";
+    public static final String KEY = "pheno:scaled_part";
 
     public record Instance(String part, float min, float max, @Nullable ResourceLocation model)
             implements GeneInstance {

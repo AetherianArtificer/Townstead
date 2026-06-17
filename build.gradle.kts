@@ -38,6 +38,9 @@ dependencies {
     compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // Pheno unit tests touch Minecraft types (ResourceLocation, GsonHelper); moddev keeps MC as a
+    // non-transitive compileOnly, so surface the main compile classpath to the test classpath.
+    testImplementation(files(sourceSets.main.get().compileClasspath))
 }
 
 layout.buildDirectory.set(file("${rootProject.projectDir}/.cache/townstead-build-1.21.1-neoforge"))

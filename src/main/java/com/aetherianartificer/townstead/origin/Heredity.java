@@ -161,7 +161,7 @@ public final class Heredity {
             ResourceLocation originId = ResourceLocation.tryParse(PlayerOrigin.getOriginId(player));
             if (originId == null) originId = OriginRegistry.DEFAULT_ID;
             return new Parent(originId.toString(), OriginRegistry.seedHeritage(originId),
-                    seedGenotype(originId, random));
+                    PlayerOrigin.getOrSeedGenotype(player, random));
         }
         return null;
     }
@@ -213,19 +213,55 @@ public final class Heredity {
         migrateFounder(life, originId, random);
     }
 
-    /** Project the genotype onto the expressed phenotype map (variant genes only). */
-    public static void recomputeExpressed(TownsteadVillager.Life life) {
-        Genotype genotype = life.genotype();
+    /**
+     * The expressed (dominant-resolved) non-wild allele at each locus of a genotype.
+     * Generalizes {@link #recomputeExpressed} beyond variant genes, so single-variant
+     * ability/attribute/attachment genes surface too. Used by the ability ticker, the
+     * attribute applier and the per-entity render sync.
+     */
+    public static List<Allele> expressedAlleles(Genotype genotype) {
+        List<Allele> out = new java.util.ArrayList<>();
+        if (genotype == null) return out;
         for (ResourceLocation locus : genotype.loci()) {
             Allele[] pair = genotype.at(locus);
             if (pair == null) continue;
             Allele expressed = express(pair[0], pair[1]);
-            if (expressed.isWild() || expressed.variantId() == null) continue;
-            Gene gene = GeneRegistry.byId(expressed.geneId());
+            if (!expressed.isWild()) out.add(expressed);
+        }
+        return out;
+    }
+
+    public static List<Allele> expressedAlleles(TownsteadVillager.Life life) {
+        return life == null ? List.of() : expressedAlleles(life.genotype());
+    }
+
+    /** The genes a genotype expresses, resolved from the registry (skips unknown ids). */
+    public static List<Gene> expressedGenes(Genotype genotype) {
+        List<Gene> out = new java.util.ArrayList<>();
+        for (Allele allele : expressedAlleles(genotype)) {
+            Gene gene = GeneRegistry.byId(allele.geneId());
+            if (gene != null) out.add(gene);
+        }
+        return out;
+    }
+
+    /**
+     * Project the genotype onto the expressed phenotype: the variant-gene map (skin tint, chronotype,
+     * etc.) plus the full expressed-allele encoding list (every locus, persisted so a reconstructed
+     * entity can render its real genetics without the live sync).
+     */
+    public static void recomputeExpressed(TownsteadVillager.Life life) {
+        Genotype genotype = life.genotype();
+        List<String> encodings = new java.util.ArrayList<>();
+        for (Allele allele : expressedAlleles(genotype)) {
+            encodings.add(allele.encode());
+            if (allele.variantId() == null) continue;
+            Gene gene = GeneRegistry.byId(allele.geneId());
             if (gene != null && gene.hasVariants()) {
-                life.setCarriedVariant(gene.id().toString(), expressed.variantId());
+                life.setCarriedVariant(gene.id().toString(), allele.variantId());
             }
         }
+        life.setExpressedAlleles(encodings);
     }
 
     // --- internals -------------------------------------------------------------

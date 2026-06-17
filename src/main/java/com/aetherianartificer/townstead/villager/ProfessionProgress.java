@@ -3,13 +3,14 @@ package com.aetherianartificer.townstead.villager;
 /**
  * Shared profession-XP engine. Operates on the typed {@link ProfessionXp}
  * held behind a {@link ProfessionXpStore} (implemented by
- * {@link TownsteadVillager.ProfessionMemory}), parameterised by
- * {@link ProfessionXpType}.
+ * {@link TownsteadVillager.ProfessionMemory}).
  *
- * <p>Behaviour matches the former per-profession {@code *ProgressData} classes:
- * a daily XP cap, five XP-gated tiers, and a tier-up timestamp. {@link #getTier}
- * lazily backfills the stored tier from XP (for legacy/uninitialised data),
- * persisting the result like the originals did.
+ * <p>The tier thresholds, daily cap, and XP ceiling come from a {@link ProgressionSpec} resolved
+ * by {@link ProfessionProgressions}: a data-driven {@link com.aetherianartificer.townstead.profession.def.ProfessionDef}
+ * when one is registered for the profession id, otherwise the built-in {@link ProfessionXpType}.
+ * With no datapack override the four built-ins behave exactly as before (a daily XP cap, five
+ * XP-gated tiers, and a tier-up timestamp). {@link #getTier} lazily backfills the stored tier
+ * from XP for legacy/uninitialised data, persisting the result like the originals did.
  */
 public final class ProfessionProgress {
     private ProfessionProgress() {}
@@ -19,13 +20,7 @@ public final class ProfessionProgress {
     }
 
     public static int getTier(ProfessionXpStore store, ProfessionXpType type) {
-        ProfessionXp state = store.professionXp(type.id());
-        int raw = state.tier();
-        if (raw <= 0) {
-            raw = type.tierForXp(Math.max(0, state.xp()));
-            store.setProfessionXp(type.id(), state.withTier(raw));
-        }
-        return Math.max(1, Math.min(5, raw));
+        return getTier(store, type.id(), ProfessionProgressions.spec(type));
     }
 
     public static long getLastTierUpTick(ProfessionXpStore store, ProfessionXpType type) {
@@ -33,17 +28,33 @@ public final class ProfessionProgress {
     }
 
     public static int getXpToNextTier(ProfessionXpStore store, ProfessionXpType type) {
-        int tier = getTier(store, type);
-        if (tier >= 5) return 0;
-        int xp = getXp(store, type);
-        return Math.max(0, type.thresholdForTier(tier) - xp);
+        ProgressionSpec spec = ProfessionProgressions.spec(type);
+        int tier = getTier(store, type.id(), spec);
+        if (tier >= spec.maxTier()) return 0;
+        int xp = Math.max(0, store.professionXp(type.id()).xp());
+        return Math.max(0, spec.thresholdForTier(tier) - xp);
     }
 
     public static GainResult addXp(ProfessionXpStore store, ProfessionXpType type, int requested, long gameTime) {
-        int beforeTier = getTier(store, type);
+        return addXp(store, type.id(), ProfessionProgressions.spec(type), requested, gameTime);
+    }
+
+    private static int getTier(ProfessionXpStore store, String professionId, ProgressionSpec spec) {
+        ProfessionXp state = store.professionXp(professionId);
+        int raw = state.tier();
+        if (raw <= 0) {
+            raw = spec.tierForXp(Math.max(0, state.xp()));
+            store.setProfessionXp(professionId, state.withTier(raw));
+        }
+        return Math.max(1, Math.min(spec.maxTier(), raw));
+    }
+
+    private static GainResult addXp(ProfessionXpStore store, String professionId, ProgressionSpec spec,
+                                    int requested, long gameTime) {
+        int beforeTier = getTier(store, professionId, spec);
         if (requested <= 0) return new GainResult(0, beforeTier, beforeTier, false);
 
-        ProfessionXp state = store.professionXp(type.id());
+        ProfessionXp state = store.professionXp(professionId);
         long day = gameTime / 24000L;
         long storedDay = state.xpDay();
         int gainedToday = Math.max(0, state.xpToday());
@@ -52,21 +63,21 @@ public final class ProfessionProgress {
             gainedToday = 0;
         }
 
-        int allowance = Math.max(0, type.dailyXpCap() - gainedToday);
+        int allowance = Math.max(0, spec.dailyXpCap() - gainedToday);
         int applied = Math.min(requested, allowance);
         if (applied <= 0) {
-            store.setProfessionXp(type.id(),
+            store.setProfessionXp(professionId,
                     new ProfessionXp(state.xp(), state.tier(), state.lastTierUpTick(), storedDay, gainedToday));
             return new GainResult(0, beforeTier, beforeTier, false);
         }
 
-        int xp = Math.max(0, Math.min(type.maxXp(), state.xp() + applied));
+        int xp = Math.max(0, Math.min(spec.maxXp(), state.xp() + applied));
         gainedToday += applied;
-        int afterTier = type.tierForXp(xp);
+        int afterTier = spec.tierForXp(xp);
         boolean tierUp = afterTier > beforeTier;
         long lastTierUpTick = tierUp ? gameTime : state.lastTierUpTick();
 
-        store.setProfessionXp(type.id(), new ProfessionXp(xp, afterTier, lastTierUpTick, storedDay, gainedToday));
+        store.setProfessionXp(professionId, new ProfessionXp(xp, afterTier, lastTierUpTick, storedDay, gainedToday));
         return new GainResult(applied, beforeTier, afterTier, tierUp);
     }
 

@@ -33,6 +33,7 @@ public record VillagerLifeSyncPayload(
         int seniorProgressPermil,
         int bioAgeDays,
         boolean immortal,
+        boolean ageless,
         int currentStageIndex,
         int[] stageDays,
         String[] stageLabelKeys,
@@ -43,7 +44,11 @@ public record VillagerLifeSyncPayload(
         float[] stageNarrativeMin,
         float[] stageNarrativeMax,
         float narrativeRate,
-        int seniorStageIndex
+        int seniorStageIndex,
+        String personalityName,
+        String personalityDesc,
+        String[] personalityPoolRefs,
+        String[] personalityPoolNames
 //? if neoforge {
 ) implements CustomPacketPayload {
 //?} else {
@@ -73,9 +78,10 @@ public record VillagerLifeSyncPayload(
     public VillagerLifeSyncPayload withEntityId(int newEntityId) {
         return new VillagerLifeSyncPayload(newEntityId, birthYear, birthMonthIndex, birthDayOfMonth,
                 birthMonthKey, birthMonthFallback, ageYears, stamped, isSenior, seniorProgressPermil,
-                bioAgeDays, immortal, currentStageIndex, stageDays, stageLabelKeys, stageLabelFallbacks,
+                bioAgeDays, immortal, ageless, currentStageIndex, stageDays, stageLabelKeys, stageLabelFallbacks,
                 narrativeAge, stageScales, stageModelAges, stageNarrativeMin, stageNarrativeMax,
-                narrativeRate, seniorStageIndex);
+                narrativeRate, seniorStageIndex, personalityName, personalityDesc,
+                personalityPoolRefs, personalityPoolNames);
     }
 
     //? if forge {
@@ -97,6 +103,7 @@ public record VillagerLifeSyncPayload(
         buf.writeVarInt(p.seniorProgressPermil());
         buf.writeVarInt(p.bioAgeDays());
         buf.writeBoolean(p.immortal());
+        buf.writeBoolean(p.ageless());
         buf.writeVarInt(p.currentStageIndex());
         int[] days = p.stageDays();
         buf.writeVarInt(days.length);
@@ -123,6 +130,15 @@ public record VillagerLifeSyncPayload(
         if (narrMax != null) for (float v : narrMax) buf.writeFloat(v);
         buf.writeFloat(p.narrativeRate());
         buf.writeInt(p.seniorStageIndex());
+        buf.writeUtf(p.personalityName() == null ? "" : p.personalityName());
+        buf.writeUtf(p.personalityDesc() == null ? "" : p.personalityDesc());
+        String[] refs = p.personalityPoolRefs() == null ? new String[0] : p.personalityPoolRefs();
+        String[] names = p.personalityPoolNames() == null ? new String[0] : p.personalityPoolNames();
+        buf.writeVarInt(refs.length);
+        for (int i = 0; i < refs.length; i++) {
+            buf.writeUtf(refs[i] == null ? "" : refs[i]);
+            buf.writeUtf(i < names.length && names[i] != null ? names[i] : "");
+        }
     }
 
     public static VillagerLifeSyncPayload read(FriendlyByteBuf buf) {
@@ -138,6 +154,7 @@ public record VillagerLifeSyncPayload(
         int seniorProgressPermil = buf.readVarInt();
         int bioAgeDays = buf.readVarInt();
         boolean immortal = buf.readBoolean();
+        boolean ageless = buf.readBoolean();
         int currentStageIndex = buf.readVarInt();
         int dayCount = buf.readVarInt();
         int[] stageDays = new int[dayCount];
@@ -164,13 +181,24 @@ public record VillagerLifeSyncPayload(
         for (int i = 0; i < narrMaxCount; i++) stageNarrativeMax[i] = buf.readFloat();
         float narrativeRate = buf.readFloat();
         int seniorStageIndex = buf.readInt();
+        String personalityName = buf.readUtf();
+        String personalityDesc = buf.readUtf();
+        int poolCount = buf.readVarInt();
+        String[] personalityPoolRefs = new String[poolCount];
+        String[] personalityPoolNames = new String[poolCount];
+        for (int i = 0; i < poolCount; i++) {
+            personalityPoolRefs[i] = buf.readUtf();
+            personalityPoolNames[i] = buf.readUtf();
+        }
         return new VillagerLifeSyncPayload(
                 entityId, birthYear, birthMonthIndex, birthDayOfMonth,
                 birthMonthKey, birthMonthFallback, ageYears, stamped,
                 isSenior, seniorProgressPermil,
-                bioAgeDays, immortal, currentStageIndex,
+                bioAgeDays, immortal, ageless, currentStageIndex,
                 stageDays, keys, fallbacks, narrativeAge, stageScales, stageModelAges,
-                stageNarrativeMin, stageNarrativeMax, narrativeRate, seniorStageIndex
+                stageNarrativeMin, stageNarrativeMax, narrativeRate, seniorStageIndex,
+                personalityName, personalityDesc,
+                personalityPoolRefs, personalityPoolNames
         );
     }
 }

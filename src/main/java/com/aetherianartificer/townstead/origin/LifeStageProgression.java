@@ -95,7 +95,7 @@ public final class LifeStageProgression {
         // Immortal (or aging globally disabled) + stage recorded: hold the recorded stage fixed.
         // With no stage recorded yet we fall through once to resolve the current stage and
         // commit it, then freeze on that from here on.
-        if ((isImmortal(villager, life) || TownsteadConfig.isVillagerAgingDisabled())
+        if ((isStageFrozen(villager, life) || TownsteadConfig.isVillagerAgingDisabled())
                 && !life.currentStageId().isEmpty()) {
             return resolveFromRecordedStage(life, cycle, requested);
         }
@@ -125,7 +125,7 @@ public final class LifeStageProgression {
         MinecraftServer server = villager.level().getServer();
         if (server == null) return true;
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
-        if (isImmortal(villager, life) || !life.hasBirth() || !life.hasStageDays()) return true;
+        if (isStageFrozen(villager, life) || !life.hasBirth() || !life.hasStageDays()) return true;
 
         LifeCycle cycle = resolveCycle(life);
         if (cycle == null || cycle.isEmpty() || life.stageDaysLength() != cycle.size()) return true;
@@ -146,6 +146,21 @@ public final class LifeStageProgression {
     private static boolean isImmortal(VillagerEntityMCA villager, TownsteadVillager.Life life) {
         return life.immortal()
                 || com.aetherianartificer.townstead.origin.trait.TraitEffects.isImmortal(villager);
+    }
+
+    /**
+     * Ageless: the villager's life cycle never progresses by the calendar (e.g. skeletons). A separate
+     * axis from immortality (which is about not dying); ageless only pins the stage. Both freeze aging.
+     */
+    public static boolean isAgeless(TownsteadVillager.Life life) {
+        if (life.ageless()) return true; // granted by the Potion of Agelessness
+        LifeCycle cycle = resolveCycle(life);
+        return cycle != null && cycle.ageless(); // intrinsic to the species' life cycle
+    }
+
+    /** Whether this villager's life stage is held fixed, by immortality or by an ageless life cycle. */
+    private static boolean isStageFrozen(VillagerEntityMCA villager, TownsteadVillager.Life life) {
+        return isImmortal(villager, life) || isAgeless(life);
     }
 
     @Nullable
@@ -256,7 +271,7 @@ public final class LifeStageProgression {
         // within a day of the toggle rather than whenever a player next observes them.
         agingDisplayDay(life, TownsteadCalendar.lifeDay(server));
         if (TownsteadConfig.isVillagerAgingDisabled()) return false;
-        if (isImmortal(villager, life) && !life.currentStageId().isEmpty()) return false;
+        if (isStageFrozen(villager, life) && !life.currentStageId().isEmpty()) return false;
         if (!life.hasBirth() || !life.hasStageDays()) return false;
 
         LifeCycle cycle = resolveCycle(life);

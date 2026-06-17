@@ -13,16 +13,24 @@ import java.util.Map;
  */
 public final class GeneRegistry {
     private static volatile Map<ResourceLocation, Gene> ENTRIES = Map.of();
+    private static volatile Map<ResourceLocation, List<ResourceLocation>> COMPANIONS = Map.of();
 
     private GeneRegistry() {}
 
-    static void replaceAll(Map<ResourceLocation, Gene> next) {
+    static void replaceAll(Map<ResourceLocation, Gene> next,
+                           Map<ResourceLocation, List<ResourceLocation>> companions) {
         ENTRIES = Map.copyOf(new LinkedHashMap<>(next));
+        COMPANIONS = Map.copyOf(new LinkedHashMap<>(companions));
     }
 
     @Nullable
     public static Gene byId(ResourceLocation id) {
         return id == null ? null : ENTRIES.get(id);
+    }
+
+    /** The companion resource genes a gene declares inline, granted alongside it when expressed. */
+    public static List<ResourceLocation> companionsOf(ResourceLocation parentId) {
+        return parentId == null ? List.of() : COMPANIONS.getOrDefault(parentId, List.of());
     }
 
     public static List<Gene> all() {

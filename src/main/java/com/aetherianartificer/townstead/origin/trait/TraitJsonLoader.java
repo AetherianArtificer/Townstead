@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.origin.trait;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.aetherianartificer.townstead.origin.trait.effect.TraitEffectTypes;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -47,6 +48,7 @@ public final class TraitJsonLoader extends SimpleJsonResourceReloadListener {
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                TownsteadSchema.validate(obj, "townstead:trait/v1");
                 DataTrait trait = parse(file.toString(), obj);
                 if (trait != null) parsed.put(trait.id(), trait);
             } catch (Exception ex) {

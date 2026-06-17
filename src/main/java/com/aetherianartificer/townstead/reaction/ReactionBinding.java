@@ -1,6 +1,11 @@
 package com.aetherianartificer.townstead.reaction;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.pheno.action.Action;
+import com.aetherianartificer.townstead.pheno.action.Actions;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
+import com.aetherianartificer.townstead.pheno.lang.normalize.PhenoNormalizer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -32,6 +37,8 @@ public record ReactionBinding(
         List<String> partsSkip,
         Map<String, Float> personalityWeights,
         List<String> requiredTags,
+        Optional<Condition> phenoCondition,
+        Optional<Action> phenoAction,
         Optional<SoundSpec> sound,
         Optional<ParticleSpec> particles,
         Optional<String> speechPool) {
@@ -42,9 +49,12 @@ public record ReactionBinding(
      * skips. Bindings whose {@code ref} entries don't all share the same
      * backend prefix are likewise rejected.
      */
-    public static ReactionBinding parse(JsonElement entry) {
+    public static ReactionBinding parse(JsonElement entry, boolean phenoV2) {
         if (!entry.isJsonObject()) return null;
-        JsonObject json = entry.getAsJsonObject();
+        JsonObject json = entry.getAsJsonObject().deepCopy();
+        if (phenoV2 && json.has("animation") && json.get("animation").isJsonObject()) {
+            lowerAnimation(json, json.getAsJsonObject("animation"));
+        }
         if (!json.has("ref")) {
             Townstead.LOGGER.warn("Reaction binding missing 'ref' field; skipped");
             return null;
@@ -76,9 +86,9 @@ public record ReactionBinding(
                 ? Optional.of(json.getAsJsonObject("args"))
                 : Optional.empty();
         float weight = Math.max(0.0F, GsonHelper.getAsFloat(json, "weight", 1.0F));
-        float chance = clamp01(GsonHelper.getAsFloat(json, "chance", 1.0F));
+        float chance = clamp01(percent(json, "chance", 1.0F, phenoV2));
         int shots = Math.max(1, GsonHelper.getAsInt(json, "shots", 1));
-        int cooldownTicks = Math.max(0, GsonHelper.getAsInt(json, "cooldown_ticks", 0));
+        int cooldownTicks = Math.max(0, duration(json, "cooldown", "cooldown_ticks", 0, phenoV2));
         boolean allowMovement = GsonHelper.getAsBoolean(json, "allow_movement", false);
         List<String> partsSkip = ReactionConditions.parseStringArray(json, "parts_skip");
         // When allow_movement is set without an explicit parts_skip,
@@ -91,6 +101,29 @@ public record ReactionBinding(
                 ? json.getAsJsonObject("personality_weights")
                 : null);
         List<String> requiredTags = ReactionConditions.parseStringArray(json, "required_tags");
+        Optional<Condition> phenoCondition = Optional.empty();
+        Optional<Action> phenoAction = Optional.empty();
+        if (phenoV2 && json.has("when")) {
+            if (!json.get("when").isJsonObject()) {
+                Townstead.LOGGER.warn("Reaction binding 'when' must be an object; skipped");
+                return null;
+            }
+            Condition parsed = Conditions.parse(
+                    PhenoNormalizer.normalizeCondition(json.getAsJsonObject("when")));
+            if (parsed == null) {
+                Townstead.LOGGER.warn("Reaction binding has an invalid Pheno 'when'; skipped");
+                return null;
+            }
+            phenoCondition = Optional.of(parsed);
+        }
+        if (phenoV2 && json.has("do")) {
+            Action parsed = Actions.parse(PhenoNormalizer.normalizeAction(json.get("do")));
+            if (parsed == null) {
+                Townstead.LOGGER.warn("Reaction binding has an invalid Pheno 'do'; skipped");
+                return null;
+            }
+            phenoAction = Optional.of(parsed);
+        }
         Optional<SoundSpec> sound = json.has("sound") && json.get("sound").isJsonObject()
                 ? SoundSpec.fromJson(json.getAsJsonObject("sound"))
                 : Optional.empty();
@@ -100,7 +133,35 @@ public record ReactionBinding(
         Optional<String> speechPool =
                 json.has("speech_pool") ? Optional.of(GsonHelper.getAsString(json, "speech_pool")) : Optional.empty();
         return new ReactionBinding(backendKey, Collections.unmodifiableList(ids), args, weight, chance, shots,
-                cooldownTicks, allowMovement, partsSkip, personality, requiredTags, sound, particles, speechPool);
+                cooldownTicks, allowMovement, partsSkip, personality, requiredTags,
+                phenoCondition, phenoAction, sound, particles, speechPool);
+    }
+
+    private static void lowerAnimation(JsonObject choice, JsonObject animation) {
+        String backend = GsonHelper.getAsString(animation, "type", "");
+        if (backend.isBlank()) return;
+        if (!choice.has("ref")) {
+            if (animation.has("id")) {
+                choice.addProperty("ref", backend + ":" + GsonHelper.getAsString(animation, "id"));
+            } else if (animation.has("ids") && animation.get("ids").isJsonArray()) {
+                JsonArray refs = new JsonArray();
+                for (JsonElement id : animation.getAsJsonArray("ids")) {
+                    if (id.isJsonPrimitive() && id.getAsJsonPrimitive().isString()) {
+                        refs.add(backend + ":" + id.getAsString());
+                    }
+                }
+                choice.add("ref", refs);
+            }
+        }
+        for (String key : List.of("allow_movement", "parts_skip", "shots")) {
+            if (animation.has(key) && !choice.has(key)) choice.add(key, animation.get(key));
+        }
+        JsonObject args = choice.has("args") && choice.get("args").isJsonObject()
+                ? choice.getAsJsonObject("args") : new JsonObject();
+        for (String key : List.of("speed", "loop_override")) {
+            if (animation.has(key) && !args.has(key)) args.add(key, animation.get(key));
+        }
+        if (args.size() > 0) choice.add("args", args);
     }
 
     private static List<String> parseRefField(JsonElement ref) {
@@ -138,6 +199,38 @@ public record ReactionBinding(
         if (value < 0.0F) return 0.0F;
         if (value > 1.0F) return 1.0F;
         return value;
+    }
+
+    private static int duration(JsonObject json, String v2Key, String legacyKey, int fallback, boolean v2) {
+        String key = v2 && json.has(v2Key) ? v2Key : legacyKey;
+        if (!json.has(key)) return fallback;
+        JsonElement value = json.get(key);
+        if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()) return value.getAsInt();
+        if (!v2 || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) return fallback;
+        String raw = value.getAsString().trim().toLowerCase(Locale.ROOT);
+        try {
+            if (raw.endsWith("ms")) return (int) Math.round(Double.parseDouble(raw.substring(0, raw.length() - 2)) / 50d);
+            if (raw.endsWith("s")) return (int) Math.round(Double.parseDouble(raw.substring(0, raw.length() - 1)) * 20d);
+            if (raw.endsWith("t")) raw = raw.substring(0, raw.length() - 1);
+            return (int) Math.round(Double.parseDouble(raw));
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Malformed duration '" + value.getAsString() + "' for '" + key + "'");
+        }
+    }
+
+    private static float percent(JsonObject json, String key, float fallback, boolean v2) {
+        if (!json.has(key)) return fallback;
+        JsonElement value = json.get(key);
+        if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()) return value.getAsFloat();
+        if (!v2 || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) return fallback;
+        String raw = value.getAsString().trim();
+        try {
+            return raw.endsWith("%")
+                    ? Float.parseFloat(raw.substring(0, raw.length() - 1)) / 100F
+                    : Float.parseFloat(raw);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Malformed percentage '" + raw + "' for '" + key + "'");
+        }
     }
 
     /**

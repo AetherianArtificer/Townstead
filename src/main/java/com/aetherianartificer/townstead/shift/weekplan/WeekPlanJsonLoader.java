@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.shift.weekplan;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -45,6 +46,7 @@ public final class WeekPlanJsonLoader extends SimpleJsonResourceReloadListener {
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                TownsteadSchema.validate(obj, "townstead:week_plan/v1");
                 String name;
                 if (obj.has("name_key")) {
                     String key = GsonHelper.getAsString(obj, "name_key");

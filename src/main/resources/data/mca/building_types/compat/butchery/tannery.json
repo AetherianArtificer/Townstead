@@ -5,8 +5,6 @@
   "icon": true,
   "iconU": 240,
   "iconV": 196,
-  "townsteadNodeItem": "butchery:skin_rack",
-  "townsteadSpirit": { "industrious": 8, "commercial": 2 },
   "blocks": {
     "butchery:skin_rack": 3,
     "butchery:basin": 2,

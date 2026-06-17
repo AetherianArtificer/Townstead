@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:gene/v2",
   "type": "townstead_origins:skin_tone",
   "display_name": { "translate": "gene.townstead_origins.warm_skin" },
   "description": { "translate": "gene.townstead_origins.warm_skin.desc" },

@@ -32,5 +32,10 @@ public abstract class PlayerEntityExtendedModelAnimationMixin<T extends LivingEn
                 animationProgress,
                 headYaw,
                 headPitch);
+        // hide_feature genes: zero the hidden parts on the player's genetics model too
+        // (the villager model handles its own; this covers the player render).
+        com.aetherianartificer.townstead.client.origin.HideFeatures.hide(
+                (net.minecraft.client.model.HumanoidModel<?>) (Object) this,
+                com.aetherianartificer.townstead.client.origin.HideFeatures.hiddenGroups(player));
     }
 }

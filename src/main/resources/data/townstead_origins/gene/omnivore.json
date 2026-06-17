@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:gene/v2",
   "type": "townstead_origins:diet",
   "display_name": { "translate": "gene.townstead_origins.omnivore" },
   "description": { "translate": "gene.townstead_origins.omnivore.desc" },

@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:week_plan/v1",
   "name_key": "townstead.weekplan.night_owl_week.name",
   "days": [
     "townstead:night_owl_default",

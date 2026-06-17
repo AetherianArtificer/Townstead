@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.origin.rig.RigDefinition;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 //? if neoforge {
@@ -10,21 +11,23 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Server → client: the selectable origins (lineage names + granted gene ids) plus
- * a gene dictionary (id → display data) covering every gene any origin grants, so
+ * Server → client: the selectable assignment profiles (lineage names + granted gene ids) plus
+ * a gene dictionary (id → display data) covering every gene any profile grants, so
  * the picker renders fully on a client whose datapack-driven registries are empty.
  * Sent on login and datapack reload.
  */
 //? if neoforge {
 public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes,
-                                       List<TraitCatalogEntry> traits)
+                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs)
         implements CustomPacketPayload {
 //?} else {
 /*public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<GeneCatalogEntry> genes,
-                                       List<TraitCatalogEntry> traits) {
+                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs) {
 *///?}
 
     //? if neoforge {
@@ -73,6 +76,12 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             buf.writeUtf(e.speciesNameKey());
             buf.writeUtf(e.ancestryNameKey());
             buf.writeUtf(e.lineageNameKey());
+            buf.writeUtf(e.rigBase());
+            buf.writeFloat(e.rigScale());
+            writeGrip(buf, e.hold().mainhand());
+            writeGrip(buf, e.hold().offhand());
+            writeAnimations(buf, e.animations());
+            buf.writeBoolean(e.breasts());
         }
         buf.writeVarInt(genes.size());
         for (GeneCatalogEntry g : genes) {
@@ -94,9 +103,13 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                 buf.writeUtf(v.label());
                 buf.writeVarInt(v.weight());
                 buf.writeUtf(v.labelKey());
+                buf.writeInt(v.tint());
+                buf.writeUtf(v.texture());
+                buf.writeBoolean(v.glow());
             }
             buf.writeUtf(g.nameKey());
             buf.writeUtf(g.descriptionKey());
+            buf.writeUtf(g.faceSlot());
         }
         buf.writeVarInt(traits.size());
         for (TraitCatalogEntry t : traits) {
@@ -106,6 +119,8 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             buf.writeBoolean(t.usableOnPlayer());
             buf.writeBoolean(t.hidden());
         }
+        buf.writeVarInt(rigs.size());
+        for (RigDefinition r : rigs) writeRig(buf, r);
     }
 
     public static OriginCatalogSyncPayload read(FriendlyByteBuf buf) {
@@ -139,6 +154,11 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             String speciesNameKey = buf.readUtf();
             String ancestryNameKey = buf.readUtf();
             String lineageNameKey = buf.readUtf();
+            String rigBase = buf.readUtf();
+            float rigScale = buf.readFloat();
+            Hold hold = new Hold(readGrip(buf), readGrip(buf));
+            Animations animations = readAnimations(buf);
+            boolean breasts = buf.readBoolean();
             entries.add(new OriginCatalogEntry(id,
                     localize(nameKey, name),
                     localize(singularKey, singular),
@@ -149,7 +169,8 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                     localize(lineageNameKey, lineageName),
                     inherited, ranges,
                     nameKey, singularKey, pluralKey, backstoryKey,
-                    speciesNameKey, ancestryNameKey, lineageNameKey));
+                    speciesNameKey, ancestryNameKey, lineageNameKey,
+                    rigBase, rigScale, hold, animations, breasts));
         }
         int m = buf.readVarInt();
         List<GeneCatalogEntry> genes = new ArrayList<>(m);
@@ -173,14 +194,19 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                 String vlabel = buf.readUtf();
                 int vweight = buf.readVarInt();
                 String vlabelKey = buf.readUtf();
-                variants.add(new GeneCatalogEntry.Variant(vid, localize(vlabelKey, vlabel), vweight, vlabelKey));
+                int vtint = buf.readInt();
+                String vtexture = buf.readUtf();
+                boolean vglow = buf.readBoolean();
+                variants.add(new GeneCatalogEntry.Variant(vid, localize(vlabelKey, vlabel), vweight, vlabelKey,
+                        vtint, vtexture, vglow));
             }
             String gNameKey = buf.readUtf();
             String gDescKey = buf.readUtf();
+            String gFaceSlot = buf.readUtf();
             genes.add(new GeneCatalogEntry(gid, localize(gNameKey, gname), localize(gDescKey, gdesc),
                     gcat, kind, gmin, gmax,
                     gtarget, gamount, gdom, glocus, gweight, variants,
-                    gNameKey, gDescKey));
+                    gNameKey, gDescKey, gFaceSlot));
         }
         int k = buf.readVarInt();
         List<TraitCatalogEntry> traits = new ArrayList<>(k);
@@ -189,7 +215,105 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                     buf.readUtf(), buf.readFloat(), buf.readFloat(),
                     buf.readBoolean(), buf.readBoolean()));
         }
-        return new OriginCatalogSyncPayload(entries, genes, traits);
+        int rn = buf.readVarInt();
+        List<RigDefinition> rigs = new ArrayList<>(rn);
+        for (int i = 0; i < rn; i++) rigs.add(readRig(buf));
+        return new OriginCatalogSyncPayload(entries, genes, traits, rigs);
+    }
+
+    /** Serialize a rig definition: model source, texture, bone map, and armor spec. */
+    private static void writeRig(FriendlyByteBuf buf, RigDefinition r) {
+        buf.writeUtf(r.id());
+        buf.writeByte(r.modelType().ordinal());
+        buf.writeUtf(r.modelRef());
+        buf.writeUtf(r.modelLayer());
+        buf.writeUtf(r.texture());
+        buf.writeVarInt(r.bones().size());
+        for (Map.Entry<String, String> e : r.bones().entrySet()) {
+            buf.writeUtf(e.getKey());
+            buf.writeUtf(e.getValue());
+        }
+        buf.writeByte(r.armorType().ordinal());
+        writeNullableUtf(buf, r.armorInner());
+        writeNullableUtf(buf, r.armorOuter());
+        buf.writeBoolean(r.face() != null);
+        if (r.face() != null) {
+            RigDefinition.Face f = r.face();
+            buf.writeUtf(f.bone());
+            for (float v : f.center()) buf.writeFloat(v);
+            for (float v : f.size()) buf.writeFloat(v);
+            buf.writeFloat(f.forward());
+        }
+        buf.writeBoolean(r.hair());
+    }
+
+    private static RigDefinition readRig(FriendlyByteBuf buf) {
+        String id = buf.readUtf();
+        RigDefinition.ModelType modelType = RigDefinition.ModelType.values()[buf.readByte()];
+        String modelRef = buf.readUtf();
+        String modelLayer = buf.readUtf();
+        String texture = buf.readUtf();
+        int bn = buf.readVarInt();
+        Map<String, String> bones = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < bn; i++) bones.put(buf.readUtf(), buf.readUtf());
+        RigDefinition.ArmorType armorType = RigDefinition.ArmorType.values()[buf.readByte()];
+        String inner = readNullableUtf(buf);
+        String outer = readNullableUtf(buf);
+        RigDefinition.Face face = null;
+        if (buf.readBoolean()) {
+            String bone = buf.readUtf();
+            float[] center = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+            float[] size = {buf.readFloat(), buf.readFloat()};
+            face = new RigDefinition.Face(bone, center, size, buf.readFloat());
+        }
+        boolean hair = buf.readBoolean();
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, hair);
+    }
+
+    private static void writeNullableUtf(FriendlyByteBuf buf, String value) {
+        buf.writeBoolean(value != null);
+        if (value != null) buf.writeUtf(value);
+    }
+
+    private static String readNullableUtf(FriendlyByteBuf buf) {
+        return buf.readBoolean() ? buf.readUtf() : null;
+    }
+
+    /** Write one hand's grip: a present flag, then (if present) bone + offset vec3 + rotation vec3. */
+    private static void writeGrip(FriendlyByteBuf buf, Hold.Grip grip) {
+        buf.writeBoolean(grip != null);
+        if (grip == null) return;
+        buf.writeUtf(grip.bone());
+        for (int k = 0; k < 3; k++) buf.writeFloat(grip.offset()[k]);
+        for (int k = 0; k < 3; k++) buf.writeFloat(grip.rotation()[k]);
+    }
+
+    /** Read one hand's grip, or null when the present flag is false (hand cannot hold). */
+    private static Hold.Grip readGrip(FriendlyByteBuf buf) {
+        if (!buf.readBoolean()) return null;
+        String bone = buf.readUtf();
+        float[] offset = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+        float[] rotation = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+        return new Hold.Grip(bone, offset, rotation);
+    }
+
+    /** Write each animation state's resolved source (one byte) then the provider chain. */
+    private static void writeAnimations(FriendlyByteBuf buf, Animations animations) {
+        Animations a = animations == null ? Animations.DEFAULT : animations;
+        for (Animations.State state : Animations.State.values()) buf.writeByte(a.source(state).ordinal());
+        buf.writeVarInt(a.providers().size());
+        for (String provider : a.providers()) buf.writeUtf(provider);
+    }
+
+    private static Animations readAnimations(FriendlyByteBuf buf) {
+        Map<Animations.State, Animations.Source> map = new EnumMap<>(Animations.State.class);
+        for (Animations.State state : Animations.State.values()) {
+            map.put(state, Animations.Source.values()[buf.readByte()]);
+        }
+        int pn = buf.readVarInt();
+        List<String> providers = new ArrayList<>(pn);
+        for (int i = 0; i < pn; i++) providers.add(buf.readUtf());
+        return new Animations(map, providers);
     }
 
     /**

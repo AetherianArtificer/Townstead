@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:gene/v2",
   "type": "townstead_origins:hydration",
   "display_name": { "translate": "gene.townstead_origins.water_drinker" },
   "description": { "translate": "gene.townstead_origins.water_drinker.desc" },

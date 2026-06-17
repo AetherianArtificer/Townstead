@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:gene/v2",
   "type": "townstead_origins:life_cycle",
   "display_name": { "translate": "gene.townstead_origins.human_life_cycle" },
   "description": { "translate": "gene.townstead_origins.human_life_cycle.desc" },

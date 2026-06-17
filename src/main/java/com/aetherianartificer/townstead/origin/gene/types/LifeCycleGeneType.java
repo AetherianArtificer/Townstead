@@ -83,7 +83,10 @@ public final class LifeCycleGeneType implements GeneType {
         List<LifeStage> stages = parseStages(json.getAsJsonArray("stages"), KEY, lang);
         if (stages.isEmpty()) return null;
         float variance = GsonHelper.getAsFloat(json, "variance", 0.0f);
-        return new Instance(new LifeCycle(stages), variance);
+        // Ageless: the cycle names its stages but never progresses by the calendar; the villager
+        // freezes at its resolved stage (skeletons and other non-aging species).
+        boolean ageless = GsonHelper.getAsBoolean(json, "ageless", false);
+        return new Instance(new LifeCycle(stages, ageless), variance);
     }
 
     private static List<LifeStage> parseStages(JsonArray arr, String context, Map<String, String> lang) {

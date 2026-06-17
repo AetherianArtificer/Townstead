@@ -1,9 +1,11 @@
 package com.aetherianartificer.townstead.origin;
 
 import com.aetherianartificer.townstead.origin.gene.types.LifeCycleGeneType;
+import com.aetherianartificer.townstead.origin.personality.PersonalityResolver;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
@@ -42,6 +44,7 @@ public final class OriginSpawnHandler {
         if (state.life().hasGenotype() || state.life().hasHeritage()) {
             ResourceLocation childOrigin = ResourceLocation.tryParse(state.life().originId());
             if (childOrigin == null) childOrigin = OriginRegistry.DEFAULT_ID;
+            assignPersonality(villager, state, childOrigin);
             rollAndStoreStageDays(villager, state, childOrigin);
             return;
         }
@@ -50,11 +53,19 @@ public final class OriginSpawnHandler {
         // per-species chance of a mixed-ancestry blend instead. A mix seeds its own
         // heritage + genotype; its body metrics, traits and life cycle are blended
         // from the contributors by share (the parentless analogue of MCA's blend).
-        OriginSelector.Selection selection =
-                OriginSelector.select(villager.level(), villager.blockPosition(), villager.getRandom());
+        //
+        // Inside an existing village, constrain the selection: drop origins whose disposition group
+        // clashes with the resident majority (so a hostile species never spawns into a peaceful town)
+        // and honor any spawner building's authored origin policy. Outside a village, no constraint.
+        VillageSpawnContext village = VillageSpawnContext.resolve(villager);
+        OriginSelector.Selection selection = village.active()
+                ? OriginSelector.select(villager.level(), villager.blockPosition(), villager.getRandom(), village::allows)
+                : OriginSelector.select(villager.level(), villager.blockPosition(), villager.getRandom());
         if (selection.isMixed()) {
             List<OriginSelector.Weighted> mix = selection.mix();
             Heredity.seedMixedFounder(state.life(), mix, villager.getRandom());
+            ResourceLocation mixedOrigin = ResourceLocation.tryParse(state.life().originId());
+            assignPersonality(villager, state, mixedOrigin == null ? OriginRegistry.DEFAULT_ID : mixedOrigin);
             OriginGenes.apply(villager, blendBodyMetrics(mix), villager.getRandom());
             rollBlendedTraitGenes(villager, mix);
             BlendedCycle blended = blendCycle(mix);
@@ -67,8 +78,12 @@ public final class OriginSpawnHandler {
             return;
         }
 
-        ResourceLocation originId = selection.single() != null ? selection.single() : OriginRegistry.DEFAULT_ID;
+        // Empty selection (everything filtered out in a village) falls back to the village's own
+        // majority origin, which is compatible by construction; else the default.
+        ResourceLocation originId = selection.single() != null ? selection.single()
+                : village.fallbackOrigin() != null ? village.fallbackOrigin() : OriginRegistry.DEFAULT_ID;
         state.life().setOrigin(originId.toString());
+        assignPersonality(villager, state, originId);
         // Founder: re-roll within the origin's ranges (not clamp). MCA's centeredRandom roll sits at
         // ~0.5, so clamping a range that doesn't straddle 0.5 pins every villager at the nearer bound
         // (all dwarves at their max size, all elves at their min) — re-rolling distributes them across
@@ -216,6 +231,20 @@ public final class OriginSpawnHandler {
      * ≥1.0 is guaranteed. MCA owns membership (persisted, synced, heritable); Townstead's effect
      * data rides alongside via {@link com.aetherianartificer.townstead.origin.trait.TraitRegistry}.
      */
+    /**
+     * Roll a personality from the origin's allowlist and apply it: store the chosen ref on the Life
+     * (drives display + voice) and set the MCA brain personality to the base enum it extends (so MCA's
+     * own mechanics apply). An origin with no personality policy yields a null ref, leaving MCA's own
+     * rolled personality untouched (vanilla behaviour).
+     */
+    public static void assignPersonality(VillagerEntityMCA villager, TownsteadVillager state, ResourceLocation originId) {
+        String ref = PersonalityResolver.roll(originId, villager.getRandom());
+        if (ref == null) return;
+        state.life().setPersonalityId(ref);
+        Personality base = PersonalityResolver.baseOf(ref);
+        if (base != null) villager.getVillagerBrain().setPersonality(base);
+    }
+
     private static void rollTraitGenes(VillagerEntityMCA villager, TownsteadVillager state, ResourceLocation originId) {
         for (com.aetherianartificer.townstead.origin.gene.types.TraitOccurrenceGeneType.Instance gene
                 : OriginRegistry.traitGenes(originId)) {

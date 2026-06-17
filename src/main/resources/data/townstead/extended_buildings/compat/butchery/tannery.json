@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "butchery:skin_rack"
+  },
+  "spirit": {
+    "industrious": 8,
+    "commercial": 2
+  }
+}

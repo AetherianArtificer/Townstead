@@ -61,6 +61,8 @@ dependencies {
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // Pheno unit tests touch Minecraft types; surface the main compile classpath to tests.
+    testImplementation(files(sourceSets.main.get().compileClasspath))
 }
 
 layout.buildDirectory.set(file("${rootProject.projectDir}/.cache/townstead-build-1.20.1-forge"))

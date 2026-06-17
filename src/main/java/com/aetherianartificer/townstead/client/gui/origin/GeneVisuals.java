@@ -37,9 +37,12 @@ final class GeneVisuals {
     private static final ResourceLocation STEVE_SKIN = new ResourceLocation("minecraft", "textures/entity/player/wide/steve.png");
     *///?}
 
-    // Lifespan / Abilities have no vanilla HUD sprite, so they render as item icons.
+    // Lifespan / Abilities have no vanilla HUD sprite, so they render as item icons. Abilities is an
+    // enchanted book: a clearer "innate power" read across climbing, night vision, fire immunity, etc.
     private static final ItemStack LIFESPAN_ITEM = new ItemStack(Items.CLOCK);
-    private static final ItemStack ABILITIES_ITEM = new ItemStack(Items.FEATHER);
+    private static final ItemStack ABILITIES_ITEM = new ItemStack(Items.ENCHANTED_BOOK);
+    // Reproduction (fertility, litter, gestation, egg-laying): a neutral egg, also a nod to egg-laying modes.
+    private static final ItemStack REPRODUCTION_ITEM = new ItemStack(Items.EGG);
 
     /**
      * A tinted, pressed-in stone button backdrop: a tiled stone texture darkened for
@@ -62,14 +65,19 @@ final class GeneVisuals {
         g.fill(x1 - 2, y0 + 1, x1 - 1, y1 - 1, 0x55FFFFFF);       // bevel right (light)
     }
 
+    /** Category key for matching: case-insensitive only. Names are kept canonical in the gene data. */
+    private static String key(String cat) {
+        return cat == null ? "" : cat.toLowerCase(Locale.ROOT);
+    }
+
     /**
      * Whether this category renders as an icon. Hydration only does so when a thirst mod
      * is present (its icon comes from that mod, and the gene is otherwise inert).
      */
     static boolean hasCategoryIcon(String cat) {
-        switch (cat == null ? "" : cat.toLowerCase(Locale.ROOT)) {
+        switch (key(cat)) {
             case "diet": case "health": case "lifespan": case "abilities":
-            case "activity": case "appearance": return true;
+            case "activity": case "appearance": case "reproduction": return true;
             case "hydration": return ThirstBridgeResolver.isActive();
             default: return false;
         }
@@ -77,11 +85,12 @@ final class GeneVisuals {
 
     /** Draws the {@link #ICON_SIZE}px category icon at (x,y). Only call when {@link #hasCategoryIcon}. */
     static void drawCategoryIcon(GuiGraphics g, String cat, int x, int y) {
-        switch (cat == null ? "" : cat.toLowerCase(Locale.ROOT)) {
+        switch (key(cat)) {
             case "diet":       foodIcon(g, x, y); break;
             case "health":     heartIcon(g, x, y); break;
             case "lifespan":   itemIcon(g, LIFESPAN_ITEM, x, y); break;
             case "abilities":  itemIcon(g, ABILITIES_ITEM, x, y); break;
+            case "reproduction": itemIcon(g, REPRODUCTION_ITEM, x, y); break;
             case "activity":   g.blit(ENERGY_ICON, x, y, 0, 0, 9, 9, 9, 9); break;
             case "appearance": g.blit(STEVE_SKIN, x, y, 8, 8, 8, 8, 64, 64); break; // default-skin face
             case "hydration":  thirstIcon(g, x, y); break;
@@ -123,13 +132,14 @@ final class GeneVisuals {
     }
 
     static int categoryTint(String cat) {
-        switch (cat == null ? "" : cat.toLowerCase(Locale.ROOT)) {
+        switch (key(cat)) {
             case "diet":       return 0xFF8FBF6F;
             case "hydration":  return 0xFF6FA8D8;
             case "activity":   return 0xFFD8B45A;
             case "health":     return 0xFFCF7070;
             case "lifespan":   return 0xFFB0AEC8;
             case "abilities":  return 0xFFD58CB8;
+            case "reproduction": return 0xFFD99CA8;
             case "appearance": return 0xFF6FCFC0;
             case "genetics":   return 0xFFB58CD8;
             default:           return hashTint(cat);

@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:ancestry/v1",
   "display_name": { "translate": "origin.townstead_origins.ancestry.human" },
   "species": "townstead_origins:humanoid",
   "demonym": {

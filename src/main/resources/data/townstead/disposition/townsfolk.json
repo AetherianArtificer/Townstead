@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:disposition/v1",
+  "members": [
+    "mca:male_villager",
+    "mca:female_villager",
+    "minecraft:villager",
+    "minecraft:player"
+  ],
+  "hostile": ["undead"]
+}

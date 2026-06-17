@@ -23,7 +23,8 @@ public final class OriginCatalog {
     private OriginCatalog() {}
 
     public record Snapshot(List<OriginCatalogEntry> origins, List<GeneCatalogEntry> genes,
-                           List<TraitCatalogEntry> traits) {}
+                           List<TraitCatalogEntry> traits,
+                           List<com.aetherianartificer.townstead.origin.rig.RigDefinition> rigs) {}
 
     public static Snapshot build() {
         List<OriginCatalogEntry> origins = new ArrayList<>();
@@ -74,23 +75,30 @@ public final class OriginCatalog {
                     keyOf(nameC), keyOf(singC), keyOf(plurC), keyOf(backstory),
                     keyOf(spc != null ? spc.displayName() : null),
                     keyOf(anc != null ? anc.displayName() : null),
-                    keyOf(lin != null ? lin.displayName() : null)));
+                    keyOf(lin != null ? lin.displayName() : null),
+                    spc != null ? spc.rig().base() : Rig.VILLAGER.base(),
+                    spc != null ? spc.rig().scale() : Rig.VILLAGER.scale(),
+                    spc != null ? spc.hold() : Hold.NONE,
+                    spc != null ? spc.animations() : Animations.DEFAULT,
+                    spc == null || spc.breasts()));
         }
-        return new Snapshot(origins, new ArrayList<>(genes.values()), traits);
+        return new Snapshot(origins, new ArrayList<>(genes.values()), traits,
+                com.aetherianartificer.townstead.origin.rig.RigRegistry.all());
     }
 
     private static GeneCatalogEntry toGeneEntry(ResourceLocation geneId) {
         Gene gene = GeneRegistry.byId(geneId);
         if (gene == null) {
             return new GeneCatalogEntry(geneId.toString(), geneId.getPath(), "", "general",
-                    GeneDisplay.Kind.BOOLEAN.ordinal(), 0f, 1f, "", 0f, 0, "", 1, List.of(), "", "");
+                    GeneDisplay.Kind.BOOLEAN.ordinal(), 0f, 1f, "", 0f, 0, "", 1, List.of(), "", "", "");
         }
         GeneDisplay display = gene.display();
         List<GeneCatalogEntry.Variant> variants = new ArrayList<>();
         if (gene.hasVariants()) {
             for (com.aetherianartificer.townstead.origin.gene.GeneVariant v : gene.variants()) {
                 variants.add(new GeneCatalogEntry.Variant(
-                        v.id(), v.displayName().getString(), v.weight(), keyOf(v.displayName())));
+                        v.id(), v.displayName().getString(), v.weight(), keyOf(v.displayName()),
+                        variantTint(v.instance()), variantTexture(v.instance()), variantGlow(v.instance())));
             }
         }
         return new GeneCatalogEntry(
@@ -106,7 +114,35 @@ public final class OriginCatalog {
                 gene.weight(),
                 variants,
                 keyOf(gene.displayName()),
-                keyOf(gene.description()));
+                keyOf(gene.description()),
+                faceSlotOf(gene.instance()));
+    }
+
+    /** The colour tint a variant carries (skin tone or eye colour), or {@code -1} for none. */
+    private static int variantTint(com.aetherianartificer.townstead.origin.gene.GeneInstance instance) {
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.SkinToneGeneType.Instance st) return st.tint();
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyeColorGeneType.Instance ec) return ec.tint();
+        return -1;
+    }
+
+    /** The face sprite-strip texture a variant carries (eyes/mouth), or {@code ""}. */
+    private static String variantTexture(com.aetherianartificer.townstead.origin.gene.GeneInstance instance) {
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyesGeneType.Instance e) return e.texture();
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.MouthGeneType.Instance m) return m.texture();
+        return "";
+    }
+
+    /** Whether an eyes variant is emissive (glowing). */
+    private static boolean variantGlow(com.aetherianartificer.townstead.origin.gene.GeneInstance instance) {
+        return instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyesGeneType.Instance e && e.glow();
+    }
+
+    /** The face slot a gene occupies ("eyes"/"mouth"/"eye_color"), else "". */
+    private static String faceSlotOf(com.aetherianartificer.townstead.origin.gene.GeneInstance instance) {
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyesGeneType.Instance) return "eyes";
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.MouthGeneType.Instance) return "mouth";
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyeColorGeneType.Instance) return "eye_color";
+        return "";
     }
 
     /** Translate key of a Component when it is a {@code translatable}, else "" (literal). */

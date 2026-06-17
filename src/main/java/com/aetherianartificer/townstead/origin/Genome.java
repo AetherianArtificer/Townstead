@@ -15,9 +15,11 @@ import java.util.List;
  * separate MCA-float map anymore; a body-metric gene carries its own range and is
  * resolved from the registry when needed.
  *
- * <p>Composed bottom-up (ancestry → lineage → origin) via {@link #mergedWith}: a
- * later layer's entry for the same gene id replaces the earlier one. Cross-gene
- * collapsing at a shared locus is done later, in
+ * <p>For founder assignment, composed from species, ancestry and lineage, then
+ * optional assignment-profile overrides via {@link #mergedWith}. A later
+ * contribution for the same gene id replaces the earlier one. The assignment
+ * profile is not itself a biological tier. Cross-gene collapsing at a shared
+ * locus is done later, in
  * {@link OriginRegistry#effectiveInheritedGenes}.</p>
  */
 public record Genome(List<InheritedGene> genes) {

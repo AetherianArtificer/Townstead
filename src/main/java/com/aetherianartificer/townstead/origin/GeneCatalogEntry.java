@@ -34,14 +34,33 @@ public record GeneCatalogEntry(
         // Translate keys for name/description, resolved into the strings above by a
         // localized client at sync-read time (empty when the source was literal).
         String nameKey,
-        String descriptionKey
+        String descriptionKey,
+        // Face-overlay slot for a custom-face gene: "eyes" / "mouth" / "eye_color", else "". Lets the
+        // client face layer identify the eyes/mouth/colour genes among an origin's inherited genes.
+        String faceSlot
 ) {
     public GeneCatalogEntry {
         variants = variants == null ? List.of() : List.copyOf(variants);
+        faceSlot = faceSlot == null ? "" : faceSlot;
     }
 
-    /** One option of a VARIANTS gene: its id, resolved label, roll weight, and the label's translate key. */
-    public record Variant(String id, String label, int weight, String labelKey) {}
+    /**
+     * One option of a VARIANTS gene: its id, resolved label, roll weight, the label's translate key,
+     * a colour tint ({@code 0xRRGGBB}, or {@code -1} when none), and — for a face eyes/mouth variant —
+     * its sprite-strip {@code texture} ({@code ""} when none) and {@code glow} (emissive eyes) flag.
+     */
+    public record Variant(String id, String label, int weight, String labelKey, int tint,
+                          String texture, boolean glow) {
+        public Variant {
+            texture = texture == null ? "" : texture;
+        }
+    }
+
+    /** This gene's face slot is eyes / mouth / eye_color (a custom-face overlay gene). */
+    public boolean isEyes() { return "eyes".equals(faceSlot); }
+    public boolean isMouth() { return "mouth".equals(faceSlot); }
+    public boolean isEyeColor() { return "eye_color".equals(faceSlot); }
+    public boolean isFace() { return !faceSlot.isEmpty(); }
 
     public boolean isVariants() {
         return displayKind == GeneDisplay.Kind.VARIANTS.ordinal();
@@ -92,6 +111,49 @@ public record GeneCatalogEntry(
     /** For ATTACHMENT genes, the attachment id (rides in {@code targetId}). */
     public String attachmentId() { return targetId; }
 
+    public boolean isHideFeature() {
+        return displayKind == GeneDisplay.Kind.HIDE_FEATURE.ordinal();
+    }
+
+    /** True when this gene grants an innate ability (ability key rides in {@code targetId}). */
+    public boolean isAbility() {
+        return displayKind == GeneDisplay.Kind.ABILITY.ordinal();
+    }
+
+    /** For ABILITY genes, the granted ability key (e.g. {@code night_vision}); empty otherwise. */
+    public String abilityKey() {
+        return isAbility() && targetId != null ? targetId : "";
+    }
+
+    /** For ABILITY genes, whether it is toggle-mode (rides in {@code amount}); false = always-on passive. */
+    public boolean abilityToggle() {
+        return isAbility() && Math.round(amount) == 1;
+    }
+
+    /** True when this gene draws a full-screen HUD overlay (texture rides in {@code targetId}). */
+    public boolean isOverlay() {
+        return displayKind == GeneDisplay.Kind.OVERLAY.ordinal();
+    }
+
+    /** For OVERLAY genes, the texture id to blit full-screen; empty otherwise. */
+    public String overlayTexture() {
+        return isOverlay() && targetId != null ? targetId : "";
+    }
+
+    /** For OVERLAY genes, the draw alpha 0–1 (rides in {@code min}). */
+    public float overlayAlpha() {
+        return isOverlay() ? Math.max(0f, Math.min(1f, min)) : 1f;
+    }
+
+    /** Whether a HIDE_FEATURE gene hides the given part group ({@code head}/{@code body}/{@code arms}/{@code legs}). */
+    public boolean hidesPart(String group) {
+        if (targetId == null || targetId.isEmpty()) return false;
+        for (String entry : targetId.split(";")) {
+            if (entry.equals(group)) return true;
+        }
+        return false;
+    }
+
     /**
      * COLOR tint (RGB), parsed from {@code targetId} {@code "rrggbb-rrggbb"} (both parts equal —
      * the gene carries one tint colour, multiplied over MCA's exact skin; white = unchanged).
@@ -114,6 +176,46 @@ public record GeneCatalogEntry(
         } catch (NumberFormatException e) {
             return fallback;
         }
+    }
+
+    /** True when this gene emits ambient particles (emitter params ride in {@code targetId}). */
+    public boolean isParticle() {
+        return displayKind == GeneDisplay.Kind.PARTICLE.ordinal();
+    }
+
+    /** PARTICLE emitter params, parsed from {@code targetId} {@code "particleId;count;spread;speed;yOffset"}. */
+    public String particleId() { return particlePart(0, ""); }
+    public int particleCount() { return (int) particleFloat(1, 1f); }
+    public float particleSpread() { return particleFloat(2, 0.4f); }
+    public float particleSpeed() { return particleFloat(3, 0f); }
+    public float particleYOffset() { return particleFloat(4, 0.6f); }
+
+    private String particlePart(int idx, String fallback) {
+        if (targetId == null || targetId.isEmpty()) return fallback;
+        String[] parts = targetId.split(";");
+        return idx < parts.length ? parts[idx] : fallback;
+    }
+
+    private float particleFloat(int idx, float fallback) {
+        try {
+            return Float.parseFloat(particlePart(idx, Float.toString(fallback)).trim());
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    /** True when this gene switches off one or more needs (suppressed needs ride in {@code targetId}). */
+    public boolean isSuppressNeed() {
+        return displayKind == GeneDisplay.Kind.SUPPRESS_NEED.ordinal();
+    }
+
+    /** Whether this gene suppresses the given need ({@code hunger}/{@code thirst}/{@code sleep}). */
+    public boolean suppressesNeed(String need) {
+        if (!isSuppressNeed() || targetId == null || targetId.isEmpty()) return false;
+        for (String entry : targetId.split(";")) {
+            if (entry.equals(need)) return true;
+        }
+        return false;
     }
 
     public boolean isRecessive() {

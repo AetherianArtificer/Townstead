@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
+import com.aetherianartificer.townstead.origin.needs.NeedSuppression;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -53,6 +54,22 @@ public final class HungerVillagerTicker {
 
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
+
+        // A diet:"none" race does not eat: pin hunger full so it never decays and the refuel task
+        // never fires, and remove any lingering hunger speed penalty. The interact screen hides the
+        // icon client-side from the same diet gene.
+        if (NeedSuppression.suppressesHunger(self)) {
+            needs.setEatingMode(false);
+            if (needs.hunger() != HungerData.MAX_HUNGER) needs.setHunger(HungerData.MAX_HUNGER);
+            removeSpeedModifier(self);
+            int pinned = needs.hunger();
+            if (pinned != state.lastSyncedHunger) {
+                state.lastSyncedHunger = pinned;
+                pushHunger(self, needs.hungerTag());
+            }
+            return;
+        }
+
         boolean hungerChanged = VillagerConsumptionManager.tickAndFinalize(self, needs);
 
         long dayTime = level.getDayTime();
@@ -137,17 +154,20 @@ public final class HungerVillagerTicker {
         int currentHunger = needs.hunger();
         if (currentHunger != state.lastSyncedHunger || hungerChanged) {
             state.lastSyncedHunger = currentHunger;
-            CompoundTag hunger = needs.hungerTag();
-            //? if neoforge {
-            PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$hungerSync(self, hunger));
-            //?} else if forge {
-            /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$hungerSync(self, hunger));
-            *///?}
+            pushHunger(self, needs.hungerTag());
         }
 
         if (!self.isAlive() || self.isRemoved()) {
             STATE.remove(self.getId());
         }
+    }
+
+    private static void pushHunger(VillagerEntityMCA self, CompoundTag hunger) {
+        //? if neoforge {
+        PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$hungerSync(self, hunger));
+        //?} else if forge {
+        /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$hungerSync(self, hunger));
+        *///?}
     }
 
     private static boolean isGuardPatrolling(VillagerEntityMCA self) {

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.origin.chronotype;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.aetherianartificer.townstead.origin.gene.types.ChronotypeGeneType;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -43,6 +44,7 @@ public final class ChronotypeCatalogLoader extends SimpleJsonResourceReloadListe
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                TownsteadSchema.validate(obj, "townstead:chronotype/v1");
                 int[] sleepHours = ChronotypeGeneType.tickHours(obj);
                 if (sleepHours == null) {
                     LOGGER.warn("Skipping chronotype variant {} — missing/empty 'sleep_hours'", file);

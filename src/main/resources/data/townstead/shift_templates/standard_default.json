@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:shift_template/v1",
   "name_key": "townstead.shift.template.standard_default.name",
   "chronotype": "standard",
   "shifts": [3, 0, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3]

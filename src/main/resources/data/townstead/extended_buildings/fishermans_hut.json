@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "spirit": {
+    "nautical": 5,
+    "pastoral": 2
+  }
+}

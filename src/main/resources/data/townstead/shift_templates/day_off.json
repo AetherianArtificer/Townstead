@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:shift_template/v1",
   "name_key": "townstead.shift.template.day_off.name",
   "shifts": [0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
 }

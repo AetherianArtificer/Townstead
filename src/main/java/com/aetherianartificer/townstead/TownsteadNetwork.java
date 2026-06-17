@@ -228,10 +228,54 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.origin.OriginSetC2SPayload::write,
                 com.aetherianartificer.townstead.origin.OriginSetC2SPayload::read,
                 TownsteadNetwork::handleOriginSet);
+        registerC2S(com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload.class,
+                com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload::write,
+                com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload::read,
+                TownsteadNetwork::handleSetGeneVariant);
+        registerC2S(com.aetherianartificer.townstead.origin.SetPersonalityC2SPayload.class,
+                com.aetherianartificer.townstead.origin.SetPersonalityC2SPayload::write,
+                com.aetherianartificer.townstead.origin.SetPersonalityC2SPayload::read,
+                TownsteadNetwork::handleSetPersonality);
+        registerC2S(com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload.class,
+                com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload::write,
+                com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload::read,
+                TownsteadNetwork::handleActivateAbility);
+        registerC2S(com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload.class,
+                com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload::write,
+                com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload::read,
+                TownsteadNetwork::handleKeyPress);
         registerS2C(com.aetherianartificer.townstead.origin.OriginSyncS2CPayload.class,
                 com.aetherianartificer.townstead.origin.OriginSyncS2CPayload::write,
                 com.aetherianartificer.townstead.origin.OriginSyncS2CPayload::read,
                 TownsteadNetwork::handleOriginSync);
+        registerS2C(com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload.class,
+                com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload::write,
+                com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload::read,
+                TownsteadNetwork::handleExpressedGenesSync);
+        registerS2C(com.aetherianartificer.townstead.origin.ability.ResourceSyncS2CPayload.class,
+                com.aetherianartificer.townstead.origin.ability.ResourceSyncS2CPayload::write,
+                com.aetherianartificer.townstead.origin.ability.ResourceSyncS2CPayload::read,
+                TownsteadNetwork::handleResourceSync);
+        registerS2C(com.aetherianartificer.townstead.origin.ability.AbilityTogglesS2CPayload.class,
+                com.aetherianartificer.townstead.origin.ability.AbilityTogglesS2CPayload::write,
+                com.aetherianartificer.townstead.origin.ability.AbilityTogglesS2CPayload::read,
+                TownsteadNetwork::handleAbilityTogglesSync);
+        registerS2C(com.aetherianartificer.townstead.origin.fx.OverlayActiveS2CPayload.class,
+                com.aetherianartificer.townstead.origin.fx.OverlayActiveS2CPayload::write,
+                com.aetherianartificer.townstead.origin.fx.OverlayActiveS2CPayload::read,
+                TownsteadNetwork::handleOverlayActiveSync);
+        registerS2C(com.aetherianartificer.townstead.origin.attachment.AttachmentManifestS2CPayload.class,
+                com.aetherianartificer.townstead.origin.attachment.AttachmentManifestS2CPayload::write,
+                com.aetherianartificer.townstead.origin.attachment.AttachmentManifestS2CPayload::read,
+                TownsteadNetwork::handleAttachmentManifest);
+        registerC2S(com.aetherianartificer.townstead.origin.attachment.AttachmentRequestC2SPayload.class,
+                com.aetherianartificer.townstead.origin.attachment.AttachmentRequestC2SPayload::write,
+                com.aetherianartificer.townstead.origin.attachment.AttachmentRequestC2SPayload::read,
+                TownsteadNetwork::handleAttachmentRequest);
+        registerS2C(com.aetherianartificer.townstead.origin.attachment.AttachmentChunkS2CPayload.class,
+                com.aetherianartificer.townstead.origin.attachment.AttachmentChunkS2CPayload::write,
+                com.aetherianartificer.townstead.origin.attachment.AttachmentChunkS2CPayload::read,
+                TownsteadNetwork::handleAttachmentChunk);
         registerS2C(com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload.class,
                 com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload::write,
                 com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload::read,
@@ -258,6 +302,36 @@ public final class TownsteadNetwork {
         com.aetherianartificer.townstead.client.origin.HeritageClientStore.setFrom(payload);
     }
 
+    private static void handleSetGeneVariant(
+            com.aetherianartificer.townstead.origin.SetGeneVariantC2SPayload payload, ServerPlayer sp) {
+        int target = com.aetherianartificer.townstead.origin.OriginServerLogic.setVariant(
+                sp, payload.entityId(), payload.geneId(), payload.variantId());
+        if (target == com.aetherianartificer.townstead.origin.OriginSetC2SPayload.NONE) return;
+        Entity entity = sp.serverLevel().getEntity(target);
+        if (entity instanceof net.minecraft.world.entity.LivingEntity living) {
+            com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload genes =
+                    com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload.forEntity(target, living);
+            sendToPlayer(sp, genes);
+            sendToTrackingEntity(entity, genes);
+        }
+    }
+
+    private static void handleSetPersonality(
+            com.aetherianartificer.townstead.origin.SetPersonalityC2SPayload payload, ServerPlayer sp) {
+        int target = com.aetherianartificer.townstead.origin.OriginServerLogic.setPersonality(
+                sp, payload.entityId(), payload.ref());
+        if (target == com.aetherianartificer.townstead.origin.OriginSetC2SPayload.NONE) return;
+        Entity entity = sp.serverLevel().getEntity(target);
+        if (entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
+            com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload lifeSync =
+                    com.aetherianartificer.townstead.Townstead.townstead$lifeSync(villager);
+            if (lifeSync != null) {
+                sendToPlayer(sp, lifeSync);
+                sendToTrackingEntity(villager, lifeSync);
+            }
+        }
+    }
+
     private static void handleOriginSet(
             com.aetherianartificer.townstead.origin.OriginSetC2SPayload payload, ServerPlayer sp) {
         com.aetherianartificer.townstead.origin.OriginServerLogic.Result result =
@@ -269,7 +343,15 @@ public final class TownsteadNetwork {
         sendToPlayer(sp, sync);
         if (result.targetId() != com.aetherianartificer.townstead.origin.OriginSetC2SPayload.SELF) {
             Entity tracked = sp.serverLevel().getEntity(result.targetId());
-            if (tracked != null) sendToTrackingEntity(tracked, sync);
+            if (tracked != null) {
+                sendToTrackingEntity(tracked, sync);
+                if (tracked instanceof net.minecraft.world.entity.LivingEntity living) {
+                    com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload genes =
+                            com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload.forEntity(tracked.getId(), living);
+                    sendToPlayer(sp, genes);
+                    sendToTrackingEntity(tracked, genes);
+                }
+            }
         } else {
             // Self-origin change: also re-key by the player's network id so their own
             // model (sent to themselves) and bystanders' views (tracking sync) re-tint.
@@ -277,11 +359,54 @@ public final class TownsteadNetwork {
                     new com.aetherianartificer.townstead.origin.OriginSyncS2CPayload(sp.getId(), result.originId());
             sendToPlayer(sp, entitySync);
             sendToTrackingEntity(sp, entitySync);
+            com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload selfGenes =
+                    com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload.forEntity(sp.getId(), sp);
+            sendToPlayer(sp, selfGenes);
+            sendToTrackingEntity(sp, selfGenes);
         }
+    }
+
+    private static void handleActivateAbility(
+            com.aetherianartificer.townstead.origin.ability.ActivateAbilityC2SPayload payload, ServerPlayer sp) {
+        com.aetherianartificer.townstead.origin.ability.ActiveAbilities.activate(sp, payload.slot());
+    }
+
+    private static void handleKeyPress(
+            com.aetherianartificer.townstead.origin.trigger.KeyPressC2SPayload payload, ServerPlayer sp) {
+        com.aetherianartificer.townstead.origin.trigger.GeneTriggers.firePress(sp, payload.key());
     }
 
     private static void handleOriginSync(com.aetherianartificer.townstead.origin.OriginSyncS2CPayload payload) {
         com.aetherianartificer.townstead.client.origin.OriginClientStore.set(payload.entityId(), payload.originId());
+    }
+
+    private static void handleExpressedGenesSync(com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload payload) {
+        com.aetherianartificer.townstead.client.origin.OriginClientStore.setExpressed(payload.entityId(), payload.genes());
+    }
+
+    private static void handleResourceSync(com.aetherianartificer.townstead.origin.ability.ResourceSyncS2CPayload payload) {
+        com.aetherianartificer.townstead.client.origin.ResourceClientStore.set(payload.bars());
+    }
+
+    private static void handleAbilityTogglesSync(com.aetherianartificer.townstead.origin.ability.AbilityTogglesS2CPayload payload) {
+        com.aetherianartificer.townstead.client.origin.OriginClientStore.setToggles(payload.entityId(), payload.geneIds());
+    }
+
+    private static void handleOverlayActiveSync(com.aetherianartificer.townstead.origin.fx.OverlayActiveS2CPayload payload) {
+        com.aetherianartificer.townstead.client.origin.OverlayClientStore.set(payload.geneIds());
+    }
+
+    private static void handleAttachmentManifest(com.aetherianartificer.townstead.origin.attachment.AttachmentManifestS2CPayload payload) {
+        com.aetherianartificer.townstead.client.attachment.AttachmentClient.onManifest(payload.defs(), payload.slots(), payload.namedTextures());
+    }
+
+    private static void handleAttachmentChunk(com.aetherianartificer.townstead.origin.attachment.AttachmentChunkS2CPayload payload) {
+        com.aetherianartificer.townstead.client.attachment.AttachmentClient.onChunk(
+                payload.sha1(), payload.index(), payload.total(), payload.kind(), payload.data());
+    }
+
+    private static void handleAttachmentRequest(com.aetherianartificer.townstead.origin.attachment.AttachmentRequestC2SPayload payload, ServerPlayer sp) {
+        com.aetherianartificer.townstead.origin.attachment.AttachmentSync.handleRequest(sp, payload.hashes());
     }
 
     private static void handleOriginCatalogSync(com.aetherianartificer.townstead.origin.OriginCatalogSyncPayload payload) {

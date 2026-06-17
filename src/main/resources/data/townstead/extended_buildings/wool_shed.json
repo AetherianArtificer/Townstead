@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:loom"
+  },
+  "spirit": {
+    "pastoral": 5,
+    "industrious": 1
+  }
+}

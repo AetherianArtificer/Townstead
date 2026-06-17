@@ -1,18 +1,22 @@
 {
+    "schema": "townstead:reaction/v2",
     "display_name": "Applaud",
     "tags": ["social", "approval"],
-    "cooldown_ticks": 400,
+    "cooldown": "20s",
     "chance": 1.0,
     "mirror_radius": 8,
     "mirror_chance": 0.6,
     "triggers": [
         { "type": "gesture", "emote": "emotecraft:clap", "max_distance": 8 }
     ],
-    "bindings": [
+    "choices": [
         {
-            "ref": "emotecraft:clap",
+            "animation": {
+                "type": "emotecraft",
+                "id": "clap",
+                "allow_movement": true
+            },
             "weight": 1,
-            "allow_movement": true,
             "personality_weights": {
                 "friendly": 2.0,
                 "upbeat": 1.8,

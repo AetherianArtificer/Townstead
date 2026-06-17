@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "butchery:meat_grinder"
+  },
+  "spirit": {
+    "pastoral": 12,
+    "industrious": 6
+  }
+}

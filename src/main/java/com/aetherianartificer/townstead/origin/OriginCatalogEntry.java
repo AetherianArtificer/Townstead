@@ -32,7 +32,18 @@ public record OriginCatalogEntry(
         String backstoryKey,
         String speciesNameKey,
         String ancestryNameKey,
-        String lineageNameKey
+        String lineageNameKey,
+        // The species' rig base model reference (e.g. mca:villager, minecraft:skeleton),
+        // so the client renderer can swap the rendered model per villager.
+        String rigBase,
+        // The species' uniform render scale for that rig.
+        float rigScale,
+        // The species' held-item anchoring (per-hand bone + offset/rotation, or null grips).
+        Hold hold,
+        // The species' per-state animation sources, so the client rig renderer poses crouch/sleep/fly.
+        Animations animations,
+        // Whether this species' body shows breasts (false hides MCA's breast part for it).
+        boolean breasts
 ) {
     /** A gene this origin inherits, with its base occurrence (presence probability). */
     public record Inherited(String geneId, float occurrence) {}

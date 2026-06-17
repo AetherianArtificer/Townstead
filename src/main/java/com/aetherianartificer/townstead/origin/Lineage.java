@@ -7,13 +7,14 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * A lineage: a named specialization of an ancestry (e.g. Dark Elf under Elf), with its
- * own nomenclature. When an origin references a lineage, the composed genome starts from
- * the union of the lineage's listed ancestries' genomes, then this lineage's own
- * {@link #genome()} is layered on top.
+ * A lineage: a named specialization of an ancestry (e.g. Dark Elf under Elf),
+ * with its own nomenclature. When an assignment profile references a lineage,
+ * the founder genome starts from the union of its listed ancestries' genomes,
+ * then this lineage's own {@link #genome()} is layered on top.
  *
- * <p>(A future Heritage tier will sit above this for cross-ancestry hybrids like
- * half-elves; a lineage is a branch of a single ancestry.)</p>
+ * <p>Heritage follows lineage in the conceptual Origins model. It records an
+ * individual's realised ancestry composition and can name cross-ancestry
+ * identities such as Half-Elves.</p>
  *
  * <p>Loaded from {@code data/<ns>/lineage/<path>.json}. None ship built-in; lineages are
  * authored by data packs.</p>

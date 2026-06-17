@@ -24,6 +24,30 @@ public final class TownsteadVillagerState {
         return get(villager);
     }
 
+    /**
+     * Read the origin id straight out of the villager's own persisted snapshot (works client-side too).
+     * Used to recover a carried/reconstructed entity's species when no live per-entity sync exists for it
+     * (CarryOn rebuilds the entity from NBT with a fresh id that was never tracked). Empty if none.
+     */
+    public static String snapshotOriginId(VillagerEntityMCA villager) {
+        return loadSnapshotTag(villager).getCompound("life").getString("originId");
+    }
+
+    /** The variant id this villager carries for {@code geneId} in its persisted snapshot, or empty. */
+    public static String snapshotCarriedVariant(VillagerEntityMCA villager, String geneId) {
+        if (geneId == null || geneId.isEmpty()) return "";
+        return loadSnapshotTag(villager).getCompound("life").getCompound("carriedVariants").getString(geneId);
+    }
+
+    /** The expressed allele encodings persisted in the villager's snapshot (render fallback for carried entities). */
+    public static java.util.List<String> snapshotExpressedAlleles(VillagerEntityMCA villager) {
+        net.minecraft.nbt.ListTag list = loadSnapshotTag(villager).getCompound("life")
+                .getList("expressedAlleles", net.minecraft.nbt.Tag.TAG_STRING);
+        java.util.List<String> out = new java.util.ArrayList<>(list.size());
+        for (int i = 0; i < list.size(); i++) out.add(list.getString(i));
+        return out;
+    }
+
     static void loadInto(VillagerEntityMCA villager, TownsteadVillager state) {
         CompoundTag snapshot = loadSnapshotTag(villager);
         if (snapshot.contains("schema") && snapshot.getInt("schema") >= TownsteadVillager.SCHEMA_VERSION) {

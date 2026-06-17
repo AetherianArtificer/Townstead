@@ -1,4 +1,5 @@
 {
+  "schema": "townstead:gene/v2",
   "type": "townstead_origins:chronotype",
   "display_name": { "translate": "chronotype.mix.diurnal" },
   "category": "Activity",

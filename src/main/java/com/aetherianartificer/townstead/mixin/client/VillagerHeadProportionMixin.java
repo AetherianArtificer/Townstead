@@ -74,6 +74,10 @@ public abstract class VillagerHeadProportionMixin<T extends LivingEntity & Villa
         townstead$scalePart(model.rightLeg, proportions, "legs", xz0, y0);
         townstead$scalePart(model.leftLeg, proportions, "legs", xz0, y0);
         townstead$scalePart(model.body, proportions, "body", xz0, y0);
+
+        // Hidden features (prevent_feature_render): zero the listed groups after proportions.
+        com.aetherianartificer.townstead.client.origin.HideFeatures.hide(
+                model, com.aetherianartificer.townstead.client.origin.HideFeatures.hiddenGroups(entity));
     }
 
     /**
@@ -98,7 +102,7 @@ public abstract class VillagerHeadProportionMixin<T extends LivingEntity & Villa
 
     /** The proportions gene on the entity's applied origin (synced catalog), or {@code null}. */
     private static GeneCatalogEntry townstead$proportionsGene(LivingEntity entity) {
-        String originId = OriginClientStore.get(entity.getId());
+        String originId = OriginClientStore.resolve(entity);
         if (originId.isEmpty()) return null;
         OriginCatalogEntry origin = OriginCatalogClient.origin(originId);
         if (origin == null) return null;

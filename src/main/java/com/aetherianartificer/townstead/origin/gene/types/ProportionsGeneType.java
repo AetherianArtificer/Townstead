@@ -35,16 +35,16 @@ import java.util.Map;
  *       own (e.g. {@code leg_front}/{@code tail}) in its own hook.</li>
  * </ul>
  *
- * <p>JSON: {@code { "type":"townstead_origins:proportions", "category":"Appearance",
+ * <p>JSON: {@code { "type":"pheno:proportions", "category":"Appearance",
  * "size":{"min":0.0,"max":0.2}, "width":{"min":0.5,"max":0.7}, "head":1.0, "arms":1.0, "legs":1.0 }}.
  * All body metrics in the bundle share one auto-locus, so a lineage's proportions gene replaces its
  * ancestry's whole build at once.</p>
  */
 public final class ProportionsGeneType implements GeneType {
 
-    public static final String KEY = "townstead_origins:proportions";
+    public static final String KEY = "pheno:proportions";
 
-    private static final ResourceLocation LOCUS = ResourceLocation.tryParse("townstead_origins:proportions");
+    private static final ResourceLocation LOCUS = ResourceLocation.tryParse("pheno:proportions");
 
     public record Instance(Map<String, GeneRange> bodyMetrics, Map<String, Float> partScales)
             implements GeneInstance {
