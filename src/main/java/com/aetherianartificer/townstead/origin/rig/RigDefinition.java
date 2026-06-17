@@ -33,6 +33,18 @@ public record RigDefinition(
         // Data-driven so any body (humanoid, spider, custom geo) places its face where it belongs,
         // instead of assuming a vanilla 8×8 humanoid head.
         Face face,
+        // Where back-worn render layers (backpack, cape, elytra) sit, or null. These layers anchor to
+        // the host humanoid body bone; for a non-humanoid rig that bone is invisible and stuck at the
+        // default humanoid chest, so the item floats. This re-poses that bone onto the rig's actual
+        // back. Only consulted for non-humanoid rigs (a humanoid rig drives the bone from the rig).
+        Back back,
+        // Where head-worn render layers (helmet, worn mob head/pumpkin) sit, or null. They anchor to
+        // the host head bone, which for a non-humanoid rig floats at the default humanoid head; this
+        // re-poses it onto the rig's real head. Only consulted for non-humanoid rigs.
+        Adjust head,
+        // Worn boots placed on a non-humanoid rig's legs: one entry per leg bone (vanilla only draws
+        // two boots). Empty when the rig declares none.
+        List<Boot> boots,
         // Whether this rig uses MCA hair. False by default (a custom rig draws its own head and a
         // skeleton has no hair, so the editor hides the hair controls); set true to opt back in.
         boolean hair
@@ -40,6 +52,43 @@ public record RigDefinition(
     public enum ModelType { ENTITY_LAYER, GEOMETRY }
 
     public enum ArmorType { NONE, LAYERS, CUSTOM }
+
+    /**
+     * A transform applied to the host body bone: {@code offset} in model pixels, {@code rotation} in
+     * degrees (X/Y/Z). The base anchor places back-worn layers on the rig; per-item entries add a
+     * delta on top of it.
+     */
+    public record Adjust(float[] offset, float[] rotation) {
+        public static final Adjust ZERO = new Adjust(new float[]{0f, 0f, 0f}, new float[]{0f, 0f, 0f});
+
+        /** This adjust plus a per-item delta (component-wise; rotation summed per axis in degrees). */
+        public Adjust plus(Adjust d) {
+            return new Adjust(
+                    new float[]{offset[0] + d.offset[0], offset[1] + d.offset[1], offset[2] + d.offset[2]},
+                    new float[]{rotation[0] + d.rotation[0], rotation[1] + d.rotation[1], rotation[2] + d.rotation[2]});
+        }
+    }
+
+    /**
+     * The anchor for back-worn render layers (backpack, cape, elytra), which all read the host body
+     * bone. {@code base} re-poses that bone onto the rig's real back; {@code items} holds optional
+     * per-layer deltas (keyed {@code backpack}/{@code cape}/{@code elytra}) for items that need a
+     * slightly different placement. Tuned per rig by eye.
+     */
+    public record Back(Adjust base, Map<String, Adjust> items) {
+        /** The transform for a layer key: base plus its delta, or just base when none is declared. */
+        public Adjust forItem(String key) {
+            Adjust delta = items.get(key);
+            return delta == null ? base : base.plus(delta);
+        }
+    }
+
+    /**
+     * One worn boot placed on a rig leg: anchored to {@code bone} (so it tracks the walk), drawn as
+     * the {@code left} or right boot mesh, {@code scale}d, with a {@code seat} ({@code offset} in the
+     * bone's local frame + {@code rotation}) tuned per leg to sit it on that foot.
+     */
+    public record Boot(String bone, boolean left, float scale, Adjust seat) {}
 
     /**
      * The face overlay anchor for {@code SpeciesFace}: which {@code bone} the face rides, the

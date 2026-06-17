@@ -99,9 +99,50 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
                     GsonHelper.getAsFloat(f, "forward", -1f));
         }
 
+        // Worn-equipment anchors (head/back/boots) live under a "wearables" object; a top-level block
+        // is still read as a fallback so older rigs keep working.
+        JsonObject worn = obj.has("wearables") && obj.get("wearables").isJsonObject()
+                ? obj.getAsJsonObject("wearables") : obj;
+
+        RigDefinition.Back back = null;
+        if (worn.has("back") && worn.get("back").isJsonObject()) {
+            JsonObject b = worn.getAsJsonObject("back");
+            Map<String, RigDefinition.Adjust> items = new LinkedHashMap<>();
+            if (b.has("items") && b.get("items").isJsonObject()) {
+                for (Map.Entry<String, JsonElement> e : b.getAsJsonObject("items").entrySet()) {
+                    if (e.getValue().isJsonObject()) items.put(e.getKey(), adjust(e.getValue().getAsJsonObject()));
+                }
+            }
+            back = new RigDefinition.Back(adjust(b), Map.copyOf(items));
+        }
+
+        RigDefinition.Adjust head = null;
+        if (worn.has("head") && worn.get("head").isJsonObject()) {
+            head = adjust(worn.getAsJsonObject("head"));
+        }
+
+        java.util.List<RigDefinition.Boot> boots = new java.util.ArrayList<>();
+        if (worn.has("boots") && worn.get("boots").isJsonArray()) {
+            for (JsonElement e : worn.getAsJsonArray("boots")) {
+                if (!e.isJsonObject()) continue;
+                JsonObject bo = e.getAsJsonObject();
+                String bone = GsonHelper.getAsString(bo, "bone", "");
+                if (bone.isEmpty()) continue;
+                boolean left = "left".equalsIgnoreCase(GsonHelper.getAsString(bo, "boot", "right"));
+                boots.add(new RigDefinition.Boot(bone, left, GsonHelper.getAsFloat(bo, "scale", 1f), adjust(bo)));
+            }
+        }
+
         boolean hair = GsonHelper.getAsBoolean(obj, "hair", false);
 
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, hair);
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hair);
+    }
+
+    /** Read an offset+rotation transform (both optional vec3, default zero) from an object. */
+    private static RigDefinition.Adjust adjust(JsonObject obj) {
+        return new RigDefinition.Adjust(
+                vec(obj, "offset", 3, new float[]{0f, 0f, 0f}),
+                vec(obj, "rotation", 3, new float[]{0f, 0f, 0f}));
     }
 
     /** Read a fixed-length float array from a JSON array key, falling back to {@code def}. */

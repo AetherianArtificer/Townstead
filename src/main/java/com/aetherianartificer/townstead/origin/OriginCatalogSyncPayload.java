@@ -244,7 +244,37 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             for (float v : f.size()) buf.writeFloat(v);
             buf.writeFloat(f.forward());
         }
+        buf.writeBoolean(r.back() != null);
+        if (r.back() != null) {
+            RigDefinition.Back b = r.back();
+            writeAdjust(buf, b.base());
+            buf.writeVarInt(b.items().size());
+            for (Map.Entry<String, RigDefinition.Adjust> e : b.items().entrySet()) {
+                buf.writeUtf(e.getKey());
+                writeAdjust(buf, e.getValue());
+            }
+        }
+        buf.writeBoolean(r.head() != null);
+        if (r.head() != null) writeAdjust(buf, r.head());
+        buf.writeVarInt(r.boots().size());
+        for (RigDefinition.Boot boot : r.boots()) {
+            buf.writeUtf(boot.bone());
+            buf.writeBoolean(boot.left());
+            buf.writeFloat(boot.scale());
+            writeAdjust(buf, boot.seat());
+        }
         buf.writeBoolean(r.hair());
+    }
+
+    private static void writeAdjust(FriendlyByteBuf buf, RigDefinition.Adjust a) {
+        for (int k = 0; k < 3; k++) buf.writeFloat(a.offset()[k]);
+        for (int k = 0; k < 3; k++) buf.writeFloat(a.rotation()[k]);
+    }
+
+    private static RigDefinition.Adjust readAdjust(FriendlyByteBuf buf) {
+        float[] offset = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+        float[] rotation = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+        return new RigDefinition.Adjust(offset, rotation);
     }
 
     private static RigDefinition readRig(FriendlyByteBuf buf) {
@@ -266,8 +296,25 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
             float[] size = {buf.readFloat(), buf.readFloat()};
             face = new RigDefinition.Face(bone, center, size, buf.readFloat());
         }
+        RigDefinition.Back back = null;
+        if (buf.readBoolean()) {
+            RigDefinition.Adjust base = readAdjust(buf);
+            int in = buf.readVarInt();
+            Map<String, RigDefinition.Adjust> items = new java.util.LinkedHashMap<>();
+            for (int i = 0; i < in; i++) items.put(buf.readUtf(), readAdjust(buf));
+            back = new RigDefinition.Back(base, Map.copyOf(items));
+        }
+        RigDefinition.Adjust head = buf.readBoolean() ? readAdjust(buf) : null;
+        int bootCount = buf.readVarInt();
+        java.util.List<RigDefinition.Boot> boots = new ArrayList<>(bootCount);
+        for (int i = 0; i < bootCount; i++) {
+            String bone = buf.readUtf();
+            boolean left = buf.readBoolean();
+            float scale = buf.readFloat();
+            boots.add(new RigDefinition.Boot(bone, left, scale, readAdjust(buf)));
+        }
         boolean hair = buf.readBoolean();
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, hair);
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hair);
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

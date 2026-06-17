@@ -178,6 +178,17 @@ public final class RigModels {
     }
 
     /**
+     * A baked rig bone by geo name from the already-cached root, WITHOUT triggering a humanoid bake.
+     * Safe for generic (non-humanoid) rigs, whose root must be baked via {@link #genericModel} first;
+     * returns null if the root is not baked yet or the bone is absent.
+     */
+    public static ModelPart bakedBone(String rigBase, String name) {
+        if (name == null || name.isEmpty()) return null;
+        ModelPart root = ROOTS.get(rigBase);
+        return root != null && root.hasChild(name) ? root.getChild(name) : null;
+    }
+
+    /**
      * Host-renderer "equivalence" baselines: how much to scale a vanilla humanoid rig so it renders
      * at the same height as the host it replaces, so an authored {@code rig.scale} of 1.0 means
      * host-normal. Empirically both the villager renderer and the genetics-player renderer draw the
