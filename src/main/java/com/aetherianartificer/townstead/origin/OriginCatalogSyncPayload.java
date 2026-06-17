@@ -104,9 +104,12 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                 buf.writeVarInt(v.weight());
                 buf.writeUtf(v.labelKey());
                 buf.writeInt(v.tint());
+                buf.writeUtf(v.texture());
+                buf.writeBoolean(v.glow());
             }
             buf.writeUtf(g.nameKey());
             buf.writeUtf(g.descriptionKey());
+            buf.writeUtf(g.faceSlot());
         }
         buf.writeVarInt(traits.size());
         for (TraitCatalogEntry t : traits) {
@@ -192,14 +195,18 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
                 int vweight = buf.readVarInt();
                 String vlabelKey = buf.readUtf();
                 int vtint = buf.readInt();
-                variants.add(new GeneCatalogEntry.Variant(vid, localize(vlabelKey, vlabel), vweight, vlabelKey, vtint));
+                String vtexture = buf.readUtf();
+                boolean vglow = buf.readBoolean();
+                variants.add(new GeneCatalogEntry.Variant(vid, localize(vlabelKey, vlabel), vweight, vlabelKey,
+                        vtint, vtexture, vglow));
             }
             String gNameKey = buf.readUtf();
             String gDescKey = buf.readUtf();
+            String gFaceSlot = buf.readUtf();
             genes.add(new GeneCatalogEntry(gid, localize(gNameKey, gname), localize(gDescKey, gdesc),
                     gcat, kind, gmin, gmax,
                     gtarget, gamount, gdom, glocus, gweight, variants,
-                    gNameKey, gDescKey));
+                    gNameKey, gDescKey, gFaceSlot));
         }
         int k = buf.readVarInt();
         List<TraitCatalogEntry> traits = new ArrayList<>(k);
@@ -229,6 +236,15 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
         buf.writeByte(r.armorType().ordinal());
         writeNullableUtf(buf, r.armorInner());
         writeNullableUtf(buf, r.armorOuter());
+        buf.writeBoolean(r.face() != null);
+        if (r.face() != null) {
+            RigDefinition.Face f = r.face();
+            buf.writeUtf(f.bone());
+            for (float v : f.center()) buf.writeFloat(v);
+            for (float v : f.size()) buf.writeFloat(v);
+            buf.writeFloat(f.forward());
+        }
+        buf.writeBoolean(r.hair());
     }
 
     private static RigDefinition readRig(FriendlyByteBuf buf) {
@@ -243,7 +259,15 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
         RigDefinition.ArmorType armorType = RigDefinition.ArmorType.values()[buf.readByte()];
         String inner = readNullableUtf(buf);
         String outer = readNullableUtf(buf);
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer);
+        RigDefinition.Face face = null;
+        if (buf.readBoolean()) {
+            String bone = buf.readUtf();
+            float[] center = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+            float[] size = {buf.readFloat(), buf.readFloat()};
+            face = new RigDefinition.Face(bone, center, size, buf.readFloat());
+        }
+        boolean hair = buf.readBoolean();
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, hair);
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

@@ -137,6 +137,10 @@ public abstract class VillagerEditorOriginMixin extends Screen {
         // un-applied preview at HEAD first, so this never clobbers a live preview.
         OriginClientStore.set(villager.getId(), townstead$baseOriginId);
         townstead$previewDirty = false;
+        // The editor dummy is a separate entity with no synced face alleles, so without this it
+        // renders a different random face (eyes/mouth/colour) than the real villager. Seed the dummy's
+        // carried face variants from the real target so the preview matches the game, on every page.
+        townstead$seedFaceVariants();
 
         // On the Body page, repaint MCA's skin color-picker square to the origin's tinted skin
         // field so the picker is WYSIWYG with the rendered villager, and add the tone-variant
@@ -145,6 +149,10 @@ public abstract class VillagerEditorOriginMixin extends Screen {
             townstead$recolorSkinPicker();
             townstead$addTonePicker();
             townstead$trimInertBodySliders();
+        }
+        if ("head".equals(page)) {
+            townstead$trimInertHair();
+            townstead$addFaceCyclers();
         }
         if ("personality".equals(page)) {
             townstead$replacePersonalityButtons();
@@ -306,6 +314,135 @@ public abstract class VillagerEditorOriginMixin extends Screen {
      * MCA lays Breast + Skin out as a pair on one row, so if only one is removed the survivor is
      * widened to fill the freed half; if both go, the row is left empty.
      */
+    /** The origin's face variant genes (eyes/mouth/eye_color) that have options to cycle. */
+    @Unique
+    private java.util.List<GeneCatalogEntry> townstead$faceGenes() {
+        java.util.List<GeneCatalogEntry> out = new ArrayList<>();
+        com.aetherianartificer.townstead.origin.OriginCatalogEntry origin =
+                com.aetherianartificer.townstead.client.origin.OriginCatalogClient.origin(OriginClientStore.get(townstead$target));
+        if (origin == null) return out;
+        for (com.aetherianartificer.townstead.origin.OriginCatalogEntry.Inherited inh : origin.inheritedGenes()) {
+            GeneCatalogEntry g = com.aetherianartificer.townstead.client.origin.OriginCatalogClient.gene(inh.geneId());
+            if (g != null && g.isFace() && !g.variants().isEmpty()) out.add(g);
+        }
+        return out;
+    }
+
+    /**
+     * Seed the editor dummy's carried face variants from the REAL target, so the previewed face
+     * (eyes/mouth/colour) matches what the villager actually shows in-game rather than a fresh per-dummy
+     * roll. Runs on every page since the face renders on all of them.
+     */
+    @Unique
+    private void townstead$seedFaceVariants() {
+        java.util.Map<String, String> real = OriginClientStore.carriedVariants(townstead$target);
+        for (GeneCatalogEntry g : townstead$faceGenes()) {
+            String v = real.get(g.id());
+            if (v != null && !v.isEmpty()) OriginClientStore.setCarriedVariant(villager.getId(), g.id(), v);
+        }
+    }
+
+    /**
+     * Drop the Head page's hair controls (selector, randomize, prev/next, HSV toggle) when this rig
+     * declares no MCA hair ({@code "hair": false}, the default for a custom rig — a skeleton has none).
+     * Base MCA villagers have no rig definition, so {@code rig == null} keeps their hair; a custom rig
+     * can opt back in with {@code "hair": true}. Also frees the room the face cyclers reuse.
+     */
+    @Unique
+    private void townstead$trimInertHair() {
+        com.aetherianartificer.townstead.origin.rig.RigDefinition rig =
+                RigModels.definition(RigModels.rigBaseFor(villager));
+        if (rig == null || rig.hair()) return;
+        java.util.Set<String> hairKeys = java.util.Set.of(
+                "gui.villager_editor.hair_hsv", "gui.villager_editor.hair_genetic",
+                "gui.villager_editor.randHair", "gui.villager_editor.selectHair",
+                "gui.villager_editor.prev", "gui.villager_editor.next");
+        for (GuiEventListener child : new ArrayList<>(children())) {
+            if (child instanceof net.minecraft.client.gui.components.AbstractWidget aw) {
+                String k = townstead$widgetKey(aw);   // null for non-translatable labels; Set.of throws on contains(null)
+                if (k != null && hairKeys.contains(k)) removeWidget(aw);
+            }
+        }
+    }
+
+    @Unique
+    private void townstead$addFaceCyclers() {
+        java.util.List<GeneCatalogEntry> genes = townstead$faceGenes();
+        if (genes.isEmpty()) return;
+        int rowH = 18;
+
+        GeneSliderWidget faceSlider = null;
+        String faceKey = Genetics.FACE.getTranslationKey();
+        for (GuiEventListener child : children()) {
+            if (child instanceof GeneSliderWidget s && faceKey.equals(townstead$widgetKey(s))) {
+                faceSlider = s;
+                break;
+            }
+        }
+        int x, y, w;
+        if (faceSlider != null) {
+            x = faceSlider.getX();
+            y = faceSlider.getY();
+            w = faceSlider.getWidth();
+            int delta = genes.size() * (rowH + 1) - faceSlider.getHeight();
+            if (delta > 0) {
+                String voice = Genetics.VOICE.getTranslationKey();
+                String tone = Genetics.VOICE_TONE.getTranslationKey();
+                for (GuiEventListener child : children()) {
+                    if (child instanceof GeneSliderWidget s && s.getY() > y) {
+                        String k = townstead$widgetKey(s);
+                        if (voice.equals(k) || tone.equals(k)) s.setY(s.getY() + delta);
+                    }
+                }
+            }
+            removeWidget(faceSlider);
+        } else {
+            x = 6;
+            y = this.height / 2 - genes.size() * (rowH + 1) / 2;
+            w = 110;
+        }
+        for (GeneCatalogEntry gene : genes) {
+            townstead$variantCycler(gene, x, y, w, 16, rowH);
+            y += rowH + 1;
+        }
+    }
+
+    /** A widget's translation key, or null if its label isn't translatable. */
+    @Unique
+    private String townstead$widgetKey(net.minecraft.client.gui.components.AbstractWidget w) {
+        return w.getMessage().getContents() instanceof TranslatableContents tc ? tc.getKey() : null;
+    }
+
+    /** Build a {@code [<] Gene: variant [>]} cycler for one variant gene, seeded from the real target. */
+    @Unique
+    private void townstead$variantCycler(GeneCatalogEntry gene, int x, int y, int w, int arrowW, int rowH) {
+        List<GeneCatalogEntry.Variant> opts = gene.variants();
+        String geneId = gene.id();
+        String current = OriginClientStore.carriedVariants(townstead$target).get(geneId);
+        int start = 0;
+        for (int i = 0; i < opts.size(); i++) {
+            if (opts.get(i).id().equals(current)) { start = i; break; }
+        }
+        OriginClientStore.setCarriedVariant(villager.getId(), geneId, opts.get(start).id());
+        int[] idx = { start };
+        int midW = Math.max(20, w - arrowW * 2);
+        String name = gene.name();
+        ButtonWidget[] mid = new ButtonWidget[1];
+        IntConsumer cycle = delta -> {
+            idx[0] = Math.floorMod(idx[0] + delta, opts.size());
+            GeneCatalogEntry.Variant v = opts.get(idx[0]);
+            mid[0].setMessage(Component.literal(name + ": " + v.label()));
+            OriginClientStore.setCarriedVariant(villager.getId(), geneId, v.id());   // live preview
+            townstead$sendSetVariant(townstead$target, geneId, v.id());              // commit
+        };
+        addRenderableWidget(new ButtonWidget(x, y, arrowW, rowH, Component.literal("<"), b -> cycle.accept(-1)));
+        mid[0] = new ButtonWidget(x + arrowW, y, midW, rowH,
+                Component.literal(name + ": " + opts.get(start).label()), b -> { });
+        addRenderableWidget(mid[0]);
+        addRenderableWidget(new ButtonWidget(x + arrowW + midW, y, arrowW, rowH,
+                Component.literal(">"), b -> cycle.accept(1)));
+    }
+
     @Unique
     private void townstead$trimInertBodySliders() {
         boolean hideBreast = !RigModels.breasts(villager);

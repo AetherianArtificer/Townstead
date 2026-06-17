@@ -34,6 +34,9 @@ public final class AttachmentClient {
     private static final Map<String, ModelPart> GEO = new ConcurrentHashMap<>();
     private static final Map<String, ResourceLocation> TEXTURES = new ConcurrentHashMap<>();
     private static final Map<String, Buffer> BUFFERS = new ConcurrentHashMap<>();
+    // Named datapack textures: logical id ("ns:textures/...") -> SHA-1, so rig/face textures resolve
+    // to a synced DynamicTexture without a resource pack.
+    private static final Map<String, String> NAMED = new ConcurrentHashMap<>();
 
     private AttachmentClient() {}
 
@@ -50,16 +53,22 @@ public final class AttachmentClient {
         }
     }
 
-    public static void onManifest(List<AttachmentDef> defs, List<AttachmentPointDef> slots) {
+    public static void onManifest(List<AttachmentDef> defs, List<AttachmentPointDef> slots,
+                                  Map<String, String> namedTextures) {
         DEFS.clear();
         SLOTS.clear();
+        NAMED.clear();
         for (AttachmentDef def : defs) DEFS.put(def.id(), def);
         for (AttachmentPointDef slot : slots) SLOTS.put(slot.id(), slot);
+        NAMED.putAll(namedTextures);
 
         Map<String, Integer> needed = new LinkedHashMap<>();
         for (AttachmentDef def : defs) {
             needed.putIfAbsent(def.geoSha1(), AttachmentServerData.KIND_GEO);
             needed.putIfAbsent(def.textureSha1(), AttachmentServerData.KIND_TEXTURE);
+        }
+        for (String sha1 : namedTextures.values()) {
+            needed.putIfAbsent(sha1, AttachmentServerData.KIND_TEXTURE);
         }
 
         List<String> request = new ArrayList<>();
@@ -135,9 +144,20 @@ public final class AttachmentClient {
         return TEXTURES.get(sha1);
     }
 
+    /**
+     * Resolve a named datapack texture ("ns:textures/...") to its synced {@link DynamicTexture}
+     * location, or {@code null} if it isn't a datapack texture or hasn't materialized yet (caller
+     * falls back to a plain ResourceLocation for vanilla/resource-pack textures).
+     */
+    public static ResourceLocation namedTexture(String id) {
+        String sha1 = NAMED.get(id);
+        return sha1 == null ? null : TEXTURES.get(sha1);
+    }
+
     public static void clear() {
         DEFS.clear();
         SLOTS.clear();
+        NAMED.clear();
         BUFFERS.clear();
         // Baked geometry and registered textures are kept: they're content-addressed
         // and reused if the same blobs appear again next session.

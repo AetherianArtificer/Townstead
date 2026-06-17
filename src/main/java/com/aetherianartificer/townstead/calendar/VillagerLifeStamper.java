@@ -52,7 +52,13 @@ public final class VillagerLifeStamper {
         // Backfill origin + roll stage durations FIRST so the birth fabrication can
         // place the villager within the correct stage of its rolled cycle. (Assigns
         // the default origin id only; genes are left as MCA rolled them.)
+        int lociBefore = state.life().genotype().loci().size();
         boolean rolled = com.aetherianartificer.townstead.origin.OriginSpawnHandler.backfillIfMissing(villager);
+        // migrateFounder may add diploid genes a pre-feature villager lacked (e.g. a skeletownie
+        // gaining diet/hydration "none"). That flips the server-side expressed set — but tracking
+        // clients cached the old one, so without a re-push their interact screen keeps showing a need
+        // that is now suppressed. The life sync below doesn't carry expressed genes, so push them too.
+        boolean genotypeGrew = state.life().genotype().loci().size() != lociBefore;
 
         boolean stamped = false;
         if (!state.life().hasBirth()) {
@@ -82,6 +88,9 @@ public final class VillagerLifeStamper {
             com.aetherianartificer.townstead.origin.LifeStageProgression.tickResolveStage(villager);
             broadcastFreshStamp(villager);
         }
+        if (genotypeGrew) {
+            broadcastExpressedGenes(villager);
+        }
     }
 
     /**
@@ -105,6 +114,17 @@ public final class VillagerLifeStamper {
         com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload payload =
                 com.aetherianartificer.townstead.Townstead.townstead$lifeSync(villager);
         if (payload == null) return;
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntity(villager, payload);
+        //?} else if forge {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToTrackingEntity(villager, payload);
+        *///?}
+    }
+
+    /** Re-push the per-entity expressed-gene set after a genotype migration, so client need-hiding updates. */
+    private static void broadcastExpressedGenes(VillagerEntityMCA villager) {
+        com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload payload =
+                com.aetherianartificer.townstead.origin.ExpressedGenesS2CPayload.forEntity(villager.getId(), villager);
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntity(villager, payload);
         //?} else if forge {

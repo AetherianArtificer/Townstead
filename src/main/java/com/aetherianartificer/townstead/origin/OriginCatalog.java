@@ -90,17 +90,15 @@ public final class OriginCatalog {
         Gene gene = GeneRegistry.byId(geneId);
         if (gene == null) {
             return new GeneCatalogEntry(geneId.toString(), geneId.getPath(), "", "general",
-                    GeneDisplay.Kind.BOOLEAN.ordinal(), 0f, 1f, "", 0f, 0, "", 1, List.of(), "", "");
+                    GeneDisplay.Kind.BOOLEAN.ordinal(), 0f, 1f, "", 0f, 0, "", 1, List.of(), "", "", "");
         }
         GeneDisplay display = gene.display();
         List<GeneCatalogEntry.Variant> variants = new ArrayList<>();
         if (gene.hasVariants()) {
             for (com.aetherianartificer.townstead.origin.gene.GeneVariant v : gene.variants()) {
-                int tint = v.instance() instanceof
-                        com.aetherianartificer.townstead.origin.gene.types.SkinToneGeneType.Instance st
-                        ? st.tint() : -1;
                 variants.add(new GeneCatalogEntry.Variant(
-                        v.id(), v.displayName().getString(), v.weight(), keyOf(v.displayName()), tint));
+                        v.id(), v.displayName().getString(), v.weight(), keyOf(v.displayName()),
+                        variantTint(v.instance()), variantTexture(v.instance()), variantGlow(v.instance())));
             }
         }
         return new GeneCatalogEntry(
@@ -116,7 +114,35 @@ public final class OriginCatalog {
                 gene.weight(),
                 variants,
                 keyOf(gene.displayName()),
-                keyOf(gene.description()));
+                keyOf(gene.description()),
+                faceSlotOf(gene.instance()));
+    }
+
+    /** The colour tint a variant carries (skin tone or eye colour), or {@code -1} for none. */
+    private static int variantTint(com.aetherianartificer.townstead.origin.gene.GeneInstance instance) {
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.SkinToneGeneType.Instance st) return st.tint();
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyeColorGeneType.Instance ec) return ec.tint();
+        return -1;
+    }
+
+    /** The face sprite-strip texture a variant carries (eyes/mouth), or {@code ""}. */
+    private static String variantTexture(com.aetherianartificer.townstead.origin.gene.GeneInstance instance) {
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyesGeneType.Instance e) return e.texture();
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.MouthGeneType.Instance m) return m.texture();
+        return "";
+    }
+
+    /** Whether an eyes variant is emissive (glowing). */
+    private static boolean variantGlow(com.aetherianartificer.townstead.origin.gene.GeneInstance instance) {
+        return instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyesGeneType.Instance e && e.glow();
+    }
+
+    /** The face slot a gene occupies ("eyes"/"mouth"/"eye_color"), else "". */
+    private static String faceSlotOf(com.aetherianartificer.townstead.origin.gene.GeneInstance instance) {
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyesGeneType.Instance) return "eyes";
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.MouthGeneType.Instance) return "mouth";
+        if (instance instanceof com.aetherianartificer.townstead.origin.gene.types.EyeColorGeneType.Instance) return "eye_color";
+        return "";
     }
 
     /** Translate key of a Component when it is a {@code translatable}, else "" (literal). */

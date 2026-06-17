@@ -17,10 +17,12 @@ import java.util.List;
  * against its on-disk cache and requests only the blobs it lacks.
  */
 //? if neoforge {
-public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<AttachmentPointDef> slots)
+public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<AttachmentPointDef> slots,
+                                           java.util.Map<String, String> namedTextures)
         implements CustomPacketPayload {
 //?} else {
-/*public record AttachmentManifestS2CPayload(java.util.List<AttachmentDef> defs, java.util.List<AttachmentPointDef> slots) {
+/*public record AttachmentManifestS2CPayload(java.util.List<AttachmentDef> defs, java.util.List<AttachmentPointDef> slots,
+                                           java.util.Map<String, String> namedTextures) {
 *///?}
 
     //? if neoforge {
@@ -62,6 +64,11 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             buf.writeVarInt(point.tags().size());
             for (String tag : point.tags()) buf.writeUtf(tag);
         }
+        buf.writeVarInt(namedTextures.size());
+        for (java.util.Map.Entry<String, String> e : namedTextures.entrySet()) {
+            buf.writeUtf(e.getKey());
+            buf.writeUtf(e.getValue());
+        }
     }
 
     public static AttachmentManifestS2CPayload read(FriendlyByteBuf buf) {
@@ -92,7 +99,13 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             for (int t = 0; t < tagCount; t++) tags.add(buf.readUtf());
             slots.add(new AttachmentPointDef(id, bone, offset, tags));
         }
-        return new AttachmentManifestS2CPayload(defs, slots);
+        int texCount = buf.readVarInt();
+        java.util.Map<String, String> namedTextures = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < texCount; i++) {
+            String key = buf.readUtf();
+            namedTextures.put(key, buf.readUtf());
+        }
+        return new AttachmentManifestS2CPayload(defs, slots, namedTextures);
     }
 
     private static void writeVec(FriendlyByteBuf buf, float[] v) {

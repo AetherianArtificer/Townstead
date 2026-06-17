@@ -94,6 +94,10 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
 
+        // Custom face (eyes/mouth) drawn on the now-posed head bone, inside the scaled pose so it
+        // tracks the head. Resolved from the entity's face genes; a no-op for rigs without them.
+        SpeciesFace.render(entity, rigBase, pose, buffers, light, partialTick);
+
         // Worn armor, fitted to the rig (same model proportions, pose, and scale), drawn before held
         // items like vanilla. The rig model is already posed above, which the armor layer copies from.
         // MCA's villager-shaped host armor is suppressed for these entities by HostArmorSuppressMixin.

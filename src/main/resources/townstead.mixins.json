@@ -18,6 +18,7 @@
     "ServerLocaleChangeMixin",
     "TombstoneRevivalMixin",
     "VillagerEatSafetyMixin",
+    "VillagerInfectionImmunityMixin",
     "VillagerEditorBirthMixin",
     "VillagerFinalizeSpawnMixin",
     "VillagerEntityMCAImmortalityMixin",

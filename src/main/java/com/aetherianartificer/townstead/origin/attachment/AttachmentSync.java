@@ -15,7 +15,8 @@ public final class AttachmentSync {
 
     public static void sendManifest(ServerPlayer player) {
         send(player, new AttachmentManifestS2CPayload(
-                AttachmentServerData.definitions(), AttachmentServerData.slots()));
+                AttachmentServerData.definitions(), AttachmentServerData.slots(),
+                AttachmentServerData.namedTextures()));
     }
 
     public static void handleRequest(ServerPlayer player, List<String> hashes) {

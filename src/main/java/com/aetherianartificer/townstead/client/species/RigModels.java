@@ -181,7 +181,11 @@ public final class RigModels {
     public static ResourceLocation texture(String rigBase) {
         RigDefinition def = OriginCatalogClient.rig(rigBase);
         if (def == null || def.texture() == null || def.texture().isEmpty()) return null;
-        return DataPackLang.parseId(def.texture());
+        // Prefer a datapack-synced texture (no resource pack needed); fall back to a plain resource
+        // location for vanilla / resource-pack textures (e.g. minecraft:textures/entity/skeleton).
+        ResourceLocation synced =
+                com.aetherianartificer.townstead.client.attachment.AttachmentClient.namedTexture(def.texture());
+        return synced != null ? synced : DataPackLang.parseId(def.texture());
     }
 
     // All vanilla layer definitions, built once. Used to bake body and armor models by bakeRoot()

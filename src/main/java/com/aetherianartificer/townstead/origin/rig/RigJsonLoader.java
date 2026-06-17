@@ -87,6 +87,27 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
             outer = armor.has("outer") ? GsonHelper.getAsString(armor, "outer") : null;
         }
 
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer);
+        RigDefinition.Face face = null;
+        if (obj.has("face") && obj.get("face").isJsonObject()) {
+            JsonObject f = obj.getAsJsonObject("face");
+            face = new RigDefinition.Face(
+                    GsonHelper.getAsString(f, "bone", "head"),
+                    vec(f, "center", 3, new float[]{0f, -4f, -4f}),
+                    vec(f, "size", 2, new float[]{8f, 8f}),
+                    GsonHelper.getAsFloat(f, "forward", -1f));
+        }
+
+        boolean hair = GsonHelper.getAsBoolean(obj, "hair", false);
+
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, hair);
+    }
+
+    /** Read a fixed-length float array from a JSON array key, falling back to {@code def}. */
+    private static float[] vec(JsonObject obj, String key, int len, float[] def) {
+        if (!obj.has(key) || !obj.get(key).isJsonArray()) return def;
+        var arr = obj.getAsJsonArray(key);
+        float[] out = def.clone();
+        for (int i = 0; i < len && i < arr.size(); i++) out[i] = arr.get(i).getAsFloat();
+        return out;
     }
 }

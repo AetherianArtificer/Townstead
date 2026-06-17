@@ -37,6 +37,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
     private static final int MAX_TEXTURE_BYTES = 8 * 1024 * 1024;
     private static final String DIR = "attachment";
     private static final String SLOT_DIR = "attachment_point";
+    private static final String TEX_DIR = "textures";
 
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
@@ -67,7 +68,23 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
                     readVec(json, "offset"), readTags(json)));
         });
 
-        AttachmentServerData.set(defs, slots, blobs);
+        // Named datapack textures ("data/<ns>/textures/**.png"): rig + face textures shipped to the
+        // client over the blob sync (no resource pack). Logical id == the ResourceLocation string a rig
+        // or gene references, e.g. "townstead_skeleton:textures/entity/skeletownie.png".
+        Map<String, String> namedTextures = new LinkedHashMap<>();
+        manager.listResources(TEX_DIR, rl -> rl.getPath().endsWith(".png")).forEach((file, resource) -> {
+            byte[] bytes = readBytes(manager, file, MAX_TEXTURE_BYTES);
+            if (bytes == null) return;
+            try {
+                String sha = sha1(bytes);
+                blobs.put(sha, new AttachmentServerData.Blob(bytes, AttachmentServerData.KIND_TEXTURE));
+                namedTextures.put(file.toString(), sha);
+            } catch (Exception e) {
+                Townstead.LOGGER.error("Failed to hash datapack texture {}", file, e);
+            }
+        });
+
+        AttachmentServerData.set(defs, slots, blobs, namedTextures);
         PhenoDiagnostics.replace("attachment", diagnostics.all());
         int errors = diagnostics.count(Severity.ERROR);
         Townstead.LOGGER.info("Loaded {} attachment definitions, {} points, {} blobs ({} diagnostic{})",

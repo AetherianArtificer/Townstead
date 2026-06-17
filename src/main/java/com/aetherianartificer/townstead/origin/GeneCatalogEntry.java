@@ -34,18 +34,33 @@ public record GeneCatalogEntry(
         // Translate keys for name/description, resolved into the strings above by a
         // localized client at sync-read time (empty when the source was literal).
         String nameKey,
-        String descriptionKey
+        String descriptionKey,
+        // Face-overlay slot for a custom-face gene: "eyes" / "mouth" / "eye_color", else "". Lets the
+        // client face layer identify the eyes/mouth/colour genes among an origin's inherited genes.
+        String faceSlot
 ) {
     public GeneCatalogEntry {
         variants = variants == null ? List.of() : List.copyOf(variants);
+        faceSlot = faceSlot == null ? "" : faceSlot;
     }
 
     /**
      * One option of a VARIANTS gene: its id, resolved label, roll weight, the label's translate key,
-     * and a colour tint ({@code 0xRRGGBB}, or {@code -1} when the variant carries none) so a rolled
-     * skin-tone variant renders per entity.
+     * a colour tint ({@code 0xRRGGBB}, or {@code -1} when none), and — for a face eyes/mouth variant —
+     * its sprite-strip {@code texture} ({@code ""} when none) and {@code glow} (emissive eyes) flag.
      */
-    public record Variant(String id, String label, int weight, String labelKey, int tint) {}
+    public record Variant(String id, String label, int weight, String labelKey, int tint,
+                          String texture, boolean glow) {
+        public Variant {
+            texture = texture == null ? "" : texture;
+        }
+    }
+
+    /** This gene's face slot is eyes / mouth / eye_color (a custom-face overlay gene). */
+    public boolean isEyes() { return "eyes".equals(faceSlot); }
+    public boolean isMouth() { return "mouth".equals(faceSlot); }
+    public boolean isEyeColor() { return "eye_color".equals(faceSlot); }
+    public boolean isFace() { return !faceSlot.isEmpty(); }
 
     public boolean isVariants() {
         return displayKind == GeneDisplay.Kind.VARIANTS.ordinal();
