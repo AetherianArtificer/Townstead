@@ -30,6 +30,10 @@ public final class ClimbRender {
     // True between a Pre push and its Post pop, so the pop only happens when the push did.
     private static final ThreadLocal<Boolean> PUSHED = ThreadLocal.withInitial(() -> false);
 
+    // Hold the model this far proud of the surface instead of seating its origin exactly on the face, so a
+    // model whose geometry sits around its origin (e.g. the spider body) does not clip into the surface.
+    private static final float SURFACE_CLEARANCE = 0.05f;
+
     /** The horizontal direction toward the wall a climbing entity is on (the one it faces first), or null. */
     public static Direction wallDir(LivingEntity entity) {
         if (entity.onGround()) return null;
@@ -113,7 +117,12 @@ public final class ClimbRender {
         // for a wall the origin is half a width from the side face; for a ceiling it is a full height below
         // the top face (the origin is the bottom of the box). World frame here (yaw not yet applied), so the
         // normal is used directly. Eased so the swing comes in smoothly.
-        float seat = (up.y() < -0.5f ? entity.getBbHeight() : entity.getBbWidth() * 0.5f) * f;
+        // Seat depth = origin-to-surface distance along the normal: half the width off a side wall, the full
+        // height off a ceiling (origin is the box bottom). Blend smoothly by how ceiling-ward the normal is,
+        // so the wall->ceiling transition does not lurch the model into the block.
+        float ceiling = Math.max(0f, -up.y());
+        float depth = Mth.lerp(ceiling, entity.getBbWidth() * 0.5f, entity.getBbHeight());
+        float seat = Math.max(0f, depth - SURFACE_CLEARANCE) * f;
         pose.translate(-up.x() * seat, -up.y() * seat, -up.z() * seat);
         pose.mulPose(new Quaternionf().slerp(surfaceToWorld(up, entity.getYRot()), f));
     }

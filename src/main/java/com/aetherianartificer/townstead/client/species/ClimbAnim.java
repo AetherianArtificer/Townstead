@@ -65,6 +65,7 @@ public final class ClimbAnim {
         // Track the local player's attach/detach here (runs every tick, regardless of camera perspective)
         // so the wall-frame look resets correctly even if the player attaches while in third person.
         if (mc.player != null) ClimbLook.updateClungState(factor(mc.player.getId()));
+        ClimbMove.tickGrace();
     }
 
     /** Eased reorientation amount for an entity, 0 (upright) to 1 (fully on the surface). */

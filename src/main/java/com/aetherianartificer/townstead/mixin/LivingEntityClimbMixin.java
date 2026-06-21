@@ -57,6 +57,11 @@ public abstract class LivingEntityClimbMixin {
     private void townstead$abilityClimb(CallbackInfoReturnable<Boolean> cir) {
         if (cir.getReturnValueZ()) return;
         LivingEntity self = (LivingEntity) (Object) this;
+        // The wall-frame movement controller owns the local player's climbing; while it drives (and a short
+        // dismount grace after) don't add vanilla wall-climb, so it can't fight the controller at the wall
+        // base. Real ladders already returned above, so this only suppresses our own push-to-climb.
+        if (self.level().isClientSide
+                && com.aetherianartificer.townstead.client.species.ClimbMove.isSuppressing(self)) return;
         boolean grounded = self.onGround();
         // Back on the ground: disarm the cling so it can't carry over to the next jump.
         if (grounded && townstead$clinging) townstead$clinging = false;
