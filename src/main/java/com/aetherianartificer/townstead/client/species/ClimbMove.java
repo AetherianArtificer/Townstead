@@ -8,7 +8,7 @@ import org.joml.Vector3f;
 
 /**
  * Spider gravity, movement: while a local player is clung in first person, WASD moves along the wall surface
- * relative to where they look (the wall-frame look from {@link ClimbLook}), so they climb up/down/around by
+ * relative to where they look (the surface look from {@link ClimbState}), so they climb up/down/around by
  * looking. Forward goes toward the look direction flattened onto the wall, strafe along the surface; no input
  * sticks in place. Replaces the vanilla push-into-wall climb while clung. Client-side only (player movement is
  * client-authoritative); third person and villagers keep the vanilla climb.
@@ -25,7 +25,7 @@ public final class ClimbMove {
     // can't fight the controller (e.g. climb the player back up at the wall base during a descent dismount).
     private static int controlGrace;
 
-    /** Decremented once per client tick (from ClimbAnim) so the suppression window closes after release. */
+    /** Decremented once per client tick (from ClimbState) so the suppression window closes after release. */
     public static void tickGrace() {
         if (controlGrace > 0) controlGrace--;
     }
@@ -46,21 +46,21 @@ public final class ClimbMove {
         if (player != mc.player) return false;
         if (mc.player.input.jumping) return false; // jump = let go, fall via vanilla
         int id = player.getId();
-        if (ClimbAnim.factor(id) <= 0f) return false; // clung at all (robust to ground flicker on steps)
-        Vector3f n = ClimbAnim.normal(id);
+        if (ClimbState.factor(id) <= 0f) return false; // clung at all (robust to ground flicker on steps)
+        Vector3f n = ClimbState.normal(id);
         if (n == null) return false;
         Vector3f normal = new Vector3f(n).normalize();
 
-        // First person uses the reoriented wall-frame look. Third person has no reoriented camera, so it keeps
-        // vanilla climb on walls (push-to-climb); but a ceiling has nothing to push into, so the controller
-        // must hold it there too, driven from the player's plain look (which the orbit camera turns).
-        boolean firstPerson = mc.options.getCameraType().isFirstPerson();
+        // A reoriented view (first person, or third person with REORIENT_THIRD_PERSON) uses the surface look.
+        // A plain third-person view keeps vanilla climb on walls (push-to-climb); but a ceiling has nothing to
+        // push into, so the controller must hold it there too, driven from the player's plain look.
+        boolean reoriented = ClimbState.reorientedView();
         boolean ceiling = normal.y() < -0.5f;
-        if (!firstPerson && !ceiling) return false;
+        if (!reoriented && !ceiling) return false;
 
         Vector3f moveFwd;
-        if (firstPerson) {
-            moveFwd = ClimbLook.wallLookForward(normal, player.getYRot());
+        if (reoriented) {
+            moveFwd = ClimbState.lookForward(normal, player.getYRot());
         } else {
             Vec3 v = player.getViewVector(1.0f);
             moveFwd = new Vector3f((float) v.x, (float) v.y, (float) v.z);

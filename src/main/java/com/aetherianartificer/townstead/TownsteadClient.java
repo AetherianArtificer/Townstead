@@ -156,7 +156,7 @@ public final class TownsteadClient {
         TownsteadKeybinds.onClientTick();
         FishermanLineRenderer.onClientTick();
         tryWarmSpiritIndex();
-        com.aetherianartificer.townstead.client.species.ClimbAnim.tick();
+        com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
     }
     //?} else if forge {
@@ -165,7 +165,7 @@ public final class TownsteadClient {
         TownsteadKeybinds.onClientTick();
         FishermanLineRenderer.onClientTick();
         tryWarmSpiritIndex();
-        com.aetherianartificer.townstead.client.species.ClimbAnim.tick();
+        com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
     }
     *///?}

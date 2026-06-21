@@ -21,7 +21,7 @@ import org.joml.Vector3f;
  * layers. {@code Pre}/{@code Post} both fire for players (via {@code PlayerRenderer.super.render}).
  *
  * <p>Stage-1 scope: vertical walls only (the surface normal points out of the wall), no in-plane spin
- * correction yet; eased in/out by {@link ClimbAnim}. The camera/input stages reuse {@link #wallNormal}.</p>
+ * correction yet; eased in/out by {@link ClimbState}. The camera/input stages reuse {@link #wallNormal}.</p>
  */
 public final class ClimbRender {
 
@@ -104,9 +104,9 @@ public final class ClimbRender {
     *///?}
         LivingEntity entity = event.getEntity();
         int id = entity.getId();
-        float f = ClimbAnim.factor(id);
+        float f = ClimbState.factor(id);
         if (f <= 0f) return;
-        Vector3f up = ClimbAnim.normal(id);
+        Vector3f up = ClimbState.normal(id);
         if (up == null) return;
         PoseStack pose = event.getPoseStack();
         pose.pushPose();

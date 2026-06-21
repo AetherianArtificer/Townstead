@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.client.species;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -12,10 +11,11 @@ import org.joml.Vector3f;
  * before the view is built.
  *
  * <p>While clung the camera is a decoupled "standing on the wall floor" view built by
- * {@link ClimbLook#wallCameraOrientation} (driven by the mouse via {@link ClimbLook}), eased in from the
+ * {@link ClimbState#cameraOrientation} (driven by the mouse via {@link ClimbState}), eased in from the
  * player's normal view by the climb factor. Both orientations are expressed as the true camera-to-world (the
  * inverse of MC's view matrix {@code Rz(roll) Rx(pitch) Ry(yaw+180)}, the same on 1.20.1 and 1.21.1), slerped,
- * then decomposed back into yaw/pitch/roll. First person only (third person keeps the model tilt).</p>
+ * then decomposed back into yaw/pitch/roll. Applies whenever the view is reoriented (first person always;
+ * third person only if {@link ClimbState#REORIENT_THIRD_PERSON}).</p>
  */
 public final class ClimbView {
 
@@ -28,12 +28,11 @@ public final class ClimbView {
     //?} else {
     /*public static void onComputeCameraAngles(net.minecraftforge.client.event.ViewportEvent.ComputeCameraAngles event) {
     *///?}
-        Minecraft mc = Minecraft.getInstance();
-        if (!mc.options.getCameraType().isFirstPerson()) return;
+        if (!ClimbState.reorientedView()) return;
         if (!(event.getCamera().getEntity() instanceof LivingEntity entity)) return;
-        float f = ClimbAnim.factor(entity.getId());
+        float f = ClimbState.factor(entity.getId());
         if (f <= 0f) return;
-        Vector3f up = ClimbAnim.normal(entity.getId());
+        Vector3f up = ClimbState.normal(entity.getId());
         if (up == null) return;
 
         float yaw = (float) event.getYaw();
@@ -46,7 +45,7 @@ public final class ClimbView {
                 (float) Math.toRadians(-pitch),
                 (float) Math.toRadians(-roll));
         // The wall-frame camera (standing on the wall floor), eased in from the normal view.
-        Quaternionf wallCam = ClimbLook.wallCameraOrientation(up, entity.getYRot());
+        Quaternionf wallCam = ClimbState.cameraOrientation(up, entity.getYRot());
         Quaternionf cam = new Quaternionf(normalCam).slerp(wallCam, f);
 
         Vector3f e = cam.getEulerAnglesYXZ(new Vector3f());

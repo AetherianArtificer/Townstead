@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
+import org.joml.Vector3f;
 
 /**
  * Renders a villager whose species declares a supported non-villager rig (e.g. a skeleton) as that
@@ -138,11 +139,25 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         model.attackTime = entity.getAttackAnim(partialTick);
         model.young = entity.isBaby();
         model.riding = entity.isPassenger();
-        // Climb gait: a climbing rig moves vertically with ~no horizontal speed, so the vanilla gait
-        // signal (horizontal walk speed) reads as standing still and the legs freeze. While on a wall,
-        // drive the gait from total climb speed and an own advancing phase, so the legs work the wall.
-        if (ClimbRender.wallDir(entity) != null) {
-            limbSwingAmount = Math.min(1f, (float) entity.getDeltaMovement().length() * 4f);
+        // Climb gait: a climbing rig moves along a wall/ceiling with ~no horizontal walk speed, so the
+        // vanilla gait signal reads as standing still and the legs freeze. While attached to any surface
+        // (the smoothed climb normal is present, walls AND ceilings), drive the amplitude from speed ALONG
+        // the surface (drop the into-surface component, so standing still reads as still) and advance an own
+        // phase, so the legs work the surface and stop when stationary.
+        Vector3f climbNormal = ClimbState.normal(entity.getId());
+        if (climbNormal != null) {
+            // Use the actual per-tick displacement, not deltaMovement (the controller zeroes that after the
+            // move, which would freeze the gait), projected onto the surface plane so the into-surface stick
+            // does not register as walking.
+            double dx = entity.getX() - entity.xOld;
+            double dy = entity.getY() - entity.yOld;
+            double dz = entity.getZ() - entity.zOld;
+            double along = dx * climbNormal.x() + dy * climbNormal.y() + dz * climbNormal.z();
+            double sx = dx - along * climbNormal.x();
+            double sy = dy - along * climbNormal.y();
+            double sz = dz - along * climbNormal.z();
+            float surfaceSpeed = (float) Math.sqrt(sx * sx + sy * sy + sz * sz);
+            limbSwingAmount = Math.min(1f, surfaceSpeed * 6f);
             limbSwing = ageInTicks * 0.6f;
         }
         model.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);

@@ -8,10 +8,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Spider gravity, stage 3 (input): intercepts the local player's mouse-look ({@link Entity#turn}) so turning
- * stays intuitive while reoriented onto a wall. Vanilla applies the raw delta straight into world-frame
+ * Spider gravity (input): intercepts the local player's mouse-look ({@link Entity#turn}) so turning stays
+ * intuitive while reoriented onto a surface. Vanilla applies the raw delta straight into world-frame
  * yaw/pitch, which feels rotated once the view is tipped; {@link
- * com.aetherianartificer.townstead.client.species.ClimbLook} re-applies it in the reoriented frame instead.
+ * com.aetherianartificer.townstead.client.species.ClimbState} re-applies it in the surface frame instead.
  * Client-only (the only caller of {@code turn} is the local player's mouse), so the client-only helper is
  * never linked server-side. 1.20.1 Forge SRG: {@code m_19884_} turn.
  */
@@ -27,7 +27,7 @@ public abstract class EntityClimbLookMixin {
         Entity self = (Entity) (Object) this;
         if (!self.level().isClientSide) return;
         if (!(self instanceof LivingEntity living)) return;
-        if (com.aetherianartificer.townstead.client.species.ClimbLook.tryTurn(living, yaw, pitch)) {
+        if (com.aetherianartificer.townstead.client.species.ClimbState.tryTurn(living, yaw, pitch)) {
             ci.cancel();
         }
     }
