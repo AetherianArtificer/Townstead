@@ -130,7 +130,11 @@ public final class LifeStageProgression {
         LifeCycle cycle = resolveCycle(life);
         if (cycle == null || cycle.isEmpty() || life.stageDaysLength() != cycle.size()) return true;
 
-        long today = TownsteadCalendar.lifeDay(server);
+        // Honor the apparent-age freeze: when aging is disabled the body is intentionally
+        // held at the frozen stage, so resolve against the frozen day too. Using the live
+        // day here makes the body look "stale" once the calendar advances, which the
+        // stamper's self-heal then "fixes" by re-fabricating a birth, wiping editor edits.
+        long today = agingDisplayDayView(life, TownsteadCalendar.lifeDay(server));
         LifeStageResolver.Resolved resolved = LifeStageResolver.resolve(
                 cycle, life.stageDays(), life.birthWorldDay(), today);
         if (resolved == null) return true;
@@ -215,6 +219,56 @@ public final class LifeStageProgression {
             else SeniorEffects.clearSenior(villager);
         }
         villager.setAgeState(villager.getAgeState());
+    }
+
+    /**
+     * Apply an explicit editor age choice. This intentionally bypasses the
+     * global "villagers do not age" freeze for this one edit: that setting
+     * should stop time-based progression, not reject a player/admin choosing a
+     * new age. If aging is disabled, re-anchor the freeze day to the edit day so
+     * the selected apparent age stays stable afterward.
+     */
+    public static void applyManualAgeEdit(VillagerEntityMCA villager, long newBirthWorldDay) {
+        if (villager == null) return;
+        MinecraftServer server = villager.level().getServer();
+        if (server == null) return;
+
+        TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        life.setBirth(newBirthWorldDay, true);
+
+        long today = TownsteadCalendar.lifeDay(server);
+        if (TownsteadConfig.isVillagerAgingDisabled()) {
+            life.setAgingFrozenDay(today);
+        }
+
+        // Commit the new stage from the freshly stamped birth, then re-drive MCA's
+        // AgeState through our resolver so the body actually moves to that stage.
+        // setAge alone only changes breeding age, leaving getAgeState() stale; the
+        // stamper's coherence self-heal then sees body != birth-derived stage and
+        // re-fabricates a mid-stage birth, overwriting this very edit (set 5, get 8).
+        // commit first so the (aging-disabled) resolver reads the updated recorded stage.
+        commitStageFromBirth(villager, life, today);
+        villager.setAgeState(villager.getAgeState());
+    }
+
+    @Nullable
+    private static CanonicalStage commitStageFromBirth(VillagerEntityMCA villager, TownsteadVillager.Life life, long today) {
+        if (life == null || !life.hasBirth() || !life.hasStageDays()) return null;
+
+        LifeCycle cycle = resolveCycle(life);
+        if (cycle == null || cycle.isEmpty() || life.stageDaysLength() != cycle.size()) return null;
+
+        LifeStageResolver.Resolved resolved = LifeStageResolver.resolve(
+                cycle, life.stageDays(), life.birthWorldDay(), today);
+        if (resolved == null) return null;
+
+        boolean wasSenior = life.isSenior();
+        commit(life, resolved);
+        if (wasSenior != life.isSenior()) {
+            if (life.isSenior()) SeniorEffects.applySenior(villager);
+            else SeniorEffects.clearSenior(villager);
+        }
+        return resolved.stage().presentsAs();
     }
 
     /**

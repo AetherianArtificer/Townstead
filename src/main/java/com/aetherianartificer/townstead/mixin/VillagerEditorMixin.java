@@ -53,6 +53,8 @@ public abstract class VillagerEditorMixin extends Screen {
     @Shadow(remap = false) @Final protected java.util.UUID villagerUUID;
     // Bottom-anchored "Done" button; must stay put when the life-stage row shift runs.
     @Shadow(remap = false) private ButtonWidget doneWidget;
+    // MCA's Done path serializes this private field into the "Age" NBT value.
+    @Shadow(remap = false) private int villagerBreedingAge;
 
     @Shadow(remap = false) protected abstract void setPage(String page);
 
@@ -564,6 +566,7 @@ public abstract class VillagerEditorMixin extends Screen {
     private void townstead$previewAge(int mcaAge, float stageScale) {
         // Age the preview model to match the CURRENT STAGE (not a linear sweep), so
         // the rendered proportions track the stage label. Plus the stage size override.
+        villagerBreedingAge = mcaAge;
         villager.setAge(mcaAge);
         LifeStageScale.setPreviewOverride(villager.getId(), stageScale);
         villager.refreshDimensions(); // MCA's slider does this too; without it the model won't rescale
@@ -649,6 +652,7 @@ public abstract class VillagerEditorMixin extends Screen {
     /*@Inject(method = "m_7861_", remap = false, at = @At("TAIL"))
     *///?}
     private void townstead$cleanupOnClose(CallbackInfo ci) {
+        townstead$sendLifeEditOnClose();
         HungerClientStore.clearOnChange();
         ThirstClientStore.clearOnChange();
         FatigueClientStore.clearOnChange();
@@ -658,6 +662,29 @@ public abstract class VillagerEditorMixin extends Screen {
         townstead$hungerDisplay = null;
         townstead$thirstDisplay = null;
         townstead$fatigueDisplay = null;
+    }
+
+    @Unique
+    private void townstead$sendLifeEditOnClose() {
+        boolean hasAge = villagerData.contains(LifeData.EDITOR_KEY_BIO_AGE_DAYS);
+        boolean hasFrozen = villagerData.contains(LifeData.EDITOR_KEY_FROZEN_STAGE_INDEX);
+        boolean hasMonth = villagerData.contains(LifeData.EDITOR_KEY_BIRTH_MONTH);
+        boolean hasDay = villagerData.contains(LifeData.EDITOR_KEY_BIRTH_DAY);
+        if (!hasAge && !hasFrozen && !hasMonth && !hasDay) return;
+
+        int absent = com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload.ABSENT;
+        com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload payload =
+                new com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload(
+                        villagerUUID,
+                        hasAge ? villagerData.getInt(LifeData.EDITOR_KEY_BIO_AGE_DAYS) : absent,
+                        hasFrozen ? villagerData.getInt(LifeData.EDITOR_KEY_FROZEN_STAGE_INDEX) : absent,
+                        hasMonth ? villagerData.getInt(LifeData.EDITOR_KEY_BIRTH_MONTH) : absent,
+                        hasDay ? villagerData.getInt(LifeData.EDITOR_KEY_BIRTH_DAY) : absent);
+        //? if neoforge {
+        PacketDistributor.sendToServer(payload);
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(payload);
+        *///?}
     }
 
     //? if neoforge {

@@ -103,7 +103,12 @@ public final class VillagerLifeStamper {
     private static boolean townstead$birthIncoherent(TownsteadVillager state, MinecraftServer server,
                                                       VillagerEntityMCA villager) {
         if (!state.life().hasStageDays()) return false;
-        long bioAge = TownsteadCalendar.lifeDay(server) - state.life().birthWorldDay();
+        // Frozen-aware day: when aging is disabled, measure bio-age against the frozen
+        // display day, not the live calendar, so a deliberately-frozen villager isn't
+        // judged "older than its cycle" and re-fabricated (which wipes editor age edits).
+        long today = com.aetherianartificer.townstead.origin.LifeStageProgression
+                .agingDisplayDayView(state.life(), TownsteadCalendar.lifeDay(server));
+        long bioAge = today - state.life().birthWorldDay();
         long total = 0;
         for (int d : state.life().stageDays()) total += Math.max(0, d);
         if (bioAge > total) return true;

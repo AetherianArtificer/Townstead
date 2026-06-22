@@ -528,6 +528,10 @@ public class Townstead {
                                 e.getDispatcher(), e.getBuildContext()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.TownsteadQueryCommands.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.MemoryDiagnosticsCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         NeoForge.EVENT_BUS.addListener(
@@ -787,6 +791,10 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.CalendarCommands.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.TownsteadQueryCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
@@ -2116,6 +2124,11 @@ public class Townstead {
                 com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload.STREAM_CODEC,
                 this::handleVillagerLifeRequest
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload.TYPE,
+                com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload.STREAM_CODEC,
+                this::handleVillagerLifeEdit
+        );
         registrar.playToClient(
                 com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload.TYPE,
                 com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload.STREAM_CODEC,
@@ -2277,6 +2290,50 @@ public class Townstead {
             com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload sync = townstead$lifeSync(villager);
             // Re-key to the editor's preview entity so its client-side lookups match.
             if (sync != null) PacketDistributor.sendToPlayer(sp, sync.withEntityId(payload.previewEntityId()));
+        });
+    }
+
+    private void handleVillagerLifeEdit(
+            com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            VillagerEntityMCA villager = townstead$findVillager(sp.getServer(), payload.villagerUuid());
+            if (villager == null) return;
+            net.minecraft.server.MinecraftServer server = villager.getServer();
+            if (server == null) return;
+
+            com.aetherianartificer.townstead.calendar.VillagerLifeStamper.ensureStamped(villager, server);
+            com.aetherianartificer.townstead.villager.TownsteadVillager.Life life =
+                    com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life();
+
+            boolean changed = false;
+            if (payload.hasFrozenStage()) {
+                com.aetherianartificer.townstead.origin.LifeStageProgression.freezeAtStage(
+                        villager, payload.frozenStageIndex());
+                changed = true;
+            }
+            if (payload.hasBirthday()) {
+                int m = payload.birthMonth() > 0 ? payload.birthMonth() : life.birthMonth();
+                int d = payload.birthDay() > 0 ? payload.birthDay() : life.birthDay();
+                life.setCelebratedBirthday(m, d);
+                changed = true;
+            }
+            if (payload.hasBioAge()) {
+                long newBirth = com.aetherianartificer.townstead.calendar.TownsteadCalendar.lifeDay(server)
+                        - Math.max(0, payload.bioAgeDays());
+                com.aetherianartificer.townstead.origin.LifeStageProgression.applyManualAgeEdit(villager, newBirth);
+                changed = true;
+            }
+
+            if (!changed) return;
+            com.aetherianartificer.townstead.villager.TownsteadVillagers.flush(villager);
+            com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload sync = townstead$lifeSync(villager);
+            if (sync != null) {
+                PacketDistributor.sendToPlayer(sp, sync);
+                PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+            }
         });
     }
 
