@@ -180,7 +180,7 @@ public final class OriginSpawnHandler {
             LifeStage base = ref.stageAt(s);
             stages.add(new LifeStage(base.id(), base.label(), base.presentsAs(), Math.max(1, Math.round(days)),
                     base.narrativeStart(), base.narrativeEnd(), base.onEnd(), base.scale(), base.explicitNarrative(),
-                    base.rig(), base.mobile(), base.needs(), base.talkable()));
+                    base.rig(), base.mobile(), base.needs(), base.talkable(), base.deathLoot()));
         }
         float blendedVariance = 0f;
         for (int i = 0; i < mix.size(); i++) blendedVariance += fraction[i] * variance[i];

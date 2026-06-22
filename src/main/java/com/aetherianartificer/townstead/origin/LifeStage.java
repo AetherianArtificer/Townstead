@@ -1,7 +1,10 @@
 package com.aetherianartificer.townstead.origin;
 
+import com.aetherianartificer.townstead.origin.loot.LootDrop;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 /**
  * One entry in a {@link LifeCycle}'s ordered list.
@@ -47,7 +50,11 @@ public record LifeStage(
         // blocked). Resolved server-side from the gene, so no client sync.
         boolean mobile,
         boolean needs,
-        boolean talkable
+        boolean talkable,
+        // Items this stage drops when the villager (or a player of the origin) dies, ADDED on top of normal
+        // drops (an egg stage drops a spider egg, an adult drops silk). Rolled + spawned server-side by
+        // DeathLoot; never null (empty = no extra drops). Server-only, no client sync.
+        List<LootDrop> deathLoot
 ) {
     public LifeStage {
         if (id == null || id.isBlank()) throw new IllegalArgumentException("stage id is required");
@@ -56,6 +63,7 @@ public record LifeStage(
         if (narrativeStart < 0f) narrativeStart = 0f;
         if (narrativeEnd < narrativeStart) narrativeEnd = narrativeStart;
         if (scale <= 0f) scale = 1f;
+        deathLoot = deathLoot == null ? List.of() : List.copyOf(deathLoot);
     }
 
     /**
@@ -68,7 +76,7 @@ public record LifeStage(
                                int days, @Nullable StageEndAction onEnd) {
         return new LifeStage(id, label, presentsAs, days,
                 presentsAs.defaultNarrativeStart(), presentsAs.defaultNarrativeEnd(), onEnd,
-                presentsAs.defaultScale(), false, null, true, true, true);
+                presentsAs.defaultScale(), false, null, true, true, true, List.of());
     }
 
     /** Apparent ("life years") age at {@code delta} (0..1) through this stage. */

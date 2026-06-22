@@ -138,8 +138,13 @@ public final class LifeCycleGeneType implements GeneType {
             boolean mobile = GsonHelper.getAsBoolean(s, "mobile", true);
             boolean needs = GsonHelper.getAsBoolean(s, "needs", true);
             boolean talkable = GsonHelper.getAsBoolean(s, "talkable", true);
+            // Optional per-stage death loot (added on top of normal drops): "death_loot": [ {item,count|min/max,chance} ].
+            List<com.aetherianartificer.townstead.origin.loot.LootDrop> deathLoot =
+                    s.has("death_loot") && s.get("death_loot").isJsonArray()
+                            ? com.aetherianartificer.townstead.origin.loot.LootDrop.parseList(s.getAsJsonArray("death_loot"))
+                            : List.of();
             stages.add(new LifeStage(id, label, presentsAs, days, narrStart, narrEnd, onEnd, scale, explicitNarrative,
-                    rig.isEmpty() ? null : rig, mobile, needs, talkable));
+                    rig.isEmpty() ? null : rig, mobile, needs, talkable, deathLoot));
         }
         return stages;
     }

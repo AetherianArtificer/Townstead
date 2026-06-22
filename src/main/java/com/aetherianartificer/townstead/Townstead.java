@@ -1605,7 +1605,6 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.trait.TraitJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.origin.attachment.AttachmentServerLoader());
-        event.addListener(new com.aetherianartificer.townstead.origin.loot.DeathLootLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
