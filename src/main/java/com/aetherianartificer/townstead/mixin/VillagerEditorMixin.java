@@ -534,28 +534,13 @@ public abstract class VillagerEditorMixin extends Screen {
      */
     @Unique
     private int townstead$bioForSliderValue(LifeClientStore.Snapshot snap, double v) {
-        int[] days = snap.stageDays();
-        int n = (days == null) ? 0 : days.length;
-        if (n == 0) return 0;
-        double scaled = Math.max(0.0, Math.min(n, v * n));
-        int idx = Math.min(n - 1, (int) Math.floor(scaled));
-        double f = Math.max(0.0, Math.min(1.0, scaled - idx));
-        int cum = 0;
-        for (int i = 0; i < idx; i++) cum += Math.max(0, days[i]);
-        return cum + (int) Math.round(f * Math.max(0, days[idx]));
+        return com.aetherianartificer.townstead.origin.LifeStageBar.bioForSliderValue(snap.stageDays(), v);
     }
 
     /** Inverse of {@link #townstead$bioForSliderValue}: slider position for a biological age. */
     @Unique
     private double townstead$sliderValueForBio(LifeClientStore.Snapshot snap, int bio) {
-        int[] days = snap.stageDays();
-        int n = (days == null) ? 0 : days.length;
-        if (n == 0) return 0.0;
-        int idx = Math.max(0, snap.stageIndexForBioAge(bio));
-        int cum = 0;
-        for (int i = 0; i < idx; i++) cum += Math.max(0, days[i]);
-        double f = Math.max(0.0, Math.min(1.0, (bio - cum) / (double) Math.max(1, days[idx])));
-        return (idx + f) / n;
+        return com.aetherianartificer.townstead.origin.LifeStageBar.sliderValueForBio(snap.stageDays(), bio);
     }
 
     /**
@@ -652,7 +637,6 @@ public abstract class VillagerEditorMixin extends Screen {
     /*@Inject(method = "m_7861_", remap = false, at = @At("TAIL"))
     *///?}
     private void townstead$cleanupOnClose(CallbackInfo ci) {
-        townstead$sendLifeEditOnClose();
         HungerClientStore.clearOnChange();
         ThirstClientStore.clearOnChange();
         FatigueClientStore.clearOnChange();
@@ -662,29 +646,6 @@ public abstract class VillagerEditorMixin extends Screen {
         townstead$hungerDisplay = null;
         townstead$thirstDisplay = null;
         townstead$fatigueDisplay = null;
-    }
-
-    @Unique
-    private void townstead$sendLifeEditOnClose() {
-        boolean hasAge = villagerData.contains(LifeData.EDITOR_KEY_BIO_AGE_DAYS);
-        boolean hasFrozen = villagerData.contains(LifeData.EDITOR_KEY_FROZEN_STAGE_INDEX);
-        boolean hasMonth = villagerData.contains(LifeData.EDITOR_KEY_BIRTH_MONTH);
-        boolean hasDay = villagerData.contains(LifeData.EDITOR_KEY_BIRTH_DAY);
-        if (!hasAge && !hasFrozen && !hasMonth && !hasDay) return;
-
-        int absent = com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload.ABSENT;
-        com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload payload =
-                new com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload(
-                        villagerUUID,
-                        hasAge ? villagerData.getInt(LifeData.EDITOR_KEY_BIO_AGE_DAYS) : absent,
-                        hasFrozen ? villagerData.getInt(LifeData.EDITOR_KEY_FROZEN_STAGE_INDEX) : absent,
-                        hasMonth ? villagerData.getInt(LifeData.EDITOR_KEY_BIRTH_MONTH) : absent,
-                        hasDay ? villagerData.getInt(LifeData.EDITOR_KEY_BIRTH_DAY) : absent);
-        //? if neoforge {
-        PacketDistributor.sendToServer(payload);
-        //?} else if forge {
-        /*TownsteadNetwork.sendToServer(payload);
-        *///?}
     }
 
     //? if neoforge {

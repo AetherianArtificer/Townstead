@@ -125,6 +125,8 @@ public final class PowerToGeneConverter {
             case "modify_break_speed": return modifierGene(power, "break_speed");
             case "modify_jump": return modifierGene(power, "jump");
             case "modify_exhaustion": return modifierGene(power, "exhaustion");
+            case "modify_projectile_damage": return modifierGene(power, "projectile_damage");
+            case "modify_xp_gain": return modifierGene(power, "xp_gain");
             case "prevent_game_event": return preventGameEventGene(power);
             case "overlay": return overlayGene(power);
             case "prevent_death": return preventGene("death");

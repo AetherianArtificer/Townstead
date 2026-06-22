@@ -53,9 +53,19 @@ public record RigDefinition(
         Hold hold,
         // Whether this rig uses MCA hair. False by default (a custom rig draws its own head and a
         // skeleton has no hair, so the editor hides the hair controls); set true to opt back in.
-        boolean hair
+        boolean hair,
+        // Per-state bone poses (e.g. "crouch"): each state names bones to rotate/offset on top of the
+        // model's own setupAnim, so a pack authors a rig's crouch (a spider splays its legs) as data
+        // instead of engine code. Empty when the rig declares none.
+        Map<String, List<PoseBone>> poses
 ) {
     public enum ModelType { ENTITY_LAYER, GEOMETRY }
+
+    /**
+     * One bone in a named pose: the {@code bone}'s geo name, an additive {@code rotation} in degrees
+     * (X/Y/Z) and {@code offset} in model pixels, applied on top of the model's already-posed bones.
+     */
+    public record PoseBone(String bone, float[] rotation, float[] offset) {}
 
     public enum ArmorType { NONE, LAYERS, CUSTOM }
 

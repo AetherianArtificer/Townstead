@@ -80,7 +80,7 @@ public final class CalendarCommands {
     private static CompletableFuture<Suggestions> suggestProfiles(SuggestionsBuilder builder) {
         // Includes "auto", all JSON-registered profiles, and every id any
         // DynamicProfileSource currently advertises. De-duplicated, stable order.
-        for (String id : CalendarProfileChoices.listAll()) builder.suggest(id);
+        for (String id : CalendarProfileChoices.listAll()) builder.suggest("\"" + id + "\"");
         return builder.buildFuture();
     }
 

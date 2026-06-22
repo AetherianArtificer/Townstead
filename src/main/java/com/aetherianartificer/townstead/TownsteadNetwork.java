@@ -214,10 +214,6 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload::write,
                 com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload::read,
                 TownsteadNetwork::handleVillagerLifeRequest);
-        registerC2S(com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload.class,
-                com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload::write,
-                com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload::read,
-                TownsteadNetwork::handleVillagerLifeEdit);
         registerS2C(com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload.class,
                 com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload::write,
                 com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload::read,
@@ -437,46 +433,6 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.Townstead.townstead$lifeSync(villager);
         // Re-key to the editor's preview entity so its client-side lookups match.
         if (sync != null) sendToPlayer(sp, sync.withEntityId(payload.previewEntityId()));
-    }
-
-    private static void handleVillagerLifeEdit(
-            com.aetherianartificer.townstead.calendar.VillagerLifeEditC2SPayload payload, ServerPlayer sp) {
-        VillagerEntityMCA villager = findVillager(sp.getServer(), payload.villagerUuid());
-        if (villager == null) return;
-        net.minecraft.server.MinecraftServer server = sp.getServer();
-        if (server == null) return;
-
-        com.aetherianartificer.townstead.calendar.VillagerLifeStamper.ensureStamped(villager, server);
-        com.aetherianartificer.townstead.villager.TownsteadVillager.Life life =
-                com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life();
-
-        boolean changed = false;
-        if (payload.hasFrozenStage()) {
-            com.aetherianartificer.townstead.origin.LifeStageProgression.freezeAtStage(
-                    villager, payload.frozenStageIndex());
-            changed = true;
-        }
-        if (payload.hasBirthday()) {
-            int m = payload.birthMonth() > 0 ? payload.birthMonth() : life.birthMonth();
-            int d = payload.birthDay() > 0 ? payload.birthDay() : life.birthDay();
-            life.setCelebratedBirthday(m, d);
-            changed = true;
-        }
-        if (payload.hasBioAge()) {
-            long newBirth = com.aetherianartificer.townstead.calendar.TownsteadCalendar.lifeDay(server)
-                    - Math.max(0, payload.bioAgeDays());
-            com.aetherianartificer.townstead.origin.LifeStageProgression.applyManualAgeEdit(villager, newBirth);
-            changed = true;
-        }
-
-        if (!changed) return;
-        com.aetherianartificer.townstead.villager.TownsteadVillagers.flush(villager);
-        com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload sync =
-                com.aetherianartificer.townstead.Townstead.townstead$lifeSync(villager);
-        if (sync != null) {
-            sendToPlayer(sp, sync);
-            sendToTrackingEntity(villager, sync);
-        }
     }
 
     private static void handleStampSync(com.aetherianartificer.townstead.calendar.CalendarStampSyncPayload payload) {

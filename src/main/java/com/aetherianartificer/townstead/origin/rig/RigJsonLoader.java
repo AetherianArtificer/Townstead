@@ -140,7 +140,26 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
 
         boolean hair = GsonHelper.getAsBoolean(obj, "hair", false);
 
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair);
+        // Per-state bone poses: { "<state>": [ { "bone": ..., "rotation": [x,y,z], "offset": [x,y,z] } ] }.
+        Map<String, java.util.List<RigDefinition.PoseBone>> poses = new LinkedHashMap<>();
+        if (obj.has("poses") && obj.get("poses").isJsonObject()) {
+            for (Map.Entry<String, JsonElement> state : obj.getAsJsonObject("poses").entrySet()) {
+                if (!state.getValue().isJsonArray()) continue;
+                java.util.List<RigDefinition.PoseBone> bonePoses = new java.util.ArrayList<>();
+                for (JsonElement el : state.getValue().getAsJsonArray()) {
+                    if (!el.isJsonObject()) continue;
+                    JsonObject po = el.getAsJsonObject();
+                    String bone = GsonHelper.getAsString(po, "bone", "");
+                    if (bone.isEmpty()) continue;
+                    bonePoses.add(new RigDefinition.PoseBone(bone,
+                            vec(po, "rotation", 3, new float[]{0f, 0f, 0f}),
+                            vec(po, "offset", 3, new float[]{0f, 0f, 0f})));
+                }
+                poses.put(state.getKey(), java.util.List.copyOf(bonePoses));
+            }
+        }
+
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses));
     }
 
     /**

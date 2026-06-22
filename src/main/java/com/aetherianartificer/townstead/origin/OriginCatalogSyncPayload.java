@@ -263,6 +263,16 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
         writeGrip(buf, r.hold().mainhand());
         writeGrip(buf, r.hold().offhand());
         buf.writeBoolean(r.hair());
+        buf.writeVarInt(r.poses().size());
+        for (Map.Entry<String, List<RigDefinition.PoseBone>> e : r.poses().entrySet()) {
+            buf.writeUtf(e.getKey());
+            buf.writeVarInt(e.getValue().size());
+            for (RigDefinition.PoseBone p : e.getValue()) {
+                buf.writeUtf(p.bone());
+                for (int k = 0; k < 3; k++) buf.writeFloat(p.rotation()[k]);
+                for (int k = 0; k < 3; k++) buf.writeFloat(p.offset()[k]);
+            }
+        }
     }
 
     private static void writeAdjust(FriendlyByteBuf buf, RigDefinition.Adjust a) {
@@ -314,7 +324,21 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
         }
         Hold hold = new Hold(readGrip(buf), readGrip(buf));
         boolean hair = buf.readBoolean();
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair);
+        int pn = buf.readVarInt();
+        Map<String, List<RigDefinition.PoseBone>> poses = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < pn; i++) {
+            String state = buf.readUtf();
+            int cnt = buf.readVarInt();
+            List<RigDefinition.PoseBone> list = new ArrayList<>(cnt);
+            for (int j = 0; j < cnt; j++) {
+                String bone = buf.readUtf();
+                float[] rot = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+                float[] off = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+                list.add(new RigDefinition.PoseBone(bone, rot, off));
+            }
+            poses.put(state, List.copyOf(list));
+        }
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses));
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

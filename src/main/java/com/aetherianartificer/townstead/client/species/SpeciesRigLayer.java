@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.client.species;
 import com.aetherianartificer.townstead.client.animation.McaAnimationBridge;
 import com.aetherianartificer.townstead.origin.Animations;
 import com.aetherianartificer.townstead.origin.Hold;
+import com.aetherianartificer.townstead.origin.rig.RigDefinition;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.EntityModel;
@@ -130,6 +131,49 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
      * custom face, worn boots, and held items still draw, each resolving its bone by name from the baked
      * root and tracking the posed body.
      */
+    // Per-entity ease for the crouch pose: {factor 0..1, last ageInTicks}, so the pose fades in/out instead
+    // of snapping. Keyed by entity id; lightly pruned when it grows.
+    private static final java.util.Map<Integer, float[]> POSE_EASE = new java.util.HashMap<>();
+    private static final float POSE_EASE_RATE = 0.25f; // per tick (~4 ticks in/out)
+
+    /**
+     * Applies the rig's data-driven pose for the entity's current state (currently {@code crouch}) on top of
+     * the model's posed bones, so a pack authors per-rig poses (e.g. a spider splaying its legs when sneaking)
+     * as data instead of engine code. Rotations are additive degrees, offsets additive model pixels, scaled
+     * by an eased 0..1 factor so the pose fades in and out.
+     */
+    private void applyRigPose(String rigBase, T entity, float ageInTicks) {
+        RigDefinition def = RigModels.definition(rigBase);
+        if (def == null) return;
+        java.util.List<RigDefinition.PoseBone> pose = def.poses().get("crouch");
+        if (pose == null) return;
+
+        int id = entity.getId();
+        float[] st = POSE_EASE.get(id);
+        float target = entity.isCrouching() ? 1f : 0f;
+        float factor = st == null ? target : st[0];
+        float dt = st == null ? 0f : Math.max(0f, ageInTicks - st[1]);
+        float step = dt * POSE_EASE_RATE;
+        factor = factor < target ? Math.min(target, factor + step) : Math.max(target, factor - step);
+        POSE_EASE.put(id, new float[]{factor, ageInTicks});
+        if (POSE_EASE.size() > 256) POSE_EASE.keySet().removeIf(e -> {
+            var level = net.minecraft.client.Minecraft.getInstance().level;
+            return level == null || level.getEntity(e) == null;
+        });
+        if (factor <= 0.001f) return;
+
+        for (RigDefinition.PoseBone pb : pose) {
+            ModelPart part = RigModels.bakedBone(rigBase, pb.bone());
+            if (part == null) continue;
+            part.xRot += (float) Math.toRadians(pb.rotation()[0]) * factor;
+            part.yRot += (float) Math.toRadians(pb.rotation()[1]) * factor;
+            part.zRot += (float) Math.toRadians(pb.rotation()[2]) * factor;
+            part.x += pb.offset()[0] * factor;
+            part.y += pb.offset()[1] * factor;
+            part.z += pb.offset()[2] * factor;
+        }
+    }
+
     private void renderGeneric(PoseStack pose, MultiBufferSource buffers, int light, T entity,
                                float limbSwing, float limbSwingAmount, float partialTick, float ageInTicks,
                                float netHeadYaw, float headPitch, String rigBase) {
@@ -161,6 +205,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
             limbSwing = ageInTicks * 0.6f;
         }
         model.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+        applyRigPose(rigBase, entity, ageInTicks);
         VertexConsumer buffer = buffers.getBuffer(model.renderType(texture));
         float scale = hostBaseline * RigModels.scaleFor(entity);
         pose.pushPose();

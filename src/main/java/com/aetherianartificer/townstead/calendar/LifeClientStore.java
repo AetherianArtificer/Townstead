@@ -169,13 +169,7 @@ public final class LifeClientStore {
 
         /** The stage index a given biological age (in days) falls into. Clamps to the last stage. */
         public int stageIndexForBioAge(int bioAge) {
-            if (stageDays == null || stageDays.length == 0) return -1;
-            int cumulative = 0;
-            for (int i = 0; i < stageDays.length; i++) {
-                cumulative += Math.max(0, stageDays[i]);
-                if (bioAge < cumulative) return i;
-            }
-            return stageDays.length - 1;
+            return com.aetherianartificer.townstead.origin.LifeStageBar.stageIndexForBioAge(stageDays, bioAge);
         }
     }
 

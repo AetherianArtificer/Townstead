@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.client.species;
 import com.aetherianartificer.townstead.client.origin.ClientAbilities;
 import com.aetherianartificer.townstead.origin.ability.Ability;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
@@ -134,6 +136,37 @@ public final class ClimbRender {
         float seat = Math.max(0f, depth - SURFACE_CLEARANCE) * f;
         pose.translate(-up.x() * seat, -up.y() * seat, -up.z() * seat);
         pose.mulPose(new Quaternionf().slerp(surfaceToWorld(up, entity.getYRot()), f));
+        // Spin the body about the surface normal to face where the local player looks along the surface, so
+        // turning on a ceiling actually turns the model (it would otherwise keep its frozen compass body-yaw
+        // and walk backwards). Replaces the renderer's body-yaw within the reoriented frame at f=1, eased in.
+        float spin = headingSpinDegrees(entity, up);
+        if (spin != 0f) pose.mulPose(Axis.YP.rotationDegrees(spin * f));
+    }
+
+    /**
+     * Degrees to spin the model about the surface normal (local +Y after {@link #surfaceToWorld}) so the body
+     * faces the local player's surface-look direction. Cancels the renderer's body-yaw and substitutes the
+     * surface heading; the renderer applies {@code YP(180 - yBodyRot)} after this, so {@code beta - 180 +
+     * yBodyRot} nets out to {@code beta}, the heading from the surfaceToWorld forward to the look. Only the
+     * local reoriented player (whose surface look we hold); 0 for everyone else. The clung player's yaw is
+     * frozen so {@code yBodyRot == yBodyRotO}, no partial-tick interpolation needed.
+     */
+    private static float headingSpinDegrees(LivingEntity entity, Vector3f up) {
+        Minecraft mc = Minecraft.getInstance();
+        if (entity != mc.player || !ClimbState.reorientedView()) return 0f;
+        Vector3f look = inPlane(ClimbState.lookForward(up, entity.getYRot()), up);
+        Vector3f base = inPlane(surfaceToWorld(up, entity.getYRot()).transform(new Vector3f(0f, 0f, -1f)), up);
+        if (look == null || base == null) return 0f;
+        float sin = new Vector3f(base).cross(look).dot(up);
+        float beta = (float) Math.toDegrees(Math.atan2(sin, base.dot(look)));
+        return beta - 180f + entity.yBodyRot;
+    }
+
+    /** Projects a vector onto the surface plane (removes its normal component) and normalizes it, or null. */
+    private static Vector3f inPlane(Vector3f v, Vector3f up) {
+        v.sub(new Vector3f(up).mul(v.dot(up)));
+        if (v.lengthSquared() < 1.0e-4f) return null;
+        return v.normalize();
     }
 
     //? if neoforge {
