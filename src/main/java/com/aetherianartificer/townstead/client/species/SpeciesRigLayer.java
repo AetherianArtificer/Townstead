@@ -135,12 +135,15 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
     // of snapping. Keyed by entity id; lightly pruned when it grows.
     private static final java.util.Map<Integer, float[]> POSE_EASE = new java.util.HashMap<>();
     private static final float POSE_EASE_RATE = 0.25f; // per tick (~4 ticks in/out)
+    // Baked base position {x,y,z} per posed bone (rigBase+":"+bone), captured pristine on first use, so the
+    // pose offset is assigned from base each frame instead of accumulating (see applyRigPose).
+    private static final java.util.Map<String, float[]> POSE_BASE = new java.util.HashMap<>();
 
     /**
      * Applies the rig's data-driven pose for the entity's current state (currently {@code crouch}) on top of
      * the model's posed bones, so a pack authors per-rig poses (e.g. a spider splaying its legs when sneaking)
-     * as data instead of engine code. Rotations are additive degrees, offsets additive model pixels, scaled
-     * by an eased 0..1 factor so the pose fades in and out.
+     * as data instead of engine code. Rotations are additive degrees (on the setupAnim-reset pose); position
+     * offsets are assigned from each bone's baked base (NOT accumulated), scaled by an eased 0..1 factor.
      */
     private void applyRigPose(String rigBase, T entity, float ageInTicks) {
         RigDefinition def = RigModels.definition(rigBase);
@@ -160,17 +163,28 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
             var level = net.minecraft.client.Minecraft.getInstance().level;
             return level == null || level.getEntity(e) == null;
         });
-        if (factor <= 0.001f) return;
 
+        // Always run (even at factor 0) so the SHARED cached rig model's posed bones are restored to base for
+        // a non-crouching entity; otherwise a crouching one's pose leaks onto the next entity rendered.
         for (RigDefinition.PoseBone pb : pose) {
             ModelPart part = RigModels.bakedBone(rigBase, pb.bone());
             if (part == null) continue;
+            // Rotations are additive on top of the model's per-frame setupAnim reset, so factor 0 is a no-op.
             part.xRot += (float) Math.toRadians(pb.rotation()[0]) * factor;
             part.yRot += (float) Math.toRadians(pb.rotation()[1]) * factor;
             part.zRot += (float) Math.toRadians(pb.rotation()[2]) * factor;
-            part.x += pb.offset()[0] * factor;
-            part.y += pb.offset()[1] * factor;
-            part.z += pb.offset()[2] * factor;
+            // Positions are NOT reset by setupAnim, so adding each frame accumulates without bound and the
+            // model marches off (the spider sank into the ground and vanished on crouch). Assign from the
+            // captured baked base instead: factor 0 restores base exactly, and a crouch is a fixed offset.
+            String key = rigBase + ":" + pb.bone();
+            float[] base = POSE_BASE.get(key);
+            if (base == null) {
+                base = new float[]{part.x, part.y, part.z};
+                POSE_BASE.put(key, base);
+            }
+            part.x = base[0] + pb.offset()[0] * factor;
+            part.y = base[1] + pb.offset()[1] * factor;
+            part.z = base[2] + pb.offset()[2] * factor;
         }
     }
 
