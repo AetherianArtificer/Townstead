@@ -26,6 +26,10 @@ public final class ClimbState {
 
     // Per-tick ramp step: ~7 ticks (~0.35 s) from upright to fully on the surface.
     private static final float STEP = 0.15f;
+    // Gentler ease-OUT (~17 ticks) when the surface probe momentarily finds nothing, so a convex edge (the lip
+    // of a ceiling, a gap to the next overhang at the same level) holds the climb alive long enough for the
+    // controller to coast across and re-attach, instead of dropping the instant the probe reads null.
+    private static final float DECAY = 0.06f;
     // Per-tick low-pass on the surface normal, so crossing block edges on blocky terrain swings the surface
     // rather than snapping it between faces.
     private static final float NORMAL_EASE = 0.25f;
@@ -38,11 +42,14 @@ public final class ClimbState {
 
     // Whether to also tip the third-person orbit camera (and its controls) onto the surface like first
     // person. False = stable third-person orbit; first person always reorients regardless.
-    public static final boolean REORIENT_THIRD_PERSON = true;
+    public static final boolean REORIENT_THIRD_PERSON = false;
     // In third person, only reorient onto floor/ceiling (a near-vertical surface normal); on walls and
     // intermediate angles keep the normal orbit camera + controls (easier to navigate). |normal.y| above
     // this counts as floor/ceiling (~32 deg of vertical). First person always reorients regardless.
     private static final float THIRD_PERSON_VERTICAL = 0.85f;
+
+    private static final boolean DEBUG = false; // flip true to log the local player's detected surface (latest.log)
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("townstead/climb");
 
     private static final Map<Integer, Surface> SURFACES = new HashMap<>();
 
@@ -56,23 +63,36 @@ public final class ClimbState {
     private static float surfacePitch;
     private static boolean attached;
 
+    // Pole-free surface camera frame for the local player (the NEUTRAL look, before surfaceYaw/Pitch). Built
+    // once on attach from a stable wall reference, then rotated incrementally by the small per-tick change in
+    // the surface normal as it eases wall->ceiling. Rebuilding it from world-up every frame (the old way)
+    // hit the +Y->(0,-1,0) 180-degree singularity at the ceiling and snapped the camera; transporting it in
+    // small steps never reaches the pole. Reset (null) on detach so the next climb re-anchors cleanly.
+    private static Quaternionf frame;
+    private static Vector3f frameNormal;
+
     // ---- single writer (once per client tick) ----
 
     public static void tick() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) {
             SURFACES.clear();
+            ClimbMove.reset();
             return;
         }
         for (Entity e : mc.level.entitiesForRendering()) {
             if (!(e instanceof LivingEntity le)) continue;
-            Vector3f n = ClimbRender.wallNormal(le);
             Surface s = SURFACES.get(e.getId());
             // Starting a climb needs intent: the local player must be blocked by a wall it faces, so merely
             // squeezing past walls in a narrow hole/doorway does not latch. Holding (already on) stays on
             // proximity, and other entities (whose horizontalCollision is not simulated for the observer)
             // keep proximity so their climbing models still tilt.
             boolean alreadyOn = s != null && s.factor > 0f;
+            // Already attached: probe further (hysteresis) so a wall->ceiling corner or a small sag off the
+            // ceiling does not lose the surface for a tick and drop the climb into a fall.
+            Vector3f previous = s == null ? null : s.normal;
+            Vector3f n = le == mc.player ? ClimbMove.activeNormal() : null;
+            if (n == null) n = ClimbRender.wallNormal(le, alreadyOn, previous);
             if (n != null && le == mc.player && !alreadyOn && !ClimbRender.startIntent(le)) {
                 n = null;
             }
@@ -90,14 +110,77 @@ public final class ClimbState {
                 }
                 s.factor = Math.min(1f, s.factor + STEP);
             } else if (s != null) {
-                s.factor = Math.max(0f, s.factor - STEP);
+                s.factor = Math.max(0f, s.factor - DECAY);
                 if (s.factor <= 0f) SURFACES.remove(e.getId());
             }
         }
         SURFACES.keySet().removeIf(id -> mc.level.getEntity(id) == null);
-        // Reset the local player's surface look on each fresh attach (works in any camera perspective).
-        if (mc.player != null) updateAttach(factor(mc.player.getId()));
+        // Reset the local player's surface look on each fresh attach (works in any camera perspective), and
+        // advance the pole-free camera frame by this tick's normal change.
+        if (mc.player != null) {
+            float f = factor(mc.player.getId());
+            updateAttach(f);
+            updateFrame(f > 0f ? normal(mc.player.getId()) : null, mc.player.getYRot());
+            if (DEBUG && mc.player.tickCount % 3 == 0) {
+                Vector3f raw = ClimbRender.wallNormal(mc.player, f > 0f);
+                if (f > 0f || raw != null) {
+                    Vector3f sm = normal(mc.player.getId());
+                    LOG.info("detect f={} raw={} smoothed={} onGround={} reoriented={}",
+                            String.format(java.util.Locale.ROOT, "%.2f", f),
+                            raw == null ? "null" : fmtVec(raw),
+                            sm == null ? "null" : fmtVec(sm), mc.player.onGround(), reorientedView());
+                }
+            }
+        }
         ClimbMove.tickGrace();
+    }
+
+    /**
+     * Advance the local player's surface frame: anchor it on the first attached tick (stable wall reference),
+     * then rotate it by the small rotation taking the previous normal to the current one. Small steps keep it
+     * clear of the {@code +Y -> -Y} singularity, so the camera rolls smoothly onto a ceiling instead of
+     * snapping when the old from-scratch build crossed vertical.
+     */
+    private static void updateFrame(Vector3f n, float entityYaw) {
+        if (n == null) {
+            frame = null;
+            frameNormal = null;
+            return;
+        }
+        Vector3f up = new Vector3f(n).normalize();
+        if (frame == null || frameNormal == null) {
+            frame = anchorFrame(up, entityYaw);
+            frameNormal = up;
+            return;
+        }
+        Quaternionf step = new Quaternionf().rotationTo(frameNormal, up);
+        frame = step.mul(frame, new Quaternionf());
+        frameNormal.set(up);
+    }
+
+    /**
+     * A surface camera-to-world basis (up = surface normal, neutral forward = up the surface tilted off the
+     * straight-up pole) built from world-up. Used only to ANCHOR the transported {@link #frame} on attach; for
+     * a wall this is well defined, and a one-off vertical anchor (rare pure-ceiling attach) falls back to the
+     * entity facing without a continuity cost (it is a single frame, not a per-tick rebuild).
+     */
+    private static Quaternionf anchorFrame(Vector3f up, float entityYaw) {
+        Vector3f upWall = new Vector3f(0f, 1f, 0f).sub(new Vector3f(up).mul(up.y()));
+        if (upWall.lengthSquared() < 1.0e-4f) {
+            float y = (float) Math.toRadians(entityYaw);
+            upWall.set(-Mth.sin(y), 0f, Mth.cos(y));
+            upWall.sub(new Vector3f(up).mul(upWall.dot(up)));
+            if (upWall.lengthSquared() < 1.0e-4f) upWall.set(1f, 0f, 0f);
+        }
+        upWall.normalize();
+        Vector3f fwd = new Vector3f(upWall).sub(new Vector3f(up).mul(NEUTRAL_DOWN)).normalize();
+        Vector3f camUp = new Vector3f(up).sub(new Vector3f(fwd).mul(up.dot(fwd))).normalize();
+        Vector3f right = new Vector3f(fwd).cross(camUp).normalize();
+        return new Matrix3f().set(
+                right.x(), right.y(), right.z(),
+                camUp.x(), camUp.y(), camUp.z(),
+                -fwd.x(), -fwd.y(), -fwd.z()
+        ).getNormalizedRotation(new Quaternionf());
     }
 
     /**
@@ -159,29 +242,14 @@ public final class ClimbState {
 
     /**
      * The camera-to-world orientation for the surface-frame view (view forward -Z, matching MC's view matrix
-     * {@code Rz(roll) Rx(pitch) Ry(yaw+180)}). Up is the surface normal; forward starts up the surface tilted
-     * toward it (off the straight-up pole) and is turned about the normal and pitched about screen-right by
-     * the surface look. For a vertical normal (ceiling) the up-the-surface tangent is degenerate, so the
-     * entity facing is used as the forward reference.
+     * {@code Rz(roll) Rx(pitch) Ry(yaw+180)}). Up is the surface normal; the neutral forward comes from the
+     * pole-free transported {@link #frame}, then is turned about the normal and pitched about screen-right by
+     * the surface look. Falls back to a from-scratch anchor if the frame has not been built yet (before the
+     * first attached tick).
      */
     public static Quaternionf cameraOrientation(Vector3f n, float entityYaw) {
-        Vector3f up = new Vector3f(n).normalize();
-        Vector3f upWall = new Vector3f(0f, 1f, 0f).sub(new Vector3f(up).mul(up.y()));
-        if (upWall.lengthSquared() < 1.0e-4f) {
-            float y = (float) Math.toRadians(entityYaw);
-            upWall.set(-Mth.sin(y), 0f, Mth.cos(y));
-            upWall.sub(new Vector3f(up).mul(upWall.dot(up)));
-            if (upWall.lengthSquared() < 1.0e-4f) upWall.set(1f, 0f, 0f);
-        }
-        upWall.normalize();
-        Vector3f fwd = new Vector3f(upWall).sub(new Vector3f(up).mul(NEUTRAL_DOWN)).normalize();
-        Vector3f camUp = new Vector3f(up).sub(new Vector3f(fwd).mul(up.dot(fwd))).normalize();
-        Vector3f right = new Vector3f(fwd).cross(camUp).normalize();
-        Quaternionf base = new Matrix3f().set(
-                right.x(), right.y(), right.z(),
-                camUp.x(), camUp.y(), camUp.z(),
-                -fwd.x(), -fwd.y(), -fwd.z()
-        ).getNormalizedRotation(new Quaternionf());
+        Quaternionf base = frame != null ? new Quaternionf(frame) : anchorFrame(new Vector3f(n).normalize(), entityYaw);
+        Vector3f up = frameNormal != null ? new Vector3f(frameNormal) : new Vector3f(n).normalize();
         return new Quaternionf().rotationAxis((float) Math.toRadians(surfaceYaw), up.x(), up.y(), up.z())
                 .mul(base).rotateX((float) Math.toRadians(surfacePitch));
     }
@@ -189,5 +257,9 @@ public final class ClimbState {
     /** The world direction the surface-frame camera looks, used to steer look-relative movement. */
     public static Vector3f lookForward(Vector3f n, float entityYaw) {
         return cameraOrientation(n, entityYaw).transform(new Vector3f(0f, 0f, -1f));
+    }
+
+    private static String fmtVec(Vector3f v) {
+        return String.format(java.util.Locale.ROOT, "(%.2f,%.2f,%.2f)", v.x(), v.y(), v.z());
     }
 }

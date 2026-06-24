@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Player;
 
 import java.util.List;
 
@@ -30,14 +31,18 @@ public final class RigHitboxes {
      */
     public static EntityDimensions dimensionsFor(Entity entity, Pose pose) {
         if (pose == Pose.SLEEPING) return null;
-        if (!(entity instanceof VillagerEntityMCA villager)) return null;
-        RigDefinition.Hitbox box = entity.level().isClientSide ? forClient(villager) : forServer(villager);
+        // Villagers (life-stage / species rig) and players (origin's species rig) both take their rig's
+        // box; any other entity keeps its vanilla dimensions. A player without a hitbox-declaring rig
+        // (the default humanoid origins) resolves null below and stays vanilla 0.6 x 1.8.
+        if (!(entity instanceof VillagerEntityMCA) && !(entity instanceof Player)) return null;
+        if (!(entity instanceof LivingEntity living)) return null;
+        RigDefinition.Hitbox box = entity.level().isClientSide ? forClient(living) : forServer(living);
         if (box == null) return null;
         return EntityDimensions.scalable(box.width(), box.height());
     }
 
-    private static RigDefinition.Hitbox forServer(VillagerEntityMCA villager) {
-        RigDefinition def = ServerRig.defFor(villager);
+    private static RigDefinition.Hitbox forServer(LivingEntity entity) {
+        RigDefinition def = ServerRig.defFor(entity);
         return def == null ? null : def.hitbox();
     }
 

@@ -72,7 +72,12 @@ public record RigDefinition(
         // can't wear or hold gear in a slot, e.g. an egg wears nothing. The equip backstop strips anything
         // placed in a disabled slot back to the wearer; since the slot then stays empty, nothing renders
         // there either. Empty = the rig allows every slot (the default).
-        Set<EquipmentSlot> disabledSlots
+        Set<EquipmentSlot> disabledSlots,
+        // The bone the first-person camera sits at, so the eye height matches where this body's head
+        // actually is instead of the default humanoid 1.62 (a low spider body's eyes sit near the ground).
+        // The eye height is derived client-side from this bone's resting position in the baked model
+        // ({@code RigCamera}). Empty = keep the height-proportional default.
+        @Nullable String cameraBone
 ) {
     public enum ModelType { ENTITY_LAYER, GEOMETRY }
 

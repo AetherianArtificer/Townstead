@@ -1130,6 +1130,8 @@ public class Townstead {
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.InfectionImmunityGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.origin.gene.types.StuckImmunityGeneType());
+            com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.EyesGeneType());
             com.aetherianartificer.townstead.origin.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.origin.gene.types.MouthGeneType());

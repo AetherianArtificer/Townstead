@@ -233,6 +233,20 @@ public final class RigModels {
     }
 
     /**
+     * Resolve a rig bone the right way for either body plan: a generic (non-humanoid) rig is baked via
+     * {@link #genericModel} first (its humanoid bake would throw on the missing arm/leg bones), a
+     * humanoid rig through {@link #bone}. Returns null if the bone is absent or the model isn't baked yet.
+     */
+    public static ModelPart cameraBone(String rigBase, String name) {
+        if (name == null || name.isEmpty()) return null;
+        if (isGeneric(rigBase)) {
+            genericModel(rigBase);
+            return bakedBone(rigBase, name);
+        }
+        return bone(rigBase, name);
+    }
+
+    /**
      * A baked rig bone by geo name from the already-cached root, WITHOUT triggering a humanoid bake.
      * Safe for generic (non-humanoid) rigs, whose root must be baked via {@link #genericModel} first;
      * returns null if the root is not baked yet or the bone is absent.

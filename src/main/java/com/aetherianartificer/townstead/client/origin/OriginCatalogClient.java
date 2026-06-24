@@ -35,6 +35,8 @@ public final class OriginCatalogClient {
             rigs.put(r.id(), r);
         }
         RIGS = Map.copyOf(rigs);
+        // Rig defs may have changed (e.g. a new camera bone); drop the derived eye-height cache.
+        com.aetherianartificer.townstead.client.species.RigCamera.invalidate();
         // Bridge data-pack traits into MCA's registry client-side so the editor lists them.
         // (enabledTraits comes from the server via MCA's own config sync.) Defensive against MCA drift.
         boolean any = false;

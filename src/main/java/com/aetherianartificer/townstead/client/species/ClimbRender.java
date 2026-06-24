@@ -36,6 +36,16 @@ public final class ClimbRender {
     // model whose geometry sits around its origin (e.g. the spider body) does not clip into the surface.
     private static final float SURFACE_CLEARANCE = 0.05f;
 
+    // How far out to probe for a surface. Starting a climb uses the tight reach (you must be right against
+    // the wall). Once attached we probe much further (hysteresis), so rounding a wall->ceiling corner or
+    // sagging a little off a ceiling does not momentarily lose the surface and drop you into a fall.
+    private static final float REACH = 0.12f;
+    private static final float STICKY_REACH = 0.34f;
+    // How much more a ceiling overhead counts than a wall in the surface normal, so a wall->ceiling corner
+    // commits to the ceiling instead of staying stuck on the wall the body is pressed against.
+    private static final float CEILING_BIAS = 3.0f;
+    private static final float CONTINUITY_BIAS = 1.25f;
+
     /**
      * The intent to START a climb: the entity is blocked horizontally and there is a solid block in the
      * direction it faces, so it is pushing into a wall rather than just brushing past walls in a narrow gap.
@@ -58,27 +68,88 @@ public final class ClimbRender {
         return null;
     }
 
-    /**
-     * The climbed surface's outward normal (the rig's new "up"), or null when not on a surface. Averages the
-     * outward normals of every solid face around the entity (the horizontal walls plus a ceiling overhead) so
-     * inside corners and blocky/stepped terrain give a stable resultant normal instead of flipping between
-     * faces. A single flat wall returns exactly that wall's normal.
-     */
+    /** The climbed surface's outward normal for a fresh (not-yet-attached) entity. */
     public static Vector3f wallNormal(LivingEntity entity) {
+        return wallNormal(entity, false);
+    }
+
+    /**
+     * The climbed surface's outward normal (the rig's new "up"), or null when not on a surface. Sums the
+     * outward normals of every solid face around the entity (the horizontal walls plus a ceiling overhead),
+     * each weighted by PROXIMITY (the face the entity is pressed against counts most). A single flat wall
+     * returns exactly that wall's normal; a true inside corner returns the diagonal; but at a wall->ceiling
+     * transition the ceiling wins as soon as the entity slides under it, so the climb commits to the ceiling
+     * instead of hanging forever at the 45-degree corner average (the old equal-weight sum could not let go
+     * of the wall). When {@code attached}, probes further so the transition (or a small sag off a ceiling)
+     * keeps the surface instead of briefly losing it and dropping into a fall.
+     */
+    public static Vector3f wallNormal(LivingEntity entity, boolean attached) {
+        return wallNormal(entity, attached, null);
+    }
+
+    public static Vector3f wallNormal(LivingEntity entity, boolean attached, Vector3f previousNormal) {
         if (entity.onGround()) return null;
         if (!ClientAbilities.isActive(entity, Ability.CLIMBING)) return null;
+        // The local player lets go (drops to the ground) while sneaking: force-detach so it falls clean
+        // instead of crouch-sliding down the wall.
+        Minecraft mc = Minecraft.getInstance();
+        if (entity == mc.player && mc.player.isShiftKeyDown()) return null;
+        float reach = attached ? STICKY_REACH : REACH;
         AABB box = entity.getBoundingBox();
-        Vector3f sum = new Vector3f();
+        Vector3f best = null;
+        float bestScore = 0f;
         for (Direction d : Direction.Plane.HORIZONTAL) {
-            if (solidToward(entity, box, d)) sum.add(-d.getStepX(), 0f, -d.getStepZ());
+            float w = faceWeight(entity, box, d.getStepX(), 0, d.getStepZ(), reach);
+            if (w > 0f) {
+                Vector3f normal = new Vector3f(-d.getStepX(), 0f, -d.getStepZ());
+                float score = surfaceScore(w, normal, previousNormal, 1.0f);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = normal;
+                }
+            }
         }
-        if (!entity.level().noCollision(entity, box.move(0.0, 0.12, 0.0))) sum.add(0f, -1f, 0f);
-        if (sum.lengthSquared() < 1.0e-4f) return null;
-        return sum.normalize();
+        // A ceiling overhead outweighs the walls (CEILING_BIAS): climbing a wall up to a ceiling, the body is
+        // pressed flat against the wall, so by raw proximity the wall would win and the climb would just bounce
+        // against the ceiling tile instead of flipping onto it. Biasing the ceiling lets the normal tilt onto
+        // it as soon as it is overhead, so the corner-assist engages and the body rounds onto the ceiling.
+        float ceiling = faceWeight(entity, box, 0, 1, 0, reach);
+        if (ceiling > 0f) {
+            Vector3f normal = new Vector3f(0f, -1f, 0f);
+            float score = surfaceScore(ceiling, normal, previousNormal, CEILING_BIAS);
+            if (score > bestScore) {
+                bestScore = score;
+                best = normal;
+            }
+        }
+        return best;
+    }
+
+    private static float surfaceScore(float proximity, Vector3f normal, Vector3f previousNormal, float bias) {
+        float score = proximity * bias;
+        if (previousNormal != null && previousNormal.lengthSquared() > 1.0e-4f) {
+            float alignment = Math.max(0f, new Vector3f(previousNormal).normalize().dot(normal));
+            score += alignment * CONTINUITY_BIAS;
+        }
+        return score;
+    }
+
+    /**
+     * Proximity weight for the face in direction {@code (dx,dy,dz)}: the nearest contact gets the most weight,
+     * so the surface the entity is pressed against outweighs one merely within reach. Stepped probe, near to
+     * far; 0 when nothing solid is within {@code maxReach}.
+     */
+    private static float faceWeight(LivingEntity entity, AABB box, int dx, int dy, int dz, float maxReach) {
+        final int steps = 4;
+        for (int i = 1; i <= steps; i++) {
+            float r = maxReach * i / steps;
+            if (!entity.level().noCollision(entity, box.move(dx * r, dy * r, dz * r))) return steps - i + 1;
+        }
+        return 0f;
     }
 
     private static boolean solidToward(LivingEntity entity, AABB box, Direction d) {
-        return !entity.level().noCollision(entity, box.move(d.getStepX() * 0.12, 0.0, d.getStepZ() * 0.12));
+        return !entity.level().noCollision(entity, box.move(d.getStepX() * REACH, 0.0, d.getStepZ() * REACH));
     }
 
     /**
@@ -141,6 +212,19 @@ public final class ClimbRender {
         // and walk backwards). Replaces the renderer's body-yaw within the reoriented frame at f=1, eased in.
         float spin = headingSpinDegrees(entity, up);
         if (spin != 0f) pose.mulPose(Axis.YP.rotationDegrees(spin * f));
+        if (DEBUG && entity == Minecraft.getInstance().player && entity.tickCount % 3 == 0) {
+            Vector3f modelUp = surfaceToWorld(up, entity.getYRot()).transform(new Vector3f(0f, 1f, 0f));
+            LOG.info("tilt up=({},{},{}) f={} spin={} modelUp=({},{},{}) pose={} bbH={}",
+                    fmt(up.x()), fmt(up.y()), fmt(up.z()), fmt(f), fmt(spin),
+                    fmt(modelUp.x()), fmt(modelUp.y()), fmt(modelUp.z()), entity.getPose(), fmt(entity.getBbHeight()));
+        }
+    }
+
+    private static final boolean DEBUG = false; // flip true to log the model tilt on the local player (latest.log)
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("townstead/climb");
+
+    private static String fmt(double v) {
+        return String.format(java.util.Locale.ROOT, "%.2f", v);
     }
 
     /**

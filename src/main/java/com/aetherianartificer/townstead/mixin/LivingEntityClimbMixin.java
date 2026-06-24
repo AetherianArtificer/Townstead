@@ -80,8 +80,9 @@ public abstract class LivingEntityClimbMixin {
             if (pushingIntoWall) cir.setReturnValue(true);
             return;
         }
-        // Jump = deliberate release: let go of the wall and fall.
-        if (townstead$holdingJump()) {
+        // Jump or sneak = deliberate release: let go of the wall and fall (sneak drops the player straight to
+        // the ground instead of the vanilla slow crouch-slide).
+        if (townstead$holdingJump() || self.isShiftKeyDown()) {
             townstead$clinging = false;
             return;
         }

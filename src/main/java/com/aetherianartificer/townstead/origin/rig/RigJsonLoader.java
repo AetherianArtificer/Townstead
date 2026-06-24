@@ -158,7 +158,14 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
         // Equipment slots this body refuses: { "equipment": { "disabled": ["head","chest", ...] } }.
         java.util.Set<net.minecraft.world.entity.EquipmentSlot> disabledSlots = parseDisabledSlots(obj);
 
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots);
+        // First-person camera anchor: { "camera": { "bone": "head" } }. The eye height is derived from
+        // that bone client-side; absent = keep the height-proportional default.
+        String cameraBone = "";
+        if (obj.has("camera") && obj.get("camera").isJsonObject()) {
+            cameraBone = GsonHelper.getAsString(obj.getAsJsonObject("camera"), "bone", "");
+        }
+
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots, cameraBone);
     }
 
     /** Parse {@code equipment.disabled} into a set of vanilla equipment slots (unknown names skipped). */

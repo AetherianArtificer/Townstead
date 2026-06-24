@@ -276,6 +276,7 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
         }
         buf.writeVarInt(r.disabledSlots().size());
         for (net.minecraft.world.entity.EquipmentSlot slot : r.disabledSlots()) buf.writeByte(slot.ordinal());
+        buf.writeUtf(r.cameraBone() == null ? "" : r.cameraBone());
     }
 
     private static void writeWornAnchor(FriendlyByteBuf buf, RigDefinition.WornAnchor anchor) {
@@ -365,7 +366,8 @@ public record OriginCatalogSyncPayload(List<OriginCatalogEntry> entries, List<Ge
         for (int i = 0; i < disabledCount; i++) {
             disabledSlots.add(net.minecraft.world.entity.EquipmentSlot.values()[buf.readByte()]);
         }
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots));
+        String cameraBone = buf.readUtf();
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone);
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

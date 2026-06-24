@@ -218,6 +218,22 @@ public record GeneCatalogEntry(
         return false;
     }
 
+    /** True when this gene moves freely through "stuck" blocks (cobweb, ...); the block ids ride in {@code targetId}. */
+    public boolean isStuckImmunity() {
+        return displayKind == com.aetherianartificer.townstead.origin.gene.GeneDisplay.Kind.STUCK_IMMUNITY.ordinal();
+    }
+
+    /** The block ids a STUCK_IMMUNITY gene passes through, unpacked from {@code targetId}; empty otherwise. */
+    public java.util.List<net.minecraft.resources.ResourceLocation> stuckBlocks() {
+        if (!isStuckImmunity() || targetId == null || targetId.isEmpty()) return java.util.List.of();
+        java.util.List<net.minecraft.resources.ResourceLocation> out = new java.util.ArrayList<>();
+        for (String s : targetId.split(";")) {
+            net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation.tryParse(s.trim());
+            if (id != null) out.add(id);
+        }
+        return out;
+    }
+
     public boolean isRecessive() {
         return dominanceOrdinal == com.aetherianartificer.townstead.origin.gene.Dominance.RECESSIVE.ordinal();
     }

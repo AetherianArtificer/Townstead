@@ -19,7 +19,7 @@ package com.aetherianartificer.townstead.origin.gene;
  */
 public record GeneDisplay(Kind kind, float min, float max, String targetId, float amount) {
 
-    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY, PARTICLE, SUPPRESS_NEED }
+    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY, PARTICLE, SUPPRESS_NEED, STUCK_IMMUNITY }
 
     public static final GeneDisplay PRESENCE = new GeneDisplay(Kind.BOOLEAN, 0f, 1f, "", 0f);
 
@@ -121,6 +121,22 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
     public static GeneDisplay suppressNeed(java.util.List<String> needs) {
         String packed = needs == null ? "" : String.join(";", needs);
         return new GeneDisplay(Kind.SUPPRESS_NEED, 0f, 1f, packed, 0f);
+    }
+
+    /**
+     * The blocks this gene moves freely through (cobweb, sweet berry bush), packed into {@code targetId}
+     * as {@code "minecraft:cobweb;..."} so the controlling client can resolve the immunity for its own
+     * physics prediction (a spider-folk player walking through cobwebs). A presence chip in the picker.
+     */
+    public static GeneDisplay stuckImmunity(java.util.Set<net.minecraft.resources.ResourceLocation> blocks) {
+        StringBuilder packed = new StringBuilder();
+        if (blocks != null) {
+            for (net.minecraft.resources.ResourceLocation id : blocks) {
+                if (packed.length() > 0) packed.append(';');
+                packed.append(id.toString());
+            }
+        }
+        return new GeneDisplay(Kind.STUCK_IMMUNITY, 0f, 1f, packed.toString(), 0f);
     }
 
     private static String fmt(float v) {
