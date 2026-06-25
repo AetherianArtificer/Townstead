@@ -24,6 +24,8 @@
     "VillagerFinalizeSpawnMixin",
     "VillagerEntityMCAImmortalityMixin",
     "VillagerEntityMCALifeStageMixin",
+    "RelationshipItemAgeGateMixin",
+    "ResidencyWorkAgeGateMixin",
     "PathNavigationFenceGateMixin",
     "PregnancyInheritanceMixin",
     "FertilityPregnancyMixin",

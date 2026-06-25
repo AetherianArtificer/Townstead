@@ -197,6 +197,22 @@ public final class LifeStageProgression {
         return isImmortal(villager, life) || isAgeless(life);
     }
 
+    /**
+     * True when the villager is below adult by its Townstead life stage (baby/toddler/child/teen). A
+     * defensive gate for adult-only interactions (marriage, employment): MCA gates those on vanilla
+     * {@code isBaby()} (breeding age &lt; 0), which {@link #syncMcaAgeToStage} keeps in step with the
+     * stage, but this reads the resolved stage directly so it stays correct even in the brief window
+     * before a freshly loaded villager's breeding age is re-synced. Falls back to {@code isBaby()} when
+     * the villager has no resolved Townstead stage. Senior presents as adult, so it is NOT pre-adult.
+     */
+    public static boolean isPreAdult(VillagerEntityMCA villager) {
+        if (villager == null) return false;
+        LifeStage stage = currentStage(villager);
+        if (stage == null) return villager.isBaby();
+        CanonicalStage c = stage.presentsAs();
+        return c != CanonicalStage.ADULT && c != CanonicalStage.SENIOR;
+    }
+
     @Nullable
     private static LifeCycle resolveCycle(TownsteadVillager.Life life) {
         ResourceLocation originId = ResourceLocation.tryParse(life.originId());
