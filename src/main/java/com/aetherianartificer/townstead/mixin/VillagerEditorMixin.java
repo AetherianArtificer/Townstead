@@ -409,7 +409,7 @@ public abstract class VillagerEditorMixin extends Screen {
 
         // Editable "< Month > < Day >" birthday row — celebrated date only, decoupled
         // from the slider/age. Writes EDITOR_KEY_BIRTH_MONTH/DAY (no year, no bio-age).
-        townstead$shiftBelow(sy + sh + 2, TOWNSTEAD_LIFE_SHIFT);
+        townstead$shiftBelow(sx, sy + sh + 2, TOWNSTEAD_LIFE_SHIFT);
         townstead$buildBirthdayRow(sx, sy + sh + 4, sw, ymd, cal);
     }
 
@@ -468,9 +468,16 @@ public abstract class VillagerEditorMixin extends Screen {
     }
 
     @Unique
-    private void townstead$shiftBelow(int below, int dy) {
+    private void townstead$shiftBelow(int minX, int below, int dy) {
+        // Only the right-hand data column (family/UUID, under the age slider) drops for the DOB
+        // row. MCA's left-side bottom controls (model nav "- < > +", Done) also sit below `below`,
+        // so without the x-filter they'd move while Done (excluded) stays, leaving Done floating up
+        // into the nav row. Gating on the slider's x keeps the whole left side put.
         for (GuiEventListener child : this.children()) {
-            if (child instanceof AbstractWidget w && w != doneWidget && w.getY() >= below) w.setY(w.getY() + dy);
+            if (child instanceof AbstractWidget w && w != doneWidget
+                    && w.getX() >= minX && w.getY() >= below) {
+                w.setY(w.getY() + dy);
+            }
         }
     }
 
