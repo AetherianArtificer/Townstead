@@ -14,20 +14,31 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Horizontally-scrollable Character-editor tab strip. Lays out one button per resolved tab in a fixed
- * band; when the buttons are wider than the band it scrolls natively (mouse wheel), clipped by scissor.
- * The button matching the current page renders pressed, mirroring how MCA greys its active subpage tab.
- * Drawn with {@code fill} (not GUI sprites) so it compiles on both stonecutter targets; this feature
- * only renders on the 1.21 MCA anyway.
+ * Horizontally-scrollable Character-editor tab strip. When the tabs overflow the band it reserves a
+ * dedicated ‹ / › arrow button at each end (greyed at the scroll limit, like MCA's own paginators) and
+ * scrolls the tab area between them — wheel, arrow click, and auto-reveal of the current tab all work.
+ * The tab buttons clip cleanly inside the inner band. Drawn with vanilla button sprites on 1.21 (fill
+ * fallback on 1.20.1, which lacks the GUI sprite system); this feature only renders on the 1.21 MCA.
  */
 public class CharacterTabStrip extends AbstractWidget {
     private static final int PAD = 8;
     private static final int GAP = 1;
     private static final int MIN_TAB = 30;
+    private static final int ARROW = 12;        // width of each scroll-arrow button
+    private static final int PADDLE_STEP = 56;  // px scrolled per arrow click
+    // Fill-fallback colours for 1.20.1 (no GUI sprite system).
     private static final int BORDER = 0xFF101010;
     private static final int BG_NORMAL = 0xFF555555;
     private static final int BG_HOVER = 0xFF707070;
     private static final int BG_SELECTED = 0xFF2D2D2D;
+    //? if >=1.21 {
+    private static final net.minecraft.resources.ResourceLocation BTN =
+            net.minecraft.resources.ResourceLocation.withDefaultNamespace("widget/button");
+    private static final net.minecraft.resources.ResourceLocation BTN_DISABLED =
+            net.minecraft.resources.ResourceLocation.withDefaultNamespace("widget/button_disabled");
+    private static final net.minecraft.resources.ResourceLocation BTN_HIGHLIGHTED =
+            net.minecraft.resources.ResourceLocation.withDefaultNamespace("widget/button_highlighted");
+    //?}
 
     public record Entry(String pageId, Component label) {}
 
@@ -56,41 +67,69 @@ public class CharacterTabStrip extends AbstractWidget {
             cx += w + GAP;
         }
         this.contentW = Math.max(0, cx - GAP);
+        // Reveal the current tab if it lays out off-screen (e.g. a later tab is the open page).
+        int sel = -1;
+        for (int i = 0; i < this.entries.size(); i++) {
+            if (this.entries.get(i).pageId().equals(selected)) { sel = i; break; }
+        }
+        if (sel >= 0) {
+            int iw = innerWidth();
+            this.scrollX = Math.max(0, Math.min(tabX[sel] - (iw - tabW[sel]) / 2, Math.max(0, contentW - iw)));
+        }
     }
 
-    public void setSelected(String pageId) {
-        this.selected = pageId;
-    }
+    public void setSelected(String pageId) { this.selected = pageId; }
 
-    private int maxScroll() {
-        return Math.max(0, contentW - width);
-    }
+    private boolean overflow() { return contentW > width; }
+    private int innerX() { return getX() + (overflow() ? ARROW : 0); }
+    private int innerWidth() { return width - (overflow() ? ARROW * 2 : 0); }
+    private int maxScroll() { return Math.max(0, contentW - innerWidth()); }
 
     @Override
     protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         scrollX = Math.max(0, Math.min(scrollX, maxScroll()));
-        g.enableScissor(getX(), getY(), getX() + width, getY() + height);
         var font = Minecraft.getInstance().font;
-        boolean inBand = mouseY >= getY() && mouseY < getY() + height && mouseX >= getX() && mouseX < getX() + width;
+        int ix = innerX(), iw = innerWidth();
+        g.enableScissor(ix, getY(), ix + iw, getY() + height);
+        boolean inBand = mouseY >= getY() && mouseY < getY() + height && mouseX >= ix && mouseX < ix + iw;
         for (int i = 0; i < entries.size(); i++) {
-            int sx = getX() + tabX[i] - scrollX;
+            int sx = ix + tabX[i] - scrollX;
             int w = tabW[i];
-            if (sx + w <= getX() || sx >= getX() + width) continue; // fully clipped
+            if (sx + w <= ix || sx >= ix + iw) continue; // fully clipped
             boolean isSel = entries.get(i).pageId().equals(selected);
             boolean hover = inBand && mouseX >= sx && mouseX < sx + w;
-            int bg = isSel ? BG_SELECTED : (hover ? BG_HOVER : BG_NORMAL);
-            g.fill(sx, getY(), sx + w, getY() + height, bg);
-            g.fill(sx, getY(), sx + w, getY() + 1, BORDER);
-            g.fill(sx, getY() + height - 1, sx + w, getY() + height, BORDER);
-            g.fill(sx, getY(), sx + 1, getY() + height, BORDER);
-            g.fill(sx + w - 1, getY(), sx + w, getY() + height, BORDER);
-            int color = isSel ? 0xFFAAAAAA : 0xFFFFFFFF;
+            drawButton(g, sx, w, isSel, hover);
+            int color = isSel ? 0xFFA0A0A0 : 0xFFFFFFFF;
             g.drawCenteredString(font, entries.get(i).label(), sx + w / 2, getY() + (height - 8) / 2, color);
         }
         g.disableScissor();
-        if (scrollX > 0) g.drawString(font, "‹", getX() + 1, getY() + (height - 8) / 2, 0xFFFFFFFF, true);
-        if (scrollX < maxScroll())
-            g.drawString(font, "›", getX() + width - 6, getY() + (height - 8) / 2, 0xFFFFFFFF, true);
+        if (overflow()) {
+            int h = getY();
+            boolean lh = mouseY >= h && mouseY < h + height && mouseX >= getX() && mouseX < getX() + ARROW;
+            boolean rh = mouseY >= h && mouseY < h + height && mouseX >= getX() + width - ARROW && mouseX < getX() + width;
+            drawArrow(g, getX(), scrollX > 0, lh, "‹");
+            drawArrow(g, getX() + width - ARROW, scrollX < maxScroll(), rh, "›");
+        }
+    }
+
+    private void drawArrow(GuiGraphics g, int ax, boolean enabled, boolean hover, String glyph) {
+        drawButton(g, ax, ARROW, !enabled, enabled && hover);
+        int color = enabled ? 0xFFFFFFFF : 0xFF808080;
+        g.drawCenteredString(Minecraft.getInstance().font, glyph, ax + ARROW / 2, getY() + (height - 8) / 2, color);
+    }
+
+    private void drawButton(GuiGraphics g, int sx, int w, boolean pressed, boolean hover) {
+        //? if >=1.21 {
+        net.minecraft.resources.ResourceLocation s = pressed ? BTN_DISABLED : (hover ? BTN_HIGHLIGHTED : BTN);
+        g.blitSprite(s, sx, getY(), w, height);
+        //?} else {
+        /*int bg = pressed ? BG_SELECTED : (hover ? BG_HOVER : BG_NORMAL);
+        g.fill(sx, getY(), sx + w, getY() + height, bg);
+        g.fill(sx, getY(), sx + w, getY() + 1, BORDER);
+        g.fill(sx, getY() + height - 1, sx + w, getY() + height, BORDER);
+        g.fill(sx, getY(), sx + 1, getY() + height, BORDER);
+        g.fill(sx + w - 1, getY(), sx + w, getY() + height, BORDER);
+        *///?}
     }
 
     private boolean doScroll(double mouseX, double mouseY, double dy) {
@@ -115,10 +154,21 @@ public class CharacterTabStrip extends AbstractWidget {
 
     @Override
     public void onClick(double mouseX, double mouseY) {
+        if (overflow()) {
+            if (mouseX < getX() + ARROW) {
+                scrollX = Math.max(0, scrollX - PADDLE_STEP);
+                return;
+            }
+            if (mouseX >= getX() + width - ARROW) {
+                scrollX = Math.min(maxScroll(), scrollX + PADDLE_STEP);
+                return;
+            }
+        }
+        int ix = innerX(), iw = innerWidth();
         for (int i = 0; i < entries.size(); i++) {
-            int sx = getX() + tabX[i] - scrollX;
+            int sx = ix + tabX[i] - scrollX;
             int w = tabW[i];
-            if (mouseX >= sx && mouseX < sx + w && mouseX >= getX() && mouseX < getX() + width) {
+            if (mouseX >= sx && mouseX < sx + w && mouseX >= ix && mouseX < ix + iw) {
                 String id = entries.get(i).pageId();
                 if (!id.equals(selected) && onSelect != null) onSelect.accept(id);
                 return;

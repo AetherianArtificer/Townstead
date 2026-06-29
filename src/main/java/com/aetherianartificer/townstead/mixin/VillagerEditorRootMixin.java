@@ -250,11 +250,24 @@ public abstract class VillagerEditorRootMixin extends Screen {
         int x = this.width / 2;
         int w = 175;
         int rowH = 20;
-        int y = this.height / 2 + TOWNSTEAD_STRIP_Y + 24;
+        int yStart = this.height / 2 + TOWNSTEAD_STRIP_Y + 24;
+        // Fit the column above the Done button: shrink any tone swatch(es) when a tab is field-heavy.
+        int tones = 0, cyclers = 0;
+        for (CharacterEditorResolver.Field f : tab.fields()) {
+            if (f.gene() == null) continue;
+            if (f.kind() == CharacterEditorResolver.Field.Kind.TONE) tones++;
+            else if (f.kind() == CharacterEditorResolver.Field.Kind.CYCLER) cyclers++;
+        }
+        int swatch = 64;
+        if (tones > 0) {
+            int free = (this.height / 2 + 92) - yStart - cyclers * (rowH + 2) - tones * (rowH + 4);
+            swatch = Math.max(36, Math.min(64, free / tones));
+        }
+        int y = yStart;
         for (CharacterEditorResolver.Field f : tab.fields()) {
             if (f.gene() == null) continue;
             if (f.kind() == CharacterEditorResolver.Field.Kind.TONE) {
-                y += townstead$buildToneField(f.gene(), x, y, w);
+                y += townstead$buildToneField(f.gene(), x, y, w, swatch);
             } else if (f.kind() == CharacterEditorResolver.Field.Kind.CYCLER) {
                 townstead$variantCycler(f.gene(), x, y, w, 20, rowH);
                 y += rowH + 2;
@@ -269,7 +282,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
      * hue. Returns the vertical space consumed. neoforge-only: this is a 1.21 MCA feature.
      */
     @Unique
-    private int townstead$buildToneField(GeneCatalogEntry gene, int x, int y, int w) {
+    private int townstead$buildToneField(GeneCatalogEntry gene, int x, int y, int w, int size) {
         //? if neoforge {
         java.util.List<GeneCatalogEntry.Variant> opts = new ArrayList<>();
         for (GeneCatalogEntry.Variant v : gene.variants()) if (v.tint() >= 0) opts.add(v);
@@ -280,7 +293,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
         for (int i = 0; i < opts.size(); i++) if (opts.get(i).id().equals(current)) { start = i; break; }
         RootClientStore.setCarriedVariant(villager.getId(), geneId, opts.get(start).id());
 
-        int arrowW = 20, rowH = 20, size = 64;
+        int arrowW = 20, rowH = 20;
         int midW = Math.max(20, w - arrowW * 2);
         int swatchX = x + (w - size) / 2;
         int swatchY = y + rowH + 2;

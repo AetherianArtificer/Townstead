@@ -76,14 +76,20 @@ public final class CharacterEditorResolver {
             for (CharacterEditorLayout.Tab t : layout.tabs()) {
                 List<Field> fields = new ArrayList<>();
                 for (String ref : t.fields()) {
+                    // Listing a native group directly in a tab opts it in (no need to also be in `native`).
                     if (CharacterEditorLayout.isNativeGroup(ref)) {
-                        if (layout.nativeGroups().contains(ref)) fields.add(Field.nativeGroup(ref));
+                        fields.add(Field.nativeGroup(ref));
                     } else {
                         GeneCatalogEntry g = RootCatalogClient.gene(ref);
                         if (isEditable(g)) fields.add(Field.gene(g));
                     }
                 }
-                if (!fields.isEmpty()) tabs.add(new Tab(tabPageId(t.id()), tabLabel(t), fields));
+                if (fields.isEmpty()) continue;
+                // A tab that is one native group delegates to MCA's subpage (so MCA renders its content);
+                // any tab with genes is our own page (gene fields rendered; a stray native ref is ignored).
+                boolean pureNative = fields.size() == 1 && fields.get(0).kind() == Field.Kind.NATIVE;
+                String pageId = pureNative ? mcaSubpage(fields.get(0).nativeGroup()) : tabPageId(t.id());
+                tabs.add(new Tab(pageId, tabLabel(t), fields));
             }
         } else {
             // The species' own appearance genes come first (its identity), bucketed by category,
