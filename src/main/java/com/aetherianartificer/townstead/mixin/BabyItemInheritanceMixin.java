@@ -40,5 +40,6 @@ public abstract class BabyItemInheritanceMixin {
         // birthChild spawned the child mid-method, so nearby players already received
         // the founder-seeded placeholder sync; re-push the inherited state.
         RootSpawnHandler.broadcastLateInheritance(child);
+        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.birth(child);
     }
 }

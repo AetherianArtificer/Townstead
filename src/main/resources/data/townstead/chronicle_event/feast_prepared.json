@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "work.cooking",
+  "weight": 10,
+  "rarity": "uncommon",
+  "contexts": ["live", "pregen"],
+  "trigger": { "type": "work", "key": "townstead:cooked" },
+  "cooldown_days": 1,
+  "reach": "village",
+  "news_value": 2.0,
+  "roles": [
+    {
+      "id": "cook",
+      "kind": "villager",
+      "when": { "type": "pheno:profession", "profession": "townstead:cook" },
+      "pregen": { "profession": "townstead:cook", "age": "adult" }
+    }
+  ],
+  "witnesses": { "radius": 12.0, "max": 6 },
+  "display": {
+    "headline": { "translate": "chronicle.townstead.feast_prepared" },
+    "params": ["cook", "dish"]
+  },
+  "impact": {
+    "cook": { "mood": 2.0, "memory": { "valence": 0.6, "strength": 1.0 } },
+    "witness": { "mood": 0.5, "memory": { "valence": 0.4, "strength": 0.4 } },
+    "on_learn": { "sentiment": { "toward": "cook", "delta": 1.0 } }
+  },
+  "distortion": { "magnitude_drift": 1.2, "valence_drift": 0.1 }
+}

@@ -1,0 +1,135 @@
+package com.aetherianartificer.townstead.chronicle.emit;
+
+import com.aetherianartificer.townstead.chronicle.Chronicles;
+import com.aetherianartificer.townstead.chronicle.template.ChronicleEventTemplate.TriggerKey;
+import com.aetherianartificer.townstead.chronicle.template.ChronicleTriggerIndex;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * One-line emission taps for game code. Every entry point is hardened
+ * (never throws into the caller) and cheap when nothing listens.
+ *
+ * <p>Truth firewall: counters increment here unconditionally — they are the
+ * mechanical record and never depend on whether a template turned the action
+ * into a story.</p>
+ */
+public final class ChronicleTaps {
+
+    private ChronicleTaps() {}
+
+    /** Work action without a notable object: counts + maybe narrates. */
+    public static void work(LivingEntity actor, String verb, float magnitude) {
+        work(actor, verb, null, null, magnitude);
+    }
+
+    /**
+     * Work action. Counts {@code verb} and {@code verb:objectId} (both
+     * granularities — broad and specific unlock requirements), then offers the
+     * trigger to templates with the object's display name as {@code paramName}.
+     */
+    public static void work(LivingEntity actor, String verb, @Nullable ResourceLocation objectId,
+                            @Nullable String paramName, float magnitude) {
+        try {
+            if (!(actor.level() instanceof ServerLevel level)) return;
+            MinecraftServer server = level.getServer();
+            Chronicles.addCounter(server, actor.getUUID(), verb, 1);
+            if (objectId != null) {
+                Chronicles.addCounter(server, actor.getUUID(), verb + ":" + objectId, 1);
+            }
+            if (ChronicleTriggerIndex.isEmpty()) return;
+            Map<String, String> params = new HashMap<>(2);
+            if (objectId != null && paramName != null) {
+                params.put(paramName, itemName(objectId));
+            }
+            ChronicleEmitter.emit(level, new TriggerKey("work", verb), actor, magnitude, params);
+        } catch (Throwable t) {
+            swallow(t);
+        }
+    }
+
+    /** Heart shift between two entities; one friendship/argument story per pair per day. */
+    public static void social(LivingEntity actor, LivingEntity other, boolean positive) {
+        try {
+            if (!(actor.level() instanceof ServerLevel level)) return;
+            if (ChronicleTriggerIndex.isEmpty()) return;
+            if (!ChronicleRateLimiter.allowPair(level.getServer(), actor.getUUID(), other.getUUID(),
+                    positive ? "friendship" : "argument")) {
+                return;
+            }
+            ChronicleEmitter.emit(level,
+                    new TriggerKey("social", positive ? "townstead:friendship" : "townstead:argument"),
+                    actor, other, 1.0f, Map.of());
+        } catch (Throwable t) {
+            swallow(t);
+        }
+    }
+
+    public static void death(LivingEntity deceased, @Nullable DamageSource source) {
+        try {
+            if (!(deceased.level() instanceof ServerLevel level)) return;
+            if (ChronicleTriggerIndex.isEmpty()) return;
+            Map<String, String> params = source == null ? Map.of() : Map.of("cause", source.getMsgId());
+            ChronicleEmitter.emit(level, new TriggerKey("lifecycle", "townstead:death"),
+                    deceased, 1.0f, params);
+        } catch (Throwable t) {
+            swallow(t);
+        }
+    }
+
+    public static void birth(LivingEntity baby) {
+        try {
+            if (!(baby.level() instanceof ServerLevel level)) return;
+            if (ChronicleTriggerIndex.isEmpty()) return;
+            // Both the Pregnancy.createChild mixin and the spawn-site callers tap
+            // births; the pair gate collapses them to one event per baby.
+            if (!ChronicleRateLimiter.allowPair(level.getServer(),
+                    baby.getUUID(), baby.getUUID(), "birth")) {
+                return;
+            }
+            ChronicleEmitter.emit(level, new TriggerKey("lifecycle", "townstead:birth"),
+                    baby, 1.0f, Map.of());
+        } catch (Throwable t) {
+            swallow(t);
+        }
+    }
+
+    /** One wedding story per pair per day regardless of which side detects it. */
+    public static void marriage(LivingEntity partner, @Nullable LivingEntity spouse) {
+        try {
+            if (!(partner.level() instanceof ServerLevel level)) return;
+            if (ChronicleTriggerIndex.isEmpty()) return;
+            if (spouse != null && !ChronicleRateLimiter.allowPair(level.getServer(),
+                    partner.getUUID(), spouse.getUUID(), "marriage")) {
+                return;
+            }
+            ChronicleEmitter.emit(level, new TriggerKey("lifecycle", "townstead:marriage"),
+                    partner, spouse, 1.0f, Map.of());
+        } catch (Throwable t) {
+            swallow(t);
+        }
+    }
+
+    private static String itemName(ResourceLocation itemId) {
+        try {
+            Item item = BuiltInRegistries.ITEM.get(itemId);
+            return item.getDescription().getString();
+        } catch (Throwable t) {
+            return itemId.getPath();
+        }
+    }
+
+    private static void swallow(Throwable t) {
+        // A chronicle tap must never break the work/AI path it rides on.
+        com.aetherianartificer.townstead.Townstead.LOGGER.debug("[Chronicles] tap failed", t);
+    }
+}

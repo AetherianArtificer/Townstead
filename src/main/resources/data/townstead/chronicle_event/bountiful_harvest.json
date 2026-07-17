@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "work.farming",
+  "weight": 6,
+  "rarity": "uncommon",
+  "contexts": ["live", "pregen"],
+  "trigger": { "type": "work", "key": "townstead:harvested" },
+  "cooldown_days": 2,
+  "reach": "village",
+  "news_value": 1.5,
+  "roles": [
+    {
+      "id": "farmer",
+      "kind": "villager",
+      "when": { "type": "pheno:profession", "profession": "minecraft:farmer" },
+      "pregen": { "profession": "minecraft:farmer", "age": "adult" }
+    }
+  ],
+  "witnesses": { "radius": 10.0, "max": 4 },
+  "display": {
+    "headline": { "translate": "chronicle.townstead.bountiful_harvest" },
+    "params": ["farmer"]
+  },
+  "impact": {
+    "farmer": { "mood": 1.5, "memory": { "valence": 0.5, "strength": 0.6 } },
+    "on_learn": { "sentiment": { "toward": "farmer", "delta": 0.5 } }
+  }
+}

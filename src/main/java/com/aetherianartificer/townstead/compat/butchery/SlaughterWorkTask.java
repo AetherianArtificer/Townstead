@@ -563,6 +563,7 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         if (amount <= 0) return;
         TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
         ProfessionProgress.GainResult result = ProfessionProgress.addXp(mem, ProfessionXpType.BUTCHER, amount, gameTime);
+        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(villager, "townstead:slaughtered", amount);
         if (result.tierUp()) {
             ButcherTradeLevelSync.syncToTier(villager, result.tierAfter());
         }

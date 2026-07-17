@@ -191,5 +191,6 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
         ProfessionProgress.addXp(TownsteadVillagers.get(villager).professionMemory(), ProfessionXpType.SHEPHERD, amount, gameTime);
+        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(villager, "townstead:tended", amount);
     }
 }

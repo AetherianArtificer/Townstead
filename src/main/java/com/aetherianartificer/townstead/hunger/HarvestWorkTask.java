@@ -1564,10 +1564,23 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         };
     }
 
+    private static String townstead$chronicleFarmVerb(String source) {
+        return switch (source) {
+            case "harvest" -> "townstead:harvested";
+            case "plant" -> "townstead:planted";
+            case "till" -> "townstead:tilled";
+            case "groom" -> "townstead:groomed";
+            case "irrigate" -> "townstead:irrigated";
+            default -> "townstead:farmed";
+        };
+    }
+
     private void townstead$awardFarmerXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
         if (amount <= 0) return;
         TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
         ProfessionProgress.GainResult result = ProfessionProgress.addXp(mem, ProfessionXpType.FARMER, amount, gameTime);
+        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(
+                villager, townstead$chronicleFarmVerb(source), amount);
         if (result.appliedXp() <= 0) return;
         CompoundTag hungerTag = TownsteadVillagers.get(villager).needs().hungerTag();
         //? if neoforge {

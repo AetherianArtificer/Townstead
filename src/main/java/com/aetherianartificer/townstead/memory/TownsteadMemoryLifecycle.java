@@ -61,6 +61,14 @@ public final class TownsteadMemoryLifecycle {
         TownsteadVillagers.clearAll();
         VillageAiBudget.clear();
         VillageSpiritCache.clear();
+        com.aetherianartificer.townstead.chronicle.Chronicles.buffer().clear();
+        com.aetherianartificer.townstead.chronicle.arc.ArcManager.clearAll();
+        com.aetherianartificer.townstead.chronicle.emit.ChronicleRateLimiter.clearAll();
+        com.aetherianartificer.townstead.chronicle.emit.MarriageWatcher.clearAll();
+        com.aetherianartificer.townstead.chronicle.emit.PendingBirths.clearAll();
+        com.aetherianartificer.townstead.chronicle.knowledge.KnownStoriesCache.clearAll();
+        com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler.clearAll();
+        com.aetherianartificer.townstead.chronicle.net.ChronicleQueryHandler.clearAll();
     }
 
     public record Snapshot(

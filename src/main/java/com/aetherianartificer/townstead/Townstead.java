@@ -431,6 +431,8 @@ public class Townstead {
                     com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer()));
             townstead$profile("server.memory_lifecycle", () ->
                     com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.tick(e.getServer()));
+            townstead$profile("server.chronicle_pregen", () ->
+                    com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler.tick(e.getServer()));
             com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
             com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
         });
@@ -489,6 +491,15 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) -> {
+                if (TownsteadConfig.DEBUG_LOGGING.get()) {
+                    com.aetherianartificer.townstead.chronicle.store.ChronicleSqlite.smokeTest(LOGGER);
+                }
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
+                com.aetherianartificer.townstead.chronicle.Chronicles.onServerStarted(e.getServer()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) ->
+                com.aetherianartificer.townstead.chronicle.Chronicles.onServerStopping(e.getServer()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) -> {
                 com.aetherianartificer.townstead.village.TownsteadVillageMigration.migrateServerIfNeeded(e.getServer());
                 com.aetherianartificer.townstead.village.VillageSanitizer.sanitizeServer(e.getServer());
@@ -589,6 +600,10 @@ public class Townstead {
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.pheno.lang.command.PhenoCommand.register(
                                 e.getDispatcher(), e.getBuildContext()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.chronicle.command.ChronicleCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.PlayerTickEvent.Post e) -> {
             if (e.getEntity() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.root.ability.GeneAbilityTicker.tick(sp);
@@ -618,6 +633,9 @@ public class Townstead {
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
                 com.aetherianartificer.townstead.root.collection.CollectionValues.onDeath(e.getEntity());
+                if (e.getEntity() instanceof net.conczin.mca.entity.VillagerEntityMCA) {
+                    com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.death(e.getEntity(), e.getSource());
+                }
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent.Start e) -> {
@@ -753,6 +771,8 @@ public class Townstead {
                         com.aetherianartificer.townstead.calendar.WorldCalendarTicker.tick(e.getServer()));
                 townstead$profile("server.memory_lifecycle", () ->
                         com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.tick(e.getServer()));
+                townstead$profile("server.chronicle_pregen", () ->
+                        com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler.tick(e.getServer()));
                 com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
                 com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
             }
@@ -805,6 +825,15 @@ public class Townstead {
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) -> {
+                if (TownsteadConfig.DEBUG_LOGGING.get()) {
+                    com.aetherianartificer.townstead.chronicle.store.ChronicleSqlite.smokeTest(LOGGER);
+                }
+        });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
+                com.aetherianartificer.townstead.chronicle.Chronicles.onServerStarted(e.getServer()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) ->
+                com.aetherianartificer.townstead.chronicle.Chronicles.onServerStopping(e.getServer()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) -> {
                 com.aetherianartificer.townstead.village.TownsteadVillageMigration.migrateServerIfNeeded(e.getServer());
                 com.aetherianartificer.townstead.village.VillageSanitizer.sanitizeServer(e.getServer());
@@ -905,6 +934,10 @@ public class Townstead {
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.pheno.lang.command.PhenoCommand.register(
                                 e.getDispatcher(), e.getBuildContext()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.chronicle.command.ChronicleCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
         try {
             Class.forName("net.minecraft.client.Minecraft");
             MinecraftForge.EVENT_BUS.addListener(
@@ -947,6 +980,9 @@ public class Townstead {
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
                 com.aetherianartificer.townstead.root.collection.CollectionValues.onDeath(e.getEntity());
+                if (e.getEntity() instanceof net.conczin.mca.entity.VillagerEntityMCA) {
+                    com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.death(e.getEntity(), e.getSource());
+                }
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingEntityUseItemEvent.Start e) -> {
@@ -1457,6 +1493,10 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.CountConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.ProfessionConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.chronicle.condition.ChronicleCountConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.SelectionTestConditionType(
                         "pheno:any",
                         com.aetherianartificer.townstead.pheno.condition.types.SelectionTestConditionType.Mode.ANY));
@@ -1739,6 +1779,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.root.trait.TraitJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.attachment.AttachmentServerLoader());
+        event.addListener(new com.aetherianartificer.townstead.chronicle.template.ChronicleEventJsonLoader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 
@@ -2129,6 +2170,21 @@ public class Townstead {
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.TYPE,
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.STREAM_CODEC,
                 this::handleVillageSpiritQuery
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.chronicle.net.ChronicleQueryC2SPayload.TYPE,
+                com.aetherianartificer.townstead.chronicle.net.ChronicleQueryC2SPayload.STREAM_CODEC,
+                this::handleChronicleQuery
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.chronicle.net.ChronicleShareNewsC2SPayload.TYPE,
+                com.aetherianartificer.townstead.chronicle.net.ChronicleShareNewsC2SPayload.STREAM_CODEC,
+                this::handleChronicleShareNews
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.chronicle.net.ChroniclePageS2CPayload.TYPE,
+                com.aetherianartificer.townstead.chronicle.net.ChroniclePageS2CPayload.STREAM_CODEC,
+                this::handleChroniclePage
         );
         registrar.playToClient(
                 FishermanHookLinkPayload.TYPE,
@@ -2828,6 +2884,30 @@ public class Townstead {
     private void handleVillageSpiritSync(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload payload,
                                          IPayloadContext context) {
         context.enqueueWork(() -> com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore.put(payload));
+    }
+
+    private void handleChronicleQuery(com.aetherianartificer.townstead.chronicle.net.ChronicleQueryC2SPayload payload,
+                                      IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer sp) {
+                com.aetherianartificer.townstead.chronicle.net.ChronicleQueryHandler.handleQuery(sp, payload);
+            }
+        });
+    }
+
+    private void handleChronicleShareNews(com.aetherianartificer.townstead.chronicle.net.ChronicleShareNewsC2SPayload payload,
+                                          IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer sp) {
+                com.aetherianartificer.townstead.chronicle.net.ChronicleQueryHandler.handleShareNews(sp, payload);
+            }
+        });
+    }
+
+    private void handleChroniclePage(com.aetherianartificer.townstead.chronicle.net.ChroniclePageS2CPayload payload,
+                                     IPayloadContext context) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.client.chronicle.ChronicleClientStore.put(payload));
     }
 
     private void handleVillageSpiritQuery(com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload payload,

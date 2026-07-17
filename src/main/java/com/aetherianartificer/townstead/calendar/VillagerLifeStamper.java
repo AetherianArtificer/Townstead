@@ -196,6 +196,9 @@ public final class VillagerLifeStamper {
         }
         data.putVillageBirth(key, new WorldCalendarSavedData.VillageBirth(birthDay, playerFounded));
         KNOWN_STAMPED_VILLAGES.add(cacheKey);
+        // A freshly-dated village gets a fabricated past (deferred off this path).
+        com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler.schedule(
+                key, birthDay, playerFounded, villager.blockPosition());
     }
 
     @Nullable

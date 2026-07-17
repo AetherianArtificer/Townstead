@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "lifecycle.birth",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": ["live", "pregen"],
+  "trigger": { "type": "lifecycle", "key": "townstead:birth" },
+  "reach": "village",
+  "news_value": 2.5,
+  "roles": [
+    { "id": "baby", "kind": "villager", "pregen": { "age": "baby" } }
+  ],
+  "witnesses": { "radius": 16.0, "max": 8 },
+  "display": {
+    "headline": { "translate": "chronicle.townstead.villager_born" },
+    "params": ["baby"]
+  },
+  "impact": {
+    "on_learn": { "mood": 1.5, "memory": { "valence": 0.6, "strength": 0.8 } }
+  }
+}

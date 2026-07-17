@@ -84,6 +84,14 @@ public final class VillagerServerTickDispatcher {
                 com.aetherianartificer.townstead.root.ability.ResourceValues.tick(villager));
         profile("villager.gene_collection", () ->
                 com.aetherianartificer.townstead.root.collection.CollectionValues.tick(villager));
+        profile("villager.chronicle_birth", () ->
+                com.aetherianartificer.townstead.chronicle.emit.PendingBirths.tick(villager));
+        profile("villager.chronicle_marriage", () ->
+                com.aetherianartificer.townstead.chronicle.emit.MarriageWatcher.tick(villager, gameTime));
+        profile("villager.chronicle_gossip", () ->
+                com.aetherianartificer.townstead.chronicle.knowledge.GossipTicker.tick(villager, gameTime));
+        profile("villager.chronicle_mood", () ->
+                com.aetherianartificer.townstead.chronicle.consumer.ChronicleMoodTicker.tick(villager, gameTime));
     }
 
     private static void profile(String name, Runnable runnable) {

@@ -69,7 +69,10 @@ public class HeritageScreen extends Screen {
         /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(new HeritageRequestC2SPayload(villagerUuid));
         *///?}
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(width / 2 - 50, height - 25, 100, 20).build());
+                .bounds(width / 2 + 5, height - 25, 100, 20).build());
+        addRenderableWidget(Button.builder(Component.translatable("townstead.chronicle.open"), b ->
+                        com.aetherianartificer.townstead.client.gui.chronicle.ChronicleScreen.open(villagerUuid, ""))
+                .bounds(width / 2 - 105, height - 25, 100, 20).build());
     }
 
     @Override

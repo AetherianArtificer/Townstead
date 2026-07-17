@@ -51,11 +51,21 @@ minecraft {
 repositories {
     maven("https://maven.architectury.dev/")
     maven("https://maven.blamejared.com")
+    mavenCentral()
 }
+
+jarJar.enable()
 
 dependencies {
     "minecraft"("net.minecraftforge:forge:1.20.1-47.3.0")
     compileOnly(files("${rootProject.projectDir}/libs/mca-forge-7.6.15+1.20.1-universal.jar"))
+    // Chronicle archive backend: minecraftLibrary puts it on the dev-run classpath,
+    // jarJar embeds it in the shipped jar (deploy scripts pick the unclassified jar,
+    // which is the jarJar output below).
+    "minecraftLibrary"("org.xerial:sqlite-jdbc:3.46.1.3")
+    "jarJar"("org.xerial:sqlite-jdbc:[3.46.1.3,3.47.0)") {
+        jarJar.pin(this, "3.46.1.3")
+    }
     compileOnly("dev.architectury:architectury-forge:9.2.14")
     compileOnly(fg.deobf("vazkii.patchouli:Patchouli:1.20.1-85-FORGE:api"))
     // No mixin annotation processor: this build ships no refmap (targets are
@@ -63,6 +73,7 @@ dependencies {
     // its target validator can only warn about SRG names it cannot resolve.
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.xerial:sqlite-jdbc:3.46.1.3")
     // Pheno unit tests touch Minecraft types; surface the main compile classpath to tests.
     testImplementation(files(sourceSets.main.get().compileClasspath))
 }
@@ -144,8 +155,18 @@ tasks.withType<JavaCompile> { options.encoding = "UTF-8" }
 tasks.withType<Test> { useJUnitPlatform() }
 
 tasks.named<Jar>("jar") {
+    // jarJar output takes the unclassified name so the deploy scripts ship the fat jar
+    archiveClassifier.set("slim")
     manifest {
         attributes("MixinConfigs" to "townstead.mixins.json")
     }
     finalizedBy("reobfJar")
+}
+
+tasks.named<Jar>("jarJar") {
+    archiveClassifier.set("")
+    manifest {
+        attributes("MixinConfigs" to "townstead.mixins.json")
+    }
+    finalizedBy("reobfJarJar")
 }

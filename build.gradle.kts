@@ -31,6 +31,7 @@ neoForge {
 
 repositories {
     maven { url = uri("https://maven.blamejared.com") }
+    mavenCentral()
 }
 
 dependencies {
@@ -40,8 +41,12 @@ dependencies {
     // icon mixins (see TownsteadMixinPlugin).
     compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-1.21.1-floor-system-SNAPSHOT.jar"))
     compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
+    // Chronicle archive backend, embedded into the mod jar via jarJar
+    implementation("org.xerial:sqlite-jdbc:3.46.1.3")
+    jarJar("org.xerial:sqlite-jdbc:3.46.1.3")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.xerial:sqlite-jdbc:3.46.1.3")
     // Pheno unit tests touch Minecraft types (ResourceLocation, GsonHelper); moddev keeps MC as a
     // non-transitive compileOnly, so surface the main compile classpath to the test classpath.
     testImplementation(files(sourceSets.main.get().compileClasspath))

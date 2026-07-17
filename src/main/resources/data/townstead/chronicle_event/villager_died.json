@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "lifecycle.death",
+  "weight": 10,
+  "rarity": "rare",
+  "keep": true,
+  "contexts": ["live", "pregen"],
+  "trigger": { "type": "lifecycle", "key": "townstead:death" },
+  "reach": "village",
+  "news_value": 4.0,
+  "roles": [
+    { "id": "deceased", "kind": "villager", "pregen": { "age": "adult" } }
+  ],
+  "witnesses": { "radius": 16.0, "max": 8 },
+  "display": {
+    "headline": { "translate": "chronicle.townstead.villager_died" },
+    "params": ["deceased"]
+  },
+  "impact": {
+    "on_learn": { "mood": -3.0, "memory": { "valence": -0.8, "strength": 2.0 } }
+  },
+  "distortion": { "magnitude_drift": 1.3, "valence_drift": 0.2 }
+}

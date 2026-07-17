@@ -257,6 +257,8 @@ public class BaristaWorkTask extends ProducerWorkTask {
         if (activeRecipe == null) return;
         int xp = Math.max(1, activeRecipe.tier());
         ProfessionProgress.addXp(TownsteadVillagers.get(villager).professionMemory(), ProfessionXpType.COOK, xp, level.getGameTime());
+        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(
+                villager, "townstead:brewed", activeRecipe.output(), "dish", activeRecipe.tier());
     }
 
     // ── Hooks ──
