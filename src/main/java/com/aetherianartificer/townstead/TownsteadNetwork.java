@@ -111,6 +111,18 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload::read,
                 TownsteadNetwork::handleVillageSpiritQuery);
+        registerC2S(com.aetherianartificer.townstead.chronicle.net.ChronicleQueryC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.chronicle.net.ChronicleQueryC2SPayload::read,
+                TownsteadNetwork::handleChronicleQuery);
+        registerC2S(com.aetherianartificer.townstead.chronicle.net.ChronicleShareNewsC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.chronicle.net.ChronicleShareNewsC2SPayload::read,
+                TownsteadNetwork::handleChronicleShareNews);
+        registerS2C(com.aetherianartificer.townstead.chronicle.net.ChroniclePageS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.chronicle.net.ChroniclePageS2CPayload::read,
+                TownsteadNetwork::handleChroniclePage);
         registerS2C(FishermanHookLinkPayload.class, FishermanHookLinkPayload::write, FishermanHookLinkPayload::read,
                 TownsteadNetwork::handleFishermanHookLink);
 
@@ -649,6 +661,23 @@ public final class TownsteadNetwork {
         if (village.isEmpty()) return;
         com.aetherianartificer.townstead.spirit.VillageSpiritQueryScheduler.enqueue(
                 sp.serverLevel(), village.get(), sp);
+    }
+
+    private static void handleChronicleQuery(
+            com.aetherianartificer.townstead.chronicle.net.ChronicleQueryC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.chronicle.net.ChronicleQueryHandler.handleQuery(sp, payload);
+    }
+
+    private static void handleChronicleShareNews(
+            com.aetherianartificer.townstead.chronicle.net.ChronicleShareNewsC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.chronicle.net.ChronicleQueryHandler.handleShareNews(sp, payload);
+    }
+
+    private static void handleChroniclePage(
+            com.aetherianartificer.townstead.chronicle.net.ChroniclePageS2CPayload payload) {
+        com.aetherianartificer.townstead.client.chronicle.ChronicleClientStore.put(payload);
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {

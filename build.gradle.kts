@@ -42,8 +42,12 @@ dependencies {
     compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.33-beta.3+1.21.1.jar"))
     implementation(jarJar("io.github.llamalad7:mixinextras-neoforge:${property("mixin_extras_version")}")!!)
     compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
+    // Chronicle archive backend, embedded into the mod jar via jarJar
+    implementation("org.xerial:sqlite-jdbc:3.46.1.3")
+    jarJar("org.xerial:sqlite-jdbc:3.46.1.3")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.xerial:sqlite-jdbc:3.46.1.3")
     // Pheno unit tests touch Minecraft types (ResourceLocation, GsonHelper); moddev keeps MC as a
     // non-transitive compileOnly, so surface the main compile classpath to the test classpath.
     testImplementation(files(sourceSets.main.get().compileClasspath))

@@ -67,7 +67,12 @@ public final class DialogueStateTracker {
         }
         int heartsNow = heartsWith(villager, player);
         if (existing.heartsAtOpen != Integer.MIN_VALUE && heartsNow != Integer.MIN_VALUE) {
-            SocialInteractionTracker.markHeartChange(villager, heartsNow - existing.heartsAtOpen, gameTime);
+            int delta = heartsNow - existing.heartsAtOpen;
+            SocialInteractionTracker.markHeartChange(villager, delta, gameTime);
+            // A dialogue that clearly moved hearts is a chronicle-worthy social beat.
+            if (Math.abs(delta) >= 3) {
+                com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.social(villager, player, delta > 0);
+            }
         }
     }
 

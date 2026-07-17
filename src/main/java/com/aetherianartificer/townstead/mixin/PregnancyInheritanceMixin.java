@@ -38,5 +38,7 @@ public abstract class PregnancyInheritanceMixin {
                 Heredity.parentOf(mother, child.getRandom()),
                 Heredity.parentOf(partner, child.getRandom()),
                 child.getRandom());
+        // Chronicle tap fires on the child's first dispatched tick, once it has a position.
+        com.aetherianartificer.townstead.chronicle.emit.PendingBirths.mark(child);
     }
 }

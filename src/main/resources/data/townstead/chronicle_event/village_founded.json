@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "lifecycle.founding",
+  "weight": 10,
+  "rarity": "legendary",
+  "keep": true,
+  "contexts": ["pregen"],
+  "reach": "world",
+  "news_value": 5.0,
+  "roles": [
+    { "id": "founder", "kind": "concept" }
+  ],
+  "display": {
+    "headline": { "translate": "chronicle.townstead.village_founded" },
+    "params": ["founder"]
+  }
+}

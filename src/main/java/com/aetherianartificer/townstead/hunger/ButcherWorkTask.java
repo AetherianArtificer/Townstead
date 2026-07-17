@@ -338,6 +338,7 @@ public class ButcherWorkTask extends ProducerWorkTask {
         // to unlock, so the data layer stays dormant.
         if (!ButcheryCompat.isLoaded()) return;
         ProfessionProgress.addXp(TownsteadVillagers.get(villager).professionMemory(), ProfessionXpType.BUTCHER, 1, gameTime);
+        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(villager, "townstead:butchered", 1);
     }
 
     // ── Hooks ──
