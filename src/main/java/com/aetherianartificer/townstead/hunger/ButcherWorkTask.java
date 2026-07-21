@@ -14,7 +14,6 @@ import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
 import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
 import com.aetherianartificer.townstead.ai.work.producer.ProducerWorkTask;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 //? if forge {
@@ -337,8 +336,9 @@ public class ButcherWorkTask extends ProducerWorkTask {
         // trade catalog. Without Butchery there are no Butchery-specific trades
         // to unlock, so the data layer stays dormant.
         if (!ButcheryCompat.isLoaded()) return;
-        ProfessionProgress.addXp(TownsteadVillagers.get(villager).professionMemory(), ProfessionXpType.BUTCHER, 1, gameTime);
-        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(villager, "townstead:butchered", 1);
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER, 1, gameTime,
+                "townstead:butchered", null, null, 1);
     }
 
     // ── Hooks ──

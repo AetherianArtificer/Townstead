@@ -21,7 +21,6 @@ import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
@@ -329,10 +328,14 @@ public class CookWorkTask extends ProducerWorkTask {
     @Override
     protected void awardProductionXp(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (activeRecipe == null) return;
-        int xp = Math.max(1, activeRecipe.tier());
-        ProfessionProgress.addXp(TownsteadVillagers.get(villager).professionMemory(), ProfessionXpType.COOK, xp, level.getGameTime());
-        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(
-                villager, "townstead:cooked", activeRecipe.output(), "dish", activeRecipe.tier());
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.COOK, Math.max(1, activeRecipe.tier()), level.getGameTime(),
+                "townstead:cooked", activeRecipe.output(), "dish", activeRecipe.tier(),
+                java.util.Map.of(
+                        "recipe", activeRecipe.id().toString(),
+                        "station", stationType.name().toLowerCase(java.util.Locale.ROOT),
+                        "tier", Integer.toString(activeRecipe.tier()),
+                        "amount", Integer.toString(Math.max(1, activeRecipe.outputCount()))));
     }
 
     // ── Hooks ──

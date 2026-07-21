@@ -25,7 +25,9 @@ public final class ProfessionCapabilitySource implements CapabilitySource {
             if (skill == null) continue;
             Provenance provenance = new Provenance(skillId, SourceKind.SKILL, skill.profession().getPath());
             for (SkillGrant grant : skill.grants()) {
-                out.add(grant.toContribution(provenance, true));
+                out.add(grant.toContribution(provenance,
+                        com.aetherianartificer.townstead.profession.career.CareerChoices
+                                .isActive(entity, skillId)));
             }
         }
     }

@@ -105,7 +105,7 @@ public class ChoicePanel {
 
         if (DialogueMenuOrganizer.isMainQuestion(questionId)) {
             this.hubMode = true;
-            this.hubEntries = DialogueMenuOrganizer.buildTopLevel(choices);
+            this.hubEntries = townstead$withCareersEntry(DialogueMenuOrganizer.buildTopLevel(choices));
             buildDisplayFromHub(font);
         } else {
             this.hubMode = false;
@@ -261,9 +261,30 @@ public class ChoicePanel {
         this.hoveredIndex = -1;
         this.scrollOffset = 0;
 
-        this.hubEntries = DialogueMenuOrganizer.buildTopLevel(rawAnswers);
+        this.hubEntries = townstead$withCareersEntry(DialogueMenuOrganizer.buildTopLevel(rawAnswers));
         buildDisplayFromHub(font);
         recomputeBounds();
+    }
+
+    /**
+     * The Scribe's signature option, shown first on the main hub during their
+     * office hours. Uses a reserved answer id the screen handles client-side; it is never
+     * sent to MCA's dialogue system.
+     */
+    public static final String CAREERS_ANSWER = "townstead:career_tree";
+    private boolean showCareersEntry;
+
+    public void setShowCareersEntry(boolean show) {
+        this.showCareersEntry = show;
+    }
+
+    private java.util.List<DialogueMenuOrganizer.HubEntry> townstead$withCareersEntry(
+            java.util.List<DialogueMenuOrganizer.HubEntry> entries) {
+        if (!showCareersEntry) return entries;
+        java.util.List<DialogueMenuOrganizer.HubEntry> out = new java.util.ArrayList<>(entries.size() + 1);
+        out.add(new DialogueMenuOrganizer.HubEntry("townstead.dialogue.main.careers", CAREERS_ANSWER, null));
+        out.addAll(entries);
+        return out;
     }
 
     public boolean mouseScrolled(double delta) {

@@ -72,6 +72,7 @@ public final class ChronicleDatabase implements ChronicleStore {
     private @Nullable Connection readConnection;
     private @Nullable Thread writerThread;
     private @Nullable ExecutorService readExecutor;
+    private IdMaxima idMaxima = IdMaxima.NONE;
 
     private ChronicleDatabase(Path dbFile) {
         this.dbFile = dbFile;
@@ -87,6 +88,7 @@ public final class ChronicleDatabase implements ChronicleStore {
             db.applyPragmas(db.writeConnection, true);
             db.applyPragmas(db.readConnection, false);
             db.createSchema();
+            db.idMaxima = db.readIdMaxima(db.writeConnection);
             db.open.set(true);
             db.writerThread = new Thread(db::writerLoop, "Townstead-Chronicle-Writer");
             db.writerThread.setDaemon(true);
@@ -170,6 +172,18 @@ public final class ChronicleDatabase implements ChronicleStore {
             s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_account_knower ON account(knower, learned_day)");
             s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_account_story ON account(story_event_id)");
             s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_account_knower_story ON account(knower, story_event_id)");
+        }
+    }
+
+    private IdMaxima readIdMaxima(Connection connection) throws SQLException {
+        return new IdMaxima(maxId(connection, "event"), maxId(connection, "arc"),
+                maxId(connection, "account"));
+    }
+
+    private long maxId(Connection connection, String table) throws SQLException {
+        try (Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("SELECT COALESCE(MAX(id), 0) FROM " + table)) {
+            return result.next() ? result.getLong(1) : 0L;
         }
     }
 
@@ -629,6 +643,11 @@ public final class ChronicleDatabase implements ChronicleStore {
         } catch (Exception ignored) {
         }
         return new Stats(open.get(), queue.size(), written.get(), dropped.get(), bytes);
+    }
+
+    @Override
+    public IdMaxima idMaxima() {
+        return idMaxima;
     }
 
     @Override

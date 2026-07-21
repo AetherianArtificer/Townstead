@@ -14,7 +14,6 @@ import com.aetherianartificer.townstead.ai.work.WorkPathing;
 import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 //? if forge {
@@ -1578,9 +1577,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private void townstead$awardFarmerXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
         if (amount <= 0) return;
         TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        ProfessionProgress.GainResult result = ProfessionProgress.addXp(mem, ProfessionXpType.FARMER, amount, gameTime);
-        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(
-                villager, townstead$chronicleFarmVerb(source), amount);
+        ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
+                .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.FARMER,
+                        amount, gameTime, townstead$chronicleFarmVerb(source), null, null, amount);
         if (result.appliedXp() <= 0) return;
         CompoundTag hungerTag = TownsteadVillagers.get(villager).needs().hungerTag();
         //? if neoforge {
@@ -1603,8 +1602,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                         result.tierBefore(),
                         result.tierAfter(),
                         source,
-                        ProfessionProgress.getXp(mem, ProfessionXpType.FARMER),
-                        ProfessionProgress.getXpToNextTier(mem, ProfessionXpType.FARMER)
+                        ProfessionProgress.getXp(mem, com.aetherianartificer.townstead.profession.career.Careers.FARMER),
+                        ProfessionProgress.getXpToNextTier(mem, com.aetherianartificer.townstead.profession.career.Careers.FARMER)
                 );
             }
         }

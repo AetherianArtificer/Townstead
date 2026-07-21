@@ -70,6 +70,11 @@ public class RpgDialogueScreen extends Screen {
         super(Component.literal("Dialogue"));
         this.villager = villager;
         this.villagerUUID = villager.asEntity().getUUID();
+        if (villager.asEntity() instanceof VillagerEntityMCA mca
+                && com.aetherianartificer.townstead.profession.career.CareerTreeOpener.isScribe(mca)
+                && com.aetherianartificer.townstead.profession.career.CareerTreeOpener.isOnDuty(mca)) {
+            choicePanel.setShowCareersEntry(true);
+        }
     }
 
     @Override
@@ -478,6 +483,18 @@ public class RpgDialogueScreen extends Screen {
 
     private void selectChoice(String choice) {
         if (choice == null || dialogQuestionId == null) return;
+        if (ChoicePanel.CAREERS_ANSWER.equals(choice)) {
+            int counsellorId = villager.asEntity().getId();
+            onClose();
+            com.aetherianartificer.townstead.profession.career.CareerTreeRequestC2SPayload request =
+                    new com.aetherianartificer.townstead.profession.career.CareerTreeRequestC2SPayload(counsellorId);
+            //? if neoforge {
+            net.neoforged.neoforge.network.PacketDistributor.sendToServer(request);
+            //?} else {
+            /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(request);
+            *///?}
+            return;
+        }
         //? if neoforge {
         Network.sendToServer(new InteractionDialogueMessage(villagerUUID, dialogQuestionId, choice));
         //?} else {

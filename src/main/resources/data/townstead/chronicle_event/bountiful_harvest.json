@@ -1,6 +1,7 @@
 {
   "schema": "townstead:chronicle_event/v1",
   "category": "work.farming",
+  "keep": true,
   "weight": 6,
   "rarity": "uncommon",
   "contexts": ["live", "pregen"],

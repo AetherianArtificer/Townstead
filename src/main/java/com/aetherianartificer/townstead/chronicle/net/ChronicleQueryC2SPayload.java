@@ -15,22 +15,23 @@ import java.util.UUID;
  * never receives the template registry or unsolicited history.
  */
 //? if neoforge {
-public record ChronicleQueryC2SPayload(int requestId, byte mode, UUID subject,
-                                       long beforeEventId, byte pageSize) implements CustomPacketPayload {
+public record ChronicleQueryC2SPayload(int requestId, byte scope, UUID subject,
+                                       long cursor, byte pageSize) implements CustomPacketPayload {
 //?} else {
-/*public record ChronicleQueryC2SPayload(int requestId, byte mode, UUID subject,
-                                       long beforeEventId, byte pageSize) {
+/*public record ChronicleQueryC2SPayload(int requestId, byte scope, UUID subject,
+                                       long cursor, byte pageSize) {
 *///?}
 
-    public static final byte MODE_VILLAGE = 0;
-    public static final byte MODE_KNOWS = 1;
-    public static final byte MODE_MEMORIES = 2;
+    public static final byte SCOPE_PUBLIC_ARCHIVE = 0;
+    public static final byte SCOPE_PLAYER_KNOWLEDGE = 1;
+    public static final byte SCOPE_CONVERSATION_KNOWLEDGE = 2;
+    public static final byte SCOPE_ADMIN_TRUTH = 3;
 
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(requestId);
-        buf.writeByte(mode);
+        buf.writeByte(scope);
         buf.writeUUID(subject);
-        buf.writeLong(beforeEventId);
+        buf.writeLong(cursor);
         buf.writeByte(pageSize);
     }
 

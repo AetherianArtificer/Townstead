@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:profession/v1",
+  "display_name": {
+    "text": "Cook"
+  },
+  "icon": "minecraft:cooked_beef",
+  "description": {
+    "text": "Prepare food to build a history of culinary mastery."
+  },
+  "progression": {
+    "tiers": [
+      0,
+      110,
+      300,
+      660,
+      1250
+    ],
+    "daily_cap": 230,
+    "max_xp": 200000
+  },
+  "unlock_model": "experiential",
+  "history_counters": [
+    "townstead:cooked",
+    "townstead:brewed"
+  ],
+  "poi": [
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/farmersdelight/kitchen_l"
+    }
+  ]
+}

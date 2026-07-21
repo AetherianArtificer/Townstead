@@ -36,6 +36,14 @@ public final class VillageHistory {
 
     public int countFor(String category) { return eventCounts.getInt(category); }
 
+    public Map<String, Integer> counts() {
+        Map<String, Integer> copy = new HashMap<>();
+        for (Object2IntMap.Entry<String> entry : eventCounts.object2IntEntrySet()) {
+            copy.put(entry.getKey(), entry.getIntValue());
+        }
+        return Map.copyOf(copy);
+    }
+
     public void bumpCount(String category) { eventCounts.addTo(category, 1); }
 
     /** Adds a notable entry, evicting the oldest non-founding entry past the cap. */

@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:profession/v1",
+  "display_name": {
+    "text": "Shepherd"
+  },
+  "icon": "minecraft:white_wool",
+  "description": {
+    "text": "Tend the flock to build a history of animal husbandry."
+  },
+  "progression": {
+    "tiers": [
+      0,
+      20,
+      60,
+      120,
+      200
+    ],
+    "daily_cap": 60,
+    "max_xp": 1000
+  },
+  "unlock_model": "experiential",
+  "history_counters": [
+    "townstead:tended"
+  ],
+  "poi": [
+    {
+      "type": "townstead:job_block",
+      "block": "minecraft:loom"
+    }
+  ]
+}

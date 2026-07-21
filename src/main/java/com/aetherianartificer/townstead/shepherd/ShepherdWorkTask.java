@@ -2,7 +2,6 @@ package com.aetherianartificer.townstead.shepherd;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -190,7 +189,8 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
 
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
-        ProfessionProgress.addXp(TownsteadVillagers.get(villager).professionMemory(), ProfessionXpType.SHEPHERD, amount, gameTime);
-        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(villager, "townstead:tended", amount);
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.SHEPHERD, amount, gameTime,
+                "townstead:tended", null, null, amount);
     }
 }

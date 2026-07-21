@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:profession/v1",
+  "display_name": {
+    "text": "Farmer"
+  },
+  "icon": "minecraft:wheat",
+  "description": {
+    "text": "Work the fields to build a history of agricultural mastery."
+  },
+  "progression": {
+    "tiers": [
+      0,
+      120,
+      320,
+      700,
+      1300
+    ],
+    "daily_cap": 240,
+    "max_xp": 200000
+  },
+  "unlock_model": "experiential",
+  "history_counters": [
+    "townstead:harvested",
+    "townstead:planted",
+    "townstead:tilled"
+  ],
+  "poi": [
+    {
+      "type": "townstead:job_block",
+      "block": "minecraft:composter"
+    }
+  ]
+}

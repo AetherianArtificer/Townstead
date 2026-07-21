@@ -1,11 +1,10 @@
 package com.aetherianartificer.townstead.villager;
 
 /**
- * The runtime shape the {@link ProfessionProgress} engine operates on, built from either a
- * built-in {@link ProfessionXpType} or a data-driven
- * {@link com.aetherianartificer.townstead.profession.def.ProgressionTrack}. Generalised to an
- * arbitrary number of tiers; the four built-ins are five-tier and reproduce their previous
- * behaviour exactly.
+ * The runtime shape the {@link ProfessionProgress} engine operates on, built from a career's
+ * data-driven {@link com.aetherianartificer.townstead.profession.def.ProgressionTrack}.
+ * Generalised to an arbitrary number of tiers; the shipped built-in defs are five-tier and
+ * reproduce the legacy hardcoded behaviour exactly.
  */
 public record ProgressionSpec(int[] tierThresholds, int dailyXpCap, int maxXp) {
 

@@ -708,8 +708,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     // ── Shared helpers ──
 
     protected static Activity currentActivity(VillagerEntityMCA villager) {
-        long dayTime = villager.level().getDayTime() % 24000L;
-        return villager.getBrain().getSchedule().getActivityAt((int) dayTime);
+        return com.aetherianartificer.townstead.shift.VillagerSchedules.currentActivity(villager);
     }
 
     protected static boolean isFatigueGated(VillagerEntityMCA villager) {

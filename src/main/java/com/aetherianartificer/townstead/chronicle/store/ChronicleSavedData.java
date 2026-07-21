@@ -30,7 +30,7 @@ import java.util.UUID;
  */
 public class ChronicleSavedData extends SavedData {
     public static final String FILE_ID = "townstead_chronicles";
-    public static final int SCHEMA_VERSION = 1;
+    public static final int SCHEMA_VERSION = 2;
 
     public static final int MAX_MEMORIES_PER_VILLAGER = 32;
     public static final int MAX_SENTIMENT_PARTNERS = 24;
@@ -93,6 +93,19 @@ public class ChronicleSavedData extends SavedData {
         long id = nextAccountId++;
         setDirty();
         return id;
+    }
+
+    /** Ensure hot-tier sequences can never reuse ids already durable in SQLite. */
+    public void reconcileIdSequences(ChronicleStore.IdMaxima maxima) {
+        long event = Math.max(nextEventId, maxima.eventId() + 1L);
+        long arc = Math.max(nextArcId, maxima.arcId() + 1L);
+        long account = Math.max(nextAccountId, maxima.accountId() + 1L);
+        if (event != nextEventId || arc != nextArcId || account != nextAccountId) {
+            nextEventId = event;
+            nextArcId = arc;
+            nextAccountId = account;
+            setDirty();
+        }
     }
 
     // ---- counters (truth-side; the Careers contract) ----
@@ -285,6 +298,8 @@ public class ChronicleSavedData extends SavedData {
     /*public static ChronicleSavedData load(CompoundTag tag) {
     *///?}
         ChronicleSavedData data = new ChronicleSavedData();
+        int schemaVersion = tag.contains("schemaVersion", Tag.TAG_INT)
+                ? tag.getInt("schemaVersion") : 0;
         data.nextEventId = Math.max(1L, tag.getLong("nextEventId"));
         data.nextArcId = Math.max(1L, tag.getLong("nextArcId"));
         data.nextAccountId = Math.max(1L, tag.getLong("nextAccountId"));
@@ -349,6 +364,9 @@ public class ChronicleSavedData extends SavedData {
             data.moodImpacts.put(e.getUUID("id"), e.getFloat("impact"));
             if (e.contains("applied")) data.appliedMoodDrift.put(e.getUUID("id"), e.getFloat("applied"));
         }
+        // v0/v1 had the same collections but no enforced archive-id reconciliation.
+        // The startup handshake performs that migration after both tiers are open.
+        if (schemaVersion < 2) data.setDirty();
         return data;
     }
 

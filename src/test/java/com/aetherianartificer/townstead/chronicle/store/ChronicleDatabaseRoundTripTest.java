@@ -93,6 +93,9 @@ class ChronicleDatabaseRoundTripTest {
 
         ChronicleDatabase reopened = ChronicleDatabase.open(dbFile);
         assertTrue(reopened.stats().available());
+        assertEquals(3L, reopened.idMaxima().eventId());
+        assertEquals(1L, reopened.idMaxima().arcId());
+        assertEquals(0L, reopened.idMaxima().accountId());
         List<ChronicleEvent> persisted = reopened.bySubject(COOK, 0L, 10).get(5, TimeUnit.SECONDS);
         assertEquals(2, persisted.size(), "events must survive close/reopen");
         reopened.close();
