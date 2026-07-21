@@ -65,6 +65,48 @@ public final class FrameRenderer {
         g.fill(x, y, x + w, y + h, 0xA0000000);
     }
 
+    // Vanilla empty-map texture: 64×64 with a 7px wood-look border and true parchment
+    // interior. The Calendar established this as the family's real-parchment panel.
+    //? if >=1.21 {
+    private static final net.minecraft.resources.ResourceLocation MAP_TEXTURE =
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecraft", "textures/map/map_background.png");
+    //?} else {
+    /*private static final net.minecraft.resources.ResourceLocation MAP_TEXTURE =
+            new net.minecraft.resources.ResourceLocation("minecraft", "textures/map/map_background.png");
+    *///?}
+    private static final int MAP_TEX_SIZE = 64;
+    private static final int MAP_FRAME = 7;
+
+    /**
+     * 9-slices the vanilla empty-map texture across a rect: crisp 1:1 corners, stretched
+     * edges, stretched parchment interior. This is what "parchment" looks like in the
+     * Townstead family (see the Calendar); the tiled log-top panel is a rougher paper.
+     */
+    public static void drawMapParchment(GuiGraphics g, int x, int y, int w, int h) {
+        final int f = MAP_FRAME;
+        final int t = MAP_TEX_SIZE;
+        final int srcInner = t - 2 * f;
+        final int dstInnerW = w - 2 * f;
+        final int dstInnerH = h - 2 * f;
+
+        blitMapSlice(g, x,         y,         f, f,         0,     0,     f,        f);
+        blitMapSlice(g, x + w - f, y,         f, f,         t - f, 0,     f,        f);
+        blitMapSlice(g, x,         y + h - f, f, f,         0,     t - f, f,        f);
+        blitMapSlice(g, x + w - f, y + h - f, f, f,         t - f, t - f, f,        f);
+
+        blitMapSlice(g, x + f,     y,         dstInnerW, f, f,     0,     srcInner, f);
+        blitMapSlice(g, x + f,     y + h - f, dstInnerW, f, f,     t - f, srcInner, f);
+        blitMapSlice(g, x,         y + f,     f, dstInnerH, 0,     f,     f,        srcInner);
+        blitMapSlice(g, x + w - f, y + f,     f, dstInnerH, t - f, f,     f,        srcInner);
+
+        blitMapSlice(g, x + f, y + f, dstInnerW, dstInnerH, f, f, srcInner, srcInner);
+    }
+
+    private static void blitMapSlice(GuiGraphics g, int x, int y, int dw, int dh,
+                                     int u, int v, int sw, int sh) {
+        g.blit(MAP_TEXTURE, x, y, dw, dh, (float) u, (float) v, sw, sh, MAP_TEX_SIZE, MAP_TEX_SIZE);
+    }
+
     /**
      * Tiles a texture across an area. Uses nested scissor for clipping partial tiles.
      */

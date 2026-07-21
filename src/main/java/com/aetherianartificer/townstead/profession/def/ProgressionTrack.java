@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * A profession's XP progression: the cumulative XP thresholds that begin each tier, the
  * per-Minecraft-day XP cap, and the absolute XP ceiling. Tier 1 is the first entry; the highest
- * reachable tier is the list size. Mirrors the shape of the hardcoded {@code ProfessionXpType} so
+ * reachable tier is the list size. Mirrors the shape of the pre-data-driven progression constants so
  * those built-ins can be overridden by data.
  */
 public record ProgressionTrack(List<Integer> tierThresholds, int dailyCap, int maxXp) {

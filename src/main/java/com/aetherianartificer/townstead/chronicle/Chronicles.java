@@ -44,6 +44,7 @@ public final class Chronicles {
                 .resolve("data").resolve("townstead_chronicles.db");
         ChronicleStore opened = ChronicleDatabase.open(dbFile);
         store = opened;
+        ChronicleSavedData.get(server).reconcileIdSequences(opened.idMaxima());
         com.aetherianartificer.townstead.chronicle.knowledge.KnownStoriesCache.setLoader(
                 opened.stats().available()
                         ? knower -> opened.knownStories(knower, 96)

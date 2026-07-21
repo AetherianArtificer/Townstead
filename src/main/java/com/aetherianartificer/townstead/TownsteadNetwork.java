@@ -123,6 +123,22 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.chronicle.net.ChroniclePageS2CPayload::read,
                 TownsteadNetwork::handleChroniclePage);
+        registerS2C(com.aetherianartificer.townstead.chronicle.net.ChronicleOpenS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.chronicle.net.ChronicleOpenS2CPayload::read,
+                TownsteadNetwork::handleChronicleOpen);
+        registerS2C(com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload::read,
+                TownsteadNetwork::handleCareerTree);
+        registerC2S(com.aetherianartificer.townstead.profession.career.CareerChooseC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.profession.career.CareerChooseC2SPayload::read,
+                TownsteadNetwork::handleCareerChoose);
+        registerC2S(com.aetherianartificer.townstead.profession.career.CareerTreeRequestC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.profession.career.CareerTreeRequestC2SPayload::read,
+                TownsteadNetwork::handleCareerTreeRequest);
         registerS2C(FishermanHookLinkPayload.class, FishermanHookLinkPayload::write, FishermanHookLinkPayload::read,
                 TownsteadNetwork::handleFishermanHookLink);
 
@@ -678,6 +694,31 @@ public final class TownsteadNetwork {
     private static void handleChroniclePage(
             com.aetherianartificer.townstead.chronicle.net.ChroniclePageS2CPayload payload) {
         com.aetherianartificer.townstead.client.chronicle.ChronicleClientStore.put(payload);
+    }
+
+    private static void handleChronicleOpen(
+            com.aetherianartificer.townstead.chronicle.net.ChronicleOpenS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.chronicle.ChronicleScreen.openArchive(payload.villageName());
+    }
+
+    private static void handleCareerTree(
+            com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.career.CareerBoardScreen.openOrUpdate(payload);
+    }
+
+    private static void handleCareerChoose(
+            com.aetherianartificer.townstead.profession.career.CareerChooseC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.profession.career.CareerChoices.chooseFromAcquired(
+                sp, net.minecraft.resources.ResourceLocation.tryParse(payload.skillId()));
+        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.send(sp);
+    }
+
+    private static void handleCareerTreeRequest(
+            com.aetherianartificer.townstead.profession.career.CareerTreeRequestC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleRequest(
+                sp, payload.villagerId());
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {

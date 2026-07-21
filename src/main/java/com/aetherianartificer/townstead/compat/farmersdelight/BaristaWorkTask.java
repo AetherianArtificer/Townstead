@@ -18,7 +18,6 @@ import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegi
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler.StationSlot;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
@@ -256,9 +255,9 @@ public class BaristaWorkTask extends ProducerWorkTask {
     protected void awardProductionXp(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (activeRecipe == null) return;
         int xp = Math.max(1, activeRecipe.tier());
-        ProfessionProgress.addXp(TownsteadVillagers.get(villager).professionMemory(), ProfessionXpType.COOK, xp, level.getGameTime());
-        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(
-                villager, "townstead:brewed", activeRecipe.output(), "dish", activeRecipe.tier());
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.BARISTA, xp, level.getGameTime(),
+                "townstead:brewed", activeRecipe.output(), "dish", activeRecipe.tier());
     }
 
     // ── Hooks ──

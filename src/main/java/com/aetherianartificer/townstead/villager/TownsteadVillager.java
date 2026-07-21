@@ -1144,6 +1144,20 @@ public final class TownsteadVillager {
         private final Map<String, ProfessionXp> xpByProfession = new HashMap<>();
         private final Set<ResourceLocation> learnedSkills = new LinkedHashSet<>();
         private final Map<String, Integer> skillPoints = new HashMap<>();
+        private com.aetherianartificer.townstead.profession.career.CareerProfile careerProfile =
+                new com.aetherianartificer.townstead.profession.career.CareerProfile();
+
+        public com.aetherianartificer.townstead.profession.career.CareerProfile careerProfile() {
+            return careerProfile;
+        }
+
+        public void markCareerDirty() { markDirty(); }
+
+        public boolean setPrimaryVocation(ResourceLocation vocation) {
+            boolean changed = careerProfile.setPrimaryVocation(vocation);
+            if (changed) markDirty();
+            return changed;
+        }
 
         public String lastProfession() {
             return lastProfession;
@@ -1202,14 +1216,26 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** Reads fall back from the canonical full career id to the bare legacy key old saves wrote. */
         public ProfessionXp professionXp(String professionId) {
             if (professionId == null) return ProfessionXp.EMPTY;
-            return xpByProfession.getOrDefault(professionId, ProfessionXp.EMPTY);
+            ProfessionXp direct = xpByProfession.get(professionId);
+            if (direct != null) return direct;
+            int colon = professionId.indexOf(':');
+            if (colon >= 0) {
+                ProfessionXp legacy = xpByProfession.get(professionId.substring(colon + 1));
+                if (legacy != null) return legacy;
+            }
+            return ProfessionXp.EMPTY;
         }
 
+        /** Writes under the canonical id and retire the bare legacy key, migrating lazily. */
         public void setProfessionXp(String professionId, ProfessionXp value) {
             if (professionId == null || professionId.isBlank()) return;
             xpByProfession.put(professionId, value == null ? ProfessionXp.EMPTY : value);
+            int colon = professionId.indexOf(':');
+            if (colon >= 0) xpByProfession.remove(professionId.substring(colon + 1));
+            careerProfile.setProfessionXp(professionId, value);
             markDirty();
         }
 
@@ -1224,12 +1250,14 @@ public final class TownsteadVillager {
 
         public boolean addSkill(ResourceLocation skillId) {
             if (skillId == null || !learnedSkills.add(skillId)) return false;
+            careerProfile.learnChoice(skillId);
             markDirty();
             return true;
         }
 
         public boolean removeSkill(ResourceLocation skillId) {
             if (skillId == null || !learnedSkills.remove(skillId)) return false;
+            careerProfile.adminForgetChoice(skillId);
             markDirty();
             return true;
         }
@@ -1317,6 +1345,7 @@ public final class TownsteadVillager {
                 if (value > 0) points.putInt(entry.getKey(), value);
             }
             if (!points.isEmpty()) tag.put("skillPoints", points);
+            tag.put("careerProfile", careerProfile.toTag());
             return tag;
         }
 
@@ -1361,6 +1390,14 @@ public final class TownsteadVillager {
             for (int i = 0; i < skills.size(); i++) {
                 ResourceLocation id = ResourceLocation.tryParse(skills.getString(i));
                 if (id != null) learnedSkills.add(id);
+            }
+            careerProfile = tag.contains("careerProfile", Tag.TAG_COMPOUND)
+                    ? com.aetherianartificer.townstead.profession.career.CareerProfile.fromTag(
+                    tag.getCompound("careerProfile"))
+                    : new com.aetherianartificer.townstead.profession.career.CareerProfile();
+            for (ResourceLocation learned : learnedSkills) careerProfile.learnChoice(learned);
+            for (Map.Entry<String, ProfessionXp> entry : xpByProfession.entrySet()) {
+                careerProfile.setProfessionXp(entry.getKey(), entry.getValue());
             }
             skillPoints.clear();
             CompoundTag points = tag.getCompound("skillPoints");

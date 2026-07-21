@@ -39,6 +39,12 @@ public final class ChronicleTaps {
      */
     public static void work(LivingEntity actor, String verb, @Nullable ResourceLocation objectId,
                             @Nullable String paramName, float magnitude) {
+        work(actor, verb, objectId, paramName, magnitude, Map.of());
+    }
+
+    /** Work completion with stable semantic parameters for future Careers and institutions. */
+    public static void work(LivingEntity actor, String verb, @Nullable ResourceLocation objectId,
+                            @Nullable String paramName, float magnitude, Map<String, String> semanticParams) {
         try {
             if (!(actor.level() instanceof ServerLevel level)) return;
             MinecraftServer server = level.getServer();
@@ -47,7 +53,7 @@ public final class ChronicleTaps {
                 Chronicles.addCounter(server, actor.getUUID(), verb + ":" + objectId, 1);
             }
             if (ChronicleTriggerIndex.isEmpty()) return;
-            Map<String, String> params = new HashMap<>(2);
+            Map<String, String> params = new HashMap<>(semanticParams == null ? Map.of() : semanticParams);
             if (objectId != null && paramName != null) {
                 params.put(paramName, itemName(objectId));
             }

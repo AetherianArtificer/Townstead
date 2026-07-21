@@ -1,0 +1,59 @@
+{
+  "schema": "townstead:profession/v1",
+  "display_name": {
+    "text": "Pizzaiolo"
+  },
+  "icon": "minecraft:pumpkin_pie",
+  "description": {
+    "text": "A cook who has mastered the craft of pizza."
+  },
+  "parents": [
+    "townstead:cook"
+  ],
+  "hidden": true,
+  "requirements": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:cooked",
+        "at_least": 25
+      },
+      {
+        "type": "pheno:career_xp",
+        "career": "townstead:cook",
+        "at_least": 110
+      }
+    ]
+  },
+  "acquisition_routes": [
+    "self_discovery",
+    "mentor",
+    "institution"
+  ],
+  "progression": {
+    "tiers": [
+      0,
+      110,
+      300,
+      660,
+      1250
+    ],
+    "daily_cap": 230,
+    "max_xp": 200000
+  },
+  "unlock_model": "experiential",
+  "history_counters": [
+    "townstead:cooked"
+  ],
+  "poi": [
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/farmersdelight/kitchen_l"
+    }
+  ],
+  "skills": [
+    "townstead:kitchen_rhythm",
+    "townstead:iron_palate"
+  ]
+}

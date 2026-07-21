@@ -60,8 +60,14 @@ public interface ChronicleStore extends AutoCloseable {
 
     Stats stats();
 
+    /** Highest durable ids observed when the archive opened. */
+    IdMaxima idMaxima();
+
     @Override
     void close();
 
     record Stats(boolean available, long queued, long written, long dropped, long dbFileBytes) {}
+    record IdMaxima(long eventId, long arcId, long accountId) {
+        public static final IdMaxima NONE = new IdMaxima(0L, 0L, 0L);
+    }
 }

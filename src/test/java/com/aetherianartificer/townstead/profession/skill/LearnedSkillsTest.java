@@ -69,20 +69,20 @@ class LearnedSkillsTest {
     }
 
     @Test
-    void learnRejectsExclusiveSibling() {
+    void legacyExclusiveSiblingsRemainLearnableHistory() {
         assertTrue(LearnedSkills.learn(ENTITY, rl("t:ex_a")).ok());
-        assertFalse(LearnedSkills.learn(ENTITY, rl("t:ex_b")).ok(), "ex_b is exclusive with ex_a");
+        assertTrue(LearnedSkills.learn(ENTITY, rl("t:ex_b")).ok(),
+                "skill-group activation, not learning, provides exclusivity");
     }
 
     @Test
-    void forgetCascadesToDependents() {
+    void normalGameplayCannotForgetHistory() {
         LearnedSkills.learn(ENTITY, rl("t:base"));
         LearnedSkills.learn(ENTITY, rl("t:adv"));
         LearnedSkills.ForgetResult result = LearnedSkills.forget(ENTITY, rl("t:base"));
-        assertTrue(result.ok());
-        assertTrue(result.removed().contains(rl("t:base")));
-        assertTrue(result.removed().contains(rl("t:adv")), "forgetting base must cascade to adv");
-        assertTrue(LearnedSkills.learned(ENTITY).isEmpty());
+        assertFalse(result.ok());
+        assertTrue(LearnedSkills.has(ENTITY, rl("t:base")));
+        assertTrue(LearnedSkills.has(ENTITY, rl("t:adv")));
     }
 
     @Test
@@ -97,7 +97,7 @@ class LearnedSkillsTest {
         LearnedSkills.forceLearn(ENTITY, rl("t:costly_skill"));
         LearnedSkills.ForgetResult denied = LearnedSkills.forget(ENTITY, rl("t:costly_skill"));
         assertFalse(denied.ok(), "costly retraining is rejected until its payment mechanism exists");
-        assertTrue(denied.error() != null && denied.error().contains("not available"));
+        assertTrue(denied.error() != null && denied.error().contains("permanent"));
         assertTrue(LearnedSkills.forceForget(ENTITY, rl("t:costly_skill")).ok(), "force bypasses the policy");
     }
 }

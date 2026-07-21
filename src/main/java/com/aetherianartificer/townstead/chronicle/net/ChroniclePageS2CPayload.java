@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Server -> Client page of chronicle entries. Display is server-resolved
@@ -17,12 +18,23 @@ import java.util.List;
  * the overlay is applied server-side and the truth never ships to players.
  */
 //? if neoforge {
-public record ChroniclePageS2CPayload(int requestId, byte mode, boolean hasMore,
+public record ChroniclePageS2CPayload(int requestId, byte scope, byte status,
+                                      boolean hasMore, long nextCursor,
+                                      String title, String sourceLabel,
+                                      Map<String, Integer> categoryCounts,
                                       List<EntryView> entries) implements CustomPacketPayload {
 //?} else {
-/*public record ChroniclePageS2CPayload(int requestId, byte mode, boolean hasMore,
+/*public record ChroniclePageS2CPayload(int requestId, byte scope, byte status,
+                                      boolean hasMore, long nextCursor,
+                                      String title, String sourceLabel,
+                                      Map<String, Integer> categoryCounts,
                                       List<EntryView> entries) {
 *///?}
+
+    public static final byte STATUS_OK = 0;
+    public static final byte STATUS_EMPTY = 1;
+    public static final byte STATUS_UNAVAILABLE = 2;
+    public static final byte STATUS_FORBIDDEN = 3;
 
     /** One rendered line. {@code channel} is empty outside knowledge views. */
     public record EntryView(long eventId, long worldDay, String dateLabel,
@@ -58,20 +70,39 @@ public record ChroniclePageS2CPayload(int requestId, byte mode, boolean hasMore,
 
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(requestId);
-        buf.writeByte(mode);
+        buf.writeByte(scope);
+        buf.writeByte(status);
         buf.writeBoolean(hasMore);
+        buf.writeLong(nextCursor);
+        buf.writeUtf(title);
+        buf.writeUtf(sourceLabel);
+        buf.writeVarInt(categoryCounts.size());
+        for (Map.Entry<String, Integer> entry : categoryCounts.entrySet()) {
+            buf.writeUtf(entry.getKey());
+            buf.writeVarInt(entry.getValue());
+        }
         buf.writeVarInt(entries.size());
         for (EntryView entry : entries) entry.write(buf);
     }
 
     public static ChroniclePageS2CPayload read(FriendlyByteBuf buf) {
         int requestId = buf.readVarInt();
-        byte mode = buf.readByte();
+        byte scope = buf.readByte();
+        byte status = buf.readByte();
         boolean hasMore = buf.readBoolean();
+        long nextCursor = buf.readLong();
+        String title = buf.readUtf();
+        String sourceLabel = buf.readUtf();
+        int categoryCount = buf.readVarInt();
+        java.util.LinkedHashMap<String, Integer> categoryCounts = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < categoryCount; i++) {
+            categoryCounts.put(buf.readUtf(), buf.readVarInt());
+        }
         int count = buf.readVarInt();
         List<EntryView> entries = new ArrayList<>(count);
         for (int i = 0; i < count; i++) entries.add(EntryView.read(buf));
-        return new ChroniclePageS2CPayload(requestId, mode, hasMore, entries);
+        return new ChroniclePageS2CPayload(requestId, scope, status, hasMore, nextCursor,
+                title, sourceLabel, Map.copyOf(categoryCounts), entries);
     }
 
     //? if neoforge {

@@ -182,6 +182,31 @@ public final class ProfessionScanner {
             }
             return new int[]{activeBaristas, FarmersDelightBaristaAssignment.totalCafeSlots(village)};
         }
+        // Generic def-driven building slots: a profession whose def declares building job
+        // sites gets one slot per matching village building, no Java branch required.
+        com.aetherianartificer.townstead.profession.def.ProfessionDef def =
+                com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(
+                        net.minecraft.resources.ResourceLocation.tryParse(professionId));
+        if (def != null) {
+            java.util.List<String> prefixes = new java.util.ArrayList<>();
+            for (var provider : def.jobSites()) {
+                if (provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building building) {
+                    prefixes.addAll(building.typePrefixes());
+                }
+            }
+            if (!prefixes.isEmpty()) {
+                int slots = 0;
+                for (net.conczin.mca.server.world.data.Building building : village.getBuildings().values()) {
+                    String type = building.getType();
+                    if (type != null && prefixes.stream().anyMatch(type::startsWith)) slots++;
+                }
+                int active = 0;
+                for (VillagerEntityMCA resident : village.getResidents(level)) {
+                    if (professionId.equals(professionKey(resident.getVillagerData().getProfession()))) active++;
+                }
+                return new int[]{active, slots};
+            }
+        }
         return new int[]{0, 0};
     }
 

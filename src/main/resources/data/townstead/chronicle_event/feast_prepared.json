@@ -1,6 +1,7 @@
 {
   "schema": "townstead:chronicle_event/v1",
   "category": "work.cooking",
+  "keep": true,
   "weight": 10,
   "rarity": "uncommon",
   "contexts": ["live", "pregen"],
