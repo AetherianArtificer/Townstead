@@ -25,7 +25,6 @@ public final class ChronicleArchiveAccess {
     private static final ResourceLocation MCA_CIVIL_REGISTRY = parse("mca:civil_registry");
     private static final TagKey<Item> ARCHIVE_SOURCES = TagKey.create(Registries.ITEM,
             id("chronicle_archive_sources"));
-    private static final String ARCHIVES_BUILDING_TYPE = "archives";
     private static final Map<UUID, Lease> LEASES = new ConcurrentHashMap<>();
 
     public record Lease(ResourceLocation dimension, int villageId, String villageName,
@@ -48,24 +47,11 @@ public final class ChronicleArchiveAccess {
     public static boolean tryOpenBuilding(ServerPlayer player, net.minecraft.core.BlockPos pos) {
         if (!player.serverLevel().getBlockState(pos)
                 .is(net.minecraft.world.level.block.Blocks.BOOKSHELF)) return false;
-        Optional<Village> nearest = Village.findNearest(player);
-        if (nearest.isEmpty() || !nearest.get().isWithinBorder(player)) return false;
-        Village village = nearest.get();
-        boolean inArchives = village.getBuildings().values().stream()
-                .anyMatch(building -> ARCHIVES_BUILDING_TYPE.equals(building.getType())
-                        && withinBounds(building.getPos0(), building.getPos1(), pos));
-        if (!inArchives) return false;
-        grantLease(player, village);
+        Optional<Village> village =
+                com.aetherianartificer.townstead.village.ArchivesBuilding.villageIfInside(player, pos);
+        if (village.isEmpty()) return false;
+        grantLease(player, village.get());
         return true;
-    }
-
-    /** Inclusive box containment, tolerant of unordered corners. */
-    private static boolean withinBounds(net.minecraft.core.BlockPos cornerA,
-                                        net.minecraft.core.BlockPos cornerB,
-                                        net.minecraft.core.BlockPos pos) {
-        return ChronicleArchiveBounds.within(cornerA.getX(), cornerA.getY(), cornerA.getZ(),
-                cornerB.getX(), cornerB.getY(), cornerB.getZ(),
-                pos.getX(), pos.getY(), pos.getZ());
     }
 
     private static void grantLease(ServerPlayer player, Village village) {

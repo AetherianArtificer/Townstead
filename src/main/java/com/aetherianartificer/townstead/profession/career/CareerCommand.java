@@ -32,7 +32,11 @@ public final class CareerCommand {
         dispatcher.register(Commands.literal("townstead").then(Commands.literal("career")
                 .executes(ctx -> inspect(ctx.getSource(), ctx.getSource().getPlayer()))
                 .then(Commands.literal("screen")
-                        .executes(ctx -> screen(ctx.getSource())))
+                        .executes(ctx -> screen(ctx.getSource(), null))
+                        .then(Commands.argument("target", EntityArgument.entity())
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> screen(ctx.getSource(), living(
+                                        EntityArgument.getEntity(ctx, "target"))))))
                 .then(Commands.literal("inspect")
                         .executes(ctx -> inspect(ctx.getSource(), focusOrSelf(ctx.getSource())))
                         .then(Commands.argument("target", EntityArgument.entity())
@@ -51,13 +55,17 @@ public final class CareerCommand {
                                                 ResourceLocation.tryParse(StringArgumentType.getString(ctx, "skill")))))))));
     }
 
-    private static int screen(CommandSourceStack source) {
+    private static int screen(CommandSourceStack source, LivingEntity target) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
             source.sendFailure(Component.literal("The Career screen needs a player."));
             return 0;
         }
-        CareerTreeOpener.send(player);
+        if (target == null || target == player) {
+            CareerTreeOpener.send(player);
+        } else {
+            CareerTreeOpener.send(player, target, true);
+        }
         return 1;
     }
 

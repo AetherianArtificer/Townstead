@@ -1,5 +1,5 @@
 {
-  "schema": "townstead:profession/v1",
+  "schema": "townstead:profession/v2",
   "display_name": {
     "text": "Barista"
   },
@@ -30,17 +30,6 @@
     "mentor",
     "institution"
   ],
-  "progression": {
-    "tiers": [
-      0,
-      110,
-      300,
-      660,
-      1250
-    ],
-    "daily_cap": 230,
-    "max_xp": 200000
-  },
   "unlock_model": "experiential",
   "history_counters": [
     "townstead:brewed"
@@ -50,5 +39,22 @@
       "type": "townstead:building",
       "type_prefix": "compat/rusticdelight/cafe_l"
     }
+  ],
+  "daily_cap": 230,
+  "max_xp": 200000,
+  "levels": [
+    {
+      "xp": 110
+    },
+    {
+      "xp": 190
+    },
+    {
+      "xp": 360
+    },
+    {
+      "xp": 590
+    },
+    {}
   ]
 }

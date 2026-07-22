@@ -21,6 +21,14 @@ public final class CareerChoices {
             }
             return new LearnedSkills.Result(true, null);
         }
+        if (existing != null) {
+            var owner = com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                    .byId(existing.profession());
+            if (owner != null) {
+                String blocker = SkillPoints.blocker(entity, owner, existing);
+                if (blocker != null) return new LearnedSkills.Result(false, blocker);
+            }
+        }
         LearnedSkills.Result result = LearnedSkills.learn(entity, choice);
         if (!result.ok()) return result;
         SkillDef def = SkillDefs.byId(choice);

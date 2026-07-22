@@ -26,6 +26,8 @@ public final class CareerProfile {
     private final Set<ResourceLocation> discoveries = new LinkedHashSet<>();
     private final List<ResourceLocation> activeLoadout = new ArrayList<>();
     private final Map<String, ProfessionXp> progress = new LinkedHashMap<>();
+    private final Set<ResourceLocation> trackedCareers = new LinkedHashSet<>();
+    private long lastVocationChangeDay = -1L;
 
     public ResourceLocation primaryVocation() { return primaryVocation; }
     public Set<ResourceLocation> careerHistory() { return Set.copyOf(careerHistory); }
@@ -53,6 +55,16 @@ public final class CareerProfile {
         int colon = careerId.indexOf(':');
         if (colon >= 0) progress.remove(careerId.substring(colon + 1));
     }
+
+    public Set<ResourceLocation> trackedCareers() { return Set.copyOf(trackedCareers); }
+
+    public boolean track(ResourceLocation id) { return id != null && trackedCareers.add(id); }
+
+    public boolean untrack(ResourceLocation id) { return id != null && trackedCareers.remove(id); }
+
+    public long lastVocationChangeDay() { return lastVocationChangeDay; }
+
+    public void setLastVocationChangeDay(long day) { this.lastVocationChangeDay = day; }
 
     public boolean setPrimaryVocation(ResourceLocation vocation) {
         if (java.util.Objects.equals(primaryVocation, vocation)) return false;
@@ -101,10 +113,12 @@ public final class CareerProfile {
         CompoundTag tag = new CompoundTag();
         tag.putInt("schemaVersion", SCHEMA_VERSION);
         if (primaryVocation != null) tag.putString("primary", primaryVocation.toString());
+        if (lastVocationChangeDay >= 0) tag.putLong("vocationDay", lastVocationChangeDay);
         putIds(tag, "history", careerHistory);
         putIds(tag, "learned", learnedChoices);
         putIds(tag, "advanced", acquiredCareers);
         putIds(tag, "discoveries", discoveries);
+        putIds(tag, "trackedGoals", trackedCareers);
         putIds(tag, "loadout", activeLoadout);
         CompoundTag active = new CompoundTag();
         for (Map.Entry<ResourceLocation, ResourceLocation> entry : activeBySkillGroup.entrySet()) {
@@ -130,10 +144,12 @@ public final class CareerProfile {
     public static CareerProfile fromTag(CompoundTag tag) {
         CareerProfile profile = new CareerProfile();
         profile.primaryVocation = ResourceLocation.tryParse(tag.getString("primary"));
+        profile.lastVocationChangeDay = tag.contains("vocationDay") ? tag.getLong("vocationDay") : -1L;
         readIds(tag, "history", profile.careerHistory);
         readIds(tag, "learned", profile.learnedChoices);
         readIds(tag, "advanced", profile.acquiredCareers);
         readIds(tag, "discoveries", profile.discoveries);
+        readIds(tag, "trackedGoals", profile.trackedCareers);
         readIds(tag, "loadout", profile.activeLoadout);
         CompoundTag active = tag.getCompound("activeChoices");
         for (String key : active.getAllKeys()) {

@@ -57,9 +57,29 @@ public final class DataDrivenTrades {
         public MerchantOffer getOffer(Entity trader, RandomSource random) {
             ProfessionDef def = ProfessionDefs.byId(professionId);
             if (def == null) return null;
-            List<TradeDef> trades = def.trades().get(level);
-            if (trades == null || slot >= trades.size()) return null;
+            List<TradeDef> trades = tradesFor(def, level);
+            if (slot >= trades.size()) return null;
             return offer(trades.get(slot));
+        }
+
+        /**
+         * Vanilla merchants cap at level 5, so career levels past five sell from the Master
+         * tier: the level-5 slots resolve every trade defined at level 5 and above, in order.
+         */
+        private static List<TradeDef> tradesFor(ProfessionDef def, int merchantLevel) {
+            if (merchantLevel < MAX_LEVEL) {
+                return def.trades().getOrDefault(merchantLevel, List.of());
+            }
+            List<Integer> levels = new ArrayList<>();
+            for (Integer key : def.trades().keySet()) {
+                if (key >= MAX_LEVEL) levels.add(key);
+            }
+            java.util.Collections.sort(levels);
+            List<TradeDef> out = new ArrayList<>();
+            for (Integer key : levels) {
+                out.addAll(def.trades().get(key));
+            }
+            return out;
         }
 
         @Nullable

@@ -8,6 +8,7 @@
   "blocks": {
     "minecraft:chiseled_bookshelf": 1,
     "minecraft:bookshelf": 2,
-    "#minecraft:wall_signs": 1
-  }
+    "townstead:notice_board": 1
+  },
+  "margin": 2
 }
