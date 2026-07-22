@@ -12,15 +12,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The server-rendered career constellation for the Career screen: one node per career and
- * per visible skill, with display state, progress, and evidence already resolved and
- * authorized per player. Hidden specializations arrive masked (no name, no evidence), so
- * progressive disclosure is enforced before the wire, not by the client.
+ * The server-rendered career registry record for the Career screen: one node per career and
+ * per visible skill, with display state, progress, evidence, routes, and chronicle moments
+ * already resolved, localized, and authorized per subject. Hidden specializations arrive
+ * masked (no name, no evidence), so progressive disclosure is enforced before the wire.
+ * {@code inspect} marks a read-only view of somebody else's record.
  */
 //? if neoforge {
-public record CareerGraphS2CPayload(String title, List<Node> nodes) implements CustomPacketPayload {
+public record CareerGraphS2CPayload(String title, String scribeName, boolean inspect,
+                                    List<Node> nodes) implements CustomPacketPayload {
 //?} else {
-/*public record CareerGraphS2CPayload(String title, List<Node> nodes) {
+/*public record CareerGraphS2CPayload(String title, String scribeName, boolean inspect,
+                                    List<Node> nodes) {
 *///?}
 
     public static final byte KIND_ROOT = 0;
@@ -35,11 +38,17 @@ public record CareerGraphS2CPayload(String title, List<Node> nodes) implements C
     public record Evidence(String label, int current, int target, boolean met) {}
 
     public record Node(String id, String rootId, String parentId, byte kind, byte state,
-                       String name, String description, String icon, int tier, int xp, int xpToNext,
-                       boolean primary, boolean equipped, List<Evidence> evidence) {}
+                       String name, String description, String icon,
+                       int tier, int maxTier, int xp, int xpToNext, int xpToday, int dailyCap,
+                       boolean primary, boolean equipped, boolean tracked,
+                       String routesLine, String replaces,
+                       List<Evidence> evidence, List<String> moments,
+                       String rankName, int points) {}
 
     public void write(FriendlyByteBuf buf) {
         buf.writeUtf(title);
+        buf.writeUtf(scribeName);
+        buf.writeBoolean(inspect);
         buf.writeVarInt(nodes.size());
         for (Node node : nodes) {
             buf.writeUtf(node.id());
@@ -51,10 +60,16 @@ public record CareerGraphS2CPayload(String title, List<Node> nodes) implements C
             buf.writeUtf(node.description());
             buf.writeUtf(node.icon());
             buf.writeVarInt(node.tier());
+            buf.writeVarInt(node.maxTier());
             buf.writeVarInt(node.xp());
             buf.writeVarInt(node.xpToNext());
+            buf.writeVarInt(node.xpToday());
+            buf.writeVarInt(node.dailyCap());
             buf.writeBoolean(node.primary());
             buf.writeBoolean(node.equipped());
+            buf.writeBoolean(node.tracked());
+            buf.writeUtf(node.routesLine());
+            buf.writeUtf(node.replaces());
             buf.writeVarInt(node.evidence().size());
             for (Evidence evidence : node.evidence()) {
                 buf.writeUtf(evidence.label());
@@ -62,11 +77,19 @@ public record CareerGraphS2CPayload(String title, List<Node> nodes) implements C
                 buf.writeVarInt(evidence.target());
                 buf.writeBoolean(evidence.met());
             }
+            buf.writeVarInt(node.moments().size());
+            for (String moment : node.moments()) {
+                buf.writeUtf(moment);
+            }
+            buf.writeUtf(node.rankName());
+            buf.writeVarInt(node.points());
         }
     }
 
     public static CareerGraphS2CPayload read(FriendlyByteBuf buf) {
         String title = buf.readUtf();
+        String scribeName = buf.readUtf();
+        boolean inspect = buf.readBoolean();
         int nodeCount = buf.readVarInt();
         List<Node> nodes = new ArrayList<>(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
@@ -79,20 +102,35 @@ public record CareerGraphS2CPayload(String title, List<Node> nodes) implements C
             String description = buf.readUtf();
             String icon = buf.readUtf();
             int tier = buf.readVarInt();
+            int maxTier = buf.readVarInt();
             int xp = buf.readVarInt();
             int xpToNext = buf.readVarInt();
+            int xpToday = buf.readVarInt();
+            int dailyCap = buf.readVarInt();
             boolean primary = buf.readBoolean();
             boolean equipped = buf.readBoolean();
+            boolean tracked = buf.readBoolean();
+            String routesLine = buf.readUtf();
+            String replaces = buf.readUtf();
             int evidenceCount = buf.readVarInt();
             List<Evidence> evidence = new ArrayList<>(evidenceCount);
             for (int j = 0; j < evidenceCount; j++) {
                 evidence.add(new Evidence(buf.readUtf(), buf.readVarInt(), buf.readVarInt(),
                         buf.readBoolean()));
             }
+            int momentCount = buf.readVarInt();
+            List<String> moments = new ArrayList<>(momentCount);
+            for (int j = 0; j < momentCount; j++) {
+                moments.add(buf.readUtf());
+            }
+            String rankName = buf.readUtf();
+            int points = buf.readVarInt();
             nodes.add(new Node(id, rootId, parentId, kind, state, name, description, icon,
-                    tier, xp, xpToNext, primary, equipped, List.copyOf(evidence)));
+                    tier, maxTier, xp, xpToNext, xpToday, dailyCap, primary, equipped, tracked,
+                    routesLine, replaces, List.copyOf(evidence), List.copyOf(moments),
+                    rankName, points));
         }
-        return new CareerGraphS2CPayload(title, List.copyOf(nodes));
+        return new CareerGraphS2CPayload(title, scribeName, inspect, List.copyOf(nodes));
     }
 
     //? if neoforge {

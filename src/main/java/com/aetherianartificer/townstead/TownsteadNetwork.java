@@ -139,6 +139,14 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerTreeRequestC2SPayload::read,
                 TownsteadNetwork::handleCareerTreeRequest);
+        registerC2S(com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload::read,
+                TownsteadNetwork::handleCareerVocation);
+        registerC2S(com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload::read,
+                TownsteadNetwork::handleCareerTrack);
         registerS2C(FishermanHookLinkPayload.class, FishermanHookLinkPayload::write, FishermanHookLinkPayload::read,
                 TownsteadNetwork::handleFishermanHookLink);
 
@@ -703,7 +711,7 @@ public final class TownsteadNetwork {
 
     private static void handleCareerTree(
             com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload payload) {
-        com.aetherianartificer.townstead.client.gui.career.CareerBoardScreen.openOrUpdate(payload);
+        com.aetherianartificer.townstead.client.gui.career.CareerScreen.openOrUpdate(payload);
     }
 
     private static void handleCareerChoose(
@@ -719,6 +727,20 @@ public final class TownsteadNetwork {
             ServerPlayer sp) {
         com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleRequest(
                 sp, payload.villagerId());
+    }
+
+    private static void handleCareerVocation(
+            com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleVocation(
+                sp, payload.careerId());
+    }
+
+    private static void handleCareerTrack(
+            com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleTrack(
+                sp, payload.careerId());
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {

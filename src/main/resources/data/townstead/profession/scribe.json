@@ -1,22 +1,11 @@
 {
-  "schema": "townstead:profession/v1",
+  "schema": "townstead:profession/v2",
   "display_name": {
     "text": "Scribe"
   },
   "icon": "minecraft:writable_book",
   "description": {
     "text": "The village's pen. Keeps the records at the Archives, prints the bulletin, and helps people toward their calling."
-  },
-  "progression": {
-    "tiers": [
-      0,
-      60,
-      160,
-      340,
-      700
-    ],
-    "daily_cap": 120,
-    "max_xp": 100000
   },
   "unlock_model": "experiential",
   "poi": [
@@ -25,32 +14,87 @@
       "type_prefix": "archives"
     }
   ],
-  "trades": {
-    "1": [
-      {
-        "cost": {
-          "item": "minecraft:paper",
-          "count": 24
+  "daily_cap": 120,
+  "max_xp": 100000,
+  "levels": [
+    {
+      "xp": 60,
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:paper",
+            "count": 24
+          },
+          "result": {
+            "item": "minecraft:emerald",
+            "count": 1
+          },
+          "max_uses": 16,
+          "villager_xp": 2
         },
-        "result": {
-          "item": "minecraft:emerald",
-          "count": 1
-        },
-        "max_uses": 16,
-        "villager_xp": 2
-      },
-      {
-        "cost": {
-          "item": "minecraft:emerald",
-          "count": 1
-        },
-        "result": {
-          "item": "minecraft:book",
-          "count": 1
-        },
-        "max_uses": 12,
-        "villager_xp": 2
-      }
-    ]
-  }
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 1
+          },
+          "result": {
+            "item": "minecraft:book",
+            "count": 1
+          },
+          "max_uses": 12,
+          "villager_xp": 2
+        }
+      ]
+    },
+    {
+      "xp": 100,
+      "skills": [
+        {
+          "id": "steady_hand",
+          "display_name": {
+            "text": "Steady Hand"
+          },
+          "icon": "minecraft:feather",
+          "description": {
+            "text": "Earn 1 additional Scribe XP whenever record work is completed."
+          },
+          "cost": 1,
+          "grants": [
+            {
+              "capability": "townstead:scribe_xp_flat",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "xp": 180,
+      "skills": [
+        {
+          "id": "long_ledger",
+          "display_name": {
+            "text": "Long Ledger"
+          },
+          "icon": "minecraft:lantern",
+          "description": {
+            "text": "Earn additional Scribe XP that scales with the size of the work."
+          },
+          "cost": 2,
+          "grants": [
+            {
+              "capability": "townstead:scribe_xp_per_tier",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "xp": 360
+    },
+    {}
+  ]
 }

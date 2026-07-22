@@ -1,22 +1,11 @@
 {
-  "schema": "townstead:profession/v1",
+  "schema": "townstead:profession/v2",
   "display_name": {
     "text": "Cook"
   },
   "icon": "minecraft:cooked_beef",
   "description": {
     "text": "Prepare food to build a history of culinary mastery."
-  },
-  "progression": {
-    "tiers": [
-      0,
-      110,
-      300,
-      660,
-      1250
-    ],
-    "daily_cap": 230,
-    "max_xp": 200000
   },
   "unlock_model": "experiential",
   "history_counters": [
@@ -28,5 +17,126 @@
       "type": "townstead:building",
       "type_prefix": "compat/farmersdelight/kitchen_l"
     }
+  ],
+  "daily_cap": 230,
+  "max_xp": 200000,
+  "levels": [
+    {
+      "xp": 110
+    },
+    {
+      "xp": 190,
+      "skills": [
+        {
+          "id": "seasoned_hands",
+          "display_name": {
+            "text": "Seasoned Hands"
+          },
+          "icon": "minecraft:bowl",
+          "description": {
+            "text": "Earn 1 additional Cook XP whenever a dish is completed."
+          },
+          "cost": 1,
+          "grants": [
+            {
+              "capability": "townstead:cook_xp_flat",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "steady_simmer",
+          "display_name": {
+            "text": "Steady Simmer"
+          },
+          "icon": "minecraft:campfire",
+          "description": {
+            "text": "Earn additional Cook XP that scales with the size of the dish."
+          },
+          "cost": 1,
+          "grants": [
+            {
+              "capability": "townstead:cook_xp_per_tier",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "xp": 360,
+      "skills": [
+        {
+          "id": "open_flame",
+          "display_name": {
+            "text": "Open Flame"
+          },
+          "icon": "minecraft:blaze_powder",
+          "description": {
+            "text": "Bold, fast cooking. Big dishes earn much more Cook XP."
+          },
+          "cost": 2,
+          "skill_group": "townstead:cook_style",
+          "exclusive_with": [
+            "townstead:slow_stove"
+          ],
+          "grants": [
+            {
+              "capability": "townstead:cook_xp_per_tier",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "slow_stove",
+          "display_name": {
+            "text": "Slow Stove"
+          },
+          "icon": "minecraft:cauldron",
+          "description": {
+            "text": "Patient, careful cooking. Every dish earns 2 additional Cook XP."
+          },
+          "cost": 2,
+          "skill_group": "townstead:cook_style",
+          "exclusive_with": [
+            "townstead:open_flame"
+          ],
+          "grants": [
+            {
+              "capability": "townstead:cook_xp_flat",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "xp": 590,
+      "skills": [
+        {
+          "id": "cast_iron_stomach",
+          "display_name": {
+            "text": "Cast-Iron Stomach"
+          },
+          "icon": "minecraft:suspicious_stew",
+          "description": {
+            "text": "Years of tasting every experiment. Immune to poison and hunger effects."
+          },
+          "cost": 2,
+          "power": {
+            "type": "pheno:effect_immunity",
+            "effects": [
+              "minecraft:poison",
+              "minecraft:hunger"
+            ]
+          }
+        }
+      ]
+    },
+    {}
   ]
 }

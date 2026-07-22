@@ -252,6 +252,15 @@ public class Townstead {
     public static final Supplier<Item> FIELD_POST_ITEM = ITEMS.register("field_post",
             () -> new BlockItem(FIELD_POST.get(), new Item.Properties()));
 
+    public static final Supplier<Block> NOTICE_BOARD = BLOCKS.register("notice_board",
+            () -> new com.aetherianartificer.townstead.block.NoticeBoardBlock(BlockBehaviour.Properties.of()
+                    .strength(1.5f)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion()));
+
+    public static final Supplier<Item> NOTICE_BOARD_ITEM = ITEMS.register("notice_board",
+            () -> new BlockItem(NOTICE_BOARD.get(), new Item.Properties()));
+
     private static final String[] FIELD_POST_WOOD_VARIANTS = {
             "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove",
             "cherry", "bamboo", "crimson", "warped"
@@ -353,6 +362,7 @@ public class Townstead {
                             .icon(() -> new net.minecraft.world.item.ItemStack(FIELD_POST_ITEM.get()))
                             .displayItems((params, output) -> {
                                 output.accept(FIELD_POST_ITEM.get());
+                                output.accept(NOTICE_BOARD_ITEM.get());
                                 for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
                                     output.accept(variant.get());
                                 }
@@ -497,8 +507,8 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock e) -> {
             if (e.getLevel().isClientSide || !e.getItemStack().isEmpty()) return;
-            if (e.getEntity() instanceof net.minecraft.server.level.ServerPlayer player
-                    && com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess
+            if (!(e.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)) return;
+            if (com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess
                     .tryOpenBuilding(player, e.getPos())) {
                 e.setCanceled(true);
                 e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
@@ -857,8 +867,8 @@ public class Townstead {
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock e) -> {
             if (e.getLevel().isClientSide || !e.getItemStack().isEmpty()) return;
-            if (e.getEntity() instanceof net.minecraft.server.level.ServerPlayer player
-                    && com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess
+            if (!(e.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)) return;
+            if (com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess
                     .tryOpenBuilding(player, e.getPos())) {
                 e.setCanceled(true);
                 e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
@@ -2308,6 +2318,16 @@ public class Townstead {
                 com.aetherianartificer.townstead.profession.career.CareerTreeRequestC2SPayload.STREAM_CODEC,
                 this::handleCareerTreeRequest
         );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload.TYPE,
+                com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload.STREAM_CODEC,
+                this::handleCareerVocation
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload.TYPE,
+                com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload.STREAM_CODEC,
+                this::handleCareerTrack
+        );
         registrar.playToClient(
                 FishermanHookLinkPayload.TYPE,
                 FishermanHookLinkPayload.STREAM_CODEC,
@@ -3041,7 +3061,7 @@ public class Townstead {
     private void handleCareerTree(com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload payload,
                                   IPayloadContext context) {
         context.enqueueWork(() ->
-                com.aetherianartificer.townstead.client.gui.career.CareerBoardScreen.openOrUpdate(payload));
+                com.aetherianartificer.townstead.client.gui.career.CareerScreen.openOrUpdate(payload));
     }
 
     private void handleCareerChoose(com.aetherianartificer.townstead.profession.career.CareerChooseC2SPayload payload,
@@ -3062,6 +3082,28 @@ public class Townstead {
             if (context.player() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleRequest(
                         sp, payload.villagerId());
+            }
+        });
+    }
+
+    private void handleCareerVocation(
+            com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload payload,
+            IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer sp) {
+                com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleVocation(
+                        sp, payload.careerId());
+            }
+        });
+    }
+
+    private void handleCareerTrack(
+            com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload payload,
+            IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer sp) {
+                com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleTrack(
+                        sp, payload.careerId());
             }
         });
     }

@@ -53,10 +53,14 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         Diagnostics diagnostics = new Diagnostics();
 
         Map<ResourceLocation, ProfessionDef> professions = new LinkedHashMap<>();
+        Map<ResourceLocation, SkillDef> skills = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonObject> e : prepared.professions().entrySet()) {
             diagnostics.forResource(e.getKey());
             try {
-                ProfessionDef profession = parseProfession(e.getKey(), e.getValue(), lang, diagnostics);
+                // Inline level skills land in the same registry; a sidecar with the same id
+                // overrides them, which is how packs extend or retune another def's pool.
+                ProfessionDef profession = parseProfession(e.getKey(), e.getValue(), lang,
+                        diagnostics, skills);
                 if (profession != null) professions.put(e.getKey(), profession);
             } catch (Exception ex) {
                 diagnostics.error(JsonPath.ROOT, "Failed to parse profession: " + ex.getMessage(),
@@ -64,7 +68,6 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             }
         }
 
-        Map<ResourceLocation, SkillDef> skills = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonObject> e : prepared.skills().entrySet()) {
             diagnostics.forResource(e.getKey());
             try {
@@ -96,7 +99,15 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
 
     static ProfessionDef parseProfession(ResourceLocation id, JsonObject obj, Map<String, String> lang,
                                                  Diagnostics diag) {
-        TownsteadSchema.validate(obj, "townstead:profession/v1");
+        return parseProfession(id, obj, lang, diag, new LinkedHashMap<>());
+    }
+
+    static ProfessionDef parseProfession(ResourceLocation id, JsonObject obj, Map<String, String> lang,
+                                                 Diagnostics diag,
+                                                 Map<ResourceLocation, SkillDef> inlineSkillsOut) {
+        boolean v2 = "townstead:profession/v2".equals(GsonHelper.getAsString(obj, "schema", ""))
+                || obj.has("levels");
+        TownsteadSchema.validate(obj, v2 ? "townstead:profession/v2" : "townstead:profession/v1");
         Component name = obj.has("display_name")
                 ? DataPackLang.parseComponent(obj.get("display_name"), id.toString(), lang)
                 : Component.literal(id.getPath());
@@ -183,12 +194,100 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             }
         }
 
+        List<LevelDef> levels = new ArrayList<>();
+        Map<Integer, List<TradeDef>> levelTrades = new LinkedHashMap<>();
+        List<ResourceLocation> inlineSkillIds = new ArrayList<>();
+        if (obj.has("levels") && obj.get("levels").isJsonArray()) {
+            JsonArray levelArray = obj.getAsJsonArray("levels");
+            for (int i = 0; i < levelArray.size(); i++) {
+                if (!levelArray.get(i).isJsonObject()) continue;
+                JsonObject entry = levelArray.get(i).getAsJsonObject();
+                int levelNumber = i + 1;
+                Component levelName = entry.has("name")
+                        ? DataPackLang.parseComponent(entry.get("name"),
+                                id + ".level." + levelNumber, lang) : null;
+                List<TradeDef> tradeList = new ArrayList<>();
+                if (entry.has("trades") && entry.get("trades").isJsonArray()) {
+                    JsonArray tradeArray = entry.getAsJsonArray("trades");
+                    for (int j = 0; j < tradeArray.size(); j++) {
+                        if (!tradeArray.get(j).isJsonObject()) continue;
+                        TradeDef trade = TradeDef.parse(tradeArray.get(j).getAsJsonObject());
+                        if (trade == null) {
+                            diag.warning(JsonPath.ROOT.field("levels").index(i)
+                                            .field("trades").index(j),
+                                    "Trade needs 'cost' and 'result' item objects; entry ignored.",
+                                    "Add { \"item\": ..., \"count\": ... } for both.");
+                            continue;
+                        }
+                        tradeList.add(trade);
+                    }
+                }
+                if (!tradeList.isEmpty()) levelTrades.put(levelNumber, List.copyOf(tradeList));
+                List<ResourceLocation> levelSkills = new ArrayList<>();
+                if (entry.has("skills") && entry.get("skills").isJsonArray()) {
+                    JsonArray skillArray = entry.getAsJsonArray("skills");
+                    for (int j = 0; j < skillArray.size(); j++) {
+                        if (!skillArray.get(j).isJsonObject()) continue;
+                        JsonObject skillJson = skillArray.get(j).getAsJsonObject().deepCopy();
+                        String rawId = GsonHelper.getAsString(skillJson, "id", "");
+                        ResourceLocation skillId = rawId.contains(":")
+                                ? ResourceLocation.tryParse(rawId)
+                                : ResourceLocation.tryParse(id.getNamespace() + ":" + rawId);
+                        if (skillId == null || rawId.isBlank()) {
+                            diag.error(JsonPath.ROOT.field("levels").index(i)
+                                            .field("skills").index(j).field("id"),
+                                    "Missing or invalid inline skill id.",
+                                    "Use a bare path (namespaced to the profession) or a full id.");
+                            continue;
+                        }
+                        skillJson.remove("schema");
+                        skillJson.addProperty("profession", id.toString());
+                        if (!skillJson.has("tier") && !skillJson.has("level")) {
+                            skillJson.addProperty("tier", levelNumber);
+                        }
+                        SkillDef skill = parseSkill(skillId, skillJson, lang, diag);
+                        if (skill == null) continue;
+                        inlineSkillsOut.put(skillId, skill);
+                        levelSkills.add(skillId);
+                        inlineSkillIds.add(skillId);
+                    }
+                }
+                levels.add(new LevelDef(levelName,
+                        GsonHelper.getAsInt(entry, "xp", 0),
+                        GsonHelper.getAsInt(entry, "skill_points", 1),
+                        List.copyOf(tradeList), List.copyOf(levelSkills)));
+            }
+        }
+        if (!levels.isEmpty()) {
+            // Thresholds derive from per-level xp spans; the final level's span is open-ended.
+            tiers = new ArrayList<>();
+            int accumulated = 0;
+            tiers.add(0);
+            for (int i = 0; i < levels.size() - 1; i++) {
+                accumulated += Math.max(0, levels.get(i).xp());
+                tiers.add(accumulated);
+            }
+            dailyCap = GsonHelper.getAsInt(obj, "daily_cap", dailyCap);
+            maxXp = GsonHelper.getAsInt(obj, "max_xp", maxXp);
+        }
+
+        Map<Integer, List<TradeDef>> trades = new LinkedHashMap<>(parseTrades(obj, diag));
+        levelTrades.forEach((level, list) -> trades.merge(level, list, (a, b) -> {
+            List<TradeDef> merged = new ArrayList<>(a);
+            merged.addAll(b);
+            return List.copyOf(merged);
+        }));
+        List<ResourceLocation> skillIds = new ArrayList<>(parseIdList(obj, "skills"));
+        for (ResourceLocation inline : inlineSkillIds) {
+            if (!skillIds.contains(inline)) skillIds.add(inline);
+        }
+
         return new ProfessionDef(id, name, description,
                 new ProgressionTrack(List.copyOf(tiers), dailyCap, maxXp),
                 UnlockModel.fromString(unlock),
                 GsonHelper.getAsInt(obj, "points_per_tier", 1),
                 RetrainingPolicy.fromString(retraining),
-                parseIdList(obj, "skills"),
+                List.copyOf(skillIds),
                 List.copyOf(historyCounters),
                 parseIdList(obj, "parents"),
                 GsonHelper.getAsBoolean(obj, "hidden", false),
@@ -196,9 +295,10 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 List.copyOf(routes),
                 List.copyOf(jobSites),
                 parseIdList(obj, "aliases"),
-                parseTrades(obj, diag),
+                Map.copyOf(trades),
                 obj.has("requirements") ? RequirementHint.extract(obj.get("requirements")) : List.of(),
-                obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null);
+                obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null,
+                List.copyOf(levels));
     }
 
     /** {@code trades} maps merchant level ("1".."5") to a list of {@link TradeDef}s. */
@@ -301,7 +401,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "skill_group", "")) : null;
 
         return new SkillDef(id, name, description, profession,
-                GsonHelper.getAsInt(obj, "tier", 1),
+                GsonHelper.getAsInt(obj, "tier", GsonHelper.getAsInt(obj, "level", 1)),
                 parseIdList(obj, "requires"),
                 parseIdList(obj, "exclusive_with"),
                 GsonHelper.getAsInt(obj, "cost", 1),
