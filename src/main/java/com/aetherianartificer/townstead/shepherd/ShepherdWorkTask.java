@@ -4,6 +4,8 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -64,7 +66,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (villager.getVillagerData().getProfession() != VillagerProfession.SHEPHERD) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.SHEAR)) return false;
         if (!ShepherdToolDamage.hasShears(villager)) return false;
         // If the villager has no room for more wool, yield to ShepherdDepositTask
         // so they walk to the Wool Shed and unload before continuing.

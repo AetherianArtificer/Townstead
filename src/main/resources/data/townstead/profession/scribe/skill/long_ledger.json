@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Long Ledger"
+  },
+  "icon": "minecraft:lantern",
+  "description": {
+    "text": "Earn additional Scribe XP that scales with the size of the work."
+  },
+  "tier": 3,
+  "cost": 2,
+  "grants": [
+    {
+      "capability": "townstead:scribe_xp_per_tier",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

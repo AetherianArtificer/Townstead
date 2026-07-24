@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Kitchen Rhythm"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "text": "A practiced hand at the oven. Bigger dishes earn more Cook XP."
+  },
+  "tier": 3,
+  "cost": 1,
+  "mods": [
+    "pizzadelight",
+    "farmersdelight"
+  ],
+  "requires": [
+    "pizza_craft"
+  ],
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_per_tier",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

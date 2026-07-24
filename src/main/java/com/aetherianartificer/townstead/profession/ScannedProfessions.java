@@ -36,17 +36,19 @@ import java.util.function.Predicate;
  * register POI-less like {@code townstead:cook}.
  *
  * <p>Only jar-bundled defs can get this treatment: the profession registry freezes at
- * startup, so defs added by world data packs or {@code /reload} cannot register and instead
- * inherit their parent's Minecraft profession through the career layer.</p>
+ * startup, so defs added by world data packs or {@code /reload} cannot register and are
+ * reachable only through the career layer.</p>
  *
- * <p>Eligible: {@code data/<ns>/profession/*.json} with the Townstead profession schema and a
- * non-empty {@code parents} list (root defs describe professions that already exist), unless
- * the def opts out with {@code "register_profession": false}. Ids already present in the
- * registry are skipped; {@code aliases} exist for converging on those instead.</p>
+ * <p>Eligible: {@code data/<ns>/profession/*.json} with the Townstead profession schema and
+ * non-empty {@code acquisition_routes} (practiced careers extend professions that already
+ * exist), unless the def opts out with {@code "register_profession": false}. Ids already
+ * present in the registry are skipped; {@code aliases} exist for converging on those
+ * instead.</p>
  */
 public final class ScannedProfessions {
 
-    private static final String SCHEMA = "townstead:profession/v1";
+    private static final Set<String> SCHEMAS = Set.of(
+            "townstead:profession/v1", "townstead:profession/v2");
 
     public record ScannedDef(ResourceLocation id, Set<ResourceLocation> jobBlocks,
                              Set<String> providerModIds) {
@@ -211,8 +213,8 @@ public final class ScannedProfessions {
                 }
             }
         } catch (Exception error) {
-            Townstead.LOGGER.warn("Profession scan failed; advanced professions will inherit "
-                    + "their parent's Minecraft profession", error);
+            Townstead.LOGGER.warn("Profession scan failed; gated careers will not register "
+                    + "their own professions this session", error);
         }
         return List.copyOf(out.values());
     }
@@ -225,33 +227,54 @@ public final class ScannedProfessions {
         try (var files = Files.list(professions)) {
             for (Path file : (Iterable<Path>) files::iterator) {
                 String fileName = file.getFileName().toString();
-                if (!fileName.endsWith(".json")) continue;
-                ResourceLocation id = ResourceLocation.tryParse(
-                        namespace + ":" + fileName.substring(0, fileName.length() - ".json".length()));
-                if (id == null) continue;
-                try (Reader reader = Files.newBufferedReader(file)) {
-                    JsonElement parsed = JsonParser.parseReader(reader);
-                    if (parsed.isJsonObject() && eligible(parsed.getAsJsonObject())) {
-                        out.putIfAbsent(id, new ScannedDef(id, jobBlocks(parsed.getAsJsonObject()),
-                                providerModIds));
+                if (Files.isDirectory(file)) {
+                    // Per-profession directory layout: <name>/profession.json is the def,
+                    // id = <ns>:<name>. Skill subdirectories never register professions.
+                    Path def = file.resolve("profession.json");
+                    if (Files.isRegularFile(def)) {
+                        readCandidate(def, ResourceLocation.tryParse(namespace + ":" + fileName),
+                                providerModIds, out);
                     }
-                } catch (Exception error) {
-                    Townstead.LOGGER.debug("Profession scan could not read {}: {}", file, error.toString());
+                    continue;
                 }
+                if (!fileName.endsWith(".json")) continue;
+                readCandidate(file, ResourceLocation.tryParse(
+                                namespace + ":" + fileName.substring(0, fileName.length() - ".json".length())),
+                        providerModIds, out);
             }
         }
     }
 
+    private static void readCandidate(Path file, @org.jetbrains.annotations.Nullable ResourceLocation id,
+                                      Set<String> providerModIds, Map<ResourceLocation, ScannedDef> out) {
+        if (id == null) return;
+        try (Reader reader = Files.newBufferedReader(file)) {
+            JsonElement parsed = JsonParser.parseReader(reader);
+            if (parsed.isJsonObject() && eligible(parsed.getAsJsonObject())) {
+                out.putIfAbsent(id, new ScannedDef(id, jobBlocks(parsed.getAsJsonObject()),
+                        providerModIds));
+            }
+        } catch (Exception error) {
+            Townstead.LOGGER.debug("Profession scan could not read {}: {}", file, error.toString());
+        }
+    }
+
     /**
-     * Advanced Townstead profession defs only: the schema guard keeps other mods' unrelated
-     * {@code profession/} data folders out, and root defs describe professions that exist.
+     * Townstead profession defs that need a profession of their own: the schema guard keeps
+     * other mods' unrelated {@code profession/} data folders out; the practiced-vs-gated rule
+     * itself lives on {@link com.aetherianartificer.townstead.profession.def.ProfessionDef}
+     * (gated careers register, practiced careers extend a profession that already exists) —
+     * this scan cannot use the full parser because it runs before common setup registers the
+     * pheno condition types that {@code requirements} parsing needs. A def whose {@code mods}
+     * gate is unmet (or malformed) never registers a profession.
      */
     static boolean eligible(JsonObject json) {
         if (!json.has("schema") || !json.get("schema").isJsonPrimitive()
-                || !SCHEMA.equals(json.get("schema").getAsString())) return false;
+                || !SCHEMAS.contains(json.get("schema").getAsString())) return false;
         if (json.has("register_profession") && !json.get("register_profession").getAsBoolean()) return false;
-        return json.has("parents") && json.get("parents").isJsonArray()
-                && !json.getAsJsonArray("parents").isEmpty();
+        if (json.has("mods") && !Boolean.TRUE.equals(
+                com.aetherianartificer.townstead.data.ModGate.evaluate(json.get("mods")))) return false;
+        return com.aetherianartificer.townstead.profession.def.ProfessionDef.declaresAcquisitionRoutes(json);
     }
 
     /** The block ids of every {@code townstead:job_block} provider in the def's poi list. */

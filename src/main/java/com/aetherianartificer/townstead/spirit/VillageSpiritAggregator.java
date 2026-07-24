@@ -55,7 +55,7 @@ public final class VillageSpiritAggregator {
         Map<String, Integer> perSpirit = new HashMap<>();
         int total = 0;
         int contributingBuildings = 0;
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(b.getType());
             if (contributions.isEmpty()) continue;
@@ -83,7 +83,7 @@ public final class VillageSpiritAggregator {
     public static Map<String, List<ContributorRow>> contributorsFor(Village village) {
         if (village == null) return Map.of();
         Map<String, Map<String, int[]>> bySpirit = new HashMap<>();
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
             String type = b.getType();
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);
@@ -121,7 +121,7 @@ public final class VillageSpiritAggregator {
         Map<String, Map<String, int[]>> bySpirit = new HashMap<>();
         int total = 0;
         int contributingBuildings = 0;
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
             String type = b.getType();
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);

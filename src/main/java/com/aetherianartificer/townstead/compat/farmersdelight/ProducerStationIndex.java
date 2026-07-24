@@ -63,7 +63,22 @@ public final class ProducerStationIndex {
                 worksiteBounds,
                 abandonedUntilByStation,
                 gameTime,
-                recipeCooldownUntil);
+                recipeCooldownUntil,
+                null);
+    }
+
+    public static @Nullable Selection chooseCookSelection(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            WorkBuildingNav.Snapshot snapshot,
+            Set<Long> worksiteBounds,
+            Map<Long, Long> abandonedUntilByStation,
+            long gameTime,
+            Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
+            @Nullable java.util.function.Predicate<StationSlot> stationFilter
+    ) {
+        return chooseSelection(ProducerRole.COOK, level, villager, snapshot, worksiteBounds,
+                abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter);
     }
 
     public static @Nullable Selection chooseBaristaSelection(
@@ -75,7 +90,22 @@ public final class ProducerStationIndex {
             long gameTime,
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil
     ) {
-        return chooseSelection(ProducerRole.BARISTA, level, villager, snapshot, worksiteBounds, abandonedUntilByStation, gameTime, recipeCooldownUntil);
+        return chooseBaristaSelection(level, villager, snapshot, worksiteBounds,
+                abandonedUntilByStation, gameTime, recipeCooldownUntil, null);
+    }
+
+    public static @Nullable Selection chooseBaristaSelection(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            WorkBuildingNav.Snapshot snapshot,
+            Set<Long> worksiteBounds,
+            Map<Long, Long> abandonedUntilByStation,
+            long gameTime,
+            Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
+            @Nullable java.util.function.Predicate<StationSlot> stationFilter
+    ) {
+        return chooseSelection(ProducerRole.BARISTA, level, villager, snapshot, worksiteBounds,
+                abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter);
     }
 
     private static @Nullable Selection chooseSelection(
@@ -86,7 +116,8 @@ public final class ProducerStationIndex {
             Set<Long> worksiteBounds,
             Map<Long, Long> abandonedUntilByStation,
             long gameTime,
-            Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil
+            Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
+            @Nullable java.util.function.Predicate<StationSlot> stationFilter
     ) {
         if (level == null || villager == null || snapshot == null || snapshot.stations().isEmpty()) return null;
 
@@ -95,6 +126,7 @@ public final class ProducerStationIndex {
         KitchenStorageIndex.Snapshot kitchenSnapshot = KitchenStorageIndex.snapshot(level, villager, worksiteBounds);
         List<Candidate> candidates = new ArrayList<>();
         for (StationSlot slot : snapshot.stations()) {
+            if (stationFilter != null && !stationFilter.test(slot)) continue;
             if (abandonedUntilByStation != null && abandonedUntilByStation.getOrDefault(slot.pos().asLong(), 0L) > gameTime) {
                 logSkip(role, villager, slot, "recently_abandoned");
                 continue;

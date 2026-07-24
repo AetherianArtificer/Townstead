@@ -25,7 +25,7 @@ public final class CookTradeBackfillTicker {
     public static void tick(VillagerEntityMCA villager) {
         if (!ModCompat.isLoaded("farmersdelight")) return;
         if (villager.tickCount % CHECK_INTERVAL_TICKS != 37) return;
-        if (!FarmersDelightCookAssignment.isExternalCookProfession(villager.getVillagerData().getProfession())) return;
+        if (!FarmersDelightCookAssignment.declaresCookWork(villager.getVillagerData().getProfession())) return;
 
         int currentLevel = villager.getVillagerData().getLevel();
         TownsteadVillager.ProfessionMemory memory = TownsteadVillagers.get(villager).professionMemory();

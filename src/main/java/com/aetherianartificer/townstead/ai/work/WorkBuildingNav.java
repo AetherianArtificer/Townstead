@@ -281,36 +281,30 @@ public final class WorkBuildingNav {
 
         List<StationSlot> stations = new ArrayList<>();
         Map<Long, List<BlockPos>> stationStands = new HashMap<>();
+        Set<Long> authoredStands = new HashSet<>();
         Set<Long> seenStationAnchors = new HashSet<>();
         for (long key : ownedBounds) {
             BlockPos rawPos = BlockPos.of(key);
             BlockPos pos = StationHandler.canonicalStationAnchor(level, rawPos);
-            if (!seenStationAnchors.add(pos.asLong())) continue;
-            ModRecipeRegistry.StationType type = StationHandler.stationType(level, pos);
-            if (type == null) continue;
-            int capacity = switch (type) {
-                case FIRE_STATION -> StationHandler.surfaceDiscoveryCapacity(level, pos);
-                case HOT_STATION -> 1;
-                case CUTTING_BOARD -> 1;
-            };
-            if (capacity <= 0) {
-                continue;
+            addStationSlot(level, pos, seenStationAnchors, standableTiles,
+                    stations, stationStands, authoredStands);
+            // A free cell above a declared place-surface (an empty stove top) is also a
+            // station: the villager creates it by placing the work block there. Bounds hold
+            // the surface block, so the anchor above must be probed explicitly.
+            BlockPos above = rawPos.above();
+            if (level.getBlockState(above).isAir()
+                    && StationHandler.stationType(level, above)
+                            == ModRecipeRegistry.StationType.PLACE_SURFACE) {
+                addStationSlot(level, above, seenStationAnchors, standableTiles,
+                        stations, stationStands, authoredStands);
             }
-            List<BlockPos> stands = WorkPathing.standCandidatesAround(level, pos, standableTiles);
-            if (stands.isEmpty()) {
-                continue;
-            }
-            stations.add(new StationSlot(pos.immutable(), type,
-                    net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()),
-                    capacity));
-            stationStands.put(pos.asLong(), stands);
         }
 
         Set<Long> walkable = floodWalkable(bounds, standableTiles, stationStands, reference);
         Map<Long, List<BlockPos>> filteredStands = new HashMap<>();
         for (Map.Entry<Long, List<BlockPos>> entry : stationStands.entrySet()) {
             List<BlockPos> kept = entry.getValue().stream()
-                    .filter(pos -> walkable.contains(pos.asLong()))
+                    .filter(pos -> walkable.contains(pos.asLong()) || authoredStands.contains(pos.asLong()))
                     .toList();
             if (!kept.isEmpty()) {
                 filteredStands.put(entry.getKey(), kept);
@@ -322,6 +316,37 @@ public final class WorkBuildingNav {
         }
         List<BlockPos> approachTargets = computeApproachTargets(level, bounds, walkable);
         return new Snapshot(Set.copyOf(ownedBounds), Set.copyOf(walkable), List.copyOf(entryTargets), List.copyOf(approachTargets), Map.copyOf(filteredStands), List.copyOf(stations), gameTime + SNAPSHOT_TTL_TICKS);
+    }
+
+    private static void addStationSlot(
+            net.minecraft.server.level.ServerLevel level,
+            BlockPos pos,
+            Set<Long> seenStationAnchors,
+            Set<Long> standableTiles,
+            List<StationSlot> stations,
+            Map<Long, List<BlockPos>> stationStands,
+            Set<Long> authoredStands
+    ) {
+        if (!seenStationAnchors.add(pos.asLong())) return;
+        ModRecipeRegistry.StationType type = StationHandler.stationType(level, pos);
+        if (type == null) return;
+        int capacity = switch (type) {
+            case FIRE_STATION -> StationHandler.surfaceDiscoveryCapacity(level, pos);
+            case HOT_STATION, CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE -> 1;
+        };
+        if (capacity <= 0) return;
+        List<BlockPos> preferredStands = StationHandler.preferredStands(level, pos);
+        List<BlockPos> stands = preferredStands.isEmpty()
+                ? WorkPathing.standCandidatesAround(level, pos, standableTiles)
+                : preferredStands;
+        if (stands.isEmpty()) return;
+        for (BlockPos authored : preferredStands) {
+            authoredStands.add(authored.asLong());
+        }
+        stations.add(new StationSlot(pos.immutable(), type,
+                net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()),
+                capacity));
+        stationStands.put(pos.asLong(), stands);
     }
 
     private static String formatPos(BlockPos pos) {

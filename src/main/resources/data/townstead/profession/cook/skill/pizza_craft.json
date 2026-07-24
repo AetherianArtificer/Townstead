@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Pizza Craft"
+  },
+  "icon": "pizzadelight:pizza_slice",
+  "description": {
+    "text": "Take up the pizza trade. Earn 1 additional Cook XP whenever a dish is completed."
+  },
+  "tier": 2,
+  "cost": 1,
+  "mods": [
+    "pizzadelight",
+    "farmersdelight"
+  ],
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

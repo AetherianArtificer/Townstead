@@ -22,29 +22,52 @@ import static org.junit.jupiter.api.Assertions.*;
 class LevelSchemaTest {
 
     @Test
-    void cookLevelsCarryInlineSkillPool() {
+    void cookLevelsReferenceSidecarSkills() {
         Map<ResourceLocation, SkillDef> inline = new LinkedHashMap<>();
-        ProfessionDef cook = load("/data/townstead/profession/cook.json", "townstead:cook", inline);
+        ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook", inline);
 
         assertEquals(5, cook.levels().size());
         assertEquals(5, cook.progression().maxTier());
         assertEquals(java.util.List.of(0, 110, 300, 660, 1250), cook.progression().tierThresholds());
         assertEquals(230, cook.progression().dailyCap());
 
-        assertEquals(5, inline.size(), "cook ships five inline skills");
-        SkillDef openFlame = inline.get(id("townstead:open_flame"));
-        assertNotNull(openFlame);
-        assertEquals(3, openFlame.tier(), "inline skills inherit their level as tier");
-        assertEquals(2, openFlame.cost());
-        assertEquals(id("townstead:cook"), openFlame.profession());
-        assertTrue(openFlame.exclusiveWith().contains(id("townstead:slow_stove")));
-        assertTrue(cook.skills().contains(id("townstead:open_flame")),
-                "inline skills join the flat membership list");
+        assertTrue(inline.isEmpty(), "references never register defs; the profession's skill/ dir owns them");
+        assertTrue(cook.levels().get(2).skills().contains(id("townstead:cook/open_flame")),
+                "bare references land on their level, scoped to the profession's directory");
+        assertTrue(cook.skills().contains(id("townstead:cook/open_flame")),
+                "referenced skills join the flat membership list");
+        assertTrue(cook.skills().contains(id("townstead:cook/pizza_craft")),
+                "path skills pool like any other skill; the path steers who buys them");
+        assertEquals(8, cook.skills().size());
+    }
+
+    @Test
+    void inlineSkillsStillRegisterWithDerivedIds() {
+        JsonObject def = JsonParser.parseString("""
+                {"schema": "townstead:profession/v2",
+                 "levels": [
+                   {"xp": 10},
+                   {"xp": 20, "skills": [
+                     {"id": "quick_study", "cost": 2,
+                      "exclusive_with": ["test:slow_study"]}]}]}""").getAsJsonObject();
+        Diagnostics diagnostics = new Diagnostics();
+        diagnostics.forResource(id("test:tutor"));
+        Map<ResourceLocation, SkillDef> inline = new LinkedHashMap<>();
+        ProfessionDef tutor = ProfessionDataLoader.parseProfession(
+                id("test:tutor"), def, Map.of(), diagnostics, inline);
+        assertNotNull(tutor);
+        SkillDef quickStudy = inline.get(id("test:tutor/quick_study"));
+        assertNotNull(quickStudy, "inline skills register under the profession's path");
+        assertEquals(2, quickStudy.tier(), "inline skills inherit their level as tier");
+        assertEquals(2, quickStudy.cost());
+        assertEquals(id("test:tutor"), quickStudy.profession());
+        assertTrue(quickStudy.exclusiveWith().contains(id("test:slow_study")));
+        assertTrue(tutor.skills().contains(id("test:tutor/quick_study")));
     }
 
     @Test
     void skillPointsAccumulatePerLevel() {
-        ProfessionDef cook = load("/data/townstead/profession/cook.json", "townstead:cook",
+        ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook",
                 new LinkedHashMap<>());
         assertEquals(0, cook.skillPointsThrough(0));
         assertEquals(1, cook.skillPointsThrough(1));
@@ -54,11 +77,38 @@ class LevelSchemaTest {
 
     @Test
     void levelTradesLandInMerchantMap() {
-        // Scribe: no pheno requirements, so it parses without registered condition types.
-        ProfessionDef scribe = load("/data/townstead/profession/scribe.json", "townstead:scribe",
-                new LinkedHashMap<>());
+        // Scribe: no pheno requirements, so it parses without registered condition types. Its
+        // progression ships as a levels.json sidecar, merged here the same way apply() does.
+        JsonObject def = readResource("/data/townstead/profession/scribe/profession.json");
+        ProfessionDataLoader.applyLevelsOverlay(def,
+                readResource("/data/townstead/profession/scribe/levels.json"));
+        Diagnostics diagnostics = new Diagnostics();
+        diagnostics.forResource(id("townstead:scribe"));
+        ProfessionDef scribe = ProfessionDataLoader.parseProfession(
+                id("townstead:scribe"), def, Map.of(), diagnostics, new LinkedHashMap<>());
+        assertNotNull(scribe);
+        assertEquals(120, scribe.progression().dailyCap());
         assertEquals(2, scribe.trades().get(1).size());
         assertFalse(scribe.trades().containsKey(2));
+    }
+
+    @Test
+    void levelsSidecarOverridesInline() {
+        JsonObject def = JsonParser.parseString("""
+                {"schema": "townstead:profession/v2",
+                 "daily_cap": 10,
+                 "levels": [{"xp": 5}, {}]}""").getAsJsonObject();
+        JsonObject overlay = JsonParser.parseString("""
+                {"daily_cap": 99,
+                 "levels": [{"xp": 40}, {"xp": 60}, {}]}""").getAsJsonObject();
+        ProfessionDataLoader.applyLevelsOverlay(def, overlay);
+        Diagnostics diagnostics = new Diagnostics();
+        diagnostics.forResource(id("test:tuned"));
+        ProfessionDef tuned = ProfessionDataLoader.parseProfession(
+                id("test:tuned"), def, Map.of(), diagnostics, new LinkedHashMap<>());
+        assertNotNull(tuned);
+        assertEquals(java.util.List.of(0, 40, 100), tuned.progression().tierThresholds());
+        assertEquals(99, tuned.progression().dailyCap());
     }
 
     @Test
@@ -88,12 +138,16 @@ class LevelSchemaTest {
         return ResourceLocation.tryParse(raw);
     }
 
-    private static ProfessionDef load(String resource, String idRaw,
-                                      Map<ResourceLocation, SkillDef> inlineOut) {
+    private static JsonObject readResource(String resource) {
         InputStream in = LevelSchemaTest.class.getResourceAsStream(resource);
         assertNotNull(in, "shipped resource missing: " + resource);
-        JsonObject json = JsonParser.parseReader(
+        return JsonParser.parseReader(
                 new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+    }
+
+    private static ProfessionDef load(String resource, String idRaw,
+                                      Map<ResourceLocation, SkillDef> inlineOut) {
+        JsonObject json = readResource(resource);
         Diagnostics diagnostics = new Diagnostics();
         diagnostics.forResource(id(idRaw));
         ProfessionDef def = ProfessionDataLoader.parseProfession(

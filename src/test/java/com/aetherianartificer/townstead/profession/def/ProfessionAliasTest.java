@@ -35,7 +35,7 @@ class ProfessionAliasTest {
     private static ProfessionDef def(ResourceLocation id, List<ResourceLocation> aliases) {
         return new ProfessionDef(id, null, null,
                 new ProgressionTrack(List.of(0, 110), 230, 200000), UnlockModel.EXPERIENTIAL, 1,
-                RetrainingPolicy.FREE, List.of(), List.of(), List.of(), false,
+                RetrainingPolicy.FREE, List.of(), List.of(), false,
                 Conditions.ALWAYS, List.of(), List.of(), aliases);
     }
 

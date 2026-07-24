@@ -85,6 +85,10 @@ public final class RecipeSelector {
         Map<ResourceLocation, Boolean> toolAvailableByRecipe = new HashMap<>();
         List<ScoredRecipe> candidates = new ArrayList<>();
         for (DiscoveredRecipe recipe : recipes) {
+            // Declared recipe scoping: every selection path funnels through here, so a task's
+            // recipes/deny_recipes lists bind initial picks and per-station re-picks alike.
+            if (!com.aetherianartificer.townstead.compat.farmersdelight.CookTaskDeclarations
+                    .allowsRecipe(villager, targetStationType, beveragesOnly, recipe)) continue;
             Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
             if (cooldownUntil != null && cooldownUntil > now) continue;
             Map<ResourceLocation, Integer> virtualSupply = new HashMap<>(outputStock);

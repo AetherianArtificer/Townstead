@@ -1,0 +1,7 @@
+{
+  "mods": "farmersdelight",
+  "blocks": [
+    "farmersdelight:cutting_board"
+  ],
+  "type": "cutting_board"
+}

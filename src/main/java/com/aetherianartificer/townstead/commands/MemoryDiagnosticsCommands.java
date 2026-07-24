@@ -134,8 +134,8 @@ public final class MemoryDiagnosticsCommands {
             VillageManager manager = VillageManager.get(level);
             for (Village village : manager) {
                 villages++;
-                buildings += village.getBuildings().size();
-                for (Building building : village.getBuildings().values()) {
+                buildings += com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).size();
+                for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
                     blockRefs += countBlockRefs(building);
                 }
             }

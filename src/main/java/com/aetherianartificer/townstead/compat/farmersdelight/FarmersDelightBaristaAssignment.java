@@ -25,6 +25,19 @@ public final class FarmersDelightBaristaAssignment {
 
     private FarmersDelightBaristaAssignment() {}
 
+    /**
+     * Whether this profession's def declares brew work. The runtime authority for who is a
+     * barista; requires loaded profession defs.
+     */
+    public static boolean declaresBaristaWork(VillagerProfession profession) {
+        return com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.professionDeclares(
+                profession, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW);
+    }
+
+    /**
+     * Startup/client-safe id check for contexts where profession defs are unavailable (the
+     * trades event fires before datapacks load; dedicated-server clients have no defs).
+     */
     public static boolean isBaristaProfession(VillagerProfession profession) {
         if (profession == null) return false;
         for (String id : BARISTA_PROFESSION_IDS) {
@@ -41,7 +54,7 @@ public final class FarmersDelightBaristaAssignment {
 
     public static boolean canVillagerWorkAsBarista(ServerLevel level, VillagerEntityMCA villager) {
         if (villager == null) return false;
-        return isBaristaProfession(villager.getVillagerData().getProfession());
+        return declaresBaristaWork(villager.getVillagerData().getProfession());
     }
 
     public static boolean hasWorkingBarista(ServerLevel level, VillagerEntityMCA villager) {
@@ -49,7 +62,7 @@ public final class FarmersDelightBaristaAssignment {
         if (villageOpt.isEmpty()) return false;
         Village village = villageOpt.get();
         for (VillagerEntityMCA resident : village.getResidents(level)) {
-            if (!isBaristaProfession(resident.getVillagerData().getProfession())) continue;
+            if (!declaresBaristaWork(resident.getVillagerData().getProfession())) continue;
             if (assignedCafe(level, resident).isPresent()) return true;
         }
         return false;
@@ -66,7 +79,7 @@ public final class FarmersDelightBaristaAssignment {
 
         int activeBaristas = 0;
         for (VillagerEntityMCA resident : village.getResidents(level)) {
-            if (isBaristaProfession(resident.getVillagerData().getProfession())) {
+            if (declaresBaristaWork(resident.getVillagerData().getProfession())) {
                 activeBaristas++;
             }
         }
@@ -92,7 +105,7 @@ public final class FarmersDelightBaristaAssignment {
 
     public static int highestCafeTier(Village village) {
         int best = 0;
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             String type = building.getType();
             if (!BaristaTierRules.isCafeType(type)) continue;
             best = Math.max(best, BaristaTierRules.cafeTierFromType(type));
@@ -110,7 +123,7 @@ public final class FarmersDelightBaristaAssignment {
         if (slots.isEmpty()) return Optional.empty();
 
         List<VillagerEntityMCA> baristas = sortedBaristaResidents(level, village);
-        if (isBaristaProfession(villager.getVillagerData().getProfession())) {
+        if (declaresBaristaWork(villager.getVillagerData().getProfession())) {
             boolean present = baristas.stream().anyMatch(v -> v.getUUID().equals(villager.getUUID()));
             if (!present) {
                 baristas.add(villager);
@@ -131,16 +144,13 @@ public final class FarmersDelightBaristaAssignment {
     public static Set<Long> assignedCafeBounds(ServerLevel level, VillagerEntityMCA villager) {
         Optional<Building> cafe = assignedCafe(level, villager);
         if (cafe.isEmpty()) return Set.of();
-        Set<Long> bounds = new HashSet<>();
-        for (BlockPos bp : (Iterable<BlockPos>) cafe.get().getBlockPosStream()::iterator) {
-            bounds.add(bp.asLong());
-        }
-        return bounds;
+        // The walkable room discovered from the world; see WorkSiteBounds.
+        return com.aetherianartificer.townstead.ai.work.WorkSiteBounds.workArea(level, cafe.get());
     }
 
     private static List<Building> sortedCafes(Village village) {
         List<Building> cafes = new ArrayList<>();
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!BaristaTierRules.isCafeType(building.getType())) continue;
             cafes.add(building);
         }
@@ -165,7 +175,7 @@ public final class FarmersDelightBaristaAssignment {
         List<VillagerEntityMCA> baristas = new ArrayList<>();
         Set<UUID> seen = new HashSet<>();
         for (VillagerEntityMCA resident : village.getResidents(level)) {
-            if (!isBaristaProfession(resident.getVillagerData().getProfession())) continue;
+            if (!declaresBaristaWork(resident.getVillagerData().getProfession())) continue;
             if (!seen.add(resident.getUUID())) continue;
             baristas.add(resident);
         }

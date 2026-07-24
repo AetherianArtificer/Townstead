@@ -23,25 +23,25 @@ class BuiltinProfessionParityTest {
 
     @Test
     void farmerMatchesLegacyNumbers() {
-        assertProgression("/data/minecraft/profession/farmer.json", "minecraft:farmer",
+        assertProgression("/data/minecraft/profession/farmer/profession.json", "minecraft:farmer",
                 List.of(0, 120, 320, 700, 1300), 240, 200000);
     }
 
     @Test
     void butcherMatchesLegacyNumbers() {
-        assertProgression("/data/minecraft/profession/butcher.json", "minecraft:butcher",
+        assertProgression("/data/minecraft/profession/butcher/profession.json", "minecraft:butcher",
                 List.of(0, 20, 60, 120, 200), 60, 1000);
     }
 
     @Test
     void shepherdMatchesLegacyNumbers() {
-        assertProgression("/data/minecraft/profession/shepherd.json", "minecraft:shepherd",
+        assertProgression("/data/minecraft/profession/shepherd/profession.json", "minecraft:shepherd",
                 List.of(0, 20, 60, 120, 200), 60, 1000);
     }
 
     @Test
     void cookMatchesLegacyNumbers() {
-        assertProgression("/data/townstead/profession/cook.json", "townstead:cook",
+        assertProgression("/data/townstead/profession/cook/profession.json", "townstead:cook",
                 List.of(0, 110, 300, 660, 1250), 230, 200000);
     }
 

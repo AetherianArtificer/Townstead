@@ -29,6 +29,8 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
     public static final byte KIND_ROOT = 0;
     public static final byte KIND_ADVANCED = 1;
     public static final byte KIND_SKILL = 2;
+    /** A Combo Skill: joins two or more careers laterally; evidence rows carry the thresholds. */
+    public static final byte KIND_COMBO = 3;
 
     public static final byte STATE_HIDDEN = 0;
     public static final byte STATE_LOCKED = 1;
@@ -43,7 +45,8 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
                        boolean primary, boolean equipped, boolean tracked,
                        String routesLine, String replaces,
                        List<Evidence> evidence, List<String> moments,
-                       String rankName, int points) {}
+                       String rankName, int points,
+                       String group, String nextRankName, List<String> effects) {}
 
     public void write(FriendlyByteBuf buf) {
         buf.writeUtf(title);
@@ -83,6 +86,12 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
             }
             buf.writeUtf(node.rankName());
             buf.writeVarInt(node.points());
+            buf.writeUtf(node.group());
+            buf.writeUtf(node.nextRankName());
+            buf.writeVarInt(node.effects().size());
+            for (String effect : node.effects()) {
+                buf.writeUtf(effect);
+            }
         }
     }
 
@@ -125,10 +134,17 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
             }
             String rankName = buf.readUtf();
             int points = buf.readVarInt();
+            String group = buf.readUtf();
+            String nextRankName = buf.readUtf();
+            int effectCount = buf.readVarInt();
+            List<String> effects = new ArrayList<>(effectCount);
+            for (int j = 0; j < effectCount; j++) {
+                effects.add(buf.readUtf());
+            }
             nodes.add(new Node(id, rootId, parentId, kind, state, name, description, icon,
                     tier, maxTier, xp, xpToNext, xpToday, dailyCap, primary, equipped, tracked,
                     routesLine, replaces, List.copyOf(evidence), List.copyOf(moments),
-                    rankName, points));
+                    rankName, points, group, nextRankName, List.copyOf(effects)));
         }
         return new CareerGraphS2CPayload(title, scribeName, inspect, List.copyOf(nodes));
     }

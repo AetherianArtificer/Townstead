@@ -220,7 +220,7 @@ public final class VillagerLifeStamper {
      */
     private static boolean looksPlayerFounded(Village village) {
         try {
-            return village.getBuildings().size() <= 2;
+            return com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).size() <= 2;
         } catch (Throwable t) {
             return false;
         }

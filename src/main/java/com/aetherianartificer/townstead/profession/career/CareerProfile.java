@@ -146,15 +146,16 @@ public final class CareerProfile {
         profile.primaryVocation = ResourceLocation.tryParse(tag.getString("primary"));
         profile.lastVocationChangeDay = tag.contains("vocationDay") ? tag.getLong("vocationDay") : -1L;
         readIds(tag, "history", profile.careerHistory);
-        readIds(tag, "learned", profile.learnedChoices);
+        readSkillIds(tag, "learned", profile.learnedChoices);
         readIds(tag, "advanced", profile.acquiredCareers);
         readIds(tag, "discoveries", profile.discoveries);
         readIds(tag, "trackedGoals", profile.trackedCareers);
-        readIds(tag, "loadout", profile.activeLoadout);
+        readSkillIds(tag, "loadout", profile.activeLoadout);
         CompoundTag active = tag.getCompound("activeChoices");
         for (String key : active.getAllKeys()) {
             ResourceLocation skillGroup = ResourceLocation.tryParse(key);
-            ResourceLocation choice = ResourceLocation.tryParse(active.getString(key));
+            ResourceLocation choice = com.aetherianartificer.townstead.profession.def.SkillDefs
+                    .canonicalId(ResourceLocation.tryParse(active.getString(key)));
             if (skillGroup != null && choice != null && profile.learnedChoices.contains(choice)) {
                 profile.activeBySkillGroup.put(skillGroup, choice);
             }
@@ -179,6 +180,17 @@ public final class CareerProfile {
         ListTag list = tag.getList(key, Tag.TAG_STRING);
         for (int i = 0; i < list.size(); i++) {
             ResourceLocation id = ResourceLocation.tryParse(list.getString(i));
+            if (id != null) out.add(id);
+        }
+    }
+
+    /** Skill ids saved under a legacy flat form resolve to their path-scoped successor. */
+    private static void readSkillIds(CompoundTag tag, String key,
+                                     java.util.Collection<ResourceLocation> out) {
+        ListTag list = tag.getList(key, Tag.TAG_STRING);
+        for (int i = 0; i < list.size(); i++) {
+            ResourceLocation id = com.aetherianartificer.townstead.profession.def.SkillDefs
+                    .canonicalId(ResourceLocation.tryParse(list.getString(i)));
             if (id != null) out.add(id);
         }
     }

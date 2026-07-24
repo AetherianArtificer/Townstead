@@ -557,8 +557,10 @@ public final class IngredientResolver {
         // Consume remaining from inventory for station types that do not need
         // task-local handoff. Cutting-board recipes keep the input in inventory
         // until CookWorkTask moves one item into heldCuttingInput for the actual
-        // board interaction in the COOK phase.
-        if (stationType != StationType.HOT_STATION && stationType != StationType.CUTTING_BOARD) {
+        // board interaction in the COOK phase; protocol stations keep theirs for
+        // the physical insert at the station (StationProtocols.insert).
+        if (stationType != StationType.HOT_STATION && stationType != StationType.CUTTING_BOARD
+                && !StationProtocols.isProtocolType(stationType)) {
             for (RecipeIngredient ingredient : recipe.inputs()) {
                 if (!consumeIngredient(inv, ingredient, ingredient.count())) {
                     return PullResult.failure(ingredientDisplayName(ingredient, null), diagnostics);
@@ -916,6 +918,47 @@ public final class IngredientResolver {
     }
 
     // ── Pull ingredients ──
+
+    /** Protocol-station hook: fetch a matching tool from nearby/kitchen storage into inventory. */
+    public static boolean pullToolMatching(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            java.util.function.Predicate<ItemStack> matcher,
+            BlockPos center,
+            Set<Long> kitchenBounds
+    ) {
+        return pullSingleTool(level, villager, matcher, center, kitchenBounds);
+    }
+
+    /**
+     * Protocol-station hook: pull up to {@code max} DISTINCT items of {@code tag} from storage
+     * into inventory (one of each — variety, not volume). Returns how many distinct items the
+     * inventory now holds. Best-effort by design: extras garnish, they never gate.
+     */
+    public static int pullDistinctTagItems(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            net.minecraft.tags.TagKey<Item> tag,
+            int max,
+            BlockPos center,
+            Set<Long> kitchenBounds
+    ) {
+        java.util.Set<Item> have = new java.util.HashSet<>();
+        SimpleContainer inv = villager.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!stack.isEmpty() && stack.is(tag)) have.add(stack.getItem());
+        }
+        for (var holder : BuiltInRegistries.ITEM.getTagOrEmpty(tag)) {
+            if (have.size() >= max) break;
+            Item item = holder.value();
+            if (item == Items.AIR || have.contains(item)) continue;
+            if (pullSingleIngredient(level, villager, item, center, kitchenBounds)) {
+                have.add(item);
+            }
+        }
+        return have.size();
+    }
 
     private static boolean pullSingleIngredient(
             ServerLevel level,

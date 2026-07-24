@@ -557,7 +557,7 @@ public final class ContextResolver {
             Optional<Village> villageOpt = manager.findNearestVillage(pos, Village.MERGE_MARGIN);
             if (villageOpt.isEmpty()) return;
             Village village = villageOpt.get();
-            for (Building building : village.getBuildings().values()) {
+            for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
                 String type = building.getType();
                 if (type == null || type.isBlank()) continue;
                 BlockPos p0 = building.getPos0();

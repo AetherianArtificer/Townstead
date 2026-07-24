@@ -35,12 +35,54 @@ public final class CareerGraphBuilder {
         CareerProfile profile = CareerProfiles.of(entity);
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
         if (profile == null || store == null) return nodes;
+        // Careers are flat: every def is its own top-level section on the board.
         for (ProfessionDef def : ProfessionDefs.all().values()) {
-            if (def.isRoot()) {
-                appendCareer(nodes, server, entity, profile, store, def, def.id(), momentsByCareer);
+            appendCareer(nodes, server, entity, profile, store, def, def.id(), momentsByCareer);
+        }
+        appendComboSkills(nodes, entity, store);
+        return nodes;
+    }
+
+    /**
+     * Combo Skills: the lateral joints between careers. Evidence rows carry each career
+     * threshold with live progress, so the plaque explains exactly which histories it wants.
+     */
+    private static void appendComboSkills(List<CareerGraphS2CPayload.Node> nodes,
+                                          LivingEntity entity, ProfessionXpStore store) {
+        var unlockedIds = new java.util.HashSet<ResourceLocation>();
+        for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.unlockedFor(entity)) {
+            unlockedIds.add(combo.id());
+        }
+        for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.all().values()) {
+            boolean unlocked = unlockedIds.contains(combo.id());
+            List<CareerGraphS2CPayload.Evidence> evidence = new ArrayList<>();
+            for (var threshold : combo.thresholds().entrySet()) {
+                ProfessionDef careerDef = ProfessionDefs.byId(threshold.getKey());
+                String careerName = careerDef != null
+                        ? careerDef.displayName().getString() : threshold.getKey().toString();
+                int current = ProfessionProgress.getTier(store, threshold.getKey());
+                evidence.add(new CareerGraphS2CPayload.Evidence(
+                        Component.translatable("townstead.career.combo.threshold",
+                                careerName, threshold.getValue()).getString(),
+                        current, threshold.getValue(), current >= threshold.getValue()));
+            }
+            // The shared plaque: one node per involved career, so the combo shows on every
+            // tab it joins (the same combo id selects the same detail from any side).
+            for (ResourceLocation involved : combo.thresholds().keySet()) {
+                if (nodes.size() > 512) return;
+                if (ProfessionDefs.byId(involved) == null) continue;
+                nodes.add(new CareerGraphS2CPayload.Node(
+                        combo.id().toString(), involved.toString(), involved.toString(),
+                        CareerGraphS2CPayload.KIND_COMBO,
+                        unlocked ? CareerGraphS2CPayload.STATE_ACQUIRED : CareerGraphS2CPayload.STATE_LOCKED,
+                        combo.displayName().getString(),
+                        combo.description() == null ? "" : combo.description().getString(),
+                        combo.icon() == null ? "" : combo.icon().toString(),
+                        0, 0, 0, 0, 0, 0, false, false, false,
+                        "", "", List.copyOf(evidence), List.of(),
+                        "", 0, "", "", effectLines(combo.grants())));
             }
         }
-        return nodes;
     }
 
     private static void appendCareer(List<CareerGraphS2CPayload.Node> nodes, MinecraftServer server,
@@ -70,7 +112,7 @@ public final class CareerGraphBuilder {
         boolean masked = state == CareerGraphS2CPayload.STATE_HIDDEN;
         List<CareerGraphS2CPayload.Evidence> evidence = masked
                 ? List.of() : evidenceFor(server, entity, profile, def, acquired);
-        String parentId = def.isRoot() || def.parents().isEmpty() ? "" : def.parents().get(0).toString();
+        String parentId = "";
 
         // Today's allowance: xpToday is only meaningful if it was earned today.
         ProfessionXp xpState = store.professionXp(ProfessionDefs.canonicalId(careerId).toString());
@@ -84,11 +126,23 @@ public final class CareerGraphBuilder {
         List<String> moments = masked ? List.of()
                 : momentsByCareer.getOrDefault(careerId.toString(), List.of());
 
+        // Build titles: a completed skill build renames the plaque, "Rotisseur (Cook)".
+        String displayName = def.displayName().getString();
+        if (!masked && acquired) {
+            var title = com.aetherianartificer.townstead.profession.def.ProfessionTitles.resolve(
+                    careerId, skillId -> com.aetherianartificer.townstead.profession.skill.LearnedSkills
+                            .has(entity, skillId));
+            if (title != null) {
+                displayName = net.minecraft.network.chat.Component.translatable(
+                        "townstead.career.titled", title.name(), def.displayName()).getString();
+            }
+        }
+
         nodes.add(new CareerGraphS2CPayload.Node(
                 careerId.toString(), rootId.toString(), parentId,
                 def.isRoot() ? CareerGraphS2CPayload.KIND_ROOT : CareerGraphS2CPayload.KIND_ADVANCED,
                 state,
-                masked ? "" : def.displayName().getString(),
+                masked ? "" : displayName,
                 masked || def.description() == null ? "" : def.description().getString(),
                 masked || def.icon() == null ? "" : def.icon().toString(),
                 currentTier, maxTier, xp,
@@ -96,7 +150,10 @@ public final class CareerGraphBuilder {
                 primary, false, profile.trackedCareers().contains(careerId),
                 routesLine, "", evidence, moments,
                 masked ? "" : def.levelName(currentTier).getString(),
-                acquired ? SkillPoints.available(entity, def) : 0));
+                acquired ? SkillPoints.available(entity, def) : 0,
+                "",
+                masked || currentTier >= maxTier ? "" : def.levelName(currentTier + 1).getString(),
+                List.of()));
 
         if (acquired) {
             for (ResourceLocation choice : def.skills()) {
@@ -120,15 +177,54 @@ public final class CareerGraphBuilder {
                         "", equipped || (!learned && !learnable)
                                 ? "" : replacedSkillName(entity, def, skill),
                         List.of(), List.of(),
-                        def.levelName(skill.tier()).getString(), Math.max(0, skill.cost())));
+                        def.levelName(skill.tier()).getString(), Math.max(0, skill.cost()),
+                        skill.skillGroup() == null ? "" : skill.skillGroup().toString(),
+                        "", effectLines(skill)));
             }
         }
 
-        for (ProfessionDef child : ProfessionDefs.all().values()) {
-            if (child.parents().contains(careerId)) {
-                appendCareer(nodes, server, entity, profile, store, child, rootId, momentsByCareer);
+    }
+
+    /**
+     * Honest mechanical lines derived from a skill's grants, so descriptions can stay
+     * flavorful without hiding the numbers. Pheno power blocks are described by the
+     * authored description; grants are machine-readable and rendered here.
+     */
+    private static List<String> effectLines(SkillDef skill) {
+        return effectLines(skill.grants());
+    }
+
+    private static List<String> effectLines(List<com.aetherianartificer.townstead.profession.def.SkillGrant> grants) {
+        List<String> lines = new ArrayList<>();
+        for (com.aetherianartificer.townstead.profession.def.SkillGrant grant : grants) {
+            String label = capabilityLabel(grant.key().id());
+            String value = trimNumber(grant.value());
+            String op = grant.op().name();
+            String line;
+            if ("ADD".equals(op)) {
+                line = "+" + value + " " + label;
+            } else if ("MULTIPLY".equals(op)) {
+                line = "x" + value + " " + label;
+            } else if ("DENY".equals(op)) {
+                line = localizeOr("townstead.career.screen.effect.deny", "Disables") + " " + label;
+            } else if ("OR".equals(op)) {
+                line = localizeOr("townstead.career.screen.effect.grant", "Grants") + " " + label;
+            } else {
+                line = label + " " + op.toLowerCase(java.util.Locale.ROOT) + " " + value;
             }
+            lines.add(line);
         }
+        return lines;
+    }
+
+    private static String capabilityLabel(ResourceLocation id) {
+        return localizeOr("townstead.capability." + id.getPath(),
+                id.getPath().replace('_', ' '));
+    }
+
+    private static String trimNumber(double value) {
+        return value == Math.floor(value) && !Double.isInfinite(value)
+                ? String.valueOf((long) value) : String.valueOf(value);
     }
 
     /** The currently equipped sibling this skill would replace within its choice group. */

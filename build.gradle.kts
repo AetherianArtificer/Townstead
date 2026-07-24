@@ -39,8 +39,11 @@ dependencies {
     // (removed drawBuildingIcon) into WidgetUtils/BlueprintMapRenderer. We compile against
     // that newer API; runtime support for the older 7.7.x API is kept via version-gated
     // icon mixins (see TownsteadMixinPlugin).
-    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-1.21.1-floor-system-SNAPSHOT.jar"))
+    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-1.21.1-floor-systemv2-SNAPSHOT.jar"))
     compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
+    // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
+    compileOnly("mezz.jei:jei-1.21.1-common-api:19.39.0.370")
+    compileOnly("mezz.jei:jei-1.21.1-neoforge-api:19.39.0.370")
     // Chronicle archive backend, embedded into the mod jar via jarJar
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
     jarJar("org.xerial:sqlite-jdbc:3.46.1.3")

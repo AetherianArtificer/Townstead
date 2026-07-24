@@ -7,6 +7,8 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.aetherianartificer.townstead.hunger.ButcherSupplyManager;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
@@ -91,7 +93,7 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
-        if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.GRIND)) return false;
         return findGrinderWithWork(level, villager) != null;
     }
 
@@ -275,7 +277,7 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
      */
     public static boolean hasPendingWork(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
-        if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.GRIND)) return false;
         return findGrinderWithWork(level, villager) != null;
     }
 

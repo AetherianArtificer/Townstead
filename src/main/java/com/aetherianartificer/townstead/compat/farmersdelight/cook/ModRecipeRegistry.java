@@ -27,7 +27,7 @@ import java.util.*;
 public final class ModRecipeRegistry {
     private ModRecipeRegistry() {}
 
-    public enum StationType { CUTTING_BOARD, HOT_STATION, FIRE_STATION }
+    public enum StationType { CUTTING_BOARD, HOT_STATION, FIRE_STATION, PASSIVE_STATION, PLACE_SURFACE }
 
     public record RecipeIngredient(List<ResourceLocation> itemIds, int count) implements ProducerRecipe.ResolvedIngredient {
         public ResourceLocation primaryId() { return itemIds.get(0); }
@@ -235,6 +235,12 @@ public final class ModRecipeRegistry {
         // 3. FD cutting board recipes → CUTTING_BOARD
         discoverCuttingBoardRecipes(level, recipes);
 
+        // 3b. Workstation-declared recipe types → their stations' roles
+        discoverWorkstationRecipes(level, recipes);
+
+        // 3c. Protocol stations' declared production lines → synthetic recipes
+        discoverProtocolRecipes(level, recipes);
+
         // 4. Synthetic purification recipe
         ThirstCompatBridge thirstBridge = ThirstBridgeResolver.get();
         if (thirstBridge != null && TownsteadConfig.isCookWaterPurificationEnabled() && thirstBridge.supportsPurification()) {
@@ -301,6 +307,139 @@ public final class ModRecipeRegistry {
                     *///?}
             ));
         }
+    }
+
+    // ── Workstation-declared recipe types ──
+
+    /**
+     * Generic discovery for data-declared workstations: every recipe of a def's declared
+     * {@code recipe_type} maps through the vanilla recipe interface (ingredients + result) onto
+     * the def's station role. Pairing back to those stations is exclusive and enforced in
+     * {@link StationHandler#stationSupportsRecipe}.
+     */
+    private static void discoverWorkstationRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
+        List<WorkstationDef> defs = Workstations.all();
+        if (defs.isEmpty()) return;
+        Set<ResourceLocation> existingIds = new HashSet<>();
+        for (DiscoveredRecipe r : out) existingIds.add(r.id());
+        Set<ResourceLocation> seenTypes = new HashSet<>();
+        for (WorkstationDef def : defs) {
+            ResourceLocation typeId = def.recipeType();
+            if (typeId == null || !seenTypes.add(typeId)) continue;
+            //? if >=1.21 {
+            for (RecipeHolder<?> holder : getRecipesForType(level, typeId)) {
+                Recipe<?> recipe = holder.value();
+                ResourceLocation recipeId = holder.id();
+            //?} else {
+            /*for (Recipe<?> recipe : getRecipesForType(level, typeId)) {
+                ResourceLocation recipeId = recipe.getId();
+            *///?}
+                if (!existingIds.add(recipeId)) continue;
+                ItemStack result = safeGetResult(level, recipe);
+                if (result.isEmpty()) continue;
+                ResourceLocation outputId = BuiltInRegistries.ITEM.getKey(result.getItem());
+                if (outputId == null) continue;
+                List<RecipeIngredient> inputs = extractIngredients(recipe);
+                if (inputs.isEmpty()) continue;
+                int cookTime = safeCookTime(recipe, def.cookTimeTicks());
+                int tier = def.recipeTier() > 0 ? def.recipeTier()
+                        : autoTier(def.role(), inputs.size(), cookTime);
+                out.add(new DiscoveredRecipe(
+                        recipeId,
+                        def.role(),
+                        tier,
+                        outputId,
+                        Math.max(1, result.getCount()),
+                        cookTime,
+                        false,
+                        null,
+                        0,
+                        inputs,
+                        false,
+                        def.beverage(),
+                        //? if >=1.21 {
+                        holder
+                        //?} else {
+                        /*recipe
+                        *///?}
+                ));
+            }
+        }
+    }
+
+    /**
+     * Protocol stations declare their production inline ({@code produces}): each line becomes
+     * a synthetic recipe under the def's role, so recipe selection, ingredient staging, and
+     * session bookkeeping treat "ferment cheese in the basin" exactly like any cooked dish.
+     * Tags in inputs are resolved to their member items at discovery time.
+     */
+    private static void discoverProtocolRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
+        for (WorkstationDef def : Workstations.all()) {
+            if (def.role() != StationType.PASSIVE_STATION && def.role() != StationType.PLACE_SURFACE) continue;
+            int index = 0;
+            for (WorkstationDef.Produce produce : def.produces()) {
+                ResourceLocation recipeId = ResourceLocation.tryParse(
+                        "townstead:protocol/" + def.id().getNamespace() + "/" + def.id().getPath() + "/" + index++);
+                if (recipeId == null) continue;
+                List<RecipeIngredient> inputs = new ArrayList<>();
+                boolean unresolvable = false;
+                for (String raw : produce.inputs()) {
+                    List<ResourceLocation> ids = new ArrayList<>();
+                    if (raw.startsWith("#")) {
+                        ResourceLocation tagId = ResourceLocation.tryParse(raw.substring(1));
+                        if (tagId != null) {
+                            var tag = net.minecraft.tags.TagKey.create(Registries.ITEM, tagId);
+                            for (var holder : BuiltInRegistries.ITEM.getTagOrEmpty(tag)) {
+                                ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(holder.value());
+                                if (itemId != null) ids.add(itemId);
+                            }
+                        }
+                    } else {
+                        ResourceLocation itemId = ResourceLocation.tryParse(raw);
+                        if (itemId != null && BuiltInRegistries.ITEM.containsKey(itemId)) ids.add(itemId);
+                    }
+                    if (ids.isEmpty()) {
+                        unresolvable = true;
+                        break;
+                    }
+                    inputs.add(new RecipeIngredient(List.copyOf(ids), 1));
+                }
+                if (unresolvable || inputs.isEmpty()) continue;
+                if (!BuiltInRegistries.ITEM.containsKey(produce.output())) continue;
+                out.add(new DiscoveredRecipe(
+                        recipeId,
+                        def.role(),
+                        def.recipeTier() > 0 ? def.recipeTier() : 1,
+                        produce.output(),
+                        Math.max(1, produce.outputCount()),
+                        Math.max(1, produce.timeTicks()),
+                        false,
+                        null,
+                        0,
+                        List.copyOf(inputs),
+                        false,
+                        def.beverage(),
+                        null
+                ));
+            }
+        }
+    }
+
+    /**
+     * Recipe-type id when the recipe rides a workstation-declared type; null for the built-in
+     * vanilla/FD families and synthetics. Drives the exclusive recipe/station pairing.
+     */
+    static @Nullable ResourceLocation foreignRecipeTypeId(DiscoveredRecipe recipe) {
+        if (recipe == null || recipe.source() == null) return null;
+        //? if >=1.21 {
+        RecipeType<?> type = recipe.source().value().getType();
+        //?} else {
+        /*RecipeType<?> type = recipe.source().getType();
+        *///?}
+        ResourceLocation id = BuiltInRegistries.RECIPE_TYPE.getKey(type);
+        if (id == null || id.equals(FD_COOKING_TYPE_ID) || id.equals(FD_CUTTING_TYPE_ID)) return null;
+        if ("minecraft".equals(id.getNamespace())) return null;
+        return id;
     }
 
     // ── Cooking pot recipes ──
@@ -422,7 +561,7 @@ public final class ModRecipeRegistry {
     static int autoTier(StationType stationType, int ingredientCount, int cookTimeTicks) {
         int base = switch (stationType) {
             case FIRE_STATION -> 1;
-            case CUTTING_BOARD -> 2;
+            case CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE -> 2;
             case HOT_STATION -> 3;
         };
         int complexity = Math.max(0, (ingredientCount - 1) / 2);

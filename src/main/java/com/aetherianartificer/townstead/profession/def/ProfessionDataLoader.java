@@ -30,21 +30,63 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Loads data-driven professions ({@code data/<ns>/profession/*.json}) and skills
- * ({@code data/<ns>/skill/*.json}) together, so the cross-references between them are populated
- * and validated atomically each reload. Validation findings (unreachable tiers, dangling refs,
- * cycles) are stored under the "profession" source for {@code /pheno validate}.
+ * Loads data-driven professions and skills together, so the cross-references between them are
+ * populated and validated atomically each reload. The canonical layout is a directory per
+ * profession: {@code data/<ns>/profession/<name>/profession.json} (reserved filename) with its
+ * skills beside it in {@code data/<ns>/profession/<name>/skill/<skill>.json}, which register as
+ * {@code <ns>:<name>/<skill>} and derive their {@code profession} from location. An optional
+ * {@code levels.json} beside the def supplies the progression ({@code levels},
+ * {@code daily_cap}, {@code max_xp}), overriding anything inline, so tuning packs can replace a
+ * profession's pacing without copying its identity. The flat forms
+ * ({@code profession/<name>.json}, {@code data/<ns>/skill/*.json} with an explicit
+ * {@code profession} field) still load for older packs. Validation findings (unreachable tiers,
+ * dangling refs, cycles) are stored under the "profession" source for {@code /pheno validate}.
  */
 public final class ProfessionDataLoader extends SimplePreparableReloadListener<ProfessionDataLoader.Prepared> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/ProfessionDataLoader");
 
     public record Prepared(Map<ResourceLocation, JsonObject> professions,
-                           Map<ResourceLocation, JsonObject> skills) {}
+                           Map<ResourceLocation, JsonObject> skills,
+                           Map<ResourceLocation, JsonObject> levelOverlays) {}
 
     @Override
     protected Prepared prepare(ResourceManager resourceManager, ProfilerFiller profiler) {
-        return new Prepared(read(resourceManager, "profession"), read(resourceManager, "skill"));
+        Map<ResourceLocation, JsonObject> skills = read(resourceManager, "skill");
+        Map<ResourceLocation, JsonObject> professions = new LinkedHashMap<>();
+        Map<ResourceLocation, JsonObject> levelOverlays = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, Resource> e : resourceManager
+                .listResources("profession", loc -> loc.getPath().endsWith(".json")).entrySet()) {
+            ResourceLocation file = e.getKey();
+            String subpath = file.getPath().substring("profession/".length(),
+                    file.getPath().length() - ".json".length());
+            JsonObject json = readJson(e.getValue(), file);
+            if (json == null) continue;
+            int skillDir = subpath.lastIndexOf("/skill/");
+            if (skillDir > 0) {
+                String professionPath = subpath.substring(0, skillDir);
+                String skillName = subpath.substring(skillDir + "/skill/".length());
+                ResourceLocation skillId = ResourceLocation.tryParse(
+                        file.getNamespace() + ":" + professionPath + "/" + skillName);
+                if (skillId == null) continue;
+                if (!json.has("profession")) {
+                    json.addProperty("profession", file.getNamespace() + ":" + professionPath);
+                }
+                skills.put(skillId, json);
+            } else if (subpath.endsWith("/profession")) {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":"
+                        + subpath.substring(0, subpath.length() - "/profession".length()));
+                if (id != null) professions.put(id, json);
+            } else if (subpath.endsWith("/levels")) {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":"
+                        + subpath.substring(0, subpath.length() - "/levels".length()));
+                if (id != null) levelOverlays.put(id, json);
+            } else {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":" + subpath);
+                if (id != null) professions.put(id, json);
+            }
+        }
+        return new Prepared(professions, skills, levelOverlays);
     }
 
     @Override
@@ -52,9 +94,48 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Diagnostics diagnostics = new Diagnostics();
 
+        // Mod gates first: a def whose "mods" expression is unmet simply does not exist this
+        // session (nor do its levels overlay or skills). A malformed gate refuses to load too,
+        // with a diagnostic: broken gates must never read as satisfied.
+        Map<ResourceLocation, JsonObject> activeDefs = new LinkedHashMap<>();
+        Set<ResourceLocation> gated = new java.util.LinkedHashSet<>();
+        for (Map.Entry<ResourceLocation, JsonObject> e : prepared.professions().entrySet()) {
+            JsonObject obj = e.getValue();
+            if (obj.has("mods")) {
+                Boolean met = com.aetherianartificer.townstead.data.ModGate.evaluate(obj.get("mods"));
+                if (met == null) {
+                    diagnostics.forResource(e.getKey());
+                    diagnostics.error(JsonPath.ROOT.field("mods"),
+                            "Invalid mods gate expression.",
+                            "Use a mod id, an array (all required), or {\"all\"/\"any\"/\"not\"} objects.");
+                    gated.add(e.getKey());
+                    continue;
+                }
+                if (!met) {
+                    LOGGER.debug("Profession {} skipped: mods gate unmet", e.getKey());
+                    gated.add(e.getKey());
+                    continue;
+                }
+            }
+            activeDefs.put(e.getKey(), obj);
+        }
+
+        for (Map.Entry<ResourceLocation, JsonObject> e : prepared.levelOverlays().entrySet()) {
+            if (gated.contains(e.getKey())) continue;
+            JsonObject def = activeDefs.get(e.getKey());
+            diagnostics.forResource(e.getKey());
+            if (def == null) {
+                diagnostics.warning(JsonPath.ROOT,
+                        "levels.json has no matching profession.json in this directory; ignored.",
+                        "Add profession.json beside it (or remove the orphan).");
+                continue;
+            }
+            applyLevelsOverlay(def, e.getValue());
+        }
+
         Map<ResourceLocation, ProfessionDef> professions = new LinkedHashMap<>();
         Map<ResourceLocation, SkillDef> skills = new LinkedHashMap<>();
-        for (Map.Entry<ResourceLocation, JsonObject> e : prepared.professions().entrySet()) {
+        for (Map.Entry<ResourceLocation, JsonObject> e : activeDefs.entrySet()) {
             diagnostics.forResource(e.getKey());
             try {
                 // Inline level skills land in the same registry; a sidecar with the same id
@@ -69,6 +150,9 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         }
 
         for (Map.Entry<ResourceLocation, JsonObject> e : prepared.skills().entrySet()) {
+            ResourceLocation skillProfession = ResourceLocation.tryParse(
+                    GsonHelper.getAsString(e.getValue(), "profession", ""));
+            if (skillProfession != null && gated.contains(skillProfession)) continue;
             diagnostics.forResource(e.getKey());
             try {
                 SkillDef skill = parseSkill(e.getKey(), e.getValue(), lang, diagnostics);
@@ -82,6 +166,8 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         validateAliases(professions, diagnostics);
         ProfessionDefs.replaceAll(professions);
         SkillDefs.replaceAll(skills);
+        ProfessionTitles.replaceAll(parseAllTitles(activeDefs, professions.keySet(), lang, diagnostics));
+        ProfessionPaths.replaceAll(parseAllPaths(activeDefs, professions.keySet(), diagnostics));
 
         SkillGraphValidator.validate(professions, skills, diagnostics);
         PhenoDiagnostics.replace("profession", diagnostics.all());
@@ -194,6 +280,29 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             }
         }
 
+        List<WorkTaskDef> workTasks = new ArrayList<>();
+        if (obj.has("work_tasks") && obj.get("work_tasks").isJsonArray()) {
+            JsonArray taskArray = obj.getAsJsonArray("work_tasks");
+            for (int i = 0; i < taskArray.size(); i++) {
+                if (!taskArray.get(i).isJsonObject()) continue;
+                WorkTaskDef task = WorkTaskDef.parse(taskArray.get(i).getAsJsonObject());
+                if (task == null) {
+                    diag.error(JsonPath.ROOT.field("work_tasks").index(i),
+                            "Invalid work task (missing type, bad workstation entry, or broken requirements).",
+                            "Give each entry a type and valid workstation block ids or #tags.");
+                    continue;
+                }
+                if (!WorkTaskTypes.knows(task.type())) {
+                    diag.error(JsonPath.ROOT.field("work_tasks").index(i).field("type"),
+                            "Unknown work task type '" + task.type() + "'.",
+                            "Use a registered type, e.g. townstead_work:cook, townstead_work:chop,"
+                                    + " townstead_work:brew (bare ids resolve to townstead_work).");
+                    continue;
+                }
+                workTasks.add(task);
+            }
+        }
+
         List<LevelDef> levels = new ArrayList<>();
         Map<Integer, List<TradeDef>> levelTrades = new LinkedHashMap<>();
         List<ResourceLocation> inlineSkillIds = new ArrayList<>();
@@ -211,7 +320,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     JsonArray tradeArray = entry.getAsJsonArray("trades");
                     for (int j = 0; j < tradeArray.size(); j++) {
                         if (!tradeArray.get(j).isJsonObject()) continue;
-                        TradeDef trade = TradeDef.parse(tradeArray.get(j).getAsJsonObject());
+                        TradeDef trade = TradeDef.parse(tradeArray.get(j).getAsJsonObject(), id);
                         if (trade == null) {
                             diag.warning(JsonPath.ROOT.field("levels").index(i)
                                             .field("trades").index(j),
@@ -227,17 +336,31 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 if (entry.has("skills") && entry.get("skills").isJsonArray()) {
                     JsonArray skillArray = entry.getAsJsonArray("skills");
                     for (int j = 0; j < skillArray.size(); j++) {
+                        if (skillArray.get(j).isJsonPrimitive()) {
+                            // Bare id: a reference to a skill in the profession's own directory
+                            // (<ns>:<profession>/<name>); the graph validator flags dangling refs.
+                            String rawRef = skillArray.get(j).getAsString();
+                            ResourceLocation refId = resolveSkillRef(id, rawRef);
+                            if (refId == null) {
+                                diag.error(JsonPath.ROOT.field("levels").index(i)
+                                                .field("skills").index(j),
+                                        "Invalid skill reference '" + rawRef + "'.",
+                                        "Use a bare path (namespaced to the profession) or a full id.");
+                                continue;
+                            }
+                            levelSkills.add(refId);
+                            inlineSkillIds.add(refId);
+                            continue;
+                        }
                         if (!skillArray.get(j).isJsonObject()) continue;
                         JsonObject skillJson = skillArray.get(j).getAsJsonObject().deepCopy();
                         String rawId = GsonHelper.getAsString(skillJson, "id", "");
-                        ResourceLocation skillId = rawId.contains(":")
-                                ? ResourceLocation.tryParse(rawId)
-                                : ResourceLocation.tryParse(id.getNamespace() + ":" + rawId);
-                        if (skillId == null || rawId.isBlank()) {
+                        ResourceLocation skillId = resolveSkillRef(id, rawId);
+                        if (skillId == null) {
                             diag.error(JsonPath.ROOT.field("levels").index(i)
                                             .field("skills").index(j).field("id"),
                                     "Missing or invalid inline skill id.",
-                                    "Use a bare path (namespaced to the profession) or a full id.");
+                                    "Use a bare path (scoped to the profession) or a full id.");
                             continue;
                         }
                         skillJson.remove("schema");
@@ -277,7 +400,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             merged.addAll(b);
             return List.copyOf(merged);
         }));
-        List<ResourceLocation> skillIds = new ArrayList<>(parseIdList(obj, "skills"));
+        List<ResourceLocation> skillIds = new ArrayList<>(parseSkillRefList(obj, "skills", id));
         for (ResourceLocation inline : inlineSkillIds) {
             if (!skillIds.contains(inline)) skillIds.add(inline);
         }
@@ -289,7 +412,6 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 RetrainingPolicy.fromString(retraining),
                 List.copyOf(skillIds),
                 List.copyOf(historyCounters),
-                parseIdList(obj, "parents"),
                 GsonHelper.getAsBoolean(obj, "hidden", false),
                 requirements,
                 List.copyOf(routes),
@@ -298,7 +420,8 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 Map.copyOf(trades),
                 obj.has("requirements") ? RequirementHint.extract(obj.get("requirements")) : List.of(),
                 obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null,
-                List.copyOf(levels));
+                List.copyOf(levels),
+                List.copyOf(workTasks));
     }
 
     /** {@code trades} maps merchant level ("1".."5") to a list of {@link TradeDef}s. */
@@ -360,6 +483,12 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
     static SkillDef parseSkill(ResourceLocation id, JsonObject obj, Map<String, String> lang,
                                        Diagnostics diag) {
         TownsteadSchema.validate(obj, "townstead:skill/v1");
+        // A mods gate on a skill works like one on a profession: unmet means the skill
+        // silently does not exist this session (mod-specific branches of a tree).
+        if (obj.has("mods") && !Boolean.TRUE.equals(
+                com.aetherianartificer.townstead.data.ModGate.evaluate(obj.get("mods")))) {
+            return null;
+        }
         String professionRaw = GsonHelper.getAsString(obj, "profession", "");
         ResourceLocation profession = professionRaw.isBlank() ? null : ResourceLocation.tryParse(professionRaw);
         if (profession == null) {
@@ -373,6 +502,112 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         Component description = obj.has("description")
                 ? DataPackLang.parseComponent(obj.get("description"), id + ".description", lang) : null;
 
+        List<SkillGrant> grants = parseGrants(obj, diag);
+        ResourceLocation animation = obj.has("animation")
+                ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "animation", "")) : null;
+        ResourceLocation skillGroup = obj.has("skill_group")
+                ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "skill_group", "")) : null;
+
+        return new SkillDef(id, name, description, profession,
+                GsonHelper.getAsInt(obj, "tier", GsonHelper.getAsInt(obj, "level", 1)),
+                // Bare requires/exclusive_with entries name siblings in the same profession.
+                parseSkillRefList(obj, "requires", profession),
+                parseSkillRefList(obj, "exclusive_with", profession),
+                GsonHelper.getAsInt(obj, "cost", 1),
+                List.copyOf(grants),
+                animation,
+                skillGroup,
+                parsePower(obj, lang, diag),
+                obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null);
+    }
+
+    /**
+     * Build titles from each def's {@code titles} array: {@code {id, name, skills}} where bare
+     * skill refs resolve to the owning profession's path-scoped ids. A title is flavour over
+     * the base profession ("Rotisseur (Cook)"), earned by completing the named skill build.
+     */
+    private static Map<ResourceLocation, List<ProfessionTitles.Title>> parseAllTitles(
+            Map<ResourceLocation, JsonObject> activeDefs, Set<ResourceLocation> loaded,
+            Map<String, String> lang, Diagnostics diagnostics) {
+        Map<ResourceLocation, List<ProfessionTitles.Title>> out = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, JsonObject> e : activeDefs.entrySet()) {
+            if (!loaded.contains(e.getKey())) continue;
+            JsonObject obj = e.getValue();
+            if (!obj.has("titles") || !obj.get("titles").isJsonArray()) continue;
+            diagnostics.forResource(e.getKey());
+            List<ProfessionTitles.Title> titles = new ArrayList<>();
+            JsonArray arr = obj.getAsJsonArray("titles");
+            for (int i = 0; i < arr.size(); i++) {
+                if (!arr.get(i).isJsonObject()) continue;
+                JsonObject t = arr.get(i).getAsJsonObject();
+                String titleId = GsonHelper.getAsString(t, "id", "");
+                List<ResourceLocation> skillIds = new ArrayList<>();
+                for (JsonElement raw : GsonHelper.getAsJsonArray(t, "skills", new JsonArray())) {
+                    if (!raw.isJsonPrimitive()) continue;
+                    ResourceLocation skillId = resolveSkillRef(e.getKey(), raw.getAsString());
+                    if (skillId != null) skillIds.add(skillId);
+                }
+                if (titleId.isBlank() || skillIds.isEmpty()) {
+                    diagnostics.warning(JsonPath.ROOT.field("titles").index(i),
+                            "A title needs an id and at least one skill; ignored.",
+                            "Use {\"id\": ..., \"name\": ..., \"skills\": [...]}.");
+                    continue;
+                }
+                Component name = t.has("name")
+                        ? DataPackLang.parseComponent(t.get("name"),
+                                e.getKey() + ".title." + titleId, lang)
+                        : Component.literal(titleId);
+                titles.add(new ProfessionTitles.Title(e.getKey(), titleId, name, skillIds));
+            }
+            if (!titles.isEmpty()) out.put(e.getKey(), List.copyOf(titles));
+        }
+        return out;
+    }
+
+    /**
+     * A def's {@code paths} block: specialization branches opened by buying a gateway skill.
+     * Skill refs resolve path-scoped like title refs; worksites are full block ids because
+     * they usually belong to other mods.
+     */
+    private static Map<ResourceLocation, List<ProfessionPaths.Path>> parseAllPaths(
+            Map<ResourceLocation, JsonObject> activeDefs, Set<ResourceLocation> loaded,
+            Diagnostics diagnostics) {
+        Map<ResourceLocation, List<ProfessionPaths.Path>> out = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, JsonObject> e : activeDefs.entrySet()) {
+            if (!loaded.contains(e.getKey())) continue;
+            JsonObject obj = e.getValue();
+            if (!obj.has("paths") || !obj.get("paths").isJsonArray()) continue;
+            diagnostics.forResource(e.getKey());
+            List<ProfessionPaths.Path> paths = new ArrayList<>();
+            JsonArray arr = obj.getAsJsonArray("paths");
+            for (int i = 0; i < arr.size(); i++) {
+                if (!arr.get(i).isJsonObject()) continue;
+                JsonObject p = arr.get(i).getAsJsonObject();
+                String pathId = GsonHelper.getAsString(p, "id", "");
+                ResourceLocation gateway = resolveSkillRef(e.getKey(),
+                        GsonHelper.getAsString(p, "gateway", ""));
+                if (pathId.isBlank() || gateway == null) {
+                    diagnostics.warning(JsonPath.ROOT.field("paths").index(i),
+                            "A path needs an id and a gateway skill; ignored.",
+                            "Use {\"id\": ..., \"gateway\": ..., \"skills\": [...], \"worksites\": [...]}.");
+                    continue;
+                }
+                List<ResourceLocation> skillIds = new ArrayList<>();
+                for (JsonElement raw : GsonHelper.getAsJsonArray(p, "skills", new JsonArray())) {
+                    if (!raw.isJsonPrimitive()) continue;
+                    ResourceLocation skillId = resolveSkillRef(e.getKey(), raw.getAsString());
+                    if (skillId != null) skillIds.add(skillId);
+                }
+                List<ResourceLocation> worksites = parseIdList(p, "worksites");
+                paths.add(new ProfessionPaths.Path(e.getKey(), pathId, gateway, skillIds, worksites));
+            }
+            if (!paths.isEmpty()) out.put(e.getKey(), List.copyOf(paths));
+        }
+        return out;
+    }
+
+    /** Shared grants block parser: ordinary skills and Combo Skills carry identical grants. */
+    static List<SkillGrant> parseGrants(JsonObject obj, Diagnostics diag) {
         List<SkillGrant> grants = new ArrayList<>();
         if (obj.has("grants") && obj.get("grants").isJsonArray()) {
             JsonArray arr = obj.getAsJsonArray("grants");
@@ -395,21 +630,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 if (grant != null) grants.add(grant);
             }
         }
-        ResourceLocation animation = obj.has("animation")
-                ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "animation", "")) : null;
-        ResourceLocation skillGroup = obj.has("skill_group")
-                ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "skill_group", "")) : null;
-
-        return new SkillDef(id, name, description, profession,
-                GsonHelper.getAsInt(obj, "tier", GsonHelper.getAsInt(obj, "level", 1)),
-                parseIdList(obj, "requires"),
-                parseIdList(obj, "exclusive_with"),
-                GsonHelper.getAsInt(obj, "cost", 1),
-                List.copyOf(grants),
-                animation,
-                skillGroup,
-                parsePower(obj, lang, diag),
-                obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null);
+        return List.copyOf(grants);
     }
 
     /**
@@ -442,6 +663,41 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         return instance;
     }
 
+    /**
+     * Overlays a {@code levels.json} sidecar onto its profession def. Only the progression keys
+     * cross over, so a sidecar can never mutate identity or hooks.
+     */
+    static void applyLevelsOverlay(JsonObject def, JsonObject overlay) {
+        if (overlay.has("levels")) def.add("levels", overlay.get("levels"));
+        if (overlay.has("daily_cap")) def.add("daily_cap", overlay.get("daily_cap"));
+        if (overlay.has("max_xp")) def.add("max_xp", overlay.get("max_xp"));
+    }
+
+    /**
+     * A skill reference: a full {@code ns:path} id passes through; a bare path is scoped to the
+     * owner's directory ({@code <owner ns>:<owner path>/<raw>}). Null when blank or malformed.
+     */
+    private static ResourceLocation resolveSkillRef(ResourceLocation owner, String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        return raw.contains(":")
+                ? ResourceLocation.tryParse(raw)
+                : ResourceLocation.tryParse(owner.getNamespace() + ":" + owner.getPath() + "/" + raw);
+    }
+
+    /** Like {@link #parseIdList} but bare entries resolve through {@link #resolveSkillRef}. */
+    private static List<ResourceLocation> parseSkillRefList(JsonObject obj, String key,
+                                                            ResourceLocation owner) {
+        List<ResourceLocation> out = new ArrayList<>();
+        if (obj.has(key) && obj.get(key).isJsonArray()) {
+            for (JsonElement e : obj.getAsJsonArray(key)) {
+                if (!e.isJsonPrimitive()) continue;
+                ResourceLocation id = resolveSkillRef(owner, e.getAsString());
+                if (id != null) out.add(id);
+            }
+        }
+        return List.copyOf(out);
+    }
+
     private static List<ResourceLocation> parseIdList(JsonObject obj, String key) {
         List<ResourceLocation> out = new ArrayList<>();
         if (obj.has(key) && obj.get(key).isJsonArray()) {
@@ -465,13 +721,19 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             String idPath = path.substring(prefix.length(), path.length() - ".json".length());
             ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":" + idPath);
             if (id == null) continue;
-            try (Reader reader = e.getValue().openAsReader()) {
-                JsonElement parsed = JsonParser.parseReader(reader);
-                if (parsed.isJsonObject()) out.put(id, parsed.getAsJsonObject());
-            } catch (Exception ex) {
-                LOGGER.warn("Failed to read {} {}: {}", dir, file, ex.getMessage());
-            }
+            JsonObject json = readJson(e.getValue(), file);
+            if (json != null) out.put(id, json);
         }
         return out;
+    }
+
+    private static JsonObject readJson(Resource resource, ResourceLocation file) {
+        try (Reader reader = resource.openAsReader()) {
+            JsonElement parsed = JsonParser.parseReader(reader);
+            return parsed.isJsonObject() ? parsed.getAsJsonObject() : null;
+        } catch (Exception ex) {
+            LOGGER.warn("Failed to read {}: {}", file, ex.getMessage());
+            return null;
+        }
     }
 }

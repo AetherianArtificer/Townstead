@@ -33,7 +33,8 @@ public final class WorkSupplyManager {
     public static void restockForCurrentJob(ServerLevel level, VillagerEntityMCA villager, Chore job) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) return;
         if (job == null || job == Chore.NONE) return;
-        boolean isFarmer = villager.getVillagerData().getProfession() == VillagerProfession.FARMER;
+        boolean isFarmer = com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.permitsTask(
+                villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.HARVEST);
 
         SimpleContainer inv = villager.getInventory();
         Class<?> toolType = job.getToolType();

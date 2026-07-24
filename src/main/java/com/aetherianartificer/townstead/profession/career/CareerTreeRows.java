@@ -33,8 +33,9 @@ public final class CareerTreeRows {
         if (profile == null || store == null) return rows;
         rows.add(new Row(0, "Primary vocation: "
                 + (profile.primaryVocation() == null ? "Unchosen" : profile.primaryVocation()), ""));
+        // Careers are flat: every def lists at the top level.
         for (ProfessionDef def : ProfessionDefs.all().values()) {
-            if (def.isRoot()) appendCareer(rows, server, entity, profile, store, def, 0);
+            appendCareer(rows, server, entity, profile, store, def, 0);
         }
         return rows;
     }
@@ -57,7 +58,7 @@ public final class CareerTreeRows {
         } else {
             state = def.eligible(entity) ? "ready to discover" : def.hidden() ? "hidden, locked" : "locked";
         }
-        boolean interesting = xp > 0 || primary || acquired || depth > 0;
+        boolean interesting = xp > 0 || primary || acquired || !def.isRoot();
         if (interesting) {
             rows.add(new Row(depth, def.displayName().getString()
                     + (primary ? " [primary]" : "") + ": " + state, ""));
@@ -78,14 +79,9 @@ public final class CareerTreeRows {
                 }
             }
         }
-        for (ProfessionDef child : ProfessionDefs.all().values()) {
-            if (child.parents().contains(careerId)) {
-                appendCareer(rows, server, entity, profile, store, child, depth + 1);
-            }
-        }
     }
 
-    static ProfessionXpStore storeOf(LivingEntity entity) {
+    public static ProfessionXpStore storeOf(LivingEntity entity) {
         return store(entity);
     }
 

@@ -53,10 +53,10 @@ public final class TownsteadVillageMigration {
         if (level == null || village == null) return 0;
         TownsteadVillageSavedData data = TownsteadVillageSavedData.get(level.getServer());
         data.touch(level, village.getId());
-        List<Map.Entry<Integer, Building>> replacements = new ArrayList<>();
+        List<Map.Entry<Integer, net.minecraft.nbt.CompoundTag>> replacements = new ArrayList<>();
         int migrated = 0;
 
-        for (Map.Entry<Integer, Building> entry : village.getBuildings().entrySet()) {
+        for (Map.Entry<Integer, Building> entry : com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).entrySet()) {
             Building building = entry.getValue();
             String type = building.getType();
             String kind = kindOf(type);
@@ -74,12 +74,12 @@ public final class TownsteadVillageMigration {
                             type,
                             new int[] {p0.getX(), p0.getY(), p0.getZ(), p1.getX(), p1.getY(), p1.getZ()},
                             toPackedPositions(blocks)));
-            replacements.add(Map.entry(entry.getKey(), new Building(compactBuildingNbt(entry.getKey(), building, blocks))));
+            replacements.add(Map.entry(entry.getKey(), compactBuildingNbt(entry.getKey(), building, blocks)));
             migrated++;
         }
 
-        for (Map.Entry<Integer, Building> replacement : replacements) {
-            village.getBuildings().put(replacement.getKey(), replacement.getValue());
+        for (Map.Entry<Integer, CompoundTag> replacement : replacements) {
+            com.aetherianartificer.townstead.compat.mca.McaBuildings.putSynthetic(village, replacement.getKey(), replacement.getValue());
         }
         if (migrated > 0) {
             village.markDirty();

@@ -59,7 +59,7 @@ public final class ButcheryShopScanner {
         Optional<Village> villageOpt = resolveVillage(villager);
         if (villageOpt.isEmpty()) return Collections.emptyList();
         List<ShopRef> out = new ArrayList<>();
-        for (Building building : villageOpt.get().getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(villageOpt.get())) {
             if (!building.isComplete()) continue;
             int tier = tierFromType(building.getType());
             if (tier <= 0) continue;
@@ -108,7 +108,7 @@ public final class ButcheryShopScanner {
         Optional<Village> villageOpt = resolveVillage(villager);
         if (villageOpt.isEmpty()) return Collections.emptyList();
         List<ShopRef> out = new ArrayList<>();
-        for (Building building : villageOpt.get().getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(villageOpt.get())) {
             if (!building.isComplete()) continue;
             String type = building.getType();
             int tier = tierFromType(type);
@@ -147,7 +147,7 @@ public final class ButcheryShopScanner {
         Optional<Village> villageOpt = resolveVillage(villager);
         if (villageOpt.isEmpty()) return Collections.emptyList();
         List<HuntRef> out = new ArrayList<>();
-        for (Building b : villageOpt.get().getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(villageOpt.get())) {
             if (!b.isComplete()) continue;
             String type = b.getType();
             int tier = tierFromType(type);

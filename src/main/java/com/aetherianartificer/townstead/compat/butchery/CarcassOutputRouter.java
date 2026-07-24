@@ -73,7 +73,7 @@ public final class CarcassOutputRouter {
 
     private static ItemStack insertIntoStation(ServerLevel level, Village village,
             ResourceLocation stationId, ItemStack stack) {
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!building.isComplete()) continue;
             List<BlockPos> positions = building.getBlocks().get(stationId);
             if (positions == null || positions.isEmpty()) continue;

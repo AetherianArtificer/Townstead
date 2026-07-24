@@ -18,8 +18,12 @@ public final class CookAutoAssignTicker {
         if (villager.isBaby() || !villager.isAlive() || villager.isSleeping()) return;
 
         VillagerProfession current = villager.getVillagerData().getProfession();
-        if (FarmersDelightCookAssignment.isExternalCookProfession(current)) {
-            if (FarmersDelightCookAssignment.shouldLoseCookProfession(level, villager)) {
+        if (FarmersDelightCookAssignment.declaresCookWork(current)) {
+            // Only demote what Townstead itself assigns. A POI-anchored cook profession
+            // (Chef's Delight etc.) is hired and fired by its own mod's rules; stripping it
+            // here would fight the brain's job-site claim in an endless flap.
+            if (current == FarmersDelightCookAssignment.resolveAssignableCookProfession()
+                    && FarmersDelightCookAssignment.shouldLoseCookProfession(level, villager)) {
                 villager.setProfession(VillagerProfession.NONE);
             }
             return;

@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Iron Palate"
+  },
+  "icon": "minecraft:spider_eye",
+  "description": {
+    "text": "Years of tasting every pot have hardened your stomach. You are immune to poison and hunger effects."
+  },
+  "tier": 4,
+  "cost": 2,
+  "mods": [
+    "pizzadelight",
+    "farmersdelight"
+  ],
+  "requires": [
+    "pizza_craft"
+  ],
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:poison",
+      "minecraft:hunger"
+    ]
+  }
+}

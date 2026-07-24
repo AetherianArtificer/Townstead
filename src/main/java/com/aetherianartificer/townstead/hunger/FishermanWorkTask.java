@@ -24,6 +24,8 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 *///?}
 import com.google.common.collect.ImmutableMap;
 import com.mojang.authlib.GameProfile;
+import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
@@ -221,7 +223,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FISHERMAN) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.FISH)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         BlockPos anchor = townstead$resolveBarrelAnchor(level, villager);
@@ -251,7 +253,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FISHERMAN) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.FISH)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         if (stationAnchor == null) {

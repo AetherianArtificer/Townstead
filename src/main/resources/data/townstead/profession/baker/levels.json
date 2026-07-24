@@ -1,0 +1,89 @@
+{
+  "daily_cap": 230,
+  "max_xp": 200000,
+  "levels": [
+    {
+      "xp": 110,
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 1
+          },
+          "result": {
+            "item": "minecraft:bread",
+            "count": 6
+          },
+          "max_uses": 16,
+          "villager_xp": 2
+        },
+        {
+          "cost": {
+            "item": "minecraft:wheat",
+            "count": 20
+          },
+          "result": {
+            "item": "minecraft:emerald",
+            "count": 1
+          },
+          "max_uses": 16,
+          "villager_xp": 2
+        }
+      ]
+    },
+    {
+      "xp": 190,
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 1
+          },
+          "result": {
+            "item": "minecraft:cookie",
+            "count": 10
+          },
+          "max_uses": 12,
+          "villager_xp": 5
+        },
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 2
+          },
+          "result": {
+            "item": "minecraft:pumpkin_pie",
+            "count": 3
+          },
+          "max_uses": 12,
+          "villager_xp": 5
+        }
+      ]
+    },
+    {
+      "xp": 360,
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 3
+          },
+          "secondary_cost": {
+            "item": "minecraft:egg",
+            "count": 2
+          },
+          "result": {
+            "item": "minecraft:cake",
+            "count": 1
+          },
+          "max_uses": 8,
+          "villager_xp": 10
+        }
+      ]
+    },
+    {
+      "xp": 590
+    },
+    {}
+  ]
+}

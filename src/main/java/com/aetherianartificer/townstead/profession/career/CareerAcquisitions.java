@@ -13,9 +13,10 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Server-authoritative acquisition of advanced professions (defs with parents). Root careers
- * are practiced, never acquired; an advanced career becomes part of a character's history when
- * its pheno requirements pass through one of its declared routes.
+ * Server-authoritative acquisition of gated careers. Careers are flat: any def may declare
+ * pheno requirements and acquisition routes, and it becomes part of a character's history when
+ * those requirements pass through one of its declared routes. A def without routes is simply
+ * practiced.
  */
 public final class CareerAcquisitions {
     private CareerAcquisitions() {}
@@ -25,7 +26,7 @@ public final class CareerAcquisitions {
     public static Result acquire(LivingEntity entity, ResourceLocation careerId, String route) {
         ProfessionDef def = ProfessionDefs.byId(careerId);
         if (def == null) return new Result(false, "unknown career");
-        if (def.isRoot()) return new Result(false, "root careers are practiced, not acquired");
+        if (def.acquisitionRoutes().isEmpty()) return new Result(false, "career is practiced, not acquired");
         if (!def.acquisitionRoutes().contains(route)) return new Result(false, "invalid acquisition route");
         CareerProfile profile = CareerProfiles.of(entity);
         if (profile == null) return new Result(false, "unsupported character");
@@ -47,19 +48,19 @@ public final class CareerAcquisitions {
     }
 
     /**
-     * Acquire every newly eligible advanced career parented to one of {@code parentCareers}
-     * that permits this route. The parent filter keeps the per-work-completion sweep from
-     * evaluating unrelated careers' (potentially archive-backed) requirements.
+     * Acquire every newly eligible gated career that permits this route. Flat model: any def
+     * with acquisition routes qualifies; its own requirements decide. The {@code affected}
+     * careers are accepted for call-site compatibility but no longer filter — requirements may
+     * reference any career or chronicle state, so relatedness cannot be derived from a graph.
+     * (At hundreds of defs, index requirement-referenced careers instead of sweeping.)
      */
     public static List<ResourceLocation> acquireEligible(LivingEntity entity, String route,
-                                                         Collection<ResourceLocation> parentCareers) {
+                                                         Collection<ResourceLocation> affected) {
         CareerProfile profile = CareerProfiles.of(entity);
         if (profile == null) return List.of();
         List<ResourceLocation> acquired = new ArrayList<>();
         for (ProfessionDef def : ProfessionDefs.all().values()) {
-            if (def.isRoot()
-                    || profile.acquiredCareers().contains(def.id())
-                    || def.parents().stream().noneMatch(parentCareers::contains)
+            if (profile.acquiredCareers().contains(def.id())
                     || !def.acquisitionRoutes().contains(route)) continue;
             Result result = acquire(entity, def.id(), route);
             if (result.acquired()) acquired.add(def.id());

@@ -83,6 +83,9 @@ public final class SkillPoints {
     /**
      * Villagers spend their own points: after a tier-up, learn random affordable skills from the
      * newly available pools until nothing is learnable. Players always choose for themselves.
+     * Candidates are weighted by {@link PathAffinity}: specialization-path skills only enter
+     * the pool when the villager's worksite justifies them, and a specced villager leans into
+     * finishing the build.
      */
     public static void autoSpend(LivingEntity villager, Collection<ResourceLocation> careers) {
         if (!(villager instanceof VillagerEntityMCA)) return;
@@ -92,14 +95,28 @@ public final class SkillPoints {
             if (def == null) continue;
             for (int guard = 0; guard < 64; guard++) {
                 List<ResourceLocation> candidates = new ArrayList<>();
+                List<Integer> weights = new ArrayList<>();
+                int totalWeight = 0;
                 for (ResourceLocation skillId : def.skills()) {
                     SkillDef skill = SkillDefs.byId(skillId);
                     if (skill == null || LearnedSkills.has(villager, skillId)) continue;
-                    if (canLearn(villager, def, skill)) candidates.add(skillId);
+                    if (!canLearn(villager, def, skill)) continue;
+                    int weight = PathAffinity.autoSpendWeight(villager, def, skill);
+                    if (weight <= 0) continue;
+                    candidates.add(skillId);
+                    weights.add(weight);
+                    totalWeight += weight;
                 }
                 if (candidates.isEmpty()) break;
-                ResourceLocation pick = candidates.get(
-                        villager.getRandom().nextInt(candidates.size()));
+                int roll = villager.getRandom().nextInt(totalWeight);
+                ResourceLocation pick = candidates.get(candidates.size() - 1);
+                for (int i = 0; i < candidates.size(); i++) {
+                    roll -= weights.get(i);
+                    if (roll < 0) {
+                        pick = candidates.get(i);
+                        break;
+                    }
+                }
                 if (!CareerChoices.learn(villager, pick).ok()) break;
             }
         }

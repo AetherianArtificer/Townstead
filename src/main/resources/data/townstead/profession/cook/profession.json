@@ -1,0 +1,241 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Cook"
+  },
+  "icon": "minecraft:cooked_beef",
+  "description": {
+    "text": "Prepare food to build a history of culinary mastery."
+  },
+  "unlock_model": "experiential",
+  "mods": {
+    "any": [
+      "farmersdelight",
+      "rusticdelight"
+    ]
+  },
+  "aliases": [
+    "chefsdelight:cook",
+    "chefsdelight:chef",
+    "vca:cook",
+    "villagerclothingaddition:cook"
+  ],
+  "history_counters": [
+    "townstead:cooked",
+    "townstead:brewed"
+  ],
+  "poi": [
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/farmersdelight/kitchen_l"
+    },
+    {
+      "type": "townstead:job_block",
+      "block": "farmersdelight:cooking_pot",
+      "via": "chefsdelight:chef"
+    },
+    {
+      "type": "townstead:job_block",
+      "block": "farmersdelight:skillet",
+      "via": "chefsdelight:cook"
+    }
+  ],
+  "work_tasks": [
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "farmersdelight:cooking_pot",
+        "farmersdelight:skillet",
+        "farmersdelight:stove",
+        "#minecraft:campfires",
+        "pizzadelight:basin",
+        "pizzadelight:raw_pizza",
+        "pizzadelight:pizza"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:chop",
+      "workstations": [
+        "farmersdelight:cutting_board"
+      ],
+      "weight": 10
+    }
+  ],
+  "daily_cap": 230,
+  "max_xp": 200000,
+  "levels": [
+    {
+      "xp": 110
+    },
+    {
+      "xp": 190,
+      "skills": [
+        "seasoned_hands",
+        "steady_simmer",
+        "pizza_craft"
+      ],
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 1
+          },
+          "result": {
+            "item": "pizzadelight:cheese",
+            "count": 3
+          },
+          "max_uses": 16,
+          "villager_xp": 2,
+          "requires_skill": "pizza_craft"
+        }
+      ]
+    },
+    {
+      "xp": 360,
+      "skills": [
+        "open_flame",
+        "slow_stove",
+        "kitchen_rhythm"
+      ],
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 3
+          },
+          "result": {
+            "item": "pizzadelight:iron_pizza_peel",
+            "count": 1
+          },
+          "max_uses": 8,
+          "villager_xp": 5,
+          "requires_skill": "pizza_craft"
+        },
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 2
+          },
+          "result": {
+            "item": "pizzadelight:rolling_pin",
+            "count": 1
+          },
+          "max_uses": 8,
+          "villager_xp": 5,
+          "requires_skill": "pizza_craft"
+        }
+      ]
+    },
+    {
+      "xp": 590,
+      "skills": [
+        "cast_iron_stomach",
+        "iron_palate"
+      ],
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 5
+          },
+          "result": {
+            "item": "pizzadelight:chef_hat",
+            "count": 1
+          },
+          "max_uses": 4,
+          "villager_xp": 10,
+          "requires_skill": "kitchen_rhythm"
+        }
+      ]
+    },
+    {
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 8
+          },
+          "result": {
+            "item": "pizzadelight:diamond_pizza_peel",
+            "count": 1
+          },
+          "max_uses": 4,
+          "villager_xp": 15,
+          "requires_skill": "kitchen_rhythm"
+        },
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 12
+          },
+          "result": {
+            "item": "pizzadelight:chef_shirt",
+            "count": 1
+          },
+          "max_uses": 2,
+          "villager_xp": 20,
+          "requires_skill": "iron_palate"
+        }
+      ]
+    }
+  ],
+  "paths": [
+    {
+      "id": "pizzaiolo",
+      "gateway": "pizza_craft",
+      "skills": [
+        "kitchen_rhythm",
+        "iron_palate"
+      ],
+      "worksites": [
+        "pizzadelight:basin",
+        "pizzadelight:raw_pizza",
+        "pizzadelight:pizza",
+        "farmersdelight:stove"
+      ]
+    }
+  ],
+  "titles": [
+    {
+      "id": "rotisseur",
+      "name": {
+        "text": "Rotisseur"
+      },
+      "skills": [
+        "open_flame"
+      ]
+    },
+    {
+      "id": "saucier",
+      "name": {
+        "text": "Saucier"
+      },
+      "skills": [
+        "slow_stove"
+      ]
+    },
+    {
+      "id": "chef_de_cuisine",
+      "name": {
+        "text": "Chef de Cuisine"
+      },
+      "skills": [
+        "seasoned_hands",
+        "steady_simmer",
+        "cast_iron_stomach"
+      ]
+    },
+    {
+      "id": "pizzaiolo",
+      "name": {
+        "text": "Pizzaiolo"
+      },
+      "skills": [
+        "pizza_craft",
+        "kitchen_rhythm",
+        "iron_palate"
+      ]
+    }
+  ]
+}

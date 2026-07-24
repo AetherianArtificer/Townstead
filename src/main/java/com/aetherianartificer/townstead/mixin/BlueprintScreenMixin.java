@@ -994,7 +994,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$builtTypes.clear();
         BlueprintScreenAccessor accessor = (BlueprintScreenAccessor) (Object) this;
         if (accessor.townstead$getVillage() != null) {
-            for (Building building : accessor.townstead$getVillage().getBuildings().values()) {
+            for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(accessor.townstead$getVillage())) {
                 townstead$builtTypes.add(building.getType());
             }
         }
@@ -2152,7 +2152,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
         // Fallback: server didn't ship contributors (cache built before the
         // payload was extended). Compute on the client and cache locally.
-        int bct = village.getBuildings().size();
+        int bct = com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).size();
         int total = snapshot.total();
         ContribCacheEntry cached = townstead$spiritContribCache.get(vid);
         if (cached != null && cached.buildingCount() == bct && cached.payloadTotal() == total
@@ -2712,7 +2712,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             net.conczin.mca.server.world.data.Village village) {
         // Map: spirit id -> (building type -> [count, total points])
         java.util.Map<String, java.util.Map<String, int[]>> bySpirit = new java.util.HashMap<>();
-        for (net.conczin.mca.server.world.data.Building b : village.getBuildings().values()) {
+        for (net.conczin.mca.server.world.data.Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
             String type = b.getType();
             java.util.Map<String, Integer> contributions =

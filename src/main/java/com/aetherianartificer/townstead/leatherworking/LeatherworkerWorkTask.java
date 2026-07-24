@@ -4,6 +4,8 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -60,7 +62,7 @@ public class LeatherworkerWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (villager.getVillagerData().getProfession() != VillagerProfession.LEATHERWORKER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.TAN)) return false;
         return findActionableJob(level, villager) != null;
     }
 

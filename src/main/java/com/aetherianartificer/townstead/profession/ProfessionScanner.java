@@ -126,8 +126,9 @@ public final class ProfessionScanner {
     }
 
     private static void filterSuppressedProfessions(Set<String> result) {
-        // When Townstead cook mode is active, suppress Chef's Delight professions
-        // (Townstead provides its own cook/barista that integrate with the kitchen system)
+        // Chef's Delight professions are absorbed as aliases of townstead:cook (acquired in the
+        // world at their pot/skillet POIs); the picker offers only the canonical cook so players
+        // aren't shown three flavors of the same career.
         if (TownsteadConfig.isTownsteadCookEnabled()) {
             result.remove("chefsdelight:chef");
             result.remove("chefsdelight:cook");
@@ -162,44 +163,40 @@ public final class ProfessionScanner {
 
     private static int[] customSlotInfo(ServerLevel level, Village village, VillagerProfession profession) {
         String professionId = professionKey(profession);
+        com.aetherianartificer.townstead.profession.def.ProfessionDef def =
+                com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(
+                        net.minecraft.resources.ResourceLocation.tryParse(professionId));
         if ("townstead:cook".equals(professionId)) {
             if (!ModCompat.isLoaded("farmersdelight")) return new int[]{0, 0};
             int activeCooks = 0;
             for (VillagerEntityMCA resident : village.getResidents(level)) {
-                if (FarmersDelightCookAssignment.isExternalCookProfession(resident.getVillagerData().getProfession())) {
+                if (FarmersDelightCookAssignment.declaresCookWork(resident.getVillagerData().getProfession())) {
                     activeCooks++;
                 }
             }
-            return new int[]{activeCooks, FarmersDelightCookAssignment.totalCookSlots(village)};
+            // Kitchen slots plus outdoor posts: the same total the acquisition guard enforces.
+            int max = def != null
+                    ? ProfessionCapacity.capacity(level, village, def)
+                    : FarmersDelightCookAssignment.totalCookSlots(village);
+            return new int[]{activeCooks, max};
         }
         if ("townstead:barista".equals(professionId)) {
             if (!ModCompat.isLoaded("rusticdelight")) return new int[]{0, 0};
             int activeBaristas = 0;
             for (VillagerEntityMCA resident : village.getResidents(level)) {
-                if (FarmersDelightBaristaAssignment.isBaristaProfession(resident.getVillagerData().getProfession())) {
+                if (FarmersDelightBaristaAssignment.declaresBaristaWork(resident.getVillagerData().getProfession())) {
                     activeBaristas++;
                 }
             }
             return new int[]{activeBaristas, FarmersDelightBaristaAssignment.totalCafeSlots(village)};
         }
-        // Generic def-driven building slots: a profession whose def declares building job
-        // sites gets one slot per matching village building, no Java branch required.
-        com.aetherianartificer.townstead.profession.def.ProfessionDef def =
-                com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(
-                        net.minecraft.resources.ResourceLocation.tryParse(professionId));
+        // Generic def-driven slots: building providers give one slot per matching village
+        // building, and subordinate via-surface POIs outside those buildings add theirs.
         if (def != null) {
-            java.util.List<String> prefixes = new java.util.ArrayList<>();
-            for (var provider : def.jobSites()) {
-                if (provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building building) {
-                    prefixes.addAll(building.typePrefixes());
-                }
-            }
-            if (!prefixes.isEmpty()) {
-                int slots = 0;
-                for (net.conczin.mca.server.world.data.Building building : village.getBuildings().values()) {
-                    String type = building.getType();
-                    if (type != null && prefixes.stream().anyMatch(type::startsWith)) slots++;
-                }
+            boolean hasBuildingSites = def.jobSites().stream().anyMatch(provider ->
+                    provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building);
+            if (hasBuildingSites) {
+                int slots = ProfessionCapacity.capacity(level, village, def);
                 int active = 0;
                 for (VillagerEntityMCA resident : village.getResidents(level)) {
                     if (professionId.equals(professionKey(resident.getVillagerData().getProfession()))) active++;

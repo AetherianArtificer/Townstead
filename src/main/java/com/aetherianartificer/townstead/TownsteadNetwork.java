@@ -717,9 +717,8 @@ public final class TownsteadNetwork {
     private static void handleCareerChoose(
             com.aetherianartificer.townstead.profession.career.CareerChooseC2SPayload payload,
             ServerPlayer sp) {
-        com.aetherianartificer.townstead.profession.career.CareerChoices.chooseFromAcquired(
-                sp, net.minecraft.resources.ResourceLocation.tryParse(payload.skillId()));
-        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.send(sp);
+        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleChoose(
+                sp, payload.skillId());
     }
 
     private static void handleCareerTreeRequest(

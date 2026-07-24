@@ -28,7 +28,7 @@ class ProfessionSlotRulesTest {
         ResourceLocation rl = ResourceLocation.tryParse(id);
         ProfessionDefs.replaceAll(Map.of(rl, new ProfessionDef(rl, null, null,
                 new ProgressionTrack(List.of(0), 0, 0), UnlockModel.EXPERIENTIAL, 1,
-                RetrainingPolicy.FREE, List.of(), List.of(), List.of(), false,
+                RetrainingPolicy.FREE, List.of(), List.of(), false,
                 Conditions.ALWAYS, List.of(), jobSites)));
     }
 
