@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Seasoned Hands"
+  },
+  "icon": "minecraft:bowl",
+  "description": {
+    "text": "Earn 1 additional Cook XP whenever a dish is completed."
+  },
+  "tier": 2,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

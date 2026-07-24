@@ -33,6 +33,7 @@ public final class CareerChoices {
         if (!result.ok()) return result;
         SkillDef def = SkillDefs.byId(choice);
         if (def != null && def.skillGroup() != null) activate(entity, def.skillGroup(), choice);
+        com.aetherianartificer.townstead.profession.DataDrivenTrades.onSkillLearned(entity, choice);
         return result;
     }
 

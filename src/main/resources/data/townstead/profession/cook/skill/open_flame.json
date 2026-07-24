@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Open Flame"
+  },
+  "icon": "minecraft:blaze_powder",
+  "description": {
+    "text": "Bold, fast cooking. Big dishes earn much more Cook XP."
+  },
+  "tier": 3,
+  "cost": 2,
+  "skill_group": "townstead:cook_style",
+  "exclusive_with": [
+    "slow_stove"
+  ],
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_per_tier",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

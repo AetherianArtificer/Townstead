@@ -27,7 +27,7 @@ public final class ArchivesBuilding {
     public static Optional<Village> villageIfInside(ServerPlayer player, BlockPos pos) {
         Optional<Village> nearest = Village.findNearest(player);
         if (nearest.isEmpty() || !nearest.get().isWithinBorder(player)) return Optional.empty();
-        boolean inside = nearest.get().getBuildings().values().stream()
+        boolean inside = com.aetherianartificer.townstead.compat.mca.McaBuildings.all(nearest.get()).stream()
                 .anyMatch(building -> ACCEPTED_TYPES.contains(building.getType())
                         && contains(building.getPos0(), building.getPos1(), pos));
         return inside ? nearest : Optional.empty();

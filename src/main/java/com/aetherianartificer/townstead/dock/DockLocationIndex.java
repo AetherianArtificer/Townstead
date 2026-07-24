@@ -27,7 +27,7 @@ public final class DockLocationIndex {
     public static void rebuildVillage(ServerLevel level, Village village) {
         if (level == null || village == null) return;
         List<Dock> docks = new ArrayList<>();
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             Dock dock = dockFromBuilding(building);
             if (dock != null) docks.add(dock);
         }

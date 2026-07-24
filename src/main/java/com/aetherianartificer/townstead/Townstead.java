@@ -751,6 +751,10 @@ public class Townstead {
                 e.setNewSpeed(com.aetherianartificer.townstead.root.harvest.InnateTool.breakSpeed(e.getEntity(), e.getState(),
                         com.aetherianartificer.townstead.root.ability.GeneAbilityTicker.aerialBreakSpeed(e.getEntity(),
                                 com.aetherianartificer.townstead.root.hook.PhenoHooks.breakSpeed(e.getEntity(), e.getNewSpeed())))));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.entity.player.PlayerEvent.ItemSmeltedEvent e) ->
+                com.aetherianartificer.townstead.compat.farmersdelight.PlayerCookingHooks.onSmelted(
+                        e.getEntity(), e.getSmelting()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerEvent.HarvestCheck e) -> {
             if (!e.canHarvest() && (com.aetherianartificer.townstead.root.harvest.ModifyHarvest.allows(
                     e.getEntity(), e.getTargetBlock())
@@ -1128,6 +1132,10 @@ public class Townstead {
                 e.setNewSpeed(com.aetherianartificer.townstead.root.harvest.InnateTool.breakSpeed(e.getEntity(), e.getState(),
                         com.aetherianartificer.townstead.root.ability.GeneAbilityTicker.aerialBreakSpeed(e.getEntity(),
                                 com.aetherianartificer.townstead.root.hook.PhenoHooks.breakSpeed(e.getEntity(), e.getNewSpeed())))));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.entity.player.PlayerEvent.ItemSmeltedEvent e) ->
+                com.aetherianartificer.townstead.compat.farmersdelight.PlayerCookingHooks.onSmelted(
+                        e.getEntity(), e.getSmelting()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerEvent.HarvestCheck e) -> {
             if (!e.canHarvest() && (com.aetherianartificer.townstead.root.harvest.ModifyHarvest.allows(
                     e.getEntity(), e.getTargetBlock())
@@ -1178,7 +1186,17 @@ public class Townstead {
 
     private void onCommonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols.bootstrap();
+            com.aetherianartificer.townstead.compat.pizzadelight.PizzaDelightCompat.bootstrap();
             if (!ModCompat.isLoaded("farmersdelight")) return;
+            // Specialization paths read worksite contents through the cook-assignment model.
+            com.aetherianartificer.townstead.profession.career.PathAffinity.registerWorksiteProbe(
+                    (entity, worksites) -> entity
+                            instanceof net.conczin.mca.entity.VillagerEntityMCA villager
+                            && entity.level() instanceof net.minecraft.server.level.ServerLevel server
+                            && com.aetherianartificer.townstead.compat.farmersdelight
+                                    .FarmersDelightCookAssignment
+                                    .worksiteContainsAny(server, villager, worksites));
             VillagerProfession cook = COOK_PROFESSION.get();
             // MCA drops non-important professions with no JOB_SITE memory.
             // Mark cook important so kitchen-assigned cooks are retained.
@@ -1899,6 +1917,8 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.root.rig.RigJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.disposition.DispositionRelationsLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
+        event.addListener(new com.aetherianartificer.townstead.profession.def.ComboSkills.Loader());
+        event.addListener(new com.aetherianartificer.townstead.compat.farmersdelight.cook.Workstations.Loader());
         event.addListener(new com.aetherianartificer.townstead.root.trait.TraitJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.attachment.AttachmentServerLoader());
         event.addListener(new com.aetherianartificer.townstead.chronicle.template.ChronicleEventJsonLoader());
@@ -1953,7 +1973,7 @@ public class Townstead {
         }
         if (village.isEmpty() || !village.get().isWithinBorder(villager)) return false;
 
-        for (net.conczin.mca.server.world.data.Building building : village.get().getBuildings().values()) {
+        for (net.conczin.mca.server.world.data.Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village.get())) {
             if (!building.isComplete()) continue;
             String type = building.getType();
             if (type == null) continue;
@@ -3078,9 +3098,8 @@ public class Townstead {
                                     IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer sp) {
-                com.aetherianartificer.townstead.profession.career.CareerChoices.chooseFromAcquired(
-                        sp, net.minecraft.resources.ResourceLocation.tryParse(payload.skillId()));
-                com.aetherianartificer.townstead.profession.career.CareerTreeOpener.send(sp);
+                com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleChoose(
+                        sp, payload.skillId());
             }
         });
     }

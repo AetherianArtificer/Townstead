@@ -25,8 +25,9 @@ import java.util.Set;
  * One work-completion path for player and NPC Career progression: XP (with skill-granted
  * capability bonuses), the semantic chronicle tap, and the acquisition sweep. Careers are keyed
  * by profession registry id; every work engine routes through here so all careers get the same
- * treatment. Advanced work also advances every ancestor career (a Pizzaiolo making pizza is
- * still cooking), so a specialist's parent history never stalls.
+ * treatment. Careers are FLAT: work advances exactly the career it belongs to — a Baker
+ * baking levels Baker, and any relationship between careers is expressed laterally
+ * (Combo Skills, requirements), never through a parent graph.
  */
 public final class CareerProgression {
     private CareerProgression() {}
@@ -47,10 +48,14 @@ public final class CareerProgression {
         if (store == null) return new ProfessionProgress.GainResult(0, 1, 1, false);
         setPrimaryIfAbsent(worker, career);
         int xp = withSkillBonus(worker, career, baseXp, magnitude);
+        Set<ResourceLocation> combosBefore = comboIds(worker);
         ProfessionProgress.GainResult result = ProfessionProgress.addXp(store, career, xp, gameTime);
-        Set<ResourceLocation> affected = careerAndAncestors(career);
-        for (ResourceLocation ancestor : affected) {
-            if (!ancestor.equals(career)) ProfessionProgress.addXp(store, ancestor, xp, gameTime);
+        Set<ResourceLocation> affected = Set.of(career);
+        Map<ResourceLocation, ProfessionProgress.GainResult> gains = new java.util.LinkedHashMap<>();
+        gains.put(career, result);
+        notifyTierUps(worker, gains);
+        if (result.tierUp()) {
+            notifyComboUnlocks(worker, combosBefore);
         }
         ChronicleTaps.work(worker, chronicleVerb, objectId, paramName, magnitude, semanticParams);
         for (ResourceLocation acquired : CareerAcquisitions.acquireEligible(
@@ -62,7 +67,8 @@ public final class CareerProgression {
                         def == null ? Component.literal(acquired.toString()) : def.displayName()), false);
             }
         }
-        if (result.tierUp() && worker instanceof VillagerEntityMCA) {
+        boolean tieredUp = gains.values().stream().anyMatch(ProfessionProgress.GainResult::tierUp);
+        if (tieredUp && worker instanceof VillagerEntityMCA) {
             SkillPoints.autoSpend(worker, affected);
         }
         if (worker instanceof Player player) {
@@ -70,9 +76,8 @@ public final class CareerProgression {
             if (profile != null) {
                 for (ResourceLocation trackedId : profile.trackedCareers()) {
                     ProfessionDef def = ProfessionDefs.byId(trackedId);
-                    if (def == null || def.isRoot()
+                    if (def == null
                             || profile.acquiredCareers().contains(trackedId)
-                            || def.parents().stream().noneMatch(affected::contains)
                             || !def.eligible(worker)) continue;
                     player.displayClientMessage(Component.translatable(
                             "townstead.career.tracked.ready", def.displayName()), false);
@@ -83,18 +88,50 @@ public final class CareerProgression {
         return result;
     }
 
-    /** The career plus every ancestor through the def parent graph, cycle-safe. */
-    private static Set<ResourceLocation> careerAndAncestors(ResourceLocation career) {
-        Set<ResourceLocation> visited = new LinkedHashSet<>();
-        Deque<ResourceLocation> pending = new ArrayDeque<>();
-        pending.add(career);
-        while (!pending.isEmpty()) {
-            ResourceLocation current = pending.poll();
-            if (!visited.add(current)) continue;
-            ProfessionDef def = ProfessionDefs.byId(current);
-            if (def != null) pending.addAll(def.parents());
+    /** Rank-up is the loop's payoff: name the new rank and any skill points it brought. */
+    private static void notifyTierUps(LivingEntity worker,
+                                      Map<ResourceLocation, ProfessionProgress.GainResult> gains) {
+        if (!(worker instanceof Player player)) return;
+        boolean any = false;
+        for (Map.Entry<ResourceLocation, ProfessionProgress.GainResult> entry : gains.entrySet()) {
+            ProfessionProgress.GainResult gain = entry.getValue();
+            if (!gain.tierUp()) continue;
+            ProfessionDef def = ProfessionDefs.byId(entry.getKey());
+            if (def == null) continue;
+            any = true;
+            player.displayClientMessage(Component.translatable("townstead.career.levelup",
+                    def.levelName(gain.tierAfter()), def.displayName()), false);
+            int points = def.skillPointsThrough(gain.tierAfter())
+                    - def.skillPointsThrough(gain.tierBefore());
+            if (points > 0) {
+                player.displayClientMessage(Component.translatable(
+                        "townstead.career.levelup.points", points), false);
+            }
         }
-        return visited;
+        if (any && worker instanceof net.minecraft.server.level.ServerPlayer sp) {
+            sp.playNotifySound(net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 0.55f, 1.15f);
+        }
+    }
+
+    private static Set<ResourceLocation> comboIds(LivingEntity worker) {
+        Set<ResourceLocation> ids = new LinkedHashSet<>();
+        for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.computeUnlocked(worker)) {
+            ids.add(combo.id());
+        }
+        return ids;
+    }
+
+    /** A rank-up can complete a Combo Skill's thresholds; announce what the history earned. */
+    private static void notifyComboUnlocks(LivingEntity worker, Set<ResourceLocation> before) {
+        com.aetherianartificer.townstead.profession.def.ComboSkills.invalidate(worker);
+        for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.computeUnlocked(worker)) {
+            if (before.contains(combo.id())) continue;
+            if (worker instanceof Player player) {
+                player.displayClientMessage(Component.translatable(
+                        "townstead.career.combo_unlocked", combo.displayName()), false);
+            }
+        }
     }
 
     /**

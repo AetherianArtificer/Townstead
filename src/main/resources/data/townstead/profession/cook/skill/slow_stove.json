@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Slow Stove"
+  },
+  "icon": "minecraft:cauldron",
+  "description": {
+    "text": "Patient, careful cooking. Every dish earns 2 additional Cook XP."
+  },
+  "tier": 3,
+  "cost": 2,
+  "skill_group": "townstead:cook_style",
+  "exclusive_with": [
+    "open_flame"
+  ],
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_flat",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.ai.work;
 
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightPathingHooks;
+import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -51,6 +52,10 @@ public final class WorkPathing {
         if (!isPassable(feetState, level, feetPos)) return false;
         if (!isPassable(headState, level, headPos)) return false;
         if (!floorState.isFaceSturdy(level, floorPos, Direction.UP)) return false;
+        // Standing ON a station or kitchen furniture is never a valid work stand: it puts
+        // the villager outside the building's recognized floor cells (arrival never
+        // registers) and looks absurd besides.
+        if (StationHandler.avoidStandingSurface(floorState)) return false;
         if (FarmersDelightPathingHooks.isUnsafeWorkSurface(level, floorPos)
                 || FarmersDelightPathingHooks.isUnsafeWorkSurface(level, feetPos)
                 || FarmersDelightPathingHooks.isUnsafeWorkSurface(level, headPos)) {

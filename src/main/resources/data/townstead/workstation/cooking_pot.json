@@ -1,0 +1,9 @@
+{
+  "mods": "farmersdelight",
+  "blocks": [
+    "farmersdelight:cooking_pot"
+  ],
+  "type": "hot_station",
+  "container_slot": 7,
+  "ingredient_slots": 6
+}

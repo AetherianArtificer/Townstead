@@ -22,12 +22,29 @@ public final class FarmersDelightCookAssignment {
     private static final String[] COOK_PROFESSION_IDS = new String[] {
             "townstead:cook",
             "chefsdelight:cook",
+            "chefsdelight:chef",
             "vca:cook",
             "villagerclothingaddition:cook"
     };
 
     private FarmersDelightCookAssignment() {}
 
+    /**
+     * Whether this profession's def (directly or via aliases) declares cook-family work. The
+     * runtime authority for who is a cook; requires loaded profession defs.
+     */
+    public static boolean declaresCookWork(VillagerProfession profession) {
+        return com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.professionDeclares(
+                profession,
+                com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK,
+                com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP);
+    }
+
+    /**
+     * Startup/client-safe id check for contexts where profession defs are unavailable: the
+     * trades event fires before datapacks load, and dedicated-server clients have no defs.
+     * Everything at runtime goes through {@link #declaresCookWork}.
+     */
     public static boolean isExternalCookProfession(VillagerProfession profession) {
         if (profession == null) return false;
         for (String id : COOK_PROFESSION_IDS) {
@@ -42,22 +59,43 @@ public final class FarmersDelightCookAssignment {
         return false;
     }
 
+    /**
+     * The registered profession to assign auto-promoted cooks. Careers are flat, but gated
+     * careers (those declaring acquisition routes) can also declare cook work —
+     * auto-promotion must target a career anyone can simply practice. Deterministic: practiced
+     * beats gated, then lowest id, regardless of registry map order.
+     */
     public static VillagerProfession resolveAssignableCookProfession() {
-        for (String id : COOK_PROFESSION_IDS) {
-            //? if >=1.21 {
-            ResourceLocation key = ResourceLocation.parse(id);
-            //?} else {
-            /*ResourceLocation key = new ResourceLocation(id);
-            *///?}
-            if (!BuiltInRegistries.VILLAGER_PROFESSION.containsKey(key)) continue;
-            VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.get(key);
-            if (profession != null && profession != VillagerProfession.NONE) return profession;
+        com.aetherianartificer.townstead.profession.def.ProfessionDef best = null;
+        for (com.aetherianartificer.townstead.profession.def.ProfessionDef def
+                : com.aetherianartificer.townstead.profession.def.ProfessionDefs.all().values()) {
+            boolean declares = false;
+            for (com.aetherianartificer.townstead.profession.def.WorkTaskDef task : def.workTasks()) {
+                if (task.type().equals(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK)) {
+                    declares = true;
+                    break;
+                }
+            }
+            if (!declares) continue;
+            if (!BuiltInRegistries.VILLAGER_PROFESSION.containsKey(def.id())) continue;
+            VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.get(def.id());
+            if (profession == null || profession == VillagerProfession.NONE) continue;
+            if (best == null || prefer(def, best)) best = def;
         }
-        return null;
+        if (best == null) return null;
+        return BuiltInRegistries.VILLAGER_PROFESSION.get(best.id());
+    }
+
+    private static boolean prefer(com.aetherianartificer.townstead.profession.def.ProfessionDef candidate,
+                                  com.aetherianartificer.townstead.profession.def.ProfessionDef current) {
+        boolean candidatePracticed = candidate.isRoot();
+        boolean currentPracticed = current.isRoot();
+        if (candidatePracticed != currentPracticed) return candidatePracticed;
+        return candidate.id().compareTo(current.id()) < 0;
     }
 
     public static boolean canVillagerWorkAsCook(ServerLevel level, VillagerEntityMCA villager) {
-        return assignedKitchen(level, villager).isPresent();
+        return assignedCookSite(level, villager).isPresent();
     }
 
     public static boolean hasAvailableCookSlot(ServerLevel level, VillagerEntityMCA villager) {
@@ -66,20 +104,20 @@ public final class FarmersDelightCookAssignment {
         Village village = villageOpt.get();
         if (!isEligibleVillageMember(village, villager)) return false;
 
-        List<KitchenSlot> slots = buildKitchenSlots(village);
-        if (slots.isEmpty()) return false;
+        List<CookSite> sites = buildCookSites(level, village);
+        if (sites.isEmpty()) return false;
 
         int activeCooks = 0;
         for (VillagerEntityMCA resident : village.getResidents(level)) {
-            if (isExternalCookProfession(resident.getVillagerData().getProfession())) {
+            if (declaresCookWork(resident.getVillagerData().getProfession())) {
                 activeCooks++;
             }
         }
-        return activeCooks < slots.size();
+        return activeCooks < sites.size();
     }
 
     public static boolean shouldLoseCookProfession(ServerLevel level, VillagerEntityMCA villager) {
-        return assignedKitchen(level, villager).isEmpty();
+        return assignedCookSite(level, villager).isEmpty();
     }
 
     public static Optional<Village> resolveVillage(VillagerEntityMCA villager) {
@@ -106,7 +144,7 @@ public final class FarmersDelightCookAssignment {
 
     public static int highestKitchenTier(Village village) {
         int best = 0;
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             String type = building.getType();
             if (!isKitchenType(type)) continue;
             best = Math.max(best, kitchenTierFromType(type));
@@ -131,17 +169,23 @@ public final class FarmersDelightCookAssignment {
         return effectiveKitchenTier(level, villager);
     }
 
-    public static Optional<Building> assignedKitchen(ServerLevel level, VillagerEntityMCA villager) {
+    /**
+     * The cook site this villager works: a kitchen slot, or — once kitchen slots run out — a
+     * standalone outdoor post (a declared via-surface POI standing outside every kitchen).
+     * Sites and cooks are both deterministically ordered, so assignment is stable across
+     * callers and ticks.
+     */
+    public static Optional<CookSite> assignedCookSite(ServerLevel level, VillagerEntityMCA villager) {
         Optional<Village> villageOpt = resolveVillage(villager);
         if (villageOpt.isEmpty()) return Optional.empty();
         Village village = villageOpt.get();
         if (!isEligibleVillageMember(village, villager)) return Optional.empty();
 
-        List<KitchenSlot> slots = buildKitchenSlots(village);
-        if (slots.isEmpty()) return Optional.empty();
+        List<CookSite> sites = buildCookSites(level, village);
+        if (sites.isEmpty()) return Optional.empty();
 
         List<VillagerEntityMCA> cooks = sortedCookResidents(level, village);
-        if (isExternalCookProfession(villager.getVillagerData().getProfession())) {
+        if (declaresCookWork(villager.getVillagerData().getProfession())) {
             boolean present = cooks.stream().anyMatch(v -> v.getUUID().equals(villager.getUUID()));
             if (!present) {
                 cooks.add(villager);
@@ -155,18 +199,39 @@ public final class FarmersDelightCookAssignment {
                 break;
             }
         }
-        if (idx < 0 || idx >= slots.size()) return Optional.empty();
-        return Optional.of(slots.get(idx).building());
+        if (idx < 0 || idx >= sites.size()) return Optional.empty();
+        return Optional.of(sites.get(idx));
+    }
+
+    public static Optional<Building> assignedKitchen(ServerLevel level, VillagerEntityMCA villager) {
+        return assignedCookSite(level, villager).map(CookSite::building).filter(java.util.Objects::nonNull);
     }
 
     public static Set<Long> assignedKitchenBounds(ServerLevel level, VillagerEntityMCA villager) {
-        Optional<Building> kitchen = assignedKitchen(level, villager);
-        if (kitchen.isEmpty()) return Set.of();
-        Set<Long> bounds = new HashSet<>();
-        for (BlockPos bp : (Iterable<BlockPos>) kitchen.get().getBlockPosStream()::iterator) {
-            bounds.add(bp.asLong());
+        Optional<CookSite> site = assignedCookSite(level, villager);
+        if (site.isEmpty()) return Set.of();
+        // The walkable room discovered from the world, not MCA's furniture-only geometry:
+        // standable floor, stands, and arrival detection all derive from this set. An outdoor
+        // post anchors the same flood-fill on its workstation block.
+        Building kitchen = site.get().building();
+        if (kitchen != null) {
+            return com.aetherianartificer.townstead.ai.work.WorkSiteBounds.workArea(level, kitchen);
         }
-        return bounds;
+        return com.aetherianartificer.townstead.ai.work.WorkSiteBounds.workAreaAround(level, site.get().post());
+    }
+
+    /**
+     * PathAffinity worksite probe: whether the villager's assigned cook worksite contains any
+     * of these blocks. Runs on tier-up only (auto-spend), so a bounds scan is fine.
+     */
+    public static boolean worksiteContainsAny(ServerLevel level, VillagerEntityMCA villager,
+                                              List<ResourceLocation> blockIds) {
+        for (long packed : assignedKitchenBounds(level, villager)) {
+            BlockPos pos = BlockPos.of(packed);
+            ResourceLocation id = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+            if (blockIds.contains(id)) return true;
+        }
+        return false;
     }
 
     public static boolean isKitchenType(String buildingTypeId) {
@@ -183,7 +248,7 @@ public final class FarmersDelightCookAssignment {
 
     private static List<Building> sortedKitchens(Village village) {
         List<Building> kitchens = new ArrayList<>();
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!isKitchenType(building.getType())) continue;
             kitchens.add(building);
         }
@@ -208,7 +273,7 @@ public final class FarmersDelightCookAssignment {
         List<VillagerEntityMCA> cooks = new ArrayList<>();
         Set<UUID> seen = new HashSet<>();
         for (VillagerEntityMCA resident : village.getResidents(level)) {
-            if (!isExternalCookProfession(resident.getVillagerData().getProfession())) continue;
+            if (!declaresCookWork(resident.getVillagerData().getProfession())) continue;
             if (!seen.add(resident.getUUID())) continue;
             cooks.add(resident);
         }
@@ -227,6 +292,39 @@ public final class FarmersDelightCookAssignment {
         }
         return slots;
     }
+
+    /** Kitchen slots first, then outdoor posts — the same order capacity counts them. */
+    private static List<CookSite> buildCookSites(ServerLevel level, Village village) {
+        List<CookSite> sites = new ArrayList<>();
+        for (KitchenSlot slot : buildKitchenSlots(village)) {
+            sites.add(new CookSite(slot.building(), null));
+        }
+        com.aetherianartificer.townstead.profession.def.ProfessionDef def = cookDef();
+        if (def != null) {
+            for (BlockPos post : com.aetherianartificer.townstead.profession.ProfessionCapacity
+                    .standalonePois(level, village, def)) {
+                sites.add(new CookSite(null, post));
+            }
+        }
+        return sites;
+    }
+
+    /** The def whose work tasks declare cook work: the career the cook site machinery serves. */
+    private static com.aetherianartificer.townstead.profession.def.ProfessionDef cookDef() {
+        for (com.aetherianartificer.townstead.profession.def.ProfessionDef def
+                : com.aetherianartificer.townstead.profession.def.ProfessionDefs.all().values()) {
+            for (com.aetherianartificer.townstead.profession.def.WorkTaskDef task : def.workTasks()) {
+                if (task.type().equals(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK)) {
+                    return def;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** One unit of cook employment: a kitchen (building non-null) or an outdoor post. */
+    public record CookSite(@javax.annotation.Nullable Building building,
+                           @javax.annotation.Nullable BlockPos post) {}
 
     private record KitchenSlot(Building building, int ordinal) {}
 

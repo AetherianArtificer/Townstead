@@ -15,27 +15,36 @@ class ScannedProfessionsTest {
     }
 
     @Test
-    void advancedDefWithSchemaIsEligible() {
+    void gatedCareerIsEligible() {
+        // The mods-gate path is untestable here (ModGate's default predicate needs ModList);
+        // ModGateTest covers the grammar via the predicate overload.
         assertTrue(ScannedProfessions.eligible(obj(
-                "{ 'schema': 'townstead:profession/v1', 'parents': ['townstead:cook'] }")));
+                "{ 'schema': 'townstead:profession/v1', 'acquisition_routes': ['mentor'] }")),
+                "gated careers (barista, baker) register their own professions");
+        assertTrue(ScannedProfessions.eligible(obj(
+                "{ 'schema': 'townstead:profession/v2', 'acquisition_routes': ['mentor'] }")),
+                "dir-layout v2 defs register too");
     }
 
     @Test
-    void rootDefIsNotEligible() {
+    void practicedCareerIsNotEligible() {
         assertFalse(ScannedProfessions.eligible(obj(
                 "{ 'schema': 'townstead:profession/v1' }")),
-                "roots describe professions that already exist");
+                "practiced careers extend professions that already exist");
         assertFalse(ScannedProfessions.eligible(obj(
-                "{ 'schema': 'townstead:profession/v1', 'parents': [] }")));
+                "{ 'schema': 'townstead:profession/v2', 'acquisition_routes': [] }")));
+        assertFalse(ScannedProfessions.eligible(obj(
+                "{ 'schema': 'townstead:profession/v1', 'parents': ['townstead:cook'] }")),
+                "parents is dead schema; it neither gates nor grants registration");
     }
 
     @Test
     void foreignProfessionFolderIsNotEligible() {
         assertFalse(ScannedProfessions.eligible(obj(
-                "{ 'parents': ['townstead:cook'] }")),
+                "{ 'acquisition_routes': ['mentor'] }")),
                 "another mod's profession/ data folder must not be swept in");
         assertFalse(ScannedProfessions.eligible(obj(
-                "{ 'schema': 'othermod:profession/v9', 'parents': ['townstead:cook'] }")));
+                "{ 'schema': 'othermod:profession/v9', 'acquisition_routes': ['mentor'] }")));
     }
 
     @Test

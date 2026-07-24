@@ -65,8 +65,8 @@ public class BaristaWorkTask extends ProducerWorkTask {
 
     @Override
     protected boolean isEligibleVillager(ServerLevel level, VillagerEntityMCA villager) {
-        VillagerProfession profession = villager.getVillagerData().getProfession();
-        if (!FarmersDelightBaristaAssignment.isBaristaProfession(profession)) return false;
+        if (!com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.permitsTask(
+                villager, CookTaskDeclarations.BREW)) return false;
         return FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager);
     }
 
@@ -116,8 +116,14 @@ public class BaristaWorkTask extends ProducerWorkTask {
             setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_WORKSITE, "");
             return null;
         }
-        ProducerStationIndex.Selection best = ProducerStationIndex.chooseBaristaSelection(
-                level, villager, cafeSnapshot, cafeBounds, abandonedUntilByStation, gameTime, recipeCooldownUntil);
+        ProducerStationIndex.Selection best = null;
+        for (List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> bucket
+                : CookTaskDeclarations.brewBuckets(villager)) {
+            best = ProducerStationIndex.chooseBaristaSelection(
+                    level, villager, cafeSnapshot, cafeBounds, abandonedUntilByStation,
+                    gameTime, recipeCooldownUntil, CookTaskDeclarations.stationFilter(bucket));
+            if (best != null) break;
+        }
         if (best == null) return null;
 
         stationType = best.station().type();

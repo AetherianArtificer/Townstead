@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Cast-Iron Stomach"
+  },
+  "icon": "minecraft:suspicious_stew",
+  "description": {
+    "text": "Years of tasting every experiment. Immune to poison and hunger effects."
+  },
+  "tier": 4,
+  "cost": 2,
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:poison",
+      "minecraft:hunger"
+    ]
+  }
+}

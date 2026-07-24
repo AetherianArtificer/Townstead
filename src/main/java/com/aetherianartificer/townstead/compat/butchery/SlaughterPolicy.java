@@ -1,6 +1,9 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskDef;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -99,6 +102,10 @@ public final class SlaughterPolicy {
         if (NEVER_KILL.contains(animal.getType())) return false;
         if (!SPECIES_TO_CARCASS.containsKey(animal.getType())) return false;
         if (butcher == null || butcher.getUUID().equals(animal.getUUID())) return false;
+        // A declared work task may narrow the species this profession slaughters;
+        // it can never widen past the whitelist or NEVER_KILL above.
+        WorkTaskDef declaredTask = WorkTaskDeclarations.first(butcher, WorkTaskTypes.SLAUGHTER);
+        if (declaredTask != null && !declaredTask.allowsEntity(animal.getType())) return false;
         return true;
     }
 

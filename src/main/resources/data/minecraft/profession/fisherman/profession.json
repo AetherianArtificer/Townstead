@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Fisherman"
+  },
+  "icon": "minecraft:cod",
+  "description": {
+    "text": "Cast the line to build a history of the catch."
+  },
+  "unlock_model": "experiential",
+  "poi": [
+    {
+      "type": "townstead:job_block",
+      "block": "minecraft:barrel"
+    }
+  ],
+  "work_tasks": [
+    {
+      "type": "townstead_work:fish",
+      "weight": 10
+    }
+  ],
+  "daily_cap": 60,
+  "max_xp": 1000,
+  "levels": [
+    {
+      "xp": 20
+    },
+    {
+      "xp": 40
+    },
+    {
+      "xp": 60
+    },
+    {
+      "xp": 80
+    },
+    {}
+  ]
+}

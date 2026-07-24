@@ -58,7 +58,7 @@ public final class EnclosureBuildingSync {
         if (EnclosureSuppression.isSuppressed(level, village, bb)) return false;
 
         int id = findOverlappingEnclosureId(village, bb).orElseGet(() -> synthIdFor(bb));
-        Building existing = village.getBuildings().get(id);
+        Building existing = com.aetherianartificer.townstead.compat.mca.McaBuildings.byId(village, id);
         boolean purged = purgeOverlappingStaleEnclosures(level, village, bb, id);
         if (existing != null && buildingType.equals(existing.getType()) && !purged) {
             return false;
@@ -75,8 +75,7 @@ public final class EnclosureBuildingSync {
                         new int[] {bb.minX(), bb.minY(), bb.minZ(), bb.maxX(), bb.maxY(), bb.maxZ()},
                         toPackedPositions(enclosureBlocks)));
         CompoundTag nbt = buildingNbt(id, buildingType, enclosure, enclosureBlocks);
-        Building building = new Building(nbt);
-        village.getBuildings().put(id, building);
+        com.aetherianartificer.townstead.compat.mca.McaBuildings.putSynthetic(village, id, nbt);
         village.calculateDimensions();
         village.markDirty();
         LOG.info("[EnclosureSync] {} {} at [{},{},{}]..[{},{},{}] id={}",
@@ -89,7 +88,7 @@ public final class EnclosureBuildingSync {
     }
 
     private static Optional<Integer> findOverlappingEnclosureId(Village village, BoundingBox bb) {
-        for (Map.Entry<Integer, Building> e : village.getBuildings().entrySet()) {
+        for (Map.Entry<Integer, Building> e : com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).entrySet()) {
             Building other = e.getValue();
             String t = other.getType();
             if (t == null || !EnclosureTypeIndex.isEnclosureType(t)) continue;
@@ -100,7 +99,7 @@ public final class EnclosureBuildingSync {
 
     private static boolean purgeOverlappingStaleEnclosures(ServerLevel level, Village village, BoundingBox bb, int selfId) {
         List<Integer> toRemove = new ArrayList<>();
-        for (Map.Entry<Integer, Building> e : village.getBuildings().entrySet()) {
+        for (Map.Entry<Integer, Building> e : com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).entrySet()) {
             Integer otherId = e.getKey();
             if (otherId == selfId) continue;
             Building other = e.getValue();

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.profession.def;
 
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Set;
@@ -19,9 +20,16 @@ public interface JobSiteProvider {
 
     String typeKey();
 
-    /** A vanilla-style job-site block. */
-    record JobBlock(Set<ResourceLocation> blocks) implements JobSiteProvider {
+    /**
+     * A vanilla-style job-site block. The def's {@code poi} list is an ordered acquisition
+     * hierarchy: the first entry is the primary surface, and a subordinate job-block entry may
+     * name {@code via} — the (alias) profession whose vanilla POI claim manifests this surface
+     * (e.g. the cooking pot manifests through {@code chefsdelight:chef}). Claiming such a POI
+     * acquires the canonical career, gated by the village's total capacity.
+     */
+    record JobBlock(Set<ResourceLocation> blocks, @Nullable ResourceLocation via) implements JobSiteProvider {
         public JobBlock { blocks = Set.copyOf(blocks); }
+        public JobBlock(Set<ResourceLocation> blocks) { this(blocks, null); }
         public static final String KEY = "townstead:job_block";
         @Override public String typeKey() { return KEY; }
     }

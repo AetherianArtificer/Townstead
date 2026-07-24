@@ -1,0 +1,26 @@
+{
+  "display_name": {
+    "text": "Charcutier"
+  },
+  "description": {
+    "text": "The block and the kitchen meet in cured meat. Earn 1 additional XP in both crafts whenever work is completed."
+  },
+  "icon": "farmersdelight:ham",
+  "mods": "farmersdelight",
+  "professions": {
+    "townstead:cook": 2,
+    "minecraft:butcher": 2
+  },
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_flat",
+      "op": "add",
+      "value": 1
+    },
+    {
+      "capability": "townstead:butcher_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

@@ -39,7 +39,10 @@ public final class JobSiteProviders {
                 ResourceLocation id = ResourceLocation.tryParse(GsonHelper.getAsString(json, "block", ""));
                 if (id != null) blocks.add(id);
             }
-            return blocks.isEmpty() ? null : new JobSiteProvider.JobBlock(blocks);
+            ResourceLocation via = json.has("via")
+                    ? ResourceLocation.tryParse(GsonHelper.getAsString(json, "via", ""))
+                    : null;
+            return blocks.isEmpty() ? null : new JobSiteProvider.JobBlock(blocks, via);
         });
         register(JobSiteProvider.Building.KEY, json -> {
             List<String> prefixes = new ArrayList<>();

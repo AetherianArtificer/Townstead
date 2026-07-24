@@ -83,6 +83,9 @@ dependencies {
     }
     compileOnly("dev.architectury:architectury-forge:9.2.14")
     compileOnly(fg.deobf("vazkii.patchouli:Patchouli:1.20.1-85-FORGE:api"))
+    // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
+    compileOnly(fg.deobf("mezz.jei:jei-1.20.1-common-api:15.20.0.135"))
+    compileOnly(fg.deobf("mezz.jei:jei-1.20.1-forge-api:15.20.0.135"))
     // No Sponge Mixin annotation processor: this build ships no refmap (targets
     // are hand-written SRG with remap=false). MixinExtras' own processor is kept
     // only because its supported ForgeGradle setup requires it.

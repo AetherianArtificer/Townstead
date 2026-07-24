@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Baker"
+  },
+  "icon": "minecraft:bread",
+  "description": {
+    "text": "A cook devoted to the oven, from daily bread to fine pastry."
+  },
+  "mods": {
+    "any": [
+      "farmersdelight",
+      "rusticdelight"
+    ]
+  },
+  "hidden": true,
+  "requirements": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:cooked",
+        "at_least": 25
+      },
+      {
+        "type": "pheno:career_xp",
+        "career": "townstead:cook",
+        "at_least": 110
+      }
+    ]
+  },
+  "acquisition_routes": [
+    "self_discovery",
+    "mentor",
+    "institution"
+  ],
+  "unlock_model": "experiential",
+  "history_counters": [
+    "townstead:cooked"
+  ],
+  "poi": [
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/farmersdelight/kitchen_l"
+    }
+  ]
+}

@@ -26,7 +26,7 @@ public final class BuildingTierReconciler {
 
     public static void reconcileVillage(Village village, ServerLevel level) {
         if (village == null) return;
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             reconcileBuilding(building, level);
         }
     }

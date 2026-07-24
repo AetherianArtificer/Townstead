@@ -32,7 +32,7 @@ public final class ShepherdPenScanner {
         Optional<Village> villageOpt = resolveVillage(villager);
         if (villageOpt.isEmpty()) return Collections.emptyList();
         List<Building> out = new ArrayList<>();
-        for (Building b : villageOpt.get().getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(villageOpt.get())) {
             if (!b.isComplete()) continue;
             if (PEN_TYPE.equals(b.getType())) out.add(b);
         }
@@ -48,7 +48,7 @@ public final class ShepherdPenScanner {
         Optional<Village> villageOpt = resolveVillage(villager);
         if (villageOpt.isEmpty()) return Collections.emptyList();
         List<Building> out = new ArrayList<>();
-        for (Building b : villageOpt.get().getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(villageOpt.get())) {
             if (!b.isComplete()) continue;
             if (WOOL_SHED_TYPE.equals(b.getType())) out.add(b);
         }

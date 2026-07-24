@@ -16,16 +16,25 @@ import org.jetbrains.annotations.Nullable;
  * </pre>
  *
  * An optional {@code secondary_cost} adds the second input slot. Items are resolved at offer
- * time, so a trade referencing an absent mod's item simply never appears.
+ * time, so a trade referencing an absent mod's item simply never appears. An optional
+ * {@code requires_skill} (bare refs scope to the owning profession's directory) hides the
+ * offer until the merchant has learned that skill, so a specialization path's wares only
+ * appear once the villager specs into the path.
  */
 public record TradeDef(
         ResourceLocation costItem, int costCount,
         @Nullable ResourceLocation secondaryCostItem, int secondaryCostCount,
         ResourceLocation resultItem, int resultCount,
-        int maxUses, int villagerXp, float priceMultiplier) {
+        int maxUses, int villagerXp, float priceMultiplier,
+        @Nullable ResourceLocation requiresSkill) {
 
     @Nullable
     public static TradeDef parse(JsonObject json) {
+        return parse(json, null);
+    }
+
+    @Nullable
+    public static TradeDef parse(JsonObject json, @Nullable ResourceLocation profession) {
         ResourceLocation cost = itemId(json, "cost");
         ResourceLocation result = itemId(json, "result");
         if (cost == null || result == null) return null;
@@ -36,7 +45,17 @@ public record TradeDef(
                 result, itemCount(json, "result"),
                 GsonHelper.getAsInt(json, "max_uses", 12),
                 GsonHelper.getAsInt(json, "villager_xp", 2),
-                GsonHelper.getAsFloat(json, "price_multiplier", 0.05f));
+                GsonHelper.getAsFloat(json, "price_multiplier", 0.05f),
+                skillRef(GsonHelper.getAsString(json, "requires_skill", ""), profession));
+    }
+
+    @Nullable
+    private static ResourceLocation skillRef(String raw, @Nullable ResourceLocation profession) {
+        if (raw == null || raw.isBlank()) return null;
+        if (raw.contains(":")) return ResourceLocation.tryParse(raw);
+        if (profession == null) return null;
+        return ResourceLocation.tryParse(
+                profession.getNamespace() + ":" + profession.getPath() + "/" + raw);
     }
 
     @Nullable

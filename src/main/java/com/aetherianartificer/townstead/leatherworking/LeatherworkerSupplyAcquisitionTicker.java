@@ -24,7 +24,8 @@ public final class LeatherworkerSupplyAcquisitionTicker {
     private LeatherworkerSupplyAcquisitionTicker() {}
 
     public static void tick(VillagerEntityMCA villager) {
-        if (villager.getVillagerData().getProfession() != VillagerProfession.LEATHERWORKER) return;
+        if (!com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.permitsTask(
+                villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.TAN)) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (!onWorkShift(villager, level)) return;
 

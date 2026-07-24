@@ -49,6 +49,42 @@ public final class DataDrivenTrades {
         }
     }
 
+    /**
+     * Vanilla rolls a merchant's offers once per level-up, so a villager who specs into a
+     * path after leveling would never see its skill-gated wares. Called when a villager
+     * learns a skill: appends the offers that skill just unlocked for levels already
+     * reached, skipping any result already on the ledger.
+     */
+    public static void onSkillLearned(net.minecraft.world.entity.LivingEntity entity,
+                                      ResourceLocation skill) {
+        if (!(entity instanceof net.minecraft.world.entity.npc.Villager villager)) return;
+        if (villager.level().isClientSide()) return;
+        ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION.getKey(
+                villager.getVillagerData().getProfession());
+        if (professionId == null) return;
+        ProfessionDef def = ProfessionDefs.byId(professionId);
+        if (def == null) return;
+        int merchantLevel = Math.min(MAX_LEVEL, villager.getVillagerData().getLevel());
+        var offers = villager.getOffers();
+        for (int level = 1; level <= merchantLevel; level++) {
+            for (TradeDef trade : DataDrivenListing.tradesFor(def, level)) {
+                if (!skill.equals(trade.requiresSkill())) continue;
+                if (hasResult(offers, trade.resultItem())) continue;
+                MerchantOffer offer = DataDrivenListing.offer(trade);
+                if (offer != null) offers.add(offer);
+            }
+        }
+    }
+
+    private static boolean hasResult(net.minecraft.world.item.trading.MerchantOffers offers,
+                                     ResourceLocation resultItem) {
+        for (MerchantOffer offer : offers) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(offer.getResult().getItem());
+            if (resultItem.equals(id)) return true;
+        }
+        return false;
+    }
+
     private record DataDrivenListing(ResourceLocation professionId, int level, int slot)
             implements VillagerTrades.ItemListing {
 
@@ -59,7 +95,15 @@ public final class DataDrivenTrades {
             if (def == null) return null;
             List<TradeDef> trades = tradesFor(def, level);
             if (slot >= trades.size()) return null;
-            return offer(trades.get(slot));
+            TradeDef trade = trades.get(slot);
+            // Path wares stay hidden until this merchant has specced into the path.
+            if (trade.requiresSkill() != null
+                    && !(trader instanceof net.minecraft.world.entity.LivingEntity living
+                            && com.aetherianartificer.townstead.profession.skill.LearnedSkills
+                                    .has(living, trade.requiresSkill()))) {
+                return null;
+            }
+            return offer(trade);
         }
 
         /**

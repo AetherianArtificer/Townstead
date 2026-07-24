@@ -19,6 +19,8 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
+import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -72,7 +74,7 @@ public class ButcherWorkTask extends ProducerWorkTask {
     @Override
     protected boolean isEligibleVillager(ServerLevel level, VillagerEntityMCA villager) {
         VillagerProfession profession = villager.getVillagerData().getProfession();
-        if (profession != VillagerProfession.BUTCHER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.SMOKE)) return false;
         // Yield the smoker while there's higher-priority carcass OR grinder
         // work pending. Without this, the smoker keeps WALK_TARGET held
         // continuously and blocks those tasks (both require

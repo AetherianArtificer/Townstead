@@ -25,7 +25,7 @@ public final class BaristaTradeBackfillTicker {
     public static void tick(VillagerEntityMCA villager) {
         if (!ModCompat.isLoaded("rusticdelight")) return;
         if (villager.tickCount % CHECK_INTERVAL_TICKS != 53) return;
-        if (!FarmersDelightBaristaAssignment.isBaristaProfession(villager.getVillagerData().getProfession())) return;
+        if (!FarmersDelightBaristaAssignment.declaresBaristaWork(villager.getVillagerData().getProfession())) return;
 
         int currentLevel = villager.getVillagerData().getLevel();
         TownsteadVillager.ProfessionMemory memory = TownsteadVillagers.get(villager).professionMemory();

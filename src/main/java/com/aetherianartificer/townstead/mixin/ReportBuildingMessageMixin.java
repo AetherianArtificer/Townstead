@@ -173,7 +173,7 @@ public abstract class ReportBuildingMessageMixin {
     }
 
     private static Building townstead$findEnclosureAt(Village village, BlockPos pos) {
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             String t = b.getType();
             if (t == null || !EnclosureTypeIndex.isEnclosureType(t)) continue;
             if (b.containsPos(pos)) return b;
@@ -182,7 +182,7 @@ public abstract class ReportBuildingMessageMixin {
     }
 
     private static Building townstead$findDockAt(Village village, BlockPos pos) {
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             String t = b.getType();
             if (t == null || !t.startsWith("dock_")) continue;
             if (b.containsPos(pos)) return b;
@@ -256,7 +256,7 @@ public abstract class ReportBuildingMessageMixin {
      * since those are open structures a player can legitimately stand on.
      */
     private static boolean townstead$insideEnclosedBuilding(Village village, BlockPos pos) {
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             String t = b.getType();
             if (t == null) continue;
             if (t.startsWith("dock_")) continue;

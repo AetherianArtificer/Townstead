@@ -82,7 +82,7 @@ public final class BuildingRecognitionTracker {
 
     private static Map<Integer, int[]> snapshotDockBounds(Village village) {
         Map<Integer, int[]> out = new HashMap<>();
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             String t = b.getType();
             if (t == null || !t.startsWith("dock_")) continue;
             BlockPos p0 = b.getPos0();
@@ -122,14 +122,14 @@ public final class BuildingRecognitionTracker {
 
     private static Map<Integer, String> snapshotCurrent(Village village) {
         Map<Integer, String> current = new HashMap<>();
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             current.put(b.getId(), b.getType());
         }
         return current;
     }
 
     private static void fireEstablished(ServerLevel level, Village village, int buildingId, String typeName) {
-        Building building = village.getBuildings().get(buildingId);
+        Building building = com.aetherianartificer.townstead.compat.mca.McaBuildings.byId(village, buildingId);
         if (building == null) return;
         BuildingType bt = building.getBuildingType();
         RecognitionEffects.Tier effectTier = tierFor(typeName);
@@ -144,7 +144,7 @@ public final class BuildingRecognitionTracker {
 
     private static void fireUpgraded(ServerLevel level, Village village, int buildingId,
                                      String prevType, String newType) {
-        Building building = village.getBuildings().get(buildingId);
+        Building building = com.aetherianartificer.townstead.compat.mca.McaBuildings.byId(village, buildingId);
         if (building == null) return;
         BuildingType bt = building.getBuildingType();
         RecognitionEffects.Tier effectTier = tierFor(newType);

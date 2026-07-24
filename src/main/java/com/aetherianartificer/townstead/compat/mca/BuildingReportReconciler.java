@@ -44,6 +44,9 @@ public final class BuildingReportReconciler {
         DockLocationIndex.rebuildVillage(level, village);
         BuildingRecognitionTracker.reconcile(level, village);
         SpiritReconciler.reconcileVillage(level, village);
+        // Floor-system v2 never validates external buildings, so demolished landings/pens
+        // are cleaned up here, at report time with the village's chunks loaded.
+        com.aetherianartificer.townstead.village.VillageSanitizer.sweepDemolishedSynthetics(level, village);
     }
 
     private static void detectAndSyncDockFromReport(ServerLevel level, BlockPos source, Village village, Logger log) {
@@ -61,7 +64,7 @@ public final class BuildingReportReconciler {
     }
 
     public static boolean insideEnclosedBuilding(Village village, BlockPos pos) {
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             String t = b.getType();
             if (t == null) continue;
             if (t.startsWith("dock_")) continue;

@@ -21,7 +21,7 @@ public final class BaristaAutoAssignTicker {
         if (villager.isBaby() || !villager.isAlive() || villager.isSleeping()) return;
 
         VillagerProfession current = villager.getVillagerData().getProfession();
-        if (FarmersDelightBaristaAssignment.isBaristaProfession(current)) {
+        if (FarmersDelightBaristaAssignment.declaresBaristaWork(current)) {
             return;
         }
         if (current != VillagerProfession.NONE) return;

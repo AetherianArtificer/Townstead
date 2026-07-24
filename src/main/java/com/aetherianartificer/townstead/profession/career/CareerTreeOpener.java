@@ -70,6 +70,8 @@ public final class CareerTreeOpener {
         com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(
                 player, "townstead:took_up_work", null, null, 1f,
                 java.util.Map.of("career", careerId.toString()));
+        player.playNotifySound(net.minecraft.sounds.SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT,
+                net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 0.9f);
         player.displayClientMessage(Component.translatable(
                 "townstead.career.vocation.taken", def.displayName()), false);
         send(player);
@@ -94,6 +96,21 @@ public final class CareerTreeOpener {
             player.displayClientMessage(
                     Component.translatable("townstead.career.scribe.off_duty"), false);
             return;
+        }
+        send(player);
+    }
+
+    /** The screen's Learn/Equip click: act, then answer with feedback and a fresh record. */
+    public static void handleChoose(ServerPlayer player, String skillIdRaw) {
+        com.aetherianartificer.townstead.profession.skill.LearnedSkills.Result result =
+                com.aetherianartificer.townstead.profession.career.CareerChoices.chooseFromAcquired(
+                        player, net.minecraft.resources.ResourceLocation.tryParse(skillIdRaw));
+        if (result.ok()) {
+            player.playNotifySound(net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
+        } else if (result.error() != null) {
+            player.displayClientMessage(Component.translatable(
+                    "townstead.career.learn.blocked", result.error()), false);
         }
         send(player);
     }

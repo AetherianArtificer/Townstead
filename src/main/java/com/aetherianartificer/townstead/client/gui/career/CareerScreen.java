@@ -147,10 +147,27 @@ public final class CareerScreen extends Screen {
             return;
         }
         CareerGraphS2CPayload.Node root = tabNodes.stream()
-                .filter(node -> node.kind() == CareerGraphS2CPayload.KIND_ROOT).findFirst().orElse(null);
+                .filter(node -> node.kind() == CareerGraphS2CPayload.KIND_ROOT
+                        || node.kind() == CareerGraphS2CPayload.KIND_ADVANCED)
+                .findFirst().orElse(null);
         if (root == null) return;
         positions.put(root.id(), new int[]{0, 0});
         placeChildren(tabNodes, root.id(), 0, 0, 90f);
+
+        // Combo Skills: shared plaques in a band beneath the career, joined to this tab
+        // because one of their thresholds names it.
+        List<CareerGraphS2CPayload.Node> combos = new ArrayList<>();
+        for (CareerGraphS2CPayload.Node node : tabNodes) {
+            if (node.kind() == CareerGraphS2CPayload.KIND_COMBO
+                    && !positions.containsKey(node.id())) {
+                combos.add(node);
+            }
+        }
+        int comboSpacing = 78;
+        int comboStartX = -(combos.size() - 1) * comboSpacing / 2;
+        for (int i = 0; i < combos.size(); i++) {
+            positions.put(combos.get(i).id(), new int[]{comboStartX + i * comboSpacing, 96});
+        }
     }
 
     // ── Skill ledger: one shelf per level, plaques resting on their shelf ──
@@ -193,7 +210,31 @@ public final class CareerScreen extends Screen {
         ledgerContentW = widest;
     }
 
-    /** The ledger is a document, not open space: panning stops at its edges. */
+    /** Panning always keeps some of the content on the board, in either view. */
+    private void clampBoardPan() {
+        if (!skillViewCareer.isEmpty()) {
+            clampLedgerPan();
+            return;
+        }
+        if (positions.isEmpty()) return;
+        int minX = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxY = Integer.MIN_VALUE;
+        for (int[] local : positions.values()) {
+            minX = Math.min(minX, local[0]);
+            maxX = Math.max(maxX, local[0]);
+            minY = Math.min(minY, local[1]);
+            maxY = Math.max(maxY, local[1]);
+        }
+        panX = Mth.clamp(panX,
+                boardX() + 50 - (boardCenterX() + maxX),
+                boardX() + boardW() - 50 - (boardCenterX() + minX));
+        panY = Mth.clamp(panY,
+                boardY() + 80 - (boardY() + 60 + maxY),
+                boardY() + boardH() - 50 - (boardY() + 60 + minY));
+    }
+
     private void clampLedgerPan() {
         if (skillViewCareer.isEmpty()) return;
         int visibleH = boardH() - 76;
@@ -282,6 +323,7 @@ public final class CareerScreen extends Screen {
                                 pageScroll = 0;
                                 layoutActiveRoot();
                                 refreshEquipButton();
+                                townstead$pageTurn();
                             }
                         })
                 .bounds(pageX() + 6, height - MARGIN - FRAME_THICK - 96, PAGE_W - 12, 20).build());
@@ -348,6 +390,12 @@ public final class CareerScreen extends Screen {
             }
         }
         stackButtons();
+    }
+
+    private static void townstead$pageTurn() {
+        Minecraft.getInstance().getSoundManager().play(
+                net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
+                        net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN, 1.0f));
     }
 
     private boolean hasSkills(String careerId) {
@@ -486,12 +534,9 @@ public final class CareerScreen extends Screen {
                 int y = screenY(local);
                 drawPlaque(g, node, x, y, node.id().equals(hoveredId));
                 if (node.state() == CareerGraphS2CPayload.STATE_ACQUIRED && node.points() > 0) {
-                    // Unspent skill points: a quiet amber nudge on the plaque corner.
-                    int nx = x + halfSizeOf(node) - 4;
-                    int ny = y - halfSizeOf(node) + 2;
-                    g.fill(nx - 1, ny - 1, nx + 3, ny + 3, 0xFF2A1C0E);
-                    g.fill(nx, ny, nx + 2, ny + 2, 0xFFE8A33C);
+                    townstead$drawNudge(g, x + halfSizeOf(node), y - halfSizeOf(node));
                 }
+                maybeHoverTooltip(node);
                 String label = node.state() == CareerGraphS2CPayload.STATE_HIDDEN
                         ? Component.translatable("townstead.career.screen.unknown").getString()
                         : node.name();
@@ -512,6 +557,13 @@ public final class CareerScreen extends Screen {
         int maxLevel = ledgerMaxLevel(career, tabNodes);
         int leftX = boardX() + 14;
         int rightX = boardX() + boardW() - 14;
+        java.util.Map<Integer, Integer> countByLevel = new java.util.HashMap<>();
+        for (CareerGraphS2CPayload.Node node : tabNodes) {
+            if (node.kind() == CareerGraphS2CPayload.KIND_SKILL
+                    && node.parentId().equals(skillViewCareer)) {
+                countByLevel.merge(Math.max(1, node.tier()), 1, Integer::sum);
+            }
+        }
         for (int level = 1; level <= maxLevel; level++) {
             int rowTop = boardY() + 60 + (level - 1) * LEDGER_ROW_H + (int) panY;
             boolean reached = career.tier() >= level;
@@ -521,7 +573,18 @@ public final class CareerScreen extends Screen {
             String label = shelfLabel(level, tabNodes);
             g.drawString(font, label, leftX + 2, rowTop + 14,
                     level == career.tier() ? 0xFFE8A33C : reached ? LABEL_LIGHT : LABEL_DIM);
+            if (level == career.tier() && career.xpToNext() > 0) {
+                // How close the next shelf is, answered in place.
+                drawBar(g, leftX + 2, rowTop + 24, 62,
+                        career.xp() / (float) (career.xp() + career.xpToNext()), BAR_FILL);
+            }
+            if (countByLevel.getOrDefault(level, 0) == 0) {
+                g.drawString(font,
+                        Component.translatable("townstead.career.screen.empty_shelf").getString(),
+                        boardX() + 130, rowTop + 14, LABEL_DIM);
+            }
         }
+        drawLedgerGroups(g, tabNodes);
         for (CareerGraphS2CPayload.Node node : tabNodes) {
             int[] local = positions.get(node.id());
             if (local == null || node.kind() != CareerGraphS2CPayload.KIND_SKILL) continue;
@@ -531,6 +594,33 @@ public final class CareerScreen extends Screen {
             String label = node.name();
             g.drawString(font, label, x - font.width(label) / 2, y + halfSizeOf(node) + 5,
                     node.state() <= CareerGraphS2CPayload.STATE_LOCKED ? LABEL_DIM : LABEL_LIGHT);
+            maybeHoverTooltip(node);
+        }
+    }
+
+    /** Skills sharing a slot read as one choice: a shared backing with "or" between them. */
+    private void drawLedgerGroups(GuiGraphics g, List<CareerGraphS2CPayload.Node> tabNodes) {
+        java.util.Map<String, List<int[]>> members = new java.util.LinkedHashMap<>();
+        for (CareerGraphS2CPayload.Node node : tabNodes) {
+            if (node.kind() != CareerGraphS2CPayload.KIND_SKILL || node.group().isEmpty()) continue;
+            int[] local = positions.get(node.id());
+            if (local == null) continue;
+            members.computeIfAbsent(node.tier() + "|" + node.group(),
+                    key -> new ArrayList<>()).add(local);
+        }
+        String or = Component.translatable("townstead.career.screen.or").getString();
+        for (List<int[]> group : members.values()) {
+            if (group.size() < 2) continue;
+            group.sort(java.util.Comparator.comparingInt(local -> local[0]));
+            int y = screenY(group.get(0));
+            int minX = screenX(group.get(0));
+            int maxX = screenX(group.get(group.size() - 1));
+            g.fill(minX - 15, y - 14, maxX + 15, y + 13, 0x16FFD9A0);
+            drawOutline(g, minX - 15, y - 14, maxX + 15, y + 13, 0x2EFFD9A0);
+            for (int i = 0; i + 1 < group.size(); i++) {
+                int mid = (screenX(group.get(i)) + screenX(group.get(i + 1))) / 2;
+                g.drawString(font, or, mid - font.width(or) / 2, y - 4, LABEL_DIM);
+            }
         }
     }
 
@@ -688,6 +778,48 @@ public final class CareerScreen extends Screen {
         }
     }
 
+    /** Hover context without a page trip: hidden nodes whisper, skills show their terms. */
+    private void maybeHoverTooltip(CareerGraphS2CPayload.Node node) {
+        if (!node.id().equals(hoveredId)) return;
+        List<net.minecraft.util.FormattedCharSequence> lines = new ArrayList<>();
+        if (node.state() == CareerGraphS2CPayload.STATE_HIDDEN) {
+            lines.addAll(font.split(Component.translatable("townstead.career.screen.hidden_hint")
+                    .withStyle(net.minecraft.ChatFormatting.GRAY), 170));
+        } else if (node.kind() == CareerGraphS2CPayload.KIND_COMBO) {
+            lines.addAll(font.split(Component.literal(node.name()), 170));
+            lines.addAll(font.split(Component.translatable("townstead.career.screen.combo")
+                    .withStyle(net.minecraft.ChatFormatting.GOLD), 170));
+            for (CareerGraphS2CPayload.Evidence evidence : node.evidence()) {
+                lines.addAll(font.split(Component.literal(evidence.label())
+                        .withStyle(evidence.met()
+                                ? net.minecraft.ChatFormatting.GREEN
+                                : net.minecraft.ChatFormatting.GRAY), 170));
+            }
+            for (String effect : node.effects()) {
+                lines.addAll(font.split(Component.literal(effect)
+                        .withStyle(net.minecraft.ChatFormatting.GRAY), 170));
+            }
+        } else if (node.kind() == CareerGraphS2CPayload.KIND_SKILL) {
+            lines.addAll(font.split(Component.literal(node.name()), 170));
+            Component status = node.equipped()
+                    ? Component.translatable("townstead.career.screen.state.equipped")
+                    : node.state() == CareerGraphS2CPayload.STATE_ACQUIRED
+                            ? Component.translatable("townstead.career.screen.state.acquired")
+                    : node.points() > 0
+                            ? Component.translatable("townstead.career.screen.cost", node.points())
+                            : Component.translatable("townstead.career.screen.state.ready");
+            lines.addAll(font.split(status.copy()
+                    .withStyle(net.minecraft.ChatFormatting.GOLD), 170));
+            for (String effect : node.effects()) {
+                lines.addAll(font.split(Component.literal(effect)
+                        .withStyle(net.minecraft.ChatFormatting.GRAY), 170));
+            }
+        } else {
+            return;
+        }
+        if (!lines.isEmpty()) setTooltipForNextRenderPass(lines);
+    }
+
     private int halfSizeOf(CareerGraphS2CPayload.Node node) {
         return switch (node.kind()) {
             case CareerGraphS2CPayload.KIND_ROOT -> 15;
@@ -742,13 +874,23 @@ public final class CareerScreen extends Screen {
             if (locked) {
                 g.pose().pushPose();
                 g.pose().translate(0, 0, 260);
-                g.fill(x - half, y - half, x + half, y + half, 0x70281A0C);
-                townstead$drawPadlock(g, x, y + half - 4);
+                g.fill(x - half, y - half, x + half, y + half, 0x8C281A0C);
+                townstead$drawPadlock(g, x + half - 4, y + half - 4);
                 g.pose().popPose();
             }
         }
+        if (node.kind() == CareerGraphS2CPayload.KIND_SKILL && !hidden && node.points() > 0) {
+            // Cost pips: lit amber when the skill is learnable right now.
+            int pips = Math.min(3, node.points());
+            for (int i = 0; i < pips; i++) {
+                int px = x - half + 2 + i * 4;
+                int py = y - half + 2;
+                g.fill(px - 1, py - 1, px + 3, py + 3, 0x90000000);
+                g.fill(px, py, px + 2, py + 2, ready ? 0xFFE8A33C : 0xFF7A6242);
+            }
+        }
 
-        if ((acquired && node.kind() != CareerGraphS2CPayload.KIND_SKILL) || node.equipped()) {
+        if (node.equipped()) {
             townstead$drawWaxSeal(g, x + half - 2, y + half - 2);
         }
         if (node.primary()) {
@@ -764,16 +906,36 @@ public final class CareerScreen extends Screen {
     }
 
     private static void townstead$drawPadlock(GuiGraphics g, int cx, int cy) {
-        g.fill(cx - 3, cy - 2, cx + 3, cy + 3, 0xFF2A1E10);
-        g.fill(cx - 2, cy - 4, cx - 1, cy - 2, 0xFF4A3A24);
-        g.fill(cx + 1, cy - 4, cx + 2, cy - 2, 0xFF4A3A24);
-        g.fill(cx - 2, cy - 5, cx + 2, cy - 4, 0xFF4A3A24);
-        g.fill(cx, cy, cx + 1, cy + 1, 0xFF806840);
+        // Corner badge: light iron on a dark plate; the plaque icon stays visible beside it.
+        g.fill(cx - 4, cy - 6, cx + 5, cy + 4, 0xE0140F08);
+        g.fill(cx - 2, cy - 5, cx + 2, cy - 4, 0xFFD9C9A8);
+        g.fill(cx - 2, cy - 4, cx - 1, cy - 2, 0xFFD9C9A8);
+        g.fill(cx + 1, cy - 4, cx + 2, cy - 2, 0xFFD9C9A8);
+        g.fill(cx - 3, cy - 2, cx + 3, cy + 3, 0xFFD9C9A8);
+        g.fill(cx - 1, cy - 1, cx + 1, cy + 1, 0xFF140F08);
+    }
+
+    /** Unspent skill points: a small amber gem pinned to the plaque corner. */
+    private static void townstead$drawNudge(GuiGraphics g, int cx, int cy) {
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 300);
+        for (int d = -3; d <= 3; d++) {
+            int hw = 3 - Math.abs(d);
+            g.fill(cx - hw, cy + d, cx + hw + 1, cy + d + 1, 0xFF2A1C0E);
+        }
+        for (int d = -2; d <= 2; d++) {
+            int hw = 2 - Math.abs(d);
+            g.fill(cx - hw, cy + d, cx + hw + 1, cy + d + 1, 0xFFE8A33C);
+        }
+        g.fill(cx - 1, cy - 1, cx, cy, 0xFFFFE0A8);
+        g.pose().popPose();
     }
 
     private static void townstead$drawWaxSeal(GuiGraphics g, int cx, int cy) {
         g.pose().pushPose();
         g.pose().translate(0, 0, 280);
+        g.fill(cx - 4, cy - 3, cx + 4, cy + 3, 0xC0140F08);
+        g.fill(cx - 3, cy - 4, cx + 3, cy + 4, 0xC0140F08);
         g.fill(cx - 3, cy - 2, cx + 3, cy + 2, WAX_RIM);
         g.fill(cx - 2, cy - 3, cx + 2, cy + 3, WAX_RIM);
         g.fill(cx - 2, cy - 2, cx + 2, cy + 2, WAX_SEAL);
@@ -892,6 +1054,7 @@ public final class CareerScreen extends Screen {
         String kindKey = switch (selected.kind()) {
             case CareerGraphS2CPayload.KIND_ROOT -> "townstead.career.screen.kind.career";
             case CareerGraphS2CPayload.KIND_ADVANCED -> "townstead.career.screen.kind.specialization";
+            case CareerGraphS2CPayload.KIND_COMBO -> "townstead.career.screen.kind.combo";
             default -> "townstead.career.screen.kind.skill";
         };
         String stateKey = selected.equipped() ? "townstead.career.screen.state.equipped"
@@ -914,6 +1077,17 @@ public final class CareerScreen extends Screen {
                     selected.points()).getString(), x, y, INK_DIM, false);
             y += 10;
         }
+        if ((isSkill || selected.kind() == CareerGraphS2CPayload.KIND_COMBO)
+                && !maskedNode && !selected.effects().isEmpty()) {
+            y += 2;
+            for (String effect : selected.effects()) {
+                for (FormattedCharSequence line : font.split(
+                        Component.literal(effect), PAGE_W - 20)) {
+                    g.drawString(font, line, x, y, INK_ACCENT, false);
+                    y += 10;
+                }
+            }
+        }
         if (isSkill && selected.state() == CareerGraphS2CPayload.STATE_LOCKED
                 && !selected.rankName().isEmpty()) {
             CareerGraphS2CPayload.Node owner = nodeById(selected.parentId());
@@ -929,8 +1103,8 @@ public final class CareerScreen extends Screen {
             y += 11;
         }
 
-        // Tier pips and progress
-        if (!isSkill && !maskedNode
+        // Tier pips and progress (combos have no track of their own; their evidence is the story)
+        if (!isSkill && selected.kind() != CareerGraphS2CPayload.KIND_COMBO && !maskedNode
                 && (selected.xp() > 0 || selected.state() == CareerGraphS2CPayload.STATE_ACQUIRED)) {
             y += 2;
             int pips = Math.min(selected.maxTier(), 10);
@@ -941,9 +1115,15 @@ public final class CareerScreen extends Screen {
                 g.fill(px, y, px + 8, y + 1, lit ? 0x80FFFFFF : 0x30FFFFFF);
             }
             y += 9;
-            g.drawString(font, selected.xp() + " XP"
-                    + (selected.xpToNext() > 0 ? "  (+" + selected.xpToNext() + ")" : ""),
-                    x, y, INK_TEXT, false);
+            String xpLine = selected.xpToNext() <= 0
+                    ? selected.xp() + " XP"
+                    : selected.nextRankName().isEmpty()
+                            ? Component.translatable("townstead.career.screen.xp_line",
+                                    selected.xp(), selected.xp() + selected.xpToNext()).getString()
+                            : Component.translatable("townstead.career.screen.xp_line_to",
+                                    selected.xp(), selected.xp() + selected.xpToNext(),
+                                    selected.nextRankName()).getString();
+            g.drawString(font, xpLine, x, y, INK_TEXT, false);
             y += 10;
             int total = selected.xp() + selected.xpToNext();
             float progress = total <= 0 ? 1f : selected.xp() / (float) total;
@@ -960,7 +1140,7 @@ public final class CareerScreen extends Screen {
             }
         }
 
-        if (!isSkill && !maskedNode
+        if (!isSkill && selected.kind() != CareerGraphS2CPayload.KIND_COMBO && !maskedNode
                 && selected.state() == CareerGraphS2CPayload.STATE_ACQUIRED) {
             g.drawString(font, Component.translatable("townstead.career.screen.points",
                     selected.points()).getString(), x, y, INK_ACCENT, false);
@@ -1115,6 +1295,7 @@ public final class CareerScreen extends Screen {
             pageScroll = 0;
             layoutActiveRoot();
             refreshEquipButton();
+            townstead$pageTurn();
             return true;
         }
         // Plaques
@@ -1143,7 +1324,7 @@ public final class CareerScreen extends Screen {
         if (dragging && button == 0) {
             panX += dragX;
             panY += dragY;
-            clampLedgerPan();
+            clampBoardPan();
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
@@ -1176,7 +1357,7 @@ public final class CareerScreen extends Screen {
             pageScroll = Mth.clamp(pageScroll - delta * 12, 0, maxScroll);
         } else {
             panY += delta * 14;
-            clampLedgerPan();
+            clampBoardPan();
         }
     }
 

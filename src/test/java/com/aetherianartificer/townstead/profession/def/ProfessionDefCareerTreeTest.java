@@ -17,8 +17,9 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * The unified schema: advanced professions are ordinary defs with parents, pheno-condition
- * requirements, acquisition routes, and job-site providers. No separate advanced-class schema.
+ * The unified schema: gated professions are ordinary defs with pheno-condition requirements,
+ * acquisition routes, and job-site providers. No separate advanced-class schema, no parent
+ * graph — careers are flat.
  */
 class ProfessionDefCareerTreeTest {
 
@@ -35,14 +36,13 @@ class ProfessionDefCareerTreeTest {
     }
 
     @Test
-    void advancedProfessionParsesParentsRoutesAndRequirements() {
-        ProfessionDef def = parse("{ 'parents': ['townstead:cook'], 'hidden': true,"
+    void gatedProfessionParsesRoutesAndRequirements() {
+        ProfessionDef def = parse("{ 'hidden': true,"
                 + " 'requirements': { 'type': 'test:flag' },"
                 + " 'acquisition_routes': ['self_discovery', 'mentor'] }");
         assertNotNull(def);
         assertFalse(def.isRoot());
         assertTrue(def.hidden());
-        assertEquals(List.of(ResourceLocation.tryParse("townstead:cook")), def.parents());
         assertEquals(List.of("self_discovery", "mentor"), def.acquisitionRoutes());
         flag = false;
         assertFalse(def.requirements().test(null));
@@ -51,7 +51,7 @@ class ProfessionDefCareerTreeTest {
     }
 
     @Test
-    void rootProfessionHasNoParentsAndAlwaysRequirements() {
+    void practicedProfessionIsRootWithAlwaysRequirements() {
         ProfessionDef def = parse("{ }");
         assertNotNull(def);
         assertTrue(def.isRoot());

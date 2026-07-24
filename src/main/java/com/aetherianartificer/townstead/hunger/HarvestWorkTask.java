@@ -26,6 +26,8 @@ import com.aetherianartificer.townstead.compat.farming.FarmerStockDroppableCompa
 import com.aetherianartificer.townstead.farming.cellplan.PlannedCell;
 import com.aetherianartificer.townstead.hunger.farm.FarmBlueprint;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
@@ -146,7 +148,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         BlockPos anchor = townstead$findWorkAnchor(level, villager);
@@ -155,7 +157,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return;
         actionType = ActionType.NONE;
         targetPos = null;
         farmAnchor = townstead$findWorkAnchor(level, villager);
@@ -217,7 +219,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             }
         }
 
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) {
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) {
             townstead$clearMovementIntent(villager);
             return;
         }
@@ -307,7 +309,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         if (farmAnchor != null && level.getBlockState(farmAnchor).getBlock() instanceof ComposterBlock) {

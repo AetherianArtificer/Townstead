@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Steady Hand"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "text": "Earn 1 additional Scribe XP whenever record work is completed."
+  },
+  "tier": 2,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:scribe_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}
