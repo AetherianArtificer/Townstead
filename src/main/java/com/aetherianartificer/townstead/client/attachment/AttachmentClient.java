@@ -133,7 +133,9 @@ public final class AttachmentClient {
         try {
             if (kind == AttachmentServerData.KIND_GEO) {
                 var json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
-                ModelPart part = BedrockGeometryLoader.parse(json);
+                // The ModelPart bake feeds full-body rigs (namedGeo), so it takes the ground-origin
+                // shift: Blockbench entity/avatar projects put the ground at y=0, Java at y=24.
+                ModelPart part = BedrockGeometryLoader.parse(json, true);
                 if (part != null) GEO.put(sha1, part);
                 var geo = com.aetherianartificer.townstead.client.attachment.geo.AttachmentGeoLoader.parse(json);
                 if (geo != null) ATTACHMENT_GEO.put(sha1, geo);

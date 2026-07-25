@@ -40,6 +40,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
     private static final String SLOT_DIR = "attachment_point";
     private static final String TEX_DIR = "textures";
     private static final String GEO_DIR = "geo";
+    private static final String BB_DIR = "bbmodel";
 
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
@@ -106,6 +107,25 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
                 namedGeo.put(file.toString(), sha);
             } catch (Exception e) {
                 Townstead.LOGGER.error("Failed to hash datapack geometry {}", file, e);
+            }
+        });
+
+        // Named datapack Blockbench projects ("data/<ns>/bbmodel/**.bbmodel"): converted to the same
+        // geo dialect at load, so a rig's model.file can reference the project directly, e.g.
+        // "townstead_insects:bbmodel/spooder.bbmodel" — no hand-converted .geo.json needed.
+        manager.listResources(BB_DIR, rl -> rl.getPath().endsWith(".bbmodel")).forEach((file, resource) -> {
+            byte[] bytes = readBytes(manager, file, Integer.MAX_VALUE);
+            if (bytes == null) return;
+            String path = file.getPath();
+            String name = path.substring(path.lastIndexOf('/') + 1, path.length() - ".bbmodel".length());
+            byte[] geo = BbmodelConverter.geometry(bytes, name, "");
+            if (geo == null) return;
+            try {
+                String sha = sha1(geo);
+                blobs.put(sha, new AttachmentServerData.Blob(geo, AttachmentServerData.KIND_GEO));
+                namedGeo.put(file.toString(), sha);
+            } catch (Exception e) {
+                Townstead.LOGGER.error("Failed to hash datapack bbmodel {}", file, e);
             }
         });
 

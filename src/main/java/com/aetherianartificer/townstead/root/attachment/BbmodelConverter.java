@@ -17,14 +17,15 @@ import java.util.Map;
  * ship Blockbench projects directly ({@code attachment/bbmodel/<name>.bbmodel}) and
  * the converted bytes ride the existing content-addressed blob sync.
  *
- * <p>Transform: X mirrored (cube min-corner from the mirrored max); rotations build
- * the full matrix {@code Rx(-x)·Ry(-y)·Rz(-z)} from the Blockbench angles and
- * decompose it into the loader's ZYX convention — a plain per-axis sign map cannot
- * express the composition-order change, and this matrix path was verified by
- * rendering converted models through the exact loader math against Blockbench
- * previews. East/west faces swap with per-face UVs flipped horizontally; {@code
- * box_uv} projects emit native box UV. Coordinates keep the project's own origin
- * (feet, for an avatar) — the definition's {@code offset} places the model.</p>
+ * <p>Transform: coordinates pass through in the project's own space (NO X mirror);
+ * rotations map per-axis as {@code (-x, -y, z)}. The loader's own Bedrock→Java Y-flip
+ * (and its {@code (x,-y,-z)} rotation flip) is the whole coordinate change; an earlier
+ * X-mirror here rendered every model left-right flipped (invisible on symmetric models)
+ * and, combined with the rotation map, bent multi-axis cubes — verified by rendering the
+ * converted geometry through the exact loader math against Blockbench's ZYX display.
+ * Faces keep their slot and native UV rect; {@code box_uv} projects emit native box UV.
+ * Coordinates keep the project's own origin (feet, for an avatar) — the definition's
+ * {@code offset} places the model.</p>
  *
  * <p>A geometry reference may name an embedded animation as a static pose:
  * {@code "ns:file#poseName"} bakes that animation's first rotation keyframe per bone
@@ -152,7 +153,7 @@ public final class BbmodelConverter {
         bone.addProperty("name", name);
         if (parent != null) bone.addProperty("parent", parent);
         float[] origin = vec(props, "origin");
-        bone.add("pivot", array(-origin[0], origin[1], origin[2]));
+        bone.add("pivot", array(origin[0], origin[1], origin[2]));
         float[] rot = vec(props, "rotation");
         float[] delta = poseDeltas.get(name);
         if (delta != null) {
@@ -181,8 +182,8 @@ public final class BbmodelConverter {
         float[] from = vec(element, "from");
         float[] to = vec(element, "to");
         JsonObject cube = new JsonObject();
-        // X mirror: the Java min corner comes from the mirrored max.
-        cube.add("origin", array(-Math.max(from[0], to[0]),
+        // No X mirror: coordinates pass through in the project's own space (min corner = origin).
+        cube.add("origin", array(Math.min(from[0], to[0]),
                 Math.min(from[1], to[1]), Math.min(from[2], to[2])));
         cube.add("size", array(Math.abs(to[0] - from[0]),
                 Math.abs(to[1] - from[1]), Math.abs(to[2] - from[2])));
@@ -193,7 +194,7 @@ public final class BbmodelConverter {
             float[] geo = toGeoRotation(rot);
             cube.add("rotation", array(geo[0], geo[1], geo[2]));
             float[] pivot = vec(element, "origin");
-            cube.add("pivot", array(-pivot[0], pivot[1], pivot[2]));
+            cube.add("pivot", array(pivot[0], pivot[1], pivot[2]));
         }
         // Box UV is decided PER ELEMENT (the project meta.box_uv is only the default —
         // a project can say box_uv:true while every element overrides to hand-mapped
@@ -205,7 +206,12 @@ public final class BbmodelConverter {
             uvArray.add(offset != null && offset.size() > 0 ? offset.get(0).getAsFloat() : 0f);
             uvArray.add(offset != null && offset.size() > 1 ? offset.get(1).getAsFloat() : 0f);
             cube.add("uv", uvArray);
-            if (GsonHelper.getAsBoolean(element, "mirror_uv", false)) {
+            // The Bedrock->Java Y flip and the renderer's own scale(-1,-1,1) compose to a net X
+            // reflection, so a drawn cube's texture is mirrored left-right against how Blockbench shows
+            // it. Symmetric geometry hides that; the texture does not, and it reads worst on rotated
+            // limbs (a leg's pale end lands at the wrong end). The mirror flag re-flips the texture in X
+            // without moving the box, so invert the authored mirror rather than passing it through.
+            if (!GsonHelper.getAsBoolean(element, "mirror_uv", false)) {
                 cube.addProperty("mirror", true);
             }
             return cube;
@@ -220,15 +226,11 @@ public final class BbmodelConverter {
             if (rect == null || rect.size() < 4) continue;
             float u1 = rect.get(0).getAsFloat(), v1 = rect.get(1).getAsFloat();
             float u2 = rect.get(2).getAsFloat(), v2 = rect.get(3).getAsFloat();
-            // X mirror swaps east/west and flips every face horizontally.
-            String slot = switch (entry.getKey().toLowerCase(Locale.ROOT)) {
-                case "east" -> "west";
-                case "west" -> "east";
-                default -> entry.getKey().toLowerCase(Locale.ROOT);
-            };
+            // No X mirror: faces keep their slot and native UV rect.
+            String slot = entry.getKey().toLowerCase(Locale.ROOT);
             JsonObject faceUv = new JsonObject();
-            faceUv.add("uv", array2(u2, v1));
-            faceUv.add("uv_size", array2(u1 - u2, v2 - v1));
+            faceUv.add("uv", array2(u1, v1));
+            faceUv.add("uv_size", array2(u2 - u1, v2 - v1));
             uv.add(slot, faceUv);
         }
         if (!uv.entrySet().isEmpty()) cube.add("uv", uv);
@@ -301,29 +303,12 @@ public final class BbmodelConverter {
     }
 
     /**
-     * Blockbench display rotation (degrees) → geo-dialect rotation: build the matrix
-     * {@code Rx(-x)·Ry(-y)·Rz(-z)} and decompose it into the ZYX angles our loader
-     * reconstructs ({@code render = Rz(-gz)·Ry(-gy)·Rx(gx)}).
+     * Blockbench display rotation (degrees) → geo-dialect rotation: the per-axis sign
+     * map {@code (-x, -y, z)}, identical to Blockbench's bedrock export codec. Both
+     * sides compose Euler ZYX, so the map is exact for multi-axis rotations too.
      */
     private static float[] toGeoRotation(float[] bb) {
-        double x = Math.toRadians(-bb[0]);
-        double y = Math.toRadians(-bb[1]);
-        double z = Math.toRadians(-bb[2]);
-        double cx = Math.cos(x), sx = Math.sin(x);
-        double cy = Math.cos(y), sy = Math.sin(y);
-        double cz = Math.cos(z), sz = Math.sin(z);
-        // M = Rx * Ry * Rz
-        double m00 = cy * cz;
-        double m10 = sx * sy * cz + cx * sz;
-        double m20 = -cx * sy * cz + sx * sz;
-        double m21 = cx * sy * sz + sx * cz;
-        double m22 = cx * cy;
-        // Decompose M = Rz(a)·Ry(b)·Rx(c):  b = asin(-m20), c = atan2(m21, m22), a = atan2(m10, m00)
-        double b = Math.asin(Math.max(-1.0, Math.min(1.0, -m20)));
-        double c = Math.atan2(m21, m22);
-        double a = Math.atan2(m10, m00);
-        // loader: java = (gx, -gy, -gz) → geo = (c, -b, -a)
-        return new float[]{(float) Math.toDegrees(c), (float) -Math.toDegrees(b), (float) -Math.toDegrees(a)};
+        return new float[]{-bb[0], -bb[1], bb[2]};
     }
 
     private static float[] vec(JsonObject json, String key) {
