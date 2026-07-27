@@ -27,9 +27,11 @@ import java.util.Set;
  * <pre>
  *   alcove + banner       which path is this column?
  *   band divider          which rank does this stretch belong to?
- *   mark (pressed seal)   is this skill mine?
- *   mark (struck ring)    can I buy this one now?
- *   mark (faint ring)     does this exist, and is it out of reach?
+ *   frame (brass)         is this skill mine?
+ *   frame (deep brass)    can I buy this one now?
+ *   frame (cold, dimmed)  does this exist, and is it out of reach?
+ *   frame outline shape   what kind is it: plain skill, gateway, Combo Skill?
+ *   wax seal              is this the one I am using?
  *   item icon             what is it?
  *   link                  what must I own before it?
  *   lit route             what would I have to walk to reach the thing I just clicked?
@@ -213,7 +215,6 @@ final class BoardChrome {
             }
         }
         for (CareerGraphS2CPayload.Node node : tabNodes) {
-            if (node.kind() == CareerGraphS2CPayload.KIND_COMBO) continue;
             int[] at = layout.positionOf(node.id());
             if (at == null) continue;
             int spineX = sx(layout.columnX(layout.columnIndexOf(node)) + CareerLayout.COL_W / 2);
@@ -402,26 +403,34 @@ final class BoardChrome {
         if (hovered) alpha += 0.18f;
         if (selected) alpha += 0.12f;
         if (alpha > 0.01f) {
+            // Square, to match what it is behind. A round halo around a square frame leaves the
+            // frame's own corners hanging outside its glow.
             int a = (int) (Math.min(0.95f, alpha) * 255f) << 24;
-            NodeArt.drawBead(g, x, y, half + 5, a | (Palette.BRASS & 0xFFFFFF));
+            int spread = half + Math.max(2, Math.round(4 * zoom()));
+            g.fill(x - spread, y - spread, x + spread, y + spread, a | (Palette.BRASS & 0xFFFFFF));
         }
 
-        // Depth, in the order a physical mark would have it: a shadow cast on the alcove behind,
-        // then the mark, then a gloss on the shoulder the light comes from. Flat tinted sprites on
-        // a flat ground gave the board no sense that the marks were sitting ON anything.
-        NodeArt.drawBead(g, x + 1, y + 2, half, 0x66000000);
-        int markTint = style.walked() ? Palette.BRASS : Palette.COLD;
-        NodeArt.drawMark(g, node, x, y, style, markTint, zoom());
-        NodeArt.drawGloss(g, x, y, half, acquired ? 0x50FFF0C8 : 0x38FFE9C4);
+        // The frame draws its own shadow and its own lit bevel, so depth is one call rather than
+        // three. Flat tinted sprites on a flat ground gave the board no sense that the marks were
+        // sitting ON anything.
+        NodeArt.drawMark(g, node, x, y, style, zoom());
 
         ItemStack iconStack = NodeArt.iconStack(node);
         if (!iconStack.isEmpty()) {
-            float scale = (node.kind() == CareerGraphS2CPayload.KIND_SKILL ? 0.62f : 1.0f) * zoom();
+            // The icon is drawn at its authored size now: the frame was built around it, so there is
+            // nothing left to shrink it to fit.
+            float scale = Math.min(zoom(), NodeArt.innerSize(node, zoom()) / 16f);
             g.pose().pushPose();
             g.pose().translate(x, y, 0);
             g.pose().scale(scale, scale, 1f);
             g.renderItem(iconStack, -8, -8);
             g.pose().popPose();
+            if (!style.walked() && node.state() <= CareerGraphS2CPayload.STATE_LOCKED) {
+                // Out of reach: the icon is shown, not hidden, but held back from the ones you can
+                // actually act on.
+                g.flush();
+                g.fill(x - half + 2, y - half + 2, x + half - 2, y + half - 2, 0x99241A0E);
+            }
         }
         // What it costs. One rule, no exceptions: a cost appears exactly when the mark is one you
         // could buy. Adding hover and selection to that made the numerals come and go as the cursor
@@ -434,12 +443,12 @@ final class BoardChrome {
                     ready ? Palette.BRASS_HOT : Palette.COLD, true);
         }
         if (node.equipped()) {
-            NodeArt.drawWaxSeal(g, x + half - 2, y + half - 2);
+            NodeArt.drawWaxSeal(g, x + half - 1, y + half - 1);
         }
         if (selected || hovered) {
-            NodeArt.drawBeadRing(g, x, y,
-                    NodeArt.markEdge(node, zoom())
-                            + Math.max(2, Math.round((selected ? 3 : 2) * zoom())),
+            int pad = Math.max(2, Math.round((selected ? 3 : 2) * zoom()));
+            int edge = NodeArt.markEdge(node, zoom()) + pad;
+            Palette.drawOutline(g, x - edge, y - edge, x + edge, y + edge,
                     selected ? Palette.BRASS_HOT : Palette.fade(Palette.BRASS, 0.7f));
         }
     }

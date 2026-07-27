@@ -44,16 +44,32 @@ final class CareerMasthead {
     private int crestX;
     private int crestY;
     private int crestW;
+    private int rankX;
+    private int rankY;
+    private int rankW;
 
     CareerMasthead(Font font, int unit) {
         this.font = font;
         this.unit = unit;
     }
 
+    /**
+     * The switcher. Excludes the rank row, which sits inside the same block but means something
+     * else: one control cannot both change your career and open the one you already have.
+     */
     boolean overCrest(double mouseX, double mouseY) {
+        if (overRankRow(mouseX, mouseY)) return false;
         return mouseX >= crestX && mouseX < crestX + crestW
                 && mouseY >= crestY && mouseY < crestY + HEIGHT - 2;
     }
+
+    /** The link to this career's own record. */
+    boolean overRankRow(double mouseX, double mouseY) {
+        return rankW > 0 && mouseX >= rankX && mouseX < rankX + rankW
+                && mouseY >= rankY && mouseY < rankY + rankH();
+    }
+
+    private int rankH() { return font.lineHeight + 4; }
 
     void draw(GuiGraphics g, int x, int y, int w, String activeRoot,
               CareerGraphS2CPayload.Node career, List<CareerGraphS2CPayload.Node> allNodes,
@@ -69,24 +85,39 @@ final class CareerMasthead {
         crestY = y + 2;
         crestW = 2 * CREST_R + 8 + nameWidth + 12;
         boolean hot = overCrest(mouseX, mouseY) || pickerOpen;
-        if (hot) {
-            g.fill(crestX, crestY, crestX + crestW, crestY + HEIGHT - 4, 0xFF2E1F0C);
-            Palette.drawOutline(g, crestX, crestY, crestX + crestW, crestY + HEIGHT - 4,
-                    Palette.BRASS_DEEP);
-        }
 
         int cx = crestX + 2 + CREST_R;
         int cy = crestY + (HEIGHT - 4) / 2;
         drawCrest(g, career, cx, cy, hot);
 
         int textX = cx + CREST_R + 5;
+        // NO background plate. The switcher's box is two rows tall and the rank row lives INSIDE it,
+        // so hovering either one lit a panel that appeared to contain both: the click resolved fine,
+        // but you could not tell which control you were about to hit. The medallion lighting is the
+        // crest's own hover, and a rule under the name marks the target without claiming any of the
+        // area the row below is standing in.
+        if (hot) {
+            g.fill(textX, y + ROW_1 + font.lineHeight, textX + nameWidth + 10,
+                    y + ROW_1 + font.lineHeight + 1, Palette.BRASS);
+        }
         g.drawString(font, name, textX, y + ROW_1, hot ? 0xFFFFF3D6 : Palette.LABEL_LIGHT, false);
         drawChevron(g, textX + nameWidth + 4, y + ROW_1 + 4, hot);
 
         // Rank as pips rather than a number: marks you can count at a glance say more about where
-        // you are in a career than "3" does.
+        // you are in a career than "3" does. The whole row is also the way back to the career's own
+        // record, which was previously reachable only by clicking the band's empty space.
         if (career != null) {
             int pips = Math.min(Math.max(1, career.maxTier()), 8);
+            String rank = career.rankName();
+            rankX = textX - 3;
+            rankY = y + ROW_2 - 2;
+            rankW = pips * 7 + 5 + (rank.isEmpty() ? 0 : font.width(rank)) + 14;
+            boolean rankHot = overRankRow(mouseX, mouseY);
+            if (rankHot) {
+                g.fill(rankX, rankY, rankX + rankW, rankY + rankH(), 0xFF2E1F0C);
+                Palette.drawOutline(g, rankX, rankY, rankX + rankW, rankY + rankH(),
+                        Palette.BRASS_DEEP);
+            }
             int pipY = y + ROW_2 + (font.lineHeight - 3) / 2;
             for (int i = 0; i < pips; i++) {
                 int px = textX + i * 7;
@@ -95,25 +126,22 @@ final class CareerMasthead {
                 g.fill(px, pipY + 1, px + 4, pipY + 2, fill);
                 g.fill(px + 1, pipY + 2, px + 3, pipY + 3, fill);
             }
-            if (!career.rankName().isEmpty()) {
-                g.drawString(font, career.rankName(), textX + pips * 7 + 5, y + ROW_2,
-                        0xFFB79A6C, false);
+            if (!rank.isEmpty()) {
+                g.drawString(font, rank, textX + pips * 7 + 5, y + ROW_2,
+                        rankHot ? 0xFFF0DDB0 : 0xFFB79A6C, false);
             }
+            RecordArt.chevron(g, rankX + rankW - 8, y + ROW_2 + 2,
+                    rankHot ? Palette.BRASS_HOT : 0xFF7A6238);
         }
 
         int tokenW = 42;
         int tokenX = x + w - tokenW - unit;
         // The left block owns whatever the crest, the name and the rank line actually need, so the
         // track starts clear of the longest of the three instead of clear of the crest alone.
-        int leftBlock = crestX + crestW;
-        if (career != null) {
-            int pips = Math.min(Math.max(1, career.maxTier()), 8);
-            leftBlock = Math.max(leftBlock,
-                    textX + pips * 7 + 5 + font.width(career.rankName()));
-        }
+        int leftBlock = Math.max(crestX + crestW, career == null ? 0 : rankX + rankW);
         int trackX = leftBlock + 3 * unit;
         int trackW = tokenX - 3 * unit - trackX;
-        if (trackW > 50) drawDeedTrack(g, career, trackX, y, trackW);
+        if (trackW > 50) drawRankTrack(g, career, trackX, y, trackW);
         // The token sits ON the bar's baseline rather than centred in the band. Two boxes of
         // different heights next to each other read as level when their feet agree, not when their
         // middles do, and the bar is the thing the eye is already tracking across.
@@ -134,15 +162,18 @@ final class CareerMasthead {
     private void drawCrest(GuiGraphics g, CareerGraphS2CPayload.Node career, int cx, int cy,
                            boolean hot) {
         if (hot) {
-            NodeArt.drawBead(g, cx, cy, CREST_R + 4, Palette.fade(Palette.BRASS, 0.22f));
+            NodeArt.drawBead(g, cx, cy, CREST_R + 3, Palette.fade(Palette.BRASS, 0.22f));
         }
-        NodeArt.drawBead(g, cx, cy, CREST_R, 0xFF0D0803);
-        NodeArt.drawBeadRing(g, cx, cy, CREST_R, hot ? Palette.BRASS : 0xFF6A4E24);
-        NodeArt.drawBead(g, cx, cy, CREST_R - 2, Palette.BRASS_DEEP);
-        NodeArt.drawBead(g, cx, cy, CREST_R - 3, Palette.BRASS);
+        NodeArt.drawSeal(g, cx, cy, CREST_R, hot);
         ItemStack icon = career == null ? ItemStack.EMPTY : NodeArt.iconStack(career);
         if (!icon.isEmpty()) {
-            g.renderItem(icon, cx - 8, cy - 8);
+            // Slightly under size, so the device sits IN the medallion's field rather than lapping
+            // over the bevel that is meant to be reading as raised metal around it.
+            g.pose().pushPose();
+            g.pose().translate(cx, cy, 0);
+            g.pose().scale(0.85f, 0.85f, 1f);
+            g.renderItem(icon, -8, -8);
+            g.pose().popPose();
         } else {
             NodeArt.drawBead(g, cx, cy, CREST_R - 6, Palette.BRASS_HOT);
         }
@@ -156,46 +187,39 @@ final class CareerMasthead {
     }
 
     /**
-     * The nearest thing the chronicle is actually counting, with its own bar.
+     * The rank you are climbing toward, and how far along the bar you are.
      *
-     * <p>Falls back to the experience line only when a career declares no evidence at all, because
-     * some progression has to be shown and a number is better than nothing.</p>
+     * <p>This used to hunt for a countable deed and label the result "Evidence", falling back to the
+     * experience line when it found none. Cook's deeds have no targets, so it always fell back, and
+     * the band spent the whole time showing an experience number under the word Evidence. One
+     * heading that is always true beats two that are sometimes swapped, and deeds are counted
+     * properly in the record's own Evidence card either way.</p>
      */
-    private void drawDeedTrack(GuiGraphics g, CareerGraphS2CPayload.Node career, int x, int y,
+    private void drawRankTrack(GuiGraphics g, CareerGraphS2CPayload.Node career, int x, int y,
                                int w) {
         if (career == null) return;
-        CareerGraphS2CPayload.Evidence deed = null;
-        for (CareerGraphS2CPayload.Evidence evidence : career.evidence()) {
-            if (evidence.target() <= 0) continue;
-            if (!evidence.met()) {
-                deed = evidence;
-                break;
-            }
-            if (deed == null) deed = evidence;
-        }
+        int total = career.xp() + career.xpToNext();
+        float progress = total <= 0 ? 1f : Mth.clamp(career.xp() / (float) total, 0f, 1f);
+        String next = career.nextRankName();
+        boolean topped = next.isEmpty();
 
-        // The NAME of the thing being counted and the COUNT are two separate strings, because only
-        // one of them can afford to be shortened. They used to be concatenated and the pair was
-        // scissored to fit, which cut the tally in half and left "0 / 11" reading as a wrong number
-        // rather than as a clipped one.
-        String heading;
-        String value;
-        float progress;
-        if (deed != null) {
-            heading = deed.label();
-            value = deed.current() + " / " + deed.target();
-            progress = Mth.clamp(deed.current() / (float) deed.target(), 0f, 1f);
-        } else {
-            int total = career.xp() + career.xpToNext();
-            progress = total <= 0 ? 1f : Mth.clamp(career.xp() / (float) total, 0f, 1f);
-            heading = Component.translatable("townstead.career.screen.evidence").getString();
-            value = career.xp() + " / " + total;
-        }
-
+        // The NAME of the goal and the COUNT are two separate strings, because only one of them can
+        // afford to be shortened. They used to be concatenated and the pair was scissored to fit,
+        // which cut the tally in half and left "0 / 11" reading as a wrong number rather than as a
+        // clipped one.
+        String heading = topped ? career.rankName() : next;
+        String value = topped ? "" : career.xp() + " / " + total;
         int valueWidth = font.width(value);
-        g.drawString(font, RecordArt.abbreviate(font, heading, w - valueWidth - 8), x, y + ROW_1,
-                0xFF8A7048, false);
-        g.drawString(font, value, x + w - valueWidth, y + ROW_1, 0xFFB79A6C, false);
+        int headX = x;
+        if (!topped) {
+            RecordArt.chevron(g, headX, y + ROW_1 + 2, Palette.BRASS_DEEP);
+            headX += 8;
+        }
+        g.drawString(font, RecordArt.abbreviate(font, heading, w - valueWidth - 8 - (headX - x)),
+                headX, y + ROW_1, 0xFFC0A46E, false);
+        if (!value.isEmpty()) {
+            g.drawString(font, value, x + w - valueWidth, y + ROW_1, 0xFF8A7048, false);
+        }
 
         int barY = barY(y);
         g.fill(x, barY, x + w, barY + BAR_H, 0xFF0D0803);

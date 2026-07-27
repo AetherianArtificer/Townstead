@@ -78,7 +78,11 @@ public final class CareerGraphBuilder {
                         combo.displayName().getString(),
                         combo.description() == null ? "" : combo.description().getString(),
                         combo.icon() == null ? "" : combo.icon().toString(),
-                        0, 0, 0, 0, 0, 0, false, false, false,
+                        // The rank THIS career must reach, so the board can put the mark in the band
+                        // that actually gates it. Sending 0 parked every combo in rank I, however
+                        // deep the work behind it was.
+                        Math.max(0, combo.thresholds().getOrDefault(involved, 0)),
+                        0, 0, 0, 0, 0, false, false, false,
                         "", "", List.copyOf(evidence), List.of(),
                         "", 0, "", "", effectLines(combo.grants()),
                         List.of(), CareerGraphS2CPayload.PathTag.NONE));
@@ -163,7 +167,11 @@ public final class CareerGraphBuilder {
                 acquired ? SkillPoints.available(entity, def) : 0,
                 "",
                 masked || currentTier >= maxTier ? "" : def.levelName(currentTier + 1).getString(),
-                List.of(), List.of(), CareerGraphS2CPayload.PathTag.NONE));
+                List.of(), List.of(), CareerGraphS2CPayload.PathTag.NONE,
+                // A career carries a mark of its own now: the day you were first admitted to this
+                // work. Only skills were sending one, so the screen had no way to tell a career you
+                // are returning to from one you have never held.
+                stampOf(profile, careerId)));
 
         if (acquired) {
             for (ResourceLocation choice : def.skills()) {

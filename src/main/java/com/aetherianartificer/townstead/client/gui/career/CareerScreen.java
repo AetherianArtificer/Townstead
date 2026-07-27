@@ -7,7 +7,6 @@ import com.aetherianartificer.townstead.client.gui.common.ParchmentButton;
 import com.aetherianartificer.townstead.profession.career.CareerChooseC2SPayload;
 import com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload;
 import com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload;
-import com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -84,8 +83,8 @@ public final class CareerScreen extends Screen {
     private static long hintStart = -1L;
 
     private Button equipButton;
-    private Button vocationButton;
     private Button trackButton;
+    private Button resumeButton;
 
     private CareerScreen(CareerGraphS2CPayload payload) {
         super(Component.translatable("townstead.career.screen.title", payload.title()));
@@ -239,10 +238,13 @@ public final class CareerScreen extends Screen {
                 Component.translatable("townstead.career.screen.track"), button -> {
             if (!selectedId.isEmpty()) sendTrack(new CareerTrackC2SPayload(selectedId));
         }));
-        vocationButton = addRenderableWidget(new ParchmentButton(buttonX,
+        resumeButton = addRenderableWidget(new ParchmentButton(buttonX,
                 height - MARGIN - FRAME_THICK - 64, buttonW, 18,
-                Component.translatable("townstead.career.screen.take_up"), button -> {
-            if (!selectedId.isEmpty()) sendVocation(new CareerVocationC2SPayload(selectedId));
+                Component.translatable("townstead.career.screen.resume_work"), button -> {
+            if (!selectedId.isEmpty()) {
+                sendVocation(new com.aetherianartificer.townstead.profession.career
+                        .CareerVocationC2SPayload(selectedId));
+            }
         }));
         equipButton = addRenderableWidget(new ParchmentButton(buttonX,
                 height - MARGIN - FRAME_THICK - 43, buttonW, 18,
@@ -273,13 +275,13 @@ public final class CareerScreen extends Screen {
         if (equippable) {
             equipButton.setMessage(Component.translatable("townstead.career.screen.equip"));
         }
-        // Server re-validates; this only mirrors the eligibility rule for visibility.
-        boolean takeUp = !inspect && selected != null && !selected.primary()
-                && (selected.kind() == CareerGraphS2CPayload.KIND_ROOT
-                || selected.kind() == CareerGraphS2CPayload.KIND_ADVANCED
-                        && selected.state() == CareerGraphS2CPayload.STATE_ACQUIRED);
-        vocationButton.visible = takeUp;
-        vocationButton.active = takeUp;
+        // Returning to work whose record already bears your mark. The stamp handles the first
+        // admission; this is the plain door back in, and it only exists once that door has been
+        // opened once.
+        boolean resume = !inspect && StampTool.canTakeUp(selected)
+                && selected.stamp().present();
+        resumeButton.visible = resume;
+        resumeButton.active = resume;
 
         boolean trackable = !inspect && selected != null
                 && selected.kind() == CareerGraphS2CPayload.KIND_ADVANCED
@@ -300,8 +302,8 @@ public final class CareerScreen extends Screen {
             equipButton.setY(slotY);
             slotY -= 21;
         }
-        if (vocationButton.visible) {
-            vocationButton.setY(slotY);
+        if (resumeButton.visible) {
+            resumeButton.setY(slotY);
             slotY -= 21;
         }
         if (trackButton.visible) trackButton.setY(slotY);
@@ -459,8 +461,7 @@ public final class CareerScreen extends Screen {
         // The well's position comes from the record's pinned head rather than being computed here,
         // so the tool and its slot can never drift apart when the head's height changes.
         if (!stamp.held()) {
-            stamp.drawWell(g, recordLayout.wellX(), recordLayout.wellY(),
-                    selected.points() <= availablePoints());
+            stamp.drawWell(g, recordLayout.wellX(), recordLayout.wellY(), stampReady(selected));
         } else {
             stamp.drawHeld(g, overPanel(mouseX, mouseY));
         }
@@ -470,6 +471,19 @@ public final class CareerScreen extends Screen {
     private int availablePoints() {
         CareerGraphS2CPayload.Node career = nodeById(activeRoot);
         return career == null ? 0 : career.points();
+    }
+
+    /**
+     * Whether the stamp will lift for this record.
+     *
+     * <p>Only a skill has a price. A career node's own {@code points()} is the pool it has LEFT to
+     * spend, so comparing it against the same pool would have made taking up work conditional on a
+     * number that has nothing to do with it.</p>
+     */
+    private boolean stampReady(CareerGraphS2CPayload.Node node) {
+        if (node == null) return false;
+        return node.kind() != CareerGraphS2CPayload.KIND_SKILL
+                || node.points() <= availablePoints();
     }
 
     /**
@@ -567,8 +581,8 @@ public final class CareerScreen extends Screen {
     private int pageViewBottom() {
         int top = height - MARGIN - FRAME_THICK - 22;
         if (equipButton != null && equipButton.visible) top = Math.min(top, equipButton.getY());
-        if (vocationButton != null && vocationButton.visible) {
-            top = Math.min(top, vocationButton.getY());
+        if (resumeButton != null && resumeButton.visible) {
+            top = Math.min(top, resumeButton.getY());
         }
         if (trackButton != null && trackButton.visible) top = Math.min(top, trackButton.getY());
         return top - (scribeName.isEmpty() ? 6 : 16);
@@ -585,7 +599,7 @@ public final class CareerScreen extends Screen {
         if (button == 0 && layout != null && recordLayout != null) {
             CareerGraphS2CPayload.Node selected = nodeById(selectedId);
             if (recordLayout.wellShown() && !stamp.held()
-                    && selected != null && selected.points() <= availablePoints()
+                    && stampReady(selected)
                     && stamp.overWell(mouseX, mouseY)) {
                 stamp.pickUp(mouseX, mouseY);
                 return true;
@@ -751,7 +765,8 @@ public final class CareerScreen extends Screen {
         *///?}
     }
 
-    private static void sendTrack(CareerTrackC2SPayload payload) {
+    private static void sendVocation(
+            com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload payload) {
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
         //?} else {
@@ -759,7 +774,7 @@ public final class CareerScreen extends Screen {
         *///?}
     }
 
-    private static void sendVocation(CareerVocationC2SPayload payload) {
+    private static void sendTrack(CareerTrackC2SPayload payload) {
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
         //?} else {
