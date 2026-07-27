@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Peel Vault"
+  },
+  "icon": "pizzadelight:iron_pizza_peel",
+  "description": {
+    "text": "Plant the peel and go over the counter. Launches you forward and up."
+  },
+  "tier": 3,
+  "cost": 1,
+  "mods": [
+    "pizzadelight",
+    "farmersdelight"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 120,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 15
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "x": 0,
+          "y": 0.55,
+          "z": 0.9,
+          "relative": true
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.knockback",
+          "volume": 0.7,
+          "pitch": 1.3
+        }
+      ]
+    }
+  }
+}

@@ -5,19 +5,43 @@
   },
   "icon": "minecraft:cauldron",
   "description": {
-    "text": "Patient, careful cooking. Every dish earns 2 additional Cook XP."
+    "text": "A pot kept going from morning to night. There is always something warm to hand."
   },
-  "tier": 3,
-  "cost": 2,
-  "skill_group": "townstead:cook_style",
-  "exclusive_with": [
-    "open_flame"
-  ],
-  "grants": [
-    {
-      "capability": "townstead:cook_xp_flat",
-      "op": "add",
-      "value": 2
+  "tier": 1,
+  "cost": 1,
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 280,
+    "ai_trigger": "when_hurt",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 5.0,
+          "bientity_condition": {
+            "type": "pheno:hostile",
+            "inverted": true
+          },
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:regeneration",
+            "duration": 100,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:cloud",
+          "count": 16,
+          "spread": 1.4,
+          "speed": 0.02
+        }
+      ]
     }
-  ]
+  }
 }

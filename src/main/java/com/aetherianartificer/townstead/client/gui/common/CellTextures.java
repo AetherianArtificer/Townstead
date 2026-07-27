@@ -1,4 +1,4 @@
-package com.aetherianartificer.townstead.client.gui.fieldpost;
+package com.aetherianartificer.townstead.client.gui.common;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;

@@ -1,10 +1,16 @@
-package com.aetherianartificer.townstead.client.gui.fieldpost;
+package com.aetherianartificer.townstead.client.gui.common;
 
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
- * Renders wooden/parchment frames and panels for the Field Post UI.
- * Uses vanilla block atlas textures (no custom texture files needed).
+ * The shared frame and panel kit every Townstead screen is built from: wooden frames, plank
+ * walls, and the two grades of parchment. Uses vanilla block-atlas textures, so it needs no
+ * texture files of its own.
+ *
+ * <p>This lives in {@code gui.common} because it belongs to no one screen. It was born inside
+ * the Field Post package and four other screens ended up reaching across into a sibling feature
+ * for it, which is the difference between having a design system and copying from whichever
+ * screen happened to be written first. Anything drawn by more than one screen belongs here.</p>
  */
 public final class FrameRenderer {
     private FrameRenderer() {}

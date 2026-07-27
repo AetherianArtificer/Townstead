@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Ember Bed"
+  },
+  "icon": "minecraft:charcoal",
+  "description": {
+    "text": "Bank the coals and cook on the heat they hold. Earn 2 additional Cook XP for every step up in the size of the dish."
+  },
+  "tier": 3,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_per_tier",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

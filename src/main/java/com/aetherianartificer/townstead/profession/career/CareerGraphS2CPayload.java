@@ -20,9 +20,11 @@ import java.util.List;
  */
 //? if neoforge {
 public record CareerGraphS2CPayload(String title, String scribeName, boolean inspect,
+                                    String notice, String authority, String dateLine,
                                     List<Node> nodes) implements CustomPacketPayload {
 //?} else {
 /*public record CareerGraphS2CPayload(String title, String scribeName, boolean inspect,
+                                    String notice, String authority, String dateLine,
                                     List<Node> nodes) {
 *///?}
 
@@ -39,6 +41,32 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
 
     public record Evidence(String label, int current, int target, boolean met) {}
 
+    /**
+     * A skill's specialization membership, so the board can draw the path as one arm off the
+     * career: every member carries the path's id and name, and {@code gateway} marks the skill
+     * that opens it. {@link #NONE} is a trunk skill, a career, or a Combo Skill.
+     */
+    public record PathTag(String id, String name, boolean gateway, int color, String backdrop) {
+        public static final PathTag NONE = new PathTag("", "", false, 0, "");
+        public boolean present() { return !id.isEmpty(); }
+
+        /** Compatibility constructor predating the board's authored section styling. */
+        public PathTag(String id, String name, boolean gateway) {
+            this(id, name, gateway, 0, "");
+        }
+    }
+
+    /**
+     * The mark the subject pressed on this node's record, in page space, or {@link #NONE}.
+     *
+     * <p>The authority and date are the strings that were true on the day, carried with the mark
+     * rather than resolved at render time, so a renamed village does not rewrite old records.</p>
+     */
+    public record Stamp(boolean present, int x, int y, float rotation, String authority,
+                        String date) {
+        public static final Stamp NONE = new Stamp(false, 0, 0, 0f, "", "");
+    }
+
     public record Node(String id, String rootId, String parentId, byte kind, byte state,
                        String name, String description, String icon,
                        int tier, int maxTier, int xp, int xpToNext, int xpToday, int dailyCap,
@@ -46,12 +74,33 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
                        String routesLine, String replaces,
                        List<Evidence> evidence, List<String> moments,
                        String rankName, int points,
-                       String group, String nextRankName, List<String> effects) {}
+                       String group, String nextRankName, List<String> effects,
+                       List<String> requires, PathTag path, Stamp stamp) {
+
+        /** Compatibility constructor predating the player-pressed Archives stamp. */
+        public Node(String id, String rootId, String parentId, byte kind, byte state,
+                    String name, String description, String icon,
+                    int tier, int maxTier, int xp, int xpToNext, int xpToday, int dailyCap,
+                    boolean primary, boolean equipped, boolean tracked,
+                    String routesLine, String replaces,
+                    List<Evidence> evidence, List<String> moments,
+                    String rankName, int points,
+                    String group, String nextRankName, List<String> effects,
+                    List<String> requires, PathTag path) {
+            this(id, rootId, parentId, kind, state, name, description, icon, tier, maxTier, xp,
+                    xpToNext, xpToday, dailyCap, primary, equipped, tracked, routesLine, replaces,
+                    evidence, moments, rankName, points, group, nextRankName, effects, requires,
+                    path, Stamp.NONE);
+        }
+    }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeUtf(title);
         buf.writeUtf(scribeName);
         buf.writeBoolean(inspect);
+        buf.writeUtf(notice);
+        buf.writeUtf(authority);
+        buf.writeUtf(dateLine);
         buf.writeVarInt(nodes.size());
         for (Node node : nodes) {
             buf.writeUtf(node.id());
@@ -92,6 +141,23 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
             for (String effect : node.effects()) {
                 buf.writeUtf(effect);
             }
+            buf.writeVarInt(node.requires().size());
+            for (String required : node.requires()) {
+                buf.writeUtf(required);
+            }
+            buf.writeUtf(node.path().id());
+            buf.writeUtf(node.path().name());
+            buf.writeBoolean(node.path().gateway());
+            buf.writeInt(node.path().color());
+            buf.writeUtf(node.path().backdrop());
+            buf.writeBoolean(node.stamp().present());
+            if (node.stamp().present()) {
+                buf.writeVarInt(node.stamp().x());
+                buf.writeVarInt(node.stamp().y());
+                buf.writeFloat(node.stamp().rotation());
+                buf.writeUtf(node.stamp().authority());
+                buf.writeUtf(node.stamp().date());
+            }
         }
     }
 
@@ -99,6 +165,9 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
         String title = buf.readUtf();
         String scribeName = buf.readUtf();
         boolean inspect = buf.readBoolean();
+        String notice = buf.readUtf();
+        String authority = buf.readUtf();
+        String dateLine = buf.readUtf();
         int nodeCount = buf.readVarInt();
         List<Node> nodes = new ArrayList<>(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
@@ -141,12 +210,26 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
             for (int j = 0; j < effectCount; j++) {
                 effects.add(buf.readUtf());
             }
+            int requireCount = buf.readVarInt();
+            List<String> requires = new ArrayList<>(requireCount);
+            for (int j = 0; j < requireCount; j++) {
+                requires.add(buf.readUtf());
+            }
+            PathTag path = new PathTag(buf.readUtf(), buf.readUtf(), buf.readBoolean(),
+                    buf.readInt(), buf.readUtf());
+            Stamp stamp = Stamp.NONE;
+            if (buf.readBoolean()) {
+                stamp = new Stamp(true, buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
+                        buf.readUtf(), buf.readUtf());
+            }
             nodes.add(new Node(id, rootId, parentId, kind, state, name, description, icon,
                     tier, maxTier, xp, xpToNext, xpToday, dailyCap, primary, equipped, tracked,
                     routesLine, replaces, List.copyOf(evidence), List.copyOf(moments),
-                    rankName, points, group, nextRankName, List.copyOf(effects)));
+                    rankName, points, group, nextRankName, List.copyOf(effects),
+                    List.copyOf(requires), path, stamp));
         }
-        return new CareerGraphS2CPayload(title, scribeName, inspect, List.copyOf(nodes));
+        return new CareerGraphS2CPayload(title, scribeName, inspect, notice, authority, dateLine,
+                List.copyOf(nodes));
     }
 
     //? if neoforge {

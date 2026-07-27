@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Mise En Place"
+  },
+  "icon": "minecraft:bowl",
+  "description": {
+    "text": "Everything prepped and within reach before the first pan is lit."
+  },
+  "tier": 1,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

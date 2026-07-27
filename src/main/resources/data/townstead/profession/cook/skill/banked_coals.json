@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Banked Coals"
+  },
+  "icon": "minecraft:charcoal",
+  "description": {
+    "text": "Bank the fire so it is still hot at dawn. Larger dishes repay the care."
+  },
+  "tier": 4,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_per_tier",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

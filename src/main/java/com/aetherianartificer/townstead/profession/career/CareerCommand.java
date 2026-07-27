@@ -29,7 +29,8 @@ public final class CareerCommand {
     private CareerCommand() {}
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext context) {
-        dispatcher.register(Commands.literal("townstead").then(Commands.literal("career")
+        dispatcher.register(Commands.literal("townstead").then(CareerDebugCommands.attach(
+                Commands.literal("career")
                 .executes(ctx -> inspect(ctx.getSource(), ctx.getSource().getPlayer()))
                 .then(Commands.literal("screen")
                         .executes(ctx -> screen(ctx.getSource(), null))
@@ -52,7 +53,7 @@ public final class CareerCommand {
                                         .requires(source -> source.hasPermission(2))
                                         .executes(ctx -> choose(ctx.getSource(), living(
                                                         EntityArgument.getEntity(ctx, "target")),
-                                                ResourceLocation.tryParse(StringArgumentType.getString(ctx, "skill")))))))));
+                                                ResourceLocation.tryParse(StringArgumentType.getString(ctx, "skill"))))))))));
     }
 
     private static int screen(CommandSourceStack source, LivingEntity target) {

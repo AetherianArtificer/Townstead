@@ -1416,6 +1416,9 @@ public class Townstead {
             // The professions source: active learned skills express their pheno power
             com.aetherianartificer.townstead.pheno.power.Powers.register(
                     new com.aetherianartificer.townstead.profession.skill.SkillPowerSource());
+            // Shared substrate everyone carries, whatever their Root or career (the stamina meter)
+            com.aetherianartificer.townstead.pheno.power.Powers.register(
+                    new com.aetherianartificer.townstead.root.BaselinePowers.Source());
             // How entities react without factions, from data-pack group relations; the faction
             // system will register an authoritative source over this later.
             com.aetherianartificer.townstead.root.disposition.Dispositions.register(
@@ -1636,6 +1639,26 @@ public class Townstead {
                         com.aetherianartificer.townstead.pheno.condition.types.SelectionTestConditionType.Mode.NONE));
     }
 
+    /** Both entities stand inside the borders of the same village. Strangers fail it. */
+    private static boolean townstead$shareAVillage(net.minecraft.world.entity.LivingEntity actor,
+                                                  net.minecraft.world.entity.LivingEntity target) {
+        java.util.Optional<net.conczin.mca.server.world.data.Village> mine =
+                townstead$villageOf(actor);
+        if (mine.isEmpty()) return false;
+        java.util.Optional<net.conczin.mca.server.world.data.Village> theirs =
+                townstead$villageOf(target);
+        return theirs.isPresent() && mine.get().getId() == theirs.get().getId();
+    }
+
+    private static java.util.Optional<net.conczin.mca.server.world.data.Village> townstead$villageOf(
+            net.minecraft.world.entity.LivingEntity entity) {
+        if (entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
+            return com.aetherianartificer.townstead.profession.ProfessionCapacity.resolveVillage(villager);
+        }
+        return net.conczin.mca.server.world.data.Village.findNearest(entity)
+                .filter(village -> village.isWithinBorder(entity));
+    }
+
     private static void registerBiEntityConditionTypes() {
         com.aetherianartificer.townstead.pheno.condition.bientity.types.SimpleBiConditionType[] simple = {
                 new com.aetherianartificer.townstead.pheno.condition.bientity.types.SimpleBiConditionType(
@@ -1666,6 +1689,18 @@ public class Townstead {
                 // The actor is the target's kill-credit holder (Apugli prime_adversary).
                 new com.aetherianartificer.townstead.pheno.condition.bientity.types.SimpleBiConditionType(
                         "pheno:prime_adversary", (a, t) -> t.getKillCredit() == a),
+                // The friendly-fire pair. "Hostile" is the game's own Enemy marker rather than
+                // a Townstead faction, so it covers modded monsters for free, and a mob already
+                // hunting the actor counts even if it is not marked (a provoked golem, a
+                // charmed neutral). Invert it for support abilities: everyone who is not
+                // currently a threat to the actor.
+                new com.aetherianartificer.townstead.pheno.condition.bientity.types.SimpleBiConditionType(
+                        "pheno:hostile", (a, t) -> t instanceof net.minecraft.world.entity.monster.Enemy
+                                || (t instanceof net.minecraft.world.entity.Mob mob && mob.getTarget() == a)),
+                // Both sides live in the same village: the tighter "my people" test, for
+                // abilities that should reach neighbours but not passing strangers.
+                new com.aetherianartificer.townstead.pheno.condition.bientity.types.SimpleBiConditionType(
+                        "pheno:same_village", Townstead::townstead$shareAVillage),
         };
         for (var type : simple) {
             com.aetherianartificer.townstead.pheno.condition.bientity.BiEntityConditionTypes.register(type);
@@ -1909,6 +1944,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ComboSkills.Loader());
         event.addListener(new com.aetherianartificer.townstead.compat.farmersdelight.cook.Workstations.Loader());
+        event.addListener(new com.aetherianartificer.townstead.root.BaselinePowers.Loader());
         event.addListener(new com.aetherianartificer.townstead.root.trait.TraitJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.attachment.AttachmentServerLoader());
         event.addListener(new com.aetherianartificer.townstead.chronicle.template.ChronicleEventJsonLoader());
@@ -2347,6 +2383,11 @@ public class Townstead {
                 com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload.TYPE,
                 com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload.STREAM_CODEC,
                 this::handleCareerTrack
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload.TYPE,
+                com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload.STREAM_CODEC,
+                this::handleCareerStamp
         );
         registrar.playToClient(
                 FishermanHookLinkPayload.TYPE,
@@ -3123,6 +3164,17 @@ public class Townstead {
             if (context.player() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleTrack(
                         sp, payload.careerId());
+            }
+        });
+    }
+
+    private void handleCareerStamp(
+            com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload payload,
+            IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer sp) {
+                com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleStamp(
+                        sp, payload.skillId(), payload.x(), payload.y(), payload.rotation());
             }
         });
     }

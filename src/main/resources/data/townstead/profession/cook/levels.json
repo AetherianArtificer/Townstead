@@ -1,0 +1,111 @@
+{
+  "daily_cap": 230,
+  "max_xp": 200000,
+  "levels": [
+    {
+      "xp": 110,
+      "skill_points": 1
+    },
+    {
+      "xp": 190,
+      "skill_points": 1,
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 1
+          },
+          "result": {
+            "item": "pizzadelight:cheese",
+            "count": 3
+          },
+          "max_uses": 16,
+          "villager_xp": 2,
+          "requires_skill": "pizza_craft"
+        }
+      ]
+    },
+    {
+      "xp": 360,
+      "skill_points": 1,
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 3
+          },
+          "result": {
+            "item": "pizzadelight:iron_pizza_peel",
+            "count": 1
+          },
+          "max_uses": 8,
+          "villager_xp": 5,
+          "requires_skill": "pizza_craft"
+        },
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 2
+          },
+          "result": {
+            "item": "pizzadelight:rolling_pin",
+            "count": 1
+          },
+          "max_uses": 8,
+          "villager_xp": 5,
+          "requires_skill": "pizza_craft"
+        }
+      ]
+    },
+    {
+      "xp": 590,
+      "skill_points": 1,
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 5
+          },
+          "result": {
+            "item": "pizzadelight:chef_hat",
+            "count": 1
+          },
+          "max_uses": 4,
+          "villager_xp": 10,
+          "requires_skill": "kitchen_rhythm"
+        }
+      ]
+    },
+    {
+      "skill_points": 1,
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 8
+          },
+          "result": {
+            "item": "pizzadelight:diamond_pizza_peel",
+            "count": 1
+          },
+          "max_uses": 4,
+          "villager_xp": 15,
+          "requires_skill": "kitchen_rhythm"
+        },
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 12
+          },
+          "result": {
+            "item": "pizzadelight:chef_shirt",
+            "count": 1
+          },
+          "max_uses": 2,
+          "villager_xp": 20,
+          "requires_skill": "stone_oven"
+        }
+      ]
+    }
+  ]
+}

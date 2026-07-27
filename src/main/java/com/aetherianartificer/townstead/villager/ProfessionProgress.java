@@ -39,6 +39,23 @@ public final class ProfessionProgress {
         return Math.max(0, spec.thresholdForTier(tier) - xp);
     }
 
+    /**
+     * Admin/debug only: place a career at an exact level, returning the level actually reached
+     * after clamping to the track. Moves the XP total as well as the stored tier, because every
+     * later gain recomputes the tier from XP and a tier set on its own would snap straight back.
+     * Nothing in normal play calls this; levels are earned through {@link #addXp}.
+     */
+    public static int setLevel(ProfessionXpStore store, ResourceLocation careerId, int level) {
+        careerId = canonical(careerId);
+        ProgressionSpec spec = ProfessionProgressions.spec(careerId);
+        int clamped = Math.max(1, Math.min(spec.maxTier(), level));
+        ProfessionXp state = store.professionXp(careerId.toString());
+        int xp = Math.max(0, Math.min(spec.maxXp(), spec.thresholdForTier(clamped - 1)));
+        store.setProfessionXp(careerId.toString(), new ProfessionXp(
+                xp, clamped, state.lastTierUpTick(), state.xpDay(), state.xpToday()));
+        return clamped;
+    }
+
     public static GainResult addXp(ProfessionXpStore store, ResourceLocation careerId, int requested, long gameTime) {
         careerId = canonical(careerId);
         return addXp(store, careerId.toString(), ProfessionProgressions.spec(careerId), requested, gameTime);

@@ -5,20 +5,17 @@
   },
   "icon": "minecraft:clock",
   "description": {
-    "text": "A practiced hand at the oven. Bigger dishes earn more Cook XP."
+    "text": "A practiced hand at the oven. Earn 1 additional Cook XP whenever a dish is completed."
   },
-  "tier": 3,
+  "tier": 2,
   "cost": 1,
   "mods": [
     "pizzadelight",
     "farmersdelight"
   ],
-  "requires": [
-    "pizza_craft"
-  ],
   "grants": [
     {
-      "capability": "townstead:cook_xp_per_tier",
+      "capability": "townstead:cook_xp_flat",
       "op": "add",
       "value": 1
     }

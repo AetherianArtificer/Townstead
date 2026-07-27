@@ -7,7 +7,7 @@
   "description": {
     "text": "Earn 1 additional Cook XP whenever a dish is completed."
   },
-  "tier": 2,
+  "tier": 1,
   "cost": 1,
   "grants": [
     {

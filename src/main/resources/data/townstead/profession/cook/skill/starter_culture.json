@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Starter Culture"
+  },
+  "icon": "minecraft:wheat_seeds",
+  "description": {
+    "text": "A jar of dough kept alive on the shelf. It makes everything else easier."
+  },
+  "tier": 1,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

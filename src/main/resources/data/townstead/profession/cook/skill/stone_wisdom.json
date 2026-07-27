@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Stone Wisdom"
+  },
+  "icon": "minecraft:smooth_stone",
+  "description": {
+    "text": "You know what the oven is doing from the sound of it."
+  },
+  "tier": 5,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_per_tier",
+      "op": "add",
+      "value": 3
+    }
+  ]
+}
