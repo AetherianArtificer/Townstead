@@ -5,10 +5,10 @@
   },
   "icon": "minecraft:suspicious_stew",
   "description": {
-    "text": "Years of tasting every experiment. Immune to poison and hunger effects."
+    "text": "Years of tasting every pot before it leaves the kitchen. Immune to poison and hunger effects."
   },
-  "tier": 4,
-  "cost": 2,
+  "tier": 3,
+  "cost": 1,
   "power": {
     "type": "pheno:effect_immunity",
     "effects": [

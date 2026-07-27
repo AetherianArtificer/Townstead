@@ -1,0 +1,9 @@
+{
+  "type": "pheno:resource",
+  "min": 0,
+  "max": 100,
+  "start": 100,
+  "regen": 2,
+  "regen_interval": 20,
+  "color": "#E8A33C"
+}

@@ -5,19 +5,46 @@
   },
   "icon": "pizzadelight:pizza_slice",
   "description": {
-    "text": "Take up the pizza trade. Earn 1 additional Cook XP whenever a dish is completed."
+    "text": "Cut and hand round a slice mid-shift. Nobody works hungry."
   },
-  "tier": 2,
+  "tier": 1,
   "cost": 1,
   "mods": [
     "pizzadelight",
     "farmersdelight"
   ],
-  "grants": [
-    {
-      "capability": "townstead:cook_xp_flat",
-      "op": "add",
-      "value": 1
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 5.0,
+          "bientity_condition": {
+            "type": "pheno:hostile",
+            "inverted": true
+          },
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:saturation",
+            "duration": 60,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.burp",
+          "volume": 0.6,
+          "pitch": 1.2
+        }
+      ]
     }
-  ]
+  }
 }

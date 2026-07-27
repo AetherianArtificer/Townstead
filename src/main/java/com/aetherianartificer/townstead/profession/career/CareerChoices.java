@@ -59,13 +59,34 @@ public final class CareerChoices {
         if (profile == null || skillId == null) {
             return new LearnedSkills.Result(false, "no career profile");
         }
-        boolean available = profile.acquiredCareers().stream()
-                .map(com.aetherianartificer.townstead.profession.def.ProfessionDefs::byId)
-                .anyMatch(def -> def != null && def.skills().contains(skillId));
-        if (!available) {
+        if (!holdsCareerOffering(profile, skillId)) {
             return new LearnedSkills.Result(false, "not available from an acquired career");
         }
         return learn(entity, skillId);
+    }
+
+    /**
+     * Whether the subject holds a career that offers this skill.
+     *
+     * <p>{@code acquiredCareers} alone is the WRONG test, and it is why the screen and the server
+     * disagreed: that set records ADVANCED careers you have unlocked. A root career like Cook never
+     * enters it, so a player whose primary vocation was Cook, holding a skill point, looking at a
+     * Cook skill the board had drawn as ready, was refused with "not available from an acquired
+     * career". This mirrors the rule {@code CareerGraphBuilder} uses to decide a root career is
+     * acquired, so what the board offers and what the server accepts are the same thing.</p>
+     */
+    private static boolean holdsCareerOffering(CareerProfile profile, ResourceLocation skillId) {
+        for (com.aetherianartificer.townstead.profession.def.ProfessionDef def
+                : com.aetherianartificer.townstead.profession.def.ProfessionDefs.all().values()) {
+            if (def == null || !def.skills().contains(skillId)) continue;
+            boolean held = def.isRoot()
+                    ? def.id().equals(profile.primaryVocation())
+                            || profile.careerHistory().contains(def.id())
+                            || profile.professionXp(Careers.resolve(def.id().toString())).xp() > 0
+                    : profile.acquiredCareers().contains(def.id());
+            if (held) return true;
+        }
+        return false;
     }
 
     public static boolean isActive(LivingEntity entity, ResourceLocation skill) {

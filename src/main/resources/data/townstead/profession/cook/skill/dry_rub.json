@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Dry Rub"
+  },
+  "icon": "minecraft:cocoa_beans",
+  "description": {
+    "text": "Season the cut the night before and let it sit. Small, patient gains on every dish."
+  },
+  "tier": 1,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

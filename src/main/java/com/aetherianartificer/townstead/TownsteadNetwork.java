@@ -147,6 +147,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload::read,
                 TownsteadNetwork::handleCareerTrack);
+        registerC2S(com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload::read,
+                TownsteadNetwork::handleCareerStamp);
         registerS2C(FishermanHookLinkPayload.class, FishermanHookLinkPayload::write, FishermanHookLinkPayload::read,
                 TownsteadNetwork::handleFishermanHookLink);
 
@@ -740,6 +744,13 @@ public final class TownsteadNetwork {
             ServerPlayer sp) {
         com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleTrack(
                 sp, payload.careerId());
+    }
+
+    private static void handleCareerStamp(
+            com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleStamp(
+                sp, payload.skillId(), payload.x(), payload.y(), payload.rotation());
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {

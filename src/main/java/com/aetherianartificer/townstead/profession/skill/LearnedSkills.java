@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession.skill;
 
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
+import com.aetherianartificer.townstead.profession.def.RetrainingPolicy;
 import com.aetherianartificer.townstead.profession.def.SkillDef;
 import com.aetherianartificer.townstead.profession.def.SkillDefs;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
@@ -126,10 +127,26 @@ public final class LearnedSkills {
     /**
      * Forget a skill, honoring the profession's retraining policy and cascading to every learned
      * skill that (transitively) required it, so the learned set never becomes graph-invalid.
+     *
+     * <p>This used to refuse outright, on the reasoning that a career is history and history does
+     * not un-happen. That held while skills were bought with banked points and nothing was ever
+     * truly closed off. It does not hold now: a level offers several options and taking one shuts
+     * the others, so retraining is the ONLY way to revisit a choice, and refusing it would make
+     * every pick permanent for the life of the character. A profession can still forbid it with
+     * {@code "retraining": "locked"}, which is now a deliberate statement about that career
+     * rather than the silent default it was.</p>
      */
     private static ForgetResult forgetFrom(Backing backing, ResourceLocation skillId) {
         if (!backing.contains(skillId)) return ForgetResult.fail("not learned");
-        return ForgetResult.fail("learned Career history is permanent");
+        SkillDef skill = SkillDefs.byId(skillId);
+        ProfessionDef owner = skill == null ? null : ProfessionDefs.byId(skill.profession());
+        if (owner != null && owner.retraining() == RetrainingPolicy.LOCKED) {
+            // Name may be absent on a def built in code rather than parsed from a pack.
+            String who = owner.displayName() == null
+                    ? owner.id().toString() : owner.displayName().getString();
+            return ForgetResult.fail("'" + who + "' does not allow retraining");
+        }
+        return ForgetResult.removed(cascadeRemove(backing, skillId));
     }
 
     /** Admin bypass: forget regardless of retraining policy; still cascades to dependents. */

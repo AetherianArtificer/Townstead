@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Blistered Crust"
+  },
+  "icon": "minecraft:bread",
+  "description": {
+    "text": "Char in exactly the right places, which only the stone can give you."
+  },
+  "tier": 4,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_per_tier",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

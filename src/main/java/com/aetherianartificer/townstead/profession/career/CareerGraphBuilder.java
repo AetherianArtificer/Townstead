@@ -80,7 +80,8 @@ public final class CareerGraphBuilder {
                         combo.icon() == null ? "" : combo.icon().toString(),
                         0, 0, 0, 0, 0, 0, false, false, false,
                         "", "", List.copyOf(evidence), List.of(),
-                        "", 0, "", "", effectLines(combo.grants())));
+                        "", 0, "", "", effectLines(combo.grants()),
+                        List.of(), CareerGraphS2CPayload.PathTag.NONE));
             }
         }
     }
@@ -95,21 +96,30 @@ public final class CareerGraphBuilder {
         int xp = ProfessionProgress.getXp(store, careerId);
         int currentTier = ProfessionProgress.getTier(store, careerId);
         boolean primary = careerId.equals(profile.primaryVocation());
-        boolean acquired = def.isRoot() ? (xp > 0 || primary) : profile.acquiredCareers().contains(careerId);
+        // Work you have ever declared stays yours. Keying this on "primary or has XP" meant that
+        // declaring a second career emptied the first one's whole board the instant you switched,
+        // before you had earned a single point in the new one, which looks exactly like data loss.
+        boolean acquired = def.isRoot()
+                ? (xp > 0 || primary || profile.careerHistory().contains(careerId))
+                : profile.acquiredCareers().contains(careerId);
         boolean eligible = !acquired && def.eligible(entity);
 
+        // A career you cannot take yet is LOCKED, never masked. Sending unmet careers as nameless
+        // silhouettes made the board unreadable: a row of "?" plaques tells a reader neither what
+        // exists nor what to do about it, and the requirement hints that would answer both were
+        // exactly what the mask withheld. Seeing a career you have not earned is not a spoiler;
+        // it is the only way the board can function as a map of where you could go. NOTE this
+        // leaves `def.hidden()` inert — decide whether it earns its keep before authoring against it.
         final byte state;
         if (acquired) {
             state = CareerGraphS2CPayload.STATE_ACQUIRED;
         } else if (def.isRoot() || eligible) {
             state = CareerGraphS2CPayload.STATE_READY;
-        } else if (def.hidden()) {
-            state = CareerGraphS2CPayload.STATE_HIDDEN;
         } else {
             state = CareerGraphS2CPayload.STATE_LOCKED;
         }
 
-        boolean masked = state == CareerGraphS2CPayload.STATE_HIDDEN;
+        boolean masked = false;
         List<CareerGraphS2CPayload.Evidence> evidence = masked
                 ? List.of() : evidenceFor(server, entity, profile, def, acquired);
         String parentId = "";
@@ -153,7 +163,7 @@ public final class CareerGraphBuilder {
                 acquired ? SkillPoints.available(entity, def) : 0,
                 "",
                 masked || currentTier >= maxTier ? "" : def.levelName(currentTier + 1).getString(),
-                List.of()));
+                List.of(), List.of(), CareerGraphS2CPayload.PathTag.NONE));
 
         if (acquired) {
             for (ResourceLocation choice : def.skills()) {
@@ -179,10 +189,44 @@ public final class CareerGraphBuilder {
                         List.of(), List.of(),
                         def.levelName(skill.tier()).getString(), Math.max(0, skill.cost()),
                         skill.skillGroup() == null ? "" : skill.skillGroup().toString(),
-                        "", effectLines(skill)));
+                        "", effectLines(skill),
+                        prerequisitesWithin(def, skill), pathTag(def, choice),
+                        stampOf(profile, choice)));
             }
         }
 
+    }
+
+    /** The mark this subject pressed when they registered the skill, if they have. */
+    private static CareerGraphS2CPayload.Stamp stampOf(CareerProfile profile,
+                                                       net.minecraft.resources.ResourceLocation skill) {
+        CareerStamp mark = profile == null ? null : profile.stamp(skill);
+        return mark == null ? CareerGraphS2CPayload.Stamp.NONE
+                : new CareerGraphS2CPayload.Stamp(true, mark.x(), mark.y(), mark.rotation(),
+                        mark.authority(), mark.date());
+    }
+
+    /**
+     * The skill's prerequisites, narrowed to siblings the board will actually draw. A
+     * cross-profession prerequisite still gates learning; it just has no node to hang a
+     * line from, so the skill reads as attached to its career instead.
+     */
+    private static List<String> prerequisitesWithin(ProfessionDef def, SkillDef skill) {
+        List<String> within = new ArrayList<>();
+        for (ResourceLocation required : skill.requires()) {
+            if (def.skills().contains(required)) within.add(required.toString());
+        }
+        return within;
+    }
+
+    /** The specialization arm a skill sits on, or {@code NONE} for the career's trunk. */
+    private static CareerGraphS2CPayload.PathTag pathTag(ProfessionDef def, ResourceLocation skill) {
+        var path = com.aetherianartificer.townstead.profession.def.ProfessionPaths
+                .pathOwning(def.id(), skill);
+        return path == null ? CareerGraphS2CPayload.PathTag.NONE
+                : new CareerGraphS2CPayload.PathTag(path.id(), path.displayName().getString(),
+                        path.gateway().equals(skill), path.color(),
+                        path.backdrop() == null ? "" : path.backdrop().toString());
     }
 
     /**
@@ -191,7 +235,33 @@ public final class CareerGraphBuilder {
      * authored description; grants are machine-readable and rendered here.
      */
     private static List<String> effectLines(SkillDef skill) {
-        return effectLines(skill.grants());
+        List<String> lines = effectLines(skill.grants());
+        lines.addAll(powerLines(skill.power()));
+        return lines;
+    }
+
+    /**
+     * Powers are described by their authored prose, with one exception: an active ability is
+     * bound to an Ability key and costs a resource, and a player cannot discover either by
+     * reading flavour text. Those two facts are stated mechanically, like grants are.
+     */
+    private static List<String> powerLines(
+            @org.jetbrains.annotations.Nullable
+            com.aetherianartificer.townstead.pheno.power.PowerComponent power) {
+        if (!(power instanceof com.aetherianartificer.townstead.root.gene.types
+                .ActiveAbilityGeneType.Instance active)) {
+            return List.of();
+        }
+        List<String> lines = new ArrayList<>();
+        lines.add(Component.translatable("townstead.career.screen.effect.active",
+                trimNumber(active.cooldownTicks() / 20d)).getString());
+        if (active.costResource() != null && active.costAmount() > 0) {
+            lines.add(Component.translatable("townstead.career.screen.effect.costs",
+                    active.costAmount(),
+                    localizeOr("townstead.resource." + active.costResource().getPath(),
+                            prettify(active.costResource().getPath()))).getString());
+        }
+        return lines;
     }
 
     private static List<String> effectLines(List<com.aetherianartificer.townstead.profession.def.SkillGrant> grants) {

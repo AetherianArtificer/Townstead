@@ -47,22 +47,25 @@ public final class CareerTreeOpener {
                 com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(careerId);
         CareerProfile profile = CareerProfiles.of(player);
         if (def == null || profile == null || careerId.equals(profile.primaryVocation())) return;
-        if (!def.isRoot() && !profile.acquiredCareers().contains(careerId)) return;
+        if (!def.isRoot() && !profile.acquiredCareers().contains(careerId)) {
+            refuse(player, Component.translatable("townstead.career.vocation.not_yours"));
+            return;
+        }
 
+        // This was computed and then never read, so the Archives requirement was documented,
+        // localized and completely unenforced: any player could take up any work from anywhere.
         boolean authorized = com.aetherianartificer.townstead.village.ArchivesBuilding
                 .villageIfInside(player, player.blockPosition()).isPresent()
                 || nearOnDutyScribe(player);
         if (!authorized) {
-            player.displayClientMessage(
-                    Component.translatable("townstead.career.vocation.no_archives"), false);
+            refuse(player, Component.translatable("townstead.career.vocation.no_archives"));
             return;
         }
+        // Declare as often as you like. The once-a-day limit was friction with nothing behind it:
+        // career XP and learned skills are permanent and per career, so switching costs you the
+        // work you are not doing, which is the real price. The stamp is still kept, because the
+        // Chronicle wants to know when you last changed your work.
         long today = player.serverLevel().getDayTime() / 24000L;
-        if (profile.primaryVocation() != null && profile.lastVocationChangeDay() == today) {
-            player.displayClientMessage(
-                    Component.translatable("townstead.career.vocation.daily_limit"), false);
-            return;
-        }
         PlayerCareers.mutate(player, stored -> {
             stored.setPrimaryVocation(careerId);
             stored.setLastVocationChangeDay(today);
@@ -72,9 +75,8 @@ public final class CareerTreeOpener {
                 java.util.Map.of("career", careerId.toString()));
         player.playNotifySound(net.minecraft.sounds.SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT,
                 net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 0.9f);
-        player.displayClientMessage(Component.translatable(
-                "townstead.career.vocation.taken", def.displayName()), false);
-        send(player);
+        notify(player, Component.translatable("townstead.career.vocation.taken",
+                def.displayName()));
     }
 
     private static boolean nearOnDutyScribe(ServerPlayer player) {
@@ -108,10 +110,49 @@ public final class CareerTreeOpener {
         if (result.ok()) {
             player.playNotifySound(net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,
                     net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
-        } else if (result.error() != null) {
-            player.displayClientMessage(Component.translatable(
-                    "townstead.career.learn.blocked", result.error()), false);
+        } else {
+            refuse(player, result.error() == null
+                    ? Component.translatable("townstead.career.learn.blocked_generic")
+                    : Component.translatable("townstead.career.learn.blocked", result.error()));
+            return;
         }
+        send(player);
+    }
+
+    /**
+     * The stamp press: learn the skill, and if that succeeds record where the mark landed.
+     *
+     * <p>The order matters. The learn is validated and performed first by exactly the same path the
+     * button used, so nothing about what a press COSTS lives on the client; the position is applied
+     * only once the server has agreed the press was legal. A refused press leaves no mark, which is
+     * why a failed learn returns before the profile is touched.</p>
+     */
+    public static void handleStamp(ServerPlayer player, String skillIdRaw, int x, int y,
+                                   float rotation) {
+        net.minecraft.resources.ResourceLocation skillId =
+                net.minecraft.resources.ResourceLocation.tryParse(skillIdRaw);
+        com.aetherianartificer.townstead.profession.skill.LearnedSkills.Result result =
+                com.aetherianartificer.townstead.profession.career.CareerChoices.chooseFromAcquired(
+                        player, skillId);
+        if (!result.ok()) {
+            // Refusals go to the record's own notice band, never to chat: the open screen draws its
+            // backdrop over the chat log, so a chat refusal is invisible and a press that was
+            // correctly declined is indistinguishable from a broken stamp.
+            refuse(player, result.error() == null
+                    ? Component.translatable("townstead.career.learn.blocked_generic")
+                    : Component.translatable("townstead.career.learn.blocked", result.error()));
+            return;
+        }
+        net.minecraft.resources.ResourceLocation canonical =
+                com.aetherianartificer.townstead.profession.def.SkillDefs.canonicalId(skillId);
+        net.minecraft.server.MinecraftServer server = player.getServer();
+        CareerStamp mark = CareerStamp.sanitized(x, y, rotation, authorityFor(player),
+                server == null ? "" : todayFor(server, player));
+        PlayerCareers.mutate(player, stored -> stored.stamp(canonical, mark));
+        player.playNotifySound(net.minecraft.sounds.SoundEvents.WOODEN_BUTTON_CLICK_ON,
+                net.minecraft.sounds.SoundSource.PLAYERS, 0.7f, 0.7f);
+        player.playNotifySound(net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,
+                net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
         send(player);
     }
 
@@ -132,7 +173,25 @@ public final class CareerTreeOpener {
     }
 
     public static void send(ServerPlayer player) {
-        send(player, player, false);
+        send(player, player, false, "");
+    }
+
+    /**
+     * Re-send the record with a line across its foot.
+     *
+     * <p>ANY answer to something the player did inside the screen has to come back this way. Chat
+     * is the wrong channel while the board is open, because the board draws its own backdrop over
+     * the chat log: a refusal sent to chat is invisible, and a press that was correctly declined
+     * becomes indistinguishable from a broken one. That has now caught the vocation button, the
+     * Learn button and the stamp in turn.</p>
+     */
+    public static void notify(ServerPlayer player, Component message) {
+        send(player, player, false, message.getString());
+    }
+
+    /** {@link #notify} for the refusal case, so call sites read as what they mean. */
+    public static void refuse(ServerPlayer player, Component reason) {
+        notify(player, reason);
     }
 
     /**
@@ -143,13 +202,20 @@ public final class CareerTreeOpener {
      */
     public static void send(ServerPlayer viewer, net.minecraft.world.entity.LivingEntity target,
                             boolean inspect) {
+        send(viewer, target, inspect, "");
+    }
+
+    public static void send(ServerPlayer viewer, net.minecraft.world.entity.LivingEntity target,
+                            boolean inspect, String notice) {
         net.minecraft.server.MinecraftServer server = viewer.getServer();
         if (server == null) return;
         com.aetherianartificer.townstead.chronicle.Chronicles.bySubject(target.getUUID(), 0L, 64)
                 .thenAccept(events -> server.execute(() -> {
-                    java.util.Map<String, java.util.List<String>> moments = momentsFor(server, events);
+                    java.util.Map<String, java.util.List<String>> moments =
+                            momentsFor(server, actedBy(events, target.getUUID()));
                     CareerGraphS2CPayload payload = new CareerGraphS2CPayload(
-                            titleFor(viewer, target), scribeNameFor(viewer), inspect,
+                            titleFor(viewer, target), scribeNameFor(viewer), inspect, notice,
+                            authorityFor(viewer), todayFor(server, viewer),
                             CareerGraphBuilder.build(server, target, moments));
                     //? if neoforge {
                     net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(viewer, payload);
@@ -171,6 +237,30 @@ public final class CareerTreeOpener {
         return viewer.getName().getString();
     }
 
+    /**
+     * Who registered this record: the village whose Archives you are standing in.
+     *
+     * <p>Sent as a NAME rather than a village id, and stamped onto the record as it reads today. A
+     * village that is later renamed must not silently rewrite the marks pressed under its old name,
+     * because a record that edits its own history is worse than one that is out of date. Empty in
+     * the wild, where the record falls back to a field registry.</p>
+     */
+    private static String authorityFor(ServerPlayer viewer) {
+        java.util.Optional<net.conczin.mca.server.world.data.Village> village =
+                net.conczin.mca.server.world.data.Village.findNearest(viewer);
+        if (village.isEmpty() || !village.get().isWithinBorder(viewer)) return "";
+        String name = village.get().getName();
+        return name == null ? "" : name;
+    }
+
+    /** Today, on the world's own calendar, for the date line under the stamp. */
+    private static String todayFor(net.minecraft.server.MinecraftServer server, ServerPlayer viewer) {
+        return com.aetherianartificer.townstead.calendar.CalendarDateFormatter
+                .format(server, viewer.serverLevel().getDayTime() / 24000L,
+                        com.aetherianartificer.townstead.calendar.CalendarDateFormatter.Style.SHORT)
+                .getString();
+    }
+
     /** The village Scribe's name for the page signature, empty when the office is unstaffed. */
     private static String scribeNameFor(ServerPlayer viewer) {
         java.util.Optional<net.conczin.mca.server.world.data.Village> village =
@@ -182,6 +272,36 @@ public final class CareerTreeOpener {
             }
         }
         return "";
+    }
+
+    /**
+     * Keeps only the events the subject actually DID, discarding the ones they merely saw.
+     *
+     * <p>{@code Chronicles.bySubject} answers "events this UUID took part in", and taking part
+     * includes being a witness: {@code ChronicleEmitter} adds a witness participation for everyone
+     * within the template's radius. So standing near a village cook while they worked put "Inesis
+     * prepared a feast of Cooked Rice" on YOUR career record, under your own name's page, as
+     * though you had cooked it.</p>
+     *
+     * <p>A career record is a record of your work. Witnessing is real history and belongs in the
+     * chronicle, but not in the box that reports what you have done.</p>
+     */
+    private static java.util.List<com.aetherianartificer.townstead.chronicle.model.ChronicleEvent>
+            actedBy(java.util.List<com.aetherianartificer.townstead.chronicle.model.ChronicleEvent> events,
+                    java.util.UUID subject) {
+        java.util.List<com.aetherianartificer.townstead.chronicle.model.ChronicleEvent> mine =
+                new java.util.ArrayList<>(events.size());
+        for (com.aetherianartificer.townstead.chronicle.model.ChronicleEvent event : events) {
+            for (com.aetherianartificer.townstead.chronicle.model.Participation part
+                    : event.participations()) {
+                if (part.isWitness()) continue;
+                if (subject.equals(part.ref().uuid())) {
+                    mine.add(event);
+                    break;
+                }
+            }
+        }
+        return mine;
     }
 
     /**
@@ -234,11 +354,33 @@ public final class CareerTreeOpener {
             for (String name : template.display().paramNames()) {
                 args.add(event.params().getOrDefault(name, "?"));
             }
-            headline = Component.translatable(langKey, args.toArray()).getString();
+            // Chronicle templates are data-driven, so their headline strings live in the
+            // data/<ns>/lang sidecar rather than in assets. This line is rendered on the SERVER,
+            // where the assets language does not carry them, so Component.translatable resolved
+            // to the raw key and printed "chronicle.townstead.feast_prepared" onto the page.
+            // DataPackLang is the sidecar index and is loaded here, so ask it first.
+            String pattern = com.aetherianartificer.townstead.data.DataPackLang
+                    .find(langKey, "en_us");
+            headline = pattern == null
+                    ? Component.translatable(langKey, args.toArray()).getString()
+                    : formatPattern(pattern, args.toArray());
         } else {
             headline = template.display().headlineLiteral();
         }
         if (headline == null || headline.isBlank()) headline = event.category();
         return date + ": " + headline;
+    }
+
+    /**
+     * Substitutes a lang pattern's arguments the way the client would. Pack-authored patterns can
+     * carry anything, so a malformed specifier yields the raw pattern rather than throwing and
+     * taking the whole record with it.
+     */
+    private static String formatPattern(String pattern, Object[] args) {
+        try {
+            return String.format(pattern, args);
+        } catch (java.util.IllegalFormatException malformed) {
+            return pattern;
+        }
     }
 }

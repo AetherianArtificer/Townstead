@@ -7,6 +7,40 @@
   "description": {
     "text": "Prepare food to build a history of culinary mastery."
   },
+  "skills": [
+    "banked_coals",
+    "bitter_splash",
+    "blistered_crust",
+    "cast_iron_stomach",
+    "deglaze",
+    "dry_rub",
+    "ember_bed",
+    "ember_toss",
+    "feast_fire",
+    "kitchen_rhythm",
+    "long_reduction",
+    "mise_en_place",
+    "mother_sauce",
+    "open_flame",
+    "peel_sweep",
+    "peel_vault",
+    "pit_master",
+    "pizza_craft",
+    "pizza_spin",
+    "restorative_broth",
+    "sear",
+    "searing_wind",
+    "seasoned_hands",
+    "simmer",
+    "slow_stove",
+    "starter_culture",
+    "steady_simmer",
+    "stone_heat",
+    "stone_oven",
+    "stone_wisdom",
+    "table_service",
+    "turning_spit"
+  ],
   "unlock_model": "experiential",
   "mods": {
     "any": [
@@ -64,135 +98,76 @@
   ],
   "daily_cap": 230,
   "max_xp": 200000,
-  "levels": [
-    {
-      "xp": 110
-    },
-    {
-      "xp": 190,
-      "skills": [
-        "seasoned_hands",
-        "steady_simmer",
-        "pizza_craft"
-      ],
-      "trades": [
-        {
-          "cost": {
-            "item": "minecraft:emerald",
-            "count": 1
-          },
-          "result": {
-            "item": "pizzadelight:cheese",
-            "count": 3
-          },
-          "max_uses": 16,
-          "villager_xp": 2,
-          "requires_skill": "pizza_craft"
-        }
-      ]
-    },
-    {
-      "xp": 360,
-      "skills": [
-        "open_flame",
-        "slow_stove",
-        "kitchen_rhythm"
-      ],
-      "trades": [
-        {
-          "cost": {
-            "item": "minecraft:emerald",
-            "count": 3
-          },
-          "result": {
-            "item": "pizzadelight:iron_pizza_peel",
-            "count": 1
-          },
-          "max_uses": 8,
-          "villager_xp": 5,
-          "requires_skill": "pizza_craft"
-        },
-        {
-          "cost": {
-            "item": "minecraft:emerald",
-            "count": 2
-          },
-          "result": {
-            "item": "pizzadelight:rolling_pin",
-            "count": 1
-          },
-          "max_uses": 8,
-          "villager_xp": 5,
-          "requires_skill": "pizza_craft"
-        }
-      ]
-    },
-    {
-      "xp": 590,
-      "skills": [
-        "cast_iron_stomach",
-        "iron_palate"
-      ],
-      "trades": [
-        {
-          "cost": {
-            "item": "minecraft:emerald",
-            "count": 5
-          },
-          "result": {
-            "item": "pizzadelight:chef_hat",
-            "count": 1
-          },
-          "max_uses": 4,
-          "villager_xp": 10,
-          "requires_skill": "kitchen_rhythm"
-        }
-      ]
-    },
-    {
-      "trades": [
-        {
-          "cost": {
-            "item": "minecraft:emerald",
-            "count": 8
-          },
-          "result": {
-            "item": "pizzadelight:diamond_pizza_peel",
-            "count": 1
-          },
-          "max_uses": 4,
-          "villager_xp": 15,
-          "requires_skill": "kitchen_rhythm"
-        },
-        {
-          "cost": {
-            "item": "minecraft:emerald",
-            "count": 12
-          },
-          "result": {
-            "item": "pizzadelight:chef_shirt",
-            "count": 1
-          },
-          "max_uses": 2,
-          "villager_xp": 20,
-          "requires_skill": "iron_palate"
-        }
-      ]
-    }
-  ],
   "paths": [
     {
       "id": "pizzaiolo",
+      "color": "#C8873E",
+      "name": {
+        "text": "Pizzaiolo"
+      },
       "gateway": "pizza_craft",
       "skills": [
         "kitchen_rhythm",
-        "iron_palate"
+        "stone_oven",
+        "pizza_spin",
+        "peel_vault",
+        "stone_heat",
+        "starter_culture",
+        "blistered_crust",
+        "peel_sweep",
+        "stone_wisdom"
       ],
       "worksites": [
         "pizzadelight:basin",
         "pizzadelight:raw_pizza",
         "pizzadelight:pizza",
         "farmersdelight:stove"
+      ]
+    },
+    {
+      "id": "rotisseur",
+      "color": "#B2452C",
+      "name": {
+        "text": "Rotisseur"
+      },
+      "gateway": "open_flame",
+      "skills": [
+        "turning_spit",
+        "ember_bed",
+        "sear",
+        "ember_toss",
+        "feast_fire",
+        "dry_rub",
+        "banked_coals",
+        "searing_wind",
+        "pit_master"
+      ],
+      "worksites": [
+        "farmersdelight:skillet",
+        "minecraft:campfire",
+        "minecraft:soul_campfire"
+      ]
+    },
+    {
+      "id": "saucier",
+      "color": "#7A8F52",
+      "name": {
+        "text": "Saucier"
+      },
+      "gateway": "slow_stove",
+      "skills": [
+        "long_reduction",
+        "cast_iron_stomach",
+        "simmer",
+        "restorative_broth",
+        "bitter_splash",
+        "mise_en_place",
+        "mother_sauce",
+        "deglaze",
+        "table_service"
+      ],
+      "worksites": [
+        "farmersdelight:cooking_pot"
       ]
     }
   ],
@@ -203,7 +178,12 @@
         "text": "Rotisseur"
       },
       "skills": [
-        "open_flame"
+        "open_flame",
+        "turning_spit",
+        "ember_bed",
+        "sear",
+        "ember_toss",
+        "feast_fire"
       ]
     },
     {
@@ -212,7 +192,12 @@
         "text": "Saucier"
       },
       "skills": [
-        "slow_stove"
+        "slow_stove",
+        "long_reduction",
+        "cast_iron_stomach",
+        "simmer",
+        "restorative_broth",
+        "bitter_splash"
       ]
     },
     {
@@ -222,8 +207,7 @@
       },
       "skills": [
         "seasoned_hands",
-        "steady_simmer",
-        "cast_iron_stomach"
+        "steady_simmer"
       ]
     },
     {
@@ -234,7 +218,10 @@
       "skills": [
         "pizza_craft",
         "kitchen_rhythm",
-        "iron_palate"
+        "stone_oven",
+        "pizza_spin",
+        "peel_vault",
+        "stone_heat"
       ]
     }
   ]

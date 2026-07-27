@@ -12,8 +12,9 @@ import java.util.List;
  * A racial resource meter (mana, blood, charge, ...) keyed by the gene id. Holds a
  * value in {@code [min,max]} that regenerates {@code regen} per {@code regen_interval}
  * ticks. Active abilities can cost it, and the {@code change_resource} action moves
- * it. The value lives server-side in {@code ResourceValues}; a HUD bar is a separate,
- * not-yet-built display layer.
+ * it. The value lives server-side in {@code ResourceValues} and reaches the player's HUD
+ * through {@code ResourceSyncS2CPayload} into {@code ResourceHudOverlay}. The meter is not
+ * Root-only: any power source can express one, career skills included.
  *
  * <p>{@code on_reach} runs an entity action on the holder when the meter crosses a threshold upward
  * (a charge filling to full firing a buff); {@code then: reset} drops the meter back to its start

@@ -1,0 +1,64 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Feast Fire"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "text": "Set a great fire going and feed everyone around it. Allies are fed and mend for a while."
+  },
+  "tier": 4,
+  "cost": 1,
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6.0,
+          "include_self": true,
+          "bientity_condition": {
+            "type": "pheno:hostile",
+            "inverted": true
+          },
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:regeneration",
+                "duration": 200,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:feed",
+                "food": 4,
+                "saturation": 2.0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:happy_villager",
+          "count": 30,
+          "spread": 3.0,
+          "speed": 0.02
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.burp",
+          "volume": 0.7,
+          "pitch": 0.9
+        }
+      ]
+    }
+  }
+}

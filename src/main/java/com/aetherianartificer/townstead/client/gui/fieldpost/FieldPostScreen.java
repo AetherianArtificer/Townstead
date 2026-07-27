@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.client.gui.fieldpost;
 
 import com.aetherianartificer.townstead.block.CropDetection;
 import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
+import com.aetherianartificer.townstead.client.gui.common.CellTextures;
+import com.aetherianartificer.townstead.client.gui.common.FrameRenderer;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.cellplan.CellPlan;
 import com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig;

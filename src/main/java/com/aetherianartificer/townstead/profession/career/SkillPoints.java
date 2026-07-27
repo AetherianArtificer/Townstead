@@ -70,6 +70,29 @@ public final class SkillPoints {
                 return "exclusive with '" + learnedId + "'";
             }
         }
+        // PATHS DO NOT LOCK EACH OTHER. Taking a skill from one path never closes another: you
+        // enter a path simply by buying its first ability, and you may buy from as many paths as
+        // your picks allow. The exclusivity rule that used to live here was solving a problem the
+        // pick budget already solves — five picks against thirty options means you cannot have
+        // everything regardless — so all it added was a board that refused you. Scarcity shapes
+        // the build; a lock on top of scarcity just makes the screen hostile.
+        //
+        // ONE OPTION PER LEVEL. This is what makes a five-level career five real choices rather
+        // than a shopping list you eventually clear: reaching a level asks you a question, and
+        // answering it closes the alternatives until you retrain.
+        //
+        // Scoped to the CAREER, not the path, so that skills belonging to no path compete for the
+        // same pick as the path's own options. Scoped per-path it would leave a hole where a
+        // character takes a path option and a trunk skill at the same level and gets two picks
+        // for one level; and career-wide it also makes the trunk a real alternative, "stay a
+        // generalist this level" rather than a freebie.
+        for (ResourceLocation other : def.skills()) {
+            if (other.equals(skill.id()) || !learned.contains(other)) continue;
+            SkillDef taken = SkillDefs.byId(other);
+            if (taken != null && taken.tier() == skill.tier()) {
+                return "already chose " + taken.displayName().getString() + " at this level";
+            }
+        }
         if (Math.max(0, skill.cost()) > available(entity, def)) {
             return "needs " + skill.cost() + " skill point" + (skill.cost() == 1 ? "" : "s");
         }

@@ -32,20 +32,20 @@ public final class ResourceValues {
     public static int get(LivingEntity entity, ResourceLocation geneId) {
         Map<ResourceLocation, Integer> map = VALUES.get(entity.getUUID());
         if (map != null && map.containsKey(geneId)) return map.get(geneId);
-        ResourceGeneType.Instance instance = instanceOf(geneId);
+        ResourceGeneType.Instance instance = instanceOf(entity, geneId);
         return instance == null ? 0 : instance.start();
     }
 
     /** Move a resource by {@code delta}, clamped to the gene's range. */
     public static void change(LivingEntity entity, ResourceLocation geneId, int delta) {
-        ResourceGeneType.Instance instance = instanceOf(geneId);
+        ResourceGeneType.Instance instance = instanceOf(entity, geneId);
         if (instance == null) return;
         set(entity, geneId, get(entity, geneId) + delta);
     }
 
     /** Set a resource to {@code value}, clamped to the gene's range (Apoli's {@code operation:"set"}). */
     public static void set(LivingEntity entity, ResourceLocation geneId, int value) {
-        ResourceGeneType.Instance instance = instanceOf(geneId);
+        ResourceGeneType.Instance instance = instanceOf(entity, geneId);
         if (instance == null) return;
         int prev = get(entity, geneId);
         int next = Math.max(instance.min(), Math.min(instance.max(), value));
@@ -99,7 +99,21 @@ public final class ResourceValues {
         VALUES.remove(uuid);
     }
 
-    private static ResourceGeneType.Instance instanceOf(ResourceLocation geneId) {
+    /**
+     * The meter's definition, read from whatever is expressing it on this entity. The power
+     * layer is source-agnostic everywhere else, so a resource must work the same whether a
+     * Root gene declares it or a career skill does; resolving through {@link GeneRegistry}
+     * alone silently no-ops every spend and every regen tick for a skill-granted meter,
+     * because a skill id is not a gene id. The registry stays as the fallback so a gene that
+     * is defined but not currently expressed still reads its own bounds.
+     */
+    private static ResourceGeneType.Instance instanceOf(LivingEntity entity, ResourceLocation geneId) {
+        for (Power power : Powers.active(entity)) {
+            if (power.id().equals(geneId)
+                    && power.component() instanceof ResourceGeneType.Instance instance) {
+                return instance;
+            }
+        }
         Gene gene = GeneRegistry.byId(geneId);
         return gene != null && gene.instance() instanceof ResourceGeneType.Instance instance ? instance : null;
     }

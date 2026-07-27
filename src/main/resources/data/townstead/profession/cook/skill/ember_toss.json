@@ -1,0 +1,38 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Ember Toss"
+  },
+  "icon": "minecraft:fire_charge",
+  "description": {
+    "text": "Flick a live coal off the grill at whatever is bothering you."
+  },
+  "tier": 3,
+  "cost": 1,
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 100,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:fire_projectile",
+          "entity": "minecraft:small_fireball",
+          "speed": 1.4,
+          "inaccuracy": 0.6
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.blaze.shoot",
+          "volume": 0.8,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

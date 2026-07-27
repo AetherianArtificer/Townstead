@@ -27,6 +27,7 @@ public final class CareerProfile {
     private final List<ResourceLocation> activeLoadout = new ArrayList<>();
     private final Map<String, ProfessionXp> progress = new LinkedHashMap<>();
     private final Set<ResourceLocation> trackedCareers = new LinkedHashSet<>();
+    private final Map<ResourceLocation, CareerStamp> stamps = new LinkedHashMap<>();
     private long lastVocationChangeDay = -1L;
 
     public ResourceLocation primaryVocation() { return primaryVocation; }
@@ -54,6 +55,18 @@ public final class CareerProfile {
         progress.put(careerId, value == null ? ProfessionXp.EMPTY : value);
         int colon = careerId.indexOf(':');
         if (colon >= 0) progress.remove(careerId.substring(colon + 1));
+    }
+
+    /** Where the subject pressed the Archives stamp for each skill they registered. */
+    public Map<ResourceLocation, CareerStamp> stamps() { return Map.copyOf(stamps); }
+
+    public CareerStamp stamp(ResourceLocation skill) { return stamps.get(skill); }
+
+    /** First press wins: a registered mark is a record of the day, not a movable decoration. */
+    public boolean stamp(ResourceLocation skill, CareerStamp mark) {
+        if (skill == null || mark == null || stamps.containsKey(skill)) return false;
+        stamps.put(skill, mark);
+        return true;
     }
 
     public Set<ResourceLocation> trackedCareers() { return Set.copyOf(trackedCareers); }
@@ -138,6 +151,11 @@ public final class CareerProfile {
             progressTag.put(entry.getKey(), xp);
         }
         tag.put("progress", progressTag);
+        CompoundTag stampTag = new CompoundTag();
+        for (Map.Entry<ResourceLocation, CareerStamp> entry : stamps.entrySet()) {
+            stampTag.put(entry.getKey().toString(), entry.getValue().toTag());
+        }
+        if (!stampTag.isEmpty()) tag.put("stamps", stampTag);
         return tag;
     }
 
@@ -166,6 +184,12 @@ public final class CareerProfile {
             CompoundTag xp = progress.getCompound(key);
             profile.progress.put(key, new ProfessionXp(xp.getInt("xp"), xp.getInt("tier"),
                     xp.getLong("lastTierUp"), xp.getLong("xpDay"), xp.getInt("xpToday")));
+        }
+        CompoundTag stampTag = tag.getCompound("stamps");
+        for (String key : stampTag.getAllKeys()) {
+            ResourceLocation skill = com.aetherianartificer.townstead.profession.def.SkillDefs
+                    .canonicalId(ResourceLocation.tryParse(key));
+            if (skill != null) profile.stamps.put(skill, CareerStamp.fromTag(stampTag.getCompound(key)));
         }
         return profile;
     }

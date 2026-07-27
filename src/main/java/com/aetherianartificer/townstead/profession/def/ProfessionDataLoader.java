@@ -167,7 +167,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         ProfessionDefs.replaceAll(professions);
         SkillDefs.replaceAll(skills);
         ProfessionTitles.replaceAll(parseAllTitles(activeDefs, professions.keySet(), lang, diagnostics));
-        ProfessionPaths.replaceAll(parseAllPaths(activeDefs, professions.keySet(), diagnostics));
+        ProfessionPaths.replaceAll(parseAllPaths(activeDefs, professions.keySet(), lang, diagnostics));
 
         SkillGraphValidator.validate(professions, skills, diagnostics);
         PhenoDiagnostics.replace("profession", diagnostics.all());
@@ -571,7 +571,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
      */
     private static Map<ResourceLocation, List<ProfessionPaths.Path>> parseAllPaths(
             Map<ResourceLocation, JsonObject> activeDefs, Set<ResourceLocation> loaded,
-            Diagnostics diagnostics) {
+            Map<String, String> lang, Diagnostics diagnostics) {
         Map<ResourceLocation, List<ProfessionPaths.Path>> out = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonObject> e : activeDefs.entrySet()) {
             if (!loaded.contains(e.getKey())) continue;
@@ -599,11 +599,40 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     if (skillId != null) skillIds.add(skillId);
                 }
                 List<ResourceLocation> worksites = parseIdList(p, "worksites");
-                paths.add(new ProfessionPaths.Path(e.getKey(), pathId, gateway, skillIds, worksites));
+                Component name = p.has("name")
+                        ? DataPackLang.parseComponent(p.get("name"),
+                                e.getKey() + ".path." + pathId, lang)
+                        : Component.literal(pathId);
+                // How the path presents itself on the board: a colour wash over its section, or a
+                // texture in place of the wash. Both optional; the board falls back to a palette.
+                int color = parseHexColor(p, "color", diagnostics,
+                        JsonPath.ROOT.field("paths").index(i));
+                ResourceLocation backdrop = p.has("backdrop")
+                        ? DataPackLang.parseId(GsonHelper.getAsString(p, "backdrop", "")) : null;
+                paths.add(new ProfessionPaths.Path(e.getKey(), pathId, name, gateway,
+                        skillIds, worksites, color, backdrop));
             }
             if (!paths.isEmpty()) out.put(e.getKey(), List.copyOf(paths));
         }
         return out;
+    }
+
+    /**
+     * An authored {@code "#RRGGBB"} colour, or 0 when absent. Returns 0 and warns rather than
+     * throwing on a malformed value, so one bad colour costs a path its tint and not its
+     * existence.
+     */
+    private static int parseHexColor(JsonObject obj, String field, Diagnostics diag, JsonPath at) {
+        if (!obj.has(field)) return 0;
+        String raw = GsonHelper.getAsString(obj, field, "").trim();
+        if (raw.startsWith("#")) raw = raw.substring(1);
+        try {
+            return 0xFF000000 | (Integer.parseInt(raw, 16) & 0xFFFFFF);
+        } catch (NumberFormatException malformed) {
+            diag.warning(at.field(field), "Not a colour: '" + raw + "'.",
+                    "Use \"#RRGGBB\", for example \"#E8A33C\".");
+            return 0;
+        }
     }
 
     /** Shared grants block parser: ordinary skills and Combo Skills carry identical grants. */

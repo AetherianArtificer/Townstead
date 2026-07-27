@@ -22,23 +22,47 @@ import static org.junit.jupiter.api.Assertions.*;
 class LevelSchemaTest {
 
     @Test
-    void cookLevelsReferenceSidecarSkills() {
+    void cookRunsFiveLevels() {
         Map<ResourceLocation, SkillDef> inline = new LinkedHashMap<>();
-        ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook", inline);
+        ProfessionDef cook = loadCook(inline);
 
+        // Five levels, five picks. The 22-level track was abandoned: it existed to give a points
+        // economy something to spend on, and levels-and-options replaced the economy itself.
         assertEquals(5, cook.levels().size());
         assertEquals(5, cook.progression().maxTier());
-        assertEquals(java.util.List.of(0, 110, 300, 660, 1250), cook.progression().tierThresholds());
+        assertEquals(java.util.List.of(0, 110, 300, 660, 1250), cook.progression().tierThresholds(),
+                "the original thresholds, unmoved, so a save that levelled against them is safe");
         assertEquals(230, cook.progression().dailyCap());
 
         assertTrue(inline.isEmpty(), "references never register defs; the profession's skill/ dir owns them");
-        assertTrue(cook.levels().get(2).skills().contains(id("townstead:cook/open_flame")),
-                "bare references land on their level, scoped to the profession's directory");
+        // Levels no longer carry skill pools. A skill's own `tier` says which level offers it,
+        // and the profession lists its skills once, so there is a single place to change either.
+        for (var level : cook.levels()) {
+            assertTrue(level.skills().isEmpty(),
+                    "a level's options come from the skills' tiers, not from a second list");
+        }
         assertTrue(cook.skills().contains(id("townstead:cook/open_flame")),
                 "referenced skills join the flat membership list");
         assertTrue(cook.skills().contains(id("townstead:cook/pizza_craft")),
                 "path skills pool like any other skill; the path steers who buys them");
-        assertEquals(8, cook.skills().size());
+        assertTrue(cook.skills().contains(id("townstead:cook/pizza_spin")),
+                "ability skills are ordinary skills; only their power block differs");
+        // Three paths of ten options each (two per level, five levels) plus the two skills
+        // belonging to no path, which compete for the same picks.
+        assertEquals(32, cook.skills().size());
+    }
+
+    /** Cook's progression ships as a sidecar, merged here the same way {@code apply()} does. */
+    private static ProfessionDef loadCook(Map<ResourceLocation, SkillDef> inlineOut) {
+        JsonObject def = readResource("/data/townstead/profession/cook/profession.json");
+        ProfessionDataLoader.applyLevelsOverlay(def,
+                readResource("/data/townstead/profession/cook/levels.json"));
+        Diagnostics diagnostics = new Diagnostics();
+        diagnostics.forResource(id("townstead:cook"));
+        ProfessionDef cook = ProfessionDataLoader.parseProfession(
+                id("townstead:cook"), def, Map.of(), diagnostics, inlineOut);
+        assertNotNull(cook, "cook must parse");
+        return cook;
     }
 
     @Test
@@ -67,12 +91,11 @@ class LevelSchemaTest {
 
     @Test
     void skillPointsAccumulatePerLevel() {
-        ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook",
-                new LinkedHashMap<>());
+        ProfessionDef cook = loadCook(new LinkedHashMap<>());
         assertEquals(0, cook.skillPointsThrough(0));
         assertEquals(1, cook.skillPointsThrough(1));
-        assertEquals(5, cook.skillPointsThrough(5));
-        assertEquals(5, cook.skillPointsThrough(9), "points stop at the last defined level");
+        assertEquals(5, cook.skillPointsThrough(5), "one pick per level, five levels");
+        assertEquals(5, cook.skillPointsThrough(30), "points stop at the last defined level");
     }
 
     @Test

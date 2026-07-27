@@ -5,19 +5,46 @@
   },
   "icon": "minecraft:blaze_powder",
   "description": {
-    "text": "Bold, fast cooking. Big dishes earn much more Cook XP."
+    "text": "Work over live fire instead of a closed stove, and know how to make it leap."
   },
-  "tier": 3,
-  "cost": 2,
-  "skill_group": "townstead:cook_style",
-  "exclusive_with": [
-    "slow_stove"
-  ],
-  "grants": [
-    {
-      "capability": "townstead:cook_xp_per_tier",
-      "op": "add",
-      "value": 2
+  "tier": 1,
+  "cost": 1,
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 260,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 3.5,
+          "bientity_condition": {
+            "type": "pheno:hostile"
+          },
+          "action": {
+            "type": "pheno:ignite",
+            "ticks": 60
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:flame",
+          "count": 18,
+          "spread": 1.6,
+          "speed": 0.04
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.firecharge.use",
+          "volume": 0.8,
+          "pitch": 1.1
+        }
+      ]
     }
-  ]
+  }
 }

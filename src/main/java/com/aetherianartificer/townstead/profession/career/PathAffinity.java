@@ -33,15 +33,21 @@ public final class PathAffinity {
     }
 
     /**
-     * Auto-spend weight for one candidate skill: trunk skills weigh 1; path skills weigh 4
-     * once the villager owns the gateway (finish what you started), 3 when the path's
-     * stations stand in their worksite (the pizzeria pulls its cook into the craft), and 0
-     * otherwise so points are never wasted on stations the villager can't reach.
+     * Auto-spend weight for one candidate skill: skills belonging to no path weigh 1; a path's
+     * skills weigh 4 once the villager already owns something on that path (finish what you
+     * started), 3 when the path's stations stand in their worksite (the pizzeria pulls its cook
+     * into the craft), and 0 otherwise so picks are never wasted on stations they cannot reach.
+     *
+     * <p>Keyed on owning ANY member rather than a designated first skill: paths have no gateway
+     * to own, and a villager who took the path's level-two option and nothing else is every bit
+     * as committed as one who started at level one.</p>
      */
     static int autoSpendWeight(LivingEntity villager, ProfessionDef def, SkillDef skill) {
         ProfessionPaths.Path path = ProfessionPaths.pathOwning(def.id(), skill.id());
         if (path == null) return 1;
-        if (LearnedSkills.has(villager, path.gateway())) return 4;
+        for (ResourceLocation member : path.members()) {
+            if (LearnedSkills.has(villager, member)) return 4;
+        }
         return worksiteHasAny(villager, path.worksites()) ? 3 : 0;
     }
 
