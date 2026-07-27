@@ -194,6 +194,21 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
             default -> 0;
         };
         float tintStrength = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "tint_strength", 1f)));
+        // A grayscale mask gating the tint per pixel, same shape as the emissive layer: an
+        // optional second PNG under attachment/textures, blob-synced and sampled in the bake.
+        String tintMaskSha = "";
+        String tintMaskRef = GsonHelper.getAsString(json, "tint_mask", "");
+        if (!tintMaskRef.isEmpty()) {
+            ResourceLocation maskFile = resolve(ns, tintMaskRef, "textures", ".png");
+            byte[] mask = maskFile == null ? null : readBytes(manager, maskFile, MAX_TEXTURE_BYTES);
+            if (mask == null) {
+                Townstead.LOGGER.warn("Attachment {} tint_mask '{}' not found; the tint applies unmasked",
+                        id, tintMaskRef);
+            } else {
+                tintMaskSha = sha1(mask);
+                blobs.put(tintMaskSha, new AttachmentServerData.Blob(mask, AttachmentServerData.KIND_TEXTURE));
+            }
+        }
         boolean translucent = GsonHelper.getAsString(json, "render", "cutout").equals("translucent");
         String emissiveSha = "";
         String emissiveRef = GsonHelper.getAsString(json, "emissive", "");
@@ -234,7 +249,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
                 ? json.getAsJsonObject("when").toString() : "";
         return new AttachmentDef(id, geoSha, texSha, targetTag, targetPoint, bone,
                 readVec(json, "offset"), readVec(json, "rotation"), scale, tint,
-                tintSource, tintBlend, tintStrength, emissiveSha, translucent,
+                tintSource, tintBlend, tintStrength, tintMaskSha, emissiveSha, translucent,
                 readStrings(json, "hides_under"), whenJson,
                 morph, visibility, stages, parsePoses(json), parsePhysics(json),
                 parseAnimations(manager, ns, id, json, blobs));

@@ -36,7 +36,9 @@ import java.util.Map;
  * <p>Blockbench 5.0 flipped the X/Y sign convention of animation rotation keyframes
  * to match group rotations (its project codec inverts them when loading older files).
  * Pre-5.0 values are therefore already in the Bedrock convention our dialect uses and
- * pass verbatim; 5.0+ values take the same {@code (-x, -y, z)} transform as groups.</p>
+ * pass verbatim; 5.0+ values take the same {@code (-x, -y, z)} transform as groups.
+ * The flip is rotation-only: position keyframes take the {@code -x} mirror the pivots
+ * take (nothing else), and scale keyframes are axis-signless and pass through.</p>
  */
 public final class BbmodelConverter {
 
@@ -83,7 +85,14 @@ public final class BbmodelConverter {
         }
     }
 
-    /** Every embedded animation as a clip file ({@code animation.<file>.<name>}), or null. */
+    /**
+     * Every embedded animation as a clip file ({@code animation.<file>.<name>}), or null.
+     * All three keyframe channels convert: rotation (through the display->geo rotation
+     * transform, with the 5.0 legacy flip), position (mirrored on X like the pivots, so a
+     * bob authored upward reads upward), and scale (per-axis multipliers, default 1). A bone
+     * contributes a track if it keyframes any channel; a clip with no tracked bone at all is
+     * dropped, and a file with no surviving clip returns null.
+     */
     public static byte[] animations(byte[] bbmodel, String fileName) {
         try {
             JsonObject project = JsonParser.parseString(new String(bbmodel, StandardCharsets.UTF_8)).getAsJsonObject();
@@ -99,23 +108,45 @@ public final class BbmodelConverter {
                     JsonObject channel = animator.getValue().getAsJsonObject();
                     String boneName = GsonHelper.getAsString(channel, "name", "");
                     JsonObject rotation = new JsonObject();
+                    JsonObject position = new JsonObject();
+                    JsonObject scale = new JsonObject();
                     for (JsonElement kfElement : GsonHelper.getAsJsonArray(channel, "keyframes", new JsonArray())) {
                         JsonObject kf = kfElement.getAsJsonObject();
-                        if (!"rotation".equals(GsonHelper.getAsString(kf, "channel", ""))) continue;
-                        float[] v = dataPoint(kf);
-                        if (v == null) continue;
-                        // Legacy files store animation values with X/Y inverted vs display.
-                        float[] display = legacy ? new float[]{-v[0], -v[1], v[2]} : v;
-                        float[] geo = toGeoRotation(display);
-                        JsonArray value = new JsonArray();
-                        value.add(geo[0]);
-                        value.add(geo[1]);
-                        value.add(geo[2]);
-                        rotation.add(trimFloat(GsonHelper.getAsFloat(kf, "time", 0f)), value);
+                        String kfChannel = GsonHelper.getAsString(kf, "channel", "");
+                        String time = trimFloat(GsonHelper.getAsFloat(kf, "time", 0f));
+                        switch (kfChannel) {
+                            case "rotation" -> {
+                                float[] v = dataPoint(kf, 0f);
+                                if (v == null) break;
+                                // Legacy files store animation values with X/Y inverted vs display.
+                                float[] display = legacy ? new float[]{-v[0], -v[1], v[2]} : v;
+                                float[] geo = toGeoRotation(display);
+                                rotation.add(time, array(geo[0], geo[1], geo[2]));
+                            }
+                            case "position" -> {
+                                float[] v = dataPoint(kf, 0f);
+                                if (v == null) break;
+                                // Same X mirror the pivots take (display -> geo); Y/Z pass through,
+                                // and the renderer negates Y again for Java's y-down model space.
+                                position.add(time, array(-v[0], v[1], v[2]));
+                            }
+                            case "scale" -> {
+                                // Per-axis multipliers: an omitted axis is 1, not 0, or the bone
+                                // collapses on the axes the author didn't touch.
+                                float[] v = dataPoint(kf, 1f);
+                                if (v == null) break;
+                                scale.add(time, array(v[0], v[1], v[2]));
+                            }
+                            default -> { }
+                        }
                     }
-                    if (!rotation.entrySet().isEmpty() && !boneName.isEmpty()) {
+                    boolean any = !rotation.entrySet().isEmpty() || !position.entrySet().isEmpty()
+                            || !scale.entrySet().isEmpty();
+                    if (any && !boneName.isEmpty()) {
                         JsonObject track = new JsonObject();
-                        track.add("rotation", rotation);
+                        if (!rotation.entrySet().isEmpty()) track.add("rotation", rotation);
+                        if (!position.entrySet().isEmpty()) track.add("position", position);
+                        if (!scale.entrySet().isEmpty()) track.add("scale", scale);
                         bones.add(boneName, track);
                     }
                 }
@@ -285,21 +316,30 @@ public final class BbmodelConverter {
     }
 
     private static float[] dataPoint(JsonObject keyframe) {
+        return dataPoint(keyframe, 0f);
+    }
+
+    /**
+     * A keyframe's first data point, with {@code missing} standing in for an axis the
+     * keyframe leaves blank (0 for rotation/position, 1 for scale).
+     */
+    private static float[] dataPoint(JsonObject keyframe, float missing) {
         JsonArray points = GsonHelper.getAsJsonArray(keyframe, "data_points", null);
         if (points == null || points.isEmpty() || !points.get(0).isJsonObject()) return null;
         JsonObject dp = points.get(0).getAsJsonObject();
         try {
-            return new float[]{axis(dp, "x"), axis(dp, "y"), axis(dp, "z")};
+            return new float[]{axis(dp, "x", missing), axis(dp, "y", missing), axis(dp, "z", missing)};
         } catch (NumberFormatException e) {
             return null;   // Molang expression; poses need numeric keyframes
         }
     }
 
-    /** bbmodel data points store numbers as strings (and may hold Molang). */
-    private static float axis(JsonObject dp, String key) {
+    /** bbmodel data points store numbers as strings (and may hold Molang or an empty axis). */
+    private static float axis(JsonObject dp, String key, float missing) {
         JsonElement value = dp.get(key);
-        if (value == null || value.isJsonNull()) return 0f;
-        return Float.parseFloat(value.getAsString().trim());
+        if (value == null || value.isJsonNull()) return missing;
+        String raw = value.getAsString().trim();
+        return raw.isEmpty() ? missing : Float.parseFloat(raw);
     }
 
     /**

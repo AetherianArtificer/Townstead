@@ -17,7 +17,11 @@ import org.jetbrains.annotations.Nullable;
  * colour (author the texture in grayscale for these). {@code tintBlend} is how
  * the tint applies (multiply / screen / overlay / color — non-multiply modes
  * bake a derived texture client-side) and {@code tintStrength} fades it.
- * {@code emissiveSha1} is an optional second texture drawn full-bright over the
+ * {@code tintMaskSha1} is an optional grayscale texture gating the tint per
+ * pixel (black = untinted, white = full, mid-greys = partial), so one attachment
+ * can hold a tinted membrane against neutral chitin; a masked attachment always
+ * takes the bake path, including {@code multiply}, which otherwise rides the
+ * vertex colour. {@code emissiveSha1} is an optional second texture drawn full-bright over the
  * same geometry (glowing runes, foxfire tips); {@code translucent} renders the
  * whole attachment with alpha (wisps, membranes). Each {@code morph} channel reads one size
  * value rolled on the gene that granted this attachment: a channel with
@@ -73,6 +77,7 @@ public record AttachmentDef(
         int tintSource,
         int tintBlend,
         float tintStrength,
+        String tintMaskSha1,
         String emissiveSha1,
         boolean translucent,
         java.util.List<String> hidesUnder,
