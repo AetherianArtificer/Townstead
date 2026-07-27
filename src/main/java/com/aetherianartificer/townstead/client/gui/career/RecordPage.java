@@ -209,13 +209,20 @@ final class RecordPage {
             return EMPTY;
         }
 
+        boolean takeUp = StampTool.takeUp(selected);
         int rowY = top + 32;
-        g.drawString(font, Component.translatable("townstead.career.screen.stamp_verb"),
+        g.drawString(font, Component.translatable(takeUp
+                        ? "townstead.career.screen.take_up_verb"
+                        : "townstead.career.screen.stamp_verb"),
                 x, rowY, RecordArt.ACCENT, false);
         g.drawString(font, Component.translatable("townstead.career.screen.stamp_hint"),
                 x, rowY + 10, RecordArt.INK_DIM, false);
-        RecordArt.tokens(g, right - StampTool.WELL_W - PAD, chipY + 2, selected.points(),
-                selected.points() <= points);
+        // Declaring your work costs no points. A career node's own points() is the pool it has left
+        // to spend, so drawing it here would read as a price and be off by the whole balance.
+        if (!takeUp) {
+            RecordArt.tokens(g, right - StampTool.WELL_W - PAD, chipY + 2, selected.points(),
+                    selected.points() <= points);
+        }
         return new Result(right - StampTool.WELL_W, top + h - StampTool.WELL_H - 4, true,
                 List.of());
     }

@@ -39,17 +39,31 @@ public final class CareerTreeOpener {
      * to one change per day. The declaration is a truth event, so it enters village history.
      */
     public static void handleVocation(ServerPlayer player, String careerIdRaw) {
-        net.minecraft.resources.ResourceLocation parsed =
-                net.minecraft.resources.ResourceLocation.tryParse(careerIdRaw);
-        net.minecraft.resources.ResourceLocation careerId =
-                com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(parsed);
+        takeUpWork(player, com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                .canonicalId(net.minecraft.resources.ResourceLocation.tryParse(careerIdRaw)));
+    }
+
+    /**
+     * Declares a career as the player's work, refusing with a reason when it cannot be done.
+     *
+     * <p>Separated from its packet so the stamp press can reach it. Taking up work and learning a
+     * skill are the same ceremony from the player's side, so they had better be the same ceremony
+     * from the server's: one validation path, one set of refusals, one chronicle entry, whichever
+     * way the intent arrived.</p>
+     *
+     * @return whether the vocation actually changed.
+     */
+    private static boolean takeUpWork(ServerPlayer player,
+                                      net.minecraft.resources.ResourceLocation careerId) {
         com.aetherianartificer.townstead.profession.def.ProfessionDef def =
                 com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(careerId);
         CareerProfile profile = CareerProfiles.of(player);
-        if (def == null || profile == null || careerId.equals(profile.primaryVocation())) return;
+        if (def == null || profile == null || careerId.equals(profile.primaryVocation())) {
+            return false;
+        }
         if (!def.isRoot() && !profile.acquiredCareers().contains(careerId)) {
             refuse(player, Component.translatable("townstead.career.vocation.not_yours"));
-            return;
+            return false;
         }
 
         // This was computed and then never read, so the Archives requirement was documented,
@@ -59,7 +73,7 @@ public final class CareerTreeOpener {
                 || nearOnDutyScribe(player);
         if (!authorized) {
             refuse(player, Component.translatable("townstead.career.vocation.no_archives"));
-            return;
+            return false;
         }
         // Declare as often as you like. The once-a-day limit was friction with nothing behind it:
         // career XP and learned skills are permanent and per career, so switching costs you the
@@ -77,6 +91,7 @@ public final class CareerTreeOpener {
                 net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 0.9f);
         notify(player, Component.translatable("townstead.career.vocation.taken",
                 def.displayName()));
+        return true;
     }
 
     private static boolean nearOnDutyScribe(ServerPlayer player) {
@@ -129,22 +144,34 @@ public final class CareerTreeOpener {
      */
     public static void handleStamp(ServerPlayer player, String skillIdRaw, int x, int y,
                                    float rotation) {
-        net.minecraft.resources.ResourceLocation skillId =
+        net.minecraft.resources.ResourceLocation parsed =
                 net.minecraft.resources.ResourceLocation.tryParse(skillIdRaw);
-        com.aetherianartificer.townstead.profession.skill.LearnedSkills.Result result =
-                com.aetherianartificer.townstead.profession.career.CareerChoices.chooseFromAcquired(
-                        player, skillId);
-        if (!result.ok()) {
-            // Refusals go to the record's own notice band, never to chat: the open screen draws its
-            // backdrop over the chat log, so a chat refusal is invisible and a press that was
-            // correctly declined is indistinguishable from a broken stamp.
-            refuse(player, result.error() == null
-                    ? Component.translatable("townstead.career.learn.blocked_generic")
-                    : Component.translatable("townstead.career.learn.blocked", result.error()));
-            return;
+        // The press is one gesture over two kinds of record. Which one it is comes from the
+        // registry, not from the client saying so.
+        net.minecraft.resources.ResourceLocation careerId =
+                com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(parsed);
+        boolean isCareer = com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                .byId(careerId) != null;
+        net.minecraft.resources.ResourceLocation canonical;
+        if (isCareer) {
+            if (!takeUpWork(player, careerId)) return;
+            canonical = careerId;
+        } else {
+            com.aetherianartificer.townstead.profession.skill.LearnedSkills.Result result =
+                    com.aetherianartificer.townstead.profession.career.CareerChoices
+                            .chooseFromAcquired(player, parsed);
+            if (!result.ok()) {
+                // Refusals go to the record's own notice band, never to chat: the open screen draws
+                // its backdrop over the chat log, so a chat refusal is invisible and a press that
+                // was correctly declined is indistinguishable from a broken stamp.
+                refuse(player, result.error() == null
+                        ? Component.translatable("townstead.career.learn.blocked_generic")
+                        : Component.translatable("townstead.career.learn.blocked", result.error()));
+                return;
+            }
+            canonical = com.aetherianartificer.townstead.profession.def.SkillDefs
+                    .canonicalId(parsed);
         }
-        net.minecraft.resources.ResourceLocation canonical =
-                com.aetherianartificer.townstead.profession.def.SkillDefs.canonicalId(skillId);
         net.minecraft.server.MinecraftServer server = player.getServer();
         CareerStamp mark = CareerStamp.sanitized(x, y, rotation, authorityFor(player),
                 server == null ? "" : todayFor(server, player));

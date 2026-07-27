@@ -51,6 +51,13 @@ final class CareerLayout {
             0xFFC9A05A, 0xFFC46A42, 0xFF7E9E62, 0xFF8A7EA8, 0xFF6E93A8, 0xFFB08A4E};
     /** The unpathed column keeps the board's own warm tone and takes no path colour. */
     static final int TRUNK_TINT = 0xFFC9A05A;
+    /**
+     * The column Combo Skills live in, and the cool tone that says it is not one of this career's
+     * own paths. The leading space makes the key unforgeable: a real path id is a ResourceLocation
+     * and cannot contain one.
+     */
+    private static final String COMBO_PATH = " combo";
+    private static final int COMBO_TINT = 0xFF8A7EA8;
 
     /** One path (or the unpathed trunk) as a full-height alcove. */
     record Column(String pathId, String name, int tint, String backdrop) {}
@@ -90,12 +97,13 @@ final class CareerLayout {
     }
 
     int tintOf(CareerGraphS2CPayload.Node node) {
-        Integer index = columnOfPath.get(node.path().id());
-        return index == null || index >= columns.size() ? TRUNK_TINT : columns.get(index).tint();
+        int index = columnIndexOf(node);
+        return index >= columns.size() ? TRUNK_TINT : columns.get(index).tint();
     }
 
     int columnIndexOf(CareerGraphS2CPayload.Node node) {
-        Integer index = columnOfPath.get(node.path().id());
+        Integer index = columnOfPath.get(
+                node.kind() == CareerGraphS2CPayload.KIND_COMBO ? COMBO_PATH : node.path().id());
         return index == null ? 0 : index;
     }
 
@@ -124,7 +132,6 @@ final class CareerLayout {
         buildBands(career);
         buildColumns(tabNodes);
         placeSkills(tabNodes);
-        placeCombos(tabNodes);
     }
 
     /**
@@ -207,13 +214,32 @@ final class CareerLayout {
                     "townstead.career.screen.general").getString(), TRUNK_TINT, ""));
             columnOfPath.put("", 0);
         }
+
+        // Combo Skills get a column of their own, at the end.
+        //
+        // The plan was to draw them in the gutter BETWEEN the two columns they join, which turns
+        // dead space into where the interesting decisions live. That premise only holds for a combo
+        // joining two paths of ONE career. Every real combo joins two CAREERS — Charcutier wants
+        // Cook 2 and Butcher 2 — and the other career is a different board entirely, so there is no
+        // "between" to sit in. It landed in whatever gutter the middle of the board happened to be,
+        // which is why it read as a mark that had come loose.
+        for (CareerGraphS2CPayload.Node node : tabNodes) {
+            if (node.kind() != CareerGraphS2CPayload.KIND_COMBO) continue;
+            columnOfPath.put(COMBO_PATH, columns.size());
+            columns.add(new Column(COMBO_PATH, Component.translatable(
+                    "townstead.career.screen.combo").getString(), COMBO_TINT, ""));
+            break;
+        }
     }
 
     /** Every skill into its column's slice of its rank's band, scattered rather than ruled. */
     private void placeSkills(List<CareerGraphS2CPayload.Node> tabNodes) {
         Map<Long, List<CareerGraphS2CPayload.Node>> cells = new TreeMap<>();
         for (CareerGraphS2CPayload.Node node : tabNodes) {
-            if (node.kind() != CareerGraphS2CPayload.KIND_SKILL) continue;
+            if (node.kind() != CareerGraphS2CPayload.KIND_SKILL
+                    && node.kind() != CareerGraphS2CPayload.KIND_COMBO) {
+                continue;
+            }
             int column = columnIndexOf(node);
             int band = Math.max(0, Math.min(bands.size() - 1, Math.max(1, node.tier()) - 1));
             cells.computeIfAbsent((long) column << 32 | band, key -> new ArrayList<>()).add(node);
@@ -244,30 +270,6 @@ final class CareerLayout {
                 int x = centre + offset + jitter(node.id(), 37, 3);
                 positions.put(node.id(), new int[]{x, y});
             }
-        }
-    }
-
-    /**
-     * Combo Skills belong to no column: they join two or more careers, so they are drawn in the
-     * gutter BETWEEN the columns they need, over the average of their prerequisites. A combo sitting
-     * inside one column would claim it for a path it does not belong to.
-     */
-    private void placeCombos(List<CareerGraphS2CPayload.Node> tabNodes) {
-        for (CareerGraphS2CPayload.Node node : tabNodes) {
-            if (node.kind() != CareerGraphS2CPayload.KIND_COMBO) continue;
-            if (positions.containsKey(node.id())) continue;
-            int sumX = 0;
-            int found = 0;
-            for (String required : node.requires()) {
-                int[] at = positions.get(required);
-                if (at == null) continue;
-                sumX += at[0];
-                found++;
-            }
-            int band = Math.max(0, Math.min(bands.size() - 1, Math.max(1, node.tier()) - 1));
-            int x = found > 0 ? sumX / found : contentWidth() / 2;
-            int y = bandTop(band) + BAND_H / 2 + jitter(node.id(), 53, 6);
-            positions.put(node.id(), new int[]{x, y});
         }
     }
 

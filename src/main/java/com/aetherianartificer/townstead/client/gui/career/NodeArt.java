@@ -8,42 +8,36 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * How a mark on the career board is drawn: its size, its state vocabulary, and the round-bead
- * primitives the rest of the board's furniture is built from.
+ * primitives the rest of the family's furniture is built from.
  *
  * <p>Extracted from CareerScreen so the state table below is the only place a node's appearance is
  * decided. While this lived inline, "locked" was expressed three different ways at once and which
  * one you got depended on whether the node happened to be large enough to draw an item icon.</p>
+ *
+ * <p>Marks are FRAMES, not seals. Minecraft's own tree already frames a 16-square item and lets the
+ * outline say what kind of thing it is, and the icons the board carries are square whatever we put
+ * around them: a circle has to out-size the sprite it holds, so the old bead was a large container
+ * showing a small picture. The beads live on in the masthead crest and the points token, where the
+ * subject really is round, and in the wax seal, which is a seal.</p>
  */
 final class NodeArt {
     private NodeArt() {}
 
-    //? if >=1.21 {
-    static final net.minecraft.resources.ResourceLocation LEDGER =
-            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                    "townstead", "textures/gui/career/ledger.png");
-    //?} else {
-    /*static final net.minecraft.resources.ResourceLocation LEDGER =
-            new net.minecraft.resources.ResourceLocation("townstead", "textures/gui/career/ledger.png");
-    *///?}
-
-    private static final int LEDGER_SIZE = 128;
-    /** Atlas columns: pressed wax, struck ink, faint ink. From tools/gen_career_ledger_atlas.py. */
-    private static final int MARK_SEAL = 0;
-    private static final int MARK_STAMP = 1;
-    private static final int MARK_FAINT = 2;
-
     /**
      * The whole of the state vocabulary, as data.
      *
-     * <p>{@code column} is the atlas column; {@code walked} says whether the mark takes its path's
-     * colour or plain ink; {@code disc} says whether a blank medallion is laid under it. Nothing
-     * else may branch on {@code state()} to decide how a node looks.</p>
+     * <p>{@code rim} is the frame, {@code inner} the ground the icon sits on, {@code edge} the lit
+     * top bevel, and {@code walked} says whether the mark counts as yours for the links that leave
+     * it. Nothing else may branch on {@code state()} to decide how a node looks.</p>
      */
-    record MarkStyle(int column, boolean walked, boolean disc) {}
+    record MarkStyle(int rim, int inner, int edge, boolean walked) {}
 
-    private static final MarkStyle STYLE_ACQUIRED = new MarkStyle(MARK_SEAL, true, false);
-    private static final MarkStyle STYLE_READY = new MarkStyle(MARK_STAMP, false, true);
-    private static final MarkStyle STYLE_OUT_OF_REACH = new MarkStyle(MARK_FAINT, false, true);
+    private static final MarkStyle STYLE_ACQUIRED =
+            new MarkStyle(Palette.BRASS, 0xFF33260F, Palette.BRASS_HOT, true);
+    private static final MarkStyle STYLE_READY =
+            new MarkStyle(Palette.BRASS_DEEP, 0xFF2A2013, 0xFF5E5142, false);
+    private static final MarkStyle STYLE_OUT_OF_REACH =
+            new MarkStyle(Palette.COLD_DEEP, 0xFF241A0E, 0xFF4A4034, false);
 
     static MarkStyle styleOf(CareerGraphS2CPayload.Node node) {
         if (node.state() == CareerGraphS2CPayload.STATE_ACQUIRED || node.equipped()) {
@@ -54,75 +48,93 @@ final class NodeArt {
 
     // ── Sizes ──────────────────────────────────────────────────────────────
     //
-    // Node sizes carry the hierarchy: the career anchors the board, a gateway is the landmark where
-    // its specialization forks, and ordinary skills stay small enough that a long arm still fits.
-    // All even, so a radius stays whole at every zoom step.
+    // A frame is sized to the icon it holds, not the other way round. An item sprite is 16 square,
+    // and a round mark has to be about 26 across before a 16 sprite fits inside it without clipping
+    // its own corners; the board's answer had been to shrink the icon to ten pixels instead, so
+    // every mark was a large container holding a small unreadable picture. A 22 frame carries the
+    // sprite at full size in the footprint the old 20 bead occupied.
+    //
+    // Sizes still carry hierarchy, but they no longer carry KIND: a gateway is told apart by the
+    // shape of its outline, so size is free to mean only importance again.
 
-    /** A gateway is the landmark where a path forks, so it draws at the larger of the two sizes. */
+    /** A gateway is the landmark where a path forks: spiked frame, one step up in size. */
     private static boolean isGateway(CareerGraphS2CPayload.Node node) {
         return node.kind() == CareerGraphS2CPayload.KIND_SKILL && node.path().gateway();
     }
 
-    static int halfSizeOf(CareerGraphS2CPayload.Node node) {
+    /** The frame's edge length. Even, so a half stays whole at every zoom step. */
+    static int markSize(CareerGraphS2CPayload.Node node) {
         return switch (node.kind()) {
-            case CareerGraphS2CPayload.KIND_ROOT -> 16;
-            case CareerGraphS2CPayload.KIND_ADVANCED, CareerGraphS2CPayload.KIND_COMBO -> 12;
-            default -> isGateway(node) ? 12 : 10;
+            case CareerGraphS2CPayload.KIND_ROOT -> 30;
+            case CareerGraphS2CPayload.KIND_ADVANCED -> 26;
+            case CareerGraphS2CPayload.KIND_COMBO -> 22;
+            default -> isGateway(node) ? 26 : 22;
         };
+    }
+
+    static int halfSizeOf(CareerGraphS2CPayload.Node node) {
+        return markSize(node) / 2;
     }
 
     static int halfOnScreen(CareerGraphS2CPayload.Node node, float zoom) {
         return Math.max(4, Math.round(halfSizeOf(node) * zoom));
     }
 
-    /** Authored sprite size, which must equal twice {@link #halfSizeOf} for the same node. */
-    static int markSize(CareerGraphS2CPayload.Node node) {
-        return switch (node.kind()) {
-            case CareerGraphS2CPayload.KIND_ROOT -> 32;
-            case CareerGraphS2CPayload.KIND_ADVANCED, CareerGraphS2CPayload.KIND_COMBO -> 24;
-            default -> isGateway(node) ? 24 : 20;
-        };
-    }
-
-    private static int markRow(CareerGraphS2CPayload.Node node) {
-        return switch (node.kind()) {
-            case CareerGraphS2CPayload.KIND_ROOT -> 0;
-            case CareerGraphS2CPayload.KIND_ADVANCED, CareerGraphS2CPayload.KIND_COMBO -> 32;
-            default -> isGateway(node) ? 32 : 56;
-        };
-    }
-
-    /** Where a mark's ink actually ends on screen, which is inside its nominal half-size. */
+    /**
+     * Where a mark's ink ends on screen. Now exactly its half-size: a square frame fills its own
+     * bounding box, so the fudge factor a round sprite needed is gone, and the hit box the screen
+     * tests against is finally the shape the player is looking at.
+     */
     static int markEdge(CareerGraphS2CPayload.Node node, float zoom) {
-        return Math.max(3, Math.round((markSize(node) / 2f - 1.2f) * zoom));
+        return halfOnScreen(node, zoom);
     }
 
     /**
-     * One mark on the page. The atlas is authored at the exact pixel sizes the board uses at zoom 1
-     * and the zoom steps are powers of two, so a mark is only ever drawn at its own size, half it,
-     * or double it. Pixel art survives an exact halving and nothing else.
+     * One mark on the board: a framed slot holding an item.
+     *
+     * <p>Drawn rather than blitted. The frame used to come from an authored atlas, which meant every
+     * size needed its own hand-rasterised circle and a zoom step that was not a power of two came
+     * out mush. Four nested rectangles survive any scale, and the frame's OUTLINE is now free to say
+     * what kind of mark this is: plain for a skill, spiked for a gateway, chamfered for a Combo
+     * Skill that belongs to two careers at once.</p>
      */
     static void drawMark(GuiGraphics g, CareerGraphS2CPayload.Node node, int x, int y,
-                         MarkStyle style, int tint, float zoom) {
-        int authored = markSize(node);
-        int v = markRow(node);
-        int column = style.column();
-        int drawn = Math.max(4, Math.round(authored * zoom));
-        // A bare outline with an item icon floating inside it reads as art that failed to load, so
-        // an unpressed mark gets a blank disc under its ring: a medallion waiting for the seal.
-        if (style.disc()) {
-            drawBead(g, x, y, Math.max(2, drawn / 2 - 1),
-                    column == MARK_STAMP ? 0xFFF2E6C4 : 0xFFDCCAA2);
+                         MarkStyle style, float zoom) {
+        int size = Math.max(8, Math.round(markSize(node) * zoom));
+        int unit = Math.max(1, Math.round(zoom));
+        int half = size / 2;
+        int left = x - half;
+        int top = y - half;
+        int right = left + size;
+        int bottom = top + size;
+
+        g.fill(left + unit, top + 2 * unit, right + unit, bottom + 2 * unit, 0x66000000);
+        g.fill(left, top, right, bottom, Palette.DESK_EDGE);
+        g.fill(left + unit, top + unit, right - unit, bottom - unit, style.rim());
+        g.fill(left + 2 * unit, top + 2 * unit, right - 2 * unit, bottom - 2 * unit, style.inner());
+        // The lit bevel, on the same side the whole board is lit from.
+        g.fill(left + unit, top + unit, right - unit, top + 2 * unit, style.edge());
+
+        int nub = 2 * unit;
+        if (isGateway(node)) {
+            g.fill(left - nub, top - nub, left, top, style.rim());
+            g.fill(right, top - nub, right + nub, top, style.rim());
+            g.fill(left - nub, bottom, left, bottom + nub, style.rim());
+            g.fill(right, bottom, right + nub, bottom + nub, style.rim());
+            g.fill(x - unit, top - nub, x + unit, top, style.rim());
+            g.fill(x - unit, bottom, x + unit, bottom + nub, style.rim());
+        } else if (node.kind() == CareerGraphS2CPayload.KIND_COMBO) {
+            g.fill(left, top, left + nub, top + nub, Palette.DESK_EDGE);
+            g.fill(right - nub, top, right, top + nub, Palette.DESK_EDGE);
+            g.fill(left, bottom - nub, left + nub, bottom, Palette.DESK_EDGE);
+            g.fill(right - nub, bottom - nub, right, bottom, Palette.DESK_EDGE);
         }
-        float r = ((tint >> 16) & 0xFF) / 255f;
-        float gg = ((tint >> 8) & 0xFF) / 255f;
-        float b = (tint & 0xFF) / 255f;
-        float a = ((tint >>> 24) == 0 ? 255 : (tint >>> 24)) / 255f;
-        g.setColor(r, gg, b, a);
-        g.blit(LEDGER, x - drawn / 2, y - drawn / 2, drawn, drawn,
-                (float) (column * authored), (float) v, authored, authored,
-                LEDGER_SIZE, LEDGER_SIZE);
-        g.setColor(1f, 1f, 1f, 1f);
+    }
+
+    /** The room inside a frame, which is what an icon may draw into. */
+    static int innerSize(CareerGraphS2CPayload.Node node, float zoom) {
+        int unit = Math.max(1, Math.round(zoom));
+        return Math.max(4, Math.round(markSize(node) * zoom) - 4 * unit);
     }
 
     // ── Beads ──────────────────────────────────────────────────────────────
@@ -174,23 +186,55 @@ final class NodeArt {
     }
 
     /**
-     * The lit shoulder of a bead: two short arcs on the upper left, where the board's light comes
-     * from.
+     * A struck metal seal: the crest's medallion, and the family's one deliberate circle.
      *
-     * <p>Cheap on purpose. A real shaded sphere would need a gradient per row, and at ten pixels
-     * across the only thing a reader registers is that the top edge is brighter than the bottom.</p>
+     * <p>Built from nested FILLED discs rather than a disc with rings laid over it. A ring drawn by
+     * {@link #drawBeadRing} takes its thickness from the row-to-row jump in the disc's inset, so it
+     * runs three pixels wide at the poles and one at the shoulders; stacking that over a disc of the
+     * same radius, with a second disc two pixels in, gave three separately rasterised edges with
+     * slivers of the dark base showing between them. That is the jaggedness. Concentric fills from
+     * one rasteriser cannot disagree with each other.</p>
+     *
+     * <p>The bevel does the rest: lit along the upper left, shadowed along the lower right, which is
+     * the whole reason a struck coin reads as struck rather than as a printed circle.</p>
      */
-    static void drawGloss(GuiGraphics g, int cx, int cy, int half, int color) {
-        if (half < 4) return;
-        for (int dy = -half + 1; dy < -half / 3; dy++) {
-            int inset = beadInset(half, dy) + 1;
-            int span = Math.max(1, (half - inset) / 2);
-            if (span <= 0) continue;
-            g.fill(cx - half + inset, cy + dy, cx - half + inset + span, cy + dy + 1, color);
-        }
+    static void drawSeal(GuiGraphics g, int cx, int cy, int half, boolean hot) {
+        drawBead(g, cx, cy, half, 0xFF0D0803);
+        drawBead(g, cx, cy, half - 1, hot ? Palette.BRASS : 0xFF6A4E24);
+        drawBead(g, cx, cy, half - 2, hot ? Palette.BRASS_DEEP : 0xFF5A4018);
+        drawSealBevel(g, cx, cy, half - 2, true, hot ? Palette.BRASS_HOT : 0x99FFF0C8);
+        drawSealBevel(g, cx, cy, half - 2, false, 0x73140F08);
+        drawBead(g, cx, cy, half - 3, hot ? Palette.BRASS : 0xFF8A6428);
+        drawBead(g, cx, cy, half - 4, hot ? 0xFFC08E3C : 0xFF6E4E1C);
     }
 
-    /** The equipped mark: a pressed blob of wax, lifted above the board so nothing overdraws it. */
+    /** One pixel down the lit or shadowed flank of a seal, following the disc's own edge. */
+    private static void drawSealBevel(GuiGraphics g, int cx, int cy, int half, boolean lit,
+                                      int color) {
+        if (half < 3) return;
+        int from = lit ? -half : 0;
+        int to = lit ? 0 : half;
+        for (int dy = from; dy < to; dy++) {
+            int inset = beadInset(half, dy);
+            if (lit) {
+                g.fill(cx - half + inset, cy + dy, cx - half + inset + 1, cy + dy + 1, color);
+            } else {
+                g.fill(cx + half - inset - 1, cy + dy, cx + half - inset, cy + dy + 1, color);
+            }
+        }
+        // The caps, so the arc closes over the top and under the bottom instead of stopping at the
+        // equator with a visible seam.
+        int capDy = lit ? -half : half - 1;
+        int capInset = beadInset(half, capDy);
+        g.fill(cx - half + capInset, cy + capDy, cx + half - capInset, cy + capDy + 1, color);
+    }
+
+    /**
+     * The equipped mark: a pressed blob of wax, lifted above the board so nothing overdraws it.
+     *
+     * <p>The one round thing left on the board, and the only one that earns it. A seal IS a circle;
+     * a container for a square sprite is not, which is why everything else gave its circle up.</p>
+     */
     static void drawWaxSeal(GuiGraphics g, int cx, int cy) {
         g.pose().pushPose();
         g.pose().translate(0, 0, 280);

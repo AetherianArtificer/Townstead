@@ -49,9 +49,36 @@ final class StampTool {
 
     /** Whether this record can be stamped at all: a learnable skill on your own page. */
     static boolean available(CareerGraphS2CPayload.Node node, boolean inspect) {
-        return !inspect && node != null
-                && node.kind() == CareerGraphS2CPayload.KIND_SKILL
-                && node.state() == CareerGraphS2CPayload.STATE_READY;
+        if (inspect || node == null) return false;
+        if (node.kind() == CareerGraphS2CPayload.KIND_SKILL) {
+            return node.state() == CareerGraphS2CPayload.STATE_READY;
+        }
+        return takeUp(node);
+    }
+
+    /**
+     * A career you could declare as your work: a root, or a specialization you already hold.
+     *
+     * <p>The server re-validates; this only mirrors the rule so the screen knows what to offer.</p>
+     */
+    static boolean canTakeUp(CareerGraphS2CPayload.Node node) {
+        if (node == null || node.primary()) return false;
+        return node.kind() == CareerGraphS2CPayload.KIND_ROOT
+                || (node.kind() == CareerGraphS2CPayload.KIND_ADVANCED
+                        && node.state() == CareerGraphS2CPayload.STATE_ACQUIRED);
+    }
+
+    /**
+     * Work you have never been admitted to, which is the only take-up worth a ceremony.
+     *
+     * <p>Taking up work used to be a grey button while learning a skill was a ceremony, which said
+     * the smaller of the two commitments was the more serious one. But a ceremony repeated every
+     * time you swap back to a career you already hold is not a ceremony, it is a toll. The record
+     * itself answers which is which: once it bears your mark you have been admitted, and going back
+     * to that work is resuming it, not entering it.</p>
+     */
+    static boolean takeUp(CareerGraphS2CPayload.Node node) {
+        return canTakeUp(node) && !node.stamp().present();
     }
 
     void reset() {
