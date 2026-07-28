@@ -21,6 +21,17 @@ final class WheelArt {
     }
 
     /**
+     * Half-width of a rasterised circle at row {@code dy}. Every circular edge here goes through
+     * this, so a disc and the hole cut for it land on the same pixels instead of on two roundings
+     * that disagree by a pixel or two and leave the background showing through the seam.
+     */
+    static int halfAt(int radius, int dy) {
+        double unit = (Math.abs(dy) + 0.5) / radius;
+        if (unit >= 1) return 0;
+        return (int) Math.round(radius * Math.sqrt(1 - unit * unit));
+    }
+
+    /**
      * Paints an annulus by rows, asking {@link RingPainter} per pixel and filling in runs.
      *
      * @param within where the pixel falls across its sector, 0 at one edge and 1 at the other
@@ -29,21 +40,21 @@ final class WheelArt {
                           RingPainter painter) {
         double step = 2 * Math.PI / sectors;
         for (int dy = -outer; dy <= outer; dy++) {
-            int span = (int) Math.floor(Math.sqrt(Math.max(0, outer * outer - dy * dy)));
+            int span = halfAt(outer, dy);
             if (span <= 0) continue;
-            int hole = Math.abs(dy) < inner
-                    ? (int) Math.ceil(Math.sqrt(inner * inner - dy * dy)) : 0;
-            if (hole == 0) {
+            int solid = halfAt(inner, dy);
+            if (solid <= 0) {
                 paintRow(g, cx, cy, dy, -span, span, sectors, step, painter);
             } else {
-                paintRow(g, cx, cy, dy, -span, -hole, sectors, step, painter);
-                paintRow(g, cx, cy, dy, hole, span, sectors, step, painter);
+                paintRow(g, cx, cy, dy, -span, -solid - 1, sectors, step, painter);
+                paintRow(g, cx, cy, dy, solid + 1, span, sectors, step, painter);
             }
         }
     }
 
     private static void paintRow(GuiGraphics g, int cx, int cy, int dy, int from, int to,
                                  int sectors, double step, RingPainter painter) {
+        if (from > to) return;
         int runStart = from;
         int runColor = 0;
         for (int dx = from; dx <= to; dx++) {
@@ -67,27 +78,42 @@ final class WheelArt {
         if (runColor != 0) g.fill(cx + runStart, cy + dy, cx + to + 1, cy + dy + 1, runColor);
     }
 
-    /** A filled circle as rows, matching the pixel edge the rest of the family draws with. */
+    /** A filled circle as rows, symmetric about both axes so it can be centred on a pixel. */
     static void disc(GuiGraphics g, int cx, int cy, int radius, int color) {
-        if (radius <= 0) return;
-        for (int dy = -radius; dy < radius; dy++) {
-            double unit = (dy + 0.5) / radius;
-            int half = (int) Math.round(radius * Math.sqrt(Math.max(0d, 1d - unit * unit)));
-            if (half > 0) g.fill(cx - half, cy + dy, cx + half, cy + dy + 1, color);
+        for (int dy = -radius; dy <= radius; dy++) {
+            int half = halfAt(radius, dy);
+            if (half > 0) g.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, color);
         }
     }
 
     /**
-     * The hub: a recessed well, not an ornament.
-     *
-     * <p>It was a wax seal, which looked like a stop sign in the middle of an instrument you are
-     * meant to be reading past. The centre of a dial is where the cursor RESTS, so it wants to be
-     * quiet and to read as empty space you can safely let go in.</p>
+     * The cancel well, sized to fill the dial's hole. Edge is darker than anything on the face: a
+     * light rim reads as a badge stuck on the dial rather than an opening in it.
      */
-    static void hub(GuiGraphics g, int cx, int cy, int radius) {
-        disc(g, cx, cy, radius, 0xFF14100A);
-        disc(g, cx, cy, radius - 1, 0xFF1C1509);
-        g.fill(cx - radius + 3, cy - radius + 1, cx + radius - 3, cy - radius + 2, 0xFF0F0B06);
+    static void hub(GuiGraphics g, int cx, int cy, int radius, boolean armed) {
+        disc(g, cx, cy, radius, 0xFF120D07);
+        disc(g, cx, cy, radius - 1, armed ? 0xFF2E2314 : 0xFF191208);
+    }
+
+    /**
+     * Release here and nothing is cast. Only drawn while the cursor is resting in the hub.
+     *
+     * <p>Spelled out rather than looped, because a loop stepping a run of two along a diagonal is a
+     * pixel wider on one side than the other and cannot be centred on the well it marks.</p>
+     */
+    private static final String[] CANCEL = {
+            "110000011", "011000110", "001101100", "000111000", "000010000",
+            "000111000", "001101100", "011000110", "110000011"};
+
+    /** Centred on {@code cx, cy}. */
+    static void cancelMark(GuiGraphics g, int cx, int cy, int color) {
+        for (int row = 0; row < CANCEL.length; row++) {
+            for (int col = 0; col < CANCEL[row].length(); col++) {
+                if (CANCEL[row].charAt(col) == '1') {
+                    g.fill(cx - 4 + col, cy - 4 + row, cx - 3 + col, cy - 3 + row, color);
+                }
+            }
+        }
     }
 
     /**

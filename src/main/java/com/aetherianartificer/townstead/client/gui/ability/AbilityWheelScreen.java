@@ -47,8 +47,8 @@ public final class AbilityWheelScreen extends Screen {
     /** How far from the centre a frame sits, and how big it is. */
     private static final int R_SLOT = 56;
     private static final int FRAME = 26;
-    /** Inside this radius nothing is selected, so releasing dead centre cancels. */
-    private static final int DEAD_ZONE = 20;
+    /** Inside this radius nothing is selected, so releasing cancels. */
+    private static final int DEAD_ZONE = R_FACE;
 
     private int hovered = -1;
     /**
@@ -136,8 +136,7 @@ public final class AbilityWheelScreen extends Screen {
 
         drawDial(g, cx, cy, now);
         for (int i = 0; i < SLOTS; i++) drawSlot(g, cx, cy, i, now);
-        WheelArt.hub(g, cx, cy, 15);
-        drawLayerPips(g, cx, cy);
+        drawHub(g, cx, cy);
         drawPlate(g, cx, cy);
     }
 
@@ -258,13 +257,29 @@ public final class AbilityWheelScreen extends Screen {
         }
     }
 
-    /** Three pips under the boss: which eight, said without a word. */
-    private void drawLayerPips(GuiGraphics g, int cx, int cy) {
+    /**
+     * The hub does two jobs that region was already doing invisibly: it is the cancel well, lifting
+     * and showing its mark while the cursor rests in it, and it carries the layer pips.
+     */
+    private void drawHub(GuiGraphics g, int cx, int cy) {
+        boolean armed = hovered < 0;
+        WheelArt.hub(g, cx, cy, R_FACE, armed);
+        if (armed) WheelArt.cancelMark(g, cx, cy, 0xFF6E5A38);
         for (int i = 0; i < LAYERS; i++) {
-            int px = cx - 7 + i * 5;
-            int py = cy + 16;
-            g.fill(px, py, px + 3, py + 3, i == layer ? Palette.BRASS_HOT : 0xFF4A3A20);
+            // Three 3px pips on a 5px pitch is 13 wide, so the row starts 6 left of centre.
+            int px = cx - 6 + i * 5;
+            int py = cy + 13;
+            g.fill(px, py, px + 3, py + 3, i == layer ? layerAccent() : 0xFF493A22);
         }
+    }
+
+    /** The tone the dial is currently wearing, lit enough to read at three pixels. */
+    private int layerAccent() {
+        return switch (layer) {
+            case 1 -> 0xFF8FB4D6;
+            case 2 -> 0xFF9CC77E;
+            default -> Palette.BRASS_HOT;
+        };
     }
 
     /**
