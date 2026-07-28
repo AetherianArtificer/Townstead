@@ -37,6 +37,26 @@ public final class TownsteadKeybinds {
     );
 
     /**
+     * Reaching the dial's second and third sets.
+     *
+     * <p>REAL keybinds, not {@code hasShiftDown()}. Hardcoding the modifier meant it could not be
+     * rebound, never appeared in the Controls screen, and was invisible to the controller and VR
+     * remapping layers that read the keybind registry. It also meant the UI could only ever CLAIM
+     * it was shift, whether or not that was true for the player reading it.</p>
+     */
+    public static final KeyMapping LAYER_SECOND = new KeyMapping(
+            "townstead.key.layer_second",
+            InputConstants.Type.KEYSYM,
+            org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT,
+            "townstead.key.category");
+
+    public static final KeyMapping LAYER_THIRD = new KeyMapping(
+            "townstead.key.layer_third",
+            InputConstants.Type.KEYSYM,
+            org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_CONTROL,
+            "townstead.key.category");
+
+    /**
      * One Root Ability key per slot on the dial's FIRST layer; default unbound.
      *
      * <p>Deliberately eight rather than {@code ActiveAbilities.POOL_SIZE}, which is sixteen. The
@@ -71,10 +91,15 @@ public final class TownsteadKeybinds {
     /** Long enough to be a tap on a bad connection, short enough that a real aim is never one. */
     private static final long TAP_MS = 220L;
 
-    /** Is the wheel's bound key or mouse button physically down right now? */
-    private static boolean wheelKeyDown(Minecraft mc) {
-        if (mc.getWindow() == null) return false;
-        InputConstants.Key bound = WHEEL.getKey();
+    /**
+     * Is this binding physically down right now?
+     *
+     * <p>Polls the WINDOW, not {@code KeyMapping.isDown()}: vanilla stops feeding key state into
+     * bindings while a Screen is open, and every one of these is read with a screen up.</p>
+     */
+    public static boolean isHeld(Minecraft mc, KeyMapping mapping) {
+        if (mc == null || mc.getWindow() == null || mapping == null) return false;
+        InputConstants.Key bound = mapping.getKey();
         if (bound == null || bound.getValue() == InputConstants.UNKNOWN.getValue()) return false;
         long handle = mc.getWindow().getWindow();
         if (bound.getType() == InputConstants.Type.MOUSE) {
@@ -82,6 +107,15 @@ public final class TownsteadKeybinds {
                     == org.lwjgl.glfw.GLFW.GLFW_PRESS;
         }
         return InputConstants.isKeyDown(handle, bound.getValue());
+    }
+
+    /** The bound key's own name, so a UI never has to guess at what to tell the player to press. */
+    public static String keyName(KeyMapping mapping) {
+        return mapping == null ? "" : mapping.getTranslatedKeyMessage().getString();
+    }
+
+    private static boolean wheelKeyDown(Minecraft mc) {
+        return isHeld(mc, WHEEL);
     }
 
     /**

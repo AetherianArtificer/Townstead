@@ -125,9 +125,13 @@ public final class AbilityWheelScreen extends Screen {
         int cx = width / 2;
         int cy = wheelCentreY();
         hovered = wedgeAt(mouseX - cx, mouseY - cy);
-        // Control wins over shift, so a stray shift while reaching for control does not silently
-        // land you on the wrong eight.
-        layer = hasControlDown() ? 2 : (hasShiftDown() ? 1 : 0);
+        // The player's OWN bindings, not hardcoded shift and control: those could not be rebound and
+        // were invisible to controller remapping. Third wins over second, so a stray press while
+        // reaching for the other does not silently land you on the wrong eight.
+        layer = com.aetherianartificer.townstead.client.TownsteadKeybinds.isHeld(minecraft,
+                com.aetherianartificer.townstead.client.TownsteadKeybinds.LAYER_THIRD) ? 2
+                : com.aetherianartificer.townstead.client.TownsteadKeybinds.isHeld(minecraft,
+                        com.aetherianartificer.townstead.client.TownsteadKeybinds.LAYER_SECOND) ? 1 : 0;
         long now = minecraft == null || minecraft.level == null ? 0L : minecraft.level.getGameTime();
 
         drawDial(g, cx, cy, now);
