@@ -78,6 +78,42 @@ final class WheelArt {
         if (runColor != 0) g.fill(cx + runStart, cy + dy, cx + to + 1, cy + dy + 1, runColor);
     }
 
+    /**
+     * A struck brass rim, lit from above.
+     *
+     * <p>Shade follows how high the pixel sits on the circle. Picking a tone per SECTOR instead gave
+     * four bright facets and four dark ones with a hard seam between each pair, which on a 32-pixel
+     * dial reads as stray light and dark pixels rather than as a lit edge.</p>
+     */
+    static void rim(GuiGraphics g, int cx, int cy, int outer, int inner) {
+        for (int dy = -outer; dy <= outer; dy++) {
+            int span = halfAt(outer, dy);
+            if (span <= 0) continue;
+            float t = (1f - (float) dy / outer) / 2f;
+            int color = t > 0.72f ? mix(Palette.BRASS, Palette.BRASS_HOT, (t - 0.72f) / 0.28f)
+                    : mix(Palette.BRASS_DEEP, Palette.BRASS, t / 0.72f);
+            int solid = halfAt(inner, dy);
+            if (solid <= 0 || solid >= span) {
+                g.fill(cx - span, cy + dy, cx + span + 1, cy + dy + 1, color);
+            } else {
+                g.fill(cx - span, cy + dy, cx - solid, cy + dy + 1, color);
+                g.fill(cx + solid + 1, cy + dy, cx + span + 1, cy + dy + 1, color);
+            }
+        }
+    }
+
+    /** Straight per-channel ARGB blend, {@code t} running 0 at {@code from} to 1 at {@code to}. */
+    private static int mix(int from, int to, float t) {
+        float k = Math.max(0f, Math.min(1f, t));
+        int out = 0;
+        for (int shift = 0; shift <= 24; shift += 8) {
+            int a = (from >> shift) & 0xFF;
+            int b = (to >> shift) & 0xFF;
+            out |= (a + Math.round((b - a) * k)) << shift;
+        }
+        return out;
+    }
+
     /** A filled circle as rows, symmetric about both axes so it can be centred on a pixel. */
     static void disc(GuiGraphics g, int cx, int cy, int radius, int color) {
         for (int dy = -radius; dy <= radius; dy++) {

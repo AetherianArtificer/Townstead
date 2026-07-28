@@ -10,12 +10,10 @@ import com.aetherianartificer.townstead.root.ability.AbilityNames;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -263,9 +261,7 @@ public final class AbilityCatalogueScreen extends Screen {
             };
             WheelArt.disc(g, cx, cy, DIAL_R + 2, Palette.DESK_EDGE);
             WheelArt.disc(g, cx, cy, DIAL_R, face);
-            // A struck rim, lit along the top like every other instrument in the family.
-            WheelArt.paintRing(g, cx, cy, DIAL_R, DIAL_R - 2, 8,
-                    (sector, within, radius) -> sector < 4 ? Palette.BRASS_DEEP : Palette.BRASS);
+            WheelArt.rim(g, cx, cy, DIAL_R, DIAL_R - 2);
             WheelArt.disc(g, cx, cy, 9, 0xFF14100A);
 
             for (int wedge = 0; wedge < 8; wedge++) {
@@ -362,13 +358,8 @@ public final class AbilityCatalogueScreen extends Screen {
     /** An icon, or the initials that stand in for one. */
     private void drawEntryMark(GuiGraphics g, int cx, int cy, String icon, String name,
                                boolean lit, float scale) {
-        ItemStack stack = iconOf(icon);
-        if (!stack.isEmpty()) {
-            g.pose().pushPose();
-            g.pose().translate(cx - 8 * scale, cy - 8 * scale, 0);
-            g.pose().scale(scale, scale, 1f);
-            g.renderItem(stack, 0, 0);
-            g.pose().popPose();
+        if (com.aetherianartificer.townstead.client.gui.common.IconArt
+                .drawCentred(g, icon, cx, cy, scale)) {
             return;
         }
         String mark = AbilityNames.initialsOf(name);
@@ -497,14 +488,8 @@ public final class AbilityCatalogueScreen extends Screen {
         g.fill(x + 2, y + 2, x + CELL - 2, y + CELL - 2, chosen ? 0xFF33260F : 0xFF241A0E);
         g.fill(x + 1, y + 1, x + CELL - 1, y + 2, chosen ? Palette.BRASS_HOT : 0xFF4A4034);
 
-        ItemStack icon = iconOf(option.icon());
-        if (!icon.isEmpty()) {
-            g.pose().pushPose();
-            g.pose().translate(cx - 8 * 0.85f, cy - 8 * 0.85f, 0);
-            g.pose().scale(0.85f, 0.85f, 1f);
-            g.renderItem(icon, 0, 0);
-            g.pose().popPose();
-        } else {
+        if (!com.aetherianartificer.townstead.client.gui.common.IconArt
+                .drawCentred(g, option.icon(), cx, cy, 0.85f)) {
             String mark = AbilityNames.initialsOf(option.name());
             g.drawString(font, mark, cx - font.width(mark) / 2, cy - 4,
                     chosen ? Palette.BRASS_HOT : 0xFFC0A46E, false);
@@ -849,13 +834,6 @@ public final class AbilityCatalogueScreen extends Screen {
     private void scrollBy(double delta) {
         int max = Math.max(0, rows() * PITCH + 6 - (gridBottom - gridTop));
         scroll = Mth.clamp(scroll - delta * 14, 0, max);
-    }
-
-    private static ItemStack iconOf(String icon) {
-        if (icon.isEmpty()) return ItemStack.EMPTY;
-        ResourceLocation id = ResourceLocation.tryParse(icon);
-        if (id == null) return ItemStack.EMPTY;
-        return BuiltInRegistries.ITEM.getOptional(id).map(ItemStack::new).orElse(ItemStack.EMPTY);
     }
 
     @Override

@@ -3,8 +3,6 @@ package com.aetherianartificer.townstead.client.gui.career;
 import com.aetherianartificer.townstead.client.gui.common.Palette;
 import com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.item.ItemStack;
 
 /**
  * How a mark on the career board is drawn: its size, its state vocabulary, and the round-bead
@@ -294,12 +292,15 @@ final class NodeArt {
         }
     }
 
-    /** Resolves the def-declared item icon, empty when absent or the item is not installed. */
-    static ItemStack iconStack(CareerGraphS2CPayload.Node node) {
-        if (node.icon().isEmpty()) return ItemStack.EMPTY;
-        net.minecraft.resources.ResourceLocation id =
-                net.minecraft.resources.ResourceLocation.tryParse(node.icon());
-        if (id == null) return ItemStack.EMPTY;
-        return BuiltInRegistries.ITEM.getOptional(id).map(ItemStack::new).orElse(ItemStack.EMPTY);
+    /**
+     * Draws a node's authored icon, false when it has none.
+     *
+     * <p>Board icons come from the same registries the ability picker reads, so they take the same
+     * two forms: an item id, or a pack's own texture.</p>
+     */
+    static boolean drawIcon(GuiGraphics g, CareerGraphS2CPayload.Node node, float cx, float cy,
+                            float scale) {
+        return node != null && com.aetherianartificer.townstead.client.gui.common.IconArt
+                .drawCentred(g, node.icon(), cx, cy, scale);
     }
 }

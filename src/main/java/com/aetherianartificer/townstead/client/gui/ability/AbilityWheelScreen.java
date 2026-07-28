@@ -9,11 +9,8 @@ import com.aetherianartificer.townstead.root.ability.ActivateAbilityC2SPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStack;
 
 /**
  * The ability wheel: a struck dial carrying the frames you prepared.
@@ -40,9 +37,9 @@ public final class AbilityWheelScreen extends Screen {
     private static final int LAYERS = 3;
 
     private static final int R_OUT = 84;
-    private static final int R_RIM = 81;
-    private static final int R_ARC_OUT = 79;
-    private static final int R_ARC_IN = 74;
+    private static final int R_RIM = 83;
+    private static final int R_ARC_OUT = 82;
+    private static final int R_ARC_IN = 77;
     private static final int R_FACE = 26;
     /** How far from the centre a frame sits, and how big it is. */
     private static final int R_SLOT = 56;
@@ -153,13 +150,16 @@ public final class AbilityWheelScreen extends Screen {
             fill[i] = entry.toggle() ? (entry.toggledOn() ? 1f : 0f) : readyFraction(entry, now);
         }
 
+        // The dark outline first, so the rim's gradient can run right to the dial's edge.
+        WheelArt.disc(g, cx, cy, R_OUT + 1, Palette.DESK_EDGE);
+        // The face runs the whole way out and the rim paints OVER its outer band. Reserving the band
+        // here instead left a ring of pixels claimed by neither: this pass cuts on a rounded
+        // hypotenuse and the rim on a scanned half-width, and the two disagree by a pixel per row.
         WheelArt.paintRing(g, cx, cy, R_OUT, R_FACE, SLOTS, (sector, within, radius) -> {
-            if (radius >= R_RIM) {
-                // A struck rim, lit along the top where the whole family is lit from.
-                return radius >= R_OUT - 1 ? Palette.DESK_EDGE : Palette.BRASS_DEEP;
-            }
-            if (radius >= R_ARC_IN && radius < R_ARC_OUT) {
-                if (!present[sector]) return 0xFF2A2115;
+            // An EMPTY sector gets no track. Drawing one dark put a near-black band between the
+            // wedge and the rim, which on a dark face reads as a hole in the dial rather than as an
+            // empty channel. Nothing there, nothing drawn: the face runs straight out to the rim.
+            if (radius >= R_ARC_IN && radius < R_ARC_OUT && present[sector]) {
                 if (within > fill[sector]) return 0xFF332818;
                 return steady[sector] ? Palette.BRASS_HOT
                         : (fill[sector] < 1f ? Palette.BRASS_DEEP : Palette.BRASS);
@@ -180,6 +180,7 @@ public final class AbilityWheelScreen extends Screen {
                 default -> aimed ? 0xFF4A3618 : 0xFF221A0F;
             };
         });
+        WheelArt.rim(g, cx, cy, R_OUT, R_RIM - 1);
     }
 
     /** One slot: its frame, its icon, its numeral, and the seconds it has left. */
@@ -226,10 +227,8 @@ public final class AbilityWheelScreen extends Screen {
         g.fill(x + 2, y + 2, x + FRAME - 2, y + FRAME - 2, inner);
         g.fill(x + 1, y + 1, x + FRAME - 1, y + 2, edge);
 
-        ItemStack icon = iconOf(entry);
-        if (!icon.isEmpty()) {
-            g.renderItem(icon, sx - 8, sy - 8);
-        } else {
+        if (!com.aetherianartificer.townstead.client.gui.common.IconArt
+                .drawCentred(g, entry.icon(), sx, sy, 1f)) {
             // Initials, NOT a shared fallback sprite. One symbol for everything unauthored would
             // make a dial of identical cells, which is no more readable than no icon at all.
             String mark = com.aetherianartificer.townstead.root.ability.AbilityNames
@@ -338,13 +337,6 @@ public final class AbilityWheelScreen extends Screen {
         if (entry == null || entry.cooldownTicks() <= 0 || entry.readyAt() <= now) return 1f;
         long left = entry.readyAt() - now;
         return Mth.clamp(1f - left / (float) entry.cooldownTicks(), 0f, 1f);
-    }
-
-    private static ItemStack iconOf(AbilityLoadoutS2CPayload.Entry entry) {
-        if (entry.icon().isEmpty()) return ItemStack.EMPTY;
-        ResourceLocation id = ResourceLocation.tryParse(entry.icon());
-        if (id == null) return ItemStack.EMPTY;
-        return BuiltInRegistries.ITEM.getOptional(id).map(ItemStack::new).orElse(ItemStack.EMPTY);
     }
 
     /** Slot 1 sits at twelve o'clock and they run clockwise. */
