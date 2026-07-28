@@ -90,6 +90,25 @@ public final class ActiveAbilities {
     }
 
     /**
+     * What a player may ARRANGE, as opposed to everything that can occupy a slot.
+     *
+     * <p>{@link #slottables} stays complete because the co-bound pairing in {@link #fireSlotted}
+     * has to find the partner. But a counter-cast like vanish's unveil is fired by its parent's
+     * press and its condition only passes while the parent's effect is up, so offering it a slot of
+     * its own let a player bind a key to something that could never run from that key.</p>
+     */
+    public static List<Slotted> arrangeable(LivingEntity entity) {
+        List<Slotted> out = new ArrayList<>();
+        for (Slotted slotted : slottables(entity)) {
+            if (com.aetherianartificer.townstead.root.gene.GeneRegistry.isCompanion(slotted.geneId())) {
+                continue;
+            }
+            out.add(slotted);
+        }
+        return out;
+    }
+
+    /**
      * Map of key slot (1..POOL_SIZE) to the primary thing (active or toggle) bound there.
      * Two ACTIVEs may declare the same slot (a cast and its counter-cast gated by mutually
      * exclusive conditions): the extras stay co-bound to the declared slot rather than
@@ -171,15 +190,15 @@ public final class ActiveAbilities {
     /**
      * Records the player's prepared order, keeping only what they actually own.
      *
-     * <p>Validated against {@link #slottables} rather than against a learned-skill list, because
-     * that is the same source the slots resolve from: anything that cannot appear in a slot map has
-     * no business being stored as though it could. Duplicates and unknown ids are dropped rather
-     * than refused, so a stale client sending an ability you have since respecced out of costs you
-     * that entry and nothing else.</p>
+     * <p>Validated against {@link #arrangeable} rather than against a learned-skill list, because
+     * that is the same source the picker offers from: anything the player could not have been shown
+     * has no business being stored as though they picked it. Duplicates and unknown ids are dropped
+     * rather than refused, so a stale client sending an ability you have since respecced out of
+     * costs you that entry and nothing else.</p>
      */
     public static void prepare(ServerPlayer player, Map<Integer, ResourceLocation> bySlot) {
         java.util.Set<ResourceLocation> owned = new java.util.LinkedHashSet<>();
-        for (Slotted slotted : slottables(player)) owned.add(slotted.geneId());
+        for (Slotted slotted : arrangeable(player)) owned.add(slotted.geneId());
         Map<Integer, ResourceLocation> valid = new LinkedHashMap<>();
         for (Map.Entry<Integer, ResourceLocation> entry : bySlot.entrySet()) {
             ResourceLocation id = entry.getValue();

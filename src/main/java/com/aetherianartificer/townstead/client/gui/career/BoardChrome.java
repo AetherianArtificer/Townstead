@@ -9,7 +9,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -415,16 +414,10 @@ final class BoardChrome {
         // sitting ON anything.
         NodeArt.drawMark(g, node, x, y, style, zoom());
 
-        ItemStack iconStack = NodeArt.iconStack(node);
-        if (!iconStack.isEmpty()) {
-            // The icon is drawn at its authored size now: the frame was built around it, so there is
-            // nothing left to shrink it to fit.
-            float scale = Math.min(zoom(), NodeArt.innerSize(node, zoom()) / 16f);
-            g.pose().pushPose();
-            g.pose().translate(x, y, 0);
-            g.pose().scale(scale, scale, 1f);
-            g.renderItem(iconStack, -8, -8);
-            g.pose().popPose();
+        // The icon is drawn at its authored size now: the frame was built around it, so there is
+        // nothing left to shrink it to fit.
+        float iconScale = Math.min(zoom(), NodeArt.innerSize(node, zoom()) / 16f);
+        if (NodeArt.drawIcon(g, node, x, y, iconScale)) {
             if (!style.walked() && node.state() <= CareerGraphS2CPayload.STATE_LOCKED) {
                 // Out of reach: the icon is shown, not hidden, but held back from the ones you can
                 // actually act on.

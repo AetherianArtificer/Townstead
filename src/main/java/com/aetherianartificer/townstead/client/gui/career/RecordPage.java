@@ -6,7 +6,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -158,14 +157,7 @@ final class RecordPage {
         CareerGraphS2CPayload.Node subject = selected == null ? career : selected;
         if (subject == null) return EMPTY;
 
-        ItemStack icon = NodeArt.iconStack(subject);
-        if (!icon.isEmpty()) {
-            g.pose().pushPose();
-            g.pose().translate(x, top + 5, 0);
-            g.pose().scale(0.85f, 0.85f, 1f);
-            g.renderItem(icon, 0, 0);
-            g.pose().popPose();
-        }
+        NodeArt.drawIcon(g, subject, x + 8 * 0.85f, top + 5 + 8 * 0.85f, 0.85f);
         int textX = x + 16;
         g.drawString(font, subject.name(), textX, top + 6, RecordArt.INK, false);
 

@@ -8,7 +8,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 import java.util.Map;
@@ -165,16 +164,9 @@ final class CareerMasthead {
             NodeArt.drawBead(g, cx, cy, CREST_R + 3, Palette.fade(Palette.BRASS, 0.22f));
         }
         NodeArt.drawSeal(g, cx, cy, CREST_R, hot);
-        ItemStack icon = career == null ? ItemStack.EMPTY : NodeArt.iconStack(career);
-        if (!icon.isEmpty()) {
-            // Slightly under size, so the device sits IN the medallion's field rather than lapping
-            // over the bevel that is meant to be reading as raised metal around it.
-            g.pose().pushPose();
-            g.pose().translate(cx, cy, 0);
-            g.pose().scale(0.85f, 0.85f, 1f);
-            g.renderItem(icon, -8, -8);
-            g.pose().popPose();
-        } else {
+        // Slightly under size, so the device sits IN the medallion's field rather than lapping over
+        // the bevel that is meant to be reading as raised metal around it.
+        if (!NodeArt.drawIcon(g, career, cx, cy, 0.85f)) {
             NodeArt.drawBead(g, cx, cy, CREST_R - 6, Palette.BRASS_HOT);
         }
     }
@@ -332,14 +324,7 @@ final class CareerMasthead {
             }
             if (active) g.fill(x + 2, rowY, x + 4, rowY + ROW_H - 1, Palette.BRASS);
             CareerGraphS2CPayload.Node root = byId.get(rootId);
-            ItemStack icon = root == null ? ItemStack.EMPTY : NodeArt.iconStack(root);
-            if (!icon.isEmpty()) {
-                g.pose().pushPose();
-                g.pose().translate(x + 7, rowY + 1, 0);
-                g.pose().scale(0.6f, 0.6f, 1f);
-                g.renderItem(icon, 0, 0);
-                g.pose().popPose();
-            }
+            NodeArt.drawIcon(g, root, x + 7 + 8 * 0.6f, rowY + 1 + 8 * 0.6f, 0.6f);
             String label = root == null || root.name().isEmpty() ? rootId : root.name();
             g.drawString(font, label, x + 19, rowY + 2,
                     active ? 0xFFF0DDB0 : 0xFFC0AC85, false);

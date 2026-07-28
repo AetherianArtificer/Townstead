@@ -25,7 +25,7 @@ public final class AbilityAssignableProvider implements AssignableProvider {
     @Override
     public void collect(ServerPlayer player, List<Assignable> out) {
         Set<ResourceLocation> seen = new LinkedHashSet<>();
-        for (ActiveAbilities.Slotted slotted : ActiveAbilities.slottables(player)) {
+        for (ActiveAbilities.Slotted slotted : ActiveAbilities.arrangeable(player)) {
             ResourceLocation id = slotted.geneId();
             if (!seen.add(id)) continue;
             int cooldown = 0;
