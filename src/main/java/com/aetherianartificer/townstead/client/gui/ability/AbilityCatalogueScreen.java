@@ -48,10 +48,13 @@ public final class AbilityCatalogueScreen extends Screen {
     private static final int DIAL_R = 32;
     private static final int DIAL_SLOT_R = 21;
     private static final int DIAL_CELL = 14;
-    private static final int DIALS_H = 84;
+    private static final int DIALS_H = 96;
     private static final int TAB_H = 15;
     private static final int SEARCH_H = 13;
-    private static final int DETAIL_H = 30;
+    /** Tall enough for the name AND the chip row under it, which 30 was not. */
+    private static final int DETAIL_H = 32;
+    /** Every gap between stacked zones. One number, so nothing drifts against anything else. */
+    private static final int GAP = 5;
     private static final int BUTTON_H = 18;
     private static final int CELL = 20;
     private static final int PITCH = 23;
@@ -84,6 +87,8 @@ public final class AbilityCatalogueScreen extends Screen {
     private int searchTop;
     private int gridTop;
     private int gridBottom;
+    private int detailTop;
+    private int buttonY;
     private int columns = 1;
 
     public AbilityCatalogueScreen(int slot, Screen parent) {
@@ -94,10 +99,11 @@ public final class AbilityCatalogueScreen extends Screen {
 
     @Override
     protected void init() {
-        // FIT FIRST, then spend what is left on the grid. Sizing the grid from a guess and adding
-        // the chrome afterwards is how the panel grew taller than the window: at a high GUI scale
-        // there are only about 250 logical pixels to work with, and the fixed parts alone want 162.
-        int chrome = DIALS_H + 4 + TAB_H + 3 + SEARCH_H + 4 + DETAIL_H + BUTTON_H + 10;
+        // FIT FIRST, then spend what is left on the grid. And count EVERY gap: the chrome sum used
+        // to leave 50 pixels for a 32-pixel band, an 18-pixel button and the space between them,
+        // so the button's top landed above the chip row and the two overlapped.
+        int chrome = GAP + DIALS_H + GAP + TAB_H + 3 + SEARCH_H + GAP
+                + GAP + DETAIL_H + GAP + BUTTON_H + GAP;
         int available = height - 2 * FRAME_THICK - 8;
         int gridH = Math.max(0, Math.min(available - chrome, 184));
         panelH = Math.min(chrome + gridH, available);
@@ -106,11 +112,14 @@ public final class AbilityCatalogueScreen extends Screen {
         left = (width - PANEL_W) / 2;
         top = Math.max(FRAME_THICK + 2, (height - panelH) / 2);
 
-        stripTop = top + 4;
-        tabsTop = stripTop + DIALS_H + 4;
+        // Stacked top-down from one cursor, so a change to any zone cannot silently eat another.
+        stripTop = top + GAP;
+        tabsTop = stripTop + DIALS_H + GAP;
         searchTop = tabsTop + TAB_H + 3;
-        gridTop = searchTop + SEARCH_H + 4;
+        gridTop = searchTop + SEARCH_H + GAP;
         gridBottom = gridTop + gridH;
+        detailTop = gridBottom + GAP;
+        buttonY = detailTop + DETAIL_H + GAP;
         columns = Math.max(1, (PANEL_W - 20) / PITCH);
 
         sources.clear();
@@ -138,7 +147,6 @@ public final class AbilityCatalogueScreen extends Screen {
         // longer a state where you have chosen a thing but not yet placed it, and clearing is
         // dragging a wedge off the dial rather than a button that acts on a slot you must first
         // have selected somewhere else.
-        int buttonY = top + panelH - BUTTON_H - 5;
         int buttonW = 80;
         addRenderableWidget(new ParchmentButton(left + (PANEL_W - buttonW) / 2, buttonY, buttonW,
                 BUTTON_H, CommonComponents.GUI_DONE, b -> onClose()));
@@ -239,9 +247,10 @@ public final class AbilityCatalogueScreen extends Screen {
                 Component.translatable("townstead.ability.picker.layer_first").getString(),
                 Component.translatable("townstead.ability.picker.layer_second").getString(),
                 Component.translatable("townstead.ability.picker.layer_third").getString()};
+        // Reads the player's ACTUAL binding, so rebinding the modifier rebinds the instruction.
         String[] hints = {"",
-                Component.translatable("townstead.ability.picker.hold_shift").getString(),
-                Component.translatable("townstead.ability.picker.hold_ctrl").getString()};
+                holdHint(com.aetherianartificer.townstead.client.TownsteadKeybinds.LAYER_SECOND),
+                holdHint(com.aetherianartificer.townstead.client.TownsteadKeybinds.LAYER_THIRD)};
         for (int layer = 0; layer < 3; layer++) {
             int cx = dialCentreX(layer);
             int cy = stripTop + DIAL_R + 6;
@@ -274,6 +283,15 @@ public final class AbilityCatalogueScreen extends Screen {
                         here ? 0xFFB79A6C : 0xFF5A4A32, false);
             }
         }
+    }
+
+    /** "hold Left Shift", or a warning when the layer has no key at all. */
+    private static String holdHint(net.minecraft.client.KeyMapping mapping) {
+        String key = com.aetherianartificer.townstead.client.TownsteadKeybinds.keyName(mapping);
+        if (mapping == null || mapping.isUnbound()) {
+            return Component.translatable("townstead.ability.picker.hold_unbound").getString();
+        }
+        return Component.translatable("townstead.ability.picker.hold", key).getString();
     }
 
     private int dialCentreX(int layer) {
@@ -500,31 +518,36 @@ public final class AbilityCatalogueScreen extends Screen {
 
     /** What it is and what it costs. Falls back to what the slot already holds, never dead space. */
     private void drawDetail(GuiGraphics g, int mouseX, int mouseY) {
-        int detailTop = gridBottom + 2;
-        g.fill(left + 6, detailTop, left + PANEL_W - 6, detailTop + 1, Palette.DESK_LIP);
+        g.fill(left + 6, detailTop - GAP + 1, left + PANEL_W - 6, detailTop - GAP + 2,
+                Palette.DESK_LIP);
         AbilityLoadoutS2CPayload.Option option = hovered(mouseX, mouseY);
         if (option == null) option = selected();
 
         String name;
-        String line;
         String icon;
+        String entrySource = "";
+        String kindWord;
+        int kindGlyph;
+        int cooldown = 0;
+        String costText = "";
+        String whereText = "";
+        Map<Integer, ResourceLocation> arrangement = ClientAbilityLoadout.arrangement();
+
         if (option != null) {
             name = option.name();
             icon = option.icon();
-            StringBuilder build = new StringBuilder(option.source());
-            build.append("  ·  ").append(Component.translatable(option.toggle()
+            kindWord = Component.translatable(option.toggle()
                     ? "townstead.ability.wheel.kind.toggle_off"
-                    : "townstead.ability.wheel.kind.cast").getString());
-            if (option.cooldownTicks() > 0) {
-                build.append("  ·  ").append(Component.translatable(
-                        "townstead.ability.wheel.cooldown_s",
-                        option.cooldownTicks() / 20).getString());
-            }
+                    : "townstead.ability.wheel.kind.cast").getString();
+            kindGlyph = option.toggle() ? 1 : 2;
+            cooldown = option.cooldownTicks();
             if (option.costAmount() > 0 && !option.costLabel().isEmpty()) {
-                build.append("  ·  ").append(option.costAmount()).append(' ')
-                        .append(option.costLabel());
+                costText = option.costAmount() + " " + option.costLabel();
             }
-            line = build.toString();
+            int at = assignedTo(arrangement, option);
+            whereText = at > 0
+                    ? Component.translatable("townstead.ability.picker.in_slot", at).getString()
+                    : "";
         } else {
             AbilityLoadoutS2CPayload.Entry entry = ClientAbilityLoadout.slot(slot);
             if (entry == null) {
@@ -534,21 +557,81 @@ public final class AbilityCatalogueScreen extends Screen {
             }
             name = entry.name();
             icon = entry.icon();
-            line = Component.translatable("townstead.ability.picker.in_slot", slot).getString();
+            entrySource = "";
+            kindWord = Component.translatable(entry.toggle()
+                    ? "townstead.ability.wheel.kind.toggle_off"
+                    : "townstead.ability.wheel.kind.cast").getString();
+            kindGlyph = entry.toggle() ? 1 : 2;
+            cooldown = entry.cooldownTicks();
+            if (entry.costAmount() > 0 && !entry.costLabel().isEmpty()) {
+                costText = entry.costAmount() + " " + entry.costLabel();
+            }
+            whereText = Component.translatable("townstead.ability.picker.in_slot", slot).getString();
         }
 
         int cx = left + 18;
         int cy = detailTop + 15;
-        g.fill(cx - 9, cy - 9, cx + 9, cy + 9, Palette.DESK_EDGE);
-        g.fill(cx - 8, cy - 8, cx + 8, cy + 8, Palette.BRASS);
-        g.fill(cx - 7, cy - 7, cx + 7, cy + 7, 0xFF33260F);
-        // Draws the ITEM when there is one. It used to draw initials unconditionally, so an ability
-        // with a perfectly good icon still showed as "VA" in the one place with room for the art.
+        g.fill(cx - 10, cy - 10, cx + 10, cy + 10, Palette.DESK_EDGE);
+        g.fill(cx - 9, cy - 9, cx + 9, cy + 9, Palette.BRASS);
+        g.fill(cx - 8, cy - 8, cx + 8, cy + 8, 0xFF33260F);
+        g.fill(cx - 9, cy - 9, cx + 9, cy - 8, Palette.BRASS_HOT);
         drawEntryMark(g, cx, cy, icon, name, true, 0.85f);
-        g.drawString(font, RecordTrim.fit(font, name, PANEL_W - 46), left + 32, detailTop + 7,
+
+        g.drawString(font, RecordTrim.fit(font, name, PANEL_W - 50), left + 34, detailTop + 6,
                 Palette.BRASS_HOT, false);
-        g.drawString(font, RecordTrim.fit(font, line, PANEL_W - 46), left + 32, detailTop + 18,
-                0xFFB79A6C, false);
+        // Facts as CHIPS, not a run of dot-separated words. Each one is a different kind of thing
+        // and a reader is usually after exactly one of them; a sentence makes you parse all four.
+        int chipX = left + 34;
+        int chipY = detailTop + 17;
+        chipX = chip(g, chipX, chipY, source(option, entrySource), 0, 0xFF8A7A5E);
+        chipX = chip(g, chipX, chipY, kindWord, kindGlyph, Palette.BRASS_DEEP);
+        if (cooldown > 0) {
+            chipX = chip(g, chipX, chipY, Component.translatable(
+                    "townstead.ability.wheel.cooldown_s", cooldown / 20).getString(),
+                    3, 0xFF8A7A5E);
+        }
+        if (!costText.isEmpty()) {
+            chipX = chip(g, chipX, chipY, costText, 4, 0xFF8A7A5E);
+        }
+        if (!whereText.isEmpty()) {
+            chip(g, chipX, chipY, whereText, 0, Palette.BRASS);
+        }
+    }
+
+    /**
+     * One labelled fact, drawn as a small plate.
+     *
+     * @param glyph 0 none, 1 switch, 2 spark, 3 cooldown, 4 cost
+     * @return where the next chip starts
+     */
+    private int chip(GuiGraphics g, int x, int y, String label, int glyph, int tone) {
+        if (label.isEmpty()) return x;
+        int glyphW = glyph == 0 ? 0 : 10;
+        int w = glyphW + font.width(label) + 8;
+        if (x + w > left + PANEL_W - 8) return x;
+        g.fill(x, y - 1, x + w, y + 10, 0xFF1E1509);
+        g.fill(x, y - 1, x + w, y, 0xFF2E2317);
+        switch (glyph) {
+            case 1 -> WheelArt.switchMark(g, x + 3, y + 2, false);
+            case 2 -> WheelArt.sparkMark(g, x + 3, y + 2, tone);
+            case 3 -> {
+                // A dial face: the shape a cooldown already has on the wheel's ring.
+                WheelArt.disc(g, x + 6, y + 5, 4, tone);
+                WheelArt.disc(g, x + 6, y + 5, 3, 0xFF1E1509);
+                g.fill(x + 6, y + 2, x + 7, y + 6, tone);
+            }
+            case 4 -> {
+                WheelArt.disc(g, x + 6, y + 5, 3, tone);
+                WheelArt.disc(g, x + 6, y + 5, 2, 0xFF1E1509);
+            }
+            default -> { }
+        }
+        g.drawString(font, label, x + 4 + glyphW, y + 1, tone, false);
+        return x + w + 3;
+    }
+
+    private static String source(AbilityLoadoutS2CPayload.Option option, String fallback) {
+        return option != null ? option.source() : fallback;
     }
 
     private int rows() {

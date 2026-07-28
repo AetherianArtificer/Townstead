@@ -2124,6 +2124,8 @@ public class Townstead {
                     (net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) -> {
                         event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.TALK);
                         event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.WHEEL);
+                        event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.LAYER_SECOND);
+                        event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.LAYER_THIRD);
                         for (net.minecraft.client.KeyMapping key :
                                 com.aetherianartificer.townstead.client.TownsteadKeybinds.ABILITIES) {
                             event.register(key);
@@ -2142,6 +2144,8 @@ public class Townstead {
                     (net.minecraftforge.client.event.RegisterKeyMappingsEvent event) -> {
                         event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.TALK);
                         event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.WHEEL);
+                        event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.LAYER_SECOND);
+                        event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.LAYER_THIRD);
                         for (net.minecraft.client.KeyMapping key :
                                 com.aetherianartificer.townstead.client.TownsteadKeybinds.ABILITIES) {
                             event.register(key);
