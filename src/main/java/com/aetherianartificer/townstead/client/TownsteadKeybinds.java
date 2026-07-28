@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerLike;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.EntityHitResult;
@@ -24,7 +25,25 @@ public final class TownsteadKeybinds {
             "townstead.key.category"
     );
 
-    /** One Root Ability key per slot (mirrors {@code ActiveAbilities.POOL_SIZE}); default unbound. */
+    /**
+     * Opens the ability wheel while held. Default unbound like the slot keys: a mod that seizes a
+     * key on first launch is a mod that fights whatever the player already had there.
+     */
+    public static final KeyMapping WHEEL = new KeyMapping(
+            "townstead.key.wheel",
+            InputConstants.Type.KEYSYM,
+            InputConstants.UNKNOWN.getValue(),
+            "townstead.key.category"
+    );
+
+    /**
+     * One Root Ability key per slot on the dial's FIRST layer; default unbound.
+     *
+     * <p>Deliberately eight rather than {@code ActiveAbilities.POOL_SIZE}, which is sixteen. The
+     * upper eight are reached by holding shift on the wheel; giving them keys as well would mean
+     * sixteen unbound entries in the Controls screen to serve a layer most players will drive with
+     * the dial anyway.</p>
+     */
     public static final int ABILITY_KEYS = 8;
     public static final KeyMapping[] ABILITIES = new KeyMapping[ABILITY_KEYS];
 
@@ -40,8 +59,78 @@ public final class TownsteadKeybinds {
 
     private TownsteadKeybinds() {}
 
+    /** The remappable key for a 1-based ability slot, or null when the slot is out of range. */
+    public static KeyMapping abilityKey(int slot) {
+        return slot >= 1 && slot <= ABILITY_KEYS ? ABILITIES[slot - 1] : null;
+    }
+
+    /** True while the wheel key is physically held, which is how the wheel knows to stay open. */
+    private static boolean wheelPrevDown = false;
+    /** When the wheel key went down, so a quick tap can be told from a deliberate hold. */
+    private static long wheelPressedAt = 0L;
+    /** Long enough to be a tap on a bad connection, short enough that a real aim is never one. */
+    private static final long TAP_MS = 220L;
+
+    /** Is the wheel's bound key or mouse button physically down right now? */
+    private static boolean wheelKeyDown(Minecraft mc) {
+        if (mc.getWindow() == null) return false;
+        InputConstants.Key bound = WHEEL.getKey();
+        if (bound == null || bound.getValue() == InputConstants.UNKNOWN.getValue()) return false;
+        long handle = mc.getWindow().getWindow();
+        if (bound.getType() == InputConstants.Type.MOUSE) {
+            return org.lwjgl.glfw.GLFW.glfwGetMouseButton(handle, bound.getValue())
+                    == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        }
+        return InputConstants.isKeyDown(handle, bound.getValue());
+    }
+
+    /**
+     * Hold to open, release to fire.
+     *
+     * <p>Polls the WINDOW, not {@code KeyMapping.isDown()}. Vanilla stops feeding key state into
+     * bindings while a Screen is open, so the moment the wheel appeared the binding would read as
+     * released and the wheel would fire and shut itself on the very next tick. Every radial menu
+     * that works does raw GLFW polling for exactly this reason; MineMenu's own handler is where I
+     * confirmed it rather than guessing.</p>
+     *
+     * <p>{@code consumeClick} is no use here either: it reports that a press happened, not that it
+     * is still happening, and this gesture is defined entirely by how long the key is held.</p>
+     */
+    private static void tickWheel(Minecraft mc) {
+        boolean down = wheelKeyDown(mc);
+        if (down == wheelPrevDown) return;
+        wheelPrevDown = down;
+        if (down) {
+            wheelPressedAt = Util.getMillis();
+            if (mc.screen == null && mc.player != null) {
+                mc.setScreen(new com.aetherianartificer.townstead.client.gui.ability
+                        .AbilityWheelScreen());
+            }
+            return;
+        }
+        if (!(mc.screen instanceof com.aetherianartificer.townstead.client.gui.ability
+                .AbilityWheelScreen wheel)) {
+            return;
+        }
+        // A TAP repeats the last ability without you ever aiming. The common case in a fight is not
+        // choosing, it is casting the same thing again, and making that cost a full hold-aim-release
+        // is what turns a wheel into a tax. Only when the cursor never left the dead zone, so a fast
+        // deliberate aim still fires what it was pointed at.
+        if (wheel.aimingAtNothing() && Util.getMillis() - wheelPressedAt <= TAP_MS) {
+            int repeat = com.aetherianartificer.townstead.client.root.ClientAbilityLoadout
+                    .lastUsedSlot();
+            if (repeat > 0) {
+                com.aetherianartificer.townstead.client.gui.ability.AbilityWheelScreen.fire(repeat);
+            }
+        } else {
+            wheel.select();
+        }
+        wheel.onClose();
+    }
+
     public static void onClientTick() {
         Minecraft mc = Minecraft.getInstance();
+        tickWheel(mc);
         while (TALK.consumeClick()) {
             if (mc.player == null || mc.screen != null) continue;
             HitResult hit = mc.hitResult;
@@ -56,6 +145,9 @@ public final class TownsteadKeybinds {
             int slot = i + 1;
             while (ABILITIES[i].consumeClick()) {
                 if (mc.player == null || mc.screen != null) continue;
+                // Firing by key counts as using it, or the wheel's tap-to-repeat would remember
+                // only what you last cast THROUGH the wheel and disagree with what you just did.
+                com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.rememberUsed(slot);
                 com.aetherianartificer.townstead.root.ability.ActivateAbilityC2SPayload payload =
                         new com.aetherianartificer.townstead.root.ability.ActivateAbilityC2SPayload(slot);
                 //? if neoforge {

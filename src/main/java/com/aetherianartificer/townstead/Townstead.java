@@ -564,6 +564,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
             if (e.getEntity() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.root.ability.AbilityToggles.syncTo(sp);
+                com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
                 townstead$sendShiftTemplateSync(sp);
                 townstead$sendWeekPlanSync(sp);
                 PacketDistributor.sendToPlayer(sp, townstead$calendarSync(sp));
@@ -779,6 +780,7 @@ public class Townstead {
                         com.aetherianartificer.townstead.client.root.RootClientStore.clear();
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
+                com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
                         com.aetherianartificer.townstead.client.attachment.AttachmentClient.clear();
                     });
         } catch (Exception ignored) {
@@ -928,6 +930,7 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
             if (e.getEntity() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.root.ability.AbilityToggles.syncTo(sp);
+                com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
                 TownsteadNetwork.sendShiftTemplateSync(sp);
                 TownsteadNetwork.sendWeekPlanSync(sp);
                 TownsteadNetwork.sendToPlayer(sp, townstead$calendarSync(sp));
@@ -1027,6 +1030,7 @@ public class Townstead {
                         com.aetherianartificer.townstead.client.root.RootClientStore.clear();
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
+                com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
                         com.aetherianartificer.townstead.client.attachment.AttachmentClient.clear();
                     });
         } catch (Exception ignored) {
@@ -2108,6 +2112,7 @@ public class Townstead {
             modBus.addListener(
                     (net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) -> {
                         event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.TALK);
+                        event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.WHEEL);
                         for (net.minecraft.client.KeyMapping key :
                                 com.aetherianartificer.townstead.client.TownsteadKeybinds.ABILITIES) {
                             event.register(key);
@@ -2125,6 +2130,7 @@ public class Townstead {
             modBus.addListener(
                     (net.minecraftforge.client.event.RegisterKeyMappingsEvent event) -> {
                         event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.TALK);
+                        event.register(com.aetherianartificer.townstead.client.TownsteadKeybinds.WHEEL);
                         for (net.minecraft.client.KeyMapping key :
                                 com.aetherianartificer.townstead.client.TownsteadKeybinds.ABILITIES) {
                             event.register(key);
@@ -2610,6 +2616,21 @@ public class Townstead {
                 this::handleActivateAbility
         );
         registrar.playToServer(
+                com.aetherianartificer.townstead.root.ability.AbilityViewRequestC2SPayload.TYPE,
+                com.aetherianartificer.townstead.root.ability.AbilityViewRequestC2SPayload.STREAM_CODEC,
+                this::handleAbilityViewRequest
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.root.ability.AbilityLoadoutS2CPayload.TYPE,
+                com.aetherianartificer.townstead.root.ability.AbilityLoadoutS2CPayload.STREAM_CODEC,
+                Townstead::handleAbilityLoadoutSync
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.root.ability.AbilityLoadoutC2SPayload.TYPE,
+                com.aetherianartificer.townstead.root.ability.AbilityLoadoutC2SPayload.STREAM_CODEC,
+                this::handleAbilityLoadout
+        );
+        registrar.playToServer(
                 com.aetherianartificer.townstead.root.trigger.KeyPressC2SPayload.TYPE,
                 com.aetherianartificer.townstead.root.trigger.KeyPressC2SPayload.STREAM_CODEC,
                 this::handleKeyPress
@@ -2882,6 +2903,36 @@ public class Townstead {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.root.ability.ActiveAbilities.activate(sp, payload.slot());
+            }
+        });
+    }
+
+    private static void handleAbilityLoadoutSync(
+            com.aetherianartificer.townstead.root.ability.AbilityLoadoutS2CPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.accept(payload));
+    }
+
+    private void handleAbilityViewRequest(
+            com.aetherianartificer.townstead.root.ability.AbilityViewRequestC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer sp) {
+                com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
+            }
+        });
+    }
+
+    private void handleAbilityLoadout(
+            com.aetherianartificer.townstead.root.ability.AbilityLoadoutC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer sp) {
+                com.aetherianartificer.townstead.root.ability.ActiveAbilities.prepare(sp, payload.bySlot());
             }
         });
     }

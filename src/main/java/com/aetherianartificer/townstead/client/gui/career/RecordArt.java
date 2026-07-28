@@ -122,6 +122,22 @@ final class RecordArt {
         }
     }
 
+    /**
+     * A neutral entry marker.
+     *
+     * <p>Deliberately not a plus. An effect line already carries its own sign, so a plus in the
+     * margin rendered "+ +1 XP", and put a plus in front of "Disables" and "x2".</p>
+     */
+    static void bullet(GuiGraphics g, int x, int y, int color) {
+        g.fill(x, y, x + 3, y + 3, color);
+    }
+
+    /** Seconds without a trailing ".0", so a whole-number cooldown reads as a whole number. */
+    static String trimSeconds(float seconds) {
+        return seconds == Math.floor(seconds)
+                ? String.valueOf((long) seconds) : String.valueOf(seconds);
+    }
+
     /** Effect kinds: a plus for a number, a star for a grant, a bar for a loss. */
     static void glyph(GuiGraphics g, int x, int y, char kind, int color) {
         switch (kind) {

@@ -408,21 +408,33 @@ final class RecordPage {
                           CareerGraphS2CPayload.Node skill,
                           Map<String, CareerGraphS2CPayload.Node> byId, CareerLayout layout,
                           int points) {
+        y = drawAbilityBlock(g, x, y, inner, skill);
+
         if (!skill.effects().isEmpty() || !skill.replaces().isEmpty()) {
-            List<FormattedCharSequence> lines = new ArrayList<>();
+            // Wrapped per ENTRY, not flattened into one list of lines. Flattening lost where each
+            // effect began, so a two-line effect got two markers and read as two effects.
+            List<List<FormattedCharSequence>> entries = new ArrayList<>();
+            int rows = 0;
             for (String effect : skill.effects()) {
-                lines.addAll(font.split(Component.literal(effect), inner - 24));
+                List<FormattedCharSequence> wrapped =
+                        font.split(Component.literal(effect), inner - 2 * PAD - INDENT);
+                entries.add(wrapped);
+                rows += wrapped.size();
             }
             int extra = skill.replaces().isEmpty() ? 0 : line();
-            int h = RecordArt.stripHeight() + 2 + lines.size() * line() + extra - unit + FOOT;
+            int h = RecordArt.stripHeight() + 2 + rows * line() + extra - unit + FOOT;
             RecordArt.card(g, font, x, y, inner, h,
                     Component.translatable("townstead.career.screen.effect_block").getString(), "",
                     RecordArt.ACCENT);
             int ey = y + RecordArt.stripHeight() + 2;
-            for (FormattedCharSequence text : lines) {
-                RecordArt.glyph(g, x + PAD, ey + 2, '+', RecordArt.ACCENT);
-                g.drawString(font, text, x + PAD + INDENT, ey, RecordArt.ACCENT, false);
-                ey += line();
+            for (List<FormattedCharSequence> entry : entries) {
+                // A neutral dot, not a plus. The line already carries its own sign, so a plus in
+                // the margin produced "+ +1 XP" and, worse, put a plus in front of "Disables".
+                RecordArt.bullet(g, x + PAD + 1, ey + 3, RecordArt.ACCENT);
+                for (FormattedCharSequence text : entry) {
+                    g.drawString(font, text, x + PAD + INDENT, ey, RecordArt.ACCENT, false);
+                    ey += line();
+                }
             }
             if (!skill.replaces().isEmpty()) {
                 g.fill(x + PAD, ey + 4, x + PAD + 5, ey + 5, RecordArt.BAD);
@@ -452,6 +464,77 @@ final class RecordPage {
         }
         y = drawEvidence(g, x, y, inner, skill);
         return drawChronicle(g, x, y, inner, skill);
+    }
+
+    /**
+     * An active ability: the one thing on this page you have to OPERATE rather than simply own.
+     *
+     * <p>Its own block, above the effects, because it is a different kind of fact. The cooldown and
+     * the cost used to be two more bullets in the effect list, indistinguishable from "+1 XP", and
+     * the thing that actually determines whether the ability works at all was not shown anywhere:
+     * ability slots default to UNBOUND, so a player could pay a point for a power and never find
+     * out why nothing happened. The key row is first, and it shouts when there is no key.</p>
+     */
+    private int drawAbilityBlock(GuiGraphics g, int x, int y, int inner,
+                                 CareerGraphS2CPayload.Node skill) {
+        CareerGraphS2CPayload.Ability ability = skill.ability();
+        if (!ability.present()) return y;
+
+        net.minecraft.client.KeyMapping key =
+                com.aetherianartificer.townstead.client.TownsteadKeybinds.abilityKey(ability.slot());
+        boolean unbound = key == null || key.isUnbound();
+
+        List<String> labels = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        labels.add(Component.translatable("townstead.career.screen.ability_key").getString());
+        values.add(unbound
+                ? Component.translatable("townstead.career.screen.ability_unbound").getString()
+                : key.getTranslatedKeyMessage().getString());
+        if (ability.cooldownTicks() > 0) {
+            labels.add(Component.translatable(
+                    "townstead.career.screen.ability_cooldown").getString());
+            values.add(Component.translatable("townstead.career.screen.ability_seconds",
+                    RecordArt.trimSeconds(ability.cooldownTicks() / 20f)).getString());
+        }
+        if (ability.costAmount() > 0 && !ability.costLabel().isEmpty()) {
+            labels.add(Component.translatable("townstead.career.screen.ability_cost").getString());
+            values.add(ability.costAmount() + " " + ability.costLabel());
+        }
+
+        // A wheel fires the key without one ever being bound, so "unbound" only means "does nothing"
+        // when there is no wheel. Presence of a radial menu is the whole of the check: it cannot
+        // tell us whether THIS ability is on their wheel, but it is enough to stop asserting a
+        // failure that may not exist.
+        boolean radial = com.aetherianartificer.townstead.compat.radial.RadialMenuCompat.anyLoaded();
+        List<FormattedCharSequence> hint = unbound
+                ? font.split(Component.translatable(radial
+                                ? "townstead.career.screen.ability_bind_hint_radial"
+                                : "townstead.career.screen.ability_bind_hint"),
+                        inner - 2 * PAD)
+                : List.of();
+        int h = RecordArt.stripHeight() + 2 + labels.size() * line()
+                + (hint.isEmpty() ? 0 : 2 + hint.size() * line()) - unit + FOOT;
+        RecordArt.card(g, font, x, y, inner, h,
+                Component.translatable("townstead.career.screen.ability_block").getString(),
+                Component.translatable("townstead.career.screen.ability_slot",
+                        ability.slot()).getString(),
+                unbound && !radial ? RecordArt.BAD : RecordArt.ACCENT);
+
+        int ay = y + RecordArt.stripHeight() + 2;
+        for (int i = 0; i < labels.size(); i++) {
+            // Only shout when there is genuinely no way to fire it.
+            boolean missing = i == 0 && unbound && !radial;
+            g.drawString(font, labels.get(i), x + PAD, ay, RecordArt.INK_MID, false);
+            String value = values.get(i);
+            g.drawString(font, value, x + inner - PAD - font.width(value), ay,
+                    missing ? RecordArt.BAD : RecordArt.INK, false);
+            ay += line();
+        }
+        for (FormattedCharSequence text : hint) {
+            g.drawString(font, text, x + PAD, ay + 2, RecordArt.INK_DIM, false);
+            ay += line();
+        }
+        return y + h + GAP;
     }
 
     /** The sibling this skill rules out, shown before you spend rather than after. */
