@@ -288,6 +288,18 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.root.ability.ActivateAbilityC2SPayload::write,
                 com.aetherianartificer.townstead.root.ability.ActivateAbilityC2SPayload::read,
                 TownsteadNetwork::handleActivateAbility);
+        registerC2S(com.aetherianartificer.townstead.root.ability.AbilityViewRequestC2SPayload.class,
+                com.aetherianartificer.townstead.root.ability.AbilityViewRequestC2SPayload::write,
+                com.aetherianartificer.townstead.root.ability.AbilityViewRequestC2SPayload::read,
+                TownsteadNetwork::handleAbilityViewRequest);
+        registerS2C(com.aetherianartificer.townstead.root.ability.AbilityLoadoutS2CPayload.class,
+                com.aetherianartificer.townstead.root.ability.AbilityLoadoutS2CPayload::write,
+                com.aetherianartificer.townstead.root.ability.AbilityLoadoutS2CPayload::read,
+                TownsteadNetwork::handleAbilityLoadoutSync);
+        registerC2S(com.aetherianartificer.townstead.root.ability.AbilityLoadoutC2SPayload.class,
+                com.aetherianartificer.townstead.root.ability.AbilityLoadoutC2SPayload::write,
+                com.aetherianartificer.townstead.root.ability.AbilityLoadoutC2SPayload::read,
+                TownsteadNetwork::handleAbilityLoadout);
         registerC2S(com.aetherianartificer.townstead.root.trigger.KeyPressC2SPayload.class,
                 com.aetherianartificer.townstead.root.trigger.KeyPressC2SPayload::write,
                 com.aetherianartificer.townstead.root.trigger.KeyPressC2SPayload::read,
@@ -437,6 +449,23 @@ public final class TownsteadNetwork {
     private static void handleActivateAbility(
             com.aetherianartificer.townstead.root.ability.ActivateAbilityC2SPayload payload, ServerPlayer sp) {
         com.aetherianartificer.townstead.root.ability.ActiveAbilities.activate(sp, payload.slot());
+    }
+
+    private static void handleAbilityLoadoutSync(
+            com.aetherianartificer.townstead.root.ability.AbilityLoadoutS2CPayload payload) {
+        com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.accept(payload);
+    }
+
+    private static void handleAbilityViewRequest(
+            com.aetherianartificer.townstead.root.ability.AbilityViewRequestC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
+    }
+
+    private static void handleAbilityLoadout(
+            com.aetherianartificer.townstead.root.ability.AbilityLoadoutC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.root.ability.ActiveAbilities.prepare(sp, payload.bySlot());
     }
 
     private static void handleKeyPress(

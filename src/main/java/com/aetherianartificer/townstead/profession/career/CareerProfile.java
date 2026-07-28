@@ -24,7 +24,7 @@ public final class CareerProfile {
     private final Map<ResourceLocation, ResourceLocation> activeBySkillGroup = new LinkedHashMap<>();
     private final Set<ResourceLocation> acquiredCareers = new LinkedHashSet<>();
     private final Set<ResourceLocation> discoveries = new LinkedHashSet<>();
-    private final List<ResourceLocation> activeLoadout = new ArrayList<>();
+    private final Map<Integer, ResourceLocation> activeLoadout = new LinkedHashMap<>();
     private final Map<String, ProfessionXp> progress = new LinkedHashMap<>();
     private final Set<ResourceLocation> trackedCareers = new LinkedHashSet<>();
     private final Map<ResourceLocation, CareerStamp> stamps = new LinkedHashMap<>();
@@ -36,7 +36,7 @@ public final class CareerProfile {
     public Map<ResourceLocation, ResourceLocation> activeBySkillGroup() { return Map.copyOf(activeBySkillGroup); }
     public Set<ResourceLocation> acquiredCareers() { return Set.copyOf(acquiredCareers); }
     public Set<ResourceLocation> discoveries() { return Set.copyOf(discoveries); }
-    public List<ResourceLocation> activeLoadout() { return List.copyOf(activeLoadout); }
+    public Map<Integer, ResourceLocation> activeLoadout() { return Map.copyOf(activeLoadout); }
     /** Reads fall back from the canonical full id to the bare legacy key old saves wrote. */
     public ProfessionXp professionXp(String careerId) {
         if (careerId == null) return ProfessionXp.EMPTY;
@@ -105,13 +105,25 @@ public final class CareerProfile {
         return id != null && discoveries.add(id);
     }
 
-    public void setActiveLoadout(List<ResourceLocation> abilities, int maximum) {
+    /**
+     * The player's prepared abilities, keyed by the slot they chose.
+     *
+     * <p>A MAP, not an ordered list. A list cannot hold an empty slot, so clearing one shifted every
+     * ability below it onto a different key, which is the one thing an arrangement you have built
+     * muscle memory for must never do. It also disagreed with the resolver, which already leaves the
+     * slot of an ability you no longer own empty rather than closing the gap.</p>
+     *
+     * <p>Slots outside {@code 1..maximum} and duplicate abilities are dropped; the first slot
+     * claiming an ability keeps it.</p>
+     */
+    public void setActiveLoadout(Map<Integer, ResourceLocation> bySlot, int maximum) {
         activeLoadout.clear();
-        if (abilities == null || maximum <= 0) return;
-        LinkedHashSet<ResourceLocation> unique = new LinkedHashSet<>(abilities);
-        for (ResourceLocation ability : unique) {
-            if (ability != null) activeLoadout.add(ability);
-            if (activeLoadout.size() >= maximum) break;
+        if (bySlot == null || maximum <= 0) return;
+        LinkedHashSet<ResourceLocation> seen = new LinkedHashSet<>();
+        for (int slot = 1; slot <= maximum; slot++) {
+            ResourceLocation ability = bySlot.get(slot);
+            if (ability == null || !seen.add(ability)) continue;
+            activeLoadout.put(slot, ability);
         }
     }
 
@@ -132,7 +144,11 @@ public final class CareerProfile {
         putIds(tag, "advanced", acquiredCareers);
         putIds(tag, "discoveries", discoveries);
         putIds(tag, "trackedGoals", trackedCareers);
-        putIds(tag, "loadout", activeLoadout);
+        CompoundTag loadout = new CompoundTag();
+        for (Map.Entry<Integer, ResourceLocation> entry : activeLoadout.entrySet()) {
+            loadout.putString(String.valueOf(entry.getKey()), entry.getValue().toString());
+        }
+        tag.put("loadout", loadout);
         CompoundTag active = new CompoundTag();
         for (Map.Entry<ResourceLocation, ResourceLocation> entry : activeBySkillGroup.entrySet()) {
             active.putString(entry.getKey().toString(), entry.getValue().toString());
@@ -168,7 +184,18 @@ public final class CareerProfile {
         readIds(tag, "advanced", profile.acquiredCareers);
         readIds(tag, "discoveries", profile.discoveries);
         readIds(tag, "trackedGoals", profile.trackedCareers);
-        readSkillIds(tag, "loadout", profile.activeLoadout);
+        // Plain ids, NOT skill ids. The loadout holds whatever grants a power, and a Root gene's id
+        // has no business being run through the skill registry's legacy remap on the way in.
+        CompoundTag loadout = tag.getCompound("loadout");
+        for (String key : loadout.getAllKeys()) {
+            ResourceLocation ability = ResourceLocation.tryParse(loadout.getString(key));
+            if (ability == null) continue;
+            try {
+                profile.activeLoadout.put(Integer.parseInt(key), ability);
+            } catch (NumberFormatException ignored) {
+                // A slot key that is not a number is not a slot.
+            }
+        }
         CompoundTag active = tag.getCompound("activeChoices");
         for (String key : active.getAllKeys()) {
             ResourceLocation skillGroup = ResourceLocation.tryParse(key);

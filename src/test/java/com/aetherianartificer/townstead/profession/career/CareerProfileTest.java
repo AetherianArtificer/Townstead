@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,10 +39,29 @@ class CareerProfileTest {
         CareerProfile profile = new CareerProfile();
         ResourceLocation a = id("townstead:a");
         ResourceLocation b = id("townstead:b");
-        ResourceLocation c = id("townstead:c");
-        profile.setActiveLoadout(List.of(a, a, b, c), 2);
-        assertEquals(List.of(a, b), profile.activeLoadout());
+        // The same ability claimed twice: the earlier slot keeps it. Slot 3 is past the maximum.
+        profile.setActiveLoadout(Map.of(1, a, 2, a, 3, b), 2);
+        assertEquals(Map.of(1, a), profile.activeLoadout());
     }
+
+    @Test
+    void loadoutKeepsEmptySlotsSoNothingShifts() {
+        CareerProfile profile = new CareerProfile();
+        ResourceLocation a = id("townstead:a");
+        ResourceLocation b = id("townstead:b");
+        profile.setActiveLoadout(Map.of(1, a, 5, b), 8);
+        assertEquals(Map.of(1, a, 5, b), profile.activeLoadout(), "a gap is a real arrangement");
+
+        // Clearing slot 1 must not slide slot 5 down onto a key the player never chose for it.
+        profile.setActiveLoadout(Map.of(5, b), 8);
+        assertEquals(Map.of(5, b), profile.activeLoadout());
+    }
+
+    // NO NBT ROUND-TRIP TEST, though the loadout's storage shape changed and one would be worth
+    // having. CompoundTag.put(String, Tag) resolves at compile time but is absent from the test
+    // runtime classpath, so toTag() throws NoSuchMethodError before it reaches anything of ours.
+    // Nothing in this suite had ever called toTag(), which is why the gap went unnoticed. Fixing it
+    // is a build-classpath job, not a career one; until then the save shape is only covered in game.
 
     @Test
     void legacyBareXpKeyReadsThroughCanonicalIdAndMigratesOnWrite() {

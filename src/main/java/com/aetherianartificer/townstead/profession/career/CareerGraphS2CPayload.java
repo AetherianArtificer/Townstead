@@ -67,6 +67,19 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
         public static final Stamp NONE = new Stamp(false, 0, 0, 0f, "", "");
     }
 
+    /**
+     * A skill's ACTIVE ability: something you press, in a slot, on a cooldown, sometimes for a
+     * price. {@link #NONE} for the great majority of skills, which simply apply.
+     *
+     * <p>Structured rather than pre-rendered prose, because the record needs to say one thing the
+     * server cannot know: whether the player has actually BOUND the key for this slot. An active
+     * ability whose slot is unbound is learned, paid for, and inert.</p>
+     */
+    public record Ability(boolean present, int slot, int cooldownTicks, int costAmount,
+                          String costLabel) {
+        public static final Ability NONE = new Ability(false, 0, 0, 0, "");
+    }
+
     public record Node(String id, String rootId, String parentId, byte kind, byte state,
                        String name, String description, String icon,
                        int tier, int maxTier, int xp, int xpToNext, int xpToday, int dailyCap,
@@ -75,7 +88,23 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
                        List<Evidence> evidence, List<String> moments,
                        String rankName, int points,
                        String group, String nextRankName, List<String> effects,
-                       List<String> requires, PathTag path, Stamp stamp) {
+                       List<String> requires, PathTag path, Stamp stamp, Ability ability) {
+
+        /** Compatibility constructor predating the active-ability block. */
+        public Node(String id, String rootId, String parentId, byte kind, byte state,
+                    String name, String description, String icon,
+                    int tier, int maxTier, int xp, int xpToNext, int xpToday, int dailyCap,
+                    boolean primary, boolean equipped, boolean tracked,
+                    String routesLine, String replaces,
+                    List<Evidence> evidence, List<String> moments,
+                    String rankName, int points,
+                    String group, String nextRankName, List<String> effects,
+                    List<String> requires, PathTag path, Stamp stamp) {
+            this(id, rootId, parentId, kind, state, name, description, icon, tier, maxTier, xp,
+                    xpToNext, xpToday, dailyCap, primary, equipped, tracked, routesLine, replaces,
+                    evidence, moments, rankName, points, group, nextRankName, effects, requires,
+                    path, stamp, Ability.NONE);
+        }
 
         /** Compatibility constructor predating the player-pressed Archives stamp. */
         public Node(String id, String rootId, String parentId, byte kind, byte state,
@@ -90,7 +119,7 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
             this(id, rootId, parentId, kind, state, name, description, icon, tier, maxTier, xp,
                     xpToNext, xpToday, dailyCap, primary, equipped, tracked, routesLine, replaces,
                     evidence, moments, rankName, points, group, nextRankName, effects, requires,
-                    path, Stamp.NONE);
+                    path, Stamp.NONE, Ability.NONE);
         }
     }
 
@@ -158,6 +187,13 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
                 buf.writeUtf(node.stamp().authority());
                 buf.writeUtf(node.stamp().date());
             }
+            buf.writeBoolean(node.ability().present());
+            if (node.ability().present()) {
+                buf.writeVarInt(node.ability().slot());
+                buf.writeVarInt(node.ability().cooldownTicks());
+                buf.writeVarInt(node.ability().costAmount());
+                buf.writeUtf(node.ability().costLabel());
+            }
         }
     }
 
@@ -222,11 +258,16 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
                 stamp = new Stamp(true, buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
                         buf.readUtf(), buf.readUtf());
             }
+            Ability ability = Ability.NONE;
+            if (buf.readBoolean()) {
+                ability = new Ability(true, buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                        buf.readUtf());
+            }
             nodes.add(new Node(id, rootId, parentId, kind, state, name, description, icon,
                     tier, maxTier, xp, xpToNext, xpToday, dailyCap, primary, equipped, tracked,
                     routesLine, replaces, List.copyOf(evidence), List.copyOf(moments),
                     rankName, points, group, nextRankName, List.copyOf(effects),
-                    List.copyOf(requires), path, stamp));
+                    List.copyOf(requires), path, stamp, ability));
         }
         return new CareerGraphS2CPayload(title, scribeName, inspect, notice, authority, dateLine,
                 List.copyOf(nodes));

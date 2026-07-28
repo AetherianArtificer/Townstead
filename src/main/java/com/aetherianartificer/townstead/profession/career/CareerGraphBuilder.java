@@ -199,7 +199,7 @@ public final class CareerGraphBuilder {
                         skill.skillGroup() == null ? "" : skill.skillGroup().toString(),
                         "", effectLines(skill),
                         prerequisitesWithin(def, skill), pathTag(def, choice),
-                        stampOf(profile, choice)));
+                        stampOf(profile, choice), abilityOf(skill)));
             }
         }
 
@@ -243,33 +243,28 @@ public final class CareerGraphBuilder {
      * authored description; grants are machine-readable and rendered here.
      */
     private static List<String> effectLines(SkillDef skill) {
-        List<String> lines = effectLines(skill.grants());
-        lines.addAll(powerLines(skill.power()));
-        return lines;
+        return effectLines(skill.grants());
     }
 
     /**
-     * Powers are described by their authored prose, with one exception: an active ability is
-     * bound to an Ability key and costs a resource, and a player cannot discover either by
-     * reading flavour text. Those two facts are stated mechanically, like grants are.
+     * An active ability's mechanics, as fields rather than as two more bullets in the effect list.
+     *
+     * <p>They used to be rendered into the same list as the grants, so "hold a key, wait thirty
+     * seconds, pay five hunger" arrived looking exactly like "+1 XP". They are not the same kind of
+     * fact: a grant simply applies, and an ability is a thing you have to operate. The record needs
+     * them apart to say so, and to say the part only the CLIENT knows — whether the slot's key has
+     * been bound at all.</p>
      */
-    private static List<String> powerLines(
-            @org.jetbrains.annotations.Nullable
-            com.aetherianartificer.townstead.pheno.power.PowerComponent power) {
-        if (!(power instanceof com.aetherianartificer.townstead.root.gene.types
+    private static CareerGraphS2CPayload.Ability abilityOf(SkillDef skill) {
+        if (!(skill.power() instanceof com.aetherianartificer.townstead.root.gene.types
                 .ActiveAbilityGeneType.Instance active)) {
-            return List.of();
+            return CareerGraphS2CPayload.Ability.NONE;
         }
-        List<String> lines = new ArrayList<>();
-        lines.add(Component.translatable("townstead.career.screen.effect.active",
-                trimNumber(active.cooldownTicks() / 20d)).getString());
-        if (active.costResource() != null && active.costAmount() > 0) {
-            lines.add(Component.translatable("townstead.career.screen.effect.costs",
-                    active.costAmount(),
-                    localizeOr("townstead.resource." + active.costResource().getPath(),
-                            prettify(active.costResource().getPath()))).getString());
-        }
-        return lines;
+        String cost = active.costResource() == null || active.costAmount() <= 0 ? ""
+                : localizeOr("townstead.resource." + active.costResource().getPath(),
+                        prettify(active.costResource().getPath()));
+        return new CareerGraphS2CPayload.Ability(true, active.slot(),
+                Math.max(0, active.cooldownTicks()), Math.max(0, active.costAmount()), cost);
     }
 
     private static List<String> effectLines(List<com.aetherianartificer.townstead.profession.def.SkillGrant> grants) {
