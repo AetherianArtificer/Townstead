@@ -132,7 +132,7 @@ public final class AbilityWheelScreen extends Screen {
 
         drawDial(g, cx, cy, now);
         for (int i = 0; i < SLOTS; i++) drawSlot(g, cx, cy, i, now);
-        WheelArt.waxBoss(g, cx, cy, 13);
+        WheelArt.hub(g, cx, cy, 15);
         drawLayerPips(g, cx, cy);
         drawPlate(g, cx, cy);
     }
@@ -238,9 +238,12 @@ public final class AbilityWheelScreen extends Screen {
         // Flat quads over an item icon lose the depth test to it, so the wash needs the flush.
         g.flush();
         if (cooling) g.fill(x + 2, y + 2, x + FRAME - 2, y + FRAME - 2, 0x99140F08);
-        if (entry.toggle() && entry.toggledOn()) {
-            WheelArt.disc(g, x + FRAME - 4, y + 4, 4, 0xFF7A2018);
-            WheelArt.disc(g, x + FRAME - 4, y + 4, 3, Palette.WAX_SEAL);
+        // Kind, in the corner: a switch you hold on, or a spark you cast once. The switch also
+        // carries its own state, so one mark answers both questions.
+        if (entry.toggle()) {
+            WheelArt.switchMark(g, x + 3, y + 3, entry.toggledOn());
+        } else {
+            WheelArt.sparkMark(g, x + 3, y + 3, cooling ? 0xFF6E5A38 : Palette.BRASS_DEEP);
         }
         WheelArt.number(g, x + FRAME - 2, y + FRAME - 7, numeral,
                 aimed ? Palette.BRASS_HOT : 0xFF8A7048);
@@ -274,8 +277,14 @@ public final class AbilityWheelScreen extends Screen {
         String under = "";
         if (entry != null) {
             name = entry.name();
+            // Kind first, because "is this a switch or a cast" changes what pressing it MEANS, and
+            // the corner mark can only say so much at five pixels.
+            under = Component.translatable(entry.toggle()
+                    ? (entry.toggledOn() ? "townstead.ability.wheel.kind.toggle_on"
+                            : "townstead.ability.wheel.kind.toggle_off")
+                    : "townstead.ability.wheel.kind.cast").getString();
             if (entry.costAmount() > 0 && !entry.costLabel().isEmpty()) {
-                under = Component.translatable("townstead.ability.wheel.cost",
+                under = under + "  ·  " + Component.translatable("townstead.ability.wheel.cost",
                         entry.costAmount(), entry.costLabel()).getString();
             }
         } else if (ClientAbilityLoadout.isEmpty()) {
@@ -370,7 +379,7 @@ public final class AbilityWheelScreen extends Screen {
         // eight", so a shift-click would have been asking two questions with one gesture.
         if (hovered >= 0 && button == 1) {
             if (minecraft != null) {
-                minecraft.setScreen(new AbilitySlotPickerScreen(slotFor(hovered), null));
+                minecraft.setScreen(new AbilityCatalogueScreen(slotFor(hovered), null));
             }
             return true;
         }

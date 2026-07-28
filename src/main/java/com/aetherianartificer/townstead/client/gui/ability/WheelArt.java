@@ -78,17 +78,38 @@ final class WheelArt {
     }
 
     /**
-     * The hub: a pressed blob of wax, the same one the crest and the board's equipped mark use.
+     * The hub: a recessed well, not an ornament.
      *
-     * <p>Round is reserved for seals, coins and instruments. The dial earns its circle by being an
-     * instrument; this earns its own by being a seal.</p>
+     * <p>It was a wax seal, which looked like a stop sign in the middle of an instrument you are
+     * meant to be reading past. The centre of a dial is where the cursor RESTS, so it wants to be
+     * quiet and to read as empty space you can safely let go in.</p>
      */
-    static void waxBoss(GuiGraphics g, int cx, int cy, int radius) {
-        disc(g, cx + 1, cy + 1, radius, 0x80000000);
-        disc(g, cx, cy, radius, 0xFF7A2018);
-        disc(g, cx, cy, radius - 1, Palette.WAX_SEAL);
-        disc(g, cx, cy, radius - 3, Palette.WAX_RIM);
-        g.fill(cx - 2, cy - 3, cx + 1, cy - 1, 0xFFD87A6A);
+    static void hub(GuiGraphics g, int cx, int cy, int radius) {
+        disc(g, cx, cy, radius, 0xFF14100A);
+        disc(g, cx, cy, radius - 1, 0xFF1C1509);
+        g.fill(cx - radius + 3, cy - radius + 1, cx + radius - 3, cy - radius + 2, 0xFF0F0B06);
+    }
+
+    /**
+     * A switch: this one is held ON or OFF rather than cast.
+     *
+     * <p>Carries the KIND and the STATE in one mark. A toggle and a one-shot behave nothing alike,
+     * and the arc already distinguishes them once you know the rule, which is exactly the sort of
+     * thing a player should not have to be told.</p>
+     */
+    static void switchMark(GuiGraphics g, int x, int y, boolean on) {
+        g.fill(x, y, x + 8, y + 5, 0xFF1A1208);
+        g.fill(x + 1, y + 1, x + 7, y + 4, on ? 0xFF4A3A20 : 0xFF241A0E);
+        int knob = on ? x + 4 : x + 1;
+        g.fill(knob, y + 1, knob + 3, y + 4, on ? Palette.BRASS_HOT : 0xFF6E6350);
+    }
+
+    /** A spark: this one is cast once and then cools. */
+    static void sparkMark(GuiGraphics g, int x, int y, int color) {
+        g.fill(x + 2, y, x + 3, y + 5, color);
+        g.fill(x, y + 2, x + 5, y + 3, color);
+        g.fill(x + 1, y + 1, x + 2, y + 2, color);
+        g.fill(x + 3, y + 3, x + 4, y + 4, color);
     }
 
     /** A recessed hole: somewhere an ability GOES, rather than a frame with a dash in it. */

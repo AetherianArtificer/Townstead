@@ -192,15 +192,30 @@ public final class ActiveAbilities {
         syncView(player);
     }
 
-    /** The player pressed the key bound to {@code slot} (1-based): fire an active, or flip a toggle. */
+    /**
+     * The player pressed the key or wedge for {@code slot} (1-based).
+     *
+     * <p>Dispatch, not action. A slot holds an id, and what that id means belongs to whichever
+     * provider owns it, so this resolves the id and hands it over. Our own abilities go through the
+     * same door a datapack action does; giving them a shortcut here is exactly how the extension
+     * path would rot without anyone noticing.</p>
+     */
     public static boolean activate(ServerPlayer player, int slot) {
+        ResourceLocation id = slotMap(player).containsKey(slot)
+                ? slotMap(player).get(slot).geneId()
+                : preparedLoadout(player).get(slot);
+        if (id == null) return false;
+        boolean acted = com.aetherianartificer.townstead.assign.Assignables.invoke(player, id);
+        if (acted) syncView(player);
+        return acted;
+    }
+
+    /** Fires one of OUR slotted things: an active, a toggle flip, or an inventory. */
+    public static boolean fireSlotted(ServerPlayer player, Slotted slotted) {
         Map<Integer, Slotted> map = slotMap(player);
-        Slotted slotted = map.get(slot);
-        if (slotted == null) return false;
         if (slotted.kind() == GeneInstanceKind.TOGGLE) {
             AbilityToggles.flip(player, slotted.geneId());
             AbilityToggles.syncTo(player);
-            syncView(player);
             return true;
         }
         if (slotted.kind() == GeneInstanceKind.INVENTORY) {
@@ -227,9 +242,6 @@ public final class ActiveAbilities {
             if (map.containsValue(candidate)) continue;
             fired = fire(player, new Resolved(candidate.geneId(), (ActiveAbilityGeneType.Instance) candidate.instance()));
         }
-        // A cooldown that just started is the wheel's most time-sensitive fact, so it goes back
-        // immediately rather than waiting for whatever next happens to sync.
-        if (fired) syncView(player);
         return fired;
     }
 
@@ -332,37 +344,52 @@ public final class ActiveAbilities {
      * answer keeps the client from needing a second copy of any of it.</p>
      */
     public static AbilityLoadoutS2CPayload view(ServerPlayer player) {
-        List<AbilityLoadoutS2CPayload.Entry> entries = new ArrayList<>();
-        for (Map.Entry<Integer, Slotted> entry : slotMap(player).entrySet()) {
-            Slotted slotted = entry.getValue();
-            ResourceLocation id = slotted.geneId();
-            int cooldown = 0;
-            int costAmount = 0;
-            String costLabel = "";
-            if (slotted.instance() instanceof ActiveAbilityGeneType.Instance active) {
-                cooldown = Math.max(0, active.cooldownTicks());
-                if (active.costResource() != null && active.costAmount() > 0) {
-                    costAmount = active.costAmount();
-                    costLabel = AbilityNames.resource(active.costResource());
-                }
-            }
-            boolean toggle = slotted.kind() == GeneInstanceKind.TOGGLE;
-            entries.add(new AbilityLoadoutS2CPayload.Entry(entry.getKey(), id.toString(),
-                    AbilityNames.display(id), AbilityNames.icon(id), toggle,
-                    toggle && AbilityToggles.isOn(player, id),
-                    cooldown, readyAt(player, id), costAmount, costLabel));
+        // Built from the PROVIDERS, so a datapack action in a slot draws exactly like one of ours.
+        java.util.Map<ResourceLocation, com.aetherianartificer.townstead.assign.Assignable> catalogue =
+                new LinkedHashMap<>();
+        for (com.aetherianartificer.townstead.assign.Assignable assignable
+                : com.aetherianartificer.townstead.assign.Assignables.collect(player)) {
+            catalogue.put(assignable.id(), assignable);
         }
-        // Everything ownable rides along, so opening the picker needs no second round trip and the
-        // list can never disagree with the slots it is editing.
+
+        // Which id sits in which slot: the player's arrangement, or the declared-slot bootstrap for
+        // anyone who has never prepared one.
+        Map<Integer, ResourceLocation> slots = new LinkedHashMap<>(preparedLoadout(player));
+        if (slots.isEmpty()) {
+            for (Map.Entry<Integer, Slotted> entry : declaredMap(player).entrySet()) {
+                slots.put(entry.getKey(), entry.getValue().geneId());
+            }
+        }
+
+        List<AbilityLoadoutS2CPayload.Entry> entries = new ArrayList<>();
+        for (Map.Entry<Integer, ResourceLocation> slot : slots.entrySet()) {
+            ResourceLocation id = slot.getValue();
+            com.aetherianartificer.townstead.assign.Assignable assignable = catalogue.get(id);
+            if (assignable == null) continue;
+            boolean toggle = isToggle(player, id);
+            entries.add(new AbilityLoadoutS2CPayload.Entry(slot.getKey(), id.toString(),
+                    assignable.name().getString(), assignable.icon(), toggle,
+                    toggle && AbilityToggles.isOn(player, id),
+                    assignable.cooldownTicks(), readyAt(player, id),
+                    assignable.costAmount(), assignable.costLabel()));
+        }
+
         List<AbilityLoadoutS2CPayload.Option> available = new ArrayList<>();
-        java.util.Set<ResourceLocation> seen = new java.util.LinkedHashSet<>();
-        for (Slotted slotted : slottables(player)) {
-            ResourceLocation id = slotted.geneId();
-            if (!seen.add(id)) continue;
-            available.add(new AbilityLoadoutS2CPayload.Option(id.toString(),
-                    AbilityNames.display(id), AbilityNames.icon(id), AbilityNames.source(id)));
+        for (com.aetherianartificer.townstead.assign.Assignable assignable : catalogue.values()) {
+            available.add(new AbilityLoadoutS2CPayload.Option(assignable.id().toString(),
+                    assignable.name().getString(), assignable.icon(),
+                    assignable.source().getString(), isToggle(player, assignable.id()),
+                    assignable.cooldownTicks(), assignable.costAmount(), assignable.costLabel()));
         }
         return new AbilityLoadoutS2CPayload(List.copyOf(entries), List.copyOf(available));
+    }
+
+    /** Only OUR things can be toggles; a datapack action is always a one-shot. */
+    private static boolean isToggle(ServerPlayer player, ResourceLocation id) {
+        for (Slotted slotted : slottables(player)) {
+            if (slotted.geneId().equals(id)) return slotted.kind() == GeneInstanceKind.TOGGLE;
+        }
+        return false;
     }
 
     /** Pushes the wheel's view after anything that could change it. */

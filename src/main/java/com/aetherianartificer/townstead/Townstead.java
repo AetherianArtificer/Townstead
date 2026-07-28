@@ -444,6 +444,9 @@ public class Townstead {
         townstead$registerAnimationReloadListener(modBus);
         townstead$registerBlockEntityRenderers(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
+        com.aetherianartificer.townstead.assign.Assignables.register(
+                new com.aetherianartificer.townstead.assign.AbilityAssignableProvider());
+        com.aetherianartificer.townstead.assign.Assignables.register(WHEEL_ACTIONS);
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
             townstead$profile("server.village_startup_seed", () ->
@@ -815,6 +818,9 @@ public class Townstead {
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
         MinecraftForge.EVENT_BUS.addListener(this::onStartTracking);
+        com.aetherianartificer.townstead.assign.Assignables.register(
+                new com.aetherianartificer.townstead.assign.AbilityAssignableProvider());
+        com.aetherianartificer.townstead.assign.Assignables.register(WHEEL_ACTIONS);
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.TickEvent.ServerTickEvent e) -> {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
@@ -1929,8 +1935,13 @@ public class Townstead {
                 new com.aetherianartificer.townstead.root.collection.ChangeCollectionBlockActionType());
     }
 
+    /** Datapack wheel actions: the reload listener AND the provider, so both see one map. */
+    private static final com.aetherianartificer.townstead.assign.WheelActions WHEEL_ACTIONS =
+            new com.aetherianartificer.townstead.assign.WheelActions();
+
     private void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new CatalogDataLoader());
+        event.addListener(WHEEL_ACTIONS);
         event.addListener(new com.aetherianartificer.townstead.reaction.ReactionDataLoader());
         event.addListener(new ShiftTemplateJsonLoader());
         event.addListener(new WeekPlanJsonLoader());
