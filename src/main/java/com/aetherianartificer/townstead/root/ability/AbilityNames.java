@@ -71,6 +71,13 @@ public final class AbilityNames {
     public static String initialsOf(String name) {
         if (name == null || name.isEmpty()) return "";
         String[] words = name.trim().split("\\s+");
+        // A trailing NUMBER is the distinguishing part, so it wins over initials. "Quick Cast Slot
+        // 01" through "... 15" all reduce to "S0" otherwise, which is fifteen identical cells on a
+        // surface whose whole job is telling them apart.
+        String last = words[words.length - 1];
+        if (words.length > 1 && last.chars().allMatch(Character::isDigit)) {
+            return last.length() <= 2 ? last : last.substring(last.length() - 2);
+        }
         if (words.length == 1) {
             return words[0].substring(0, Math.min(2, words[0].length())).toUpperCase(
                     java.util.Locale.ROOT);

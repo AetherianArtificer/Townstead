@@ -124,7 +124,7 @@ public final class DynamicFlowerPotTagPack {
         public IoSupplier<InputStream> getRootResource(String... path) {
             if (path.length == 1 && "pack.mcmeta".equals(path[0])) {
                 //? if >=1.21 {
-                String meta = "{\"pack\":{\"pack_format\":34,\"description\":\"Townstead dynamic tags\"}}";
+                String meta = "{\"pack\":{\"pack_format\":48,\"description\":\"Townstead dynamic tags\"}}";
                 //?} else {
                 /*String meta = "{\"pack\":{\"pack_format\":15,\"description\":\"Townstead dynamic tags\"}}";
                 *///?}
@@ -161,7 +161,7 @@ public final class DynamicFlowerPotTagPack {
             if (serializer == PackMetadataSection.TYPE) {
                 return (T) new PackMetadataSection(
                         net.minecraft.network.chat.Component.literal("Townstead dynamic tags"),
-                        34
+                        48
                 );
             }
             //?} else {

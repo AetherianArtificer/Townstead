@@ -15,9 +15,16 @@ final class WheelArt {
 
     private WheelArt() {}
 
-    /** What one pixel of the dial should be, or 0 to leave it alone. */
+    /**
+     * What one pixel of the dial should be, or 0 to leave it alone.
+     *
+     * <p>Given its OFFSET rather than a radius. A rounded hypotenuse and {@link #halfAt}'s scanned
+     * half-width are two rasterisations of the same circle and they disagree by a pixel on some
+     * rows, so any band bounded by one and abutting the other frays along the seam. Callers compare
+     * {@code |dx|} against {@code halfAt} and every edge on the dial is then cut the same way.</p>
+     */
     interface RingPainter {
-        int colorAt(int sector, double within, int radius);
+        int colorAt(int sector, double within, int dx, int dy);
     }
 
     /**
@@ -63,8 +70,7 @@ final class WheelArt {
             while (angle >= 2 * Math.PI) angle -= 2 * Math.PI;
             double position = angle / step;
             int sector = (int) position % sectors;
-            int radius = (int) Math.round(Math.sqrt(dx * dx + dy * dy));
-            int color = painter.colorAt(sector, position - Math.floor(position), radius);
+            int color = painter.colorAt(sector, position - Math.floor(position), dx, dy);
             if (dx == from) {
                 runColor = color;
                 continue;

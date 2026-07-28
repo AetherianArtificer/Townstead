@@ -97,6 +97,9 @@ public final class AbilityCatalogueScreen extends Screen {
 
     @Override
     protected void init() {
+        // Same reason the wheel does: what a mod says about its own binding can have changed since
+        // the last sync, and only the client can ask.
+        ClientAbilityLoadout.refreshLocal();
         // FIT FIRST, then spend what is left on the grid. And count EVERY gap: the chrome sum used
         // to leave 50 pixels for a 32-pixel band, an 18-pixel button and the space between them,
         // so the button's top landed above the chip row and the two overlapped.
@@ -521,9 +524,7 @@ public final class AbilityCatalogueScreen extends Screen {
         if (option != null) {
             name = option.name();
             icon = option.icon();
-            kindWord = Component.translatable(option.toggle()
-                    ? "townstead.ability.wheel.kind.toggle_off"
-                    : "townstead.ability.wheel.kind.cast").getString();
+            kindWord = AbilityWheelScreen.kindWord(option.toggle(), false, option.kind());
             kindGlyph = option.toggle() ? 1 : 2;
             cooldown = option.cooldownTicks();
             if (option.costAmount() > 0 && !option.costLabel().isEmpty()) {
@@ -543,9 +544,7 @@ public final class AbilityCatalogueScreen extends Screen {
             name = entry.name();
             icon = entry.icon();
             entrySource = "";
-            kindWord = Component.translatable(entry.toggle()
-                    ? "townstead.ability.wheel.kind.toggle_off"
-                    : "townstead.ability.wheel.kind.cast").getString();
+            kindWord = AbilityWheelScreen.kindWord(entry.toggle(), entry.toggledOn(), entry.kind());
             kindGlyph = entry.toggle() ? 1 : 2;
             cooldown = entry.cooldownTicks();
             if (entry.costAmount() > 0 && !entry.costLabel().isEmpty()) {

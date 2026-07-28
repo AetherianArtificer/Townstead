@@ -31,6 +31,10 @@ neoForge {
 
 repositories {
     maven { url = uri("https://maven.blamejared.com") }
+    // Iron's Spells publishes an API-only artifact for addons. Their licence is All Rights
+    // Reserved with an explicit carve-out: "Write your own code that uses this code as a
+    // dependency (such as addons or datapacks)." Nothing of theirs ships in our jar.
+    maven { url = uri("https://code.redspace.io/releases") }
     mavenCentral()
 }
 
@@ -44,6 +48,9 @@ dependencies {
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly("mezz.jei:jei-1.21.1-common-api:19.39.0.370")
     compileOnly("mezz.jei:jei-1.21.1-neoforge-api:19.39.0.370")
+    // Iron's Spells API, for reading what is actually in a quick-cast slot. compileOnly and
+    // non-transitive: the bridge is guarded by ModList, so nothing here is required at runtime.
+    compileOnly("io.redspace:irons_spellbooks:1.21.1-3.16.2:api") { isTransitive = false }
     // Chronicle archive backend, embedded into the mod jar via jarJar
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
     jarJar("org.xerial:sqlite-jdbc:3.46.1.3")

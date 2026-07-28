@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.assign;
 
 import com.aetherianartificer.townstead.root.ability.AbilityNames;
 import com.aetherianartificer.townstead.root.ability.ActiveAbilities;
+import com.aetherianartificer.townstead.root.ability.ResourceValues;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,17 +32,19 @@ public final class AbilityAssignableProvider implements AssignableProvider {
             int cooldown = 0;
             int costAmount = 0;
             String costLabel = "";
+            int costColor = 0;
             if (slotted.instance() instanceof com.aetherianartificer.townstead.root.gene.types
                     .ActiveAbilityGeneType.Instance active) {
                 cooldown = Math.max(0, active.cooldownTicks());
                 if (active.costResource() != null && active.costAmount() > 0) {
                     costAmount = active.costAmount();
                     costLabel = AbilityNames.resource(active.costResource());
+                    costColor = ResourceValues.colorOf(player, active.costResource());
                 }
             }
             out.add(new Assignable(id, Component.literal(AbilityNames.display(id)),
                     AbilityNames.icon(id), Component.literal(AbilityNames.source(id)),
-                    Assignable.Kind.ABILITY, cooldown, costAmount, costLabel));
+                    Assignable.Kind.ABILITY, cooldown, costAmount, costLabel, costColor, ""));
         }
     }
 

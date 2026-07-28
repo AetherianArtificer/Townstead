@@ -62,6 +62,9 @@ public final class AbilityWheelScreen extends Screen {
 
     @Override
     protected void init() {
+        // Re-read what the owning mods say before drawing anything: a spellbook swap changes what
+        // a quick-cast slot holds, and no packet would have told us.
+        ClientAbilityLoadout.refreshLocal();
         // Ask for a fresh view every time. The login push can land before the player's Root has
         // resolved, and learning or respeccing moves the answer afterwards.
         AbilityViewRequestC2SPayload request = new AbilityViewRequestC2SPayload();
@@ -141,13 +144,21 @@ public final class AbilityWheelScreen extends Screen {
     private void drawDial(GuiGraphics g, int cx, int cy, long now) {
         float[] fill = new float[SLOTS];
         boolean[] steady = new boolean[SLOTS];
-        boolean[] present = new boolean[SLOTS];
+        boolean[] tracked = new boolean[SLOTS];
         for (int i = 0; i < SLOTS; i++) {
             AbilityLoadoutS2CPayload.Entry entry = ClientAbilityLoadout.slot(slotFor(i));
-            present[i] = entry != null;
+            // A track is only drawn for something that HAS a state to report: an on/off switch, or
+            // a cooldown. A borrowed keybind has neither, and a permanently full ring is worse than
+            // none, because it cannot be told apart from a cooldown that happens to be ready.
+            tracked[i] = entry != null
+                    && (entry.toggle() || entry.cooldownTicks() > 0 || entry.costAmount() > 0);
             if (entry == null) continue;
             steady[i] = entry.toggle();
             fill[i] = entry.toggle() ? (entry.toggledOn() ? 1f : 0f) : readyFraction(entry, now);
+            // A cost you cannot pay is an AVAILABILITY answer, so the ring owns it. Without
+            // this the wheel showed a full ring for something that would refuse the press,
+            // and the only feedback was nothing happening.
+            if (!affordable(entry)) fill[i] = 0f;
         }
 
         // The dark outline first, so the rim's gradient can run right to the dial's edge.
@@ -155,30 +166,47 @@ public final class AbilityWheelScreen extends Screen {
         // The face runs the whole way out and the rim paints OVER its outer band. Reserving the band
         // here instead left a ring of pixels claimed by neither: this pass cuts on a rounded
         // hypotenuse and the rim on a scanned half-width, and the two disagree by a pixel per row.
-        WheelArt.paintRing(g, cx, cy, R_OUT, R_FACE, SLOTS, (sector, within, radius) -> {
-            // An EMPTY sector gets no track. Drawing one dark put a near-black band between the
-            // wedge and the rim, which on a dark face reads as a hole in the dial rather than as an
-            // empty channel. Nothing there, nothing drawn: the face runs straight out to the rim.
-            if (radius >= R_ARC_IN && radius < R_ARC_OUT && present[sector]) {
-                if (within > fill[sector]) return 0xFF332818;
-                return steady[sector] ? Palette.BRASS_HOT
-                        : (fill[sector] < 1f ? Palette.BRASS_DEEP : Palette.BRASS);
-            }
-            // Engraved dividers, so a frame sits IN a sector rather than floating on a disc.
-            if (within < 0.012 || within > 0.988) return Palette.DESK_EDGE;
-            // THE AIMED SECTOR IS THE POINTER. A needle from the hub was correct and looked like a
-            // stray mark: one or two pixels wide, and redundant beside a lit frame, a brass arc and
-            // this. Lighting the whole wedge cannot be mistaken for an artefact, needs no rotating
-            // sprite, and still answers "where am I aimed" when every slot is empty.
-            //
+        WheelArt.paintRing(g, cx, cy, R_OUT, R_FACE, SLOTS, (sector, within, dx, dy) -> {
+            int offset = Math.abs(dx);
             // Each layer keeps its own ground tone, so which set you are on is answered by the dial
-            // rather than by a caption naming a concept at you.
+            // rather than by a caption naming a concept at you. THE AIMED SECTOR IS THE POINTER: a
+            // needle from the hub was correct and looked like a stray mark, one or two pixels wide
+            // and redundant beside a lit frame and a brass arc. Lighting the whole wedge cannot be
+            // mistaken for an artefact and still answers "where am I aimed" when every slot is empty.
             boolean aimed = sector == hovered;
-            return switch (layer) {
+            int face = switch (layer) {
                 case 1 -> aimed ? 0xFF31404E : 0xFF1B1E24;
                 case 2 -> aimed ? 0xFF2F3D27 : 0xFF1C2119;
                 default -> aimed ? 0xFF4A3618 : 0xFF221A0F;
             };
+
+            // THE BAND IS ONE RING, and nothing crosses it. Bounded by halfAt, the same cut the rim
+            // uses: a rounded hypotenuse frayed its outer edge into the rim.
+            //
+            // Above and below the band's inner circle there is no hole to leave, and halfAt reports
+            // 0 for those rows. Testing `offset > 0` then excluded dx = 0 on every one of them,
+            // which drew a one-pixel dark seam straight down the middle of the top and bottom of
+            // the ring: the thin black line in the arc.
+            int innerHalf = WheelArt.halfAt(R_ARC_IN, dy);
+            if (offset <= WheelArt.halfAt(R_ARC_OUT, dy)
+                    && (innerHalf == 0 || offset > innerHalf)) {
+                // An EMPTY sector gets no track, and no divider either. Returning face here rather
+                // than falling through is the point: the fall-through drew a divider through the
+                // ring on untracked sectors and not on tracked ones, so a stripe appeared to slice
+                // into the neighbouring arc and stop.
+                if (!tracked[sector]) return face;
+                if (within > fill[sector]) return 0xFF332818;
+                // A held toggle reads as FULL, not as a highlight. BRASS_HOT here was a near-white
+                // arc beside a brass rim, which looked like a rendering fault rather than "on".
+                return fill[sector] < 1f && !steady[sector] ? Palette.BRASS_DEEP : Palette.BRASS;
+            }
+
+            // Engraved dividers, so a frame sits IN a sector rather than floating on a disc. Width
+            // is set in PIXELS: `within` is an ANGLE, so a constant slice of it draws a wedge that
+            // is hairline at the hub and fans out to a ragged three or four pixels at the rim.
+            double edge = 0.55 / Math.max(1d, Math.sqrt(dx * dx + dy * dy)) / (2 * Math.PI / SLOTS);
+            if (within < edge || within > 1 - edge) return Palette.DESK_EDGE;
+            return face;
         });
         WheelArt.rim(g, cx, cy, R_OUT, R_RIM - 1);
     }
@@ -202,7 +230,8 @@ public final class AbilityWheelScreen extends Screen {
         }
 
         float ready = entry.toggle() ? 1f : readyFraction(entry, now);
-        boolean cooling = ready < 1f;
+        // Both answers are "not now", so both dull the frame. The plate says which.
+        boolean cooling = ready < 1f || !affordable(entry);
         int rim;
         int inner;
         int edge;
@@ -251,7 +280,7 @@ public final class AbilityWheelScreen extends Screen {
                 aimed ? Palette.BRASS_HOT : 0xFF8A7048);
         if (cooling && entry.cooldownTicks() > 0) {
             // The arc is for glancing; the numeral is for deciding whether it is worth waiting.
-            int seconds = (int) Math.ceil((entry.readyAt() - now) / 20d);
+            int seconds = (int) Math.ceil((ClientAbilityLoadout.readyAt(entry) - now) / 20d);
             if (seconds > 0) WheelArt.number(g, x + 6, y + FRAME - 7, seconds, Palette.BRASS_HOT);
         }
     }
@@ -281,41 +310,80 @@ public final class AbilityWheelScreen extends Screen {
         };
     }
 
+    /** The three strings and the colour one slot's label needs. */
+    private record Label(String name, String tag, String kind, String cost, int costColor,
+                         float costFill, boolean short_) {
+        static final Label EMPTY = new Label("", "", "", "", 0, -1f, false);
+    }
+
+    /** Builds a slot's label, or {@link Label#EMPTY} for a slot holding nothing. */
+    private Label labelFor(AbilityLoadoutS2CPayload.Entry entry) {
+        if (entry == null) return Label.EMPTY;
+        String cost = "";
+        int costColor = 0xFFB79A6C;
+        float fill = -1f;
+        boolean lacking = false;
+        if (entry.costAmount() > 0 && !entry.costLabel().isEmpty()) {
+            cost = Component.translatable("townstead.ability.wheel.cost",
+                    entry.costAmount(), entry.costLabel()).getString();
+            costColor = entry.costColor() == 0 ? 0xFFB79A6C : 0xFF000000 | entry.costColor();
+            // The gauge fills toward the COST, not across the pool: full means you can pay, which
+            // is the question being asked. How much you are carrying overall is already a bar on
+            // the HUD, and repeating it here would answer a question nobody is holding a key to ask.
+            fill = Mth.clamp(entry.costHave() / (float) entry.costAmount(), 0f, 1f);
+            lacking = !affordable(entry);
+        }
+        return new Label(entry.name(), entry.source(),
+                kindWord(entry.toggle(), entry.toggledOn(), entry.kind()),
+                cost, costColor, fill, lacking);
+    }
+
+    /** Meta sits at three quarters, so the name leads instead of tying with it. */
+    private static final float META = 0.75f;
+    private static final int GAUGE_W = 26;
+
+    private int metaWidth(Label label) {
+        if (label.kind().isEmpty()) return 0;
+        int width = font.width(label.kind());
+        if (!label.tag().isEmpty()) width += font.width(label.tag()) + 8 + 5;
+        if (!label.cost().isEmpty()) width += font.width("  ·  ") + font.width(label.cost());
+        if (label.costFill() >= 0f) width += 5 + GAUGE_W;
+        return Math.round(width * META);
+    }
+
     /**
      * The label, on a plate BELOW the dial.
      *
-     * <p>It used to sit in the hub, where "Deepwood gnome vanish" does not fit and collided with the
-     * boss. Out here it gets the dial's full width, and the second line can carry the cost instead of
-     * fighting the name for room.</p>
+     * <p>It used to sit in the hub, where "Deepwood gnome vanish" does not fit and collided with
+     * the boss. Out here it gets the dial's full width, and the second line can carry the cost
+     * instead of fighting the name for room.</p>
+     *
+     * <p>WIDTH IS FIXED FOR THE WHOLE LAYER, measured across all eight slots rather than from the
+     * one under the cursor. Sizing it to the hovered slot made it jump on every one of the eight
+     * as you swept round, which is motion in the corner of your eye at exactly the moment you are
+     * trying to aim. It still adapts to what you actually have prepared; it just stops moving
+     * while you are using it.</p>
      */
     private void drawPlate(GuiGraphics g, int cx, int cy) {
         AbilityLoadoutS2CPayload.Entry entry =
                 hovered < 0 ? null : ClientAbilityLoadout.slot(slotFor(hovered));
-        String name;
-        String under = "";
-        if (entry != null) {
-            name = entry.name();
-            // Kind first, because "is this a switch or a cast" changes what pressing it MEANS, and
-            // the corner mark can only say so much at five pixels.
-            under = Component.translatable(entry.toggle()
-                    ? (entry.toggledOn() ? "townstead.ability.wheel.kind.toggle_on"
-                            : "townstead.ability.wheel.kind.toggle_off")
-                    : "townstead.ability.wheel.kind.cast").getString();
-            if (entry.costAmount() > 0 && !entry.costLabel().isEmpty()) {
-                under = under + "  ·  " + Component.translatable("townstead.ability.wheel.cost",
-                        entry.costAmount(), entry.costLabel()).getString();
-            }
-        } else if (ClientAbilityLoadout.isEmpty()) {
-            name = Component.translatable("townstead.ability.wheel.nothing_prepared").getString();
-        } else if (hovered < 0) {
-            // Say what letting go does, rather than leaving the dead zone to be found by accident.
-            name = Component.translatable("townstead.ability.wheel.cancel").getString();
-        } else {
-            name = Component.translatable("townstead.ability.wheel.empty_slot").getString();
+        Label label = labelFor(entry);
+        String name = label.name();
+        if (entry == null) {
+            name = Component.translatable(ClientAbilityLoadout.isEmpty()
+                    ? "townstead.ability.wheel.nothing_prepared"
+                    : hovered < 0 ? "townstead.ability.wheel.cancel"
+                            : "townstead.ability.wheel.empty_slot").getString();
         }
 
-        int plateW = Math.max(120, Math.max(font.width(name), font.width(under)) + 20);
-        int plateH = under.isEmpty() ? 16 : 26;
+        int widest = font.width(name);
+        for (int i = 0; i < SLOTS; i++) {
+            Label other = labelFor(ClientAbilityLoadout.slot(slotFor(i)));
+            widest = Math.max(widest, Math.max(font.width(other.name()), metaWidth(other)));
+        }
+        int metaW = metaWidth(label);
+        int plateW = Math.max(140, widest + 20);
+        int plateH = label.kind().isEmpty() ? 16 : 26;
         int left = cx - plateW / 2;
         int top = cy + R_OUT + 12;
         g.fill(left - 1, top - 1, left + plateW + 1, top + plateH + 1, 0xFF0F0A05);
@@ -323,9 +391,57 @@ public final class AbilityWheelScreen extends Screen {
         g.fill(left, top, left + plateW, top + 1, Palette.DESK_LIP);
         g.drawString(font, name, cx - font.width(name) / 2, top + 4,
                 entry == null ? 0xFFB79A6C : Palette.BRASS_HOT, false);
-        if (!under.isEmpty()) {
-            g.drawString(font, under, cx - font.width(under) / 2, top + 15, 0xFFB79A6C, false);
+        if (label.kind().isEmpty()) return;
+
+        g.pose().pushPose();
+        g.pose().translate(cx - metaW / 2f, top + 15, 0);
+        g.pose().scale(META, META, 1f);
+        int x = 0;
+        if (!label.tag().isEmpty()) {
+            int tagW = font.width(label.tag()) + 8;
+            g.fill(x, -2, x + tagW, 9, 0xFF1C1509);
+            g.fill(x, -2, x + tagW, -1, 0xFF3A2E1E);
+            g.fill(x, 8, x + tagW, 9, 0xFF120D07);
+            g.drawString(font, label.tag(), x + 4, 0, 0xFFC9AD7C, false);
+            x += tagW + 5;
         }
+        String join = label.cost().isEmpty() ? "" : "  ·  ";
+        g.drawString(font, label.kind() + join, x, 0, 0xFFB79A6C, false);
+        x += font.width(label.kind() + join);
+        if (!label.cost().isEmpty()) {
+            g.drawString(font, label.cost(), x, 0, label.costColor(), false);
+            x += font.width(label.cost());
+        }
+        if (label.costFill() >= 0f) {
+            // A GAUGE, not a second number. "Can I pay" is a level, and the eye reads a level
+            // without stopping; it is also the same green as the meter already on the HUD.
+            x += 5;
+            int filled = Math.round(GAUGE_W * label.costFill());
+            g.fill(x, 0, x + GAUGE_W, 7, 0xFF120D07);
+            g.fill(x + 1, 1, x + GAUGE_W - 1, 6, 0xFF1A1309);
+            if (filled > 2) {
+                g.fill(x + 1, 1, x + Math.max(2, filled - 1), 6,
+                        label.short_() ? 0xFFC96A4A : label.costColor());
+            }
+        }
+        g.pose().popPose();
+    }
+
+    /**
+     * What pressing this does, in one word.
+     *
+     * <p>A borrowed keybind is not CAST. We do not know what the other mod does with it, only that
+     * we press it once, and calling someone else's inventory key a cast was the wheel describing
+     * its own vocabulary rather than the thing in the slot.</p>
+     */
+    public static String kindWord(boolean toggle, boolean toggledOn, int kind) {
+        if (kind == com.aetherianartificer.townstead.assign.Assignable.Kind.KEYBIND.ordinal()) {
+            return Component.translatable("townstead.ability.wheel.kind.trigger").getString();
+        }
+        return Component.translatable(toggle
+                ? (toggledOn ? "townstead.ability.wheel.kind.toggle_on"
+                        : "townstead.ability.wheel.kind.toggle_off")
+                : "townstead.ability.wheel.kind.cast").getString();
     }
 
     /** The slot a dial position points at on the layer currently shown. */
@@ -333,9 +449,16 @@ public final class AbilityWheelScreen extends Screen {
         return layer * SLOTS + wedge + 1;
     }
 
+    /** False when the cost resource is short. Entries with no cost are always affordable. */
+    static boolean affordable(AbilityLoadoutS2CPayload.Entry entry) {
+        return entry == null || entry.costAmount() <= 0 || entry.costHave() >= entry.costAmount();
+    }
+
+    /** Reads the MERGED cooldown, so a client-performed action's ring is not always full. */
     private static float readyFraction(AbilityLoadoutS2CPayload.Entry entry, long now) {
-        if (entry == null || entry.cooldownTicks() <= 0 || entry.readyAt() <= now) return 1f;
-        long left = entry.readyAt() - now;
+        long ready = ClientAbilityLoadout.readyAt(entry);
+        if (entry == null || entry.cooldownTicks() <= 0 || ready <= now) return 1f;
+        long left = ready - now;
         return Mth.clamp(1f - left / (float) entry.cooldownTicks(), 0f, 1f);
     }
 
@@ -358,19 +481,41 @@ public final class AbilityWheelScreen extends Screen {
         fire(slotFor(hovered));
     }
 
-    /** Sends a slot and remembers it, so a tap of the key can repeat it without opening. */
+    /** Fires a slot and remembers it, so a tap of the key can repeat it without opening. */
     public static void fire(int slot) {
         ClientAbilityLoadout.rememberUsed(slot);
+        dispatch(slot);
+        Minecraft mc = Minecraft.getInstance();
+        if (!Accessibility.isReduceMotion() && mc.player != null) {
+            mc.player.playSound(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 0.4f, 1.4f);
+        }
+    }
+
+    /**
+     * Performs a slot: here when the client owns the action, on the server otherwise.
+     *
+     * <p>A keybind press cannot happen on a server, so a datapack action of that kind never
+     * round-trips. Everything else does, and the server resolves the slot again: nothing here
+     * decides whether a press is allowed.</p>
+     */
+    public static void dispatch(int slot) {
+        AbilityLoadoutS2CPayload.Entry entry = ClientAbilityLoadout.slot(slot);
+        if (entry != null
+                && entry.kind() == com.aetherianartificer.townstead.assign.Assignable.Kind.KEYBIND.ordinal()) {
+            // Gated here because this press never reaches the server, so the server's table cannot
+            // see it. Everything else is gated there, where it belongs.
+            if (!ClientAbilityLoadout.isReady(entry)) return;
+            if (com.aetherianartificer.townstead.client.input.SyntheticKey.press(entry.clientValue())) {
+                ClientAbilityLoadout.startLocalCooldown(entry.id(), entry.cooldownTicks());
+            }
+            return;
+        }
         ActivateAbilityC2SPayload payload = new ActivateAbilityC2SPayload(slot);
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
         //?} else {
         /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
         *///?}
-        Minecraft mc = Minecraft.getInstance();
-        if (!Accessibility.isReduceMotion() && mc.player != null) {
-            mc.player.playSound(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 0.4f, 1.4f);
-        }
     }
 
     /** True when the cursor is in the dead zone, so a release should cancel rather than fire. */
