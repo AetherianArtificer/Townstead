@@ -107,6 +107,17 @@ public final class ResourceValues {
      * because a skill id is not a gene id. The registry stays as the fallback so a gene that
      * is defined but not currently expressed still reads its own bounds.
      */
+    /**
+     * The colour a resource authors for itself, or 0 when it declares none.
+     *
+     * <p>Every resource gene has carried one since the schema was written and nothing had ever
+     * asked for it, so a cost read in the same brass as everything else.</p>
+     */
+    public static int colorOf(LivingEntity entity, ResourceLocation geneId) {
+        ResourceGeneType.Instance instance = geneId == null ? null : instanceOf(entity, geneId);
+        return instance == null ? 0 : instance.color();
+    }
+
     private static ResourceGeneType.Instance instanceOf(LivingEntity entity, ResourceLocation geneId) {
         for (Power power : Powers.active(entity)) {
             if (power.id().equals(geneId)

@@ -446,6 +446,8 @@ public class Townstead {
         townstead$registerScarfColor(modBus);
         townstead$registerMenuScreens(modBus);
         townstead$registerAnimationReloadListener(modBus);
+        // Live keybind detail for mods that own their bindings. No-ops when absent.
+        com.aetherianartificer.townstead.compat.ironsspells.IronsQuickCast.register();
         townstead$registerBlockEntityRenderers(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         com.aetherianartificer.townstead.assign.Assignables.register(
@@ -784,6 +786,7 @@ public class Townstead {
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
                 com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
+                com.aetherianartificer.townstead.client.input.SyntheticKey.clear();
                         com.aetherianartificer.townstead.client.attachment.AttachmentClient.clear();
                     });
         } catch (Exception ignored) {
@@ -818,6 +821,8 @@ public class Townstead {
         townstead$registerScarfColor(modBus);
         townstead$registerMenuScreens(modBus);
         townstead$registerAnimationReloadListener(modBus);
+        // Live keybind detail for mods that own their bindings. No-ops when absent.
+        com.aetherianartificer.townstead.compat.ironsspells.IronsQuickCast.register();
         townstead$registerBlockEntityRenderers(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
@@ -1037,6 +1042,7 @@ public class Townstead {
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
                 com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
+                com.aetherianartificer.townstead.client.input.SyntheticKey.clear();
                         com.aetherianartificer.townstead.client.attachment.AttachmentClient.clear();
                     });
         } catch (Exception ignored) {
@@ -2282,7 +2288,10 @@ public class Townstead {
                     (net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent event) ->
                             event.registerReloadListener(
                                     (net.minecraft.server.packs.resources.ResourceManagerReloadListener)
-                                            rm -> com.aetherianartificer.townstead.client.animation.McaAnimationBridge.onResourcesReloaded())
+                                            rm -> {
+                                                com.aetherianartificer.townstead.client.animation.McaAnimationBridge.onResourcesReloaded();
+                                                com.aetherianartificer.townstead.client.input.KeybindDetails.reload(rm);
+                                            })
             );
         } catch (Exception ignored) {
             // Dedicated server: no client resource pack stack to track.
@@ -2296,7 +2305,10 @@ public class Townstead {
                     (net.minecraftforge.client.event.RegisterClientReloadListenersEvent event) ->
                             event.registerReloadListener(
                                     (net.minecraft.server.packs.resources.ResourceManagerReloadListener)
-                                            rm -> com.aetherianartificer.townstead.client.animation.McaAnimationBridge.onResourcesReloaded())
+                                            rm -> {
+                                                com.aetherianartificer.townstead.client.animation.McaAnimationBridge.onResourcesReloaded();
+                                                com.aetherianartificer.townstead.client.input.KeybindDetails.reload(rm);
+                                            })
             );
         } catch (Exception ignored) {
             // Dedicated server: no client resource pack stack to track.

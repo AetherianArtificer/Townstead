@@ -196,7 +196,7 @@ public final class ConditionalCompatPack {
             if (serializer == PackMetadataSection.TYPE) {
                 //? if >=1.21 {
                 return (T) new PackMetadataSection(
-                        Component.literal("Townstead compat building types"), 34);
+                        Component.literal("Townstead compat building types"), 48);
                 //?} else {
                 /*return (T) new PackMetadataSection(
                         Component.literal("Townstead compat building types"), 15);

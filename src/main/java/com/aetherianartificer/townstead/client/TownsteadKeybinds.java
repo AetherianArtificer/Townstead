@@ -164,6 +164,8 @@ public final class TownsteadKeybinds {
 
     public static void onClientTick() {
         Minecraft mc = Minecraft.getInstance();
+        // Releases any borrowed binding whose hold has run out, before anything presses a new one.
+        com.aetherianartificer.townstead.client.input.SyntheticKey.tick();
         tickWheel(mc);
         while (TALK.consumeClick()) {
             if (mc.player == null || mc.screen != null) continue;
@@ -182,13 +184,9 @@ public final class TownsteadKeybinds {
                 // Firing by key counts as using it, or the wheel's tap-to-repeat would remember
                 // only what you last cast THROUGH the wheel and disagree with what you just did.
                 com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.rememberUsed(slot);
-                com.aetherianartificer.townstead.root.ability.ActivateAbilityC2SPayload payload =
-                        new com.aetherianartificer.townstead.root.ability.ActivateAbilityC2SPayload(slot);
-                //? if neoforge {
-                net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
-                //?} else {
-                /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
-                *///?}
+                // Through the wheel's dispatch, not a second copy of the send: a slot holding a
+                // datapack keybind action has to be pressed locally whichever way it was reached.
+                com.aetherianartificer.townstead.client.gui.ability.AbilityWheelScreen.dispatch(slot);
             }
         }
 

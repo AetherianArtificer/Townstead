@@ -61,7 +61,7 @@ public final class WheelActions extends SimpleJsonResourceReloadListener impleme
         for (WheelAction action : ENTRIES.values()) {
             if (!allowed(player, action)) continue;
             out.add(new Assignable(action.id(), action.name(), action.icon(), action.source(),
-                    action.kind(), action.cooldownTicks(), 0, ""));
+                    action.kind(), action.cooldownTicks(), 0, "", 0, clientValue(action)));
         }
     }
 
@@ -72,13 +72,22 @@ public final class WheelActions extends SimpleJsonResourceReloadListener impleme
         // Re-checked on invoke, not just on collect. A catalogue is a snapshot, and the advancement
         // that made this offer valid can be revoked between browsing and pressing.
         if (!allowed(player, action)) return false;
+        // A declared cooldown was parsed, shipped and DRAWN, and enforced by nobody, so an action
+        // advertising a minute ran as fast as the key repeated. The wheel's ring was describing a
+        // rule that did not exist.
+        if (!AssignCooldowns.isReady(player, id, player.level().getGameTime())) return false;
         return switch (action.kind()) {
             case COMMAND -> runCommand(player, action);
-            // Keybinds and items are performed by the CLIENT; the server has nothing to run. They
-            // exist as kinds so a datapack can describe them, and the client fires them locally.
-            case KEYBIND, ITEM -> true;
+            // The client performs these and never asks us to, so arriving here means a stale or
+            // forged press. Reporting success would have made an unimplemented ITEM kind look like
+            // it worked, which is worse than not having it.
             default -> false;
         };
+    }
+
+    /** Only client-performed kinds hand anything down; a command's text stays on the server. */
+    private static String clientValue(WheelAction action) {
+        return action.kind() == Assignable.Kind.KEYBIND ? action.value() : "";
     }
 
     /**
@@ -102,16 +111,24 @@ public final class WheelActions extends SimpleJsonResourceReloadListener impleme
      * datapack action useless for anything interesting, and running with elevated rights AS them
      * would leak those rights to anything else reading the command source. The server runs it,
      * silently, positioned on the player.</p>
+     *
+     * <p>At the server's OWN function permission level, not the console's. {@code
+     * createCommandSourceStack} is level 4, and {@code allowed} defaults to true when a file
+     * declares no {@code requires}, so any pack dropped on a server could hand every player an
+     * op-level command on a keypress. This is the level an operator already chose for datapack
+     * functions, which is exactly what these are.</p>
      */
     private static boolean runCommand(ServerPlayer player, WheelAction action) {
         var server = player.server;
         var source = server.createCommandSourceStack()
+                .withPermission(server.getFunctionCompilationLevel())
                 .withEntity(player)
                 .withLevel(player.serverLevel())
                 .withPosition(player.position())
                 .withRotation(player.getRotationVector())
                 .withSuppressedOutput();
         server.getCommands().performPrefixedCommand(source, action.value());
+        AssignCooldowns.start(player, action.id(), action.cooldownTicks());
         return true;
     }
 }

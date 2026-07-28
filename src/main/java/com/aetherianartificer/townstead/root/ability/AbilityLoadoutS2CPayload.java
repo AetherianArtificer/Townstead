@@ -29,10 +29,18 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
 /*public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> available) {
 *///?}
 
-    /** One filled slot. Empty slots are simply absent. */
+    /**
+     * One filled slot. Empty slots are simply absent.
+     *
+     * <p>{@code kind} is an {@code Assignable.Kind} ordinal, and it is here so the client can tell
+     * a press it must perform ITSELF from one it asks the server for. A keybind cannot be pressed
+     * on a server; {@code clientValue} carries the binding to press, and is empty for everything
+     * the server handles.</p>
+     */
     public record Entry(int slot, String id, String name, String icon, boolean toggle,
                         boolean toggledOn, int cooldownTicks, long readyAt,
-                        int costAmount, String costLabel) {}
+                        int costAmount, String costLabel, int kind, String clientValue,
+                        String source, int costColor, int costHave) {}
 
     /**
      * Something the player owns and could prepare, whether or not it is in a slot.
@@ -41,7 +49,8 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
      * hundreds of abilities into something a person can find one in.</p>
      */
     public record Option(String id, String name, String icon, String source, boolean toggle,
-                         int cooldownTicks, int costAmount, String costLabel) {}
+                         int cooldownTicks, int costAmount, String costLabel, int kind,
+                         int costColor, int costHave) {}
 
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(entries.size());
@@ -56,6 +65,11 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
             buf.writeLong(entry.readyAt());
             buf.writeVarInt(entry.costAmount());
             buf.writeUtf(entry.costLabel());
+            buf.writeVarInt(entry.kind());
+            buf.writeUtf(entry.clientValue());
+            buf.writeUtf(entry.source());
+            buf.writeInt(entry.costColor());
+            buf.writeVarInt(entry.costHave());
         }
         buf.writeVarInt(available.size());
         for (Option option : available) {
@@ -67,6 +81,9 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
             buf.writeVarInt(option.cooldownTicks());
             buf.writeVarInt(option.costAmount());
             buf.writeUtf(option.costLabel());
+            buf.writeVarInt(option.kind());
+            buf.writeInt(option.costColor());
+            buf.writeVarInt(option.costHave());
         }
     }
 
@@ -76,13 +93,15 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
         for (int i = 0; i < count; i++) {
             entries.add(new Entry(buf.readVarInt(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
                     buf.readBoolean(), buf.readBoolean(), buf.readVarInt(), buf.readLong(),
-                    buf.readVarInt(), buf.readUtf()));
+                    buf.readVarInt(), buf.readUtf(), buf.readVarInt(), buf.readUtf(), buf.readUtf(),
+                    buf.readInt(), buf.readVarInt()));
         }
         int optionCount = buf.readVarInt();
         List<Option> available = new ArrayList<>(optionCount);
         for (int i = 0; i < optionCount; i++) {
             available.add(new Option(buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
-                    buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readUtf()));
+                    buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readUtf(),
+                    buf.readVarInt(), buf.readInt(), buf.readVarInt()));
         }
         return new AbilityLoadoutS2CPayload(List.copyOf(entries), List.copyOf(available));
     }

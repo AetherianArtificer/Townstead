@@ -17,7 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Server-side activation of {@code active_ability} genes: resolves an entity's
@@ -47,7 +46,6 @@ public final class ActiveAbilities {
     /** How many slots one turn of the dial shows. */
     public static final int LAYER_SIZE = 8;
 
-    private static final Map<UUID, Map<ResourceLocation, Long>> READY_AT = new ConcurrentHashMap<>();
     private static final int AI_INTERVAL = 10;
 
     private ActiveAbilities() {}
@@ -202,7 +200,9 @@ public final class ActiveAbilities {
         Map<Integer, ResourceLocation> valid = new LinkedHashMap<>();
         for (Map.Entry<Integer, ResourceLocation> entry : bySlot.entrySet()) {
             ResourceLocation id = entry.getValue();
-            if (id != null && owned.contains(id)) valid.put(entry.getKey(), id);
+            if (id != null && (owned.contains(id) || isClientBinding(id))) {
+                valid.put(entry.getKey(), id);
+            }
         }
         com.aetherianartificer.townstead.profession.career.PlayerCareers.mutate(player,
                 profile -> profile.setActiveLoadout(valid, POOL_SIZE));
@@ -339,24 +339,22 @@ public final class ActiveAbilities {
     }
 
     private static boolean isReady(LivingEntity entity, ResourceLocation geneId, long now) {
-        Map<ResourceLocation, Long> map = READY_AT.get(entity.getUUID());
-        return map == null || map.getOrDefault(geneId, 0L) <= now;
+        return com.aetherianartificer.townstead.assign.AssignCooldowns.isReady(entity, geneId, now);
     }
 
     private static void setCooldown(LivingEntity entity, ResourceLocation geneId, long readyAt) {
-        READY_AT.computeIfAbsent(entity.getUUID(), k -> new ConcurrentHashMap<>()).put(geneId, readyAt);
+        com.aetherianartificer.townstead.assign.AssignCooldowns.set(entity, geneId, readyAt);
     }
 
     public static void clear(UUID uuid) {
-        READY_AT.remove(uuid);
+        com.aetherianartificer.townstead.assign.AssignCooldowns.clear(uuid);
     }
 
     // ── The wheel's view ───────────────────────────────────────────────────
 
-    /** When this ability is next usable, as a game time; 0 when it is ready now. */
-    private static long readyAt(LivingEntity entity, ResourceLocation geneId) {
-        Map<ResourceLocation, Long> map = READY_AT.get(entity.getUUID());
-        return map == null ? 0L : map.getOrDefault(geneId, 0L);
+    /** When this is next usable, as a game time; 0 when it is ready now. Any provider's, not ours. */
+    private static long readyAt(LivingEntity entity, ResourceLocation id) {
+        return com.aetherianartificer.townstead.assign.AssignCooldowns.readyAt(entity, id);
     }
 
     /**
@@ -388,13 +386,27 @@ public final class ActiveAbilities {
         for (Map.Entry<Integer, ResourceLocation> slot : slots.entrySet()) {
             ResourceLocation id = slot.getValue();
             com.aetherianartificer.townstead.assign.Assignable assignable = catalogue.get(id);
-            if (assignable == null) continue;
+            if (assignable == null) {
+                // A client binding: passed straight back so the slot survives the round trip. We
+                // cannot name it, because only a client knows which keys exist, and we never
+                // perform it. The client fills in the name and does the pressing.
+                if (isClientBinding(id)) {
+                    entries.add(new AbilityLoadoutS2CPayload.Entry(slot.getKey(), id.toString(),
+                            "", "", false, false, 0, 0L, 0, "",
+                            com.aetherianartificer.townstead.assign.Assignable.Kind.KEYBIND.ordinal(),
+                            id.getPath(), "", 0, 0));
+                }
+                continue;
+            }
             boolean toggle = isToggle(player, id);
             entries.add(new AbilityLoadoutS2CPayload.Entry(slot.getKey(), id.toString(),
                     assignable.name().getString(), assignable.icon(), toggle,
                     toggle && AbilityToggles.isOn(player, id),
                     assignable.cooldownTicks(), readyAt(player, id),
-                    assignable.costAmount(), assignable.costLabel()));
+                    assignable.costAmount(), assignable.costLabel(),
+                    assignable.kind().ordinal(), assignable.clientValue(),
+                    assignable.source().getString(), assignable.costColor(),
+                    costHave(player, assignable)));
         }
 
         List<AbilityLoadoutS2CPayload.Option> available = new ArrayList<>();
@@ -402,9 +414,45 @@ public final class ActiveAbilities {
             available.add(new AbilityLoadoutS2CPayload.Option(assignable.id().toString(),
                     assignable.name().getString(), assignable.icon(),
                     assignable.source().getString(), isToggle(player, assignable.id()),
-                    assignable.cooldownTicks(), assignable.costAmount(), assignable.costLabel()));
+                    assignable.cooldownTicks(), assignable.costAmount(), assignable.costLabel(),
+                    assignable.kind().ordinal(), assignable.costColor(),
+                    costHave(player, assignable)));
         }
         return new AbilityLoadoutS2CPayload(List.copyOf(entries), List.copyOf(available));
+    }
+
+    /**
+     * A slot holding one of the client's own keybinds.
+     *
+     * <p>Stored but never resolved. The server has no way to enumerate a client's bindings, so it
+     * keeps the id so the arrangement survives a relog and hands it back untouched. It cannot be
+     * used to reach anything server-side: {@link #activate} dispatches through the providers, none
+     * of which claims this namespace, so a forged press does nothing.</p>
+     */
+    private static boolean isClientBinding(ResourceLocation id) {
+        return id != null && com.aetherianartificer.townstead.Townstead.MOD_ID.equals(id.getNamespace())
+                && id.getPath().startsWith("key.");
+    }
+
+    /**
+     * How much of the cost resource the player is holding right now.
+     *
+     * <p>Sent as an AMOUNT rather than an affordable flag, so the wheel can say how short you
+     * are instead of only that you are. It goes stale the moment a resource ticks, which is
+     * survivable: the wheel is open for a second or two and the server refuses the press
+     * regardless of what the client believed.</p>
+     */
+    private static int costHave(ServerPlayer player,
+                                com.aetherianartificer.townstead.assign.Assignable assignable) {
+        if (assignable.costAmount() <= 0) return 0;
+        for (Slotted slotted : slottables(player)) {
+            if (!slotted.geneId().equals(assignable.id())) continue;
+            if (slotted.instance() instanceof ActiveAbilityGeneType.Instance active
+                    && active.costResource() != null) {
+                return ResourceValues.get(player, active.costResource());
+            }
+        }
+        return 0;
     }
 
     /** Only OUR things can be toggles; a datapack action is always a one-shot. */

@@ -23,7 +23,16 @@ public record Assignable(
         /** Ticks, or 0 when there is none, or -1 when the owner will not say. */
         int cooldownTicks,
         int costAmount,
-        String costLabel) {
+        String costLabel,
+        /** The resource's authored colour, or 0 when it declares none. */
+        int costColor,
+        /**
+         * What the CLIENT needs to perform this, for the kinds the client performs.
+         *
+         * <p>A keybind's translation key, and nothing at all for a command: the server runs those,
+         * so shipping the command text would tell every client what it could try to forge.</p>
+         */
+        String clientValue) {
 
     /**
      * What pressing it does.
