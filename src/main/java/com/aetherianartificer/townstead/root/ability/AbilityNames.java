@@ -98,12 +98,27 @@ public final class AbilityNames {
         return Component.translatable("townstead.ability.source.root").getString();
     }
 
-    /** A cost resource's own name, falling back to its readable path. */
+    /**
+     * A cost resource's own short name: "Veil", not "Deepwood gnome vanish veil".
+     *
+     * <p>A resource is a COMPANION gene scoped under the ability that owns it, so its id repeats
+     * that ability's whole name before saying anything new. Prettifying the full path therefore
+     * produced a cost line that restated the thing you were already looking at. The companion is
+     * registered with its final segment as a display name, so asking the gene registry gives the one
+     * word that matters; the path fallback trims to that segment for the same reason.</p>
+     */
     public static String resource(ResourceLocation id) {
         if (id == null) return "";
         String key = "townstead.resource." + id.getPath();
-        return Language.getInstance().has(key)
-                ? Component.translatable(key).getString() : prettify(id.getPath());
+        if (Language.getInstance().has(key)) return Component.translatable(key).getString();
+        com.aetherianartificer.townstead.root.gene.Gene gene =
+                com.aetherianartificer.townstead.root.gene.GeneRegistry.byId(id);
+        if (gene != null && gene.displayName() != null) {
+            return prettify(gene.displayName().getString());
+        }
+        String path = id.getPath();
+        int cut = path.lastIndexOf('/');
+        return prettify(cut >= 0 && cut < path.length() - 1 ? path.substring(cut + 1) : path);
     }
 
     private static String prettify(String path) {

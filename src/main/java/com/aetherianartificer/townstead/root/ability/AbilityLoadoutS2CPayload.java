@@ -40,7 +40,8 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
      * <p>{@code source} is what it came from — a career's name, or Root — so the picker can group
      * hundreds of abilities into something a person can find one in.</p>
      */
-    public record Option(String id, String name, String icon, String source) {}
+    public record Option(String id, String name, String icon, String source, boolean toggle,
+                         int cooldownTicks, int costAmount, String costLabel) {}
 
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(entries.size());
@@ -62,6 +63,10 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
             buf.writeUtf(option.name());
             buf.writeUtf(option.icon());
             buf.writeUtf(option.source());
+            buf.writeBoolean(option.toggle());
+            buf.writeVarInt(option.cooldownTicks());
+            buf.writeVarInt(option.costAmount());
+            buf.writeUtf(option.costLabel());
         }
     }
 
@@ -76,7 +81,8 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
         int optionCount = buf.readVarInt();
         List<Option> available = new ArrayList<>(optionCount);
         for (int i = 0; i < optionCount; i++) {
-            available.add(new Option(buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf()));
+            available.add(new Option(buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
+                    buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readUtf()));
         }
         return new AbilityLoadoutS2CPayload(List.copyOf(entries), List.copyOf(available));
     }
