@@ -87,6 +87,20 @@ public final class AttachmentDoctor {
                             + " but geometry declares texture_width/height " + geo.texWidth + "x" + geo.texHeight
                             + " (UVs will be scaled)");
                 }
+                // A mask is sampled pixel-for-pixel against the base texture, so a size
+                // mismatch is ignored at bake time rather than sampled wrong — which reads
+                // as "the mask does nothing" unless we say why.
+                int[] maskPng = def.tintMaskSha1().isEmpty() ? null : pngSize(def.tintMaskSha1());
+                if (maskPng != null && png != null && (maskPng[0] != png[0] || maskPng[1] != png[1])) {
+                    out.add(def.id() + ": tint_mask is " + maskPng[0] + "x" + maskPng[1]
+                            + " but the texture is " + png[0] + "x" + png[1]
+                            + " (the mask is ignored; sizes must match)");
+                }
+            }
+            if (!def.tintMaskSha1().isEmpty() && def.tintSource() == AttachmentDef.TINT_FLAT
+                    && def.tint() == 0xFFFFFF) {
+                out.add(def.id() + ": tint_mask is set but the tint is white with no source, "
+                        + "so nothing is tinted (set tint to a colour, or skin/hair/eyes/gene)");
             }
             for (String slot : def.hidesUnder()) {
                 if (!AttachmentDef.EQUIPMENT_SLOTS.contains(slot)) {

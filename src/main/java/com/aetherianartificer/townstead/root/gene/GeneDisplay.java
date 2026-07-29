@@ -149,6 +149,20 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
     }
 
     /**
+     * An eye set. Packs into {@code targetId} as {@code "texture;glow;row;tint"} so the render
+     * side resolves the strip, its emissive flag, the head-front UV row it lands on ({@code -1}
+     * = bottom-aligned to the vanilla eye baseline), and its tint spec ({@code ""} own colours,
+     * {@code eye_color}, or a hex colour) without a variant. A multi-variant set carries each
+     * option's own texture/glow on the variant instead; row and tint stay shared. A presence
+     * chip in the picker.
+     */
+    public static GeneDisplay eyes(String texture, boolean glow, int row, String tint) {
+        return new GeneDisplay(Kind.BOOLEAN, 0f, 1f,
+                (texture == null ? "" : texture) + ";" + (glow ? 1 : 0) + ";" + row
+                        + ";" + (tint == null ? "" : tint), 0f);
+    }
+
+    /**
      * The needs this gene switches off ({@code hunger}/{@code thirst}/{@code sleep}), packed into
      * {@code targetId} as {@code "hunger;thirst"} so the interact-screen status bar can hide each
      * suppressed need's icon. The server enforcement reads the gene directly; a presence chip in the picker.

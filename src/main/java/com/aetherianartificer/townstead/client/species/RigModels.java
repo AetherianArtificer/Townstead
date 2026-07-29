@@ -108,8 +108,8 @@ public final class RigModels {
     /**
      * True when the rig resolves to a renderable alternate definition, so the swap engages. Covers both
      * {@code entity_layer} rigs (vanilla model layers) and {@code geometry} rigs (custom Bedrock
-     * {@code .geo.json}, baked + synced via the attachment blob pipeline and rendered through the generic
-     * static path). A geometry rig that hasn't materialized yet renders nothing for a frame, like a
+     * {@code .geo.json} or Blockbench {@code .bbmodel}, baked + synced via the attachment blob pipeline
+     * and rendered through the generic static path). A geometry rig that hasn't materialized yet renders nothing for a frame, like a
      * not-yet-synced texture — acceptable for the sync window.
      */
     public static boolean isAlternate(String rigBase) {
@@ -330,6 +330,12 @@ public final class RigModels {
     public static RigDefinition.BodyPose sleepPose(String rigBase) {
         RigDefinition def = RootCatalogClient.rig(rigBase);
         return def == null ? null : def.bodyPose("sleep");
+    }
+
+    /** The rig's authored whole-body crawl/swim orientation, or null when it stays upright with no lean. */
+    public static RigDefinition.BodyPose crawlPose(String rigBase) {
+        RigDefinition def = RootCatalogClient.rig(rigBase);
+        return def == null ? null : def.bodyPose("crawl");
     }
 
     public static ResourceLocation texture(String rigBase) {

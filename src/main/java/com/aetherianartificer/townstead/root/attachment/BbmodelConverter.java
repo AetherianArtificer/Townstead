@@ -17,14 +17,15 @@ import java.util.Map;
  * ship Blockbench projects directly ({@code attachment/bbmodel/<name>.bbmodel}) and
  * the converted bytes ride the existing content-addressed blob sync.
  *
- * <p>Transform: X mirrored (cube min-corner from the mirrored max); rotations build
- * the full matrix {@code Rx(-x)·Ry(-y)·Rz(-z)} from the Blockbench angles and
- * decompose it into the loader's ZYX convention — a plain per-axis sign map cannot
- * express the composition-order change, and this matrix path was verified by
- * rendering converted models through the exact loader math against Blockbench
- * previews. East/west faces swap with per-face UVs flipped horizontally; {@code
- * box_uv} projects emit native box UV. Coordinates keep the project's own origin
- * (feet, for an avatar) — the definition's {@code offset} places the model.</p>
+ * <p>Transform: coordinates pass through in the project's own space (NO X mirror);
+ * rotations map per-axis as {@code (-x, -y, z)}. The loader's own Bedrock→Java Y-flip
+ * (and its {@code (x,-y,-z)} rotation flip) is the whole coordinate change; an earlier
+ * X-mirror here rendered every model left-right flipped (invisible on symmetric models)
+ * and, combined with the rotation map, bent multi-axis cubes — verified by rendering the
+ * converted geometry through the exact loader math against Blockbench's ZYX display.
+ * Faces keep their slot and native UV rect; {@code box_uv} projects emit native box UV.
+ * Coordinates keep the project's own origin (feet, for an avatar) — the definition's
+ * {@code offset} places the model.</p>
  *
  * <p>A geometry reference may name an embedded animation as a static pose:
  * {@code "ns:file#poseName"} bakes that animation's first rotation keyframe per bone
@@ -35,7 +36,9 @@ import java.util.Map;
  * <p>Blockbench 5.0 flipped the X/Y sign convention of animation rotation keyframes
  * to match group rotations (its project codec inverts them when loading older files).
  * Pre-5.0 values are therefore already in the Bedrock convention our dialect uses and
- * pass verbatim; 5.0+ values take the same {@code (-x, -y, z)} transform as groups.</p>
+ * pass verbatim; 5.0+ values take the same {@code (-x, -y, z)} transform as groups.
+ * The flip is rotation-only: position keyframes take the {@code -x} mirror the pivots
+ * take (nothing else), and scale keyframes are axis-signless and pass through.</p>
  */
 public final class BbmodelConverter {
 
@@ -82,7 +85,14 @@ public final class BbmodelConverter {
         }
     }
 
-    /** Every embedded animation as a clip file ({@code animation.<file>.<name>}), or null. */
+    /**
+     * Every embedded animation as a clip file ({@code animation.<file>.<name>}), or null.
+     * All three keyframe channels convert: rotation (through the display->geo rotation
+     * transform, with the 5.0 legacy flip), position (mirrored on X like the pivots, so a
+     * bob authored upward reads upward), and scale (per-axis multipliers, default 1). A bone
+     * contributes a track if it keyframes any channel; a clip with no tracked bone at all is
+     * dropped, and a file with no surviving clip returns null.
+     */
     public static byte[] animations(byte[] bbmodel, String fileName) {
         try {
             JsonObject project = JsonParser.parseString(new String(bbmodel, StandardCharsets.UTF_8)).getAsJsonObject();
@@ -98,23 +108,45 @@ public final class BbmodelConverter {
                     JsonObject channel = animator.getValue().getAsJsonObject();
                     String boneName = GsonHelper.getAsString(channel, "name", "");
                     JsonObject rotation = new JsonObject();
+                    JsonObject position = new JsonObject();
+                    JsonObject scale = new JsonObject();
                     for (JsonElement kfElement : GsonHelper.getAsJsonArray(channel, "keyframes", new JsonArray())) {
                         JsonObject kf = kfElement.getAsJsonObject();
-                        if (!"rotation".equals(GsonHelper.getAsString(kf, "channel", ""))) continue;
-                        float[] v = dataPoint(kf);
-                        if (v == null) continue;
-                        // Legacy files store animation values with X/Y inverted vs display.
-                        float[] display = legacy ? new float[]{-v[0], -v[1], v[2]} : v;
-                        float[] geo = toGeoRotation(display);
-                        JsonArray value = new JsonArray();
-                        value.add(geo[0]);
-                        value.add(geo[1]);
-                        value.add(geo[2]);
-                        rotation.add(trimFloat(GsonHelper.getAsFloat(kf, "time", 0f)), value);
+                        String kfChannel = GsonHelper.getAsString(kf, "channel", "");
+                        String time = trimFloat(GsonHelper.getAsFloat(kf, "time", 0f));
+                        switch (kfChannel) {
+                            case "rotation" -> {
+                                float[] v = dataPoint(kf, 0f);
+                                if (v == null) break;
+                                // Legacy files store animation values with X/Y inverted vs display.
+                                float[] display = legacy ? new float[]{-v[0], -v[1], v[2]} : v;
+                                float[] geo = toGeoRotation(display);
+                                rotation.add(time, array(geo[0], geo[1], geo[2]));
+                            }
+                            case "position" -> {
+                                float[] v = dataPoint(kf, 0f);
+                                if (v == null) break;
+                                // Same X mirror the pivots take (display -> geo); Y/Z pass through,
+                                // and the renderer negates Y again for Java's y-down model space.
+                                position.add(time, array(-v[0], v[1], v[2]));
+                            }
+                            case "scale" -> {
+                                // Per-axis multipliers: an omitted axis is 1, not 0, or the bone
+                                // collapses on the axes the author didn't touch.
+                                float[] v = dataPoint(kf, 1f);
+                                if (v == null) break;
+                                scale.add(time, array(v[0], v[1], v[2]));
+                            }
+                            default -> { }
+                        }
                     }
-                    if (!rotation.entrySet().isEmpty() && !boneName.isEmpty()) {
+                    boolean any = !rotation.entrySet().isEmpty() || !position.entrySet().isEmpty()
+                            || !scale.entrySet().isEmpty();
+                    if (any && !boneName.isEmpty()) {
                         JsonObject track = new JsonObject();
-                        track.add("rotation", rotation);
+                        if (!rotation.entrySet().isEmpty()) track.add("rotation", rotation);
+                        if (!position.entrySet().isEmpty()) track.add("position", position);
+                        if (!scale.entrySet().isEmpty()) track.add("scale", scale);
                         bones.add(boneName, track);
                     }
                 }
@@ -152,7 +184,7 @@ public final class BbmodelConverter {
         bone.addProperty("name", name);
         if (parent != null) bone.addProperty("parent", parent);
         float[] origin = vec(props, "origin");
-        bone.add("pivot", array(-origin[0], origin[1], origin[2]));
+        bone.add("pivot", array(origin[0], origin[1], origin[2]));
         float[] rot = vec(props, "rotation");
         float[] delta = poseDeltas.get(name);
         if (delta != null) {
@@ -181,8 +213,8 @@ public final class BbmodelConverter {
         float[] from = vec(element, "from");
         float[] to = vec(element, "to");
         JsonObject cube = new JsonObject();
-        // X mirror: the Java min corner comes from the mirrored max.
-        cube.add("origin", array(-Math.max(from[0], to[0]),
+        // No X mirror: coordinates pass through in the project's own space (min corner = origin).
+        cube.add("origin", array(Math.min(from[0], to[0]),
                 Math.min(from[1], to[1]), Math.min(from[2], to[2])));
         cube.add("size", array(Math.abs(to[0] - from[0]),
                 Math.abs(to[1] - from[1]), Math.abs(to[2] - from[2])));
@@ -193,7 +225,7 @@ public final class BbmodelConverter {
             float[] geo = toGeoRotation(rot);
             cube.add("rotation", array(geo[0], geo[1], geo[2]));
             float[] pivot = vec(element, "origin");
-            cube.add("pivot", array(-pivot[0], pivot[1], pivot[2]));
+            cube.add("pivot", array(pivot[0], pivot[1], pivot[2]));
         }
         // Box UV is decided PER ELEMENT (the project meta.box_uv is only the default —
         // a project can say box_uv:true while every element overrides to hand-mapped
@@ -205,7 +237,12 @@ public final class BbmodelConverter {
             uvArray.add(offset != null && offset.size() > 0 ? offset.get(0).getAsFloat() : 0f);
             uvArray.add(offset != null && offset.size() > 1 ? offset.get(1).getAsFloat() : 0f);
             cube.add("uv", uvArray);
-            if (GsonHelper.getAsBoolean(element, "mirror_uv", false)) {
+            // The Bedrock->Java Y flip and the renderer's own scale(-1,-1,1) compose to a net X
+            // reflection, so a drawn cube's texture is mirrored left-right against how Blockbench shows
+            // it. Symmetric geometry hides that; the texture does not, and it reads worst on rotated
+            // limbs (a leg's pale end lands at the wrong end). The mirror flag re-flips the texture in X
+            // without moving the box, so invert the authored mirror rather than passing it through.
+            if (!GsonHelper.getAsBoolean(element, "mirror_uv", false)) {
                 cube.addProperty("mirror", true);
             }
             return cube;
@@ -220,15 +257,11 @@ public final class BbmodelConverter {
             if (rect == null || rect.size() < 4) continue;
             float u1 = rect.get(0).getAsFloat(), v1 = rect.get(1).getAsFloat();
             float u2 = rect.get(2).getAsFloat(), v2 = rect.get(3).getAsFloat();
-            // X mirror swaps east/west and flips every face horizontally.
-            String slot = switch (entry.getKey().toLowerCase(Locale.ROOT)) {
-                case "east" -> "west";
-                case "west" -> "east";
-                default -> entry.getKey().toLowerCase(Locale.ROOT);
-            };
+            // No X mirror: faces keep their slot and native UV rect.
+            String slot = entry.getKey().toLowerCase(Locale.ROOT);
             JsonObject faceUv = new JsonObject();
-            faceUv.add("uv", array2(u2, v1));
-            faceUv.add("uv_size", array2(u1 - u2, v2 - v1));
+            faceUv.add("uv", array2(u1, v1));
+            faceUv.add("uv_size", array2(u2 - u1, v2 - v1));
             uv.add(slot, faceUv);
         }
         if (!uv.entrySet().isEmpty()) cube.add("uv", uv);
@@ -283,47 +316,39 @@ public final class BbmodelConverter {
     }
 
     private static float[] dataPoint(JsonObject keyframe) {
+        return dataPoint(keyframe, 0f);
+    }
+
+    /**
+     * A keyframe's first data point, with {@code missing} standing in for an axis the
+     * keyframe leaves blank (0 for rotation/position, 1 for scale).
+     */
+    private static float[] dataPoint(JsonObject keyframe, float missing) {
         JsonArray points = GsonHelper.getAsJsonArray(keyframe, "data_points", null);
         if (points == null || points.isEmpty() || !points.get(0).isJsonObject()) return null;
         JsonObject dp = points.get(0).getAsJsonObject();
         try {
-            return new float[]{axis(dp, "x"), axis(dp, "y"), axis(dp, "z")};
+            return new float[]{axis(dp, "x", missing), axis(dp, "y", missing), axis(dp, "z", missing)};
         } catch (NumberFormatException e) {
             return null;   // Molang expression; poses need numeric keyframes
         }
     }
 
-    /** bbmodel data points store numbers as strings (and may hold Molang). */
-    private static float axis(JsonObject dp, String key) {
+    /** bbmodel data points store numbers as strings (and may hold Molang or an empty axis). */
+    private static float axis(JsonObject dp, String key, float missing) {
         JsonElement value = dp.get(key);
-        if (value == null || value.isJsonNull()) return 0f;
-        return Float.parseFloat(value.getAsString().trim());
+        if (value == null || value.isJsonNull()) return missing;
+        String raw = value.getAsString().trim();
+        return raw.isEmpty() ? missing : Float.parseFloat(raw);
     }
 
     /**
-     * Blockbench display rotation (degrees) → geo-dialect rotation: build the matrix
-     * {@code Rx(-x)·Ry(-y)·Rz(-z)} and decompose it into the ZYX angles our loader
-     * reconstructs ({@code render = Rz(-gz)·Ry(-gy)·Rx(gx)}).
+     * Blockbench display rotation (degrees) → geo-dialect rotation: the per-axis sign
+     * map {@code (-x, -y, z)}, identical to Blockbench's bedrock export codec. Both
+     * sides compose Euler ZYX, so the map is exact for multi-axis rotations too.
      */
     private static float[] toGeoRotation(float[] bb) {
-        double x = Math.toRadians(-bb[0]);
-        double y = Math.toRadians(-bb[1]);
-        double z = Math.toRadians(-bb[2]);
-        double cx = Math.cos(x), sx = Math.sin(x);
-        double cy = Math.cos(y), sy = Math.sin(y);
-        double cz = Math.cos(z), sz = Math.sin(z);
-        // M = Rx * Ry * Rz
-        double m00 = cy * cz;
-        double m10 = sx * sy * cz + cx * sz;
-        double m20 = -cx * sy * cz + sx * sz;
-        double m21 = cx * sy * sz + sx * cz;
-        double m22 = cx * cy;
-        // Decompose M = Rz(a)·Ry(b)·Rx(c):  b = asin(-m20), c = atan2(m21, m22), a = atan2(m10, m00)
-        double b = Math.asin(Math.max(-1.0, Math.min(1.0, -m20)));
-        double c = Math.atan2(m21, m22);
-        double a = Math.atan2(m10, m00);
-        // loader: java = (gx, -gy, -gz) → geo = (c, -b, -a)
-        return new float[]{(float) Math.toDegrees(c), (float) -Math.toDegrees(b), (float) -Math.toDegrees(a)};
+        return new float[]{-bb[0], -bb[1], bb[2]};
     }
 
     private static float[] vec(JsonObject json, String key) {

@@ -202,7 +202,7 @@ public final class AttachmentDoctorCommand {
         }
         AttachmentDef updated = new AttachmentDef(current.id(), current.geoSha1(), current.textureSha1(),
                 current.targetTag(), current.targetPoint(), current.bone(), current.offset(), current.rotation(),
-                current.scale(), current.tint(), current.tintSource(), current.tintBlend(), current.tintStrength(), current.emissiveSha1(), current.translucent(), current.hidesUnder(), current.whenJson(), current.morph(), current.visibility(),
+                current.scale(), current.tint(), current.tintSource(), current.tintBlend(), current.tintStrength(), current.tintMaskSha1(), current.emissiveSha1(), current.translucent(), current.hidesUnder(), current.whenJson(), current.morph(), current.visibility(),
                 current.stages(), current.poses(), chains, current.animations());
         AttachmentServerData.replaceDefinition(updated);
         c.getSource().getServer().getPlayerList().getPlayers().forEach(AttachmentSync::sendManifest);
@@ -285,22 +285,22 @@ public final class AttachmentDoctorCommand {
 
     private static AttachmentDef withScale(AttachmentDef d, float scale) {
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), d.bone(),
-                d.offset(), d.rotation(), scale, d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                d.offset(), d.rotation(), scale, d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
     }
 
     private static AttachmentDef withBone(AttachmentDef d, String bone) {
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), bone,
-                d.offset(), d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                d.offset(), d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
     }
 
     private static AttachmentDef adjustOffset(AttachmentDef d, float x, float y, float z) {
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), d.bone(),
-                new float[]{x, y, z}, d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                new float[]{x, y, z}, d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
     }
 
     private static AttachmentDef adjustRotation(AttachmentDef d, float x, float y, float z) {
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), d.bone(),
-                d.offset(), new float[]{x, y, z}, d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                d.offset(), new float[]{x, y, z}, d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
     }
 
     /** The chains as file-ready {@code physics} JSON, so dump round-trips live tuning. */

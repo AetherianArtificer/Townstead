@@ -40,6 +40,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
     private static final String SLOT_DIR = "attachment_point";
     private static final String TEX_DIR = "textures";
     private static final String GEO_DIR = "geo";
+    private static final String BB_DIR = "bbmodel";
 
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
@@ -109,6 +110,25 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
             }
         });
 
+        // Named datapack Blockbench projects ("data/<ns>/bbmodel/**.bbmodel"): converted to the same
+        // geo dialect at load, so a rig's model.file can reference the project directly, e.g.
+        // "townstead_insects:bbmodel/spooder.bbmodel" — no hand-converted .geo.json needed.
+        manager.listResources(BB_DIR, rl -> rl.getPath().endsWith(".bbmodel")).forEach((file, resource) -> {
+            byte[] bytes = readBytes(manager, file, Integer.MAX_VALUE);
+            if (bytes == null) return;
+            String path = file.getPath();
+            String name = path.substring(path.lastIndexOf('/') + 1, path.length() - ".bbmodel".length());
+            byte[] geo = BbmodelConverter.geometry(bytes, name, "");
+            if (geo == null) return;
+            try {
+                String sha = sha1(geo);
+                blobs.put(sha, new AttachmentServerData.Blob(geo, AttachmentServerData.KIND_GEO));
+                namedGeo.put(file.toString(), sha);
+            } catch (Exception e) {
+                Townstead.LOGGER.error("Failed to hash datapack bbmodel {}", file, e);
+            }
+        });
+
         AttachmentServerData.set(defs, slots, blobs, namedTextures, namedGeo, sources);
         PhenoDiagnostics.replace("attachment", diagnostics.all());
         int errors = diagnostics.count(Severity.ERROR);
@@ -174,6 +194,21 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
             default -> 0;
         };
         float tintStrength = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "tint_strength", 1f)));
+        // A grayscale mask gating the tint per pixel, same shape as the emissive layer: an
+        // optional second PNG under attachment/textures, blob-synced and sampled in the bake.
+        String tintMaskSha = "";
+        String tintMaskRef = GsonHelper.getAsString(json, "tint_mask", "");
+        if (!tintMaskRef.isEmpty()) {
+            ResourceLocation maskFile = resolve(ns, tintMaskRef, "textures", ".png");
+            byte[] mask = maskFile == null ? null : readBytes(manager, maskFile, MAX_TEXTURE_BYTES);
+            if (mask == null) {
+                Townstead.LOGGER.warn("Attachment {} tint_mask '{}' not found; the tint applies unmasked",
+                        id, tintMaskRef);
+            } else {
+                tintMaskSha = sha1(mask);
+                blobs.put(tintMaskSha, new AttachmentServerData.Blob(mask, AttachmentServerData.KIND_TEXTURE));
+            }
+        }
         boolean translucent = GsonHelper.getAsString(json, "render", "cutout").equals("translucent");
         String emissiveSha = "";
         String emissiveRef = GsonHelper.getAsString(json, "emissive", "");
@@ -214,7 +249,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
                 ? json.getAsJsonObject("when").toString() : "";
         return new AttachmentDef(id, geoSha, texSha, targetTag, targetPoint, bone,
                 readVec(json, "offset"), readVec(json, "rotation"), scale, tint,
-                tintSource, tintBlend, tintStrength, emissiveSha, translucent,
+                tintSource, tintBlend, tintStrength, tintMaskSha, emissiveSha, translucent,
                 readStrings(json, "hides_under"), whenJson,
                 morph, visibility, stages, parsePoses(json), parsePhysics(json),
                 parseAnimations(manager, ns, id, json, blobs));

@@ -60,6 +60,7 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             buf.writeVarInt(def.tintSource());
             buf.writeVarInt(def.tintBlend());
             buf.writeFloat(def.tintStrength());
+            buf.writeUtf(def.tintMaskSha1());
             buf.writeUtf(def.emissiveSha1());
             buf.writeBoolean(def.translucent());
             buf.writeVarInt(def.hidesUnder().size());
@@ -172,6 +173,7 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             int tintSource = buf.readVarInt();
             int tintBlend = buf.readVarInt();
             float tintStrength = buf.readFloat();
+            String tintMaskSha = buf.readUtf();
             String emissiveSha = buf.readUtf();
             boolean translucent = buf.readBoolean();
             int hideCount = buf.readVarInt();
@@ -262,7 +264,7 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             }
             defs.add(new AttachmentDef(id, geo, tex, targetTag.isEmpty() ? null : targetTag,
                     targetPoint.isEmpty() ? null : targetPoint, bone, offset, rotation, scale, tint,
-                    tintSource, tintBlend, tintStrength, emissiveSha, translucent, hidesUnder, whenJson,
+                    tintSource, tintBlend, tintStrength, tintMaskSha, emissiveSha, translucent, hidesUnder, whenJson,
                     morph, visibility, stages, poses, physics, animations));
         }
         int slotCount = buf.readVarInt();

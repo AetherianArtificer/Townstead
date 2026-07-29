@@ -35,6 +35,9 @@ public final class RootAnimationSourceAdapter implements AnimationSourceAdapter 
     @Override
     public List<AnimationTransform> collectTransforms(AnimationSourceContext context) {
         LivingEntity entity = context.entity();
+        // The plain MCA host model is not handled here: its own setupAnim already crouched it, and the
+        // bridge restores that base pose directly (McaAnimationBridge.restoreHostCrouch) so a pack's
+        // sneak animation still wins on top.
         if (!RigModels.isAlternate(RigModels.rigBaseFor(entity))) return List.of();
         Animations anim = RigModels.animations(entity);
         if (anim.isHumanoid(Animations.State.CROUCH) && entity.isCrouching()) return crouch();
