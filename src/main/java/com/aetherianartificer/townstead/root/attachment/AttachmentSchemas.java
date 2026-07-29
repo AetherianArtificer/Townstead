@@ -38,6 +38,12 @@ public final class AttachmentSchemas {
                             + "Non-multiply modes bake a derived texture client-side."))
             .field(of("tint_strength", PhenoType.FLOAT)
                     .doc("0..1 fade of the tint toward the untinted texture (default 1)."))
+            .field(of("tint_mask", PhenoType.STRING)
+                    .doc("Optional grayscale texture under attachment/textures/ gating the tint per "
+                            + "pixel: black leaves the base colour, white takes the full tint, mid-greys "
+                            + "ease between (transparent reads as black). Lets one attachment hold a "
+                            + "tinted membrane against neutral chitin. Must match the base texture's "
+                            + "dimensions; a masked attachment always bakes, including multiply."))
             .field(of("emissive", PhenoType.STRING)
                     .doc("Optional second texture under attachment/textures/ drawn full-bright "
                             + "over the same geometry (glowing runes, foxfire tips)."))

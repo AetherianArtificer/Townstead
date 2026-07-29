@@ -341,6 +341,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         if (hb != null) {
             buf.writeFloat(hb.width());
             buf.writeFloat(hb.height());
+            buf.writeFloat(hb.crouchHeight());
         }
         buf.writeVarInt(r.disabledSlots().size());
         for (net.minecraft.world.entity.EquipmentSlot slot : r.disabledSlots()) buf.writeByte(slot.ordinal());
@@ -506,7 +507,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         }
         RigDefinition.Hitbox hitbox = null;
         if (buf.readBoolean()) {
-            hitbox = new RigDefinition.Hitbox(buf.readFloat(), buf.readFloat());
+            hitbox = new RigDefinition.Hitbox(buf.readFloat(), buf.readFloat(), buf.readFloat());
         }
         int disabledCount = buf.readVarInt();
         java.util.Set<net.minecraft.world.entity.EquipmentSlot> disabledSlots = disabledCount == 0

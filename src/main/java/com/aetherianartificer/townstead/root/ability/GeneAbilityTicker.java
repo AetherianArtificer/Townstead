@@ -9,6 +9,7 @@ import com.aetherianartificer.townstead.root.gene.types.AbilityGeneType;
 import com.aetherianartificer.townstead.root.gene.types.ActionOverTimeGeneType;
 import com.aetherianartificer.townstead.root.gene.types.AuraGeneType;
 import com.aetherianartificer.townstead.root.gene.types.EffectImmunityGeneType;
+import com.aetherianartificer.townstead.root.gene.types.FlightSpeedGeneType;
 import com.aetherianartificer.townstead.root.gene.types.GlowGeneType;
 import com.aetherianartificer.townstead.root.gene.types.ParticleGeneType;
 import com.aetherianartificer.townstead.root.gene.types.RestrictEquipmentGeneType;
@@ -44,6 +45,9 @@ import java.util.List;
 public final class GeneAbilityTicker {
 
     private static final int INTERVAL = 10;
+    // Vanilla's Abilities default. Multipliers resolve against this constant rather than the
+    // live value so repeated passes can't compound, and so a restore lands back on vanilla.
+    private static final float BASE_FLYING_SPEED = 0.05f;
     // Kept well above vanilla's 200-tick night-vision flicker threshold so the
     // re-applied effect never enters the "about to expire" fade (which read as a pulse).
     private static final int EFFECT_DURATION = 300;
@@ -61,6 +65,7 @@ public final class GeneAbilityTicker {
     public static void resetPassives(LivingEntity entity) {
         if (entity.level().isClientSide) return;
         for (Ability ability : Ability.values()) clear(entity, ability);
+        if (entity instanceof Player player) setFlyingSpeed(player, BASE_FLYING_SPEED);
         if (entity.hasGlowingTag()) entity.setGlowingTag(false);
         // Clear hazard path-avoidance; the next tick re-applies whatever the new origin's genes imply.
         if (entity instanceof PathfinderMob mob) {
@@ -82,6 +87,7 @@ public final class GeneAbilityTicker {
         List<RestrictEquipmentGeneType.Instance> restricts = new java.util.ArrayList<>();
         List<AuraGeneType.Instance> auras = new java.util.ArrayList<>();
         List<EffectImmunityGeneType.Instance> immunities = new java.util.ArrayList<>();
+        List<FlightSpeedGeneType.Instance> flightSpeeds = new java.util.ArrayList<>();
         List<ActionOverTimeGeneType.Instance> overTime = new java.util.ArrayList<>();
         List<ScareMobGeneType.Instance> scares = new java.util.ArrayList<>();
         for (Power gene : expressed) {
@@ -100,6 +106,8 @@ public final class GeneAbilityTicker {
                 immunities.add(immunity);
             } else if (instance instanceof ActionOverTimeGeneType.Instance aot) {
                 overTime.add(aot);
+            } else if (instance instanceof FlightSpeedGeneType.Instance flightSpeed) {
+                flightSpeeds.add(flightSpeed);
             } else if (instance instanceof ScareMobGeneType.Instance scare) {
                 scares.add(scare);
             } else if (instance instanceof com.aetherianartificer.townstead.root.gene.types.StackingEffectGeneType.Instance stacking) {
@@ -111,6 +119,7 @@ public final class GeneAbilityTicker {
         applyRestrictions(entity, restricts, ctx);
         applyAuras(entity, auras, ctx);
         applyEffectImmunity(entity, immunities);
+        applyFlightSpeed(entity, flightSpeeds, ctx);
         applyActionsOverTime(entity, overTime, ctx);
         applyHazardAvoidance(entity, overTime, ctx);
         applyScare(entity, scares, ctx);
@@ -224,6 +233,34 @@ public final class GeneAbilityTicker {
             if (aot.condition() != null && !aot.condition().test(ctx)) continue;
             aot.action().run(new ActionContext(entity));
         }
+    }
+
+    /**
+     * Resolves every expressed flight-speed gene into one multiplier over vanilla's base and writes
+     * it to the player's abilities, which sync to the client. Creative flight is client-paced, so a
+     * synced speed is the only thing that slows it cleanly; a server-side impulse gets overwritten by
+     * the next movement packet. Runs on the ticker's own cadence rather than per physics tick because
+     * this sets a value the client reads, not a force that has to land on a particular tick.
+     *
+     * <p>A player with no such gene is never touched, so another mod's fly speed survives. While a
+     * gene is present but its condition is false the multiplier resolves to 1, which restores the
+     * vanilla base.</p>
+     */
+    private static void applyFlightSpeed(LivingEntity entity, List<FlightSpeedGeneType.Instance> speeds,
+                                         ConditionContext ctx) {
+        if (speeds.isEmpty() || !(entity instanceof Player player)) return;
+        float multiplier = 1f;
+        for (FlightSpeedGeneType.Instance speed : speeds) {
+            if (speed.condition() != null && !speed.condition().test(ctx)) continue;
+            multiplier *= speed.multiplier();
+        }
+        setFlyingSpeed(player, BASE_FLYING_SPEED * multiplier);
+    }
+
+    private static void setFlyingSpeed(Player player, float speed) {
+        if (Math.abs(player.getAbilities().getFlyingSpeed() - speed) < 1.0e-5f) return;
+        player.getAbilities().setFlyingSpeed(speed);
+        player.onUpdateAbilities();
     }
 
     private static void applyEffectImmunity(LivingEntity entity, List<EffectImmunityGeneType.Instance> immunities) {

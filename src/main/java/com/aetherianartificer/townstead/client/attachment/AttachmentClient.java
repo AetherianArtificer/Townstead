@@ -90,6 +90,9 @@ public final class AttachmentClient {
             if (!def.emissiveSha1().isEmpty()) {
                 needed.putIfAbsent(def.emissiveSha1(), AttachmentServerData.KIND_TEXTURE);
             }
+            if (!def.tintMaskSha1().isEmpty()) {
+                needed.putIfAbsent(def.tintMaskSha1(), AttachmentServerData.KIND_TEXTURE);
+            }
         }
         for (String sha1 : namedTextures.values()) {
             needed.putIfAbsent(sha1, AttachmentServerData.KIND_TEXTURE);
@@ -133,7 +136,9 @@ public final class AttachmentClient {
         try {
             if (kind == AttachmentServerData.KIND_GEO) {
                 var json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
-                ModelPart part = BedrockGeometryLoader.parse(json);
+                // The ModelPart bake feeds full-body rigs (namedGeo), so it takes the ground-origin
+                // shift: Blockbench entity/avatar projects put the ground at y=0, Java at y=24.
+                ModelPart part = BedrockGeometryLoader.parse(json, true);
                 if (part != null) GEO.put(sha1, part);
                 var geo = com.aetherianartificer.townstead.client.attachment.geo.AttachmentGeoLoader.parse(json);
                 if (geo != null) ATTACHMENT_GEO.put(sha1, geo);
@@ -249,7 +254,7 @@ public final class AttachmentClient {
     }
 
     // Derived textures baked with a SkinBlend-packed tint (screen/overlay/color modes and
-    // faded tints, which a flat vertex multiply can't express), keyed sha1 + packed tint.
+    // faded tints, which a flat vertex multiply can't express), keyed sha1 + mask + packed tint.
     // Keys are deterministic, so a cache clear only costs a re-bake, never a texture leak.
     private static final Map<String, ResourceLocation> BLENDED = new ConcurrentHashMap<>();
 
@@ -257,27 +262,59 @@ public final class AttachmentClient {
      * The texture blob re-baked through {@link com.aetherianartificer.townstead.client.skin.SkinBlend}
      * with a packed tint (render-thread, lazy, cached). Falls back to the plain texture when
      * the blob bytes aren't cached yet.
+     *
+     * <p>{@code maskSha1} is an optional grayscale tint mask: each pixel's luminance is the
+     * blend's per-pixel strength, so black keeps the base colour, white takes the full tint,
+     * and mid-greys ease between them (a tinted membrane against untinted chitin, soft edges
+     * for free). Fully transparent mask pixels read as black. A mask whose dimensions differ
+     * from the base is ignored rather than sampled wrong — {@code AttachmentDoctor} reports
+     * the mismatch. While a declared mask's bytes are still syncing the plain texture is
+     * returned uncached, so the attachment draws untinted for those frames instead of
+     * flashing a fully tinted body.</p>
      */
-    public static ResourceLocation blendedTexture(String sha1, int packed) {
-        String key = sha1 + "#" + Integer.toHexString(packed);
+    public static ResourceLocation blendedTexture(String sha1, String maskSha1, int packed) {
+        String key = sha1 + "#" + maskSha1 + "#" + Integer.toHexString(packed);
         ResourceLocation cached = BLENDED.get(key);
         if (cached != null) return cached;
         byte[] bytes = AttachmentCache.read(sha1);
         if (bytes == null) return TEXTURES.get(sha1);
+        byte[] maskBytes = null;
+        if (!maskSha1.isEmpty()) {
+            maskBytes = AttachmentCache.read(maskSha1);
+            // Declared but not yet synced: stay untinted for now and retry next frame.
+            if (maskBytes == null) return TEXTURES.get(sha1);
+        }
+        // Declared outside the try so the finally releases it even if the bake throws. The
+        // baked image itself is handed to the DynamicTexture and owned by the texture manager.
+        NativeImage mask = null;
         try {
             NativeImage image = NativeImage.read(new ByteArrayInputStream(bytes));
+            if (maskBytes != null) mask = NativeImage.read(new ByteArrayInputStream(maskBytes));
+            if (mask != null && (mask.getWidth() != image.getWidth() || mask.getHeight() != image.getHeight())) {
+                Townstead.LOGGER.warn("Attachment tint mask {} is {}x{} but the texture is {}x{}; mask ignored",
+                        maskSha1, mask.getWidth(), mask.getHeight(), image.getWidth(), image.getHeight());
+                mask.close();
+                mask = null;
+            }
             for (int y = 0; y < image.getHeight(); y++) {
                 for (int x = 0; x < image.getWidth(); x++) {
                     int abgr = image.getPixelRGBA(x, y);
                     int rgb = ((abgr & 0xFF) << 16) | (abgr & 0xFF00) | ((abgr >> 16) & 0xFF);
-                    int out = com.aetherianartificer.townstead.client.skin.SkinBlend.blend(rgb, packed);
+                    float gate = mask == null ? 1f : maskGate(mask.getPixelRGBA(x, y));
+                    int out = rgb;
+                    if (gate > 0f) {
+                        int blended = com.aetherianartificer.townstead.client.skin.SkinBlend.blend(rgb, packed);
+                        out = gate >= 1f ? blended
+                                : com.aetherianartificer.townstead.client.skin.SkinBlend.lerpRgb(rgb, blended, gate);
+                    }
                     image.setPixelRGBA(x, y, (abgr & 0xFF000000)
                             | ((out & 0xFF) << 16) | (out & 0xFF00) | ((out >> 16) & 0xFF));
                 }
             }
             if (BLENDED.size() > 512) BLENDED.clear();
             ResourceLocation id = ResourceLocation.tryParse(
-                    Townstead.MOD_ID + ":attachment/" + sha1 + "/t" + Integer.toHexString(packed));
+                    Townstead.MOD_ID + ":attachment/" + sha1 + "/t" + Integer.toHexString(packed)
+                            + (maskSha1.isEmpty() ? "" : "m" + maskSha1));
             Minecraft.getInstance().getTextureManager().register(id, new DynamicTexture(image));
             BLENDED.put(key, id);
             return id;
@@ -286,7 +323,22 @@ public final class AttachmentClient {
             BLENDED.put(key, TEXTURES.getOrDefault(sha1, ResourceLocation.tryParse(
                     Townstead.MOD_ID + ":attachment/" + sha1)));
             return TEXTURES.get(sha1);
+        } finally {
+            if (mask != null) mask.close();
         }
+    }
+
+    /**
+     * A tint mask pixel's 0..1 blend strength: its luminance, with fully transparent pixels
+     * reading as black (untinted) so an author can cut the mask out instead of painting it
+     * black. {@link NativeImage} packs pixels ABGR, hence the channel order.
+     */
+    private static float maskGate(int abgr) {
+        if (((abgr >>> 24) & 0xFF) == 0) return 0f;
+        int r = abgr & 0xFF;
+        int g = (abgr >> 8) & 0xFF;
+        int b = (abgr >> 16) & 0xFF;
+        return (0.299f * r + 0.587f * g + 0.114f * b) / 255f;
     }
 
     /**
@@ -315,6 +367,16 @@ public final class AttachmentClient {
     public static ResourceLocation namedTexture(String id) {
         String sha1 = NAMED.get(id);
         return sha1 == null ? null : TEXTURES.get(sha1);
+    }
+
+    /**
+     * The raw PNG bytes behind a named datapack texture, for callers that need its PIXELS rather
+     * than a bound texture (the eye-strip compositor). Null when it isn't a datapack texture or its
+     * blob hasn't arrived yet.
+     */
+    public static byte[] namedTextureBytes(String id) {
+        String sha1 = NAMED.get(id);
+        return sha1 == null ? null : AttachmentCache.read(sha1);
     }
 
     /**

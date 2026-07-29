@@ -25,8 +25,8 @@ import java.util.Set;
  * Y-up with cube origins at the min corner, Java {@code ModelPart} is Y-down with
  * the box grown from a pivot-relative corner, so Y is negated and cube corners are
  * offset by their height. Bone rotations carry the {@code (x,-y,-z)} sign flip the
- * coordinate change implies; most attachment models leave bones unrotated and tilt
- * via the definition instead, so this is rarely exercised.
+ * coordinate change implies. A rotated cube bakes as a synthetic child part
+ * (vanilla cubes cannot rotate), posed at the cube's pivot.
  *
  * <p>Box UV only (per-face UV is not parsed). Returns {@code null} on a malformed
  * file so the caller skips the attachment.</p>
@@ -35,9 +35,24 @@ public final class BedrockGeometryLoader {
 
     private BedrockGeometryLoader() {}
 
+    // Java model space puts the ground at y=24 (a humanoid's feet); Bedrock entity space puts it
+    // at y=0. A full-body (rig) bake shifts root bones by this so a ground-standing model stands
+    // on the ground instead of floating 1.5 blocks up. Anchored geometry (worn items) skips it.
+    private static final float GROUND_Y = 24f;
+
     private record Bone(String name, String parent, float[] pivot, float[] rotation, List<JsonObject> cubes) {}
 
     public static ModelPart parse(JsonObject root) {
+        return parse(root, false);
+    }
+
+    /**
+     * Parse with an optional ground-origin shift: {@code groundOrigin} bakes the model as a
+     * full-body rig whose Bedrock y=0 is the ground (root bones drop by {@link #GROUND_Y}), which
+     * is how Blockbench entity/avatar projects are authored. Without it the coordinates map
+     * verbatim, which is what bone-anchored geometry (worn items) expects.
+     */
+    public static ModelPart parse(JsonObject root, boolean groundOrigin) {
         try {
             JsonArray geometries = GsonHelper.getAsJsonArray(root, "minecraft:geometry");
             if (geometries.isEmpty()) return null;
@@ -73,7 +88,8 @@ public final class BedrockGeometryLoader {
                     PartDefinition parentDef = hasParent ? built.get(bone.parent()) : mesh.getRoot();
                     if (parentDef == null) continue;
                     float[] parentPivot = hasParent && bones.containsKey(bone.parent())
-                            ? bones.get(bone.parent()).pivot() : new float[]{0, 0, 0};
+                            ? bones.get(bone.parent()).pivot()
+                            : new float[]{0, groundOrigin ? GROUND_Y : 0, 0};
                     built.put(name, addBone(parentDef, bone, parentPivot, texWidth, texHeight));
                     pending.remove(name);
                     progress = true;
@@ -93,12 +109,19 @@ public final class BedrockGeometryLoader {
     private static PartDefinition addBone(PartDefinition parentDef, Bone bone, float[] parentPivot,
                                           int texWidth, int texHeight) {
         CubeListBuilder cubes = CubeListBuilder.create();
+        List<JsonObject> rotated = new ArrayList<>();
         for (JsonObject cube : bone.cubes()) {
+            if (cube.has("rotation")) {
+                rotated.add(cube);
+                continue;
+            }
             float[] origin = readVec(cube, "origin");
             float[] size = readVec(cube, "size");
             float inflate = GsonHelper.getAsFloat(cube, "inflate", 0f);
             int[] uv = readUv(cube);
-            cubes.texOffs(uv[0], uv[1]).addBox(
+            cubes.texOffs(uv[0], uv[1])
+                    .mirror(GsonHelper.getAsBoolean(cube, "mirror", false))
+                    .addBox(
                     origin[0] - bone.pivot()[0],
                     -(origin[1] - bone.pivot()[1]) - size[1],
                     origin[2] - bone.pivot()[2],
@@ -112,7 +135,35 @@ public final class BedrockGeometryLoader {
                 (float) Math.toRadians(bone.rotation()[0]),
                 (float) Math.toRadians(-bone.rotation()[1]),
                 (float) Math.toRadians(-bone.rotation()[2]));
-        return parentDef.addOrReplaceChild(bone.name(), cubes, pose);
+        PartDefinition def = parentDef.addOrReplaceChild(bone.name(), cubes, pose);
+        // A vanilla cube cannot carry its own rotation, so each rotated cube becomes a synthetic
+        // child part posed at the cube's pivot with the (x,-y,-z)-flipped rotation, holding the box
+        // pivot-relative. ModelPart applies pose rotation ZYX, matching the AttachmentGeo bake.
+        int i = 0;
+        for (JsonObject cube : rotated) {
+            float[] origin = readVec(cube, "origin");
+            float[] size = readVec(cube, "size");
+            float[] rot = readVec(cube, "rotation");
+            float[] pivot = cube.has("pivot") ? readVec(cube, "pivot") : origin;
+            float inflate = GsonHelper.getAsFloat(cube, "inflate", 0f);
+            int[] uv = readUv(cube);
+            CubeListBuilder box = CubeListBuilder.create().texOffs(uv[0], uv[1])
+                    .mirror(GsonHelper.getAsBoolean(cube, "mirror", false))
+                    .addBox(
+                    origin[0] - pivot[0],
+                    -(origin[1] - pivot[1]) - size[1],
+                    origin[2] - pivot[2],
+                    size[0], size[1], size[2],
+                    new CubeDeformation(inflate));
+            def.addOrReplaceChild(bone.name() + "_r" + (++i), box, PartPose.offsetAndRotation(
+                    pivot[0] - bone.pivot()[0],
+                    -(pivot[1] - bone.pivot()[1]),
+                    pivot[2] - bone.pivot()[2],
+                    (float) Math.toRadians(rot[0]),
+                    (float) Math.toRadians(-rot[1]),
+                    (float) Math.toRadians(-rot[2])));
+        }
+        return def;
     }
 
     private static float[] readVec(JsonObject json, String key) {

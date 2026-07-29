@@ -193,6 +193,7 @@ public final class McaAnimationBridge {
         // setupAnim's "every frame is fresh" semantic for rotations.
         clearStaleBend(targets);
         clearStaleResidue(targets);
+        if (!rigTargets) restoreHostCrouch(model);
         BendStateRegistry.clearEntity(entity.getUUID());
 
         boolean anyAvailable = false;
@@ -299,6 +300,32 @@ public final class McaAnimationBridge {
             part.yScale = ys;
             part.zScale = zs;
         }
+    }
+
+    /**
+     * Put back the crouch that {@code HumanoidModel.setupAnim} applied and {@link #clearStaleResidue}
+     * just wiped. Vanilla's crouch lives almost entirely in part TRANSLATIONS (plus body xRot), which
+     * are exactly the channels the residue clear resets to the model default — so without this the
+     * model stands upright while the renderer still drops a crouching entity by 0.125, which reads as
+     * sinking into the floor. An installed EMF/Fresh-Animations pack hid this: its sneak animation
+     * re-posed the model afterwards. Values mirror vanilla; the arm xRot tilt is NOT re-applied
+     * because the residue clear keeps limb rotations, so adding it again would double the bend.
+     *
+     * <p>Runs before the sources, so a pack's own sneak animation still overrides it. Alternate rigs
+     * are excluded: {@link RootAnimationSourceAdapter} re-asserts their crouch through the rig bone
+     * map, deliberately layered on top of the pack pose.</p>
+     */
+    private static void restoreHostCrouch(HumanoidModel<?> model) {
+        if (!model.crouching) return;
+        model.body.xRot = 0.5f;
+        model.body.y = 3.2f;
+        model.head.y = 4.2f;
+        model.leftArm.y = 5.2f;
+        model.rightArm.y = 5.2f;
+        model.leftLeg.y = 12.2f;
+        model.rightLeg.y = 12.2f;
+        model.leftLeg.z = 4.0f;
+        model.rightLeg.z = 4.0f;
     }
 
     private static <T extends LivingEntity> void clearStaleBend(AnimationTargetMap<T> targets) {

@@ -7,7 +7,6 @@ import com.aetherianartificer.townstead.root.GeneCatalogEntry;
 import com.aetherianartificer.townstead.root.RootCatalogEntry;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -79,12 +78,6 @@ public final class SpeciesFace {
         GeneCatalogEntry.Variant color = variantOf(entity, colorGene);
         if (color != null && color.tint() >= 0) faceTint = 0xFF000000 | color.tint();
 
-        // Eyes are closed (the blink frame) while asleep, else a periodic blink.
-        boolean closed = entity.isSleeping() || blinking(entity);
-        // Mood expression (smile/frown, happy/sad eyes) only flashes for a moment when the mood CHANGES,
-        // then relaxes to neutral — no permanent grin.
-        int reaction = reactionSign(entity);
-
         pose.pushPose();
         // Match the body's young transform so the face stays on the enlarged baby head (see fields).
         if (babyHead) {
@@ -93,7 +86,7 @@ public final class SpeciesFace {
         }
         head.translateAndRotate(pose);
         if (eyes != null && !eyes.texture().isEmpty()) {
-            int frame = closed ? 1 : (reaction > 0 ? 2 : reaction < 0 ? 3 : 0);
+            int frame = FaceExpression.eyeFrame(entity);
             ResourceLocation tex = resolveTexture(eyes.texture());
             if (tex != null) {
                 RenderType type = eyes.glow() ? RenderType.eyes(tex) : RenderType.entityCutoutNoCull(tex);
@@ -101,7 +94,7 @@ public final class SpeciesFace {
             }
         }
         if (mouth != null && !mouth.texture().isEmpty()) {
-            int frame = reaction > 0 ? 1 : reaction < 0 ? 2 : 0;
+            int frame = FaceExpression.mouthFrame(entity);
             ResourceLocation tex = resolveTexture(mouth.texture());
             if (tex != null) {
                 quad(buffers.getBuffer(RenderType.entityCutoutNoCull(tex)), pose, face, MOUTH_EPS, MOUTH_FRAMES,
@@ -127,42 +120,6 @@ public final class SpeciesFace {
             }
         }
         return gene.variants().get(Math.floorMod(entity.getUUID().hashCode(), gene.variants().size()));
-    }
-
-    // Mood reacts to CHANGE, not the standing value: a smile/frown only flashes when the villager's
-    // mood shifts (got a gift, a good trade, took a hit...), then relaxes to neutral — no permanent
-    // grin. Per-entity last-seen mood + when the reaction ends, in the entity's own tick clock.
-    private record Reaction(int lastMood, long untilTick, int sign) {}
-    private static final java.util.Map<Integer, Reaction> REACTIONS = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final int REACTION_TICKS = 50;   // ~2.5s of expression after a mood change
-
-    /** +1 smile / -1 frown / 0 neutral — non-zero only during the brief window after a mood change. */
-    private static int reactionSign(LivingEntity entity) {
-        if (!(entity instanceof VillagerEntityMCA villager)) return 0;
-        int mood;
-        try {
-            mood = villager.getVillagerBrain().getMoodValue();
-        } catch (Throwable t) {
-            return 0;
-        }
-        long now = entity.tickCount;
-        Reaction r = REACTIONS.get(entity.getId());
-        if (r == null) {
-            REACTIONS.put(entity.getId(), new Reaction(mood, 0, 0));   // first sight: no reaction
-            return 0;
-        }
-        if (mood != r.lastMood()) {   // mood just shifted: start a reaction in its direction
-            r = new Reaction(mood, now + REACTION_TICKS, mood > r.lastMood() ? 1 : -1);
-            REACTIONS.put(entity.getId(), r);
-        }
-        return now < r.untilTick() ? r.sign() : 0;
-    }
-
-    /** A brief, per-entity-phased blink so a crowd doesn't blink in unison. */
-    private static boolean blinking(LivingEntity entity) {
-        long phase = entity.getUUID().getLeastSignificantBits();
-        int period = 70 + (int) Math.floorMod(phase, 71);   // 70..140 ticks
-        return Math.floorMod(entity.tickCount + Math.floorMod(phase, period), period) < 3;
     }
 
     /**

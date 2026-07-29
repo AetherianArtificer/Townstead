@@ -33,6 +33,17 @@ public final class RigHitboxes {
      */
     private static final float DOOR_SAFE_WIDTH = 0.7f;
 
+    /**
+     * Max collision HEIGHT any rig's hitbox is clamped to, for the same reason as {@link #DOOR_SAFE_WIDTH}
+     * and with the same "renders large, paths normally" split. Two separate rules force this number under
+     * 2.0: the collision box has to clear a 2-block doorway outright, and {@code NodeEvaluator.prepare}
+     * asks for {@code floor(height + 1)} blocks of vertical clearance on every node, so 1.9 asks for 2 but
+     * 2.0 asks for 3 and no path through a normal building is ever found. A rig taller than this still
+     * DRAWS at its authored size (render scale is separate); only its collision column is capped, so a
+     * tall head clips a door header instead of the villager being stranded in its own house.
+     */
+    private static final float DOOR_SAFE_HEIGHT = 1.9f;
+
     private static final boolean DEBUG = false; // flip true to log per-side hitbox resolution (latest.log, townstead/rig)
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("townstead/rig");
 
@@ -54,10 +65,18 @@ public final class RigHitboxes {
                     box == null ? "NULL (keeps MCA default)" : (box.width() + "x" + box.height()));
         }
         if (box == null) return null;
-        // Clamp width to stay door-passable (see DOOR_SAFE_WIDTH); height is left as declared (short is fine,
-        // tall just needs headroom). Visual size is unaffected — it is a separate client render scale.
+        // Clamp both axes to stay door-passable (see DOOR_SAFE_WIDTH / DOOR_SAFE_HEIGHT). Visual size is
+        // unaffected — it is a separate client render scale. Crouching swaps in the rig's crouch height,
+        // which is what makes the pose actually squeeze: without a shorter box, crouching would be a
+        // pure animation and the entity would still not fit anywhere new.
         float width = Math.min(box.width(), DOOR_SAFE_WIDTH);
-        return EntityDimensions.scalable(width, box.height());
+        float standing = Math.min(box.height(), DOOR_SAFE_HEIGHT);
+        // Crouching shrinks by the same proportion the clamp already applied, so a rig tall enough to be
+        // clamped still gains real headroom by ducking. Taking the raw crouch height instead would clamp
+        // it to the same value as standing and the pose would buy nothing.
+        float shrink = box.height() > 0f ? standing / box.height() : 1f;
+        float height = pose == Pose.CROUCHING ? box.crouchedHeight() * shrink : standing;
+        return EntityDimensions.scalable(width, height);
     }
 
     private static RigDefinition.Hitbox forServer(LivingEntity entity) {

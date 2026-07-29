@@ -82,13 +82,16 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
             int tint = resolveTint(entity, def, payload);
             // Multiply at full strength rides the vertex colour for free; the other blend
             // modes (and faded tints) bake a derived texture through SkinBlend, quantized
-            // to 5 bits per channel so bearer-resolved tints don't explode the cache.
+            // to 5 bits per channel so bearer-resolved tints don't explode the cache. A tint
+            // mask is per-pixel, which a vertex colour cannot express, so it bakes too.
             ResourceLocation drawTexture = texture;
             int vertexTint = tint;
-            if ((def.tintBlend() != 0 || def.tintStrength() < 1f) && tint != 0xFFFFFF) {
+            boolean masked = !def.tintMaskSha1().isEmpty();
+            if ((def.tintBlend() != 0 || def.tintStrength() < 1f || masked) && tint != 0xFFFFFF) {
                 int packed = com.aetherianartificer.townstead.client.skin.SkinBlend.pack(
                         tint & 0xF8F8F8, def.tintBlend(), def.tintStrength());
-                ResourceLocation baked = AttachmentClient.blendedTexture(def.textureSha1(), packed);
+                ResourceLocation baked = AttachmentClient.blendedTexture(
+                        def.textureSha1(), def.tintMaskSha1(), packed);
                 if (baked != null) {
                     drawTexture = baked;
                     vertexTint = 0xFFFFFF;
