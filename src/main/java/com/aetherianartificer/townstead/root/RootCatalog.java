@@ -144,7 +144,7 @@ public final class RootCatalog {
                 gene.category(),
                 display.kind().ordinal(),
                 display.min(), display.max(),
-                display.targetId(), display.amount(),
+                targetIdOf(gene, display), display.amount(),
                 gene.dominance().ordinal(),
                 gene.locus() != null ? gene.locus().toString() : "",
                 gene.weight(),
@@ -157,6 +157,19 @@ public final class RootCatalog {
                 channels,
                 paletteEntries(gene.instance()),
                 conditionOf(gene.instance()));
+    }
+
+    /**
+     * The gene's packed display parameters. A multi-variant gene's display is the generic VARIANTS
+     * descriptor with nothing packed, so an eyes set would lose its shared row/tint; take those from
+     * the first option (each option's own texture/glow rides its catalog {@code Variant}).
+     */
+    private static String targetIdOf(Gene gene, GeneDisplay display) {
+        if (display.targetId().isEmpty()
+                && gene.instance() instanceof com.aetherianartificer.townstead.root.gene.types.EyesGeneType.Instance eyes) {
+            return GeneDisplay.eyes("", eyes.glow(), eyes.row(), eyes.tint()).targetId();
+        }
+        return display.targetId();
     }
 
     /** A conditioned client-predicted gene's serialized gate, shipped so the client tests the same condition. */

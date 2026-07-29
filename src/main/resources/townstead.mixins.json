@@ -88,6 +88,7 @@
     "accessor.InteractScreenAccessor",
     "accessor.VillagerEditorScreenAccessor",
     "client.FishingHookRendererMixin",
+    "client.FaceLayerCustomEyesMixin",
     "client.HairLayerSeniorMixin",
     "client.LivingEntityGlideTiltMixin",
     "client.LivingEntityRendererEmoteMixin",

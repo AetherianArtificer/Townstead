@@ -146,6 +146,30 @@ public record GeneCatalogEntry(
         return palette;
     }
 
+    /**
+     * An eyes gene's set-wide parameters, unpacked from {@code targetId} {@code "texture;glow;row;tint"}.
+     * A multi-variant set leaves {@link #eyesTexture()} empty (each option's texture rides its
+     * {@link Variant}) but still carries the shared row and tint.
+     */
+    public String eyesTexture() { return eyesPart(0, ""); }
+    public boolean eyesGlow() { return "1".equals(eyesPart(1, "0")); }
+    public String eyesTint() { return eyesPart(3, ""); }
+
+    /** The head-front UV row the strip's top lands on, or {@code -1} for the vanilla eye baseline. */
+    public int eyesRow() {
+        try {
+            return Integer.parseInt(eyesPart(2, "-1"));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private String eyesPart(int idx, String fallback) {
+        if (!isEyes() || targetId == null || targetId.isEmpty()) return fallback;
+        String[] parts = targetId.split(";", -1);
+        return idx < parts.length ? parts[idx] : fallback;
+    }
+
     /** This gene's face slot is eyes / mouth / eye_color (a custom-face overlay gene). */
     public boolean isEyes() { return "eyes".equals(faceSlot); }
     public boolean isMouth() { return "mouth".equals(faceSlot); }

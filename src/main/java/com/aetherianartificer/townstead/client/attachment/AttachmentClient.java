@@ -370,6 +370,16 @@ public final class AttachmentClient {
     }
 
     /**
+     * The raw PNG bytes behind a named datapack texture, for callers that need its PIXELS rather
+     * than a bound texture (the eye-strip compositor). Null when it isn't a datapack texture or its
+     * blob hasn't arrived yet.
+     */
+    public static byte[] namedTextureBytes(String id) {
+        String sha1 = NAMED.get(id);
+        return sha1 == null ? null : AttachmentCache.read(sha1);
+    }
+
+    /**
      * Resolve a named datapack geometry ("ns:geo/...") to its synced baked {@link ModelPart}, or
      * {@code null} if it isn't a datapack geo or hasn't materialized yet (the caller leaves the rig
      * un-cached so it retries once the blob arrives).

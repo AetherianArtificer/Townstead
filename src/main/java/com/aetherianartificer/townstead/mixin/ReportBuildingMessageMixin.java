@@ -11,6 +11,7 @@ import com.aetherianartificer.townstead.enclosure.EnclosureClassifier;
 import com.aetherianartificer.townstead.enclosure.EnclosureScanner;
 import com.aetherianartificer.townstead.enclosure.EnclosureSuppression;
 import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
+import com.aetherianartificer.townstead.compat.mca.McaFloorCompat;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.spirit.SpiritReconciler;
 import com.aetherianartificer.townstead.upgrade.BuildingTierReconciler;
@@ -25,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
+import java.util.Set;
 
 import org.spongepowered.asm.mixin.Mixin;
 //? if <1.21 {
@@ -37,6 +39,27 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ReportBuildingMessage.class)
 public abstract class ReportBuildingMessageMixin {
     private static final Logger TOWNSTEAD$LOG = LoggerFactory.getLogger("Townstead/ReportBuildingMessageMixin");
+
+    // MCA reshapes this enum between floor-system generations: ADD was split
+    // into ADD_BUILDING (open ground) and ADD_ROOM (inside an existing
+    // structure), and ADD_FLOOR/ADD_BASEMENT were added. Referencing the
+    // constants directly throws NoSuchFieldError on whichever generation
+    // dropped one, so match on the name instead and stay generation-agnostic.
+    private static final String TOWNSTEAD$REMOVE = "REMOVE";
+    private static final String TOWNSTEAD$AUTO_SCAN = "AUTO_SCAN";
+
+    /** Actions where the player may be standing on an open-air dock or in a pen. */
+    private static final Set<String> TOWNSTEAD$SYNTHETIC_SCAN_ACTIONS =
+            Set.of("ADD", "ADD_BUILDING", "ADD_ROOM", "AUTO_SCAN");
+
+    /**
+     * Actions that can change what buildings a village has. ADD_FLOOR and
+     * ADD_BASEMENT attach to a structure the player is already inside, so they
+     * reconcile but never take the synthetic path above.
+     */
+    private static final Set<String> TOWNSTEAD$RECONCILE_ACTIONS =
+            Set.of("ADD", "ADD_BUILDING", "ADD_ROOM", "ADD_FLOOR", "ADD_BASEMENT",
+                    "REMOVE", "FULL_SCAN", "AUTO_SCAN");
 
     //? if <1.21 {
     /*@Shadow(remap = false)
@@ -55,10 +78,11 @@ public abstract class ReportBuildingMessageMixin {
         //?} else {
         /*ReportBuildingMessage.Action act = this.action;
         *///?}
+        String actName = act.name();
         ServerLevel level = player.serverLevel();
         BlockPos pos = player.blockPosition();
 
-        if (act == ReportBuildingMessage.Action.REMOVE) {
+        if (TOWNSTEAD$REMOVE.equals(actName)) {
             VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
                 Building dock = townstead$findDockAt(v, pos);
                 if (dock != null) {
@@ -71,9 +95,7 @@ public abstract class ReportBuildingMessageMixin {
             return;
         }
 
-        if (act == ReportBuildingMessage.Action.ADD
-                || act == ReportBuildingMessage.Action.ADD_ROOM
-                || act == ReportBuildingMessage.Action.AUTO_SCAN) {
+        if (TOWNSTEAD$SYNTHETIC_SCAN_ACTIONS.contains(actName)) {
             // MCA's flood-fill validation fails on open-air structures and
             // shows "Building too small" before our TAIL hook runs. For
             // direct Add/Add Room clicks, if the player is on a dock or
@@ -103,7 +125,13 @@ public abstract class ReportBuildingMessageMixin {
                         BuildingRecognitionTracker.reconcile(level, v);
                         SpiritReconciler.reconcileVillage(level, v);
                     });
-                    if (act != ReportBuildingMessage.Action.AUTO_SCAN) ci.cancel();
+                    if (!TOWNSTEAD$AUTO_SCAN.equals(actName)) {
+                        // Floor-system MCA clients no longer request their own
+                        // village refresh after actions; the handler we're
+                        // cancelling would have pushed one in its finally.
+                        McaFloorCompat.pushVillageResponse(player);
+                        ci.cancel();
+                    }
                     return;
                 }
                 // Player is standing inside an existing enclosed building, so
@@ -137,7 +165,10 @@ public abstract class ReportBuildingMessageMixin {
                 BuildingRecognitionTracker.reconcile(level, v);
                 SpiritReconciler.reconcileVillage(level, v);
             });
-            if (act != ReportBuildingMessage.Action.AUTO_SCAN) ci.cancel();
+            if (!TOWNSTEAD$AUTO_SCAN.equals(actName)) {
+                McaFloorCompat.pushVillageResponse(player);
+                ci.cancel();
+            }
         }
     }
 
@@ -171,31 +202,31 @@ public abstract class ReportBuildingMessageMixin {
         //?} else {
         /*ReportBuildingMessage.Action act = this.action;
         *///?}
-        switch (act) {
-            case ADD, ADD_ROOM, REMOVE, FULL_SCAN, AUTO_SCAN -> {
-                ServerLevel level = player.serverLevel();
-                VillageManager.get(level)
-                        .findNearestVillage(player)
-                        .ifPresent(v -> {
-                            BuildingTierReconciler.reconcileVillage(v, level);
-                            // Open-air dock detection happens before the
-                            // recognition diff so fresh docks show up in the
-                            // tracker's "current" snapshot and fire events
-                            // alongside any MCA-side adds/upgrades. REMOVE
-                            // is excluded so user dismissal sticks — the
-                            // suppression HEAD hook records the bounds, and
-                            // DockBuildingSync checks it before re-syncing.
-                            if (act != ReportBuildingMessage.Action.REMOVE) {
-                                townstead$detectAndSyncDockFromReport(level, player, v);
-                            }
-                            DockLocationIndex.rebuildVillage(level, v);
-                            BuildingRecognitionTracker.reconcile(level, v);
-                            SpiritReconciler.reconcileVillage(level, v);
-                        });
-            }
-            default -> {
-            }
-        }
+        String actName = act.name();
+        if (!TOWNSTEAD$RECONCILE_ACTIONS.contains(actName)) return;
+
+        ServerLevel level = player.serverLevel();
+        VillageManager.get(level)
+                .findNearestVillage(player)
+                .ifPresent(v -> {
+                    BuildingTierReconciler.reconcileVillage(v, level);
+                    // Open-air dock detection happens before the recognition
+                    // diff so fresh docks show up in the tracker's "current"
+                    // snapshot and fire events alongside any MCA-side
+                    // adds/upgrades. REMOVE is excluded so user dismissal
+                    // sticks — the suppression HEAD hook records the bounds,
+                    // and DockBuildingSync checks it before re-syncing.
+                    if (!TOWNSTEAD$REMOVE.equals(actName)) {
+                        townstead$detectAndSyncDockFromReport(level, player, v);
+                    }
+                    DockLocationIndex.rebuildVillage(level, v);
+                    BuildingRecognitionTracker.reconcile(level, v);
+                    SpiritReconciler.reconcileVillage(level, v);
+                    // Floor-system MCA pushed its snapshot in the handler's
+                    // finally, which runs before this hook — push again so
+                    // the client sees the reconciled state.
+                    McaFloorCompat.pushVillageResponse(player);
+                });
     }
 
     // Larger than the fisherman's default scan radius because the player may
