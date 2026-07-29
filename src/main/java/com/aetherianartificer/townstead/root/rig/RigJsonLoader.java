@@ -175,7 +175,9 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
             JsonObject hb = obj.getAsJsonObject("hitbox");
             float w = GsonHelper.getAsFloat(hb, "width", 0.6f);
             float h = GsonHelper.getAsFloat(hb, "height", 2.0f);
-            if (w > 0f && h > 0f) hitbox = new RigDefinition.Hitbox(w, h);
+            // Optional crouch box; 0 (absent) derives it from height at vanilla's ratio.
+            float ch = GsonHelper.getAsFloat(hb, "crouch_height", 0f);
+            if (w > 0f && h > 0f) hitbox = new RigDefinition.Hitbox(w, h, Math.max(0f, ch));
         }
 
         // Equipment slots this body refuses: { "equipment": { "disabled": ["head","chest", ...] } }.

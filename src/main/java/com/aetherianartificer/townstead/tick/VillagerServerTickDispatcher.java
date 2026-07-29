@@ -70,6 +70,8 @@ public final class VillagerServerTickDispatcher {
         profile("villager.life_stamper", () ->
                 com.aetherianartificer.townstead.calendar.VillagerLifeStamper.tick(villager));
         profile("villager.life_stage", () -> LifeStageTicker.tick(villager));
+        profile("villager.rig_crouch", () ->
+                com.aetherianartificer.townstead.root.rig.RigCrouch.tick(villager));
         profile("villager.gene_ability", () ->
                 com.aetherianartificer.townstead.root.ability.GeneAbilityTicker.tick(villager));
         profile("villager.disposition", () ->

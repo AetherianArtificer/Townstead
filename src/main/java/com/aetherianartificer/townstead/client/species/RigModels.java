@@ -332,6 +332,12 @@ public final class RigModels {
         return def == null ? null : def.bodyPose("sleep");
     }
 
+    /** The rig's authored whole-body crawl/swim orientation, or null when it stays upright with no lean. */
+    public static RigDefinition.BodyPose crawlPose(String rigBase) {
+        RigDefinition def = RootCatalogClient.rig(rigBase);
+        return def == null ? null : def.bodyPose("crawl");
+    }
+
     public static ResourceLocation texture(String rigBase) {
         RigDefinition def = RootCatalogClient.rig(rigBase);
         if (def == null || def.texture() == null || def.texture().isEmpty()) return null;

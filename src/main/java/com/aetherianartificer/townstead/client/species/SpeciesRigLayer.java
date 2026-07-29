@@ -166,9 +166,12 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         RigDefinition def = RigModels.definition(rigBase);
         if (def == null) return bodyOffset;
         boolean sleeping = entity.isSleeping();
-        // Sleep and crouch are mutually exclusive states; ease each independently.
+        // Sleep, crouch and crawl are mutually exclusive states; ease each independently. Crawl covers the
+        // whole SWIMMING pose: squeezing under a low ceiling AND sprint-swimming, the two cases vanilla
+        // lays a body flat for (suppressed for these rigs by LivingEntitySwimClimbMixin).
         float crouch = easeState(entity, ageInTicks, "crouch", entity.isCrouching() && !sleeping);
         float sleep = easeState(entity, ageInTicks, "sleep", sleeping);
+        float crawl = easeState(entity, ageInTicks, "crawl", entity.isVisuallySwimming() && !sleeping);
 
         // Compose each posed bone's position offset from its baked base across states, so a bone named by more
         // than one state sums instead of the later state overwriting the earlier. Every touched bone is
@@ -177,6 +180,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         java.util.Map<ModelPart, float[]> targets = new java.util.HashMap<>();
         accumulatePose(rigBase, def.poseBones("crouch"), crouch, targets);
         accumulatePose(rigBase, def.poseBones("sleep"), sleep, targets);
+        accumulatePose(rigBase, def.poseBones("crawl"), crawl, targets);
         for (java.util.Map.Entry<ModelPart, float[]> e : targets.entrySet()) {
             ModelPart part = e.getKey();
             float[] t = e.getValue();
@@ -190,7 +194,19 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         // it reads the same units and sign as the per-bone offsets above.
         addBodyOffset(def.bodyPose("crouch"), crouch, bodyOffset);
         addBodyOffset(def.bodyPose("sleep"), sleep, bodyOffset);
+        addBodyOffset(def.bodyPose("crawl"), crawl, bodyOffset);
         return bodyOffset;
+    }
+
+    /**
+     * The eased 0..1 factor a pose state currently has for an entity, for the consumers that live outside
+     * this layer (the crawl body rotation is an entity-root transform, so it is applied by a renderer mixin
+     * while the bones and offset are applied here). Reads the factor this layer last advanced, i.e. the
+     * previous frame's — one frame of lag on a multi-tick ease, which is not visible.
+     */
+    public static float poseFactor(int entityId, String state) {
+        float[] st = POSE_EASE.get(entityId + ":" + state);
+        return st == null ? 0f : st[0];
     }
 
     /** Adds a state's eased whole-body offset (model pixels) into {@code out}; null pose or factor 0 is a no-op. */

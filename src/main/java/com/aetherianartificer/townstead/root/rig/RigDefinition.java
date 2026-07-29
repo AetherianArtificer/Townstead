@@ -88,8 +88,20 @@ public record RigDefinition(
 ) {
     public enum ModelType { ENTITY_LAYER, GEOMETRY }
 
-    /** The collision/interaction box a rig imposes, in blocks (width is the square footprint side). */
-    public record Hitbox(float width, float height) {}
+    /**
+     * The collision/interaction box a rig imposes, in blocks (width is the square footprint side).
+     * {@code crouchHeight} is the box while crouching; 0 derives it from {@code height} at vanilla's
+     * ratio (a player's 1.8 standing becomes 1.5), so a rig only declares it to tune the squeeze.
+     */
+    public record Hitbox(float width, float height, float crouchHeight) {
+
+        /** Vanilla's crouch ratio (1.5 / 1.8), used when a rig declares no explicit crouch height. */
+        private static final float CROUCH_RATIO = 1.5f / 1.8f;
+
+        public float crouchedHeight() {
+            return crouchHeight > 0f ? crouchHeight : height * CROUCH_RATIO;
+        }
+    }
 
     /**
      * One named pose: an optional whole-body {@code body} transform (entity-root yaw/pitch/roll, applied
@@ -100,7 +112,8 @@ public record RigDefinition(
 
     /**
      * A whole-body pose transform. {@code yaw}/{@code pitch}/{@code roll} are degrees added to the entity
-     * root (applied by the render mixin, on top of the bed/stance-aligned rest). {@code offset} is model
+     * root, always in the same frame so they read alike across states: {@code sleep} replaces vanilla's
+     * lay-down with them, {@code crawl} adds them on top of the upright stance. {@code offset} is model
      * pixels applied uniformly to the whole rendered body (all bones together, in the model frame, so it
      * reads the same way and sign as a per-bone offset). Not per-bone: it shifts the entire body as one.
      */
