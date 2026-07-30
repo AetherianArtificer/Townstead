@@ -4,7 +4,7 @@ import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableMap;
-import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;

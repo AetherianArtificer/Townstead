@@ -33,7 +33,7 @@ public final class ButcherToolAcquisitionTicker {
 
     public static void tick(VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return;
-        if (!com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.permitsTask(
+        if (!com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
                 villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BUTCHERY_SUITE)) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (!onWorkShift(villager, level)) return;

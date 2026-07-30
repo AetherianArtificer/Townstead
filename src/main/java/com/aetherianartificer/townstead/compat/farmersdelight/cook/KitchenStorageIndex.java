@@ -1,11 +1,14 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
+import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
+
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import com.aetherianartificer.townstead.storage.VillageStorageIndex;
+import com.aetherianartificer.townstead.supply.SupplyLines;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -128,22 +131,26 @@ public final class KitchenStorageIndex {
             return gameTime <= expiresAt;
         }
 
-        Map<ResourceLocation, Integer> supply(Set<ResourceLocation> trackedIds,
-                                              boolean trackImpureWater,
-                                              @Nullable ThirstCompatBridge thirstBridge) {
+        Map<ResourceLocation, Integer> supply(Set<ResourceLocation> trackedIds, ServerLevel level) {
             Map<ResourceLocation, Integer> supply = new HashMap<>();
-            if (trackedIds.isEmpty() && !trackImpureWater) return supply;
+            if (trackedIds.isEmpty()) return supply;
             for (ResourceLocation trackedId : trackedIds) {
                 int count = itemCounts.getOrDefault(trackedId, 0);
                 if (count > 0) supply.put(trackedId, count);
             }
+            // Supply lines are counted by what a stack is, not by its id, so they are the one
+            // thing itemCounts cannot answer. Walk stored slots only for the lines this caller is
+            // actually planning against — with none in play (the usual case) there is no walk.
+            List<SupplyLines.Line> lines = SupplyLines.activeLinesAmong(trackedIds);
+            if (lines.isEmpty()) return supply;
             for (Entry entry : entries) {
                 for (SlotView slot : entry.slots()) {
                     ItemStack stack = slot.stack();
                     if (stack.isEmpty()) continue;
-                    if (trackImpureWater && thirstBridge != null
-                            && StationHandler.impureWaterScore(stack, thirstBridge) > 0) {
-                        supply.merge(TownsteadKitchenConstants.TOWNSTEAD_IMPURE_WATER_INPUT, stack.getCount(), Integer::sum);
+                    for (SupplyLines.Line line : lines) {
+                        if (line.matches(stack, level)) {
+                            supply.merge(line.id(), stack.getCount(), Integer::sum);
+                        }
                     }
                 }
             }
@@ -190,7 +197,7 @@ public final class KitchenStorageIndex {
             return List.copyOf(matching);
         }
 
-        ExtractionPlan planIngredientExtraction(ModRecipeRegistry.RecipeIngredient ingredient, int requestedCount) {
+        ExtractionPlan planIngredientExtraction(RecipeIngredient ingredient, int requestedCount) {
             if (ingredient == null || requestedCount <= 0) return new ExtractionPlan(List.of(), 0);
             return planExtraction(Set.copyOf(ingredient.itemIds()), requestedCount);
         }
@@ -306,15 +313,4 @@ public final class KitchenStorageIndex {
         );
     }
 
-    static final class TownsteadKitchenConstants {
-        //? if >=1.21 {
-        static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
-                ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "impure_water_container");
-        //?} else {
-        /*static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
-                new ResourceLocation(Townstead.MOD_ID, "impure_water_container");
-        *///?}
-
-        private TownsteadKitchenConstants() {}
-    }
 }

@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "caupona",
+  "type": "passive_station",
+  "blocks": [
+    "caupona:stew_pot",
+    "caupona:lead_stew_pot"
+  ],
+  "fluid_source": "townstead:caupona",
+  "adapter": "townstead:caupona_pot",
+  "recipe_tier": 3
+}

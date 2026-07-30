@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Clean Jar"
+  },
+  "icon": "minecraft:water_bucket",
+  "description": {
+    "text": "Scald the jars first, so a batch keeps through the winter."
+  },
+  "tier": 2,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

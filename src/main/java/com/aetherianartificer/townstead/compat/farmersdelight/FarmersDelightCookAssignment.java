@@ -34,7 +34,7 @@ public final class FarmersDelightCookAssignment {
      * runtime authority for who is a cook; requires loaded profession defs.
      */
     public static boolean declaresCookWork(VillagerProfession profession) {
-        return com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.professionDeclares(
+        return com.aetherianartificer.townstead.work.WorkTaskDeclarations.professionDeclares(
                 profession,
                 com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK,
                 com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP);
@@ -215,9 +215,9 @@ public final class FarmersDelightCookAssignment {
         // post anchors the same flood-fill on its workstation block.
         Building kitchen = site.get().building();
         if (kitchen != null) {
-            return com.aetherianartificer.townstead.ai.work.WorkSiteBounds.workArea(level, kitchen);
+            return com.aetherianartificer.townstead.work.WorkSiteBounds.workArea(level, kitchen);
         }
-        return com.aetherianartificer.townstead.ai.work.WorkSiteBounds.workAreaAround(level, site.get().post());
+        return com.aetherianartificer.townstead.work.WorkSiteBounds.workAreaAround(level, site.get().post());
     }
 
     /**

@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:workstation/v1",
+  "type": "furnace_station",
+  "blocks": ["#townstead:blast_furnace_stations"],
+  "recipe_type": "minecraft:blasting"
+}

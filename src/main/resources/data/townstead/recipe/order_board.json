@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "WWW",
+    "PPP",
+    "WWW"
+  ],
+  "key": {
+    "W": { "tag": "minecraft:planks" },
+    "P": { "item": "minecraft:paper" }
+  },
+  "result": {
+    "id": "townstead:order_board",
+    "count": 1
+  }
+}

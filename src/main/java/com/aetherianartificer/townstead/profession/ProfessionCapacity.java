@@ -77,7 +77,7 @@ public final class ProfessionCapacity {
         for (VillagerEntityMCA resident : village.getResidents(level)) {
             VillagerProfession profession = resident.getVillagerData().getProfession();
             if (taskTypes.length > 0) {
-                if (com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations
+                if (com.aetherianartificer.townstead.work.WorkTaskDeclarations
                         .professionDeclares(profession, taskTypes)) count++;
             } else {
                 ResourceLocation id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);

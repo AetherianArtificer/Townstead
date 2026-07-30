@@ -1,17 +1,25 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
+import com.aetherianartificer.townstead.work.station.Stations;
+
+import com.aetherianartificer.townstead.work.station.StationProtocols;
+
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
+import com.aetherianartificer.townstead.work.recipe.StationType;
+
+import com.aetherianartificer.townstead.work.station.WorkstationDef;
+import com.aetherianartificer.townstead.work.station.Workstations;
+
 import com.mojang.authlib.GameProfile;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
+import com.aetherianartificer.townstead.work.WorkPathing;
+import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.work.producer.ProducerStationSessions;
+import com.aetherianartificer.townstead.work.producer.ProducerStationState;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
@@ -78,7 +86,7 @@ public final class StationHandler {
         return getItemHandler(be, level, pos, side);
     }
 
-    static @Nullable IItemHandler getItemHandler(BlockEntity be, ServerLevel level, BlockPos pos, @Nullable Direction side) {
+    public static @Nullable IItemHandler getItemHandler(BlockEntity be, ServerLevel level, BlockPos pos, @Nullable Direction side) {
         //? if neoforge {
         return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
         //?} else if forge {
@@ -86,37 +94,6 @@ public final class StationHandler {
         if (side != null) return be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElse(null);
         return be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
         *///?}
-    }
-
-    /** Author-declared stand cells for a station (workstation def "stands" offsets), validated for safety. */
-    public static java.util.List<BlockPos> preferredStands(net.minecraft.world.level.BlockGetter level, BlockPos anchor) {
-        WorkstationDef def = Workstations.byState(level.getBlockState(anchor));
-        // An empty placement anchor carries no block; its stands come from the
-        // place-surface def whose surface sits below.
-        if (def == null && level instanceof ServerLevel serverLevel
-                && level.getBlockState(anchor).isAir()) {
-            def = StationProtocols.surfaceDefBelow(serverLevel, anchor);
-        }
-        if (def == null || def.stands().isEmpty()) return java.util.List.of();
-        java.util.List<BlockPos> out = new ArrayList<>();
-        for (net.minecraft.core.Vec3i offset : def.stands()) {
-            BlockPos pos = anchor.offset(offset);
-            if (WorkPathing.isSafeStandPosition(level, pos)) out.add(pos.immutable());
-        }
-        return out;
-    }
-
-    private static @Nullable BlockPos nearestOf(VillagerEntityMCA villager, java.util.List<BlockPos> stands) {
-        BlockPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (BlockPos stand : stands) {
-            double dist = villager.distanceToSqr(stand.getX() + 0.5, stand.getY() + 0.5, stand.getZ() + 0.5);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = stand;
-            }
-        }
-        return best;
     }
 
     private static boolean handlerHasUnexpectedContents(IItemHandler handler, @Nullable Set<Item> allowedPrestage, @Nullable Item allowedContainerPrestage, int containerSlot) {
@@ -199,31 +176,6 @@ public final class StationHandler {
     private static Method FD_CUTTING_BOARD_PROCESS;
     private static Method FD_CUTTING_BOARD_REMOVE_ITEM;
 
-    // ── Station slot record ──
-
-    public record StationSlot(BlockPos pos, StationType type, ResourceLocation blockId, int capacity) {}
-
-    // ── Station type identification ──
-
-    public static @Nullable StationType stationType(ServerLevel level, BlockPos pos) {
-        BlockState state = level.getBlockState(pos);
-        if (state.is(BlockTags.CAMPFIRES) && fireSurfaceBlocked(level, pos)) return null;
-        // An empty placement anchor (free cell above a declared place-surface) is a station a
-        // villager can create; the block-state overload cannot see it, only this one can.
-        if (state.isAir() && StationProtocols.surfaceDefBelow(level, pos) != null) {
-            return StationType.PLACE_SURFACE;
-        }
-        return stationType(state);
-    }
-
-    public static @Nullable StationType stationType(BlockState state) {
-        // Purely data-driven: the jar ships Farmer's Delight's own stations as workstation defs
-        // (data/townstead/workstation/), the same registry packs use for any other mod. No
-        // compiled fallback — if the defs are gone, the blocks are not stations.
-        WorkstationDef def = Workstations.byState(state);
-        return def != null ? def.role() : null;
-    }
-
     // ── Data-declared workstations (pot protocol) ──
 
     /** A declared hot station operated through the capability pot protocol (FD's pot included, via its shipped def). */
@@ -244,27 +196,29 @@ public final class StationHandler {
                 ? def.ingredientSlots() : FD_COOKING_POT_INGREDIENT_SLOT_COUNT;
     }
 
-    public static boolean isStation(ServerLevel level, BlockPos pos) {
-        return stationType(level, pos) != null;
+    /** Whether this block id is Farmer's Delight's stove. */
+    public static boolean isFdStove(@Nullable ResourceLocation id) {
+        return FD_STOVE.equals(id);
     }
 
-    public static boolean isStation(BlockState state) {
-        return stationType(state) != null;
+    /** Whether this block id is Farmer's Delight's skillet. */
+    public static boolean isFdSkillet(@Nullable ResourceLocation id) {
+        return FD_SKILLET.equals(id);
     }
 
     // ── Station discovery ──
 
-    public static List<StationSlot> discoverStations(
+    public static List<Stations.StationSlot> discoverStations(
             ServerLevel level,
             VillagerEntityMCA villager,
             Set<Long> kitchenBounds,
             int searchRadius,
             int verticalRadius
     ) {
-        List<StationSlot> discovered = new ArrayList<>();
-        for (StationSlot slot : KitchenStationIndex.snapshot(level, kitchenBounds).stations()) {
+        List<Stations.StationSlot> discovered = new ArrayList<>();
+        for (Stations.StationSlot slot : KitchenStationIndex.snapshot(level, kitchenBounds).stations()) {
             if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) continue;
-            if (findStandingPosition(level, villager, slot.pos()) == null) continue;
+            if (Stations.findStandingPosition(level, villager, slot.pos()) == null) continue;
             discovered.add(slot);
         }
         return discovered;
@@ -274,54 +228,23 @@ public final class StationHandler {
             ServerLevel level,
             VillagerEntityMCA villager,
             BlockPos pos,
-            Map<Long, StationSlot> found
+            Map<Long, Stations.StationSlot> found
     ) {
         pos = canonicalStationAnchor(level, pos);
         long key = pos.asLong();
         if (found.containsKey(key)) return;
-        StationType type = stationType(level, pos);
+        StationType type = Stations.stationType(level, pos);
         if (type == null) return;
         if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), pos)) return;
-        if (findStandingPosition(level, villager, pos.immutable()) == null) return;
+        if (Stations.findStandingPosition(level, villager, pos.immutable()) == null) return;
 
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         int capacity = switch (type) {
             case FIRE_STATION -> surfaceDiscoveryCapacity(level, pos);
-            case HOT_STATION, CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE -> 1;
+            case HOT_STATION, CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE, FURNACE_STATION -> 1;
         };
         if (capacity <= 0) return;
-        found.put(key, new StationSlot(pos.immutable(), type, blockId, capacity));
-    }
-
-    // ── Standing position ──
-
-    public static @Nullable BlockPos findStandingPosition(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
-        BlockPos best = nearestOf(villager, preferredStands(level, anchor));
-        if (best != null) return best;
-        best = WorkPathing.nearestStandCandidate(level, villager, anchor, null);
-        if (best == null) {
-            BlockPos current = villager.blockPosition();
-            double stationDist = villager.distanceToSqr(anchor.getX() + 0.5, anchor.getY() + 0.5, anchor.getZ() + 0.5);
-            if (stationDist <= 9.0d) {
-                BlockState below = level.getBlockState(current.below());
-                if (WorkPathing.isSafeStandPosition(level, current)
-                        && below.isFaceSturdy(level, current.below(), Direction.UP)
-                        && !avoidStandingSurface(below)) {
-                    best = current.immutable();
-                }
-            }
-        }
-        return best;
-    }
-
-    public static boolean avoidStandingSurface(BlockState surface) {
-        if (isStation(surface)) return true;
-        return surface.is(FD_KITCHEN_STORAGE_TAG)
-                || surface.is(FD_KITCHEN_STORAGE_UPGRADED_TAG)
-                || surface.is(FD_KITCHEN_STORAGE_NETHER_TAG)
-                || surface.is(Blocks.CHEST)
-                || surface.is(Blocks.TRAPPED_CHEST)
-                || surface.is(Blocks.BARREL);
+        found.put(key, new Stations.StationSlot(pos.immutable(), type, blockId, capacity));
     }
 
     // ── Surface fire station operations ──
@@ -946,7 +869,7 @@ public final class StationHandler {
             WorkstationDef protocolDef = StationProtocols.defAt(level, pos);
             return protocolDef != null && StationProtocols.defOwnsRecipe(protocolDef, recipe);
         }
-        if (StationProtocols.isProtocolType(stationType(level, pos))) return false;
+        if (StationProtocols.isProtocolType(Stations.stationType(level, pos))) return false;
         // Typed pairing: a recipe riding a workstation-declared recipe type cooks only at
         // stations declaring that type, and such stations cook only their declared type.
         ResourceLocation declaredType = Workstations.declaredRecipeTypeAt(level, pos);
@@ -1820,20 +1743,12 @@ public final class StationHandler {
     // ── Fire surface helpers ──
 
     static boolean fireSurfaceBlocked(ServerLevel level, BlockPos firePos) {
-        BlockState above = level.getBlockState(firePos.above());
-        ResourceLocation aboveId = BuiltInRegistries.BLOCK.getKey(above.getBlock());
-        if (isPotBlock(aboveId) || FD_SKILLET.equals(aboveId)) return true;
-        return !above.canBeReplaced();
+        return Stations.coveredAbove(level, firePos);
     }
 
     static boolean surfaceBlockedForCooking(ServerLevel level, BlockPos pos, BlockState state) {
         if (pos == null || state == null) return true;
-        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
-        if (FD_SKILLET.equals(id)) return false;
-        if (state.is(BlockTags.CAMPFIRES) || FD_STOVE.equals(id)) {
-            return fireSurfaceBlocked(level, pos);
-        }
-        return false;
+        return Stations.coverBlocksWork(level, pos, state);
     }
 
     private static BlockPos canonicalStoveAnchor(ServerLevel level, BlockPos origin) {

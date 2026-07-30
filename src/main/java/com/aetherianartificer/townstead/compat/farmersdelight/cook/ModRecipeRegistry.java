@@ -1,8 +1,14 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
+import com.aetherianartificer.townstead.work.station.WorkstationDef;
+import com.aetherianartificer.townstead.work.station.Workstations;
+
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerRecipe;
+import com.aetherianartificer.townstead.work.producer.ProducerRecipe;
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
+import com.aetherianartificer.townstead.work.recipe.StationType;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
@@ -23,38 +29,10 @@ import net.minecraft.world.item.crafting.RecipeType;
 import javax.annotation.Nullable;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.Locale;
 
 public final class ModRecipeRegistry {
     private ModRecipeRegistry() {}
-
-    public enum StationType { CUTTING_BOARD, HOT_STATION, FIRE_STATION, PASSIVE_STATION, PLACE_SURFACE }
-
-    public record RecipeIngredient(List<ResourceLocation> itemIds, int count) implements ProducerRecipe.ResolvedIngredient {
-        public ResourceLocation primaryId() { return itemIds.get(0); }
-
-        @Override
-        public List<ResourceLocation> acceptableIds() { return itemIds; }
-    }
-
-    public record DiscoveredRecipe(
-            ResourceLocation id,
-            StationType stationType,
-            int tier,
-            ResourceLocation output,
-            int outputCount,
-            int cookTimeTicks,
-            boolean requiresTool,
-            @Nullable ResourceLocation containerItemId,
-            int containerCount,
-            List<RecipeIngredient> inputs,
-            boolean purification,
-            boolean beverage,
-            //? if >=1.21 {
-            @Nullable RecipeHolder<?> source
-            //?} else {
-            /*@Nullable Recipe<?> source
-            *///?}
-    ) implements ProducerRecipe {}
 
     //? if >=1.21 {
     private static final ResourceLocation FD_COOKING_POT = ResourceLocation.parse("farmersdelight:cooking_pot");
@@ -62,8 +40,6 @@ public final class ModRecipeRegistry {
     private static final ResourceLocation FD_CUTTING_TYPE_ID = ResourceLocation.parse("farmersdelight:cutting");
     private static final ResourceLocation MINECRAFT_BOWL = ResourceLocation.parse("minecraft:bowl");
     private static final ResourceLocation MINECRAFT_POTION = ResourceLocation.parse("minecraft:potion");
-    private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
-            ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "impure_water_container");
     private static final ResourceLocation RUSTIC_COFFEE_BEANS =
             ResourceLocation.parse("rusticdelight:coffee_beans");
     private static final ResourceLocation RUSTIC_ROASTED_COFFEE_BEANS =
@@ -74,13 +50,15 @@ public final class ModRecipeRegistry {
     private static final ResourceLocation FD_CUTTING_TYPE_ID = new ResourceLocation("farmersdelight", "cutting");
     private static final ResourceLocation MINECRAFT_BOWL = new ResourceLocation("minecraft", "bowl");
     private static final ResourceLocation MINECRAFT_POTION = new ResourceLocation("minecraft", "potion");
-    private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
-            new ResourceLocation(Townstead.MOD_ID, "impure_water_container");
     private static final ResourceLocation RUSTIC_COFFEE_BEANS =
             new ResourceLocation("rusticdelight", "coffee_beans");
     private static final ResourceLocation RUSTIC_ROASTED_COFFEE_BEANS =
             new ResourceLocation("rusticdelight", "roasted_coffee_beans");
     *///?}
+
+    /** One definition of the id, shared with the line that fills it. */
+    private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
+            com.aetherianartificer.townstead.supply.TownsteadSupplyLines.IMPURE_WATER;
 
     private static final TagKey<Item>[] TIER_TAGS;
     static {
@@ -98,9 +76,12 @@ public final class ModRecipeRegistry {
         TIER_TAGS = tags;
     }
 
-    private static final long CACHE_TICKS = 200L;
-    private static ResourceLocation cachedDimension = null;
-    private static long cacheUntilTick = Long.MIN_VALUE;
+    // Discovery reads the recipe manager and the tag sets, so its result can only change when
+    // datapacks reload. The cache is therefore keyed on a reload generation rather than a tick
+    // deadline: no rediscovery on a timer, and no rediscovery when cooks in two dimensions take
+    // turns asking (the recipe manager is server-wide, so the old per-dimension key only ever
+    // caused thrash). Derived caches key off the same counter to stay coherent with it.
+    private static int cachedGeneration = -1;
     private static List<DiscoveredRecipe> cachedRecipes = List.of();
     private static List<DiscoveredRecipe> cachedFoodRecipes = List.of();
     private static List<DiscoveredRecipe> cachedBeverageRecipes = List.of();
@@ -108,17 +89,25 @@ public final class ModRecipeRegistry {
     private static Map<StationType, List<DiscoveredRecipe>> cachedFoodStationRecipes = Map.of();
     private static Map<StationType, List<DiscoveredRecipe>> cachedBeverageStationRecipes = Map.of();
 
+    /** The current reload generation; derived caches store it to detect a rediscovery. */
+    public static int generation() {
+        return com.aetherianartificer.townstead.data.ReloadGeneration.current();
+    }
+
+    /** Drops the discovery cache. Called when datapacks finish reloading. */
+    public static void invalidate() {
+        com.aetherianartificer.townstead.data.ReloadGeneration.bump();
+    }
+
     public static List<DiscoveredRecipe> getRecipes(ServerLevel level) {
-        ResourceLocation dimension = level.dimension().location();
-        long now = level.getGameTime();
-        if (dimension.equals(cachedDimension) && now < cacheUntilTick) {
+        int current = generation();
+        if (cachedGeneration == current) {
             return cachedRecipes;
         }
         List<DiscoveredRecipe> discovered = discoverAllRecipes(level);
-        cachedDimension = dimension;
-        cacheUntilTick = now + CACHE_TICKS;
         cachedRecipes = List.copyOf(discovered);
         rebuildRecipeViews(cachedRecipes);
+        cachedGeneration = current;
         return cachedRecipes;
     }
 
@@ -241,6 +230,9 @@ public final class ModRecipeRegistry {
         // 3c. Protocol stations' declared production lines → synthetic recipes
         discoverProtocolRecipes(level, recipes);
 
+        // 3d. Two-stage fluid stations (ferment then pour), joined into item-in/item-out form
+        discoverFluidRecipes(level, recipes);
+
         // 4. Synthetic purification recipe
         ThirstCompatBridge thirstBridge = ThirstBridgeResolver.get();
         if (thirstBridge != null && TownsteadConfig.isCookWaterPurificationEnabled() && thirstBridge.supportsPurification()) {
@@ -324,6 +316,11 @@ public final class ModRecipeRegistry {
         for (DiscoveredRecipe r : out) existingIds.add(r.id());
         Set<ResourceLocation> seenTypes = new HashSet<>();
         for (WorkstationDef def : defs) {
+            // Fluid stations are NOT skipped. A mod can change its recipe model between versions
+            // (Brewin' 3.x fermented into a fluid; its rewrite is plain item-in, item-out), and
+            // the two discovery paths self-select: generic discovery reads an empty item result
+            // for a fluid recipe and drops it, while the fluid reader finds no fluid fields on an
+            // item recipe. Running both means one jar's model works without knowing which it is.
             ResourceLocation typeId = def.recipeType();
             if (typeId == null || !seenTypes.add(typeId)) continue;
             //? if >=1.21 {
@@ -341,6 +338,17 @@ public final class ModRecipeRegistry {
                 if (outputId == null) continue;
                 List<RecipeIngredient> inputs = extractIngredients(recipe);
                 if (inputs.isEmpty()) continue;
+                // A furnace burns something to run. Expressing that as an ordinary ingredient on
+                // a supply-line id means planning, scoring, staging and the "can I even make
+                // this?" check all account for fuel without knowing what fuel is.
+                if (def.role() == StationType.FURNACE_STATION) {
+                    inputs = new ArrayList<>(inputs);
+                    inputs.add(new RecipeIngredient(
+                            List.of(com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL), 1));
+                }
+                // A custom recipe type may need a vessel (Farm & Charm's pot, Bakery's jar).
+                // Without this the villager brings ingredients and never the container.
+                ResourceLocation container = containerOf(recipe);
                 int cookTime = safeCookTime(recipe, def.cookTimeTicks());
                 int tier = def.recipeTier() > 0 ? def.recipeTier()
                         : autoTier(def.role(), inputs.size(), cookTime);
@@ -352,8 +360,8 @@ public final class ModRecipeRegistry {
                         Math.max(1, result.getCount()),
                         cookTime,
                         false,
-                        null,
-                        0,
+                        container,
+                        container == null ? 0 : 1,
                         inputs,
                         false,
                         def.beverage(),
@@ -556,11 +564,48 @@ public final class ModRecipeRegistry {
         }
     }
 
+
+    /**
+     * Stations whose work happens as fluid inside the block. Each mod reads its own recipes, and
+     * the join turns the pair into something the item-only planner can already handle.
+     */
+    private static void discoverFluidRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
+        for (WorkstationDef def : Workstations.all()) {
+            if (!def.fluidStation()) continue;
+            var source = com.aetherianartificer.townstead.work.recipe.FluidRecipeSources
+                    .byName(def.fluidSource());
+            // No reader registered means the mod is absent, so the station simply has no recipes.
+            if (source == null) continue;
+            int tier = def.recipeTier() > 0 ? def.recipeTier() : 3;
+            out.addAll(source.discover(level, def.role(), tier));
+        }
+    }
+
+
+    /** An ItemStack field naming a vessel the recipe needs, read generically across mods. */
+    private static @Nullable ResourceLocation containerOf(Recipe<?> recipe) {
+        for (Class<?> c = recipe.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+                if (f.getType() != ItemStack.class) continue;
+                if (!f.getName().toLowerCase(Locale.ROOT).contains("container")) continue;
+                try {
+                    f.setAccessible(true);
+                    if (f.get(recipe) instanceof ItemStack stack && !stack.isEmpty()) {
+                        return BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        return null;
+    }
+
     // ── Auto-tiering ──
 
     static int autoTier(StationType stationType, int ingredientCount, int cookTimeTicks) {
         int base = switch (stationType) {
-            case FIRE_STATION -> 1;
+            // A smelted steak is the plainest cooking there is, same as one on a campfire.
+            case FIRE_STATION, FURNACE_STATION -> 1;
             case CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE -> 2;
             case HOT_STATION -> 3;
         };
@@ -650,7 +695,7 @@ public final class ModRecipeRegistry {
      */
     //? if >=1.21 {
     @SuppressWarnings("unchecked")
-    private static List<RecipeHolder<?>> getRecipesForType(ServerLevel level, ResourceLocation typeId) {
+    public static List<RecipeHolder<?>> getRecipesForType(ServerLevel level, ResourceLocation typeId) {
         RecipeType<?> type = BuiltInRegistries.RECIPE_TYPE.get(typeId);
         if (type == null) return List.of();
         ResourceLocation resolved = BuiltInRegistries.RECIPE_TYPE.getKey(type);
@@ -664,7 +709,7 @@ public final class ModRecipeRegistry {
     }
     //?} else {
     /*@SuppressWarnings("unchecked")
-    private static List<Recipe<?>> getRecipesForType(ServerLevel level, ResourceLocation typeId) {
+    public static List<Recipe<?>> getRecipesForType(ServerLevel level, ResourceLocation typeId) {
         RecipeType<?> type = BuiltInRegistries.RECIPE_TYPE.get(typeId);
         if (type == null) return List.of();
         ResourceLocation resolved = BuiltInRegistries.RECIPE_TYPE.getKey(type);
@@ -761,7 +806,7 @@ public final class ModRecipeRegistry {
         return StationHandler.isKnifeStack(stack);
     }
 
-    private static List<RecipeIngredient> extractIngredients(Recipe<?> recipe) {
+    public static List<RecipeIngredient> extractIngredients(Recipe<?> recipe) {
         List<RecipeIngredient> result = new ArrayList<>();
         for (net.minecraft.world.item.crafting.Ingredient mcIng : recipe.getIngredients()) {
             if (mcIng == null || mcIng.isEmpty()) continue;
@@ -797,5 +842,27 @@ public final class ModRecipeRegistry {
             }
         }
         return ids.isEmpty() ? List.of() : List.copyOf(ids);
+    }
+
+    /**
+     * Drops the discovery cache once a datapack reload has finished. Registered through
+     * {@code AddReloadListenerEvent}, so its apply phase runs after the recipe manager's — the
+     * next cook to ask rediscovers against the new recipes rather than the old ones.
+     */
+    public static final class ReloadHook
+            extends net.minecraft.server.packs.resources.SimplePreparableReloadListener<Void> {
+
+        @Override
+        protected Void prepare(net.minecraft.server.packs.resources.ResourceManager resourceManager,
+                               net.minecraft.util.profiling.ProfilerFiller profiler) {
+            return null;
+        }
+
+        @Override
+        protected void apply(Void prepared,
+                             net.minecraft.server.packs.resources.ResourceManager resourceManager,
+                             net.minecraft.util.profiling.ProfilerFiller profiler) {
+            invalidate();
+        }
     }
 }

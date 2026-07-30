@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "farm_and_charm",
+  "type": "passive_station",
+  "blocks": ["farm_and_charm:mincer"],
+  "recipe_type": "farm_and_charm:mincer"
+}

@@ -5,21 +5,21 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.butchery.ButcheryCompat;
 import com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask;
 import com.aetherianartificer.townstead.compat.butchery.GrinderWorkTask;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.WorkTarget;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerBlockedReason;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerRecipe;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerWorkTask;
+import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.WorkTarget;
+import com.aetherianartificer.townstead.work.producer.ProducerBlockedReason;
+import com.aetherianartificer.townstead.work.producer.ProducerRecipe;
+import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.work.producer.ProducerStationState;
+import com.aetherianartificer.townstead.work.producer.ProducerWorkTask;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
-import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -100,10 +100,11 @@ public class ButcherWorkTask extends ProducerWorkTask {
     // ── Worksite ──
 
     @Override
-    protected @Nullable WorkSiteRef resolveWorksite(ServerLevel level, VillagerEntityMCA villager) {
+    protected @Nullable WorkSiteView resolveWorksite(ServerLevel level, VillagerEntityMCA villager) {
         BlockPos smoker = activeSmokerAnchor(level, villager);
         if (smoker == null) return null;
-        return WorkSiteRef.zone(smoker, WORK_RADIUS, VERTICAL_RADIUS);
+        return WorkSiteView.zone(smoker, WORK_RADIUS, VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.work.site.Worksites.of(level, smoker));
     }
 
     @Override
@@ -116,7 +117,7 @@ public class ButcherWorkTask extends ProducerWorkTask {
     }
 
     @Override
-    protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteRef site) {
+    protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteView site) {
         BlockPos smoker = activeSmokerAnchor(level, villager);
         if (smoker == null) return null;
         // If we're already within radius but standing on the smoker block, redirect to the stand position.
@@ -423,7 +424,7 @@ public class ButcherWorkTask extends ProducerWorkTask {
         String name = villager.getName().getString();
         String id = villager.getUUID().toString();
         if (id.length() > 8) id = id.substring(0, 8);
-        WorkSiteRef site = activeWorkSite(level, villager);
+        WorkSiteView site = activeWorkSite(level, villager);
         WorkTarget target = activeWorkTarget(level, villager);
         WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();

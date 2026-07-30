@@ -127,6 +127,22 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.chronicle.net.ChronicleOpenS2CPayload::read,
                 TownsteadNetwork::handleChronicleOpen);
+        registerS2C(com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload::read,
+                TownsteadNetwork::handleOrdersSnapshot);
+        registerC2S(com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload::read,
+                TownsteadNetwork::handleOrderEdit);
+        registerS2C(com.aetherianartificer.townstead.work.order.net.OrdersOfferS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.work.order.net.OrdersOfferS2CPayload::read,
+                TownsteadNetwork::handleOrdersOffer);
+        registerC2S(com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload::read,
+                TownsteadNetwork::handleOrdersAsk);
         registerS2C(com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload::read,
@@ -735,6 +751,34 @@ public final class TownsteadNetwork {
     private static void handleChroniclePage(
             com.aetherianartificer.townstead.chronicle.net.ChroniclePageS2CPayload payload) {
         com.aetherianartificer.townstead.client.chronicle.ChronicleClientStore.put(payload);
+    }
+
+    private static void handleOrdersSnapshot(
+            com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.orders.OrdersScreen.openOrUpdate(payload);
+    }
+
+    private static void handleOrderEdit(
+            com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.work.order.OrdersOpener.edit(sp, payload);
+    }
+
+    private static void handleOrdersOffer(
+            com.aetherianartificer.townstead.work.order.net.OrdersOfferS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen.onOrdersOffer(
+                payload.villagerId(), payload.available());
+    }
+
+    private static void handleOrdersAsk(
+            com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload payload,
+            ServerPlayer sp) {
+        switch (payload.ask()) {
+            case OFFER -> com.aetherianartificer.townstead.work.order.OrdersConversation.offer(
+                    sp, payload.villagerId());
+            case OPEN -> com.aetherianartificer.townstead.work.order.OrdersConversation.open(
+                    sp, payload.villagerId());
+        }
     }
 
     private static void handleChronicleOpen(

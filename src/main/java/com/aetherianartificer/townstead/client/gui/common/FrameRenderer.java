@@ -55,6 +55,43 @@ public final class FrameRenderer {
     }
 
     /**
+     * The interior a wooden frame encloses: dark planks under a soft wash, with a lit top lip.
+     *
+     * <p>{@link #drawWoodenFrame} deliberately leaves the content rect alone, which means a screen
+     * that only calls the frame gets a hole with the world showing through it. This is the other
+     * half, and every framed screen wants it.</p>
+     */
+    public static void drawInnerPanel(GuiGraphics g, int x, int y, int w, int h) {
+        tileTexture(g, PLANK_DARK, x, y, w, h);
+        g.fill(x, y, x + w, y + h, 0xC8241A0E);
+        g.fill(x, y, x + w, y + 1, Palette.DESK_LIP);
+    }
+
+    /**
+     * A pane sunk into the panel: the columns and strips that hold rows. Darker than the panel it
+     * sits in, so a list reads as a recess rather than as another rectangle lying on top.
+     */
+    public static void drawWell(GuiGraphics g, int x, int y, int w, int h) {
+        g.fill(x, y, x + w, y + h, Palette.WELL);
+        Palette.drawOutline(g, x, y, x + w, y + h, Palette.WELL_EDGE);
+    }
+
+    /**
+     * The interior of a framed panel, darkened to whatever the player has set their chat background
+     * to and no further.
+     *
+     * <p>This is what the Field Post fills its panels with, and it is why that screen sits on the
+     * world rather than covering it. It also means a player who needs more contrast has already
+     * told us so, in a setting they understand, and gets it everywhere at once.</p>
+     */
+    public static void drawChatPanel(GuiGraphics g, int x, int y, int w, int h) {
+        double opacity = net.minecraft.client.Minecraft.getInstance()
+                .options.textBackgroundOpacity().get();
+        int alpha = (int) (opacity * 255.0) & 0xFF;
+        g.fill(x, y, x + w, y + h, alpha << 24);
+    }
+
+    /**
      * Fills an area with a parchment-tinted background (warm off-white).
      */
     public static void drawParchmentPanel(GuiGraphics g, int x, int y, int w, int h) {

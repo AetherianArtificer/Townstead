@@ -2,16 +2,16 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
-import com.aetherianartificer.townstead.ai.work.WorkMovement;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.WorkTarget;
-import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
-import com.aetherianartificer.townstead.ai.work.WorkTargetFailures;
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
+import com.aetherianartificer.townstead.work.WorkBuildingNav;
+import com.aetherianartificer.townstead.work.WorkMovement;
+import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.work.WorkNavigationResult;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.WorkTarget;
+import com.aetherianartificer.townstead.work.WorkTaskAdapter;
+import com.aetherianartificer.townstead.work.WorkTargetFailures;
+import com.aetherianartificer.townstead.work.WorkPathing;
+import com.aetherianartificer.townstead.work.WorkTargetProgress;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
@@ -26,7 +26,7 @@ import com.aetherianartificer.townstead.compat.farming.FarmerStockDroppableCompa
 import com.aetherianartificer.townstead.farming.cellplan.PlannedCell;
 import com.aetherianartificer.townstead.hunger.farm.FarmBlueprint;
 import com.google.common.collect.ImmutableMap;
-import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -347,8 +347,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     @Override
-    public WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
-        return farmAnchor == null ? null : WorkSiteRef.zone(farmAnchor, townstead$farmRadius(), VERTICAL_RADIUS);
+    public WorkSiteView activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
+        return farmAnchor == null ? null : WorkSiteView.zone(
+                farmAnchor, townstead$farmRadius(), VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.work.site.Worksites.of(level, farmAnchor));
     }
 
     @Override
@@ -1661,7 +1663,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return townstead$scaleInt(base, townstead$profile(villager).idleBackoffScale(), 10, 200);
     }
 
-
     private String townstead$detectCropPatternHint(SimpleContainer inv) {
         if (!FarmerCropCompatRegistry.hasAnyLoadedProvider()) return null;
         for (int i = 0; i < inv.getContainerSize(); i++) {
@@ -1745,7 +1746,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         String name = villager.getName().getString();
         String id = villager.getUUID().toString();
         if (id.length() > 8) id = id.substring(0, 8);
-        WorkSiteRef site = activeWorkSite(level, villager);
+        WorkSiteView site = activeWorkSite(level, villager);
         WorkTarget target = activeWorkTarget(level, villager);
         WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         String anchor = farmAnchor == null ? "none" : farmAnchor.getX() + "," + farmAnchor.getY() + "," + farmAnchor.getZ();

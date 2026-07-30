@@ -445,7 +445,6 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
         return saved;
     }
 
-
     /** A resolved anchor: a model bone, base offset (pixels), base orientation, and mirroring. */
     private record Anchor(String bone, float[] offset, float[] rotation, boolean mirror) {}
 

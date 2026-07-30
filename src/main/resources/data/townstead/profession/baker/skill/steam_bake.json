@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Steam Bake"
+  },
+  "icon": "minecraft:bucket",
+  "description": {
+    "text": "A splash of water in a hot oven, for crust that crackles."
+  },
+  "tier": 3,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

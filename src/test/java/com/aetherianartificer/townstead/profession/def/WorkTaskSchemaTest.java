@@ -25,7 +25,7 @@ class WorkTaskSchemaTest {
     @Test
     void cookDeclaresItsWorkTasks() {
         ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook");
-        assertEquals(2, cook.workTasks().size());
+        assertEquals(5, cook.workTasks().size());
 
         WorkTaskDef cookTask = cook.workTasks().get(0);
         assertEquals(id("townstead_work:cook"), cookTask.type());
@@ -41,6 +41,59 @@ class WorkTaskSchemaTest {
                 "chop admits only its declared boards");
         assertEquals(cookTask.weight(), chopTask.weight(),
                 "equal weights merge into one selection pool, preserving engine ranking");
+
+        // The furnace family is scoped rather than open: a cook smelts food, plus the few
+        // non-food things a kitchen plausibly wants, and never iron ore.
+        WorkTaskDef furnaceTask = cook.workTasks().get(2);
+        assertEquals(id("townstead_work:cook"), furnaceTask.type());
+        assertTrue(furnaceTask.allowsBlock(id("minecraft:smoker")));
+        assertTrue(furnaceTask.allowsBlock(id("minecraft:blast_furnace")));
+        assertFalse(furnaceTask.allowsBlock(id("farmersdelight:cooking_pot")),
+                "the furnace task admits only furnace-family blocks");
+        assertFalse(furnaceTask.recipes().edible() && furnaceTask.recipes().isEmpty(),
+                "the edible token must survive alongside the exception tag");
+        assertTrue(furnaceTask.recipes().edible(), "food outputs are admitted by kind, not by tag");
+        assertFalse(furnaceTask.recipes().isEmpty(),
+                "an open recipe set here would let a cook smelt ore");
+        assertTrue(furnaceTask.weight() < cookTask.weight(),
+                "furnaces are a fallback: real cookware is tried first");
+        assertEquals(WorkTaskDef.Scope.VILLAGE, furnaceTask.scope(),
+                "village furnaces are rarely inside a recognised kitchen");
+        assertEquals(WorkTaskDef.Scope.WORKSITE, cookTask.scope(),
+                "cookware stays in the kitchen it belongs to");
+
+        WorkTaskDef potTask = cook.workTasks().get(4);
+        assertTrue(potTask.allowsBlock(id("caupona:stew_pot")),
+                "Caupona's pots need a task of their own or the recipe gate refuses them");
+        assertFalse(potTask.allowsBlock(id("minecraft:furnace")));
+    }
+
+    @Test
+    void scopeDefaultsToWorksite() {
+        ProfessionDef def = parse("""
+                {"work_tasks": [{"type": "cook", "workstations": ["farmersdelight:cooking_pot"]}]}""",
+                new Diagnostics());
+        assertEquals(WorkTaskDef.Scope.WORKSITE, def.workTasks().get(0).scope(),
+                "omitting scope must not widen where a villager works");
+    }
+
+    @Test
+    void unreadableScopeDropsTheEntry() {
+        Diagnostics diagnostics = new Diagnostics();
+        ProfessionDef def = parse("""
+                {"work_tasks": [{"type": "cook", "scope": "everywhere"}]}""", diagnostics);
+        assertTrue(def.workTasks().isEmpty(),
+                "a scope nobody can read must not fall back to a guess about where to work");
+    }
+
+    @Test
+    void widestScopeWinsWhenTasksShareABucket() {
+        assertEquals(WorkTaskDef.Scope.VILLAGE,
+                WorkTaskDef.Scope.WORKSITE.widest(WorkTaskDef.Scope.VILLAGE));
+        assertEquals(WorkTaskDef.Scope.VILLAGE,
+                WorkTaskDef.Scope.VILLAGE.widest(WorkTaskDef.Scope.NEARBY));
+        assertEquals(WorkTaskDef.Scope.NEARBY,
+                WorkTaskDef.Scope.NEARBY.widest(WorkTaskDef.Scope.WORKSITE));
     }
 
     @Test

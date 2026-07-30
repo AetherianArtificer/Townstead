@@ -30,7 +30,7 @@ public final class FarmersDelightBaristaAssignment {
      * barista; requires loaded profession defs.
      */
     public static boolean declaresBaristaWork(VillagerProfession profession) {
-        return com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.professionDeclares(
+        return com.aetherianartificer.townstead.work.WorkTaskDeclarations.professionDeclares(
                 profession, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW);
     }
 
@@ -145,7 +145,7 @@ public final class FarmersDelightBaristaAssignment {
         Optional<Building> cafe = assignedCafe(level, villager);
         if (cafe.isEmpty()) return Set.of();
         // The walkable room discovered from the world; see WorkSiteBounds.
-        return com.aetherianartificer.townstead.ai.work.WorkSiteBounds.workArea(level, cafe.get());
+        return com.aetherianartificer.townstead.work.WorkSiteBounds.workArea(level, cafe.get());
     }
 
     private static List<Building> sortedCafes(Village village) {

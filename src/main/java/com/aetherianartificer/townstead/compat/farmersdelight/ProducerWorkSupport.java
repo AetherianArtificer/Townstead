@@ -1,9 +1,10 @@
 package com.aetherianartificer.townstead.compat.farmersdelight;
 
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions.SessionSnapshot;
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.StationType;
+
+import com.aetherianartificer.townstead.work.producer.ProducerStationSessions.SessionSnapshot;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelector;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.resources.ResourceLocation;

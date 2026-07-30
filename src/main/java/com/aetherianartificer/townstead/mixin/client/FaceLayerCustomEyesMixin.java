@@ -38,9 +38,10 @@ public abstract class FaceLayerCustomEyesMixin<T extends LivingEntity, M extends
                                       float tickDelta, boolean visible, boolean glowing, CallbackInfo ci) {
         @SuppressWarnings("unchecked")
         VillagerLayer<T, M> self = (VillagerLayer<T, M>) (Object) this;
-        //? if neoforge {
-        // The face layer IS the target on this branch.
-        //?} else {
+        // On the older branch this mixin targets VillagerLayer, so it must filter to face layers;
+        // on 1.21.1 the face layer is already the target. The note lives outside the directive
+        // because a branch body that is only a comment loses its slashes on a version switch.
+        //? if forge {
         /*if (!(self instanceof FaceLayer)) return;
         *///?}
         if (HumanoidEyes.render(self.model, transform, provider, light, villager, visible, glowing)) {

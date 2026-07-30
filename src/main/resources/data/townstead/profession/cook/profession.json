@@ -94,6 +94,38 @@
         "farmersdelight:cutting_board"
       ],
       "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "minecraft:furnace",
+        "minecraft:smoker",
+        "minecraft:blast_furnace"
+      ],
+      "recipes": [
+        "edible",
+        "#townstead:cook_smeltable"
+      ],
+      "scope": "village",
+      "weight": 4
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "farm_and_charm:cooking_pot",
+        "farm_and_charm:stove",
+        "farm_and_charm:roaster",
+        "farm_and_charm:mincer"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "caupona:stew_pot",
+        "caupona:lead_stew_pot"
+      ],
+      "weight": 10
     }
   ],
   "daily_cap": 230,

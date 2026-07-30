@@ -7,15 +7,15 @@ import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
 import com.aetherianartificer.townstead.dock.DockLocationIndex;
 import com.aetherianartificer.townstead.recognition.RecognitionEffects;
-import com.aetherianartificer.townstead.ai.work.WorkMovement;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.WorkTarget;
-import com.aetherianartificer.townstead.ai.work.WorkTargetFailures;
-import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
-import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
+import com.aetherianartificer.townstead.work.WorkMovement;
+import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.work.WorkNavigationResult;
+import com.aetherianartificer.townstead.work.WorkPathing;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.WorkTarget;
+import com.aetherianartificer.townstead.work.WorkTargetFailures;
+import com.aetherianartificer.townstead.work.WorkTargetProgress;
+import com.aetherianartificer.townstead.work.WorkTaskAdapter;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -24,7 +24,7 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 *///?}
 import com.google.common.collect.ImmutableMap;
 import com.mojang.authlib.GameProfile;
-import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
@@ -1497,7 +1497,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         String name = villager.getName().getString();
         String id = villager.getUUID().toString();
         if (id.length() > 8) id = id.substring(0, 8);
-        WorkSiteRef site = activeWorkSite(level, villager);
+        WorkSiteView site = activeWorkSite(level, villager);
         WorkTarget target = activeWorkTarget(level, villager);
         WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();
@@ -1545,8 +1545,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     // ── WorkTaskAdapter ──
 
     @Override
-    public @Nullable WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
-        return stationAnchor == null ? null : WorkSiteRef.zone(stationAnchor, townstead$waterSearchRadius(), VERTICAL_RADIUS);
+    public @Nullable WorkSiteView activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
+        return stationAnchor == null ? null : WorkSiteView.zone(
+                stationAnchor, townstead$waterSearchRadius(), VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.work.site.Worksites.of(level, stationAnchor));
     }
 
     @Override

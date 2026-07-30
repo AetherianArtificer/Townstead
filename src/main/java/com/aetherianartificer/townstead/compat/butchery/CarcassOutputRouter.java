@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
+import com.aetherianartificer.townstead.work.station.Stations;
+
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;

@@ -1,22 +1,27 @@
 package com.aetherianartificer.townstead.compat.farmersdelight;
 
+import com.aetherianartificer.townstead.work.station.Stations;
+
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.StationType;
+
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerBlockedReason;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerRecipe;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerWorkTask;
+import com.aetherianartificer.townstead.work.WorkBuildingNav;
+import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.site.Worksite;
+import com.aetherianartificer.townstead.work.site.Worksites;
+import com.aetherianartificer.townstead.work.producer.ProducerBlockedReason;
+import com.aetherianartificer.townstead.work.producer.ProducerRecipe;
+import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.work.producer.ProducerStationSessions;
+import com.aetherianartificer.townstead.work.producer.ProducerStationState;
+import com.aetherianartificer.townstead.work.producer.ProducerWorkTask;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.IngredientResolver;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler.StationSlot;
+import com.aetherianartificer.townstead.work.station.Stations.StationSlot;
 import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
@@ -24,6 +29,7 @@ import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
+import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -62,13 +68,18 @@ public class CookWorkTask extends ProducerWorkTask {
     private @Nullable BlockPos stickyBoardStationAnchor;
     private @Nullable ResourceLocation stickyBoardRecipeId;
     private @Nullable ResourceLocation stickyBoardInputId;
-    private @Nullable com.aetherianartificer.townstead.ai.work.OutputAppraisal.Appraisal lastAppraisal;
+    private @Nullable com.aetherianartificer.townstead.work.OutputAppraisal.Appraisal lastAppraisal;
 
     // Kitchen bounds cache
     private Set<Long> cachedKitchenWorkArea = Set.of();
     private @Nullable BlockPos cachedKitchenWorkAnchor = null;
     private long cachedKitchenWorkUntil = 0L;
     private WorkBuildingNav.Snapshot cachedKitchenSnapshot = WorkBuildingNav.Snapshot.EMPTY;
+    /** Wider-scope station searches, kept apart from the worksite snapshot and on the same TTL. */
+    private final java.util.EnumMap<com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope, ScopedSnapshot>
+            scopedSnapshots = new java.util.EnumMap<>(com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope.class);
+
+    private record ScopedSnapshot(@Nullable BlockPos anchor, WorkBuildingNav.Snapshot snapshot, long expiresAt) {}
 
     public CookWorkTask() {
         super();
@@ -83,7 +94,7 @@ public class CookWorkTask extends ProducerWorkTask {
 
     @Override
     protected boolean isEligibleVillager(ServerLevel level, VillagerEntityMCA villager) {
-        if (!com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.permitsTask(
+        if (!com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
                 villager, CookTaskDeclarations.COOK, CookTaskDeclarations.CHOP)) return false;
         return FarmersDelightCookAssignment.canVillagerWorkAsCook(level, villager);
     }
@@ -91,10 +102,16 @@ public class CookWorkTask extends ProducerWorkTask {
     // ── Worksite ──
 
     @Override
-    protected @Nullable WorkSiteRef resolveWorksite(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos reference = activeKitchenReference(villager);
-        Set<Long> bounds = activeKitchenBounds(villager, reference);
-        return bounds.isEmpty() ? null : WorkSiteRef.building(reference, bounds);
+    protected @Nullable WorkSiteView resolveWorksite(ServerLevel level, VillagerEntityMCA villager) {
+        FarmersDelightCookAssignment.CookSite site = resolveCookSite(level, villager);
+        BlockPos reference = referenceFor(villager, site);
+        Set<Long> bounds = activeKitchenBounds(villager, reference, site);
+        if (bounds.isEmpty()) return null;
+        Worksite record = site == null ? null
+                : site.building() != null
+                        ? Worksites.of(level, site.building())
+                        : Worksites.of(level, site.post());
+        return WorkSiteView.building(reference, bounds, record);
     }
 
     @Override
@@ -103,7 +120,7 @@ public class CookWorkTask extends ProducerWorkTask {
     }
 
     @Override
-    protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteRef site) {
+    protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteView site) {
         WorkBuildingNav.Snapshot kitchenSnapshot = activeKitchenSnapshot(level, villager);
         return currentOrNewKitchenWorksiteTarget(villager, gameTime, kitchenSnapshot);
     }
@@ -117,7 +134,7 @@ public class CookWorkTask extends ProducerWorkTask {
     protected @Nullable BlockPos refreshStandPosition(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos stationAnchor) {
         if (stationAnchor == null) return null;
         BlockPos refreshed = WorkBuildingNav.nearestStationStand(activeKitchenSnapshot(level, villager), villager, stationAnchor);
-        if (refreshed == null) refreshed = StationHandler.findStandingPosition(level, villager, stationAnchor);
+        if (refreshed == null) refreshed = Stations.findStandingPosition(level, villager, stationAnchor);
         return refreshed;
     }
 
@@ -125,14 +142,9 @@ public class CookWorkTask extends ProducerWorkTask {
 
     @Override
     protected @Nullable ProducerStationSelection selectStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+        Set<Long> kitchenBounds = activeKitchenBounds(level, villager);
         WorkBuildingNav.Snapshot kitchenSnapshot = activeKitchenSnapshot(level, villager);
-        List<StationSlot> stations = kitchenSnapshot.stations();
-        if (stations.isEmpty()) {
-            debugChat(level, villager, "ACQUIRE:no stations found in kitchen (" + kitchenBounds.size() + " bounds)");
-            setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_WORKSITE, "");
-            return null;
-        }
+        boolean sawAnyStation = !kitchenSnapshot.stations().isEmpty();
         ProducerStationIndex.Selection best = null;
         // Declared tasks gate stations per weight bucket: a bucket's stations are exhausted
         // before the next (lower-weight) bucket is considered. A villager specced into a
@@ -144,17 +156,31 @@ public class CookWorkTask extends ProducerWorkTask {
                 : CookTaskDeclarations.cookBuckets(villager)) {
             java.util.function.Predicate<StationSlot> filter =
                     CookTaskDeclarations.stationFilter(bucket);
+            // Where the bucket may look. Buckets run highest weight first and the loop breaks on
+            // the first hit, so a wide search only ever runs once the villager has found nothing
+            // to do at its own work site — the expensive scan is the last resort, not the first.
+            WorkBuildingNav.Snapshot snapshot =
+                    scopedSnapshot(level, villager, gameTime, CookTaskDeclarations.scopeOf(bucket), kitchenSnapshot);
+            if (snapshot.stations().isEmpty()) continue;
+            sawAnyStation = true;
+            // Ingredients still come from the villager's own kitchen: a wider scope lets a cook
+            // walk to a shared station, not raid the whole village's pantries.
             if (!pathWorksites.isEmpty()) {
                 best = ProducerStationIndex.chooseCookSelection(
-                        level, villager, kitchenSnapshot, kitchenBounds, abandonedUntilByStation,
+                        level, villager, snapshot, kitchenBounds, abandonedUntilByStation,
                         gameTime, recipeCooldownUntil,
                         filter.and(slot -> pathWorksites.contains(slot.blockId())));
                 if (best != null) break;
             }
             best = ProducerStationIndex.chooseCookSelection(
-                    level, villager, kitchenSnapshot, kitchenBounds, abandonedUntilByStation,
+                    level, villager, snapshot, kitchenBounds, abandonedUntilByStation,
                     gameTime, recipeCooldownUntil, filter);
             if (best != null) break;
+        }
+        if (!sawAnyStation) {
+            debugChat(level, villager, "ACQUIRE:no stations found in kitchen (" + kitchenBounds.size() + " bounds)");
+            setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_WORKSITE, "");
+            return null;
         }
         if (best == null) return null;
 
@@ -191,18 +217,82 @@ public class CookWorkTask extends ProducerWorkTask {
     @Override
     protected boolean cleanupForeignStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null || stationType == null) return false;
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+        Set<Long> kitchenBounds = activeKitchenBounds(level, villager);
         boolean cleaned = StationHandler.cleanupForeignProducerStation(level, villager, stationAnchor, stationType, kitchenBounds);
         return cleaned && !StationHandler.stationHasAnyContents(level, stationAnchor, stationType);
     }
 
     // ── Recipe / gather / produce / collect ──
 
+    /** This cook's rank in the career they are working, or 1 when it cannot be read. */
+    private static int rankOf(VillagerEntityMCA villager) {
+        com.aetherianartificer.townstead.villager.ProfessionXpStore store =
+                com.aetherianartificer.townstead.profession.career.CareerTreeRows.storeOf(villager);
+        if (store == null) return 1;
+        ResourceLocation career = BuiltInRegistries.VILLAGER_PROFESSION
+                .getKey(villager.getVillagerData().getProfession());
+        return career == null ? 1 : Math.max(1, ProfessionProgress.getTier(store, career));
+    }
+
+    /**
+     * Everything this cook could make at the station they are standing at, for orders to choose
+     * among. The same viability filter the autonomous pick uses, so an order can only ever select
+     * something the cook would have been allowed to make anyway.
+     */
+    @Override
+    protected java.util.List<? extends ProducerRecipe> orderCandidates(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor == null || stationType == null) return java.util.List.of();
+        if (!Stations.isStation(level, stationAnchor)) return java.util.List.of();
+        Set<Long> kitchenBounds = activeKitchenBounds(level, villager);
+        return com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelector
+                .viableRecipes(level, villager, stationType, stationAnchor, kitchenBounds,
+                        recipeCooldownUntil,
+                        ProducerWorkSupport.excludeBeverages(ProducerRole.COOK, level, villager),
+                        ProducerWorkSupport.beveragesOnly(ProducerRole.COOK))
+                .stream()
+                .map(com.aetherianartificer.townstead.compat.farmersdelight.cook
+                        .RecipeSelector.ScoredRecipe::recipe)
+                .toList();
+    }
+
+    /**
+     * How this cook answers an order's questions. Stock is counted over the worksite's own extent,
+     * and eligibility is the real per-worker check: a line naming somebody else, or a rank this
+     * cook has not reached, is not theirs to take.
+     */
+    @Override
+    protected @Nullable com.aetherianartificer.townstead.work.order.OrderContext orderContext(
+            ServerLevel level, VillagerEntityMCA villager) {
+        com.aetherianartificer.townstead.work.site.Worksite site = activeWorksite();
+        if (site == null) return null;
+        return new com.aetherianartificer.townstead.work.order.OrderContext() {
+            @Override
+            public int stockOf(ResourceLocation item,
+                               com.aetherianartificer.townstead.work.order.Order.CountScope scope) {
+                return com.aetherianartificer.townstead.work.order.WorksiteStock
+                        .count(level, site, item, scope);
+            }
+
+            @Override
+            public int villagerCount() {
+                return com.aetherianartificer.townstead.work.order.WorksiteStock.villagers(level, site);
+            }
+
+            @Override
+            public boolean mayWork(com.aetherianartificer.townstead.work.order.Order order) {
+                if (order.villager() != null && !order.villager().equals(villager.getUUID())) return false;
+                if (order.minRank() > 0 && rankOf(villager) < order.minRank()) return false;
+                return true;
+            }
+        };
+    }
+
     @Override
     protected @Nullable ProducerRecipe pickRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null || stationType == null) return null;
-        if (!StationHandler.isStation(level, stationAnchor)) return null;
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+        if (!Stations.isStation(level, stationAnchor)) return null;
+        Set<Long> kitchenBounds = activeKitchenBounds(level, villager);
         DiscoveredRecipe recipe = ProducerWorkSupport.pickRecipe(
                 ProducerRole.COOK, level, villager, stationType, stationAnchor, kitchenBounds, recipeCooldownUntil);
         if (recipe == null) {
@@ -219,7 +309,7 @@ public class CookWorkTask extends ProducerWorkTask {
     protected GatherResult gatherInputs(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (activeRecipe == null || stationAnchor == null || stationType == null) return GatherResult.fail(null);
         DiscoveredRecipe recipe = fdRecipe();
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+        Set<Long> kitchenBounds = activeKitchenBounds(level, villager);
         IngredientResolver.PullResult pullResult = IngredientResolver.pullAndConsumeDetailed(
                 level, villager, recipe, stationAnchor, stationType, stagedInputs, kitchenBounds);
         if (!pullResult.success()) {
@@ -251,11 +341,11 @@ public class CookWorkTask extends ProducerWorkTask {
     protected boolean beginProduce(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (activeRecipe == null) return false;
         DiscoveredRecipe recipe = fdRecipe();
-        if (com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols.isProtocolType(stationType)) {
+        if (com.aetherianartificer.townstead.work.station.StationProtocols.isProtocolType(stationType)) {
             // The physical hand-off: place the work block and/or push the gathered items from
             // the villager's inventory into the station, the way a player's hands would.
-            Set<Long> bounds = activeKitchenBounds(villager, activeKitchenReference(villager));
-            if (!com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols.insert(
+            Set<Long> bounds = activeKitchenBounds(level, villager);
+            if (!com.aetherianartificer.townstead.work.station.StationProtocols.insert(
                     level, villager, stationAnchor, recipe, bounds)) {
                 debugChat(level, villager, "COOK:station refused inputs");
                 return false;
@@ -272,8 +362,8 @@ public class CookWorkTask extends ProducerWorkTask {
         if (activeRecipe == null) return true;
         DiscoveredRecipe recipe = fdRecipe();
 
-        if (com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols.isProtocolType(stationType)) {
-            return com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols.isReady(
+        if (com.aetherianartificer.townstead.work.station.StationProtocols.isProtocolType(stationType)) {
+            return com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
                     level, villager, stationAnchor, recipe);
         }
 
@@ -337,12 +427,12 @@ public class CookWorkTask extends ProducerWorkTask {
 
     @Override
     protected CollectResult collectFromStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+        Set<Long> kitchenBounds = activeKitchenBounds(level, villager);
         Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
         boolean collected = ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, kitchenBounds, outputIds);
 
-        if (com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols.isProtocolType(stationType)) {
-            boolean harvested = com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols.collect(
+        if (com.aetherianartificer.townstead.work.station.StationProtocols.isProtocolType(stationType)) {
+            boolean harvested = com.aetherianartificer.townstead.work.station.StationProtocols.collect(
                     level, villager, stationAnchor, fdRecipe(), kitchenBounds);
             // Harvest throws the product into the world (the peel lift); sweep it up.
             collected |= ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, kitchenBounds, outputIds);
@@ -369,7 +459,7 @@ public class CookWorkTask extends ProducerWorkTask {
 
     @Override
     protected void storeOutputs(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+        Set<Long> kitchenBounds = activeKitchenBounds(level, villager);
         Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
         ProducerOutputHelper.finishCollectInventoryOutputs(level, villager, pendingOutput, stationAnchor, kitchenBounds, outputIds);
     }
@@ -414,7 +504,7 @@ public class CookWorkTask extends ProducerWorkTask {
             var stack = villager.getInventory().getItem(i);
             if (stack.isEmpty()) continue;
             if (!recipe.output().equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) continue;
-            var appraisal = com.aetherianartificer.townstead.ai.work.OutputAppraisal.appraise(stack);
+            var appraisal = com.aetherianartificer.townstead.work.OutputAppraisal.appraise(stack);
             if (appraisal != null) {
                 lastAppraisal = appraisal;
                 return;
@@ -429,7 +519,7 @@ public class CookWorkTask extends ProducerWorkTask {
         if (stationType == StationType.FIRE_STATION && stationAnchor != null) {
             Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
             List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
-            Set<Long> kitchenBounds = activeKitchenBounds(villager, activeKitchenReference(villager));
+            Set<Long> kitchenBounds = activeKitchenBounds(level, villager);
             for (ItemStack drop : drops) {
                 IngredientResolver.storeOutputInCookStorage(level, villager, drop, stationAnchor, kitchenBounds);
                 if (!drop.isEmpty()) {
@@ -469,7 +559,7 @@ public class CookWorkTask extends ProducerWorkTask {
     protected void onOpportunisticSweep(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         ProducerOutputHelper.sweepNearbyOutputs(
                 level, villager, stationAnchor,
-                activeKitchenBounds(villager, activeKitchenReference(villager)),
+                activeKitchenBounds(level, villager),
                 ModRecipeRegistry.allOutputIds(level));
     }
 
@@ -482,6 +572,7 @@ public class CookWorkTask extends ProducerWorkTask {
         cachedKitchenWorkAnchor = null;
         cachedKitchenWorkUntil = 0L;
         cachedKitchenSnapshot = WorkBuildingNav.Snapshot.EMPTY;
+        scopedSnapshots.clear();
     }
 
     @Override
@@ -493,6 +584,7 @@ public class CookWorkTask extends ProducerWorkTask {
         cachedKitchenWorkAnchor = null;
         cachedKitchenWorkUntil = 0L;
         cachedKitchenSnapshot = WorkBuildingNav.Snapshot.EMPTY;
+        scopedSnapshots.clear();
     }
 
     @Override
@@ -603,13 +695,38 @@ public class CookWorkTask extends ProducerWorkTask {
         return (DiscoveredRecipe) activeRecipe;
     }
 
+    /**
+     * The cook's assigned site, resolved once. Every step below used to ask for this twice — once
+     * to find the reference block and again to find the bounds — and each ask rebuilds the village's
+     * whole cook-site list and re-sorts its residents. Threading one resolution through halves that
+     * with no caching involved.
+     */
+    private @Nullable FarmersDelightCookAssignment.CookSite resolveCookSite(
+            ServerLevel level, VillagerEntityMCA villager) {
+        return FarmersDelightCookAssignment.assignedCookSite(level, villager).orElse(null);
+    }
+
+    /** Reference block and bounds from one resolution. The form every work step should use. */
+    private Set<Long> activeKitchenBounds(ServerLevel level, VillagerEntityMCA villager) {
+        FarmersDelightCookAssignment.CookSite site = resolveCookSite(level, villager);
+        return activeKitchenBounds(villager, referenceFor(villager, site), site);
+    }
+
     /** Resolve the set of blocks belonging to this villager's active kitchen (assigned or nearest). */
-    private Set<Long> activeKitchenBounds(VillagerEntityMCA villager, BlockPos anchor) {
-        if (villager.level() instanceof ServerLevel level) {
-            Set<Long> assigned = FarmersDelightCookAssignment.assignedKitchenBounds(level, villager);
-            if (!assigned.isEmpty()) {
-                return assigned;
-            }
+    private Set<Long> activeKitchenBounds(VillagerEntityMCA villager, BlockPos anchor,
+                                          @Nullable FarmersDelightCookAssignment.CookSite site) {
+        if (villager.level() instanceof ServerLevel level && site != null) {
+            // The walkable room derived from the world, remembered on the worksite record so two
+            // cooks in one kitchen share one flood fill instead of each running their own.
+            Building assigned = site.building();
+            Set<Long> extent = assigned != null
+                    ? Worksites.extentOf(level, Worksites.of(level, assigned), assigned, null)
+                    : site.post() != null
+                            ? Worksites.extentOf(level, Worksites.of(level, site.post()), null, site.post())
+                            : Set.of();
+            // An assignment that yields nothing standable is not an answer: fall through to the
+            // nearest kitchen exactly as before, or a cook with a degenerate room stops working.
+            if (!extent.isEmpty()) return extent;
         }
 
         List<Building> kitchens = StationHandler.kitchenBuildings(villager);
@@ -637,9 +754,9 @@ public class CookWorkTask extends ProducerWorkTask {
             if (selected == null) selected = kitchens.get(0);
         }
 
-        return villager.level() instanceof ServerLevel serverLevel
-                ? com.aetherianartificer.townstead.ai.work.WorkSiteBounds.workArea(serverLevel, selected)
-                : Set.of();
+        if (!(villager.level() instanceof ServerLevel serverLevel)) return Set.of();
+        Building fallback = selected;
+        return Worksites.extentOf(serverLevel, Worksites.of(serverLevel, fallback), fallback, null);
     }
 
     /** Cache the expensive kitchen bounds / walkable-interior snapshot for ROOM_BOUNDS_CACHE_TICKS. */
@@ -651,7 +768,8 @@ public class CookWorkTask extends ProducerWorkTask {
 
     /** Returns a cached WorkBuildingNav.Snapshot for the active kitchen (rebuilds at TTL expiry). */
     private WorkBuildingNav.Snapshot activeKitchenSnapshot(ServerLevel level, VillagerEntityMCA villager) {
-        BlockPos anchor = activeKitchenReference(villager);
+        FarmersDelightCookAssignment.CookSite site = resolveCookSite(level, villager);
+        BlockPos anchor = referenceFor(villager, site);
         long gameTime = level.getGameTime();
         if (anchor != null && cachedKitchenWorkAnchor != null
                 && anchor.equals(cachedKitchenWorkAnchor)
@@ -659,30 +777,101 @@ public class CookWorkTask extends ProducerWorkTask {
                 && !cachedKitchenSnapshot.walkableInterior().isEmpty()) {
             return cachedKitchenSnapshot;
         }
-        Set<Long> bounds = activeKitchenBounds(villager, anchor);
+        Set<Long> bounds = activeKitchenBounds(villager, anchor, site);
         WorkBuildingNav.Snapshot snapshot = WorkBuildingNav.snapshot(level, bounds, anchor);
         cachedKitchenSnapshot = snapshot;
         cacheKitchenWorkArea(anchor, gameTime, snapshot.walkableInterior());
         return snapshot;
     }
 
+    /** How far out {@code nearby} reaches from the work site, in blocks. */
+    private static final int NEARBY_SCOPE_RADIUS = 12;
+
+    /**
+     * The station search for one scope. {@code worksite} reuses the kitchen snapshot the task
+     * already keeps; the wider scopes get their own, cached on the same TTL and behind the village
+     * AI budget so several cooks widening at once cannot stack full rescans in one tick.
+     */
+    private WorkBuildingNav.Snapshot scopedSnapshot(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime,
+            com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope scope,
+            WorkBuildingNav.Snapshot worksiteSnapshot) {
+        if (scope == com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope.WORKSITE) {
+            return worksiteSnapshot;
+        }
+        BlockPos anchor = activeKitchenReference(villager);
+        ScopedSnapshot cached = scopedSnapshots.get(scope);
+        if (cached != null && gameTime <= cached.expiresAt()
+                && java.util.Objects.equals(anchor, cached.anchor())) {
+            return cached.snapshot();
+        }
+        // Budgeted per work site, not globally: cooks in different kitchens widen independently,
+        // and only cooks sharing one kitchen contend. A refusal is not a failure — the previous
+        // snapshot still answers, and with none yet the villager keeps to its work site this tick
+        // and widens on a later one.
+        String budgetKey = "cook-scope:" + scope.name() + ":" + (anchor == null ? "none" : anchor.asLong());
+        if (!com.aetherianartificer.townstead.storage.VillageAiBudget.tryConsume(level, budgetKey, 1)) {
+            return cached != null ? cached.snapshot() : worksiteSnapshot;
+        }
+
+        Set<Long> bounds = scopedBounds(level, villager, scope, anchor);
+        WorkBuildingNav.Snapshot snapshot = bounds.isEmpty()
+                ? worksiteSnapshot
+                : WorkBuildingNav.snapshot(level, bounds, anchor);
+        scopedSnapshots.put(scope, new ScopedSnapshot(
+                anchor == null ? null : anchor.immutable(), snapshot, gameTime + ROOM_BOUNDS_CACHE_TICKS));
+        return snapshot;
+    }
+
+    /** The cells a scope's station search covers, always including the villager's own work site. */
+    private Set<Long> scopedBounds(
+            ServerLevel level, VillagerEntityMCA villager,
+            com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope scope,
+            @Nullable BlockPos anchor) {
+        Set<Long> bounds = new java.util.HashSet<>(activeKitchenBounds(level, villager));
+        switch (scope) {
+            case NEARBY -> {
+                if (anchor == null) break;
+                int r = NEARBY_SCOPE_RADIUS;
+                for (BlockPos pos : BlockPos.betweenClosed(
+                        anchor.offset(-r, -4, -r), anchor.offset(r, 4, r))) {
+                    bounds.add(pos.asLong());
+                }
+            }
+            case VILLAGE -> {
+                Optional<Village> village = FarmersDelightCookAssignment.resolveVillage(villager);
+                if (village.isEmpty()) break;
+                for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village.get())) {
+                    bounds.addAll(com.aetherianartificer.townstead.work.WorkSiteBounds.workArea(level, building));
+                }
+            }
+            case WORKSITE -> { }
+        }
+        return bounds;
+    }
+
     /** Pick the best reference block for site queries: assigned kitchen center, outdoor post, station anchor, or nearest. */
     private BlockPos activeKitchenReference(VillagerEntityMCA villager) {
-        if (villager.level() instanceof ServerLevel level) {
-            Optional<FarmersDelightCookAssignment.CookSite> site =
-                    FarmersDelightCookAssignment.assignedCookSite(level, villager);
-            if (site.isPresent()) {
-                Building assigned = site.get().building();
-                if (assigned != null) {
-                    BlockPos center = assigned.getCenter();
-                    if (center != null) return center;
-                    for (BlockPos bp : (Iterable<BlockPos>) assigned.getBlockPosStream()::iterator) {
-                        return bp.immutable();
-                    }
+        FarmersDelightCookAssignment.CookSite site = villager.level() instanceof ServerLevel level
+                ? resolveCookSite(level, villager)
+                : null;
+        return referenceFor(villager, site);
+    }
+
+    /** The same choice, made from a site somebody already resolved. */
+    private BlockPos referenceFor(VillagerEntityMCA villager,
+                                  @Nullable FarmersDelightCookAssignment.CookSite site) {
+        if (site != null) {
+            Building assigned = site.building();
+            if (assigned != null) {
+                BlockPos center = assigned.getCenter();
+                if (center != null) return center;
+                for (BlockPos bp : (Iterable<BlockPos>) assigned.getBlockPosStream()::iterator) {
+                    return bp.immutable();
                 }
-                // Outdoor post: the workstation block itself is the stable cache anchor.
-                if (site.get().post() != null) return site.get().post();
             }
+            // Outdoor post: the workstation block itself is the stable cache anchor.
+            if (site.post() != null) return site.post();
         }
         if (stationAnchor != null) return stationAnchor;
         BlockPos nearest = nearestKitchenAnchor(villager);
@@ -874,7 +1063,7 @@ public class CookWorkTask extends ProducerWorkTask {
             blockCount++;
         }
         String centerDesc = center == null ? "none" : center.getX() + "," + center.getY() + "," + center.getZ();
-        int boxCells = com.aetherianartificer.townstead.ai.work.WorkSiteBounds.workArea(level, building).size();
+        int boxCells = com.aetherianartificer.townstead.work.WorkSiteBounds.workArea(level, building).size();
         return building.getType() + "@" + centerDesc + "[" + blockCount + "b/" + boxCells + "c]";
     }
 

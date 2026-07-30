@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.profession.def;
 
+import com.aetherianartificer.townstead.work.station.Workstations;
+
 import com.aetherianartificer.townstead.pheno.condition.Condition;
 import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.pheno.condition.Conditions;
@@ -36,14 +38,57 @@ public record WorkTaskDef(
         TargetSet recipes,
         TargetSet recipesDenied,
         int weight,
+        Scope scope,
         Condition requirements) {
 
-    /** An id/#tag set gating one target axis. Empty allow sets admit everything; empty deny sets deny nothing. */
-    public record TargetSet(Set<ResourceLocation> ids, List<ResourceLocation> tags) {
-        public static final TargetSet EMPTY = new TargetSet(Set.of(), List.of());
+    /**
+     * How far from the assigned work site a task may look for its stations. {@code workstations}
+     * says which blocks; this says where.
+     *
+     * <p>Defaults to {@link #WORKSITE}, which is how every task behaved before this existed: the
+     * villager works only what stands inside the building it was assigned. The wider values are
+     * for stations a village keeps in common rather than in a room — a furnace on the square, a
+     * shared oven — and they cost a wider walkable-interior scan, so they are opt-in per task.</p>
+     */
+    public enum Scope {
+        /** Only the assigned work site. The default, and the cheapest. */
+        WORKSITE,
+        /** The work site plus its immediate surroundings, for a station just outside the wall. */
+        NEARBY,
+        /** Any recognized building in the village. */
+        VILLAGE;
+
+        public static @Nullable Scope parse(String raw) {
+            return switch (raw.toLowerCase(java.util.Locale.ROOT)) {
+                case "worksite" -> WORKSITE;
+                case "nearby" -> NEARBY;
+                case "village" -> VILLAGE;
+                default -> null;
+            };
+        }
+
+        /** The wider of two scopes, for merging a bucket of tasks into one search. */
+        public Scope widest(Scope other) {
+            return ordinal() >= other.ordinal() ? this : other;
+        }
+    }
+
+    /**
+     * An id/#tag set gating one target axis. Empty allow sets admit everything; empty deny sets
+     * deny nothing.
+     *
+     * <p>The bare token {@code "edible"} additionally admits anything whose output is food. It
+     * exists because the useful line for a cook at a furnace is "food, and these few exceptions",
+     * and the food half of that cannot be written as a tag without every mod maintaining one.</p>
+     */
+    public record TargetSet(Set<ResourceLocation> ids, List<ResourceLocation> tags, boolean edible) {
+        public static final TargetSet EMPTY = new TargetSet(Set.of(), List.of(), false);
+
+        /** The literal accepted in place of an id to mean "any food output". */
+        public static final String EDIBLE_TOKEN = "edible";
 
         public boolean isEmpty() {
-            return ids.isEmpty() && tags.isEmpty();
+            return ids.isEmpty() && tags.isEmpty() && !edible;
         }
     }
 
@@ -108,12 +153,22 @@ public record WorkTaskDef(
         if (recipeId != null && set.ids().contains(recipeId)) return true;
         if (outputId == null) return false;
         if (set.ids().contains(outputId)) return true;
-        if (set.tags().isEmpty()) return false;
+        if (set.tags().isEmpty() && !set.edible()) return false;
         var stack = BuiltInRegistries.ITEM.get(outputId).getDefaultInstance();
+        if (set.edible() && isEdible(stack)) return true;
         for (ResourceLocation tagId : set.tags()) {
             if (stack.is(TagKey.create(Registries.ITEM, tagId))) return true;
         }
         return false;
+    }
+
+    private static boolean isEdible(net.minecraft.world.item.ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        //? if >=1.21 {
+        return stack.get(net.minecraft.core.component.DataComponents.FOOD) != null;
+        //?} else {
+        /*return stack.isEdible();
+        *///?}
     }
 
     // ── Gate ──
@@ -142,13 +197,20 @@ public record WorkTaskDef(
         TargetSet denied = readIdSet(obj, "deny_recipes");
         if (workstations == null || entities == null || recipes == null || denied == null) return null;
 
+        Scope scope = Scope.WORKSITE;
+        if (obj.has("scope")) {
+            scope = Scope.parse(GsonHelper.getAsString(obj, "scope", ""));
+            // An unreadable scope must not silently widen or narrow where a villager works.
+            if (scope == null) return null;
+        }
+
         Condition requirements = Conditions.ALWAYS;
         if (obj.has("requirements")) {
             requirements = Conditions.parse(obj.get("requirements"));
             if (requirements == null) return null;
         }
         return new WorkTaskDef(type, workstations, entities, recipes, denied,
-                GsonHelper.getAsInt(obj, "weight", 1), requirements);
+                GsonHelper.getAsInt(obj, "weight", 1), scope, requirements);
     }
 
     /** Reads an id/#tag string array into a {@link TargetSet}; null on any malformed entry. */
@@ -156,10 +218,13 @@ public record WorkTaskDef(
         if (!obj.has(key) || !obj.get(key).isJsonArray()) return TargetSet.EMPTY;
         Set<ResourceLocation> ids = new LinkedHashSet<>();
         List<ResourceLocation> tags = new ArrayList<>();
+        boolean edible = false;
         for (JsonElement e : obj.getAsJsonArray(key)) {
             if (!e.isJsonPrimitive()) return null;
             String raw = e.getAsString();
-            if (raw.startsWith("#")) {
+            if (TargetSet.EDIBLE_TOKEN.equals(raw)) {
+                edible = true;
+            } else if (raw.startsWith("#")) {
                 ResourceLocation tagId = ResourceLocation.tryParse(raw.substring(1));
                 if (tagId == null) return null;
                 tags.add(tagId);
@@ -169,6 +234,6 @@ public record WorkTaskDef(
                 ids.add(id);
             }
         }
-        return new TargetSet(Set.copyOf(ids), List.copyOf(tags));
+        return new TargetSet(Set.copyOf(ids), List.copyOf(tags), edible);
     }
 }

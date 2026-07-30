@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.compat.pizzadelight;
 
-import com.aetherianartificer.townstead.ai.work.OutputAppraisal;
+import com.aetherianartificer.townstead.work.OutputAppraisal;
 import com.aetherianartificer.townstead.profession.career.CareerProgression;
 import com.aetherianartificer.townstead.profession.career.Careers;
 import net.minecraft.core.registries.BuiltInRegistries;

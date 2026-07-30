@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "brewinandchewin",
+  "type": "passive_station",
+  "blocks": [
+    "brewinandchewin:keg"
+  ],
+  "fluid_source": "townstead:brewinandchewin",
+  "recipe_tier": 3,
+  "beverage": true,
+  "recipe_type": "brewinandchewin:fermenting"
+}

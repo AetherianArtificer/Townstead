@@ -29,7 +29,8 @@
           "max_uses": 16,
           "villager_xp": 2
         }
-      ]
+      ],
+      "skill_points": 1
     },
     {
       "xp": 190,
@@ -58,7 +59,8 @@
           "max_uses": 12,
           "villager_xp": 5
         }
-      ]
+      ],
+      "skill_points": 1
     },
     {
       "xp": 360,
@@ -79,11 +81,15 @@
           "max_uses": 8,
           "villager_xp": 10
         }
-      ]
+      ],
+      "skill_points": 1
     },
     {
-      "xp": 590
+      "xp": 590,
+      "skill_points": 1
     },
-    {}
+    {
+      "skill_points": 1
+    }
   ]
 }

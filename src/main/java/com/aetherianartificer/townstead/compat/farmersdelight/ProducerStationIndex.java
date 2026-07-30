@@ -1,18 +1,21 @@
 package com.aetherianartificer.townstead.compat.farmersdelight;
 
-import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions.SessionSnapshot;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
+import com.aetherianartificer.townstead.work.station.Stations;
+
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.StationType;
+
+import com.aetherianartificer.townstead.work.WorkBuildingNav;
+import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.work.producer.ProducerStationSessions;
+import com.aetherianartificer.townstead.work.producer.ProducerStationSessions.SessionSnapshot;
+import com.aetherianartificer.townstead.work.producer.ProducerStationState;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.IngredientResolver;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.KitchenStorageIndex;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelector;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelector.ScoredRecipe;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler.StationSlot;
+import com.aetherianartificer.townstead.work.station.Stations.StationSlot;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -137,7 +140,7 @@ public final class ProducerStationIndex {
             }
 
             BlockPos stand = WorkBuildingNav.nearestStationStand(snapshot, villager, slot.pos());
-            if (stand == null) stand = StationHandler.findStandingPosition(level, villager, slot.pos());
+            if (stand == null) stand = Stations.findStandingPosition(level, villager, slot.pos());
             if (stand == null) {
                 logSkip(role, villager, slot, "no_stand");
                 continue;

@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
+import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.thirst.ThirstData;

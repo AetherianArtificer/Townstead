@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Proving"
+  },
+  "icon": "minecraft:wheat",
+  "description": {
+    "text": "Give dough the time it wants. Slower work, better bread."
+  },
+  "tier": 1,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}
