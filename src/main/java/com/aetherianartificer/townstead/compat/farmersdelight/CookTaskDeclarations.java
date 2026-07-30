@@ -1,8 +1,10 @@
 package com.aetherianartificer.townstead.compat.farmersdelight;
 
-import com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler.StationSlot;
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.StationType;
+
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.work.station.Stations.StationSlot;
 import com.aetherianartificer.townstead.profession.def.WorkTaskDef;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -52,15 +54,52 @@ public final class CookTaskDeclarations {
      */
     public static boolean allowsRecipe(VillagerEntityMCA villager, StationType stationType,
                                        boolean beveragesOnly,
-                                       com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe recipe) {
+                                       DiscoveredRecipe recipe) {
         ResourceLocation type = beveragesOnly ? BREW
                 : stationType == StationType.CUTTING_BOARD ? CHOP : COOK;
         List<WorkTaskDef> tasks = WorkTaskDeclarations.declared(villager, type);
         if (tasks == null || tasks.isEmpty()) return true;
+        return allowsRecipe(tasks, stationType, recipe.id(), recipe.output());
+    }
+
+    /**
+     * Only tasks that govern this station kind get a say. A profession declaring several tasks of
+     * one family scopes each to its own stations, so an open recipe set on the cookware task
+     * cannot vouch for what happens at a furnace.
+     */
+    static boolean allowsRecipe(List<WorkTaskDef> tasks, StationType stationType,
+                                @Nullable ResourceLocation recipeId, @Nullable ResourceLocation outputId) {
+        boolean governed = false;
         for (WorkTaskDef task : tasks) {
-            if (task.allowsRecipe(recipe.id(), recipe.output())) return true;
+            if (!governsStationType(task, stationType)) continue;
+            governed = true;
+            if (task.allowsRecipe(recipeId, outputId)) return true;
         }
-        return false;
+        // No task speaks for this station kind: the station gates already decided access, so the
+        // recipe passes rather than dying in an allowlist nobody wrote.
+        return !governed;
+    }
+
+    /**
+     * Whether a task's declared workstations include any block of this station kind. A task that
+     * names no workstations governs everything, which is the existing default-open contract.
+     */
+    private static boolean governsStationType(WorkTaskDef task, StationType stationType) {
+        if (task.anyWorkstation()) return true;
+        return StationTypeCoverage.of(task).contains(stationType);
+    }
+
+    /**
+     * How far this bucket may search. Tasks in a bucket share one station search, so the widest
+     * declared scope wins; the narrower tasks are still held to their own block lists by
+     * {@link #stationFilter}.
+     */
+    public static WorkTaskDef.Scope scopeOf(List<WorkTaskDef> bucket) {
+        WorkTaskDef.Scope scope = WorkTaskDef.Scope.WORKSITE;
+        for (WorkTaskDef task : bucket) {
+            scope = scope.widest(task.scope());
+        }
+        return scope;
     }
 
     /** Station gate for one weight bucket. */

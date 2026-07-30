@@ -60,6 +60,26 @@ public final class Palette {
     /** An alcove's recessed interior before its own path tint is washed over it. */
     public static final int ALCOVE = 0xFF2A2013;
 
+    // ── Wells and rows ─────────────────────────────────────────────────────
+    //
+    // A "well" is a pane sunk into the desk: list columns, detail strips, anything that holds
+    // rows. Rows sit one step lighter inside it, and the selected row one step lighter again, so
+    // the three depths are readable without an outline on every edge.
+
+    public static final int WELL = 0xFF1E150B;
+    public static final int WELL_EDGE = 0xFF3B2A17;
+    public static final int ROW = 0xFF2A1E10;
+
+    /** An item slot's sunken square, as it reads in an inventory. */
+    public static final int SLOT = 0xFF150E06;
+    public static final int SLOT_EDGE = 0xFF4A3620;
+
+    /** Between LABEL_LIGHT and LABEL_DIM: a control's resting text, still clearly readable. */
+    public static final int LABEL_MID = 0xFFA08A62;
+
+    /** An explanation under a row. Warmer than LABEL_DIM because it is meant to be read. */
+    public static final int LABEL_WARM = 0xFFC4A870;
+
     // Brass does the contrast work the palette flip would otherwise have needed. Acquired marks and
     // walked routes are lit metal; everything unreached is cold and stays out of the way.
     public static final int BRASS = 0xFFE8B455;

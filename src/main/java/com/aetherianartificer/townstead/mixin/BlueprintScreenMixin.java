@@ -1641,7 +1641,6 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
-
     // =====================================================================
     // Villagers page controls (entry points for Shifts and Professions)
     // =====================================================================

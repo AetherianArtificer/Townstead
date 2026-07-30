@@ -26,7 +26,7 @@ public final class LeatherworkerComplaintsTicker {
     private LeatherworkerComplaintsTicker() {}
 
     public static void tick(VillagerEntityMCA villager) {
-        if (!com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.permitsTask(
+        if (!com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
                 villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.TAN)) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (!onWorkShift(villager, level)) return;

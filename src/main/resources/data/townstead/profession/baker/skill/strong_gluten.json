@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Strong Gluten"
+  },
+  "icon": "minecraft:hay_block",
+  "description": {
+    "text": "Knead until the dough pulls back, so loaves hold their shape."
+  },
+  "tier": 2,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

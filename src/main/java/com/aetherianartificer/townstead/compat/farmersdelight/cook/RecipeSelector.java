@@ -1,9 +1,10 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
+import com.aetherianartificer.townstead.work.recipe.StationType;
+
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -24,7 +25,6 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class RecipeSelector {
-    private static final long PLANNING_CACHE_TTL_TICKS = 40L;
     private static final Map<PlanningKey, PlanningData> PLANNING_CACHE = new HashMap<>();
 
     public record ScoredRecipe(DiscoveredRecipe recipe, double score) {}
@@ -84,6 +84,11 @@ public final class RecipeSelector {
         long now = level.getGameTime();
         Map<ResourceLocation, Boolean> toolAvailableByRecipe = new HashMap<>();
         List<ScoredRecipe> candidates = new ArrayList<>();
+        // One working copy of the stock for the whole sweep. Each candidate applies its own
+        // effect, reads the result, then rolls back, so the copy is paid once instead of once
+        // per recipe — the stock map is sized by every tracked id in the pack.
+        Map<ResourceLocation, Integer> scratchSupply = new HashMap<>(outputStock);
+        Map<ResourceLocation, Integer> priorCounts = new HashMap<>();
         for (DiscoveredRecipe recipe : recipes) {
             // Declared recipe scoping: every selection path funnels through here, so a task's
             // recipes/deny_recipes lists bind initial picks and per-station re-picks alike.
@@ -91,27 +96,28 @@ public final class RecipeSelector {
                     .allowsRecipe(villager, targetStationType, beveragesOnly, recipe)) continue;
             Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
             if (cooldownUntil != null && cooldownUntil > now) continue;
-            Map<ResourceLocation, Integer> virtualSupply = new HashMap<>(outputStock);
             boolean candidatePlanable = IngredientResolver.canPlanWithVirtual(
                     recipe,
-                    virtualSupply,
+                    outputStock,
                     toolAvailable(level, villager, recipe, kitchenBounds, toolAvailableByRecipe),
                     waterAvailable
             );
             double chainOpportunity = 0.0d;
             if (candidatePlanable) {
-                IngredientResolver.applyVirtual(recipe, virtualSupply);
+                savePriorCounts(recipe, scratchSupply, priorCounts);
+                IngredientResolver.applyVirtual(recipe, scratchSupply);
                 chainOpportunity = computeChainOpportunity(
-                        planning.recipes(),
+                        planning,
                         recipe,
                         outputStock,
-                        virtualSupply,
+                        scratchSupply,
                         level,
                         villager,
                         kitchenBounds,
                         toolAvailableByRecipe,
                         waterAvailable
                 );
+                restorePriorCounts(scratchSupply, priorCounts);
             }
             double score = scoreRecipe(
                     recipe,
@@ -245,8 +251,18 @@ public final class RecipeSelector {
         return viable.get(viable.size() - 1);
     }
 
+    /**
+     * How much cooking {@code rootRecipe} would open up: the value of every follow-up that only
+     * becomes plannable once its output exists.
+     *
+     * <p>Only follow-ups that read the root's output can qualify. {@code applyVirtual} raises
+     * exactly one key (the output) and lowers the rest, and plannability rises monotonically with
+     * supply, so a recipe that never reads the output cannot go from unplannable to plannable.
+     * Walking that item's consumers is therefore the same answer as walking every recipe, which
+     * is what this used to do once per candidate.</p>
+     */
     private static double computeChainOpportunity(
-            List<DiscoveredRecipe> planningRecipes,
+            PlanningData planning,
             DiscoveredRecipe rootRecipe,
             Map<ResourceLocation, Integer> baseSupply,
             Map<ResourceLocation, Integer> afterSupply,
@@ -257,7 +273,8 @@ public final class RecipeSelector {
             boolean waterAvailable
     ) {
         double bonus = 0.0d;
-        for (DiscoveredRecipe followup : planningRecipes) {
+        for (DiscoveredRecipe followup : planning.consumersByItem()
+                .getOrDefault(rootRecipe.output(), List.of())) {
             if (followup.id().equals(rootRecipe.id())) continue;
             boolean toolAvailable = toolAvailable(level, villager, followup, kitchenBounds, toolAvailableByRecipe);
             boolean before = IngredientResolver.canPlanWithVirtual(followup, baseSupply, toolAvailable, waterAvailable);
@@ -267,6 +284,34 @@ public final class RecipeSelector {
             }
         }
         return bonus;
+    }
+
+    /** Records the counts {@link IngredientResolver#applyVirtual} is about to move: container, inputs, output. */
+    static void savePriorCounts(DiscoveredRecipe recipe,
+                                Map<ResourceLocation, Integer> supply,
+                                Map<ResourceLocation, Integer> out) {
+        out.clear();
+        if (recipe.containerItemId() != null && recipe.containerCount() > 0) {
+            out.put(recipe.containerItemId(), supply.get(recipe.containerItemId()));
+        }
+        for (RecipeIngredient ingredient : recipe.inputs()) {
+            for (ResourceLocation id : ingredient.itemIds()) {
+                out.put(id, supply.get(id));
+            }
+        }
+        out.put(recipe.output(), supply.get(recipe.output()));
+    }
+
+    /** Puts back what {@link #savePriorCounts} recorded; a null count means the id was absent. */
+    static void restorePriorCounts(Map<ResourceLocation, Integer> supply,
+                                   Map<ResourceLocation, Integer> prior) {
+        for (Map.Entry<ResourceLocation, Integer> entry : prior.entrySet()) {
+            if (entry.getValue() == null) {
+                supply.remove(entry.getKey());
+            } else {
+                supply.put(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     private static double chainRecipeValue(DiscoveredRecipe recipe) {
@@ -316,21 +361,28 @@ public final class RecipeSelector {
 
     private static PlanningData planningData(ServerLevel level, boolean excludeBeverages, boolean beveragesOnly) {
         PlanningKey key = new PlanningKey(level.dimension().location(), excludeBeverages, beveragesOnly);
-        long now = level.getGameTime();
+        int generation = ModRecipeRegistry.generation();
         PlanningData current = PLANNING_CACHE.get(key);
-        if (current != null && current.expiresAt() > now) {
+        if (current != null && current.generation() == generation) {
             return current;
         }
         List<DiscoveredRecipe> planningRecipes = planningRecipes(level, excludeBeverages, beveragesOnly);
         Set<ResourceLocation> trackedIds = new HashSet<>();
         Map<ResourceLocation, Integer> chainDemand = new HashMap<>();
+        // Which recipes read a given item, so a chain lookup starts from the item rather than
+        // from a sweep of the whole recipe set. Container items count as reads too.
+        Map<ResourceLocation, List<DiscoveredRecipe>> consumersByItem = new HashMap<>();
         for (DiscoveredRecipe recipe : planningRecipes) {
             trackedIds.add(recipe.output());
-            if (recipe.containerItemId() != null) trackedIds.add(recipe.containerItemId());
+            if (recipe.containerItemId() != null) {
+                trackedIds.add(recipe.containerItemId());
+                consumersByItem.computeIfAbsent(recipe.containerItemId(), unused -> new ArrayList<>()).add(recipe);
+            }
             for (RecipeIngredient ingredient : recipe.inputs()) {
                 for (ResourceLocation id : ingredient.itemIds()) {
                     trackedIds.add(id);
                     chainDemand.merge(id, 1, Integer::sum);
+                    consumersByItem.computeIfAbsent(id, unused -> new ArrayList<>()).add(recipe);
                 }
             }
         }
@@ -338,7 +390,8 @@ public final class RecipeSelector {
                 List.copyOf(planningRecipes),
                 Set.copyOf(trackedIds),
                 Map.copyOf(chainDemand),
-                now + PLANNING_CACHE_TTL_TICKS
+                Map.copyOf(consumersByItem),
+                generation
         );
         PLANNING_CACHE.put(key, rebuilt);
         return rebuilt;
@@ -364,7 +417,8 @@ public final class RecipeSelector {
             List<DiscoveredRecipe> recipes,
             Set<ResourceLocation> trackedIds,
             Map<ResourceLocation, Integer> chainDemand,
-            long expiresAt
+            Map<ResourceLocation, List<DiscoveredRecipe>> consumersByItem,
+            int generation
     ) {}
 
 }

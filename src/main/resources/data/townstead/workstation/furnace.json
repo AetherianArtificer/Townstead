@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:workstation/v1",
+  "type": "furnace_station",
+  "blocks": ["#townstead:furnace_stations"],
+  "recipe_type": "minecraft:smelting"
+}

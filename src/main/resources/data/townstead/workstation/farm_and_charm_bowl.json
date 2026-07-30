@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "farm_and_charm",
+  "type": "passive_station",
+  "blocks": ["farm_and_charm:crafting_bowl"],
+  "recipe_type": "farm_and_charm:crafting_bowl",
+  "recipe_tier": 1
+}

@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.block.CropDetection;
 import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
 import com.aetherianartificer.townstead.client.gui.common.CellTextures;
 import com.aetherianartificer.townstead.client.gui.common.FrameRenderer;
+import com.aetherianartificer.townstead.client.gui.common.PaletteList;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.cellplan.CellPlan;
 import com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig;
@@ -90,8 +91,8 @@ public class FieldPostScreen extends Screen {
     // ── Palette tabs ──
     private enum PaletteTab { SEEDS, SOIL }
     private PaletteTab activeTab = PaletteTab.SEEDS;
-    private ToolPaletteList.ToolEntry lastSeedSelection;
-    private ToolPaletteList.ToolEntry lastSoilSelection;
+    private PaletteList.ToolEntry lastSeedSelection;
+    private PaletteList.ToolEntry lastSoilSelection;
 
     // ── State ──
     private final BlockPos postPos;
@@ -113,11 +114,11 @@ public class FieldPostScreen extends Screen {
 
     // Widgets
     private EditBox searchBox;
-    private ToolPaletteList paletteList;
+    private PaletteList paletteList;
     private Button inStockToggleButton;
     private boolean inStockOnly = false;
-    private final List<ToolPaletteList.ToolEntry> allSeedEntries = new ArrayList<>();
-    private final List<ToolPaletteList.ToolEntry> allSoilEntries = new ArrayList<>();
+    private final List<PaletteList.ToolEntry> allSeedEntries = new ArrayList<>();
+    private final List<PaletteList.ToolEntry> allSoilEntries = new ArrayList<>();
 
     // Viewport
     private int viewCols, viewRows;
@@ -205,7 +206,7 @@ public class FieldPostScreen extends Screen {
         int tabsHeight = SEARCH_H + 4 + 16 + 2; // search + gap + tabs + separator
         int listTop = palTop + tabsHeight;
         int listH = height - listTop - SPACING - FRAME_THICK;
-        paletteList = new ToolPaletteList(minecraft, palLeft, PALETTE_W, listH, listTop, entry -> {});
+        paletteList = new PaletteList(minecraft, palLeft, PALETTE_W, listH, listTop, entry -> {});
         paletteList.setOnHeaderClick(category -> {
             paletteList.toggleCategory(category);
             filterPalette();
@@ -227,7 +228,7 @@ public class FieldPostScreen extends Screen {
     }
 
     // Entries grouped by category key (per active tab)
-    private final LinkedHashMap<String, List<ToolPaletteList.ToolEntry>> entriesByCategory = new LinkedHashMap<>();
+    private final LinkedHashMap<String, List<PaletteList.ToolEntry>> entriesByCategory = new LinkedHashMap<>();
     private final String CAT_TOOLS = Component.translatable("townstead.field_post.category.tools").getString();
     private final String CAT_VANILLA = Component.translatable("townstead.field_post.category.vanilla").getString();
 
@@ -241,10 +242,10 @@ public class FieldPostScreen extends Screen {
         //?} else {
         /*ResourceLocation autoIcon = new ResourceLocation("townstead", "textures/gui/icon_auto.png");
         *///?}
-        allSeedEntries.add(new ToolPaletteList.ToolEntry(SeedAssignment.AUTO, Component.translatable("townstead.field_post.seed.auto").getString(), autoIcon, CAT_TOOLS));
+        allSeedEntries.add(new PaletteList.ToolEntry(SeedAssignment.AUTO, Component.translatable("townstead.field_post.seed.auto").getString(), autoIcon, CAT_TOOLS));
         // SeedAssignment.NONE is omitted from the palette — it's functionally identical to Erase
         // (both result in an unplanted cell). Kept as an enum value for back-compat with old saves.
-        allSeedEntries.add(new ToolPaletteList.ToolEntry(SeedAssignment.PROTECTED, Component.translatable("townstead.field_post.seed.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
+        allSeedEntries.add(new PaletteList.ToolEntry(SeedAssignment.PROTECTED, Component.translatable("townstead.field_post.seed.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
 
         for (String seedId : CropDetection.getAllPlantableSeeds()) {
             //? if >=1.21 {
@@ -278,20 +279,20 @@ public class FieldPostScreen extends Screen {
 
             String name = cropProduct.getHoverName().getString();
             String category = categoryFor(rl.getNamespace());
-            allSeedEntries.add(new ToolPaletteList.ToolEntry(seedId, name, cropProduct, category));
+            allSeedEntries.add(new PaletteList.ToolEntry(seedId, name, cropProduct, category));
         }
 
         // Disambiguate entries that share the same category+label (e.g., Fungi Delight's mushroom
         // block + mushroom_colony block both resolve to the same crop product, and are distinct
         // plantable forms we don't want to collapse). Relabel each collision with its seed's own
         // display name so the player can tell them apart.
-        java.util.Map<String, java.util.List<ToolPaletteList.ToolEntry>> byKey = new java.util.HashMap<>();
-        for (ToolPaletteList.ToolEntry e : allSeedEntries) {
+        java.util.Map<String, java.util.List<PaletteList.ToolEntry>> byKey = new java.util.HashMap<>();
+        for (PaletteList.ToolEntry e : allSeedEntries) {
             byKey.computeIfAbsent(e.categoryKey + "|" + e.label, k -> new java.util.ArrayList<>()).add(e);
         }
-        for (java.util.List<ToolPaletteList.ToolEntry> group : byKey.values()) {
+        for (java.util.List<PaletteList.ToolEntry> group : byKey.values()) {
             if (group.size() < 2) continue;
-            for (ToolPaletteList.ToolEntry e : group) {
+            for (PaletteList.ToolEntry e : group) {
                 //? if >=1.21 {
                 ResourceLocation id = ResourceLocation.parse(e.toolId);
                 //?} else {
@@ -305,14 +306,14 @@ public class FieldPostScreen extends Screen {
         }
 
         // ── Soil tab entries ──
-        allSoilEntries.add(new ToolPaletteList.ToolEntry("CLAIM", Component.translatable("townstead.field_post.soil.claim").getString(), new ItemStack(Items.NAME_TAG), CAT_TOOLS));
+        allSoilEntries.add(new PaletteList.ToolEntry("CLAIM", Component.translatable("townstead.field_post.soil.claim").getString(), new ItemStack(Items.NAME_TAG), CAT_TOOLS));
         // Vanilla soils (farmland, water) belong with other vanilla entries — same grouping as
         // vanilla seeds on the other tab.
-        allSoilEntries.add(new ToolPaletteList.ToolEntry("FARMLAND", Component.translatable("townstead.field_post.soil.farmland").getString(), new ItemStack(Items.FARMLAND), CAT_VANILLA));
-        allSoilEntries.add(new ToolPaletteList.ToolEntry("WATER", Component.translatable("townstead.field_post.soil.water").getString(), new ItemStack(Items.WATER_BUCKET), CAT_VANILLA));
+        allSoilEntries.add(new PaletteList.ToolEntry("FARMLAND", Component.translatable("townstead.field_post.soil.farmland").getString(), new ItemStack(Items.FARMLAND), CAT_VANILLA));
+        allSoilEntries.add(new PaletteList.ToolEntry("WATER", Component.translatable("townstead.field_post.soil.water").getString(), new ItemStack(Items.WATER_BUCKET), CAT_VANILLA));
         // SoilType.NONE is omitted — it's functionally identical to Erase (both leave the cell
         // outside the plan). Kept as an enum value for back-compat with old saves.
-        allSoilEntries.add(new ToolPaletteList.ToolEntry("PROTECTED", Component.translatable("townstead.field_post.soil.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
+        allSoilEntries.add(new PaletteList.ToolEntry("PROTECTED", Component.translatable("townstead.field_post.soil.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
         // Rich soil variants (only if FD is loaded). Two entries: untilled (for mushrooms) and tilled (for crops).
         if (com.aetherianartificer.townstead.compat.ModCompat.isLoaded("farmersdelight")) {
             //? if >=1.21 {
@@ -324,13 +325,13 @@ public class FieldPostScreen extends Screen {
             *///?}
             Item richSoilItem = BuiltInRegistries.ITEM.get(richSoilId);
             if (richSoilItem != Items.AIR) {
-                allSoilEntries.add(new ToolPaletteList.ToolEntry("RICH_SOIL",
+                allSoilEntries.add(new PaletteList.ToolEntry("RICH_SOIL",
                         Component.translatable("townstead.field_post.soil.rich_soil").getString(),
                         new ItemStack(richSoilItem), categoryFor("farmersdelight")));
             }
             Item richSoilTilledItem = BuiltInRegistries.ITEM.get(richSoilFarmlandId);
             if (richSoilTilledItem != Items.AIR) {
-                allSoilEntries.add(new ToolPaletteList.ToolEntry("RICH_SOIL_TILLED",
+                allSoilEntries.add(new PaletteList.ToolEntry("RICH_SOIL_TILLED",
                         Component.translatable("townstead.field_post.soil.rich_soil_tilled").getString(),
                         new ItemStack(richSoilTilledItem), categoryFor("farmersdelight")));
             }
@@ -352,11 +353,11 @@ public class FieldPostScreen extends Screen {
         ItemStack icon = new ItemStack(fertilizer);
         ResourceLocation key = BuiltInRegistries.ITEM.getKey(fertilizer);
         String category = key != null ? categoryFor(key.getNamespace()) : CAT_TOOLS;
-        allSoilEntries.add(new ToolPaletteList.ToolEntry(type.name(),
+        allSoilEntries.add(new PaletteList.ToolEntry(type.name(),
                 Component.translatable(translationKey).getString(), icon, category));
     }
 
-    private List<ToolPaletteList.ToolEntry> activeEntries() {
+    private List<PaletteList.ToolEntry> activeEntries() {
         return activeTab == PaletteTab.SEEDS ? allSeedEntries : allSoilEntries;
     }
 
@@ -445,7 +446,7 @@ public class FieldPostScreen extends Screen {
                 || SeedAssignment.PROTECTED.equals(toolId);
     }
 
-    private boolean entryAvailableInVillage(ToolPaletteList.ToolEntry e) {
+    private boolean entryAvailableInVillage(PaletteList.ToolEntry e) {
         if (isReservedToolEntry(e.toolId)) return true;
         if (villageSeedCounts == null) return true; // no data yet — don't hide everything
         Integer count = villageSeedCounts.get(e.toolId);
@@ -459,15 +460,15 @@ public class FieldPostScreen extends Screen {
 
         // Rebuild category groupings from the active tab's entries
         entriesByCategory.clear();
-        for (ToolPaletteList.ToolEntry e : activeEntries()) {
+        for (PaletteList.ToolEntry e : activeEntries()) {
             entriesByCategory.computeIfAbsent(e.categoryKey, k -> new ArrayList<>()).add(e);
         }
         // Sort within categories
-        for (List<ToolPaletteList.ToolEntry> entries : entriesByCategory.values()) {
+        for (List<PaletteList.ToolEntry> entries : entriesByCategory.values()) {
             entries.sort((a, b) -> a.label.compareToIgnoreCase(b.label));
         }
 
-        List<ToolPaletteList.ToolEntry> filtered = new ArrayList<>();
+        List<PaletteList.ToolEntry> filtered = new ArrayList<>();
         // Fixed category order: Tools, Vanilla, then alphabetical mod names
         List<String> categoryOrder = new ArrayList<>();
         if (entriesByCategory.containsKey(CAT_TOOLS)) categoryOrder.add(CAT_TOOLS);
@@ -480,9 +481,9 @@ public class FieldPostScreen extends Screen {
         categoryOrder.addAll(others);
 
         for (String category : categoryOrder) {
-            List<ToolPaletteList.ToolEntry> items = entriesByCategory.get(category);
-            List<ToolPaletteList.ToolEntry> matching = new ArrayList<>();
-            for (ToolPaletteList.ToolEntry e : items) {
+            List<PaletteList.ToolEntry> items = entriesByCategory.get(category);
+            List<PaletteList.ToolEntry> matching = new ArrayList<>();
+            for (PaletteList.ToolEntry e : items) {
                 if (applyStockFilter && !entryAvailableInVillage(e)) continue;
                 if (query.isEmpty()
                         || e.label.toLowerCase(Locale.ROOT).contains(query)
@@ -492,7 +493,7 @@ public class FieldPostScreen extends Screen {
             }
             if (matching.isEmpty()) continue;
 
-            ToolPaletteList.ToolEntry header = ToolPaletteList.ToolEntry.header(category, matching.size());
+            PaletteList.ToolEntry header = PaletteList.ToolEntry.header(category, matching.size());
             filtered.add(header);
 
             boolean forceExpand = !query.isEmpty();
@@ -502,7 +503,7 @@ public class FieldPostScreen extends Screen {
         }
 
         // Restore previous selection for this tab
-        ToolPaletteList.ToolEntry prev = paletteList.getSelected();
+        PaletteList.ToolEntry prev = paletteList.getSelected();
         if (prev == null) {
             prev = activeTab == PaletteTab.SEEDS ? lastSeedSelection : lastSoilSelection;
         }
@@ -518,7 +519,7 @@ public class FieldPostScreen extends Screen {
     private void switchTab(PaletteTab tab) {
         if (tab == activeTab) return;
         // Save current selection
-        ToolPaletteList.ToolEntry current = paletteList != null ? paletteList.getSelected() : null;
+        PaletteList.ToolEntry current = paletteList != null ? paletteList.getSelected() : null;
         if (activeTab == PaletteTab.SEEDS) lastSeedSelection = current;
         else lastSoilSelection = current;
         activeTab = tab;
@@ -906,7 +907,6 @@ public class FieldPostScreen extends Screen {
         // Widgets (search box + palette list)
         super.render(g, mouseX, mouseY, partial);
 
-
         // Cell tooltip (after super so it renders on top)
         renderGridTooltip(g, mouseX, mouseY);
     }
@@ -1138,7 +1138,7 @@ public class FieldPostScreen extends Screen {
                 String seedAssignment = seedPlan.get(planKey);
                 boolean seedDone = isSeedPlanFulfilled(cellGrowthState, seedAssignment);
                 if (seedAssignment != null && !seedDone) {
-                    ToolPaletteList.ToolEntry tool = findToolEntry(seedAssignment);
+                    PaletteList.ToolEntry tool = findToolEntry(seedAssignment);
                     if (tool != null) {
                         if (soilAssignment == null || soilDone) drawCellBorder(g, cx, cy, cs, PLAN_BORDER);
                         float scale = cs / 16.0f * 0.65f;
@@ -1386,7 +1386,7 @@ public class FieldPostScreen extends Screen {
                 ? Component.translatable("townstead.field_post.tooltip.plan.soil", titleCase(soilPlanEntry.name().toLowerCase())).getString() : null;
         String seedPlanText = null;
         if (seedPlanEntry != null && (!seedFulfilled || SeedAssignment.AUTO.equals(seedPlanEntry))) {
-            ToolPaletteList.ToolEntry t = findToolEntry(seedPlanEntry);
+            PaletteList.ToolEntry t = findToolEntry(seedPlanEntry);
             seedPlanText = Component.translatable("townstead.field_post.tooltip.plan.seed", t != null ? t.label : seedPlanEntry).getString();
         }
 
@@ -1550,9 +1550,9 @@ public class FieldPostScreen extends Screen {
         g.fill(ax + 1, ay + ah / 2, ax + 2, ay + ah / 2 + 1, 0xFFFFFFFF);
     }
 
-    private ToolPaletteList.ToolEntry findToolEntry(String id) {
-        for (ToolPaletteList.ToolEntry e : allSeedEntries) { if (e.toolId.equals(id)) return e; }
-        for (ToolPaletteList.ToolEntry e : allSoilEntries) { if (e.toolId.equals(id)) return e; }
+    private PaletteList.ToolEntry findToolEntry(String id) {
+        for (PaletteList.ToolEntry e : allSeedEntries) { if (e.toolId.equals(id)) return e; }
+        for (PaletteList.ToolEntry e : allSoilEntries) { if (e.toolId.equals(id)) return e; }
         return null;
     }
 
@@ -1761,7 +1761,7 @@ public class FieldPostScreen extends Screen {
             eraseAt(key);
             return;
         }
-        ToolPaletteList.ToolEntry tool = paletteList.getSelected();
+        PaletteList.ToolEntry tool = paletteList.getSelected();
         if (tool == null || tool.isHeader) return;
 
         // Push undo

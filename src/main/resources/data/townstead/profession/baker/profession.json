@@ -9,6 +9,7 @@
   },
   "mods": {
     "any": [
+      "bakery",
       "farmersdelight",
       "rusticdelight"
     ]
@@ -43,5 +44,140 @@
       "type": "townstead:building",
       "type_prefix": "compat/farmersdelight/kitchen_l"
     }
-  ]
+  ],
+  "work_tasks": [
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "bakery:crafting_bowl",
+        "bakery:baker_station",
+        "bakery:small_cooking_pot"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "bakery:brick_stove",
+        "bakery:cobblestone_stove",
+        "bakery:deepslate_stove",
+        "bakery:end_stove",
+        "bakery:granite_stove",
+        "bakery:mud_stove",
+        "bakery:quartz_stove",
+        "bakery:red_nether_bricks_stove",
+        "bakery:sandstone_stove",
+        "bakery:stone_bricks_stove"
+      ],
+      "weight": 8
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "minecraft:furnace",
+        "minecraft:smoker"
+      ],
+      "recipes": [
+        "edible"
+      ],
+      "scope": "village",
+      "weight": 4
+    }
+  ],
+  "skills": [
+    "proving",
+    "strong_gluten",
+    "steam_bake",
+    "fine_crumb",
+    "piping_hand",
+    "sugar_work",
+    "setting_point",
+    "clean_jar",
+    "slow_boil"
+  ],
+  "paths": [
+    {
+      "id": "boulanger",
+      "color": "#C9A227",
+      "name": {
+        "text": "Boulanger"
+      },
+      "gateway": "proving",
+      "skills": [
+        "strong_gluten",
+        "steam_bake"
+      ],
+      "worksites": [
+        "bakery:crafting_bowl",
+        "bakery:brick_stove"
+      ]
+    },
+    {
+      "id": "patissier",
+      "color": "#D98CA8",
+      "name": {
+        "text": "Pâtissier"
+      },
+      "gateway": "fine_crumb",
+      "skills": [
+        "piping_hand",
+        "sugar_work"
+      ],
+      "worksites": [
+        "bakery:baker_station"
+      ]
+    },
+    {
+      "id": "confiturier",
+      "color": "#8E3B46",
+      "name": {
+        "text": "Confiturier"
+      },
+      "gateway": "setting_point",
+      "skills": [
+        "clean_jar",
+        "slow_boil"
+      ],
+      "worksites": [
+        "bakery:small_cooking_pot"
+      ]
+    }
+  ],
+  "titles": [
+    {
+      "id": "boulanger",
+      "name": {
+        "text": "Boulanger"
+      },
+      "skills": [
+        "proving",
+        "strong_gluten",
+        "steam_bake"
+      ]
+    },
+    {
+      "id": "patissier",
+      "name": {
+        "text": "Pâtissier"
+      },
+      "skills": [
+        "fine_crumb",
+        "piping_hand",
+        "sugar_work"
+      ]
+    },
+    {
+      "id": "confiturier",
+      "name": {
+        "text": "Confiturier"
+      },
+      "skills": [
+        "setting_point",
+        "clean_jar",
+        "slow_boil"
+      ]
+    }
+  ],
+  "daily_cap": 230,
+  "max_xp": 200000
 }

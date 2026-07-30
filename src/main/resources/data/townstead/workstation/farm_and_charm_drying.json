@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "farm_and_charm",
+  "type": "passive_station",
+  "blocks": ["farm_and_charm:drying_rack", "farm_and_charm:tool_rack"],
+  "recipe_type": "farm_and_charm:drying",
+  "recipe_tier": 1
+}

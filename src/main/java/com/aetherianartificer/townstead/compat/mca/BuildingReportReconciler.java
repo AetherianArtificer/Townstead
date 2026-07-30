@@ -47,6 +47,17 @@ public final class BuildingReportReconciler {
         // Floor-system v2 never validates external buildings, so demolished landings/pens
         // are cleaned up here, at report time with the village's chunks loaded.
         com.aetherianartificer.townstead.village.VillageSanitizer.sweepDemolishedSynthetics(level, village);
+        // A rescan is exactly when a room's shape may have changed, so it is where a worksite's
+        // remembered extent stops being trustworthy. Without this the only correction is the
+        // freshness backstop, which is a bound on being wrong rather than a way of being right.
+        for (Building building : McaBuildings.all(village)) {
+            com.aetherianartificer.townstead.work.site.Worksites.invalidateExtent(level, building);
+        }
+        // A rescan is also the moment we can tell a demolished worksite from an unloaded one, so
+        // it is where retired places leave the register instead of accumulating for the life of
+        // the world. Ids are never reused, so a pruned site can only be replaced by a new one.
+        com.aetherianartificer.townstead.work.site.WorksiteRegister
+                .get(level.getServer()).prune(level);
     }
 
     private static void detectAndSyncDockFromReport(ServerLevel level, BlockPos source, Village village, Logger log) {

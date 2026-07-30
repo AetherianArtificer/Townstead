@@ -165,7 +165,7 @@ public final class WorkToolTicker {
 
     private static Rule ruleFor(VillagerProfession profession) {
         for (Rule rule : RULES) {
-            if (com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations
+            if (com.aetherianartificer.townstead.work.WorkTaskDeclarations
                     .professionDeclares(profession, rule.taskTypes)) return rule;
         }
         return null;

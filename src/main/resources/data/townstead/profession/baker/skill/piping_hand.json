@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Piping Hand"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "text": "Steady enough to decorate without smudging the work."
+  },
+  "tier": 2,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

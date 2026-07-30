@@ -1,16 +1,20 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
+import com.aetherianartificer.townstead.work.station.StationProtocols;
+
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
+import com.aetherianartificer.townstead.work.recipe.StationType;
+
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.RecipeIngredient;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
+import com.aetherianartificer.townstead.supply.SupplyLines;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
@@ -58,13 +62,13 @@ public final class IngredientResolver {
 
     //? if >=1.21 {
     private static final ResourceLocation MINECRAFT_BOWL = ResourceLocation.parse("minecraft:bowl");
-    private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
-            ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "impure_water_container");
     //?} else {
     /*private static final ResourceLocation MINECRAFT_BOWL = new ResourceLocation("minecraft", "bowl");
-    private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
-            new ResourceLocation(Townstead.MOD_ID, "impure_water_container");
     *///?}
+
+    /** One definition of the id, shared with the line that fills it. */
+    private static final ResourceLocation TOWNSTEAD_IMPURE_WATER_INPUT =
+            com.aetherianartificer.townstead.supply.TownsteadSupplyLines.IMPURE_WATER;
 
     // ── Supply snapshot ──
 
@@ -86,17 +90,20 @@ public final class IngredientResolver {
     ) {
         Map<ResourceLocation, Integer> supply = new HashMap<>();
         if (trackedIds.isEmpty()) return supply;
-        boolean trackImpureWater = trackedIds.contains(TOWNSTEAD_IMPURE_WATER_INPUT);
-        ThirstCompatBridge thirstBridge = trackImpureWater ? ThirstBridgeResolver.get() : null;
+        // Supply lines (impure water, furnace fuel) are matched per stack rather than looked up
+        // by id; resolving which ones matter once keeps the per-slot work proportional to what is
+        // actually being planned for.
+        List<SupplyLines.Line> lines = SupplyLines.activeLinesAmong(trackedIds);
 
         // Inventory
         SimpleContainer inv = villager.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
-            if (trackImpureWater && thirstBridge != null
-                    && StationHandler.impureWaterScore(stack, thirstBridge) > 0) {
-                supply.merge(TOWNSTEAD_IMPURE_WATER_INPUT, stack.getCount(), Integer::sum);
+            for (SupplyLines.Line line : lines) {
+                if (line.matches(stack, level)) {
+                    supply.merge(line.id(), stack.getCount(), Integer::sum);
+                }
             }
             ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (itemId == null || !trackedIds.contains(itemId)) continue;
@@ -104,7 +111,7 @@ public final class IngredientResolver {
         }
 
         // Kitchen containers
-        Map<ResourceLocation, Integer> kitchenSupply = kitchenSnapshot.supply(trackedIds, trackImpureWater, thirstBridge);
+        Map<ResourceLocation, Integer> kitchenSupply = kitchenSnapshot.supply(trackedIds, level);
         for (Map.Entry<ResourceLocation, Integer> entry : kitchenSupply.entrySet()) {
             supply.merge(entry.getKey(), entry.getValue(), Integer::sum);
         }

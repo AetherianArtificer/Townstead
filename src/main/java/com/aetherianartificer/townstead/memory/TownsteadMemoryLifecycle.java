@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.memory;
 
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.KitchenStorageIndex;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
 import com.aetherianartificer.townstead.dock.DockLocationIndex;

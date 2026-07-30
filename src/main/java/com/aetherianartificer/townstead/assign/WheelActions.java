@@ -99,8 +99,13 @@ public final class WheelActions extends SimpleJsonResourceReloadListener impleme
      */
     private static boolean allowed(ServerPlayer player, WheelAction action) {
         if (action.requiresAdvancement() == null) return true;
+        //? if >=1.21 {
         net.minecraft.advancements.AdvancementHolder holder =
                 player.server.getAdvancements().get(action.requiresAdvancement());
+        //?} else {
+        /*net.minecraft.advancements.Advancement holder =
+                player.server.getAdvancements().getAdvancement(action.requiresAdvancement());
+        *///?}
         return holder != null && player.getAdvancements().getOrStartProgress(holder).isDone();
     }
 

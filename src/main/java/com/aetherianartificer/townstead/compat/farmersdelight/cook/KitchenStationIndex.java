@@ -1,5 +1,13 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
+import com.aetherianartificer.townstead.work.station.Stations;
+
+import com.aetherianartificer.townstead.work.station.StationProtocols;
+
+import com.aetherianartificer.townstead.work.recipe.StationType;
+
+import com.aetherianartificer.townstead.work.station.WorkstationDef;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -51,17 +59,17 @@ final class KitchenStationIndex {
     }
 
     private static Snapshot buildSnapshot(ServerLevel level, Set<Long> kitchenBounds, long gameTime) {
-        List<StationHandler.StationSlot> stations = new ArrayList<>();
+        List<Stations.StationSlot> stations = new ArrayList<>();
         java.util.Set<Long> claimed = new java.util.HashSet<>();
         for (long key : kitchenBounds) {
             BlockPos pos = BlockPos.of(key);
-            ModRecipeRegistry.StationType type = StationHandler.stationType(level, pos);
+            StationType type = Stations.stationType(level, pos);
             if (type == null) continue;
             ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
             int capacity = stationCapacity(level, pos, type);
             if (capacity <= 0) continue;
             claimed.add(pos.asLong());
-            stations.add(new StationHandler.StationSlot(pos.immutable(), type, blockId, capacity));
+            stations.add(new Stations.StationSlot(pos.immutable(), type, blockId, capacity));
         }
         // Empty placement anchors: the free cell above a declared place-surface (a stove top
         // with nothing on it) is a station a villager can create by placing the work block.
@@ -72,21 +80,21 @@ final class KitchenStationIndex {
             WorkstationDef def = StationProtocols.surfaceDefBelow(level, above);
             if (def == null) continue;
             claimed.add(above.asLong());
-            stations.add(new StationHandler.StationSlot(above.immutable(),
-                    ModRecipeRegistry.StationType.PLACE_SURFACE,
+            stations.add(new Stations.StationSlot(above.immutable(),
+                    StationType.PLACE_SURFACE,
                     BuiltInRegistries.BLOCK.getKey(level.getBlockState(surface).getBlock()), 1));
         }
         return new Snapshot(List.copyOf(stations), gameTime + SNAPSHOT_TTL_TICKS);
     }
 
-    private static int stationCapacity(ServerLevel level, BlockPos pos, ModRecipeRegistry.StationType type) {
+    private static int stationCapacity(ServerLevel level, BlockPos pos, StationType type) {
         return switch (type) {
             case FIRE_STATION -> StationHandler.surfaceFreeSlotCount(level, pos);
-            case HOT_STATION, CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE -> 1;
+            case HOT_STATION, CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE, FURNACE_STATION -> 1;
         };
     }
 
-    record Snapshot(List<StationHandler.StationSlot> stations, long expiresAt) {
+    record Snapshot(List<Stations.StationSlot> stations, long expiresAt) {
         boolean validAt(long gameTime) {
             return gameTime <= expiresAt;
         }
@@ -99,18 +107,18 @@ final class KitchenStationIndex {
     }
 
     private static Snapshot refreshSnapshotEntry(ServerLevel level, Snapshot snapshot, BlockPos changedPos) {
-        List<StationHandler.StationSlot> refreshed = new ArrayList<>();
-        for (StationHandler.StationSlot station : snapshot.stations()) {
+        List<Stations.StationSlot> refreshed = new ArrayList<>();
+        for (Stations.StationSlot station : snapshot.stations()) {
             if (!station.pos().equals(changedPos)) {
                 refreshed.add(station);
             }
         }
-        ModRecipeRegistry.StationType type = StationHandler.stationType(level, changedPos);
+        StationType type = Stations.stationType(level, changedPos);
         if (type != null) {
             ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(changedPos).getBlock());
             int capacity = stationCapacity(level, changedPos, type);
             if (capacity > 0) {
-                refreshed.add(new StationHandler.StationSlot(changedPos.immutable(), type, blockId, capacity));
+                refreshed.add(new Stations.StationSlot(changedPos.immutable(), type, blockId, capacity));
             }
         }
         return new Snapshot(List.copyOf(refreshed), snapshot.expiresAt());

@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.compat.pizzadelight;
 
-import com.aetherianartificer.townstead.ai.work.OutputAppraisal;
+import com.aetherianartificer.townstead.work.OutputAppraisal;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

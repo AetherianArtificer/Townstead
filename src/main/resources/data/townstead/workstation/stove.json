@@ -3,5 +3,6 @@
   "blocks": [
     "farmersdelight:stove"
   ],
-  "type": "fire_station"
+  "type": "fire_station",
+  "open_top": true
 }

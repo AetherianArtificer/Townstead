@@ -1,9 +1,10 @@
 package com.aetherianartificer.townstead.compat.pizzadelight;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationAdapters;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationAdapters.StationPhase;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.WorkstationDef;
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+
+import com.aetherianartificer.townstead.work.station.StationAdapters;
+import com.aetherianartificer.townstead.work.station.StationAdapters.StationPhase;
+import com.aetherianartificer.townstead.work.station.WorkstationDef;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -83,18 +84,18 @@ final class PizzaDelightStationAdapters {
             if (be == null || !"air".equals(basinContent(level, anchor))) return false;
             // Pour the milk: consume the villager's real bucket, keep the empty one, exactly
             // as the player interaction does on its own side of the null-player split.
-            ItemStack milk = com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols
+            ItemStack milk = com.aetherianartificer.townstead.work.station.StationProtocols
                     .takeOne(villager, Items.MILK_BUCKET);
             if (milk.isEmpty()) return false;
             try {
                 be.getClass().getMethod("addMilk", Level.class, Player.class, InteractionHand.class)
                         .invoke(be, level, null, null);
             } catch (Throwable t) {
-                com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols
+                com.aetherianartificer.townstead.work.station.StationProtocols
                         .giveBack(villager, milk);
                 return false;
             }
-            com.aetherianartificer.townstead.compat.farmersdelight.cook.StationProtocols
+            com.aetherianartificer.townstead.work.station.StationProtocols
                     .giveBack(villager, new ItemStack(Items.BUCKET));
 
             // Drop in the fermenting item; the method shrinks the held stack itself.

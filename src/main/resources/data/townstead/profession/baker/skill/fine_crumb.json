@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Fine Crumb"
+  },
+  "icon": "minecraft:cake",
+  "description": {
+    "text": "Beat the batter smooth so the cake rises even."
+  },
+  "tier": 1,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

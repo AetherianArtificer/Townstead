@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "bakery",
+  "type": "passive_station",
+  "blocks": ["bakery:baker_station"],
+  "recipe_type": "bakery:baking_station",
+  "recipe_tier": 2
+}

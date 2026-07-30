@@ -22,7 +22,6 @@ import net.neoforged.neoforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandler;
 *///?}
 
-
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;

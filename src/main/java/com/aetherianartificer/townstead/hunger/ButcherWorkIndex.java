@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
+import com.aetherianartificer.townstead.work.WorkPathing;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;

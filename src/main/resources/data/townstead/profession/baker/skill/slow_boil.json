@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Slow Boil"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "text": "Hold a preserve at a lazy simmer instead of driving it hard."
+  },
+  "tier": 3,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

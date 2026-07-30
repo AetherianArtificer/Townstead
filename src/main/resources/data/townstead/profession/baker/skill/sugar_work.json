@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "Sugar Work"
+  },
+  "icon": "minecraft:honey_bottle",
+  "description": {
+    "text": "Read sugar by its colour and pull it off the heat in time."
+  },
+  "tier": 3,
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

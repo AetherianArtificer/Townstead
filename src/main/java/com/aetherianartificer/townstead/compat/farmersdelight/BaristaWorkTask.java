@@ -1,22 +1,25 @@
 package com.aetherianartificer.townstead.compat.farmersdelight;
 
+import com.aetherianartificer.townstead.work.station.Stations;
+
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.StationType;
+
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerBlockedReason;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerRecipe;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationSessions;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationState;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerWorkTask;
+import com.aetherianartificer.townstead.work.WorkBuildingNav;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.producer.ProducerBlockedReason;
+import com.aetherianartificer.townstead.work.producer.ProducerRecipe;
+import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.work.producer.ProducerStationSessions;
+import com.aetherianartificer.townstead.work.producer.ProducerStationState;
+import com.aetherianartificer.townstead.work.producer.ProducerWorkTask;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.IngredientResolver;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.DiscoveredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.StationType;
 import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler.StationSlot;
+import com.aetherianartificer.townstead.work.station.Stations.StationSlot;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -65,7 +68,7 @@ public class BaristaWorkTask extends ProducerWorkTask {
 
     @Override
     protected boolean isEligibleVillager(ServerLevel level, VillagerEntityMCA villager) {
-        if (!com.aetherianartificer.townstead.ai.work.WorkTaskDeclarations.permitsTask(
+        if (!com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
                 villager, CookTaskDeclarations.BREW)) return false;
         return FarmersDelightBaristaAssignment.canVillagerWorkAsBarista(level, villager);
     }
@@ -73,11 +76,12 @@ public class BaristaWorkTask extends ProducerWorkTask {
     // ── Worksite ──
 
     @Override
-    protected @Nullable WorkSiteRef resolveWorksite(ServerLevel level, VillagerEntityMCA villager) {
+    protected @Nullable WorkSiteView resolveWorksite(ServerLevel level, VillagerEntityMCA villager) {
         Set<Long> bounds = activeCafeStorageBounds(villager);
         if (bounds.isEmpty()) return null;
         BlockPos reference = activeCafeReference(villager);
-        return WorkSiteRef.building(reference, bounds);
+        return WorkSiteView.building(reference, bounds,
+                com.aetherianartificer.townstead.work.site.Worksites.of(level, reference));
     }
 
     @Override
@@ -86,7 +90,7 @@ public class BaristaWorkTask extends ProducerWorkTask {
     }
 
     @Override
-    protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteRef site) {
+    protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteView site) {
         WorkBuildingNav.Snapshot cafeSnapshot = activeCafeSnapshot(level, villager);
         return currentOrNewCafeWorksiteTarget(villager, gameTime, cafeSnapshot);
     }
@@ -169,7 +173,7 @@ public class BaristaWorkTask extends ProducerWorkTask {
     @Override
     protected @Nullable ProducerRecipe pickRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null || stationType == null) return null;
-        if (!StationHandler.isStation(level, stationAnchor)) return null;
+        if (!Stations.isStation(level, stationAnchor)) return null;
         Set<Long> cafeBounds = activeCafeStorageBounds(villager);
         DiscoveredRecipe recipe = ProducerWorkSupport.pickRecipe(
                 ProducerRole.BARISTA, level, villager, stationType, stationAnchor, cafeBounds, recipeCooldownUntil);
@@ -550,7 +554,7 @@ public class BaristaWorkTask extends ProducerWorkTask {
     ) {
         BlockPos stand = WorkBuildingNav.nearestStationStand(cafeSnapshot, villager, anchor);
         if (stand != null) return stand;
-        BlockPos fallback = StationHandler.findStandingPosition(level, villager, anchor);
+        BlockPos fallback = Stations.findStandingPosition(level, villager, anchor);
         if (fallback != null && cafeSnapshot.walkableInterior().contains(fallback.asLong())) {
             return fallback.immutable();
         }
