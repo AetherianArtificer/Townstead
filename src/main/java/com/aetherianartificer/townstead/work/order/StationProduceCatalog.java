@@ -1,0 +1,145 @@
+package com.aetherianartificer.townstead.work.order;
+
+import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Option;
+import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Station;
+import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.site.Worksite;
+import com.aetherianartificer.townstead.work.site.WorksiteWork;
+import com.aetherianartificer.townstead.work.site.Worksites;
+import com.aetherianartificer.townstead.work.station.ProtocolRecipes;
+import com.aetherianartificer.townstead.work.station.WorkstationDef;
+import com.aetherianartificer.townstead.work.station.Workstations;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * The data-declared half of the order sheet: any workstation def that names a {@code work_task}
+ * offers its {@code produces} lines wherever that trade works and its block actually stands.
+ *
+ * <p>This is what makes a pack's station orderable without a line of Java. The def already says
+ * which block, which slots, what goes in and what comes out; naming the task says whose sheet it
+ * belongs on, and physical presence says at which worksite. A def that names no task is
+ * recognition only, so a station nobody's work drives never becomes an order that waits forever.</p>
+ */
+public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
+
+    private StationProduceCatalog() {}
+
+    public static void bootstrap() {
+        WorksiteCatalogs.register(new StationProduceCatalog());
+    }
+
+    // taskType() stays null: one catalogue speaks for every def, so which trades it answers for
+    // depends on the defs loaded, not on a single type declared here.
+
+    @Override
+    public List<Option> optionsFor(ServerLevel level, Worksite site) {
+        Set<Long> extent = Worksites.extentOf(level, site);
+        if (extent.isEmpty()) return List.of();
+        Set<ResourceLocation> worked = WorksiteWork.typesAt(level, site, extent);
+        if (worked.isEmpty()) return List.of();
+
+        Map<ResourceLocation, BlockState> present = blocksIn(level, extent);
+        Map<ResourceLocation, Integer> onHand = null;
+        Set<ResourceLocation> seen = new LinkedHashSet<>();
+        List<Option> out = new ArrayList<>();
+        for (WorkstationDef def : Workstations.all()) {
+            if (def.workTask() == null || !worked.contains(def.workTask())) continue;
+            if (!isPresent(def, present)) continue;
+            ResourceLocation icon = iconOf(def);
+            String label = blockName(icon, def);
+            if (onHand == null) onHand = StationCatalogs.stockIn(level, extent);
+            for (DiscoveredRecipe recipe : ProtocolRecipes.discoverFor(def)) {
+                if (!seen.add(recipe.output())) continue;
+                out.add(StationCatalogs.option(recipe, label, icon, onHand));
+            }
+            // A def whose outputs come from a recipe family rather than inline lines (the smoker's
+            // smoking recipes) offers that family, which is exactly what the station will do.
+            for (DiscoveredRecipe recipe : ProtocolRecipes.discoverByType(level, def)) {
+                if (!seen.add(recipe.output())) continue;
+                out.add(StationCatalogs.option(recipe, label, icon, onHand));
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public List<Station> stationsFor(ServerLevel level, Worksite site) {
+        Set<Long> extent = Worksites.extentOf(level, site);
+        if (extent.isEmpty()) return List.of();
+        Set<ResourceLocation> worked = WorksiteWork.typesAt(level, site, extent);
+        if (worked.isEmpty()) return List.of();
+
+        Map<ResourceLocation, BlockState> present = blocksIn(level, extent);
+        List<Station> out = new ArrayList<>();
+        for (WorkstationDef def : Workstations.all()) {
+            if (def.workTask() == null || !worked.contains(def.workTask())) continue;
+            ResourceLocation icon = iconOf(def);
+            if (NO_ICON.equals(icon)) continue;
+            // Absent stations stay listed: a butchery without its grinder should read as a
+            // butchery missing a grinder, exactly as a kitchen reads its missing pot.
+            out.add(new Station(blockName(icon, def), icon, isPresent(def, present)));
+        }
+        return out;
+    }
+
+    /** Every distinct block standing in the extent, one representative state each. */
+    private static Map<ResourceLocation, BlockState> blocksIn(ServerLevel level, Set<Long> extent) {
+        Map<ResourceLocation, BlockState> out = new HashMap<>();
+        for (long packed : extent) {
+            BlockState state = level.getBlockState(BlockPos.of(packed));
+            if (state.isAir()) continue;
+            out.putIfAbsent(BuiltInRegistries.BLOCK.getKey(state.getBlock()), state);
+        }
+        return out;
+    }
+
+    private static boolean isPresent(WorkstationDef def, Map<ResourceLocation, BlockState> present) {
+        for (ResourceLocation block : def.blocks()) {
+            if (present.containsKey(block)) return true;
+        }
+        for (ResourceLocation tagId : def.blockTags()) {
+            TagKey<Block> tag = TagKey.create(Registries.BLOCK, tagId);
+            for (BlockState state : present.values()) {
+                if (state.is(tag)) return true;
+            }
+        }
+        return false;
+    }
+
+    private static final ResourceLocation NO_ICON =
+            BuiltInRegistries.ITEM.getKey(net.minecraft.world.item.Items.AIR);
+
+    /**
+     * The def's first block that exists as an item, for the screen to draw. Falls back to air,
+     * which the screen renders as nothing — a null would fail the packet write.
+     */
+    private static ResourceLocation iconOf(WorkstationDef def) {
+        for (ResourceLocation block : def.blocks()) {
+            if (BuiltInRegistries.ITEM.containsKey(block)) return block;
+        }
+        return NO_ICON;
+    }
+
+    private static String blockName(ResourceLocation icon, WorkstationDef def) {
+        if (!NO_ICON.equals(icon) && BuiltInRegistries.ITEM.containsKey(icon)) {
+            return new ItemStack(BuiltInRegistries.ITEM.get(icon)).getHoverName().getString();
+        }
+        return def.id().getPath().replace('_', ' ');
+    }
+}

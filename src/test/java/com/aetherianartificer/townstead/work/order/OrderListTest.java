@@ -222,15 +222,47 @@ class OrderListTest {
         assertEquals(STEW, list.at(0).output());
     }
 
+    // ── Tag lines ──
+
+    @Test
+    void tagLineMatchesMembersAndSumsTheSet() {
+        ResourceLocation meats = id("townstead:orders/meats");
+        // Membership is injected so the test never loads a registry: bread and stew are "meat".
+        OrderTags.resolveWith((tag, item) ->
+                tag.equals(meats) && (item.equals(BREAD) || item.equals(STEW)));
+        try {
+            OrderList orders = new OrderList();
+            orders.add(new Order(meats, Order.Kind.TAG, Order.Mode.KEEP_STOCKED, 10));
+            Ctx ctx = new Ctx();
+            ctx.tagStock.put(meats, 4);
+
+            OrderList.Pick pick = orders.firstWorkable(List.of(recipe(PIE), recipe(STEW)), ctx);
+            assertNotNull(pick, "a candidate in the set must satisfy the line");
+            assertEquals(STEW, pick.recipe().output(),
+                    "the non-member must be passed over, in candidate order");
+
+            ctx.tagStock.put(meats, 12);
+            assertNull(orders.firstWorkable(List.of(recipe(STEW)), ctx),
+                    "a set counted full goes quiet like any stocked line");
+        } finally {
+            OrderTags.resolveWith(null);
+        }
+    }
+
     // ── Helpers ──
 
     private static final class Ctx implements OrderContext {
         final Map<ResourceLocation, Integer> stock = new HashMap<>();
+        final Map<ResourceLocation, Integer> tagStock = new HashMap<>();
         int villagers = 1;
         Order refuse;
 
         @Override public int stockOf(ResourceLocation item, Order.CountScope scope) {
             return stock.getOrDefault(item, 0);
+        }
+
+        @Override public int stockOfTag(ResourceLocation tagId, Order.CountScope scope) {
+            return tagStock.getOrDefault(tagId, 0);
         }
 
         @Override public int villagerCount() { return villagers; }

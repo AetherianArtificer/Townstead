@@ -46,7 +46,8 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
      */
     public record Row(ResourceLocation output, Order.Mode mode, int target, Order.CountScope scope,
                       boolean paused, String modeLabel, String scopeLabel, String whoLabel,
-                      int have, int want, int inProgress, Status status, String reason) {}
+                      int have, int want, int inProgress, Status status, String reason,
+                      boolean activity, boolean tag, String label) {}
 
     /**
      * Something this worksite could make. {@code available} answers "could it be made right now" —
@@ -54,7 +55,29 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
      * exists, and the only one worth putting a filter on.
      */
     public record Option(ResourceLocation output, String stationLabel, ResourceLocation stationIcon,
-                         boolean available, String blocker) {}
+                         boolean available, String blocker, int makes, List<String> needs,
+                         boolean activity, boolean tag, String label) {
+
+        /** Something this place can make. */
+        public static Option item(ResourceLocation output, String stationLabel,
+                                  ResourceLocation stationIcon, boolean available, String blocker,
+                                  int makes, List<String> needs) {
+            return new Option(output, stationLabel, stationIcon, available, blocker, makes, needs,
+                    false, false, "");
+        }
+
+        /** A job this place can be told to prefer. It makes nothing, so it counts nothing. */
+        public static Option job(ResourceLocation id, String label, ResourceLocation icon) {
+            return new Option(id, "Job", icon, true, "", 0, List.of(), true, false, label);
+        }
+
+        /** A set of things this place can make some of: "any cooked meat". */
+        public static Option category(ResourceLocation tagId, String label, ResourceLocation icon,
+                                      boolean available, String blocker) {
+            return new Option(tagId, "Category", icon, available, blocker, 1, List.of(),
+                    false, true, label);
+        }
+    }
 
     /**
      * A kind of workstation, and whether this worksite has one. Absent stations travel too: what a
@@ -82,6 +105,9 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             buf.writeVarInt(row.inProgress());
             buf.writeEnum(row.status());
             buf.writeUtf(row.reason());
+            buf.writeBoolean(row.activity());
+            buf.writeBoolean(row.tag());
+            buf.writeUtf(row.label());
         }
         buf.writeVarInt(options.size());
         for (Option option : options) {
@@ -90,6 +116,12 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             buf.writeResourceLocation(option.stationIcon());
             buf.writeBoolean(option.available());
             buf.writeUtf(option.blocker());
+            buf.writeVarInt(option.makes());
+            buf.writeVarInt(option.needs().size());
+            for (String need : option.needs()) buf.writeUtf(need);
+            buf.writeBoolean(option.activity());
+            buf.writeBoolean(option.tag());
+            buf.writeUtf(option.label());
         }
         buf.writeVarInt(stations.size());
         for (Station station : stations) {
@@ -112,13 +144,26 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                     buf.readVarInt(), buf.readEnum(Order.CountScope.class), buf.readBoolean(),
                     buf.readUtf(), buf.readUtf(), buf.readUtf(),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                    buf.readEnum(Status.class), buf.readUtf()));
+                    buf.readEnum(Status.class), buf.readUtf(),
+                    buf.readBoolean(), buf.readBoolean(), buf.readUtf()));
         }
         int optionCount = buf.readVarInt();
         List<Option> options = new ArrayList<>(optionCount);
         for (int i = 0; i < optionCount; i++) {
-            options.add(new Option(buf.readResourceLocation(), buf.readUtf(),
-                    buf.readResourceLocation(), buf.readBoolean(), buf.readUtf()));
+            ResourceLocation output = buf.readResourceLocation();
+            String stationLabel = buf.readUtf();
+            ResourceLocation stationIcon = buf.readResourceLocation();
+            boolean available = buf.readBoolean();
+            String blocker = buf.readUtf();
+            int makes = buf.readVarInt();
+            int needCount = buf.readVarInt();
+            List<String> needs = new ArrayList<>(needCount);
+            for (int n = 0; n < needCount; n++) needs.add(buf.readUtf());
+            boolean activity = buf.readBoolean();
+            boolean tag = buf.readBoolean();
+            String label = buf.readUtf();
+            options.add(new Option(output, stationLabel, stationIcon, available, blocker,
+                    makes, List.copyOf(needs), activity, tag, label));
         }
         int stationCount = buf.readVarInt();
         List<Station> stations = new ArrayList<>(stationCount);

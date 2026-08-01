@@ -170,6 +170,11 @@ public final class ButcheryShopScanner {
         return null;
     }
 
+    /** Whether a building type is a butcher's shop of any tier. */
+    public static boolean isShopType(String type) {
+        return tierFromType(type) > 0;
+    }
+
     private static int tierFromType(String type) {
         if (type == null) return 0;
         if (type.equals("butcher")) return 1;

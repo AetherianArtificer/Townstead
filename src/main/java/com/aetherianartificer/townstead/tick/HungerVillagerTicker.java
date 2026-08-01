@@ -129,6 +129,12 @@ public final class HungerVillagerTicker {
             }
         }
 
+        boolean starving = needs.hunger() <= 0;
+        if (starving && !state.wasStarving) {
+            com.aetherianartificer.townstead.hunger.CannibalismPolicy.onStarvation(level, self);
+        }
+        state.wasStarving = starving;
+
         if (state.lastMoodDayTime < 0) state.lastMoodDayTime = dayTime;
         if (dayTime - state.lastMoodDayTime >= HungerData.MOOD_CHECK_INTERVAL) {
             state.lastMoodDayTime = dayTime;
@@ -242,5 +248,8 @@ public final class HungerVillagerTicker {
         private long lastDayTime = -1;
         private long lastPassiveDrainDayTime = -1;
         private long lastMoodDayTime = -1;
+        // Rising-edge memory for the slide into starvation, so an episode rolls the
+        // cannibalism break exactly once rather than every tick spent at zero.
+        private boolean wasStarving;
     }
 }

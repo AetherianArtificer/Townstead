@@ -58,6 +58,19 @@ public final class WorksiteBindings {
          */
         java.util.Set<Long> extentOf(ServerLevel level, WorksiteKey key);
 
+        /**
+         * Which binding wins when more than one claims a position, highest first.
+         *
+         * <p>A cooking pot inside a kitchen is claimed by both the room and its own block, and
+         * without an order between them the same place got registered twice — once per route — with
+         * an order list on each. Worse, the order they were tried in came from a
+         * {@code ConcurrentHashMap}, so which record a board opened was not stable between runs.
+         * <strong>A room outranks a block.</strong></p>
+         */
+        default int priority() {
+            return 0;
+        }
+
         /** A starting name for a freshly registered site. The player renames it from there. */
         default String defaultName(ServerLevel level, WorksiteKey key) {
             return "Worksite";
@@ -83,8 +96,12 @@ public final class WorksiteBindings {
         return key == null ? null : byId(key.binding());
     }
 
+    /** Every binding, highest priority first, so callers resolve consistently without sorting. */
     public static Collection<Binding> all() {
-        return List.copyOf(BINDINGS.values());
+        List<Binding> out = new java.util.ArrayList<>(BINDINGS.values());
+        out.sort(java.util.Comparator.comparingInt(Binding::priority).reversed()
+                .thenComparing(b -> b.id().toString()));
+        return List.copyOf(out);
     }
 
     /** Ships the bindings that need nothing but vanilla. Compat registers its own. */

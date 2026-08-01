@@ -42,7 +42,14 @@ public record OrderEditC2SPayload(long worksiteId, Action action, int index, int
         /** {@code amount != 0} turns on "work this list only". */
         SET_LIST_ONLY,
         /** {@code value} is the new worksite name. */
-        RENAME
+        RENAME,
+        /**
+         * The screen closed, so stop pushing snapshots at it.
+         *
+         * <p>Rides this payload rather than getting its own because every edit already carries the
+         * worksite id, which is the only thing the server needs to forget a watcher.</p>
+         */
+        CLOSED
     }
 
     public void write(FriendlyByteBuf buf) {

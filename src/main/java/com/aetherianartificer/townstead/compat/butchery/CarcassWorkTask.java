@@ -109,6 +109,11 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
         if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.BUTCHER)) return false;
+        // The worksite may have been told to leave this job alone, to work only what is
+        // on its list, or to do something above this first. Costs nothing where no
+        // activity line exists.
+        if (!com.aetherianartificer.townstead.work.order.WorksiteOrders.mayStart(
+                level, villager, WorkTaskTypes.BUTCHER)) return false;
         return findCarcassAcrossShops(level, villager, true) != null;
     }
 

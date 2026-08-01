@@ -22,6 +22,18 @@ public final class WorksiteCatalogs {
 
     /** Answers what one kind of work could produce at this place. */
     public interface Catalog {
+
+        /**
+         * The work-task type this catalogue speaks for, or null to be asked everywhere.
+         *
+         * <p>Checked against the trades that claim the worksite, so a butchery is not offered a
+         * kitchen's recipes just because it happens to contain a furnace. Null is for catalogues
+         * that already decide relevance for themselves.</p>
+         */
+        default net.minecraft.resources.ResourceLocation taskType() {
+            return null;
+        }
+
         List<Option> optionsFor(ServerLevel level, Worksite site);
 
         /**
@@ -48,18 +60,53 @@ public final class WorksiteCatalogs {
      */
     public static List<Option> optionsFor(ServerLevel level, Worksite site) {
         if (CATALOGS.isEmpty()) return List.of();
+        // What is done here, not what could be: a place no trade claims has nobody to order.
+        Set<net.minecraft.resources.ResourceLocation> worked =
+                com.aetherianartificer.townstead.work.site.WorksiteWork.typesAt(level, site,
+                        com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site));
+
         Set<net.minecraft.resources.ResourceLocation> seen = new LinkedHashSet<>();
         List<Option> out = new ArrayList<>();
         for (Catalog catalog : CATALOGS) {
+            net.minecraft.resources.ResourceLocation type = catalog.taskType();
+            if (type != null && !worked.contains(type)) continue;
             try {
                 for (Option option : catalog.optionsFor(level, site)) {
-                    if (option != null && seen.add(option.output())) out.add(option);
+                    if (option == null || !seen.add(option.output())) continue;
+                    // Gated here, once, so no catalogue has to remember: what counts as cannibal
+                    // fare is a tag, and whether it is served is a setting.
+                    if (!option.activity() && !OrderTags.permitted(option.output())) continue;
+                    out.add(option);
                 }
             } catch (Throwable ignored) {
                 // One engine's catalogue failing must not close the screen for the others.
             }
         }
+        addCategories(out);
         return List.copyOf(out);
+    }
+
+    /**
+     * One entry per declared category ({@code orders/} item tags) that something offered here
+     * belongs to. Synthesised over the gathered options rather than declared by any one catalogue,
+     * because "any cooked meat" spans whatever trades happen to work this place.
+     */
+    private static void addCategories(List<Option> out) {
+        if (out.isEmpty()) return;
+        for (net.minecraft.resources.ResourceLocation tagId : OrderTags.categories()) {
+            Option first = null;
+            boolean available = false;
+            for (Option option : out) {
+                if (option.activity() || option.tag()) continue;
+                if (!OrderTags.contains(tagId, option.output())) continue;
+                if (first == null) first = option;
+                available |= option.available();
+                if (available) break;
+            }
+            if (first == null) continue;
+            out.add(Option.category(tagId, OrdersService.categoryLabel(tagId), first.output(),
+                    available, available ? "" : first.blocker()));
+        }
     }
 
     /** Every engine's stations, de-duplicated by label. */

@@ -6,5 +6,7 @@
   "chronicle.townstead.wedding": "%1$s and %2$s were married",
   "chronicle.townstead.public_argument": "%1$s and %2$s argued in public",
   "chronicle.townstead.blossoming_friendship": "%1$s and %2$s became fast friends",
-  "chronicle.townstead.village_founded": "%1$s founded the village"
+  "chronicle.townstead.village_founded": "%1$s founded the village",
+  "chronicle.townstead.ate_sapient_flesh": "%1$s ate the flesh of a person",
+  "chronicle.townstead.became_cannibal": "%1$s was changed by starvation, and not for the better"
 }

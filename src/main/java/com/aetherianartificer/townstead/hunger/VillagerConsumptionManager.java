@@ -162,6 +162,21 @@ public final class VillagerConsumptionManager {
         float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(villager);
         needs.applyFood(food, foodScale);
         needs.setLastAteTime(villager.level().getGameTime());
+        recordSapientMeal(villager, stack);
+    }
+
+    /**
+     * Chronicles a meal of sapient flesh at the one moment it is definitely eaten. Recorded as
+     * fact, with witnesses gathered now because they cannot be reconstructed later; whether any
+     * culture minds is a judgment for whoever reads the chronicle, not for this method.
+     */
+    private static void recordSapientMeal(VillagerEntityMCA villager, ItemStack stack) {
+        if (!FoodSafety.isCannibalFare(stack)) return;
+        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.taboo(
+                villager, "townstead:ate_sapient_flesh",
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()),
+                java.util.Map.of("own_kind",
+                        String.valueOf(CannibalismPolicy.isKin(villager, stack))));
     }
 
     // --- Benefit application (act on the recipient: the villager that gains the food/drink) ---
@@ -178,6 +193,7 @@ public final class VillagerConsumptionManager {
         float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(recipient);
         needs.applyFood(food, foodScale);
         needs.setLastAteTime(recipient.level().getGameTime());
+        recordSapientMeal(recipient, stack);
         applyFoodEffects(recipient, stack);
         if (stack.is(Items.CHORUS_FRUIT) && TownsteadConfig.ENABLE_CHORUS_FRUIT_TELEPORT.get()) {
             chorusTeleport(recipient);

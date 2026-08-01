@@ -764,6 +764,9 @@ public final class TownsteadVillager {
         private int cycleFingerprint;
         private String currentStageId = "";
         private boolean immortal;
+        // Acquired cannibalism: starvation broke something, and it does not mend. Separate from
+        // the cannibal GENE (born, inheritable) — CannibalismPolicy.isCannibal reads both.
+        private boolean cannibal;
         // Granted agelessness (the Potion of Agelessness). Separate from the immortal flag (which the
         // immortal trait/gene keeps) and from a species' intrinsic ageless life cycle; all three pin
         // the life stage via LifeStageProgression.isAgeless.
@@ -908,6 +911,16 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** Acquired cannibalism, as opposed to the inheritable gene. */
+        public boolean cannibal() {
+            return cannibal;
+        }
+
+        public void setCannibal(boolean value) {
+            cannibal = value;
+            markDirty();
+        }
+
         public boolean ageless() {
             return ageless;
         }
@@ -1037,6 +1050,7 @@ public final class TownsteadVillager {
                 tag.putString("currentStageId", currentStageId);
             }
             if (immortal) tag.putBoolean("immortal", true);
+            if (cannibal) tag.putBoolean("cannibal", true);
             if (ageless) tag.putBoolean("ageless", true);
             if (isSenior) tag.putBoolean("isSenior", true);
             if (fertility > 0f) tag.putFloat("fertility", fertility);
@@ -1074,6 +1088,7 @@ public final class TownsteadVillager {
             cycleFingerprint = tag.getInt("cycleFingerprint");
             currentStageId = tag.getString("currentStageId");
             immortal = tag.getBoolean("immortal");
+            cannibal = tag.getBoolean("cannibal");
             ageless = tag.getBoolean("ageless");
             isSenior = tag.getBoolean("isSenior");
             fertility = tag.getFloat("fertility");

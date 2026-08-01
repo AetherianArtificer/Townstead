@@ -107,6 +107,24 @@ public final class Worksite {
         return orders;
     }
 
+    private int ordersRevision;
+
+    /**
+     * How many times the orders here have changed since the world loaded.
+     *
+     * <p>Watched by open screens so they are told rather than having to ask. Not persisted and not
+     * meaningful across a reload — it is a "has this changed since you last looked" marker, and the
+     * only thing that ever compares it took its first reading in this session.</p>
+     */
+    public int ordersRevision() {
+        return ordersRevision;
+    }
+
+    /** Anything an open orders screen would draw differently has happened. */
+    public void bumpOrdersRevision() {
+        ordersRevision++;
+    }
+
     // ── Extent ──
     //
     // Where the place physically is: the walkable cells a worker reasons over. Deriving it is a

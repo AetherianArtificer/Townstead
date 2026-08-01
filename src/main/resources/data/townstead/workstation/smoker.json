@@ -1,6 +1,7 @@
 {
   "schema": "townstead:workstation/v1",
   "type": "furnace_station",
+  "work_task": "townstead_work:smoke",
   "blocks": ["#townstead:smoker_stations"],
   "recipe_type": "minecraft:smoking"
 }

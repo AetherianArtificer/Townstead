@@ -63,6 +63,7 @@ class OrderParseTest {
 
     private static final class Ctx implements OrderContext {
         @Override public int stockOf(net.minecraft.resources.ResourceLocation item, Order.CountScope scope) { return 0; }
+        @Override public int stockOfTag(net.minecraft.resources.ResourceLocation tagId, Order.CountScope scope) { return 0; }
         @Override public int villagerCount() { return 1; }
         @Override public boolean mayWork(Order order) { return true; }
     }

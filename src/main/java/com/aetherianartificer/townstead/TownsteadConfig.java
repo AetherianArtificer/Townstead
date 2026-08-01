@@ -75,6 +75,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
     public static final ModConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
     public static final ModConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
+    public static final ModConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -157,6 +159,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
     public static final ForgeConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
     public static final ForgeConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
+    public static final ForgeConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -444,6 +448,24 @@ public final class TownsteadConfig {
             INCLUDE_EXOTIC_BUTCHERY_TRADES = null;
             HAMMER_TROPHY_HEADS = null;
         }
+
+        // ── Cannibalism ──
+        // Unconditional, unlike the butchery block above: the cannibal_meats tag can name any
+        // mod's sapient meat, so these settings must exist whether or not Butchery is installed.
+        b.translation("townstead.configuration.cannibalism").push("cannibalism");
+        CANNIBALISM_MODE = b
+                .translation("townstead.configuration.cannibalism.mode")
+                .comment("Who may eat sapient flesh (the townstead:cannibal_meats item tag). Each tier includes the ones below it:",
+                         "OFF: nobody. PREDATORS: roots declaring eats_sapients may eat other kinds, never their own.",
+                         "TRAIT: predators as above, and cannibals (born with the gene, or broken by starvation) may eat anything.",
+                         "EVERYONE: anything goes. Starvation can only create cannibals at TRAIT or above.")
+                .defineEnum("mode", com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode.OFF);
+        CANNIBALISM_PRODUCE = b
+                .translation("townstead.configuration.cannibalism.produce")
+                .comment("Offer and work sapient meat at worksites: order sheets list it, butchers smoke and grind it.",
+                         "Separate from mode on purpose: a village can hunt without selling, or trade without eating.")
+                .define("produce", false);
+        b.pop();
 
         // ── Caregiving ──
         b.translation("townstead.configuration.caregiving").push("caregiving");

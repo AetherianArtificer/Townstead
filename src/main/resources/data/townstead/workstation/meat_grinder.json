@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "butchery",
+  "type": "passive_station",
+  "work_task": "townstead_work:grind",
+  "blocks": ["butchery:meat_grinder"],
+  "container_slot": 0,
+  "ingredient_slots": 3,
+  "produces": [
+    { "inputs": ["#townstead:grindable_mutton"], "output": "butchery:raw_lamb_mince", "time": 200 },
+    { "inputs": ["#butchery:scrappable"], "output": "butchery:meat_scraps", "time": 200 },
+    { "inputs": ["#townstead:grindable_meat", "butchery:intestines", "butchery:sausage_attachment"], "output": "butchery:raw_sausage", "time": 200 },
+    { "inputs": ["#townstead:blood_bottle", "butchery:intestines", "butchery:sausage_attachment"], "output": "butchery:raw_blood_sausage", "time": 200 }
+  ]
+}

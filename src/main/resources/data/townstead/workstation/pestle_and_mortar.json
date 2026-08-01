@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "butchery",
+  "type": "passive_station",
+  "blocks": ["butchery:pestle_and_mortar"],
+  "container_slot": 0,
+  "ingredient_slots": 1,
+  "produces": [
+    { "inputs": ["#butchery:crushable_bone"], "output": "minecraft:bone_meal", "time": 200 }
+  ]
+}

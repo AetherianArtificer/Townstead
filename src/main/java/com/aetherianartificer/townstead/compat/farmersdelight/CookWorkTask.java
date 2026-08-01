@@ -224,16 +224,6 @@ public class CookWorkTask extends ProducerWorkTask {
 
     // ── Recipe / gather / produce / collect ──
 
-    /** This cook's rank in the career they are working, or 1 when it cannot be read. */
-    private static int rankOf(VillagerEntityMCA villager) {
-        com.aetherianartificer.townstead.villager.ProfessionXpStore store =
-                com.aetherianartificer.townstead.profession.career.CareerTreeRows.storeOf(villager);
-        if (store == null) return 1;
-        ResourceLocation career = BuiltInRegistries.VILLAGER_PROFESSION
-                .getKey(villager.getVillagerData().getProfession());
-        return career == null ? 1 : Math.max(1, ProfessionProgress.getTier(store, career));
-    }
-
     /**
      * Everything this cook could make at the station they are standing at, for orders to choose
      * among. The same viability filter the autonomous pick uses, so an order can only ever select
@@ -254,38 +244,6 @@ public class CookWorkTask extends ProducerWorkTask {
                 .map(com.aetherianartificer.townstead.compat.farmersdelight.cook
                         .RecipeSelector.ScoredRecipe::recipe)
                 .toList();
-    }
-
-    /**
-     * How this cook answers an order's questions. Stock is counted over the worksite's own extent,
-     * and eligibility is the real per-worker check: a line naming somebody else, or a rank this
-     * cook has not reached, is not theirs to take.
-     */
-    @Override
-    protected @Nullable com.aetherianartificer.townstead.work.order.OrderContext orderContext(
-            ServerLevel level, VillagerEntityMCA villager) {
-        com.aetherianartificer.townstead.work.site.Worksite site = activeWorksite();
-        if (site == null) return null;
-        return new com.aetherianartificer.townstead.work.order.OrderContext() {
-            @Override
-            public int stockOf(ResourceLocation item,
-                               com.aetherianartificer.townstead.work.order.Order.CountScope scope) {
-                return com.aetherianartificer.townstead.work.order.WorksiteStock
-                        .count(level, site, item, scope);
-            }
-
-            @Override
-            public int villagerCount() {
-                return com.aetherianartificer.townstead.work.order.WorksiteStock.villagers(level, site);
-            }
-
-            @Override
-            public boolean mayWork(com.aetherianartificer.townstead.work.order.Order order) {
-                if (order.villager() != null && !order.villager().equals(villager.getUUID())) return false;
-                if (order.minRank() > 0 && rankOf(villager) < order.minRank()) return false;
-                return true;
-            }
-        };
     }
 
     @Override

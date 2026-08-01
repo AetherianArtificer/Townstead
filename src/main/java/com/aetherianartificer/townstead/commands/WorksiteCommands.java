@@ -56,6 +56,16 @@ public final class WorksiteCommands {
             return 0;
         }
         source.sendSuccess(() -> Component.literal(describe(site)), false);
+        // Which trades claim this place, and therefore what its catalogue may offer. An invisible
+        // rule that decides what a screen shows needs somewhere to be read out loud.
+        java.util.Set<net.minecraft.resources.ResourceLocation> types =
+                com.aetherianartificer.townstead.work.site.WorksiteWork.typesAt(level, site,
+                        com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site));
+        source.sendSuccess(() -> Component.literal(types.isEmpty()
+                ? "  No trade claims this place, so it offers nothing."
+                : "  Work done here: " + types.stream()
+                        .map(net.minecraft.resources.ResourceLocation::toString)
+                        .sorted().collect(java.util.stream.Collectors.joining(", "))), false);
         return 1;
     }
 

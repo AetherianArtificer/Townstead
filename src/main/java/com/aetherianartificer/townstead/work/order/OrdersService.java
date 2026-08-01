@@ -57,7 +57,9 @@ public final class OrdersService {
                 : order.target();
         int have = order.mode().countsProduction()
                 ? order.produced()
-                : context.stockOf(order.output(), order.scope());
+                : order.isTag()
+                        ? context.stockOfTag(order.output(), order.scope())
+                        : context.stockOf(order.output(), order.scope());
 
         OrdersSnapshotS2CPayload.Status status;
         String reason = "";
@@ -76,10 +78,27 @@ public final class OrdersService {
 
         return new Row(order.output(), order.mode(), order.target(), order.scope(), order.paused(),
                 modeLabel(order), scopeLabel(order), whoLabel(order),
-                have, want, order.inProgress(), status, reason);
+                have, want, order.inProgress(), status, reason,
+                order.isActivity(), order.isTag(),
+                order.isActivity()
+                        ? com.aetherianartificer.townstead.work.WorkActivities.labelOf(order.output())
+                        : order.isTag() ? categoryLabel(order.output()) : "");
+    }
+
+    /** What a category is called on screen: the tag path, minus the orders/ shelf mark. */
+    public static String categoryLabel(ResourceLocation tagId) {
+        String path = tagId.getPath();
+        if (path.startsWith(OrderTags.CATEGORY_PREFIX)) {
+            path = path.substring(OrderTags.CATEGORY_PREFIX.length());
+        }
+        String words = path.replace('_', ' ').replace('/', ' ');
+        return words.isEmpty() ? path
+                : Character.toUpperCase(words.charAt(0)) + words.substring(1);
     }
 
     static String modeLabel(Order order) {
+        // A job is not a quantity. It is on the list or it is not, and held or not.
+        if (order.isActivity()) return order.paused() ? "held" : "when there is any";
         return switch (order.mode()) {
             case MAKE -> "make " + order.target();
             case KEEP_STOCKED -> "keep " + order.target() + " in stock";
@@ -162,6 +181,8 @@ public final class OrdersService {
                 orders.setListOnly(edit.amount() != 0);
                 yield true;
             }
+            // Handled before it reaches here — it is a lifecycle notice, not an edit.
+            case CLOSED -> false;
             case RENAME -> {
                 String cleaned = WorksiteNames.sanitise(edit.value());
                 if (cleaned == null) yield false;
@@ -169,7 +190,12 @@ public final class OrdersService {
                 yield true;
             }
         };
-        if (changed) register.setDirty();
+        if (changed) {
+            register.setDirty();
+            register.invalidateActivityScan();
+            // Anyone watching this list is told on the next tick rather than polling for it.
+            site.bumpOrdersRevision();
+        }
         return changed;
     }
 
@@ -184,8 +210,25 @@ public final class OrdersService {
      * which is worked first.
      */
     private static boolean add(OrderList orders, @Nullable String itemId) {
-        ResourceLocation id = itemId == null || itemId.isBlank() ? null : tryParse(itemId);
-        if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return false;
+        if (itemId == null || itemId.isBlank()) return false;
+        // A "#" marks a tag line. Verified against the loaded tags, not just parsed: an order for
+        // a set with nothing in it would be a line no candidate can ever satisfy.
+        if (itemId.startsWith("#")) {
+            ResourceLocation tagId = tryParse(itemId.substring(1));
+            if (tagId == null || OrderTags.members(tagId).isEmpty()) return false;
+            orders.add(new Order(tagId, Order.Kind.TAG, Order.Mode.KEEP_STOCKED, 10));
+            return true;
+        }
+        ResourceLocation id = tryParse(itemId);
+        if (id == null) return false;
+        // A job and a thing arrive through the same door, and which one it is is not the client's
+        // to assert: the server recognises a declared job by its id, and everything else has to be
+        // a registered item or it is not added at all.
+        if (com.aetherianartificer.townstead.work.WorkActivities.isKnown(id)) {
+            orders.add(new Order(id, Order.Kind.ACTIVITY, Order.Mode.STANDING, 0));
+            return true;
+        }
+        if (!BuiltInRegistries.ITEM.containsKey(id)) return false;
         orders.add(new Order(id, Order.Mode.KEEP_STOCKED, 10));
         return true;
     }
@@ -194,7 +237,9 @@ public final class OrdersService {
     private static boolean copy(OrderList orders, int index) {
         Order source = orders.at(index);
         if (source == null) return false;
-        Order twin = new Order(source.output(), source.mode(), source.target());
+        // Kind travels with the copy — dropping it turned a copied job or category into an item
+        // line named after an id that is not an item.
+        Order twin = new Order(source.output(), source.kind(), source.mode(), source.target());
         twin.setScope(source.scope());
         twin.setProfession(source.profession());
         twin.setMinRank(source.minRank());

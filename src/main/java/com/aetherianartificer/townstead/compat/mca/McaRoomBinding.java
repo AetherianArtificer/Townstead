@@ -44,6 +44,16 @@ public final class McaRoomBinding implements WorksiteBindings.Binding {
         return ID;
     }
 
+    /**
+     * A room outranks a block. A station standing inside a recognised building belongs to that
+     * building, so a kitchen with three appliances is one place with one order list rather than
+     * three — and the villager and the player's board resolve to the same record.
+     */
+    @Override
+    public int priority() {
+        return 100;
+    }
+
     @Override
     public @Nullable WorksiteKey keyAt(ServerLevel level, BlockPos pos) {
         Building building = buildingAt(level, pos);

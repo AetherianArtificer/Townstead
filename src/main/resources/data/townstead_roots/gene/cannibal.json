@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:gene/v2",
+  "type": "townstead_roots:cannibal",
+  "display_name": { "translate": "gene.townstead_roots.cannibal" },
+  "description": { "translate": "gene.townstead_roots.cannibal.desc" },
+  "category": "Diet",
+  "dominance": "recessive"
+}

@@ -334,21 +334,37 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
         }
         if (!grinder.getItem(GrinderStateMachine.SLOT_INPUT).isEmpty()) return null;
         SimpleContainer inv = villager.getInventory();
+        java.util.List<GrinderStateMachine.Recipe> order = orderedRecipes(level, villager, gp);
         // Fully actionable recipe (inv + staged slots cover everything)
         // wins over the "just has meat" fallback, so we try the
         // complete-recipe case first.
-        for (GrinderStateMachine.Recipe r : GrinderStateMachine.Recipe.values()) {
+        for (GrinderStateMachine.Recipe r : order) {
             if (canPrepareRecipe(inv, grinder, r)) return new Plan(Action.LOAD, r);
         }
         // Fallback: villager at least carries the raw meat (likely from
         // their own carcass work). Walking over is still worth it because
         // start() will try to pull missing casings from nearby storage.
-        for (GrinderStateMachine.Recipe r : GrinderStateMachine.Recipe.values()) {
+        for (GrinderStateMachine.Recipe r : order) {
             if (anyMatches(inv, s -> GrinderStateMachine.isInputForRecipe(s, r))) {
                 return new Plan(Action.LOAD, r);
             }
         }
         return null;
+    }
+
+    /**
+     * The recipes to try, in the order this worksite wants them tried.
+     *
+     * <p>The enum's own declaration order is a sensible default — blood sausage first so scarce
+     * blood gets used — but it is a guess about what the shop needs. An order list is the player
+     * saying otherwise, and an empty result means the worksite was told to stand down.</p>
+     */
+    private static java.util.List<GrinderStateMachine.Recipe> orderedRecipes(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos grinderPos) {
+        return com.aetherianartificer.townstead.work.order.WorksiteOrders.preference(
+                level, villager, grinderPos,
+                java.util.List.of(GrinderStateMachine.Recipe.values()),
+                GrinderStateMachine.Recipe::outputHere);
     }
 
     /**
@@ -367,7 +383,7 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
         }
         if (!grinder.getItem(GrinderStateMachine.SLOT_INPUT).isEmpty()) return null;
         SimpleContainer inv = villager.getInventory();
-        for (GrinderStateMachine.Recipe r : GrinderStateMachine.Recipe.values()) {
+        for (GrinderStateMachine.Recipe r : orderedRecipes(level, villager, gp)) {
             if (tryPrepareRecipe(level, villager, inv, grinder, gp, r)) {
                 return new Plan(Action.LOAD, r);
             }

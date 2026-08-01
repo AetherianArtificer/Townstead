@@ -48,6 +48,30 @@ public final class WorksiteStock {
         return total;
     }
 
+    /** The same count over a tag: every member on the shelves, summed. */
+    public static int countTag(ServerLevel level, Worksite site, ResourceLocation tagId,
+                               Order.CountScope scope) {
+        if (tagId == null) return 0;
+        Set<Long> extent = Worksites.extentOf(level, site);
+        if (extent.isEmpty()) return 0;
+        var tag = net.minecraft.tags.TagKey.create(
+                net.minecraft.core.registries.Registries.ITEM, tagId);
+        int total = 0;
+        for (long packed : extent) {
+            BlockEntity blockEntity = level.getBlockEntity(BlockPos.of(packed));
+            if (!(blockEntity instanceof Container container)) continue;
+            for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                ItemStack stack = container.getItem(slot);
+                if (stack.isEmpty() || !stack.is(tag)) continue;
+                // A member the settings forbid producing must not satisfy the set either, or
+                // stored sapient meat quietly fills a "keep 10 cooked meats" line nobody may touch.
+                if (!OrderTags.permitted(BuiltInRegistries.ITEM.getKey(stack.getItem()))) continue;
+                total += stack.getCount();
+            }
+        }
+        return total;
+    }
+
     /**
      * How many villagers a per-villager target scales against. Village-wide, because "one stew each"
      * is a statement about the village rather than about whoever happens to be in the kitchen.

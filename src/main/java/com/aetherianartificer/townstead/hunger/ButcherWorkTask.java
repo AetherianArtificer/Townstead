@@ -231,6 +231,62 @@ public class ButcherWorkTask extends ProducerWorkTask {
 
     // ── Recipe / gather / produce / collect ──
 
+    /**
+     * What this butcher could smoke right now, for orders to choose among: one candidate per raw
+     * input actually on hand or on the worksite's shelves. Enumerated from inputs rather than from
+     * the recipe book because that is how this task works — it smokes what it can reach, so a
+     * candidate it could not reach would be an order it claims and then abandons.
+     */
+    @Override
+    protected List<? extends ProducerRecipe> orderCandidates(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        java.util.Set<ResourceLocation> inputsSeen = new java.util.LinkedHashSet<>();
+        java.util.Set<ResourceLocation> outputsSeen = new java.util.LinkedHashSet<>();
+        java.util.List<VanillaSmelterRecipe> out = new java.util.ArrayList<>();
+        SimpleContainer inv = villager.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty() || !ButcherSupplyManager.isRawInput(stack, level)) continue;
+            addCandidate(level, stack, inputsSeen, outputsSeen, out);
+        }
+        com.aetherianartificer.townstead.work.site.Worksite site = activeWorksite();
+        if (site != null) {
+            var stock = com.aetherianartificer.townstead.work.order.StationCatalogs.stockIn(level,
+                    com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site));
+            for (ResourceLocation id : stock.keySet()) {
+                if (inputsSeen.contains(id) || !BuiltInRegistries.ITEM.containsKey(id)) continue;
+                ItemStack probe = new ItemStack(BuiltInRegistries.ITEM.get(id));
+                if (!ButcherSupplyManager.isRawInput(probe, level)) continue;
+                addCandidate(level, probe, inputsSeen, outputsSeen, out);
+            }
+        }
+        return out;
+    }
+
+    private static void addCandidate(ServerLevel level, ItemStack stack,
+                                     java.util.Set<ResourceLocation> inputsSeen,
+                                     java.util.Set<ResourceLocation> outputsSeen,
+                                     java.util.List<VanillaSmelterRecipe> out) {
+        ResourceLocation inputId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (!inputsSeen.add(inputId)) return;
+        VanillaSmelterRecipe recipe = VanillaSmelterRecipe.of(level, stack);
+        if (outputsSeen.add(recipe.output())) out.add(recipe);
+    }
+
+    /**
+     * Which inventory items satisfy the recipe an order chose, or null when the butcher is
+     * choosing for itself. Without this the gather staged whatever raw input came first, so an
+     * ordered porkchop could smoke beef and credit the wrong line.
+     */
+    private @Nullable java.util.function.Predicate<ItemStack> orderedInputFilter() {
+        if (!(activeRecipe instanceof VanillaSmelterRecipe recipe) || recipe.inputs().isEmpty()) {
+            return null;
+        }
+        List<ResourceLocation> ids = recipe.inputs().get(0).acceptableIds();
+        return stack -> !stack.isEmpty()
+                && ids.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+    }
+
     @Override
     protected @Nullable ProducerRecipe pickRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null) return null;
@@ -253,11 +309,14 @@ public class ButcherWorkTask extends ProducerWorkTask {
         SmokerBlockEntity smoker = getSmoker(level);
         if (smoker == null) return GatherResult.fail("missing smoker");
 
-        // Slot 0: raw input.
+        // Slot 0: raw input. An ordered recipe names its own; free work takes the best on hand.
         if (smoker.getItem(0).isEmpty()) {
-            if (!doFetchInput(level, villager, smoker)) {
-                if (!ButcherSupplyManager.pullRawInput(level, villager, stationAnchor)
-                        || !doFetchInput(level, villager, smoker)) {
+            java.util.function.Predicate<ItemStack> wanted = orderedInputFilter();
+            if (!doFetchInput(level, villager, smoker, wanted)) {
+                boolean pulled = wanted == null
+                        ? ButcherSupplyManager.pullRawInput(level, villager, stationAnchor)
+                        : ButcherSupplyManager.pullRawInput(level, villager, stationAnchor, wanted);
+                if (!pulled || !doFetchInput(level, villager, smoker, wanted)) {
                     setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_INGREDIENTS, null);
                     return GatherResult.fail("missing input");
                 }
@@ -495,9 +554,12 @@ public class ButcherWorkTask extends ProducerWorkTask {
         *///?}
     }
 
-    private boolean doFetchInput(ServerLevel level, VillagerEntityMCA villager, SmokerBlockEntity smoker) {
+    private boolean doFetchInput(ServerLevel level, VillagerEntityMCA villager, SmokerBlockEntity smoker,
+                                 @Nullable java.util.function.Predicate<ItemStack> wanted) {
         if (!smoker.getItem(0).isEmpty()) return false;
-        int slot = ButcherSupplyManager.findRawInputSlot(villager.getInventory(), level);
+        int slot = wanted == null
+                ? ButcherSupplyManager.findRawInputSlot(villager.getInventory(), level)
+                : findMatchingSlot(villager.getInventory(), wanted);
         if (slot < 0) return false;
         ItemStack stack = villager.getInventory().getItem(slot);
         if (stack.isEmpty()) return false;
@@ -509,6 +571,14 @@ public class ButcherWorkTask extends ProducerWorkTask {
         stack.shrink(1);
         smoker.setChanged();
         return true;
+    }
+
+    private static int findMatchingSlot(SimpleContainer inv,
+                                        java.util.function.Predicate<ItemStack> wanted) {
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (wanted.test(inv.getItem(i))) return i;
+        }
+        return -1;
     }
 
     private boolean doFetchFuel(VillagerEntityMCA villager, SmokerBlockEntity smoker) {

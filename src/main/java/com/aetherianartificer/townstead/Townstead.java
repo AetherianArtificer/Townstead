@@ -475,6 +475,7 @@ public class Townstead {
                     com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler.tick(e.getServer()));
             com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
             com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
+            com.aetherianartificer.townstead.work.order.OrdersWatchers.tick(e.getServer());
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityJoinLevelEvent e) -> {
             if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
@@ -749,6 +750,9 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent.Finish e) ->
                 com.aetherianartificer.townstead.root.trigger.GeneTriggers.onItemUse(e.getEntity()));
+        // Players are never stopped from eating sapient flesh, but the chronicle records it.
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent.Finish e) ->
+                com.aetherianartificer.townstead.hunger.CannibalismPolicy.onFinishItem(e.getEntity(), e.getItem()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityStruckByLightningEvent e) -> {
             if (e.getEntity() instanceof net.minecraft.world.entity.LivingEntity living) {
                 com.aetherianartificer.townstead.root.trigger.GeneTriggers.onStruckByLightning(living);
@@ -857,6 +861,7 @@ public class Townstead {
                         com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler.tick(e.getServer()));
                 com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
                 com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
+                com.aetherianartificer.townstead.work.order.OrdersWatchers.tick(e.getServer());
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityJoinLevelEvent e) -> {
@@ -1144,6 +1149,9 @@ public class Townstead {
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingEntityUseItemEvent.Finish e) ->
                 com.aetherianartificer.townstead.root.trigger.GeneTriggers.onItemUse(e.getEntity()));
+        // Players are never stopped from eating sapient flesh, but the chronicle records it.
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingEntityUseItemEvent.Finish e) ->
+                com.aetherianartificer.townstead.hunger.CannibalismPolicy.onFinishItem(e.getEntity(), e.getItem()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityStruckByLightningEvent e) -> {
             if (e.getEntity() instanceof net.minecraft.world.entity.LivingEntity living) {
                 com.aetherianartificer.townstead.root.trigger.GeneTriggers.onStruckByLightning(living);
@@ -1231,6 +1239,11 @@ public class Townstead {
             com.aetherianartificer.townstead.compat.caupona.CauponaFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaPotAdapter.bootstrap();
             com.aetherianartificer.townstead.compat.farmersdelight.CookOrderCatalog.bootstrap();
+            com.aetherianartificer.townstead.compat.farmersdelight.BaristaOrderCatalog.bootstrap();
+            com.aetherianartificer.townstead.compat.butchery.ButcheryActivities.bootstrap();
+            com.aetherianartificer.townstead.work.order.ActivityCatalog.bootstrap();
+            // After the trade-specific catalogues so their richer entries win the output dedup.
+            com.aetherianartificer.townstead.work.order.StationProduceCatalog.bootstrap();
             com.aetherianartificer.townstead.compat.pizzadelight.PizzaDelightCompat.bootstrap();
             if (!ModCompat.isLoaded("farmersdelight")) return;
             // Specialization paths read worksite contents through the cook-assignment model.
@@ -1411,6 +1424,8 @@ public class Townstead {
                     new com.aetherianartificer.townstead.root.gene.types.DisableRegenGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.InfectionImmunityGeneType());
+            com.aetherianartificer.townstead.root.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.root.gene.types.CannibalGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.StuckImmunityGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
