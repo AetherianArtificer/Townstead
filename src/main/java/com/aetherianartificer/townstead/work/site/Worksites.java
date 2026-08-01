@@ -170,8 +170,27 @@ public final class Worksites {
         Set<Long> derived = building != null
                 ? WorkSiteBounds.workArea(level, building)
                 : anchor != null ? WorkSiteBounds.workAreaAround(level, anchor) : Set.of();
-        if (site != null) site.setExtent(derived, gameTime, EXTENT_FRESH_TICKS);
+        if (site != null) {
+            site.setExtent(derived, gameTime, EXTENT_FRESH_TICKS);
+            refreshDerivedName(level, site);
+        }
         return derived;
+    }
+
+    /**
+     * A building that changed type renames its site — a kitchen rebuilt into a cafe should say
+     * so — unless a player named the place themselves. Runs on the extent's refresh cadence, so
+     * it costs a name comparison, not a per-tick lookup.
+     */
+    private static void refreshDerivedName(ServerLevel level, Worksite site) {
+        if (site.nameCustom()) return;
+        WorksiteBindings.Binding binding = WorksiteBindings.forKey(site.key());
+        if (binding == null) return;
+        String derived = binding.defaultName(level, site.key());
+        if (derived.isEmpty() || derived.equals(site.name())) return;
+        site.setDerivedName(derived);
+        WorksiteRegister register = register(level);
+        if (register != null) register.setDirty();
     }
 
     /**
@@ -189,6 +208,7 @@ public final class Worksites {
         WorksiteBindings.Binding binding = WorksiteBindings.forKey(site.key());
         Set<Long> derived = binding == null ? Set.of() : binding.extentOf(level, site.key());
         site.setExtent(derived, gameTime, EXTENT_FRESH_TICKS);
+        refreshDerivedName(level, site);
         return derived;
     }
 

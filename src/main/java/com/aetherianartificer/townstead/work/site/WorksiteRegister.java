@@ -42,6 +42,7 @@ public class WorksiteRegister extends SavedData {
     private static final String KEY_DIM = "dim";
     private static final String KEY_VALUE = "value";
     private static final String KEY_NAME = "name";
+    private static final String KEY_NAME_CUSTOM = "nameCustom";
     private static final String KEY_VILLAGE = "village";
     private static final String KEY_CREATED = "created";
     private static final String KEY_LAST_SEEN = "lastSeen";
@@ -241,6 +242,9 @@ public class WorksiteRegister extends SavedData {
                     entry.contains(KEY_VILLAGE) ? entry.getInt(KEY_VILLAGE) : Worksite.NO_VILLAGE,
                     entry.getLong(KEY_CREATED),
                     entry.getLong(KEY_LAST_SEEN)));
+            // Absent on older saves, which reads as false: every pre-flag name re-derives, so a
+            // stale "Kitchen" heals on load rather than surviving as accidental custom.
+            data.sites.get(key).loadNameCustom(entry.getBoolean(KEY_NAME_CUSTOM));
             loadOrders(entry, data.sites.get(key));
             highestLoadedId = Math.max(highestLoadedId, id);
         }
@@ -274,6 +278,7 @@ public class WorksiteRegister extends SavedData {
             entry.putString(KEY_DIM, site.key().dimension().toString());
             entry.putLong(KEY_VALUE, site.key().value());
             entry.putString(KEY_NAME, site.name());
+            if (site.nameCustom()) entry.putBoolean(KEY_NAME_CUSTOM, true);
             entry.putInt(KEY_VILLAGE, site.villageId());
             entry.putLong(KEY_CREATED, site.createdGameTime());
             entry.putLong(KEY_LAST_SEEN, site.lastSeenGameTime());

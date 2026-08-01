@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.Set;
 
@@ -30,15 +31,17 @@ public final class WorksiteStock {
         // building id. Getting this wrong reads an empty stock and never stops producing.
         Set<Long> extent = Worksites.extentOf(level, site);
         int[] total = {0};
-        eachContainer(level, extent, container -> {
-            for (int slot = 0; slot < container.getContainerSize(); slot++) {
-                ItemStack stack = container.getItem(slot);
-                if (stack.isEmpty()) continue;
-                if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
-                    total[0] += stack.getCount();
-                }
+        eachStack(level, extent, stack -> {
+            if (stack.isEmpty()) return;
+            if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+                total[0] += stack.getCount();
             }
         });
+        // "The village" widens the count to every store the village knows, minus the shelves
+        // this worksite just counted for itself.
+        if (scope == Order.CountScope.VILLAGE) {
+            total[0] += VillageStores.count(level, site.villageId(), item, extent);
+        }
         return total[0];
     }
 
@@ -48,17 +51,18 @@ public final class WorksiteStock {
         if (tagId == null) return 0;
         var tag = net.minecraft.tags.TagKey.create(
                 net.minecraft.core.registries.Registries.ITEM, tagId);
+        Set<Long> extent = Worksites.extentOf(level, site);
         int[] total = {0};
-        eachContainer(level, Worksites.extentOf(level, site), container -> {
-            for (int slot = 0; slot < container.getContainerSize(); slot++) {
-                ItemStack stack = container.getItem(slot);
-                if (stack.isEmpty() || !stack.is(tag)) continue;
-                // A member the settings forbid producing must not satisfy the set either, or
-                // stored sapient meat quietly fills a "keep 10 cooked meats" line nobody may touch.
-                if (!OrderTags.permitted(BuiltInRegistries.ITEM.getKey(stack.getItem()))) continue;
-                total[0] += stack.getCount();
-            }
+        eachStack(level, extent, stack -> {
+            if (stack.isEmpty() || !stack.is(tag)) return;
+            // A member the settings forbid producing must not satisfy the set either, or
+            // stored sapient meat quietly fills a "keep 10 cooked meats" line nobody may touch.
+            if (!OrderTags.permitted(BuiltInRegistries.ITEM.getKey(stack.getItem()))) return;
+            total[0] += stack.getCount();
         });
+        if (scope == Order.CountScope.VILLAGE) {
+            total[0] += VillageStores.countTag(level, site.villageId(), tagId, extent);
+        }
         return total[0];
     }
 
@@ -92,13 +96,18 @@ public final class WorksiteStock {
     }
 
     /**
-     * Visits every container in the extent by walking each covered chunk's block-entity map
-     * rather than asking the level about every position. An extent is thousands of positions and
-     * a chunk holds a handful of block entities, and this runs on villagers' work-selection
+     * Visits every stack on the extent's shelves by walking each covered chunk's block-entity
+     * map rather than asking the level about every position. An extent is thousands of positions
+     * and a chunk holds a handful of block entities, and this runs on villagers' work-selection
      * ticks — position-by-position lookups here were a measurable frame cost, not a nicety.
+     *
+     * <p>Vanilla containers speak for themselves; a block that only offers an item handler
+     * (Sophisticated Storage's barrels) is read through that. One view per block, and never an
+     * aggregator — a storage controller answers for a whole network of shelves that are already
+     * being counted individually.</p>
      */
-    static void eachContainer(ServerLevel level, Set<Long> extent,
-                              java.util.function.Consumer<Container> visit) {
+    static void eachStack(ServerLevel level, Set<Long> extent,
+                          java.util.function.Consumer<ItemStack> visit) {
         if (extent.isEmpty()) return;
         Set<Long> chunks = new java.util.HashSet<>();
         for (long packed : extent) {
@@ -112,9 +121,50 @@ public final class WorksiteStock {
             if (chunk == null) continue;
             for (var entry : chunk.getBlockEntities().entrySet()) {
                 if (!extent.contains(entry.getKey().asLong())) continue;
-                if (entry.getValue() instanceof Container container) visit.accept(container);
+                BlockEntity be = entry.getValue();
+                if (aggregator(be.getBlockState())) continue;
+                if (be instanceof Container container) {
+                    for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                        visit.accept(container.getItem(slot));
+                    }
+                } else {
+                    visitHandler(level, entry.getKey(), be, visit);
+                }
             }
         }
+    }
+
+    /** Blocks that answer for a whole network of other shelves. Counting must skip them. */
+    static boolean aggregator(net.minecraft.world.level.block.state.BlockState state) {
+        return state.is(AGGREGATORS);
+    }
+
+    private static final net.minecraft.tags.TagKey<net.minecraft.world.level.block.Block>
+            AGGREGATORS = net.minecraft.tags.TagKey.create(
+                    net.minecraft.core.registries.Registries.BLOCK, rl("townstead:storage_aggregators"));
+
+    private static void visitHandler(ServerLevel level, BlockPos pos, BlockEntity be,
+                                     java.util.function.Consumer<ItemStack> visit) {
+        //? if >=1.21 {
+        net.neoforged.neoforge.items.IItemHandler handler = level.getCapability(
+                net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, pos, null);
+        //?} else {
+        /*net.minecraftforge.items.IItemHandler handler = be.getCapability(
+                net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER, null)
+                .orElse(null);
+        *///?}
+        if (handler == null) return;
+        for (int i = 0; i < handler.getSlots(); i++) {
+            visit.accept(handler.getStackInSlot(i));
+        }
+    }
+
+    private static ResourceLocation rl(String raw) {
+        //? if >=1.21 {
+        return ResourceLocation.parse(raw);
+        //?} else {
+        /*return new ResourceLocation(raw);
+        *///?}
     }
 
     /**
