@@ -943,8 +943,10 @@ public class OrdersScreen extends Screen {
         g.drawString(this.font, have, howMuch.right() - 6 - this.font.width(have),
                 stepper[0].y() + 3, Palette.LABEL_DIM, false);
 
+        // Was headed "Ingredients", which it never was about: the scope says where the ORDER's
+        // stock is counted, and with the stores pass it finally means what it says.
         Rect where = new Rect(x, top + 58, w, 30);
-        Controls.drawBox(g, this.font, where, "Ingredients");
+        Controls.drawBox(g, this.font, where, "Counting");
         Rect[] scope = detailsScope();
         g.drawString(this.font, "Counted across", where.x() + 6, scope[0].y() + 3,
                 Palette.LABEL_DIM, false);

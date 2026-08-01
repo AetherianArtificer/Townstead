@@ -66,8 +66,30 @@ public final class Worksite {
         return name;
     }
 
+    /** A player naming the place. Custom names stick; the building can change under them. */
     public void setName(@Nullable String value) {
         this.name = value == null ? "" : value;
+        this.nameCustom = true;
+    }
+
+    private boolean nameCustom;
+
+    /** Whether a player chose this name, as opposed to it being read off the building type. */
+    public boolean nameCustom() {
+        return nameCustom;
+    }
+
+    /**
+     * The system keeping a derived name current: a kitchen rebuilt into a cafe should introduce
+     * itself as one. Refuses to touch a name a player chose.
+     */
+    public void setDerivedName(String value) {
+        if (nameCustom || value == null) return;
+        this.name = value;
+    }
+
+    void loadNameCustom(boolean value) {
+        this.nameCustom = value;
     }
 
     /**

@@ -40,26 +40,45 @@ public final class WorksiteWork {
         String buildingType = buildingTypeOf(level, site);
         Set<ResourceLocation> blocks = blocksIn(level, extent);
 
+        // A trade that names this building TYPE owns the place, and owners outrank visitors:
+        // a cafe holds a skillet, the skillet is the cook's job block, and without this rule
+        // the cook's whole menu landed on the barista's sheet. Job-block claims only speak
+        // where no trade owns the type — a lone smoker in an unclassified room is still a
+        // butcher's corner.
         Set<ResourceLocation> types = new HashSet<>();
+        boolean owned = false;
         for (ProfessionDef def : ProfessionDefs.all().values()) {
-            if (!claims(def, buildingType, blocks)) continue;
+            if (!claimsByType(def, buildingType)) continue;
+            owned = true;
+            for (WorkTaskDef task : def.workTasks()) types.add(task.type());
+        }
+        if (owned) return types;
+
+        for (ProfessionDef def : ProfessionDefs.all().values()) {
+            if (!claimsByBlock(def, blocks)) continue;
             for (WorkTaskDef task : def.workTasks()) types.add(task.type());
         }
         return types;
     }
 
-    /** Whether a profession's declared job sites are satisfied by this place. */
-    private static boolean claims(ProfessionDef def, String buildingType, Set<ResourceLocation> blocks) {
+    /** Whether a profession names this building type as its own kind of place. */
+    private static boolean claimsByType(ProfessionDef def, String buildingType) {
+        if (buildingType == null) return false;
         for (JobSiteProvider provider : def.jobSites()) {
-            if (provider instanceof JobSiteProvider.Building building) {
-                if (buildingType == null) continue;
-                for (String prefix : building.typePrefixes()) {
-                    if (!prefix.isEmpty() && buildingType.startsWith(prefix)) return true;
-                }
-            } else if (provider instanceof JobSiteProvider.JobBlock jobBlock) {
-                for (ResourceLocation block : jobBlock.blocks()) {
-                    if (blocks.contains(block)) return true;
-                }
+            if (!(provider instanceof JobSiteProvider.Building building)) continue;
+            for (String prefix : building.typePrefixes()) {
+                if (!prefix.isEmpty() && buildingType.startsWith(prefix)) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Whether a profession's job block stands here. Only asked where nobody owns the type. */
+    private static boolean claimsByBlock(ProfessionDef def, Set<ResourceLocation> blocks) {
+        for (JobSiteProvider provider : def.jobSites()) {
+            if (!(provider instanceof JobSiteProvider.JobBlock jobBlock)) continue;
+            for (ResourceLocation block : jobBlock.blocks()) {
+                if (blocks.contains(block)) return true;
             }
             // townstead:always means the trade needs no site, which is not a claim on this one.
         }
