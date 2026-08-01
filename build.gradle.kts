@@ -34,11 +34,11 @@ repositories {
 }
 
 dependencies {
-    // MCA's floor-system rebuild moved building-icon drawing out of BlueprintScreen
-    // (removed drawBuildingIcon) into WidgetUtils/BlueprintMapRenderer. We compile against
-    // that newer API; runtime support for the older 7.7.x API is kept via version-gated
-    // icon mixins (see TownsteadMixinPlugin).
-    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-1.21.1-floor-system-SNAPSHOT.jar"))
+    // Keep this jar aligned with the MCA jar deployed in the test instance's mods/
+    // folder: signature drift between the compile jar and runtime jar compiles
+    // cleanly but throws NoSuchMethodError in-game. APIs that only exist on other
+    // MCA builds are handled via runtime-gated mixins (see TownsteadMixinPlugin).
+    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-1.21.1-20260729-SNAPSHOT.jar"))
     compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")

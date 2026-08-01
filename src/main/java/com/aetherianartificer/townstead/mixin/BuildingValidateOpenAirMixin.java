@@ -35,7 +35,15 @@ public abstract class BuildingValidateOpenAirMixin {
                                            CallbackInfoReturnable<Building.validationResult> cir) {
         Building self = (Building) (Object) this;
         if (!SyntheticBuildingTypes.isSynthetic(self.getType())) return;
-        self.validateBlocks(world);
+        // Inlined equivalent of MCA's Building.validateBlocks (prune stored
+        // positions whose world block no longer matches). Not called directly
+        // because not every MCA build exposes it on Building; this mixin only
+        // applies where its validateBuilding target exists (see TownsteadMixinPlugin).
+        self.setLastScan(world.getGameTime());
+        for (var positions : self.getBlocks().entrySet()) {
+            positions.getValue().removeIf(pos -> !net.minecraft.core.registries.BuiltInRegistries.BLOCK
+                    .getKey(world.getBlockState(pos).getBlock()).equals(positions.getKey()));
+        }
         Building.validationResult result = self.getBlockPosStream().findAny().isEmpty()
                 ? Building.validationResult.TOO_SMALL
                 : Building.validationResult.SUCCESS;
