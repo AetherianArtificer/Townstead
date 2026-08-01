@@ -105,7 +105,6 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int IDLE_BACKOFF_TICKS = 60;
     private static final int REQUEST_RANGE = 24;
     private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
-    private static final int FETCH_ROD_TIMEOUT_TICKS = 200;
     private static final int GO_TO_WATER_TIMEOUT_TICKS = 300;
     private static final int CAST_COOLDOWN_TICKS = 40;
     //? if forge {
@@ -168,6 +167,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
     // ── Task state ──
     private Phase phase = Phase.IDLE;
+    /** While the clock reads earlier than this, the fisherman is at ease and ticks do nothing. */
+    private long restUntilTick;
     private long phaseEnteredTick;
     private @Nullable BlockPos stationAnchor;
     private @Nullable FishingWaterIndex.FishingSpot currentWaterSpot;
@@ -241,6 +242,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         nextCastReadyTick = 0L;
         currentHook = null;
         currentRod = FishermanSupplyManager.findRodInInventory(villager.getInventory());
+        restUntilTick = 0L;
         targetProgress.reset();
         nextRequestTick = 0L;
         nibbleTriggered = false;
@@ -283,6 +285,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         debugTick(level, villager, gameTime);
+
+        // At ease: hopelessly blocked (no rod anywhere, no water) means rest on your feet and
+        // let the brain wander, not re-ask the world the same question every tick.
+        if (gameTime < restUntilTick) return;
 
         if (stationAnchor == null) {
             stationAnchor = townstead$resolveBarrelAnchor(level, villager);
@@ -351,6 +357,9 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (currentWaterSpot == null) {
             if (!acquireUnclaimedWaterSpot(level, villager, gameTime)) {
                 townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_WATER);
+                // Same at-ease rest as a missing rod: the water scan is not cheap, and the
+                // pond does not refill mid-stare.
+                restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
                 return;
             }
         }
@@ -379,11 +388,12 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             }
         }
 
-        if (gameTime - phaseEnteredTick >= FETCH_ROD_TIMEOUT_TICKS) {
-            townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_ROD);
-            // Stay in FETCH_ROD but reset timer so we retry periodically.
-            phaseEnteredTick = gameTime;
-        }
+        // No rod on them and none in storage: at ease. Retrying every tick pinned the
+        // fisherman to the barrel and hammered the storage search; a rod does not appear by
+        // being stared at. The rest expires on its own and this asks again.
+        townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_ROD);
+        restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
+        enterPhase(Phase.IDLE, gameTime);
     }
 
     private void tickGoToWater(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -1170,6 +1180,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             if (level.getBlockState(cachedBarrelAnchor).is(Blocks.BARREL)) return cachedBarrelAnchor;
             cachedBarrelAnchor = null;
         }
+        // "No barrel anywhere" is an answer worth remembering too. This resolver runs from the
+        // brain's start checks every tick, and the scan below reads ~21k block states — the TTL
+        // was being written and never consulted, so a fisherman with no barrel paid that cost
+        // every single tick. That was the villager everyone's frame time was going to.
+        if (gameTime < cachedBarrelUntilTick) return null;
         BlockPos center = villager.blockPosition();
         BlockPos best = null;
         double bestDistSq = Double.MAX_VALUE;

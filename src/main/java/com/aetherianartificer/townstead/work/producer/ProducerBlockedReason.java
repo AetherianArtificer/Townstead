@@ -9,5 +9,7 @@ public enum ProducerBlockedReason {
     UNREACHABLE,
     NO_FUEL,
     OUTPUT_BLOCKED,
-    UNSUPPORTED_RECIPE
+    UNSUPPORTED_RECIPE,
+    /** Told to work the list only, and the list has nothing workable. Rest, not a fault. */
+    STANDING_DOWN
 }

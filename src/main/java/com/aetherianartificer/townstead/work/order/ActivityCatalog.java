@@ -35,10 +35,13 @@ public final class ActivityCatalog implements WorksiteCatalogs.Catalog {
     public List<Option> optionsFor(ServerLevel level, Worksite site) {
         List<ResourceLocation> jobs = WorkActivities.at(level, site);
         if (jobs.isEmpty()) return List.of();
-        ResourceLocation icon = BuiltInRegistries.ITEM.getKey(Items.IRON_SWORD);
+        // Each job registered its own icon — the sponge for mopping, the shears for golems.
+        // Handing every one of them the sword made the list read as four kinds of slaughter.
+        ResourceLocation fallback = BuiltInRegistries.ITEM.getKey(Items.IRON_SWORD);
         List<Option> out = new ArrayList<>(jobs.size());
         for (ResourceLocation job : jobs) {
-            out.add(Option.job(job, WorkActivities.labelOf(job), icon));
+            ResourceLocation icon = WorkActivities.iconOf(job);
+            out.add(Option.job(job, WorkActivities.labelOf(job), icon != null ? icon : fallback));
         }
         return out;
     }

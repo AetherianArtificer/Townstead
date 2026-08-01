@@ -5,8 +5,6 @@ import com.aetherianartificer.townstead.client.gui.common.Controls.Rect;
 import com.aetherianartificer.townstead.client.gui.common.FrameRenderer;
 import com.aetherianartificer.townstead.client.gui.common.Palette;
 import com.aetherianartificer.townstead.client.gui.common.PaletteList;
-import com.aetherianartificer.townstead.client.gui.common.PaperField;
-import com.aetherianartificer.townstead.client.gui.common.ParchmentButton;
 import com.aetherianartificer.townstead.work.order.Order;
 import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload;
 import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Option;
@@ -62,16 +60,25 @@ public class OrdersScreen extends Screen {
     private static final int COL_STATE = 56;
     private static final int COL_MODE = 92;
     private static final int MARK_GAP = 3;
-    private static final int COL_MARKS = Controls.MARK * 3 + MARK_GAP * 2 + 7;
+    /** The three marks exactly, flush against the row's right edge. */
+    private static final int COL_MARKS = Controls.MARK * 3 + MARK_GAP * 2;
+    /** The ruled margin line sits this far left of the first mark. */
+    private static final int MARGIN_GAP = 8;
     private static final int COL_GAP = 6;
 
-    private static final int ROW_H = 30;
-    private static final int REASON_H = 10;
-    private static final int COMPOSER_H = 58;
+    // A row's two lines and their bands. Line two used to start inside line one's slot and run
+    // past the row's own bottom edge, which is what the controls overlapping the divider was.
+    private static final int ROW_H = 42;
+    private static final int LINE1_Y = 3;
+    private static final int LINE2_Y = 22;
+    private static final int BAND_Y = 12;
+    private static final int REASON_H = 11;
+    private static final int COMPOSER_H = 64;
 
     private static final String[] MODE_LABELS = {"Make", "Keep in stock", "Per villager", "Standing"};
     private static final String[] SCOPE_LABELS = {"Here", "The village"};
     private static final String[] LIST_LABELS = {"Work freely", "Stand down"};
+    private static final String[] TAB_LABELS = {"Produce", "Jobs"};
 
     private static @Nullable OrdersScreen open;
 
@@ -79,9 +86,10 @@ public class OrdersScreen extends Screen {
     private @Nullable EditBox search;
     private @Nullable PaletteList catalogue;
     private @Nullable Button makeableButton;
-    private @Nullable PaperField rename;
 
     private boolean makeableOnly;
+    /** Which of the catalogue's two shelves is showing: things to make, or jobs to order. */
+    private boolean jobsTab;
     private int orderScroll;
 
     /** Drawn last, over everything, so a tooltip is never clipped by the panel it started in. */
@@ -91,6 +99,8 @@ public class OrdersScreen extends Screen {
     private @Nullable Draft draft;
     /** The row whose details are open, or -1. */
     private int detailsFor = -1;
+    /** How far a category's member list is scrolled inside the details window. */
+    private int setScroll;
 
     private static final class Draft {
         final ResourceLocation output;
@@ -147,7 +157,6 @@ public class OrdersScreen extends Screen {
         String before = catalogueSignature();
         data = payload;
         if (detailsFor >= payload.rows().size()) detailsFor = -1;
-        if (rename != null) closeRename();
         if (!before.equals(catalogueSignature())) refreshCatalogue();
     }
 
@@ -171,17 +180,20 @@ public class OrdersScreen extends Screen {
     private int listTop() { return contentTop() + STRIP_H; }
     private int composerTop() { return contentBottom() - COMPOSER_H; }
     private int orderListBottom() { return draft == null ? contentBottom() : composerTop(); }
-    private int catalogueListTop() { return contentTop() + SEARCH_H + 4; }
+    // The Field Post's palette column, measure for measure: search at the top, the shared tab
+    // bar directly beneath it, then the list.
+    private int searchTop() { return contentTop() + INSET; }
+    private int catalogueListTop() { return contentTop() + SEARCH_H + Controls.TAB_BAR_H; }
 
     @Override
     protected void init() {
         String previous = search == null ? "" : search.getValue();
         int toggle = 14;
-        search = new EditBox(this.font, catalogueLeft() + INSET + 1, contentTop() + INSET,
+        search = new EditBox(this.font, catalogueLeft() + INSET + 1, searchTop(),
                 CATALOGUE_W - INSET * 2 - toggle - 4, SEARCH_H - 4, Component.literal("Search"));
         search.setMaxLength(64);
         search.setBordered(true);
-        search.setHint(Component.literal("Search"));
+        search.setHint(Component.literal("Search..."));
         search.setValue(previous);
         search.setResponder(v -> refreshCatalogue());
         addRenderableWidget(search);
@@ -191,24 +203,19 @@ public class OrdersScreen extends Screen {
                     updateMakeableLabel();
                     refreshCatalogue();
                 })
-                .bounds(catalogueLeft() + CATALOGUE_W - INSET - toggle, contentTop() + INSET,
+                .bounds(catalogueLeft() + CATALOGUE_W - INSET - toggle, searchTop(),
                         toggle, SEARCH_H - 4)
                 .tooltip(Tooltip.create(Component.translatable("townstead.orders.filter.makeable")))
                 .build();
+        makeableButton.visible = !jobsTab;
         updateMakeableLabel();
         addRenderableWidget(makeableButton);
 
-        int closeW = this.font.width("Close") + 18;
-        addRenderableWidget(new ParchmentButton(
-                this.width - SPACING - closeW, SPACING - 2, closeW, 14,
-                Component.literal("Close"), b -> onClose()));
+        // A plain Minecraft button, because it does the plainest thing on the screen.
+        addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose())
+                .bounds(this.width - SPACING - 60, contentTop() - FRAME - 23, 60, 20)
+                .build());
 
-        if (rename != null) {
-            String typed = rename.getValue();
-            rename = null;
-            openRename();
-            if (rename != null) rename.setValue(typed);
-        }
         catalogue = new PaletteList(this.minecraft, catalogueLeft(), CATALOGUE_W,
                 contentBottom() - catalogueListTop(), catalogueListTop(), this::pickFromCatalogue);
         catalogue.setOnHeaderClick(key -> {
@@ -227,12 +234,14 @@ public class OrdersScreen extends Screen {
         makeableButton.setMessage(Component.literal(makeableOnly ? "✔" : " "));
     }
 
-    /** Rebuilds the palette's rows from the snapshot, the search box and the makeable filter. */
+    /** Rebuilds the palette's rows from the snapshot, the tab, the search box and the filter. */
     private void refreshCatalogue() {
         if (catalogue == null) return;
         String query = search == null ? "" : search.getValue().toLowerCase(Locale.ROOT).trim();
         Map<String, List<Option>> byMod = new LinkedHashMap<>();
         for (Option option : data.options()) {
+            // The tab is the first cut: jobs on one shelf, everything makeable on the other.
+            if (option.activity() != jobsTab) continue;
             if (makeableOnly && !option.available()) continue;
             if (!query.isEmpty()
                     && !nameOf(option.activity() || option.tag(), option.label(), option.output())
@@ -240,14 +249,24 @@ public class OrdersScreen extends Screen {
                 continue;
             }
             String group = option.activity() ? "Jobs"
-                    : option.tag() ? "Categories"
+                    : option.tag() ? "Kinds"
                     : ModNames.of(option.output().getNamespace());
             byMod.computeIfAbsent(group, k -> new ArrayList<>()).add(option);
         }
+        // Kinds lead: an order for "cooked meats" is the usual ask, the single items are the
+        // long tail beneath it.
+        List<Option> kinds = byMod.remove("Kinds");
+        Map<String, List<Option>> ordered = new LinkedHashMap<>();
+        if (kinds != null) ordered.put("Kinds", kinds);
+        ordered.putAll(byMod);
+
         List<PaletteList.ToolEntry> entries = new ArrayList<>();
-        for (Map.Entry<String, List<Option>> group : byMod.entrySet()) {
-            entries.add(PaletteList.ToolEntry.header(group.getKey(), group.getValue().size()));
-            if (catalogue.isCategoryCollapsed(group.getKey())) continue;
+        for (Map.Entry<String, List<Option>> group : ordered.entrySet()) {
+            // The jobs tab holds one flat list; a "Jobs (4)" header under a Jobs tab says nothing.
+            if (!jobsTab) {
+                entries.add(PaletteList.ToolEntry.header(group.getKey(), group.getValue().size()));
+                if (catalogue.isCategoryCollapsed(group.getKey())) continue;
+            }
             for (Option option : group.getValue()) {
                 String shown = nameOf(option.activity() || option.tag(), option.label(), option.output());
                 // A thing is shown as itself; a job has no item, so it borrows an icon; a category
@@ -322,6 +341,9 @@ public class OrdersScreen extends Screen {
         FrameRenderer.drawChatPanel(g, catalogueLeft(), top, CATALOGUE_W, h);
         FrameRenderer.drawWoodenFrame(g, ordersLeft(), top, ordersWidth(), h, FRAME);
         FrameRenderer.drawChatPanel(g, ordersLeft(), top, ordersWidth(), h);
+        // The palette's rows each carry their own plate, which reads as a darker column; the
+        // order panel is rows-transparent-until-hover, so it gets the difference painted in.
+        g.fill(ordersLeft(), top, ordersLeft() + ordersWidth(), top + h, 0x60000000);
     }
 
     @Override
@@ -361,8 +383,9 @@ public class OrdersScreen extends Screen {
      */
     private void drawCatalogue(GuiGraphics g, int mouseX, int mouseY) {
         int x = catalogueLeft();
-        int ruleY = catalogueListTop() - 2;
-        g.fill(x + INSET, ruleY, x + CATALOGUE_W - INSET, ruleY + 1, FrameRenderer.FRAME_HIGHLIGHT);
+        Rect[] tabs = catalogueTabs();
+        Controls.drawTabs(g, this.font, tabs, TAB_LABELS, jobsTab ? 1 : 0,
+                Controls.segmentAt(tabs, mouseX, mouseY));
 
         String empty = emptyCatalogueReason();
         if (empty != null) {
@@ -385,11 +408,22 @@ public class OrdersScreen extends Screen {
      */
     private @Nullable String emptyCatalogueReason() {
         if (catalogue != null && catalogue.children().size() > 0) return null;
+        if (jobsTab) {
+            return data.options().stream().anyMatch(Option::activity)
+                    ? "Nothing matches that search."
+                    : "No jobs are worked at this place.";
+        }
         // Was "no trade works here", which is a lie whenever a trade does work here and simply has
         // no catalogue behind it yet. The screen cannot tell those apart, so it says both.
         if (data.options().isEmpty()) return "Nothing can be ordered here. Either no trade works this place, or the trade that does has nothing it can be asked for.";
         if (makeableOnly) return "Nothing here can be made from what is stored right now. Untick the filter to see everything.";
         return "Nothing matches that search.";
+    }
+
+    /** The two shelves the catalogue is split across, sitting where the Field Post puts its own. */
+    private Rect[] catalogueTabs() {
+        return Controls.tabLayout(catalogueLeft(), contentTop() + SEARCH_H + 4,
+                CATALOGUE_W, TAB_LABELS.length);
     }
 
     // ── Orders ──
@@ -404,33 +438,21 @@ public class OrdersScreen extends Screen {
         int y = contentTop();
         int textY = y + (STRIP_H - this.font.lineHeight) / 2;
 
-        if (rename == null) {
-            g.drawString(this.font, data.worksiteName(), x + INSET + 2, textY, Palette.CARD, false);
-            Rect pencil = renamePencil();
-            g.fill(pencil.x(), pencil.y(), pencil.right(), pencil.bottom(), Palette.DESK_DEEP);
-            Palette.drawOutline(g, pencil.x(), pencil.y(), pencil.right(), pencil.bottom(),
-                    Palette.BRASS_DEEP);
-            int px = pencil.x() + 3;
-            int py = pencil.y() + 3;
-            int ink = pencil.contains(mouseX, mouseY) ? Palette.BRASS_HOT : Palette.BRASS;
-            g.fill(px + 2, py, px + 5, py + 1, ink);
-            g.fill(px + 1, py + 1, px + 4, py + 2, ink);
-            g.fill(px, py + 2, px + 3, py + 3, ink);
-            g.fill(px, py + 3, px + 1, py + 4, ink);
-            tip(pencil, mouseX, mouseY, "Rename this worksite");
-
-            // Clipped against the whole-list picker on the right: a long worksite name used to
-            // run its "ROOM" straight into "WHEN DONE".
-            int detailX = pencil.right() + 6;
-            int room = listSegments()[0].x() - this.font.width("WHEN DONE") - 12 - detailX;
-            g.drawString(this.font, trim(data.worksiteDetail().toUpperCase(Locale.ROOT), room),
-                    detailX, textY, Palette.LABEL_DIM, false);
-        }
-
         Rect[] listSeg = listSegments();
         String label = "WHEN DONE";
-        g.drawString(this.font, label, listSeg[0].x() - this.font.width(label) - 6, textY,
-                Palette.INK_DIM, false);
+        int labelRoom = listSeg[0].x() - this.font.width(label) - 10;
+        String name = trim(data.worksiteName(), labelRoom - (x + INSET + 2) - 8);
+        g.drawString(this.font, name, x + INSET + 2, textY, Palette.CARD, false);
+        // What kind of place the record is bound to lives in a tooltip; spelling "ROOM" out
+        // beside the name made the strip read like a form.
+        tip(new Rect(x + INSET + 2, textY - 1, this.font.width(name), this.font.lineHeight + 2),
+                mouseX, mouseY,
+                "post".equals(data.worksiteDetail()) ? "Bound to a post" : "Bound to this room");
+
+        // The label sits on the buttons' own text row, so the pair reads as one control.
+        g.drawString(this.font, label, listSeg[0].x() - this.font.width(label) - 10,
+                listSeg[0].y() + (Controls.SEG_H - this.font.lineHeight) / 2 + 1,
+                Palette.LABEL_DIM, false);
         Controls.drawSegments(g, this.font, listSeg, LIST_LABELS, data.listOnly() ? 1 : 0,
                 Controls.segmentAt(listSeg, mouseX, mouseY));
         tip(new Rect(listSeg[0].x(), listSeg[0].y(),
@@ -441,17 +463,13 @@ public class OrdersScreen extends Screen {
                 FrameRenderer.FRAME_HIGHLIGHT);
     }
 
-    private Rect renamePencil() {
-        int textY = contentTop() + (STRIP_H - this.font.lineHeight) / 2;
-        return new Rect(ordersLeft() + INSET + 2 + this.font.width(data.worksiteName()) + 5,
-                textY - 1, 12, 12);
-    }
-
     private Rect[] listSegments() {
         Rect[] probe = Controls.segmentLayout(this.font, 0, 0, LIST_LABELS);
         int total = probe[probe.length - 1].right();
+        // Right edge on the same line as the rows' margin marks: content right, which stops
+        // short of the frame by the scrollbar's lane.
         return Controls.segmentLayout(this.font,
-                ordersLeft() + ordersWidth() - INSET - 2 - total,
+                ordersLeft() + ordersWidth() - INSET - Controls.SCROLLBAR_W - total,
                 contentTop() + (STRIP_H - Controls.SEG_H) / 2, LIST_LABELS);
     }
 
@@ -491,11 +509,14 @@ public class OrdersScreen extends Screen {
         Rect body = rowBody(x, rowY, w, height);
         boolean hover = body.contains(mouseX, mouseY);
 
+        // The highlight and the divider run to the strip separator's own inset — full-bleed to
+        // the frame read wider than every other rule on the panel — and up into the seam above,
+        // so a lit row is one solid band with no hairline across its top.
         if (hover || satisfied) {
-            g.fill(body.x(), body.y(), body.right(), body.bottom(),
+            g.fill(x + INSET, body.y() - 2, x + w - INSET, body.bottom(),
                     satisfied ? Palette.ALCOVE : Palette.DESK);
         }
-        g.fill(body.x(), body.bottom(), body.right(), body.bottom() + 1, Palette.WELL_EDGE);
+        g.fill(x + INSET, body.bottom(), x + w - INSET, body.bottom() + 1, Palette.WELL_EDGE);
 
         Columns c = columns(body);
         Rect[] carets = caretRects(body);
@@ -506,24 +527,27 @@ public class OrdersScreen extends Screen {
         if (canUp) tip(carets[0], mouseX, mouseY, "Work this sooner");
         if (canDown) tip(carets[1], mouseX, mouseY, "Work this later");
 
-        Controls.drawSlot(g, c.item, body.y() + 3);
-        drawItem(g, iconFor(row), c.item + 1, body.y() + 4);
+        Controls.drawSlot(g, c.item, body.y() + LINE1_Y);
+        drawItem(g, iconFor(row), c.item + 1, body.y() + LINE1_Y + 1);
 
         int nameInk = satisfied ? Palette.LABEL_MID : Palette.CARD;
-        g.drawString(this.font, trim(nameOf(row.activity() || row.tag(), row.label(), row.output()), c.mainW), c.main, body.y() + 5,
+        g.drawString(this.font, trim(nameOf(row.activity() || row.tag(), row.label(), row.output()), c.mainW), c.main, body.y() + 8,
                 nameInk, false);
 
         if (row.want() > 0 && c.showMeter && !row.activity()) {
-            Controls.drawBar(g, c.meter, body.y() + 7, COL_METER,
+            Controls.drawBar(g, c.meter, body.y() + 9, COL_METER,
                     row.have() / (float) row.want(), row.have() >= row.want());
         }
         String count = row.activity() ? ""
                 : row.want() > 0 ? row.have() + "/" + row.want() : String.valueOf(row.have());
-        g.drawString(this.font, count, c.count + COL_COUNT - this.font.width(count), body.y() + 5,
+        g.drawString(this.font, count, c.count + COL_COUNT - this.font.width(count), body.y() + 8,
                 satisfied ? Palette.LABEL_DIM : Palette.LABEL_LIGHT, false);
 
+        // The chip rides line one and the Details link line two, both right-aligned against the
+        // ruled margin with the same gap the marks keep on its far side — one straight edge.
         String status = statusLabel(row.status());
-        Controls.drawChip(g, this.font, chipStyle(row.status()), status, c.state, body.y() + 4);
+        Controls.drawChip(g, this.font, chipStyle(row.status()), status,
+                c.state + COL_STATE - Controls.chipWidth(this.font, status), body.y() + 5);
 
         // Line two: mode, stepper and details, all inside the flexible column.
         Rect mode = modeButton(c, body, row);
@@ -548,8 +572,11 @@ public class OrdersScreen extends Screen {
                 details.contains(mouseX, mouseY), true);
         tip(details, mouseX, mouseY, "Everything else about this line");
 
-        // The ruled margin, and the marks against it.
-        Controls.drawMargin(g, c.marks - 6, body.y(), body.right() - c.marks + 6, body.h());
+        // The ruled margin, and the marks against it. Each row's stretch reaches up into the
+        // seam above and down through its own divider, so the rule reads as one line down the
+        // page instead of a dash per row.
+        Controls.drawMargin(g, c.marks - MARGIN_GAP, body.y() - 2,
+                (x + w - INSET) - (c.marks - MARGIN_GAP), body.h() + 3);
         Rect hold = holdMark(c, body);
         Rect copy = copyMark(c, body);
         Rect strike = strikeMark(c, body);
@@ -562,12 +589,13 @@ public class OrdersScreen extends Screen {
 
         if (showReason) {
             g.drawString(this.font, trim(row.reason(), body.right() - 8 - c.main), c.main,
-                    body.y() + ROW_H - 5, Palette.LABEL_WARM, false);
+                    body.y() + LINE2_Y + Controls.SEG_H + 3, Palette.LABEL_WARM, false);
         }
         // Striking previews itself: the name is ruled through before anything is committed.
         if (strike.contains(mouseX, mouseY)) {
-            int nameW = Math.min(this.font.width(itemName(row.output())), c.mainW);
-            g.fill(c.main, body.y() + 9, c.main + nameW, body.y() + 10, Controls.Chip.BLOCKED.ink);
+            int nameW = Math.min(this.font.width(
+                    nameOf(row.activity() || row.tag(), row.label(), row.output())), c.mainW);
+            g.fill(c.main, body.y() + 12, c.main + nameW, body.y() + 13, Controls.Chip.BLOCKED.ink);
         }
         return height;
     }
@@ -598,8 +626,12 @@ public class OrdersScreen extends Screen {
      * a progress bar nobody needed kept its full width. The meter is the first thing to go.
      */
     private Columns columns(Rect body) {
-        int marks = body.right() - 4 - COL_MARKS;
-        int state = marks - COL_GAP - COL_STATE;
+        // Right-aligned so the last mark shares its right edge with the strip's picker above.
+        int marks = body.right() - COL_MARKS;
+        // The chip/Details stack ends the same distance left of the rule as the marks sit right
+        // of it, so the margin reads symmetric. state is the stack's left edge; its right is
+        // state + COL_STATE.
+        int state = (marks - MARGIN_GAP) - 7 - COL_STATE;
         int count = state - COL_GAP - COL_COUNT;
         int meter = count - COL_GAP - COL_METER;
         int item = body.x() + INSET + COL_MOVE + COL_GAP;
@@ -612,7 +644,9 @@ public class OrdersScreen extends Screen {
     }
 
     private Rect[] caretRects(Rect body) {
-        int mid = body.y() + body.h() / 2;
+        // Anchored to the two-line block rather than the body, so a row that grew a reason line
+        // does not pull its carets down away from the name they move.
+        int mid = body.y() + (LINE1_Y + LINE2_Y + Controls.SEG_H) / 2;
         return new Rect[]{
                 new Rect(body.x() + INSET, mid - 9, COL_MOVE, 9),
                 new Rect(body.x() + INSET, mid, COL_MOVE, 9)
@@ -638,27 +672,24 @@ public class OrdersScreen extends Screen {
         int stepper = row.mode().hasTarget()
                 ? Controls.stepperWidth(this.font, String.valueOf(row.target())) + 5 : 0;
         int details = this.font.width("Details") + 12 + 5;
-        int room = (c.marks - COL_GAP) - c.main - stepper - details;
-        return new Rect(c.main, body.y() + 16, Math.max(38, Math.min(COL_MODE, room)),
+        int room = (c.state + COL_STATE) - c.main - stepper - details;
+        return new Rect(c.main, body.y() + LINE2_Y, Math.max(38, Math.min(COL_MODE, room)),
                 Controls.SEG_H);
     }
 
     private Rect[] rowStepper(Columns c, Rect body, Row row) {
         return Controls.stepperLayout(this.font, modeButton(c, body, row).right() + 5,
-                body.y() + 16, String.valueOf(row.target()));
+                body.y() + LINE2_Y, String.valueOf(row.target()));
     }
 
+    /** Right-aligned under the chip, so every row's Details sits on the same vertical line. */
     private Rect detailsLink(Columns c, Rect body, Row row) {
-        Rect mode = modeButton(c, body, row);
-        int x = row.mode().hasTarget()
-                ? rowStepper(c, body, row)[Controls.STEPPER_PARTS - 1].right() + 5
-                : mode.right() + 5;
-        return new Rect(x, body.y() + 16, this.font.width("Details") + 12, Controls.SEG_H);
+        int w = this.font.width("Details") + 12;
+        return new Rect(c.state + COL_STATE - w, body.y() + LINE2_Y, w, Controls.SEG_H);
     }
 
     private Rect holdMark(Columns c, Rect body) {
-        return new Rect(c.marks, body.y() + (body.h() - Controls.MARK) / 2,
-                Controls.MARK, Controls.MARK);
+        return new Rect(c.marks, body.y() + BAND_Y, Controls.MARK, Controls.MARK);
     }
 
     private Rect copyMark(Columns c, Rect body) {
@@ -683,8 +714,8 @@ public class OrdersScreen extends Screen {
         g.fill(x + INSET, y, x + w - INSET, y + 1, Palette.DESK_LIP);
         g.fill(x + INSET, y + 1, x + w - INSET, y + COMPOSER_H - INSET, 0x24FFB347);
 
-        Controls.drawSlot(g, x + INSET + 3, y + 5);
-        drawItem(g, d.icon, x + INSET + 4, y + 6);
+        Controls.drawSlot(g, x + INSET + 3, y + 4);
+        drawItem(g, d.icon, x + INSET + 4, y + 5);
         g.drawString(this.font, (d.activity ? "NEW JOB — " : "NEW ORDER — ")
                         + d.name().toUpperCase(Locale.ROOT),
                 x + INSET + 26, y + 9, Palette.BAR_FILL, false);
@@ -711,16 +742,15 @@ public class OrdersScreen extends Screen {
         Controls.drawPill(g, this.font, discard, "Discard", true,
                 discard.contains(mouseX, mouseY), Palette.LABEL_LIGHT);
         Rect add = composerAdd();
-        g.fill(add.x(), add.y(), add.right(), add.bottom(),
-                add.contains(mouseX, mouseY) ? Controls.CHROME_HOVER : Controls.CHROME_ON);
-        Palette.drawOutline(g, add.x(), add.y(), add.right(), add.bottom(), Controls.CHROME_ACCENT);
-        g.drawString(this.font, "Add to list", add.x() + 6, add.y() + 3, 0xFFFFFFFF, false);
+        Controls.drawButton(g, this.font, add, "Add to list", true,
+                add.contains(mouseX, mouseY), true);
     }
 
     // Three rows, because the mode picker alone is about two hundred pixels and everything used to
-    // be laid on one line from both ends until it collided in the middle.
-    private int composerModeY() { return composerTop() + 20; }
-    private int composerActionY() { return composerTop() + 38; }
+    // be laid on one line from both ends until it collided in the middle. The title row gets the
+    // slot's full 18 before the mode row starts, which is what stops them shingling.
+    private int composerModeY() { return composerTop() + 26; }
+    private int composerActionY() { return composerTop() + 44; }
 
     private Rect[] composerModes() {
         return Controls.segmentLayout(this.font, ordersLeft() + INSET + 3, composerModeY(), MODE_LABELS);
@@ -781,8 +811,57 @@ public class OrdersScreen extends Screen {
             drawJobDetails(g, row, win, detailsFieldsTop());
             return;
         }
-        drawFactsColumn(g, row, win.x() + DETAIL_PAD, detailsFieldsTop(), win.bottom() - DETAIL_PAD);
+        if (row.tag()) {
+            drawSetColumn(g, row, win.x() + DETAIL_PAD, detailsFieldsTop(), win.bottom() - DETAIL_PAD);
+        } else {
+            drawFactsColumn(g, row, win.x() + DETAIL_PAD, detailsFieldsTop(), win.bottom() - DETAIL_PAD);
+        }
         drawSettingsColumn(g, row, mouseX, mouseY, detailsFieldsTop());
+    }
+
+    /** One member row per this many pixels: a 16px sprite plus its breathing room. */
+    private static final int SET_ROW_H = 18;
+
+    /**
+     * A category's facts are its members. Reading it off the recipe column showed "Makes 1" and
+     * "Needs Nothing", which are answers to questions a set was never asked. Every member is
+     * drawn as itself — sprite and name — and the wheel walks the whole list.
+     */
+    private void drawSetColumn(GuiGraphics g, Row row, int x, int top, int bottom) {
+        Rect box = new Rect(x, top, FACTS_W, bottom - top);
+        Controls.drawBox(g, this.font, box, "Counts as");
+        List<ItemStack> members = setMembers(row.output());
+        if (members.isEmpty()) {
+            g.drawString(this.font, "Nothing counts yet.", x + 6, top + 8, Palette.LABEL_DIM, false);
+            return;
+        }
+        int innerTop = top + 6;
+        int innerBottom = box.bottom() - 4;
+        int visible = Math.max(1, (innerBottom - innerTop) / SET_ROW_H);
+        setScroll = Math.max(0, Math.min(setScroll, members.size() - visible));
+        g.enableScissor(box.x() + 1, innerTop, box.right() - 1, innerBottom);
+        int y = innerTop;
+        for (int i = setScroll; i < members.size() && y < innerBottom; i++) {
+            ItemStack stack = members.get(i);
+            g.renderItem(stack, x + 5, y);
+            g.drawString(this.font, trim(stack.getHoverName().getString(), box.w() - 32),
+                    x + 25, y + 4, Palette.LABEL_MID, false);
+            y += SET_ROW_H;
+        }
+        g.disableScissor();
+        Controls.drawScrollbar(g, box.right() - 2 - Controls.SCROLLBAR_W, innerTop,
+                innerBottom - innerTop, setScroll, visible, members.size());
+    }
+
+    /** The set's members as stacks, in tag order — what the counting side resolves too. */
+    private static List<ItemStack> setMembers(ResourceLocation tagId) {
+        var tag = net.minecraft.tags.TagKey.create(
+                net.minecraft.core.registries.Registries.ITEM, tagId);
+        List<ItemStack> out = new ArrayList<>();
+        for (var holder : BuiltInRegistries.ITEM.getTagOrEmpty(tag)) {
+            out.add(new ItemStack(holder.value()));
+        }
+        return out;
     }
 
     /**
@@ -835,9 +914,6 @@ public class OrdersScreen extends Screen {
             g.drawString(this.font, line, x, y, Palette.LABEL_MID, false);
             y += this.font.lineHeight + 1;
         }
-        y += 6;
-        g.drawString(this.font, "WHO MAY WORK IT", x, y, Palette.INK_DIM, false);
-        g.drawString(this.font, row.whoLabel(), x, y + 11, Palette.LABEL_MID, false);
     }
 
     /** One label-and-value line, returning where the next one goes. */
@@ -876,11 +952,9 @@ public class OrdersScreen extends Screen {
                 hasTarget ? row.scope().ordinal() : -1,
                 hasTarget ? Controls.segmentAt(scope, mouseX, mouseY) : -1);
 
-        Rect who = new Rect(x, top + 96, w, 26);
-        Controls.drawBox(g, this.font, who, "Who may work it");
-        // Read-only: the field exists on the order and the engine honours it, but nothing yet sets
-        // it, and a control that cannot change anything is worse than a plain statement.
-        g.drawString(this.font, row.whoLabel(), who.x() + 6, who.y() + 9, Palette.LABEL_MID, false);
+        // "Who may work it" is deliberately NOT shown: the field exists on the order and the
+        // engine honours it, but nothing can set it yet, and a box that always says "anyone"
+        // is furniture. It returns when assignment does.
     }
 
     /** What sprite a line shows: itself for a thing, a member's for a set, a job's own icon. */
@@ -922,7 +996,7 @@ public class OrdersScreen extends Screen {
         Row row = detailsRow();
         if (row != null && row.activity()) {
             int w = Math.min(this.width - SPACING * 2 - FRAME * 2, 300);
-            int h = STRIP_H + DETAIL_PAD + 4 + 66 + DETAIL_PAD;
+            int h = STRIP_H + DETAIL_PAD + 4 + 44 + DETAIL_PAD;
             return new Rect((this.width - w) / 2, (this.height - h) / 2, w, h);
         }
         Rect[] modes = Controls.segmentLayout(this.font, 0, 0, MODE_LABELS);
@@ -931,7 +1005,10 @@ public class OrdersScreen extends Screen {
                 this.font.width("Counted across") + 8 + scopes[scopes.length - 1].right() + 12);
         int w = Math.min(this.width - SPACING * 2 - FRAME * 2,
                 DETAIL_PAD + FACTS_W + DETAIL_PAD + settings + DETAIL_PAD);
-        int h = STRIP_H + DETAIL_PAD + 4 + 128;
+        // A category's window runs taller so its member list shows a worthwhile page; an item's
+        // stops under its two settings boxes.
+        int content = row != null && row.tag() ? 140 : 88;
+        int h = STRIP_H + DETAIL_PAD + 4 + content + DETAIL_PAD;
         return new Rect((this.width - w) / 2, (this.height - h) / 2, w, h);
     }
 
@@ -976,8 +1053,13 @@ public class OrdersScreen extends Screen {
         if (detailsFor >= 0) return clickDetails(mouseX, mouseY, site);
         if (super.mouseClicked(mouseX, mouseY, button)) return true;
 
-        if (rename == null && renamePencil().contains(mouseX, mouseY)) {
-            openRename();
+        int tab = Controls.segmentAt(catalogueTabs(), mouseX, mouseY);
+        if (tab >= 0) {
+            if (jobsTab != (tab == 1)) {
+                jobsTab = tab == 1;
+                if (makeableButton != null) makeableButton.visible = !jobsTab;
+                refreshCatalogue();
+            }
             return true;
         }
         int listChoice = Controls.segmentAt(listSegments(), mouseX, mouseY);
@@ -1024,6 +1106,7 @@ public class OrdersScreen extends Screen {
             }
             if (detailsLink(c, body, row).contains(mx, my)) {
                 detailsFor = i;
+                setScroll = 0;
                 return true;
             }
             if (!row.activity() && modeButton(c, body, row).contains(mx, my)) {
@@ -1153,43 +1236,8 @@ public class OrdersScreen extends Screen {
         return -1;
     }
 
-    // ── Renaming ──
-
-    private void openRename() {
-        int textY = contentTop() + (STRIP_H - this.font.lineHeight) / 2;
-        rename = new PaperField(this.font, ordersLeft() + INSET + 5, textY, 150, 10,
-                Component.literal("Name this place"));
-        rename.setMaxLength(48);
-        rename.setValue(data.worksiteName());
-        addRenderableWidget(rename);
-        setFocused(rename);
-    }
-
-    private void closeRename() {
-        if (rename == null) return;
-        removeWidget(rename);
-        rename = null;
-    }
-
-    private void commitRename() {
-        if (rename == null) return;
-        String value = rename.getValue();
-        closeRename();
-        send(OrderEditC2SPayload.of(data.worksiteId(), OrderEditC2SPayload.Action.RENAME, 0, value));
-    }
-
     @Override
     public boolean keyPressed(int key, int scan, int modifiers) {
-        if (rename != null) {
-            if (key == 257 || key == 335) {
-                commitRename();
-                return true;
-            }
-            if (key == 256) {
-                closeRename();
-                return true;
-            }
-        }
         if (key == 256) {
             // Escape unwinds one layer at a time: the modal, then the draft, then the screen.
             if (detailsFor >= 0) {
@@ -1211,6 +1259,15 @@ public class OrdersScreen extends Screen {
     /*@Override
     public boolean mouseScrolled(double mouseX, double mouseY, double dy) {
     *///?}
+        // The modal owns the wheel while it is open: a category's member list scrolls, and
+        // nothing leaks through to move the order list behind it.
+        if (detailsFor >= 0) {
+            Row row = detailsRow();
+            if (row != null && row.tag()) {
+                setScroll = Math.max(0, setScroll + (dy > 0 ? -1 : 1));
+            }
+            return true;
+        }
         // The palette scrolls itself; only the order list is ours to move.
         if (mouseX >= ordersLeft()) {
             orderScroll = clamp(orderScroll + (dy > 0 ? -1 : 1), data.rows().size());

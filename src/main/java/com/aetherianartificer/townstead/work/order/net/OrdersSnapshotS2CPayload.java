@@ -74,7 +74,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
         /** A set of things this place can make some of: "any cooked meat". */
         public static Option category(ResourceLocation tagId, String label, ResourceLocation icon,
                                       boolean available, String blocker) {
-            return new Option(tagId, "Category", icon, available, blocker, 1, List.of(),
+            return new Option(tagId, "Kind", icon, available, blocker, 1, List.of(),
                     false, true, label);
         }
     }

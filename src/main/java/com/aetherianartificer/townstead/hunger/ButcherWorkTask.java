@@ -309,28 +309,35 @@ public class ButcherWorkTask extends ProducerWorkTask {
         SmokerBlockEntity smoker = getSmoker(level);
         if (smoker == null) return GatherResult.fail("missing smoker");
 
+        // Staging goes from the shelf straight into the block. Routing it through the villager's
+        // pockets meant a butcher with a full inventory extracted the item, found no room, put it
+        // back and reported the shop empty — forever, beside a chest holding exactly what it
+        // needed. Pocket stock is still used first, since it is already in hand.
+
         // Slot 0: raw input. An ordered recipe names its own; free work takes the best on hand.
         if (smoker.getItem(0).isEmpty()) {
             java.util.function.Predicate<ItemStack> wanted = orderedInputFilter();
             if (!doFetchInput(level, villager, smoker, wanted)) {
-                boolean pulled = wanted == null
-                        ? ButcherSupplyManager.pullRawInput(level, villager, stationAnchor)
-                        : ButcherSupplyManager.pullRawInput(level, villager, stationAnchor, wanted);
-                if (!pulled || !doFetchInput(level, villager, smoker, wanted)) {
+                ItemStack input = ButcherSupplyManager.takeRawInput(level, villager, stationAnchor, wanted);
+                if (input.isEmpty()) {
                     setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_INGREDIENTS, null);
                     return GatherResult.fail("missing input");
                 }
+                smoker.setItem(0, input);
+                smoker.setChanged();
             }
         }
 
         // Slot 1: fuel.
         if (smoker.getItem(1).isEmpty()) {
             if (!doFetchFuel(villager, smoker)) {
-                if (!ButcherSupplyManager.pullFuel(level, villager, stationAnchor)
-                        || !doFetchFuel(villager, smoker)) {
+                ItemStack fuel = ButcherSupplyManager.takeFuel(level, villager, stationAnchor);
+                if (fuel.isEmpty()) {
                     setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_FUEL, null);
                     return GatherResult.fail("missing fuel");
                 }
+                smoker.setItem(1, fuel);
+                smoker.setChanged();
             }
         }
 
@@ -673,6 +680,7 @@ public class ButcherWorkTask extends ProducerWorkTask {
             case UNSUPPORTED_RECIPE -> HungerData.ButcherBlockedReason.UNSUPPORTED_RECIPE;
             case NO_RECIPE -> HungerData.ButcherBlockedReason.NO_VALID_TARGET;
             case NO_STORAGE -> HungerData.ButcherBlockedReason.OUTPUT_BLOCKED;
+            case STANDING_DOWN -> HungerData.ButcherBlockedReason.STANDING_DOWN;
         };
     }
 

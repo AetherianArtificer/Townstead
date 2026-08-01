@@ -516,6 +516,14 @@ public class FieldPostScreen extends Screen {
         refreshCounts();
     }
 
+    /** Where the Crops | Soil bar sits: full palette width, directly below the search field. */
+    private com.aetherianartificer.townstead.client.gui.common.Controls.Rect[] paletteTabRects() {
+        int palLeft = SPACING + FRAME_THICK;
+        int palTop = SPACING + FRAME_THICK + TITLE_H;
+        return com.aetherianartificer.townstead.client.gui.common.Controls.tabLayout(
+                palLeft, palTop + SEARCH_H + 4, PALETTE_W, 2);
+    }
+
     private void switchTab(PaletteTab tab) {
         if (tab == activeTab) return;
         // Save current selection
@@ -872,25 +880,16 @@ public class FieldPostScreen extends Screen {
         FrameRenderer.drawWoodenFrame(g, palLeft, palTop, PALETTE_W, palH, FRAME_THICK);
         g.fill(palLeft, palTop, palLeft + PALETTE_W, palTop + palH, chatPanelColor());
 
-        // ── Palette tabs (Crops | Soil) — full width, below search box ──
-        int tabY = palTop + SEARCH_H + 4;
-        int tabW = PALETTE_W / 2;
-        for (int t = 0; t < 2; t++) {
-            PaletteTab tab = t == 0 ? PaletteTab.SEEDS : PaletteTab.SOIL;
-            int tx = palLeft + t * tabW;
-            boolean active = tab == activeTab;
-            boolean hoverTab = mouseX >= tx && mouseX < tx + tabW && mouseY >= tabY && mouseY < tabY + 14;
-            // Vanilla button style
-            int bodyColor = active ? 0xFF5A8A2A : (hoverTab ? 0xFF5A5A5A : 0xFF3A3A3A);
-            g.fill(tx, tabY, tx + tabW, tabY + 14, bodyColor);
-            g.fill(tx, tabY, tx + tabW, tabY + 1, active ? ACCENT : 0xFF555555);
-            g.fill(tx, tabY + 13, tx + tabW, tabY + 14, 0xFF222222);
-            String tabLabel = Component.translatable(t == 0 ? "townstead.field_post.tab.seeds" : "townstead.field_post.tab.soil").getString();
-            g.drawCenteredString(font, tabLabel, tx + tabW / 2, tabY + 3,
-                    active ? 0xFFFFFFFF : (hoverTab ? 0xFFDDDDDD : 0xFFAAAAAA));
-        }
-        // Separator below tabs
-        g.fill(palLeft, tabY + 15, palLeft + PALETTE_W, tabY + 16, 0x40FFDEA0);
+        // ── Palette tabs (Crops | Soil) — the shared bar, full width below the search box ──
+        com.aetherianartificer.townstead.client.gui.common.Controls.Rect[] tabs =
+                paletteTabRects();
+        com.aetherianartificer.townstead.client.gui.common.Controls.drawTabs(g, font, tabs,
+                new String[]{
+                        Component.translatable("townstead.field_post.tab.seeds").getString(),
+                        Component.translatable("townstead.field_post.tab.soil").getString()},
+                activeTab == PaletteTab.SEEDS ? 0 : 1,
+                com.aetherianartificer.townstead.client.gui.common.Controls.segmentAt(
+                        tabs, mouseX, mouseY));
 
         // ── Grid viewport frame (wraps toolbar + grid + status bar) ──
         int vpFrameTop = toolbarTop;
@@ -1571,15 +1570,13 @@ public class FieldPostScreen extends Screen {
             if (mx >= cancelBtnX && mx < cancelBtnX + btnSize) { onClose(); return true; }
         }
 
-        // Tab clicks (Seeds | Soil)
+        // Tab clicks (Seeds | Soil) — the same rects the shared bar draws from.
         if (button == 0) {
-            int palLeft = SPACING + FRAME_THICK;
-            int palTop = SPACING + FRAME_THICK + TITLE_H;
-            int tabY = palTop + SEARCH_H + 4;
-            int tabW = PALETTE_W / 2;
-            if (my >= tabY && my < tabY + 14) {
-                if (mx >= palLeft && mx < palLeft + tabW) { switchTab(PaletteTab.SEEDS); return true; }
-                if (mx >= palLeft + tabW && mx < palLeft + tabW * 2) { switchTab(PaletteTab.SOIL); return true; }
+            int tab = com.aetherianartificer.townstead.client.gui.common.Controls.segmentAt(
+                    paletteTabRects(), mx, my);
+            if (tab >= 0) {
+                switchTab(tab == 0 ? PaletteTab.SEEDS : PaletteTab.SOIL);
+                return true;
             }
         }
 

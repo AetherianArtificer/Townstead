@@ -249,6 +249,7 @@
   "townstead.butcher.blocked.unreachable": "Target Unreachable",
   "townstead.butcher.blocked.out_of_scope": "Out Of Butcher Scope",
   "townstead.butcher.blocked.no_valid_target": "No Valid Butcher Work",
+  "townstead.butcher.blocked.standing_down": "Standing Down (no work on the list)",
   "entity.minecraft.villager.townstead.cook": "Cook",
   "entity.minecraft.villager.townstead.barista": "Barista",
   "entity.minecraft.villager.townstead.baker": "Baker",

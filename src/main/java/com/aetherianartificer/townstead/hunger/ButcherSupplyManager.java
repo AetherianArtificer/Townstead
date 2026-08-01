@@ -178,6 +178,37 @@ public final class ButcherSupplyManager {
     }
 
     /**
+     * One piece of fuel out of nearby storage, handed straight back rather than pocketed.
+     *
+     * <p>Exists because the pull-to-inventory route silently fails on a full inventory: it
+     * extracts the coal, finds no room, puts it back and reports there is no fuel — forever,
+     * beside a chest full of it. A gather that stages into a block should never involve the
+     * villager's pockets at all.</p>
+     */
+    public static ItemStack takeFuel(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return ItemStack.EMPTY;
+        NearbyItemSources.ContainerSlot slot = NearbyItemSources.findBestNearbySlot(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                ButcherSupplyManager::isFuel,
+                ButcherSupplyManager::fuelScore,
+                anchor);
+        return slot == null ? ItemStack.EMPTY : NearbyItemSources.extractOne(level, slot);
+    }
+
+    /** The same direct extraction for a raw input, narrowed by an order's filter when given. */
+    public static ItemStack takeRawInput(ServerLevel level, VillagerEntityMCA villager,
+                                         BlockPos anchor,
+                                         java.util.function.@org.jetbrains.annotations.Nullable Predicate<ItemStack> wanted) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return ItemStack.EMPTY;
+        NearbyItemSources.ContainerSlot slot = NearbyItemSources.findBestNearbySlot(
+                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                stack -> isRawInput(stack, level) && (wanted == null || wanted.test(stack)),
+                ButcherSupplyManager::rawInputScore,
+                anchor);
+        return slot == null ? ItemStack.EMPTY : NearbyItemSources.extractOne(level, slot);
+    }
+
+    /**
      * Pull the first cleaver found in nearby storage into the butcher's
      * inventory. Same search radius and anchor conventions as raw input /
      * fuel sourcing. Returns true if a cleaver was pulled.

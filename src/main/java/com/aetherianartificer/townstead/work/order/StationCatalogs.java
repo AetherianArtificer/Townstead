@@ -59,15 +59,13 @@ public final class StationCatalogs {
      */
     public static Map<ResourceLocation, Integer> stockIn(ServerLevel level, Set<Long> extent) {
         Map<ResourceLocation, Integer> counts = new HashMap<>();
-        for (long packed : extent) {
-            BlockEntity blockEntity = level.getBlockEntity(BlockPos.of(packed));
-            if (!(blockEntity instanceof Container container)) continue;
+        WorksiteStock.eachContainer(level, extent, container -> {
             for (int slot = 0; slot < container.getContainerSize(); slot++) {
                 ItemStack stack = container.getItem(slot);
                 if (stack.isEmpty()) continue;
                 counts.merge(BuiltInRegistries.ITEM.getKey(stack.getItem()), stack.getCount(), Integer::sum);
             }
-        }
+        });
         return counts;
     }
 
