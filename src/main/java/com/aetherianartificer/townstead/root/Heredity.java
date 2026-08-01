@@ -529,6 +529,38 @@ public final class Heredity {
                 payload.variant(), out));
     }
 
+    /**
+     * The inverse of {@link #scaleByHeritage}: recover the raw roll from an
+     * expressed-space value. The editor's sliders read and preview the expressed
+     * (heritage-scaled) payload, so its commits arrive in expressed space; storing
+     * them verbatim would re-apply the factor on expression, shrinking a hybrid's
+     * heritage-coupled channels a little more on every edit round trip. The raw
+     * value is clamped back into the channel's declared range.
+     */
+    public static Allele unscaleByHeritage(Allele allele, @Nullable Heritage heritage) {
+        if (allele.isWild()) return allele;
+        Gene gene = GeneRegistry.byId(allele.geneId());
+        var payload = com.aetherianartificer.townstead.root.gene.AllelePayload.parse(allele.variantId());
+        java.util.List<AttachmentGeneType.Channel> channels = channelsFor(gene, payload.variant());
+        if (channels.isEmpty() || payload.channels().isEmpty()) return allele;
+        boolean changed = false;
+        java.util.Map<String, Float> out = new java.util.LinkedHashMap<>(payload.channels());
+        for (AttachmentGeneType.Channel channel : channels) {
+            if (channel.heritageAncestry() == null) continue;
+            String key = out.containsKey(channel.name()) ? channel.name()
+                    : (out.size() == 1 && out.containsKey("") ? "" : null);
+            if (key == null) continue;
+            float fraction = heritage == null ? 1f : heritage.fractionOf(channel.heritageAncestry());
+            float factor = channel.heritageFactor(fraction);
+            if (factor <= 0f || factor == 1f) continue;
+            out.put(key, Math.max(channel.min(), Math.min(channel.max(), out.get(key) / factor)));
+            changed = true;
+        }
+        if (!changed) return allele;
+        return Allele.of(allele.geneId(), com.aetherianartificer.townstead.root.gene.AllelePayload.encode(
+                payload.variant(), out));
+    }
+
     private static GeneVariant rollVariant(Gene gene, RandomSource random) {
         List<GeneVariant> variants = gene.variants();
         int total = 0;
