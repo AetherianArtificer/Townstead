@@ -89,7 +89,10 @@ public final class RootJsonLoader extends SimpleJsonResourceReloadListener {
             Component backstory = RootJsonParsing.backstory(obj, ctx, lang);
             Genome genome = RootJsonParsing.genes(obj, ctx, LOGGER);
             SpawnBias spawnBias = RootJsonParsing.spawnBias(obj, ctx, LOGGER);
-            parsed.put(file, new Root(file, displayName, species, ancestry, lineage, demonym, backstory, genome, spawnBias));
+            ResourceLocation kinFlesh = RootJsonParsing.optionalId(obj, "kin_flesh", ctx, LOGGER);
+            boolean eatsSapients = net.minecraft.util.GsonHelper.getAsBoolean(obj, "eats_sapients", false);
+            parsed.put(file, new Root(file, displayName, species, ancestry, lineage, demonym, backstory, genome, spawnBias,
+                    kinFlesh, eatsSapients));
         } catch (Exception ex) {
             LOGGER.warn("Failed to parse root {}: {}", file, ex.getMessage());
         }

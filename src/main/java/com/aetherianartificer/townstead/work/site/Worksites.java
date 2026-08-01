@@ -8,6 +8,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -41,13 +43,33 @@ public final class Worksites {
         return register(level, key);
     }
 
-    /** The record for a standalone workstation — an outdoor post, a smoker in a yard. */
+    /**
+     * The record for a place identified by a block: a smoker in a yard, a pot on a counter.
+     *
+     * <p>Resolves through <em>every</em> binding in priority order rather than assuming the block
+     * is its own worksite. A station inside a recognised building belongs to that building, so the
+     * cook standing at the pot and the player opening the room land on the same record. Before
+     * this, they did not, and each got its own order list.</p>
+     *
+     * <p>It also gives a player back their own kitchen: a pot in a house resolves to the house,
+     * which is nobody's workplace, so it never becomes a standalone post for a passing villager to
+     * claim. A station only becomes a place of work where it stands somewhere that already is
+     * one, or out in the open where somebody deliberately put it.</p>
+     */
     @Nullable
     public static Worksite of(ServerLevel level, @Nullable BlockPos anchor) {
         if (anchor == null) return null;
-        WorksiteKey key = WorksiteKey.at(
-                WorksiteBindings.ANCHOR, level.dimension().location(), anchor);
-        return register(level, key);
+        return register(level, canonicalKeyAt(level, anchor));
+    }
+
+    /** The highest-priority binding that claims this position, or null when none does. */
+    @Nullable
+    public static WorksiteKey canonicalKeyAt(ServerLevel level, BlockPos pos) {
+        for (WorksiteBindings.Binding binding : WorksiteBindings.all()) {
+            WorksiteKey key = binding.keyAt(level, pos);
+            if (key != null) return key;
+        }
+        return null;
     }
 
     /**
@@ -69,7 +91,8 @@ public final class Worksites {
     }
 
     @Nullable
-    private static Worksite register(ServerLevel level, WorksiteKey key) {
+    private static Worksite register(ServerLevel level, @Nullable WorksiteKey key) {
+        if (key == null) return null;
         WorksiteRegister register = register(level);
         if (register == null) return null;
         Worksite existing = register.find(key);
@@ -78,6 +101,7 @@ public final class Worksites {
             if (now - existing.lastSeenGameTime() >= SEEN_GRANULARITY_TICKS) {
                 register.touch(key, now);
             }
+            absorbStrayPosts(level, register, existing);
             return existing;
         }
         WorksiteBindings.Binding binding = WorksiteBindings.forKey(key);
@@ -91,6 +115,42 @@ public final class Worksites {
     @Nullable
     private static WorksiteRegister register(ServerLevel level) {
         return level.getServer() == null ? null : WorksiteRegister.get(level.getServer());
+    }
+
+    /** Rooms already swept for strays this session, so the scan runs once per room, not per tick. */
+    private static final java.util.Set<Long> SWEPT = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * Folds any block-bound record standing inside this room into it, then retires the stray.
+     *
+     * <p>Worlds that ran the older resolution have two records for one kitchen, each with its own
+     * order list — the player wrote to one and the villagers read the other. The room's list is
+     * authoritative; a stray's lines are appended only where the room does not already order that
+     * item, so nothing written is lost and nothing is doubled.</p>
+     *
+     * <p>Runs once per room per session. The scan is over the register, not the world, and the
+     * usual outcome is that there is nothing to move.</p>
+     */
+    private static void absorbStrayPosts(ServerLevel level, WorksiteRegister register, Worksite room) {
+        if (WorksiteBindings.ANCHOR.equals(room.key().binding())) return;
+        if (!SWEPT.add(room.id())) return;
+
+        List<WorksiteKey> strays = new ArrayList<>();
+        int moved = 0;
+        for (Worksite other : register.all()) {
+            if (other == room) continue;
+            if (!WorksiteBindings.ANCHOR.equals(other.key().binding())) continue;
+            if (!other.key().dimension().equals(room.key().dimension())) continue;
+            // "Inside this room" is asked of the binding rather than measured here, so the answer
+            // is the same one resolution itself would give.
+            if (!room.key().equals(canonicalKeyAt(level, other.key().pos()))) continue;
+            moved += room.orders().absorb(other.orders());
+            strays.add(other.key());
+        }
+        if (strays.isEmpty()) return;
+        strays.forEach(register::remove);
+        if (moved > 0) room.bumpOrdersRevision();
+        register.setDirty();
     }
 
     // ── Extent ──

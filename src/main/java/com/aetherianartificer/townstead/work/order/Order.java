@@ -57,6 +57,35 @@ public final class Order {
         }
     }
 
+    /**
+     * What a line names.
+     *
+     * <p>Most work has a thing at the end of it and can be counted. A butcher's day mostly does
+     * not: slaughtering, dressing a carcass, mopping blood and carrying a delivery are things you
+     * either do or do not, gated by whether there is an animal, a carcass, a puddle or a parcel.
+     * They belong on the same list because they compete for the same hours, but "make twenty of
+     * them" is not a sentence about any of them.</p>
+     */
+    public enum Kind {
+        /** Names an item. Has a target, counts stock or production. */
+        ITEM,
+        /** Names a job. No target, always {@link Mode#STANDING}: permission, not instruction. */
+        ACTIVITY,
+        /**
+         * Names an item tag: "any cooked meat" rather than one dish. Counts and matches over the
+         * set's members, and otherwise behaves exactly like an item line — which member gets made
+         * is left to the worker's own pick among the candidates that qualify.
+         */
+        TAG;
+
+        /** Unknown kind reads as an item — that is what every save written before this was. */
+        public static Kind parse(@Nullable String raw) {
+            if (ACTIVITY.name().equalsIgnoreCase(raw)) return ACTIVITY;
+            if (TAG.name().equalsIgnoreCase(raw)) return TAG;
+            return ITEM;
+        }
+    }
+
     /** Where "how many do we have" is measured. */
     public enum CountScope {
         HERE, VILLAGE;
@@ -88,19 +117,48 @@ public final class Order {
      */
     private int inProgress;
 
+    private final Kind kind;
+
     public Order(ResourceLocation output, Mode mode, int target) {
+        this(output, Kind.ITEM, mode, target);
+    }
+
+    public Order(ResourceLocation output, Kind kind, Mode mode, int target) {
         this.output = output;
-        this.mode = mode == null ? Mode.STANDING : mode;
+        this.kind = kind == null ? Kind.ITEM : kind;
+        // An activity has nothing to count, so it is standing whatever it was asked to be.
+        this.mode = this.kind == Kind.ACTIVITY ? Mode.STANDING : (mode == null ? Mode.STANDING : mode);
         this.target = Math.max(0, target);
         this.scope = CountScope.HERE;
     }
 
+    public Kind kind() { return kind; }
+
+    /** True when this line names a job rather than a thing, and so has no number to set. */
+    public boolean isActivity() { return kind == Kind.ACTIVITY; }
+
+    /** True when this line names a set of items rather than one. */
+    public boolean isTag() { return kind == Kind.TAG; }
+
+    /** The item this line orders, the tag it draws from, or the id of the job it permits. */
     public ResourceLocation output() { return output; }
+
+    /**
+     * Whether a candidate's output satisfies this line: equality for an item, membership for a
+     * tag. Every place that used to compare outputs directly must ask this instead, or tag lines
+     * silently match nothing.
+     */
+    public boolean matches(@Nullable ResourceLocation candidateOutput) {
+        if (candidateOutput == null) return false;
+        if (kind == Kind.TAG) return OrderTags.contains(output, candidateOutput);
+        return output.equals(candidateOutput);
+    }
 
     public Mode mode() { return mode; }
 
     public void setMode(Mode value) {
-        if (value != null) this.mode = value;
+        // An activity's mode is not the player's to change: there is nothing to count.
+        if (value != null && kind != Kind.ACTIVITY) this.mode = value;
     }
 
     public int target() { return target; }
@@ -162,7 +220,9 @@ public final class Order {
         int want = mode == Mode.PER_VILLAGER
                 ? target * Math.max(0, context.villagerCount())
                 : target;
-        int have = mode.countsProduction() ? produced : context.stockOf(output, scope);
+        int have = mode.countsProduction() ? produced
+                : kind == Kind.TAG ? context.stockOfTag(output, scope)
+                : context.stockOf(output, scope);
         return Math.max(0, want - have - inProgress);
     }
 

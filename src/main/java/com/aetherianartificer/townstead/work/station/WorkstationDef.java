@@ -75,7 +75,15 @@ public record WorkstationDef(
          * and does not care what sits over it. Defaults false, which is how every station other
          * than campfires and stoves already behaved.
          */
-        boolean openTop) {
+        boolean openTop,
+        /**
+         * The work task whose workers fulfil this station's produce lines, so the order screen
+         * knows to offer them wherever that trade works. Null means recognition only: the station
+         * is walked to and driven, but nothing here is put on an order sheet — right for defs
+         * whose outputs already reach the screen another way (the cook's discovered recipes) and
+         * for stations nobody's task drives yet.
+         */
+        @Nullable ResourceLocation workTask) {
 
     /**
      * Which slots a {@code furnace_station} loads and unloads. Defaults are vanilla's, which every
@@ -102,7 +110,7 @@ public record WorkstationDef(
         this(id, blocks, blockTags, role, containerSlot, ingredientSlots, stands, recipeType,
                 recipeTier, cookTimeTicks, beverage,
                 null, Set.of(), List.of(), null, null, List.of(), List.of(), FurnaceSlots.VANILLA,
-                false, null, false);
+                false, null, false, null);
     }
 
     static @Nullable WorkstationDef parse(ResourceLocation id, JsonObject obj) {
@@ -224,6 +232,10 @@ public record WorkstationDef(
         // the one role that cannot work without one.
         if (role == StationType.FURNACE_STATION && recipeType == null) return null;
 
+        ResourceLocation workTask = obj.has("work_task")
+                ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "work_task", "")) : null;
+        if (obj.has("work_task") && workTask == null) return null;
+
         return new WorkstationDef(id, Set.copyOf(blocks), List.copyOf(tags), role,
                 GsonHelper.getAsInt(obj, "container_slot", 7),
                 GsonHelper.getAsInt(obj, "ingredient_slots", 6),
@@ -236,7 +248,8 @@ public record WorkstationDef(
                 Set.copyOf(surfaceBlocks), List.copyOf(surfaceTags),
                 places, doneBlock, List.copyOf(harvestTools), List.copyOf(produces), furnaceSlots,
                 fluidStation, fluidSource,
-                GsonHelper.getAsBoolean(obj, "open_top", false));
+                GsonHelper.getAsBoolean(obj, "open_top", false),
+                workTask);
     }
 
     private static boolean readEntry(String raw, Set<ResourceLocation> blocks, List<ResourceLocation> tags) {

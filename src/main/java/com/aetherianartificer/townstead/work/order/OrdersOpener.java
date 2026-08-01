@@ -83,11 +83,16 @@ public final class OrdersOpener {
         OrderContext context = context(level, site);
         send(player, OrdersService.snapshot(level, site, context, options(level, site),
                 WorksiteCatalogs.stationsFor(level, site)));
+        OrdersWatchers.watch(player, site);
         return true;
     }
 
     /** Applies an edit and immediately sends the corrected state back, so the screen never guesses. */
     public static void edit(ServerPlayer player, OrderEditC2SPayload payload) {
+        if (payload.action() == OrderEditC2SPayload.Action.CLOSED) {
+            OrdersWatchers.forget(player);
+            return;
+        }
         ServerLevel level = player.serverLevel();
         OrdersService.apply(level, payload);
         Worksite site = WorksiteRegister.get(level.getServer()).byId(payload.worksiteId());
@@ -108,6 +113,11 @@ public final class OrdersOpener {
             @Override
             public int stockOf(ResourceLocation item, Order.CountScope scope) {
                 return WorksiteStock.count(level, site, item, scope);
+            }
+
+            @Override
+            public int stockOfTag(ResourceLocation tagId, Order.CountScope scope) {
+                return WorksiteStock.countTag(level, site, tagId, scope);
             }
 
             @Override

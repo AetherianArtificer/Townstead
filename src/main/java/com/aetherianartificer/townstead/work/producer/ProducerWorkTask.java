@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.work.WorkMovement;
 import com.aetherianartificer.townstead.work.WorkNavigationResult;
 import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.order.Order;
 import com.aetherianartificer.townstead.work.order.OrderContext;
 import com.aetherianartificer.townstead.work.order.OrderList;
 import com.aetherianartificer.townstead.work.site.Worksite;
@@ -447,6 +448,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         if (claimedLine != null) {
             claimedLine.abandon();
             claimedLine = null;
+            markOrdersChanged();
         }
     }
 
@@ -455,7 +457,17 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         if (claimedLine != null) {
             claimedLine.finish(count);
             claimedLine = null;
+            markOrdersChanged();
         }
+    }
+
+    /**
+     * Tells any open screen that a line moved. Claiming, finishing and abandoning are the three
+     * things that change a row's status and its produced count, and all three pass through here —
+     * which is why the screen no longer has to keep asking whether they have.
+     */
+    private void markOrdersChanged() {
+        if (lastWorksite != null) lastWorksite.bumpOrdersRevision();
     }
 
     /**
@@ -469,25 +481,28 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     }
 
     /**
-     * How this engine answers an order's questions about the world. Null means the engine cannot
-     * answer them, in which case orders are skipped entirely: guessing at a stock count would make
-     * "keep twenty in stock" produce forever.
+     * How an order's questions about the world get answered.
+     *
+     * <p>Concrete, and the same for every producing trade — this used to be a null default that
+     * only the cook overrode, which quietly made orders a cooking feature. None of it is about
+     * cooking: stock is counted over the worksite's own extent, the census is the village's, and
+     * eligibility is a named villager and a rank. A butcher's smokehouse answers all three exactly
+     * as a kitchen does.</p>
+     *
+     * <p>Null only when there is no worksite to ask about, which is the one case where guessing
+     * would make "keep twenty in stock" produce forever.</p>
      */
     @Nullable
     protected OrderContext orderContext(ServerLevel level, VillagerEntityMCA villager) {
-        return null;
+        Worksite site = activeWorksite();
+        return site == null ? null
+                : com.aetherianartificer.townstead.work.order.WorksiteOrders
+                        .contextFor(level, site, villager);
     }
 
     private @Nullable ProducerRecipe chooseRecipe(
             ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         OrderList orders = lastWorksite == null ? null : lastWorksite.orders();
-        if (orders != null && orders.isEmpty()) {
-            // An empty list is a finished list, so standing down means standing down. This used to
-            // be guarded behind "the list is not empty", which made the setting quietly do nothing
-            // until the first order was written — the one case where a player most expects it to
-            // work, since they have just told everyone to stop.
-            if (orders.listOnly()) return null;
-        }
         if (orders != null && !orders.isEmpty()) {
             OrderContext context = orderContext(level, villager);
             if (context != null) {
@@ -501,16 +516,18 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                     releaseOrderClaim();
                     claimedLine = ordered.order();
                     claimedLine.claim();
+                    markOrdersChanged();
                     debugChat(level, villager, "SELECT:ordered " + ordered.recipe().output());
                     return ordered.recipe();
                 }
-                // Told to work the list and nothing on it applies: stand down rather than wander
-                // off and cook whatever. Only reachable when the player asked for that.
-                if (orders.listOnly()) return null;
             }
-            // A null context means this engine cannot read the list at all. Standing down on a list
-            // nobody can evaluate is indistinguishable from a bug, so it keeps choosing for itself.
         }
+        // Standing down is checked last and needs no context: reading the list is a question about
+        // the world, but "stop" is a flat instruction about the place. Gating it behind a context
+        // made it a cook-only setting, since no other engine had one — a barista told to stand down
+        // carried on brewing. It binds every producer at this worksite, list or no list, engine or
+        // no engine.
+        if (orders != null && orders.listOnly()) return null;
         return pickRecipe(level, villager, gameTime);
     }
 

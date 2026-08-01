@@ -211,7 +211,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
 
         // Consume a carried ration for an unsatisfied need (food first).
         if (food) {
-            int slot = bestFoodSlot(villager.getInventory());
+            int slot = bestFoodSlot(villager);
             if (slot >= 0) {
                 ItemStack stack = villager.getInventory().getItem(slot);
                 if (VillagerConsumptionManager.startConsuming(villager, stack, sessionSource)) {
@@ -270,15 +270,18 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
 
     private boolean hasRationFor(VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
         SimpleContainer inv = villager.getInventory();
-        if (wantsFood(needs) && !resting(villager) && bestFoodSlot(inv) >= 0) return true;
+        if (wantsFood(needs) && !resting(villager) && bestFoodSlot(villager) >= 0) return true;
         return wantsDrink(needs) && bestDrinkSlot(inv, ThirstBridgeResolver.get()) >= 0;
     }
 
-    private static int bestFoodSlot(SimpleContainer inv) {
+    // Takes the eater, not just the bag: whether sapient flesh counts as food depends on whose
+    // mouth is asking (cannibalism policy), so the pick and the bite must agree.
+    private static int bestFoodSlot(VillagerEntityMCA villager) {
+        SimpleContainer inv = villager.getInventory();
         int best = -1, bestNutrition = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (!FoodSafety.isSafeNutritiousFood(stack)) continue;
+            if (!FoodSafety.isSafeNutritiousFood(stack, villager)) continue;
             int n = getNutrition(stack);
             if (n > bestNutrition) { bestNutrition = n; best = i; }
         }
@@ -299,7 +302,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
 
     /** Picks a source for whichever need is unsatisfied and lacks a ration. Food is prioritized. */
     private boolean beginAcquire(ServerLevel level, VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
-        if (wantsFood(needs) && !resting(villager) && bestFoodSlot(villager.getInventory()) < 0) {
+        if (wantsFood(needs) && !resting(villager) && bestFoodSlot(villager) < 0) {
             if (acquireFood(level, villager)) { acquiring = Need.FOOD; setAcquireWalkTarget(villager); return true; }
         }
         if (wantsDrink(needs) && bestDrinkSlot(villager.getInventory(), ThirstBridgeResolver.get()) < 0) {
@@ -321,7 +324,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         List<ScoredCandidate> candidates = new ArrayList<>();
         if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get()) {
             AABB box = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
-            for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, box, e -> !e.isRemoved() && FoodSafety.isSafeNutritiousFood(e.getItem()))) {
+            for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, box, e -> !e.isRemoved() && FoodSafety.isSafeNutritiousFood(e.getItem(), villager))) {
                 if (ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item)) continue;
                 candidates.add(new ScoredCandidate(TargetType.GROUND_ITEM, getNutrition(item.getItem()), item, null));
             }

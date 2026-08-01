@@ -114,7 +114,16 @@ public final class GrinderStateMachine {
             /*new ResourceLocation("butchery", "meat_scraps");
             *///?}
 
+    public static final ResourceLocation FD_MINCED_BEEF_ID =
+            //? if >=1.21 {
+            ResourceLocation.parse("farmersdelight:minced_beef");
+            //?} else {
+            /*new ResourceLocation("farmersdelight", "minced_beef");
+            *///?}
+
     // Tags the mod's procedure consults.
+    public static final TagKey<Item> RAW_MEAT_FORGE = tag("forge:raw_meat");
+    public static final TagKey<Item> RAW_MEAT_C = tag("c:raw_meat");
     public static final TagKey<Item> RAW_PORK_FORGE = tag("forge:raw_pork");
     public static final TagKey<Item> RAW_PORK_C = tag("c:raw_pork");
     public static final TagKey<Item> RAW_MUTTON_FORGE = tag("forge:raw_mutton");
@@ -163,6 +172,22 @@ public final class GrinderStateMachine {
         public final ResourceLocation outputId;
         /** True if the recipe consumes intestines + sausage attachment in slots 1/2. */
         public final boolean requiresCasings;
+
+        /**
+         * What this recipe actually drops here.
+         *
+         * <p>Read from the mod's own procedure, which swaps its beef mince for Farmer's Delight's
+         * whenever that mod is present. The enum's id is only the answer half the time, and ordering
+         * is matched by output, so a player asking for mince would never have been served.</p>
+         */
+        public ResourceLocation outputHere() {
+            if (this == BEEF_MINCE
+                    && com.aetherianartificer.townstead.compat.ModCompat.isLoaded("farmersdelight")
+                    && net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(FD_MINCED_BEEF_ID)) {
+                return FD_MINCED_BEEF_ID;
+            }
+            return outputId;
+        }
 
         Recipe(ResourceLocation outputId, boolean requiresCasings) {
             this.outputId = outputId;
@@ -233,6 +258,12 @@ public final class GrinderStateMachine {
      * recipe. Used by the work task to filter inventory when staging.
      */
     public static boolean isInputForRecipe(ItemStack stack, Recipe recipe) {
+        // Sapient meat rides the same community raw-meat tags, so without this a sausage order
+        // happily cases up whoever was in the freezer.
+        if (!stack.isEmpty() && !com.aetherianartificer.townstead.work.order.OrderTags.permitted(
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+            return false;
+        }
         return switch (recipe) {
             case BLOOD_SAUSAGE, SAUSAGE -> isRawPork(stack);
             case LAMB_MINCE -> isRawMutton(stack);

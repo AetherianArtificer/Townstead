@@ -14,6 +14,12 @@ public interface OrderContext {
     /** How many of this item are stored within the given scope. */
     int stockOf(ResourceLocation item, Order.CountScope scope);
 
+    /**
+     * How many members of this item tag are stored, summed across the set. Abstract on purpose:
+     * a context that quietly answered zero would make "keep twenty cooked meat" produce forever.
+     */
+    int stockOfTag(ResourceLocation tagId, Order.CountScope scope);
+
     /** Villagers the per-villager targets scale against. */
     int villagerCount();
 

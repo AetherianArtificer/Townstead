@@ -123,6 +123,25 @@ public final class ButcherSupplyManager {
         );
     }
 
+    /** The same pull narrowed to one recipe's inputs, for a butcher gathering to an order. */
+    public static boolean pullRawInput(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            BlockPos anchor,
+            java.util.function.Predicate<ItemStack> wanted
+    ) {
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return NearbyItemSources.pullSingleToInventory(
+                level,
+                villager,
+                SEARCH_RADIUS,
+                VERTICAL_RADIUS,
+                stack -> wanted.test(stack) && isRawInput(stack, level),
+                ButcherSupplyManager::rawInputScore,
+                anchor
+        );
+    }
+
     /**
      * Non-mutating availability check: true if raw smoker input exists in the
      * villager's inventory OR in nearby storage. Used by {@code ButcherWorkTask}
@@ -384,6 +403,12 @@ public final class ButcherSupplyManager {
 
     public static boolean isRawInput(ItemStack stack, ServerLevel level) {
         if (stack.isEmpty()) return false;
+        // Asked before the cache: the cannibalism setting can change without a recipe reload, and
+        // a cached yes would keep serving long pig after the option went off.
+        if (!com.aetherianartificer.townstead.work.order.OrderTags.permitted(
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+            return false;
+        }
         ensureCacheFresh(level);
         Boolean cached = RAW_INPUT_CACHE.get(stack.getItem());
         if (cached != null) return cached;

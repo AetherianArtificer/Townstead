@@ -54,6 +54,7 @@ public class WorksiteRegister extends SavedData {
     private static final String KEY_ORDER_PAUSED = "paused";
     private static final String KEY_ORDER_PROFESSION = "profession";
     private static final String KEY_ORDER_MIN_RANK = "minRank";
+    private static final String KEY_ORDER_KIND = "kind";
     private static final String KEY_ORDER_VILLAGER = "villager";
     private static final String KEY_ORDER_PRODUCED = "produced";
 
@@ -94,6 +95,39 @@ public class WorksiteRegister extends SavedData {
             if (site.id() == id) return site;
         }
         return null;
+    }
+
+    private boolean activityScanValid;
+    private boolean anyActivity;
+
+    /**
+     * Whether any worksite anywhere holds an activity line.
+     *
+     * <p>Exists so the butchery tasks can ask "may I?" in their start conditions without paying for
+     * it. Those run in brain eligibility, every villager every tick, and resolving a worksite means
+     * walking villages and buildings — far too expensive to do speculatively. In the overwhelming
+     * case there are no activity lines at all and this answers false immediately.</p>
+     */
+    public boolean anyActivityOrders() {
+        if (!activityScanValid) {
+            anyActivity = false;
+            for (Worksite site : sites.values()) {
+                for (com.aetherianartificer.townstead.work.order.Order order : site.orders().orders()) {
+                    if (order.isActivity()) {
+                        anyActivity = true;
+                        break;
+                    }
+                }
+                if (anyActivity) break;
+            }
+            activityScanValid = true;
+        }
+        return anyActivity;
+    }
+
+    /** Called whenever an order list changes, so the next ask re-counts. */
+    public void invalidateActivityScan() {
+        activityScanValid = false;
     }
 
     public Collection<Worksite> all() {
@@ -265,6 +299,7 @@ public class WorksiteRegister extends SavedData {
             CompoundTag row = new CompoundTag();
             row.putString(KEY_ORDER_OUTPUT, order.output().toString());
             row.putString(KEY_ORDER_MODE, order.mode().name());
+            row.putString(KEY_ORDER_KIND, order.kind().name());
             row.putInt(KEY_ORDER_TARGET, order.target());
             row.putString(KEY_ORDER_SCOPE, order.scope().name());
             row.putBoolean(KEY_ORDER_PAUSED, order.paused());
@@ -293,6 +328,10 @@ public class WorksiteRegister extends SavedData {
             com.aetherianartificer.townstead.work.order.Order order =
                     new com.aetherianartificer.townstead.work.order.Order(
                             output,
+                            // Absent on every save written before activity lines existed, and
+                            // absent reads as an item — which is what those all were.
+                            com.aetherianartificer.townstead.work.order.Order.Kind
+                                    .parse(row.getString(KEY_ORDER_KIND)),
                             com.aetherianartificer.townstead.work.order.Order.Mode
                                     .parse(row.getString(KEY_ORDER_MODE)),
                             row.getInt(KEY_ORDER_TARGET));

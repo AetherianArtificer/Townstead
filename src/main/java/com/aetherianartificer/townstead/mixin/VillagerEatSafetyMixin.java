@@ -65,7 +65,7 @@ public abstract class VillagerEatSafetyMixin {
     private void townstead$handleVillagerEat(ItemStack stack, CallbackInfoReturnable<ItemStack> cir) {
         LivingEntity self = (LivingEntity) (Object) this;
         if (!(self instanceof Villager)) return;
-        if (!FoodSafety.isSafeToEat(stack)) {
+        if (!FoodSafety.isSafeToEat(stack, self)) {
             // Unsafe food reached the eat stage — refuse. Return the unmodified
             // stack so the item stays in the villager's inventory (they'll keep
             // trying uselessly, but the stack isn't lost and they aren't hurt).

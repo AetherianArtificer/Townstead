@@ -75,6 +75,27 @@ public final class OrderList {
         return before - orders.size();
     }
 
+    /**
+     * Takes over another list's lines, keeping this one authoritative, and reports how many moved.
+     *
+     * <p>Used when two records turn out to be the same place. A line is only taken when nothing
+     * here already orders that item: several lines for one item are legal on purpose, but two of
+     * them arriving from a merge is an accident rather than an instruction.</p>
+     */
+    public int absorb(@Nullable OrderList other) {
+        if (other == null || other == this || other.orders.isEmpty()) return 0;
+        java.util.Set<ResourceLocation> mine = new java.util.HashSet<>();
+        for (Order order : orders) mine.add(order.output());
+        int moved = 0;
+        for (Order order : other.orders) {
+            if (!mine.add(order.output())) continue;
+            orders.add(order);
+            moved++;
+        }
+        other.orders.clear();
+        return moved;
+    }
+
     // ── Selection ──
 
     /**
@@ -109,11 +130,22 @@ public final class OrderList {
 
         for (Order order : orders) {
             if (!order.wantsWork(context)) continue;
-            ProducerRecipe match = byOutput.get(order.output());
+            // An item line looks its output up; a tag line walks the candidates for a member.
+            ProducerRecipe match = order.isTag()
+                    ? firstMatching(candidates, order)
+                    : byOutput.get(order.output());
             if (match == null) continue;
             // Eligibility is asked last: it is the most expensive question and the rarest filter.
             if (!context.mayWork(order)) continue;
             return new Pick(order, match);
+        }
+        return null;
+    }
+
+    @Nullable
+    private static ProducerRecipe firstMatching(List<? extends ProducerRecipe> candidates, Order order) {
+        for (ProducerRecipe candidate : candidates) {
+            if (candidate != null && order.matches(candidate.output())) return candidate;
         }
         return null;
     }

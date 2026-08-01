@@ -379,58 +379,10 @@ public final class ModRecipeRegistry {
      * Protocol stations declare their production inline ({@code produces}): each line becomes
      * a synthetic recipe under the def's role, so recipe selection, ingredient staging, and
      * session bookkeeping treat "ferment cheese in the basin" exactly like any cooked dish.
-     * Tags in inputs are resolved to their member items at discovery time.
+     * The expansion itself is engine-owned, since the order catalogue reads the same lines.
      */
     private static void discoverProtocolRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
-        for (WorkstationDef def : Workstations.all()) {
-            if (def.role() != StationType.PASSIVE_STATION && def.role() != StationType.PLACE_SURFACE) continue;
-            int index = 0;
-            for (WorkstationDef.Produce produce : def.produces()) {
-                ResourceLocation recipeId = ResourceLocation.tryParse(
-                        "townstead:protocol/" + def.id().getNamespace() + "/" + def.id().getPath() + "/" + index++);
-                if (recipeId == null) continue;
-                List<RecipeIngredient> inputs = new ArrayList<>();
-                boolean unresolvable = false;
-                for (String raw : produce.inputs()) {
-                    List<ResourceLocation> ids = new ArrayList<>();
-                    if (raw.startsWith("#")) {
-                        ResourceLocation tagId = ResourceLocation.tryParse(raw.substring(1));
-                        if (tagId != null) {
-                            var tag = net.minecraft.tags.TagKey.create(Registries.ITEM, tagId);
-                            for (var holder : BuiltInRegistries.ITEM.getTagOrEmpty(tag)) {
-                                ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(holder.value());
-                                if (itemId != null) ids.add(itemId);
-                            }
-                        }
-                    } else {
-                        ResourceLocation itemId = ResourceLocation.tryParse(raw);
-                        if (itemId != null && BuiltInRegistries.ITEM.containsKey(itemId)) ids.add(itemId);
-                    }
-                    if (ids.isEmpty()) {
-                        unresolvable = true;
-                        break;
-                    }
-                    inputs.add(new RecipeIngredient(List.copyOf(ids), 1));
-                }
-                if (unresolvable || inputs.isEmpty()) continue;
-                if (!BuiltInRegistries.ITEM.containsKey(produce.output())) continue;
-                out.add(new DiscoveredRecipe(
-                        recipeId,
-                        def.role(),
-                        def.recipeTier() > 0 ? def.recipeTier() : 1,
-                        produce.output(),
-                        Math.max(1, produce.outputCount()),
-                        Math.max(1, produce.timeTicks()),
-                        false,
-                        null,
-                        0,
-                        List.copyOf(inputs),
-                        false,
-                        def.beverage(),
-                        null
-                ));
-            }
-        }
+        out.addAll(com.aetherianartificer.townstead.work.station.ProtocolRecipes.discoverAll());
     }
 
     /**

@@ -63,6 +63,30 @@ public final class ChronicleTaps {
         }
     }
 
+    /**
+     * A line crossed — eating sapient flesh, and whatever taboos come after it. Counts always
+     * (the mechanical record survives whether or not anyone tells the story), then offers the
+     * trigger to templates, whose witness gathering is the whole point: who saw it cannot be
+     * reconstructed later, so it is recorded now and judged whenever cultures learn to care.
+     */
+    public static void taboo(LivingEntity actor, String key, @Nullable ResourceLocation objectId,
+                             Map<String, String> params) {
+        try {
+            if (!(actor.level() instanceof ServerLevel level)) return;
+            MinecraftServer server = level.getServer();
+            Chronicles.addCounter(server, actor.getUUID(), key, 1);
+            if (objectId != null) {
+                Chronicles.addCounter(server, actor.getUUID(), key + ":" + objectId, 1);
+            }
+            if (ChronicleTriggerIndex.isEmpty()) return;
+            Map<String, String> merged = new HashMap<>(params == null ? Map.of() : params);
+            if (objectId != null) merged.put("meat", itemName(objectId));
+            ChronicleEmitter.emit(level, new TriggerKey("taboo", key), actor, 1.0f, merged);
+        } catch (Throwable t) {
+            swallow(t);
+        }
+    }
+
     /** Heart shift between two entities; one friendship/argument story per pair per day. */
     public static void social(LivingEntity actor, LivingEntity other, boolean positive) {
         try {

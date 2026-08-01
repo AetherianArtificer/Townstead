@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": { "all": "butchery", "not": "farmersdelight" },
+  "type": "passive_station",
+  "work_task": "townstead_work:grind",
+  "blocks": ["butchery:meat_grinder"],
+  "container_slot": 0,
+  "ingredient_slots": 3,
+  "produces": [
+    { "inputs": ["#townstead:grindable_beef"], "output": "butchery:raw_beef_mince", "time": 200 }
+  ]
+}

@@ -170,6 +170,27 @@ public class BaristaWorkTask extends ProducerWorkTask {
 
     // ── Recipe / gather / produce / collect ──
 
+    /**
+     * Everything this barista could brew at the counter they are standing at, for orders to choose
+     * among. The same viability filter the autonomous pick uses, so an order can only ever select
+     * something they were already allowed to make.
+     */
+    @Override
+    protected java.util.List<? extends ProducerRecipe> orderCandidates(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor == null || stationType == null) return java.util.List.of();
+        if (!Stations.isStation(level, stationAnchor)) return java.util.List.of();
+        return com.aetherianartificer.townstead.compat.farmersdelight.cook.RecipeSelector
+                .viableRecipes(level, villager, stationType, stationAnchor,
+                        activeCafeStorageBounds(villager), recipeCooldownUntil,
+                        ProducerWorkSupport.excludeBeverages(ProducerRole.BARISTA, level, villager),
+                        ProducerWorkSupport.beveragesOnly(ProducerRole.BARISTA))
+                .stream()
+                .map(com.aetherianartificer.townstead.compat.farmersdelight.cook
+                        .RecipeSelector.ScoredRecipe::recipe)
+                .toList();
+    }
+
     @Override
     protected @Nullable ProducerRecipe pickRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null || stationType == null) return null;
