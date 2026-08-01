@@ -49,8 +49,10 @@ public final class OrderTags {
     /** Whether an output may be offered or produced at all under the cannibalism settings. */
     public static boolean permitted(@Nullable ResourceLocation output) {
         if (output == null) return true;
-        if (com.aetherianartificer.townstead.TownsteadConfig.CANNIBALISM_PRODUCE.get()) return true;
-        return !contains(CANNIBAL_MEATS, output);
+        // The tag is asked first: almost nothing is sapient flesh, this sits inside per-stack
+        // filters on work-selection ticks, and the config only matters once something matched.
+        if (!contains(CANNIBAL_MEATS, output)) return true;
+        return com.aetherianartificer.townstead.TownsteadConfig.CANNIBALISM_PRODUCE.get();
     }
 
     /** Test seam: replaces registry lookups. Null restores the real registry. */
@@ -71,8 +73,9 @@ public final class OrderTags {
 
         static boolean contains(ResourceLocation tagId, ResourceLocation itemId) {
             if (!net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(itemId)) return false;
-            return new net.minecraft.world.item.ItemStack(
-                    net.minecraft.core.registries.BuiltInRegistries.ITEM.get(itemId)).is(key(tagId));
+            // Asked per stack on hot filters: the holder answers without building an ItemStack.
+            return net.minecraft.core.registries.BuiltInRegistries.ITEM.get(itemId)
+                    .builtInRegistryHolder().is(key(tagId));
         }
 
         static List<ResourceLocation> members(ResourceLocation tagId) {

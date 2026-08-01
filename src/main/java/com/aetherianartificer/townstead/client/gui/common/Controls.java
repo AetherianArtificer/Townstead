@@ -39,39 +39,40 @@ public final class Controls {
 
     // ── The button ──
     //
-    // Vanilla's flat plate, as the Field Post already draws its tabs and mode buttons: a grey body
-    // with a lit top rule and a shadowed bottom one, inside a black border, going green when it is
-    // the chosen one. Every control below is made of this, so they read as one kit rather than as
-    // a parchment picker sitting next to a Minecraft button.
+    // Vanilla's own button art, nine-sliced to whatever size a control needs. Imitating the plate
+    // with flat fills always read as almost-Minecraft; using the real texture ends the argument.
+    // A chosen button is the same art tinted green, so selection still reads at a glance.
 
-    public static final int CHROME_IDLE = 0xFF3A3A3A;
-    public static final int CHROME_HOVER = 0xFF5A5A5A;
-    public static final int CHROME_ON = 0xFF5A8A2A;
-    public static final int CHROME_ON_HOVER = 0xFF6EA436;
-    public static final int CHROME_ACCENT = 0xFF88DD44;
-    public static final int CHROME_TOP = 0xFF555555;
-    public static final int CHROME_BOTTOM = 0xFF222222;
-    public static final int CHROME_OFF = 0xFF2A2A2A;
+    /** Kept for the marks that fill their glyph's backing on top of the plate. */
+    public static final int CHROME_IDLE = 0xFF6D6D6D;
+    public static final int CHROME_HOVER = 0xFF7E7E9E;
 
-    private static final int INK_ON = 0xFFFFFFFF;
-    private static final int INK_IDLE = 0xFFCCCCCC;
-    private static final int INK_HOT = 0xFFFFFFA0;
-    private static final int INK_OFF = 0xFF6A6A6A;
+    //? if >=1.21 {
+    private static final net.minecraft.resources.ResourceLocation BUTTON_SPRITE =
+            net.minecraft.resources.ResourceLocation.withDefaultNamespace("widget/button");
+    private static final net.minecraft.resources.ResourceLocation BUTTON_SPRITE_HOT =
+            net.minecraft.resources.ResourceLocation.withDefaultNamespace("widget/button_highlighted");
+    private static final net.minecraft.resources.ResourceLocation BUTTON_SPRITE_OFF =
+            net.minecraft.resources.ResourceLocation.withDefaultNamespace("widget/button_disabled");
+    //?}
 
     /** The plate only, for a button whose face is drawn rather than written. */
     public static void drawButtonPlate(GuiGraphics g, Rect r, boolean on, boolean hot, boolean enabled) {
-        int body = !enabled ? CHROME_OFF
-                : on ? (hot ? CHROME_ON_HOVER : CHROME_ON)
-                : hot ? CHROME_HOVER : CHROME_IDLE;
-        Palette.drawOutline(g, r.x(), r.y(), r.right(), r.bottom(), 0xFF000000);
-        g.fill(r.x() + 1, r.y() + 1, r.right() - 1, r.bottom() - 1, body);
-        g.fill(r.x() + 1, r.y() + 1, r.right() - 1, r.y() + 2, on ? CHROME_ACCENT : CHROME_TOP);
-        g.fill(r.x() + 1, r.bottom() - 2, r.right() - 1, r.bottom() - 1, CHROME_BOTTOM);
+        if (on && enabled) g.setColor(0.60f, 0.95f, 0.35f, 1f);
+        //? if >=1.21 {
+        g.blitSprite(!enabled ? BUTTON_SPRITE_OFF : hot ? BUTTON_SPRITE_HOT : BUTTON_SPRITE,
+                r.x(), r.y(), r.w(), r.h());
+        //?} else {
+        /*int state = !enabled ? 0 : hot ? 2 : 1;
+        g.blitNineSliced(net.minecraft.client.gui.components.AbstractWidget.WIDGETS_LOCATION,
+                r.x(), r.y(), r.w(), r.h(), 20, 4, 200, 20, 0, 46 + state * 20);
+        *///?}
+        if (on && enabled) g.setColor(1f, 1f, 1f, 1f);
     }
 
-    /** The ink a button's label takes for a given state. */
+    /** The ink a button's label takes: vanilla's white, or vanilla's disabled grey. */
     public static int buttonInk(boolean on, boolean hot, boolean enabled) {
-        return !enabled ? INK_OFF : on ? INK_ON : hot ? INK_HOT : INK_IDLE;
+        return enabled ? 0xFFFFFFFF : 0xFFA0A0A0;
     }
 
     /** A vanilla plate with a centred label on it. */
@@ -87,7 +88,7 @@ public final class Controls {
             shown += "..";
         }
         g.drawString(font, shown, r.x() + (r.w() - font.width(shown)) / 2,
-                r.y() + (r.h() - font.lineHeight) / 2 + 1, buttonInk(on, hot, enabled), false);
+                r.y() + (r.h() - font.lineHeight) / 2 + 1, buttonInk(on, hot, enabled), true);
     }
 
     // ── Segmented picker ──
@@ -127,6 +128,45 @@ public final class Controls {
         return -1;
     }
 
+    // ── Palette tab bar ──
+    //
+    // The Field Post's Crops | Soil toggle, lifted verbatim so every palette splits its shelves
+    // the same way: equal flat tabs spanning the full palette width directly below the search
+    // field, with the warm separator rule beneath. Flat fills rather than the vanilla button art
+    // on purpose — the bar is furniture of the panel, not a control floating on it.
+
+    public static final int TAB_H = 14;
+    /** What the bar adds below the search field: gap, tabs, gap, separator, gap. */
+    public static final int TAB_BAR_H = 4 + TAB_H + 2 + 2;
+
+    /** Equal-width tabs spanning {@code w}; the last one absorbs the rounding remainder. */
+    public static Rect[] tabLayout(int x, int y, int w, int count) {
+        Rect[] out = new Rect[count];
+        int each = w / count;
+        for (int i = 0; i < count; i++) {
+            out[i] = new Rect(x + each * i, y, i == count - 1 ? w - each * i : each, TAB_H);
+        }
+        return out;
+    }
+
+    public static void drawTabs(GuiGraphics g, Font font, Rect[] rects, String[] labels,
+                                int selected, int hovered) {
+        for (int i = 0; i < rects.length; i++) {
+            Rect r = rects[i];
+            boolean active = i == selected;
+            boolean hot = i == hovered;
+            g.fill(r.x(), r.y(), r.right(), r.bottom(),
+                    active ? 0xFF5A8A2A : hot ? 0xFF5A5A5A : 0xFF3A3A3A);
+            g.fill(r.x(), r.y(), r.right(), r.y() + 1, active ? 0xFF88DD44 : 0xFF555555);
+            g.fill(r.x(), r.bottom() - 1, r.right(), r.bottom(), 0xFF222222);
+            g.drawCenteredString(font, labels[i], r.x() + r.w() / 2, r.y() + 3,
+                    active ? 0xFFFFFFFF : hot ? 0xFFDDDDDD : 0xFFAAAAAA);
+        }
+        Rect first = rects[0];
+        g.fill(first.x(), first.y() + TAB_H + 1, rects[rects.length - 1].right(),
+                first.y() + TAB_H + 2, 0x40FFDEA0);
+    }
+
     // ── Stepper ──
 
     /** The labels of a stepper's five parts, in order. Index 2 is the value plate, not a button. */
@@ -145,15 +185,15 @@ public final class Controls {
      * shift, which nobody discovers. Callers index them with {@link #STEP_AMOUNTS}.</p>
      */
     public static Rect[] stepperLayout(Font font, int x, int y, String value) {
-        int coarse = font.width("-10") + 4;
-        int fine = 11;
+        // Each part is sized from its own label plus more padding than drawButton's trim
+        // threshold. The old fixed widths sat under it, so every "-10" rendered as "-1..".
         int plate = Math.max(20, font.width(value) + 8);
-        int[] widths = {coarse, fine, plate, fine, coarse};
         Rect[] out = new Rect[STEPPER_PARTS];
         int cursor = x;
         for (int i = 0; i < STEPPER_PARTS; i++) {
-            out[i] = new Rect(cursor, y, widths[i], SEG_H);
-            cursor += widths[i];
+            int w = i == 2 ? plate : font.width(STEP_LABELS[i]) + 8;
+            out[i] = new Rect(cursor, y, w, SEG_H);
+            cursor += w;
         }
         return out;
     }
@@ -171,7 +211,7 @@ public final class Controls {
                 enabled ? 0xFF101010 : 0xFF1E1E1E);
         g.drawString(font, value, plate.x() + (plate.w() - font.width(value)) / 2,
                 plate.y() + (plate.h() - font.lineHeight) / 2 + 1,
-                enabled ? 0xFFFFFFFF : INK_OFF, false);
+                enabled ? 0xFFFFFFFF : 0xFFA0A0A0, false);
     }
 
     /** Total width of a stepper for this value, so a caller can reserve room for it. */
@@ -204,7 +244,8 @@ public final class Controls {
         }
     }
 
-    public static final int CHIP_H = 11;
+    /** Matches {@link #SEG_H} and {@link #MARK}, so a chip centres on the same band as buttons. */
+    public static final int CHIP_H = 14;
 
     public static int chipWidth(Font font, String label) {
         return font.width(label) + 8;
@@ -214,7 +255,7 @@ public final class Controls {
         int w = chipWidth(font, label);
         g.fill(x, y, x + w, y + CHIP_H, style.fill);
         Palette.drawOutline(g, x, y, x + w, y + CHIP_H, style.edge);
-        g.drawString(font, label, x + 4, y + 2, style.ink, false);
+        g.drawString(font, label, x + 4, y + 3, style.ink, false);
     }
 
     // ── Pill ──

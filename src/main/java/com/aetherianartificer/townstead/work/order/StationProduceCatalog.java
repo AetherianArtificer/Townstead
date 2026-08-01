@@ -126,12 +126,22 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             BuiltInRegistries.ITEM.getKey(net.minecraft.world.item.Items.AIR);
 
     /**
-     * The def's first block that exists as an item, for the screen to draw. Falls back to air,
-     * which the screen renders as nothing — a null would fail the packet write.
+     * The def's first block that exists as an item, for the screen to draw. A def that names only
+     * block tags (the smoker does) resolves through the tag's members — skipping those left the
+     * option iconless and its label the raw def path, which is how "smoker" reached the screen in
+     * lowercase. Falls back to air, which the screen renders as nothing — a null would fail the
+     * packet write.
      */
     private static ResourceLocation iconOf(WorkstationDef def) {
         for (ResourceLocation block : def.blocks()) {
             if (BuiltInRegistries.ITEM.containsKey(block)) return block;
+        }
+        for (ResourceLocation tagId : def.blockTags()) {
+            TagKey<Block> tag = TagKey.create(Registries.BLOCK, tagId);
+            for (var holder : BuiltInRegistries.BLOCK.getTagOrEmpty(tag)) {
+                ResourceLocation id = BuiltInRegistries.BLOCK.getKey(holder.value());
+                if (BuiltInRegistries.ITEM.containsKey(id)) return id;
+            }
         }
         return NO_ICON;
     }
@@ -140,6 +150,8 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
         if (!NO_ICON.equals(icon) && BuiltInRegistries.ITEM.containsKey(icon)) {
             return new ItemStack(BuiltInRegistries.ITEM.get(icon)).getHoverName().getString();
         }
-        return def.id().getPath().replace('_', ' ');
+        String words = def.id().getPath().replace('_', ' ');
+        return words.isEmpty() ? words
+                : Character.toUpperCase(words.charAt(0)) + words.substring(1);
     }
 }

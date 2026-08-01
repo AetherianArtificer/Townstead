@@ -98,7 +98,7 @@ public final class OrdersService {
 
     static String modeLabel(Order order) {
         // A job is not a quantity. It is on the list or it is not, and held or not.
-        if (order.isActivity()) return order.paused() ? "held" : "when there is any";
+        if (order.isActivity()) return order.paused() ? "Held" : "When there is any";
         return switch (order.mode()) {
             case MAKE -> "make " + order.target();
             case KEEP_STOCKED -> "keep " + order.target() + " in stock";

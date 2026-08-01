@@ -37,14 +37,19 @@ public final class WorksiteOrders {
      */
     public static OrderContext contextFor(ServerLevel level, Worksite site, VillagerEntityMCA villager) {
         return new OrderContext() {
+            // The worker's own pockets count. Between collecting an output and shelving it the
+            // item is in no container, and a count that misses it starts one batch too many —
+            // the twenty-first smoke on a keep-twenty line.
             @Override
             public int stockOf(ResourceLocation item, Order.CountScope scope) {
-                return WorksiteStock.count(level, site, item, scope);
+                return WorksiteStock.count(level, site, item, scope)
+                        + WorksiteStock.carried(villager, item);
             }
 
             @Override
             public int stockOfTag(ResourceLocation tagId, Order.CountScope scope) {
-                return WorksiteStock.countTag(level, site, tagId, scope);
+                return WorksiteStock.countTag(level, site, tagId, scope)
+                        + WorksiteStock.carriedTag(villager, tagId);
             }
 
             @Override

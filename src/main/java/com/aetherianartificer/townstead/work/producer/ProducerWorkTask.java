@@ -58,6 +58,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected static final int WORKSITE_MAX_RETRIES = 2;
     protected static final int DEFAULT_STATE_TIMEOUT_TICKS = 100;
     protected static final int GATHER_STATE_TIMEOUT_TICKS = 140;
+    /** How long a stood-down worker rests before glancing at the list again. */
+    protected static final int STAND_DOWN_IDLE_TICKS =
+            com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
     protected static final int PRODUCE_STATE_TIMEOUT_TICKS = 160;
     protected static final int COLLECT_STATE_TIMEOUT_TICKS = 80;
 
@@ -540,6 +543,17 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
         ProducerRecipe recipe = chooseRecipe(level, villager, gameTime);
         if (recipe == null) {
+            OrderList orders = lastWorksite == null ? null : lastWorksite.orders();
+            if (orders != null && orders.listOnly()) {
+                // Stood down with nothing workable on the list: rest on their feet rather than
+                // grind the selector. The claim is released so the station is free, the idle
+                // lets the brain wander them around the shop, and the status says why.
+                debugChat(level, villager, "SELECT:standing down");
+                setBlocked(level, villager, gameTime, ProducerBlockedReason.STANDING_DOWN, null);
+                idleUntilTick = gameTime + STAND_DOWN_IDLE_TICKS;
+                abandonCurrentStation(level, villager, gameTime, false);
+                return;
+            }
             debugChat(level, villager, "SELECT:no recipe, rotating");
             setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_RECIPE, null);
             abandonCurrentStation(level, villager, gameTime, true);
