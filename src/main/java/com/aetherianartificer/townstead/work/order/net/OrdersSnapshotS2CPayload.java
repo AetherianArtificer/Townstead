@@ -50,18 +50,24 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                       boolean activity, boolean tag, String label) {}
 
     /**
+     * One thing a recipe consumes: the item that stands for the ingredient, and how many. Sent as
+     * an id rather than a name so the screen can draw the thing itself.
+     */
+    public record Need(ResourceLocation item, int count) {}
+
+    /**
      * Something this worksite could make. {@code available} answers "could it be made right now" —
      * the inputs are on the shelves here — which is a different question from whether the station
      * exists, and the only one worth putting a filter on.
      */
     public record Option(ResourceLocation output, String stationLabel, ResourceLocation stationIcon,
-                         boolean available, String blocker, int makes, List<String> needs,
+                         boolean available, String blocker, int makes, List<Need> needs,
                          boolean activity, boolean tag, String label) {
 
         /** Something this place can make. */
         public static Option item(ResourceLocation output, String stationLabel,
                                   ResourceLocation stationIcon, boolean available, String blocker,
-                                  int makes, List<String> needs) {
+                                  int makes, List<Need> needs) {
             return new Option(output, stationLabel, stationIcon, available, blocker, makes, needs,
                     false, false, "");
         }
@@ -118,7 +124,10 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             buf.writeUtf(option.blocker());
             buf.writeVarInt(option.makes());
             buf.writeVarInt(option.needs().size());
-            for (String need : option.needs()) buf.writeUtf(need);
+            for (Need need : option.needs()) {
+                buf.writeResourceLocation(need.item());
+                buf.writeVarInt(need.count());
+            }
             buf.writeBoolean(option.activity());
             buf.writeBoolean(option.tag());
             buf.writeUtf(option.label());
@@ -157,8 +166,10 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             String blocker = buf.readUtf();
             int makes = buf.readVarInt();
             int needCount = buf.readVarInt();
-            List<String> needs = new ArrayList<>(needCount);
-            for (int n = 0; n < needCount; n++) needs.add(buf.readUtf());
+            List<Need> needs = new ArrayList<>(needCount);
+            for (int n = 0; n < needCount; n++) {
+                needs.add(new Need(buf.readResourceLocation(), buf.readVarInt()));
+            }
             boolean activity = buf.readBoolean();
             boolean tag = buf.readBoolean();
             String label = buf.readUtf();

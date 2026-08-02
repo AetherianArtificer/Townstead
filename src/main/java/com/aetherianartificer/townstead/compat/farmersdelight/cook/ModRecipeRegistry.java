@@ -236,7 +236,15 @@ public final class ModRecipeRegistry {
         // 4. Synthetic purification recipe
         ThirstCompatBridge thirstBridge = ThirstBridgeResolver.get();
         if (thirstBridge != null && TownsteadConfig.isCookWaterPurificationEnabled() && thirstBridge.supportsPurification()) {
-            recipes.add(syntheticPurificationRecipe());
+            DiscoveredRecipe purification = syntheticPurificationRecipe(thirstBridge);
+            // The impure vessel shares the purified one's item id — the difference lives in
+            // its data — so the order line's count must ask the bridge, not the id, or "keep
+            // 10 purified" reads full while the shelf holds swamp water. The threshold is the
+            // same line the work draws: below it is input, at it is output.
+            com.aetherianartificer.townstead.work.order.OrderStackFilters.register(
+                    purification.output(),
+                    stack -> thirstBridge.purity(stack) >= ThirstCompatBridge.PURITY_PURIFIED);
+            recipes.add(purification);
         }
 
         // 5. Synthetic coffee roasting recipe (if Rustic Delight is present and no campfire recipe already covers it)
@@ -592,7 +600,14 @@ public final class ModRecipeRegistry {
 
     // ── Synthetic purification recipe ──
 
-    private static DiscoveredRecipe syntheticPurificationRecipe() {
+    private static DiscoveredRecipe syntheticPurificationRecipe(ThirstCompatBridge bridge) {
+        // The line wears the active thirst mod's own vessel — canteens under LSO, water
+        // bottles under Thirst Was Taken/Reclaimed. The work still takes any impure
+        // container the bridge recognises; this is what the order shows and counts.
+        ResourceLocation output = bridge.purificationOutput();
+        if (output == null || !BuiltInRegistries.ITEM.containsKey(output)) {
+            output = MINECRAFT_POTION;
+        }
         return new DiscoveredRecipe(
                 //? if >=1.21 {
                 ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "purification"),
@@ -601,7 +616,7 @@ public final class ModRecipeRegistry {
                 *///?}
                 StationType.FIRE_STATION,
                 1,
-                MINECRAFT_POTION,
+                output,
                 1,
                 100,
                 false,

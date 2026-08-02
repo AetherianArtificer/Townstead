@@ -388,6 +388,31 @@ public final class Controls {
         g.fill(x, top, x + SCROLLBAR_W - 1, top + thumb - 1, 0xFFC6C6C6);
     }
 
+    /**
+     * Where a press in the bar's lane puts the list, or -1 when the press is elsewhere. The lane
+     * is forgiving by a couple of pixels each side: a six-pixel target is a test of aim, not a
+     * control.
+     */
+    public static int scrollbarPick(int x, int y, int h, double mx, double my, int shown, int total) {
+        if (total <= shown || h <= 0) return -1;
+        if (mx < x - 2 || mx >= x + SCROLLBAR_W + 2 || my < y || my >= y + h) return -1;
+        return scrollbarDrag(y, h, my, shown, total);
+    }
+
+    /**
+     * The same mapping with no lane test, for a drag that already owns the bar: the thumb's
+     * centre follows the cursor. The inverse of {@link #drawScrollbar}'s own placement, so the
+     * thumb lands under the finger rather than jumping past it.
+     */
+    public static int scrollbarDrag(int y, int h, double my, int shown, int total) {
+        if (total <= shown || h <= 0) return 0;
+        int thumb = Math.max(12, h * shown / total);
+        int span = Math.max(1, h - thumb);
+        int travel = total - shown;
+        int picked = (int) Math.round((my - y - thumb / 2.0) * travel / span);
+        return Math.max(0, Math.min(travel, picked));
+    }
+
     // ── Progress bar ──
 
     /** A bordered track with a fill, matched to the row height rather than the career board's. */

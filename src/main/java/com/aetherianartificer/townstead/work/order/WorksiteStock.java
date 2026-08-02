@@ -33,7 +33,8 @@ public final class WorksiteStock {
         int[] total = {0};
         eachStack(level, extent, stack -> {
             if (stack.isEmpty()) return;
-            if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+            if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                    && OrderStackFilters.counts(item, stack)) {
                 total[0] += stack.getCount();
             }
         });
@@ -57,7 +58,8 @@ public final class WorksiteStock {
             if (stack.isEmpty() || !stack.is(tag)) return;
             // A member the settings forbid producing must not satisfy the set either, or
             // stored sapient meat quietly fills a "keep 10 cooked meats" line nobody may touch.
-            if (!OrderTags.permitted(BuiltInRegistries.ITEM.getKey(stack.getItem()))) return;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (!OrderTags.permitted(id) || !OrderStackFilters.counts(id, stack)) return;
             total[0] += stack.getCount();
         });
         if (scope == Order.CountScope.VILLAGE) {
@@ -74,7 +76,10 @@ public final class WorksiteStock {
         for (int slot = 0; slot < inv.getContainerSize(); slot++) {
             ItemStack stack = inv.getItem(slot);
             if (stack.isEmpty()) continue;
-            if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) total += stack.getCount();
+            if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                    && OrderStackFilters.counts(item, stack)) {
+                total += stack.getCount();
+            }
         }
         return total;
     }
@@ -89,7 +94,8 @@ public final class WorksiteStock {
         for (int slot = 0; slot < inv.getContainerSize(); slot++) {
             ItemStack stack = inv.getItem(slot);
             if (stack.isEmpty() || !stack.is(tag)) continue;
-            if (!OrderTags.permitted(BuiltInRegistries.ITEM.getKey(stack.getItem()))) continue;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (!OrderTags.permitted(id) || !OrderStackFilters.counts(id, stack)) continue;
             total += stack.getCount();
         }
         return total;

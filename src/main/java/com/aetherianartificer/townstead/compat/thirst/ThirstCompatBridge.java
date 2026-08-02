@@ -8,6 +8,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 public interface ThirstCompatBridge {
+
+    /**
+     * The top step of the bridge purity scale: water that is finished, whatever the mod calls
+     * it. Below this a container is purification input; at it, purification output.
+     */
+    int PURITY_PURIFIED = 3;
+
     boolean isActive();
     boolean itemRestoresThirst(ItemStack stack);
     boolean isDrink(ItemStack stack);
@@ -21,6 +28,14 @@ public interface ThirstCompatBridge {
     ResourceLocation iconTexture();
 
     boolean supportsPurification();
+
+    /**
+     * The item an ordered purification line wears and counts, or null for the vanilla water
+     * bottle. What a village purifies water <em>in</em> is the thirst mod's own idiom: bottles
+     * under Thirst Was Taken and Thirst Was Reclaimed, canteens under Legendary Survival
+     * Overhaul. The work itself keeps taking any impure container the bridge recognises.
+     */
+    default ResourceLocation purificationOutput() { return null; }
 
     default void purifyResult(ItemStack input, ItemStack output) {}
 

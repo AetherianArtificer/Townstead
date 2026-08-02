@@ -99,8 +99,11 @@ public class OrdersScreen extends Screen {
     private @Nullable Draft draft;
     /** The row whose details are open, or -1. */
     private int detailsFor = -1;
-    /** How far a category's member list is scrolled inside the details window. */
+    /** How far the details window's item list — members or needs — is scrolled. */
     private int setScroll;
+    /** Which scrollbar the mouse is riding, if any. Cleared on release. */
+    private boolean dragDetailScroll;
+    private boolean dragOrderScroll;
 
     private static final class Draft {
         final ResourceLocation output;
@@ -277,7 +280,7 @@ public class OrdersScreen extends Screen {
                         : option.output();
                 PaletteList.ToolEntry row = new PaletteList.ToolEntry(
                         option.output().toString(), shown,
-                        new ItemStack(BuiltInRegistries.ITEM.get(sprite)), group.getKey());
+                        displayStack(sprite), group.getKey());
                 row.dim = !option.available();
                 row.tooltip = shown
                         + (option.stationLabel().isEmpty() ? "" : " · " + option.stationLabel())
@@ -784,6 +787,12 @@ public class OrdersScreen extends Screen {
     /** How wide the facts column is, and where the settings column starts after it. */
     private static final int FACTS_W = 150;
     private static final int DETAIL_PAD = 6;
+    /**
+     * The modal's own title strip, taller than the list strip's {@link #STRIP_H}: the slot gets
+     * the same air above and below it, and the Back pill centres on the same band. The old strip
+     * left the icon one pixel off its separator, which read as it resting on the floor.
+     */
+    private static final int DETAIL_STRIP_H = 26;
 
     private void drawDetails(GuiGraphics g, int mouseX, int mouseY) {
         Row row = detailsRow();
@@ -794,18 +803,20 @@ public class OrdersScreen extends Screen {
         FrameRenderer.drawWoodenFrame(g, win.x(), win.y(), win.w(), win.h(), FRAME);
         FrameRenderer.drawInnerPanel(g, win.x(), win.y(), win.w(), win.h());
 
-        // Its own title strip, inside the frame. An earlier build floated it above the frame, over
-        // the list it was supposed to be sitting on top of.
-        int textY = win.y() + (STRIP_H - this.font.lineHeight) / 2;
-        Controls.drawSlot(g, win.x() + INSET + 2, win.y() + 3);
-        drawItem(g, iconFor(row), win.x() + INSET + 3, win.y() + 4);
-        g.drawString(this.font, nameOf(row.activity() || row.tag(), row.label(), row.output()),
-                win.x() + INSET + 24, textY, Palette.CARD, false);
+        // Its own title strip, inside the frame. The caption is centred on the window, clear of
+        // both the slot on its left and the Back pill on its right by the same margin.
+        Controls.drawSlot(g, win.x() + DETAIL_PAD, win.y() + 4);
+        drawItem(g, iconFor(row), win.x() + DETAIL_PAD + 1, win.y() + 5);
+        String title = nameOf(row.activity() || row.tag(), row.label(), row.output());
+        int clear = DETAIL_PAD + Controls.SLOT + 6;
+        String shown = trim(title, win.w() - clear * 2);
+        g.drawString(this.font, shown, win.x() + (win.w() - this.font.width(shown)) / 2,
+                win.y() + (DETAIL_STRIP_H - this.font.lineHeight) / 2 + 1, Palette.CARD, false);
         Rect back = detailsBack();
         Controls.drawPill(g, this.font, back, "Back", true, back.contains(mouseX, mouseY),
                 Palette.LABEL_LIGHT);
-        g.fill(win.x() + INSET, win.y() + STRIP_H - 1, win.right() - INSET, win.y() + STRIP_H,
-                FrameRenderer.FRAME_HIGHLIGHT);
+        g.fill(win.x() + INSET, win.y() + DETAIL_STRIP_H - 1, win.right() - INSET,
+                win.y() + DETAIL_STRIP_H, FrameRenderer.FRAME_HIGHLIGHT);
 
         if (row.activity()) {
             drawJobDetails(g, row, win, detailsFieldsTop());
@@ -825,7 +836,7 @@ public class OrdersScreen extends Screen {
     /**
      * A category's facts are its members. Reading it off the recipe column showed "Makes 1" and
      * "Needs Nothing", which are answers to questions a set was never asked. Every member is
-     * drawn as itself — sprite and name — and the wheel walks the whole list.
+     * drawn as itself — sprite and name — and the list scrolls by wheel or by its bar.
      */
     private void drawSetColumn(GuiGraphics g, Row row, int x, int top, int bottom) {
         Rect box = new Rect(x, top, FACTS_W, bottom - top);
@@ -835,22 +846,69 @@ public class OrdersScreen extends Screen {
             g.drawString(this.font, "Nothing counts yet.", x + 6, top + 8, Palette.LABEL_DIM, false);
             return;
         }
-        int innerTop = top + 6;
-        int innerBottom = box.bottom() - 4;
-        int visible = Math.max(1, (innerBottom - innerTop) / SET_ROW_H);
-        setScroll = Math.max(0, Math.min(setScroll, members.size() - visible));
-        g.enableScissor(box.x() + 1, innerTop, box.right() - 1, innerBottom);
-        int y = innerTop;
-        for (int i = setScroll; i < members.size() && y < innerBottom; i++) {
-            ItemStack stack = members.get(i);
-            g.renderItem(stack, x + 5, y);
-            g.drawString(this.font, trim(stack.getHoverName().getString(), box.w() - 32),
-                    x + 25, y + 4, Palette.LABEL_MID, false);
+        drawStackRows(g, members, detailListArea(row));
+    }
+
+    /**
+     * Icon-and-name rows with a scrollbar: the one way this window shows any list of items, so a
+     * recipe's needs and a set's members read as the same furniture. Counts ride the sprite as a
+     * vanilla stack badge, which is where a player's eye already looks for a quantity.
+     */
+    private void drawStackRows(GuiGraphics g, List<ItemStack> stacks, Rect area) {
+        int visible = Math.max(1, area.h() / SET_ROW_H);
+        setScroll = Math.max(0, Math.min(setScroll, stacks.size() - visible));
+        g.enableScissor(area.x(), area.y(), area.right(), area.bottom());
+        int y = area.y();
+        for (int i = setScroll; i < stacks.size() && y < area.bottom(); i++) {
+            ItemStack stack = stacks.get(i);
+            g.renderItem(stack, area.x() + 4, y);
+            g.renderItemDecorations(this.font, stack, area.x() + 4, y);
+            g.drawString(this.font, trim(stack.getHoverName().getString(), area.w() - 31),
+                    area.x() + 24, y + 4, Palette.LABEL_MID, false);
             y += SET_ROW_H;
         }
         g.disableScissor();
-        Controls.drawScrollbar(g, box.right() - 2 - Controls.SCROLLBAR_W, innerTop,
-                innerBottom - innerTop, setScroll, visible, members.size());
+        Controls.drawScrollbar(g, area.right() - Controls.SCROLLBAR_W, area.y(), area.h(),
+                setScroll, visible, stacks.size());
+    }
+
+    /**
+     * Where the open modal's item rows sit: a set's members fill the box, a recipe's needs start
+     * beneath its facts. One measure for drawing, the wheel and the bar, so the list a click
+     * scrolls is exactly the list being looked at.
+     */
+    private Rect detailListArea(Row row) {
+        Rect win = detailsWindow();
+        int x = win.x() + DETAIL_PAD + 1;
+        int top = detailsFieldsTop() + (row.tag() ? 6 : NEEDS_LIST_Y);
+        int bottom = win.bottom() - DETAIL_PAD - 4;
+        return new Rect(x, top, FACTS_W - 2, bottom - top);
+    }
+
+    /**
+     * The stack list the open modal is showing, or null when it shows none: members for a set,
+     * needs for a thing, nothing for a job.
+     */
+    private @Nullable List<ItemStack> detailStacks(Row row) {
+        if (row.activity()) return null;
+        if (row.tag()) {
+            List<ItemStack> members = setMembers(row.output());
+            return members.isEmpty() ? null : members;
+        }
+        Option option = optionFor(row.output());
+        return option == null || option.needs().isEmpty() ? null : needStacks(option);
+    }
+
+    /** A recipe's needs as stacks, count and all, for the shared row renderer. */
+    private static List<ItemStack> needStacks(Option option) {
+        List<ItemStack> out = new ArrayList<>(option.needs().size());
+        for (var need : option.needs()) {
+            ItemStack stack = displayStack(need.item());
+            if (stack.isEmpty()) continue;
+            stack.setCount(Math.max(1, need.count()));
+            out.add(stack);
+        }
+        return out;
     }
 
     /** The set's members as stacks, in tag order — what the counting side resolves too. */
@@ -864,10 +922,13 @@ public class OrdersScreen extends Screen {
         return out;
     }
 
+    /** Where a recipe's need rows begin inside the facts box: two fact lines and the header. */
+    private static final int NEEDS_LIST_Y = 44;
+
     /**
      * What this order actually involves: how many a batch makes, where it is made, and what it
      * eats. Read off the catalogue entry for the same item, so it answers "why is this blocked"
-     * before it blocks.
+     * before it blocks. Needs are drawn as the things themselves, exactly as a set's members are.
      */
     private void drawFactsColumn(GuiGraphics g, Row row, int x, int top, int bottom) {
         Rect box = new Rect(x, top, FACTS_W, bottom - top);
@@ -881,18 +942,12 @@ public class OrdersScreen extends Screen {
         int y = top + 8;
         y = fact(g, x, y, box.w(), "Makes", String.valueOf(option.makes()));
         y = fact(g, x, y, box.w(), "Station", option.stationLabel());
-        y += 5;
-        g.drawString(this.font, "NEEDS", x + 6, y, Palette.INK_DIM, false);
-        y += 11;
+        g.drawString(this.font, "NEEDS", x + 6, y + 4, Palette.INK_DIM, false);
         if (option.needs().isEmpty()) {
-            g.drawString(this.font, "Nothing", x + 6, y, Palette.LABEL_DIM, false);
+            g.drawString(this.font, "Nothing", x + 6, y + 15, Palette.LABEL_DIM, false);
             return;
         }
-        for (String need : option.needs()) {
-            if (y > bottom - 11) break;
-            g.drawString(this.font, trim(need, box.w() - 12), x + 6, y, Palette.LABEL_MID, false);
-            y += 10;
-        }
+        drawStackRows(g, needStacks(option), detailListArea(row));
     }
 
     /**
@@ -998,7 +1053,7 @@ public class OrdersScreen extends Screen {
         Row row = detailsRow();
         if (row != null && row.activity()) {
             int w = Math.min(this.width - SPACING * 2 - FRAME * 2, 300);
-            int h = STRIP_H + DETAIL_PAD + 4 + 44 + DETAIL_PAD;
+            int h = DETAIL_STRIP_H + DETAIL_PAD + 4 + 44 + DETAIL_PAD;
             return new Rect((this.width - w) / 2, (this.height - h) / 2, w, h);
         }
         Rect[] modes = Controls.segmentLayout(this.font, 0, 0, MODE_LABELS);
@@ -1007,10 +1062,11 @@ public class OrdersScreen extends Screen {
                 this.font.width("Counted across") + 8 + scopes[scopes.length - 1].right() + 12);
         int w = Math.min(this.width - SPACING * 2 - FRAME * 2,
                 DETAIL_PAD + FACTS_W + DETAIL_PAD + settings + DETAIL_PAD);
-        // A category's window runs taller so its member list shows a worthwhile page; an item's
-        // stops under its two settings boxes.
-        int content = row != null && row.tag() ? 140 : 88;
-        int h = STRIP_H + DETAIL_PAD + 4 + content + DETAIL_PAD;
+        // Both columns end together: the left list scrolls for the rest, so a taller window
+        // would only buy dead panel under the settings, which is what stood where the removed
+        // "who may work it" box used to.
+        int content = 88;
+        int h = DETAIL_STRIP_H + DETAIL_PAD + 4 + content + DETAIL_PAD;
         return new Rect((this.width - w) / 2, (this.height - h) / 2, w, h);
     }
 
@@ -1018,11 +1074,11 @@ public class OrdersScreen extends Screen {
         Rect win = detailsWindow();
         Rect probe = Controls.pillLayout(this.font, 0, 0, "Back");
         return new Rect(win.right() - INSET - 2 - probe.w(),
-                win.y() + (STRIP_H - Controls.PILL_H) / 2, probe.w(), Controls.PILL_H);
+                win.y() + (DETAIL_STRIP_H - Controls.PILL_H) / 2, probe.w(), Controls.PILL_H);
     }
 
     private int detailsFieldsTop() {
-        return detailsWindow().y() + STRIP_H + DETAIL_PAD + 4;
+        return detailsWindow().y() + DETAIL_STRIP_H + DETAIL_PAD + 4;
     }
 
     private Rect[] detailsModes() {
@@ -1070,7 +1126,56 @@ public class OrdersScreen extends Screen {
             return true;
         }
         if (draft != null && clickComposer(mouseX, mouseY, site)) return true;
+        int picked = Controls.scrollbarPick(
+                ordersLeft() + ordersWidth() - INSET - Controls.SCROLLBAR_W, listTop(),
+                orderListBottom() - INSET - listTop(), mouseX, mouseY,
+                shownRows(), data.rows().size());
+        if (picked >= 0) {
+            orderScroll = picked;
+            dragOrderScroll = true;
+            return true;
+        }
         return clickOrders(mouseX, mouseY, site);
+    }
+
+    /** How many rows fit from the current scroll, which is what the bar's proportions are. */
+    private int shownRows() {
+        List<Row> rows = data.rows();
+        int bottom = orderListBottom() - INSET;
+        int rowY = listTop() + 2;
+        int shown = 0;
+        for (int i = orderScroll; i < rows.size() && rowY < bottom; i++) {
+            rowY += ROW_H + (rows.get(i).reason().isEmpty() ? 0 : REASON_H);
+            shown++;
+        }
+        return shown;
+    }
+
+    @Override
+    public boolean mouseDragged(double mx, double my, int button, double ddx, double ddy) {
+        if (dragDetailScroll && detailsFor >= 0) {
+            Row row = detailsRow();
+            List<ItemStack> stacks = row == null ? null : detailStacks(row);
+            if (stacks != null) {
+                Rect area = detailListArea(row);
+                setScroll = Controls.scrollbarDrag(area.y(), area.h(), my,
+                        Math.max(1, area.h() / SET_ROW_H), stacks.size());
+            }
+            return true;
+        }
+        if (dragOrderScroll) {
+            orderScroll = Controls.scrollbarDrag(listTop(), orderListBottom() - INSET - listTop(),
+                    my, shownRows(), data.rows().size());
+            return true;
+        }
+        return super.mouseDragged(mx, my, button, ddx, ddy);
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int button) {
+        dragDetailScroll = false;
+        dragOrderScroll = false;
+        return super.mouseReleased(mx, my, button);
     }
 
     private boolean clickOrders(double mx, double my, long site) {
@@ -1191,6 +1296,18 @@ public class OrdersScreen extends Screen {
             return true;
         }
         if (row.activity()) return true;
+        // The list's scrollbar takes a press anywhere along its lane, then rides the drag.
+        List<ItemStack> stacks = detailStacks(row);
+        if (stacks != null) {
+            Rect area = detailListArea(row);
+            int picked = Controls.scrollbarPick(area.right() - Controls.SCROLLBAR_W, area.y(),
+                    area.h(), mx, my, Math.max(1, area.h() / SET_ROW_H), stacks.size());
+            if (picked >= 0) {
+                setScroll = picked;
+                dragDetailScroll = true;
+                return true;
+            }
+        }
         int mode = Controls.segmentAt(detailsModes(), mx, my);
         if (mode >= 0) {
             send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.SET_MODE, detailsFor,
@@ -1261,11 +1378,11 @@ public class OrdersScreen extends Screen {
     /*@Override
     public boolean mouseScrolled(double mouseX, double mouseY, double dy) {
     *///?}
-        // The modal owns the wheel while it is open: a category's member list scrolls, and
-        // nothing leaks through to move the order list behind it.
+        // The modal owns the wheel while it is open: whatever item list it is showing scrolls —
+        // a set's members or a recipe's needs — and nothing leaks through to the order list.
         if (detailsFor >= 0) {
             Row row = detailsRow();
-            if (row != null && row.tag()) {
+            if (row != null && detailStacks(row) != null) {
                 setScroll = Math.max(0, setScroll + (dy > 0 ? -1 : 1));
             }
             return true;
@@ -1322,12 +1439,33 @@ public class OrdersScreen extends Screen {
     }
 
     private static String itemName(ResourceLocation id) {
-        return new ItemStack(BuiltInRegistries.ITEM.get(id)).getHoverName().getString();
+        return displayStack(id).getHoverName().getString();
     }
 
     private static void drawItem(GuiGraphics g, ResourceLocation id, int x, int y) {
-        ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(id));
+        ItemStack stack = displayStack(id);
         if (!stack.isEmpty()) g.renderItem(stack, x, y);
+    }
+
+    /**
+     * The stack a raw id is drawn as. An order line carries only an item id, and a bare
+     * {@code minecraft:potion} has no contents behind it, so it rendered — and named itself —
+     * "Uncraftable Potion". The only potion any station here handles is boiled water, so it is
+     * shown as what it will actually be.
+     */
+    private static ItemStack displayStack(ResourceLocation id) {
+        ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(id));
+        if (stack.is(net.minecraft.world.item.Items.POTION)) {
+            //? if >=1.21 {
+            stack.set(net.minecraft.core.component.DataComponents.POTION_CONTENTS,
+                    new net.minecraft.world.item.alchemy.PotionContents(
+                            net.minecraft.world.item.alchemy.Potions.WATER));
+            //?} else {
+            /*net.minecraft.world.item.alchemy.PotionUtils.setPotion(stack,
+                    net.minecraft.world.item.alchemy.Potions.WATER);
+            *///?}
+        }
+        return stack;
     }
 
     private static String statusLabel(OrdersSnapshotS2CPayload.Status status) {

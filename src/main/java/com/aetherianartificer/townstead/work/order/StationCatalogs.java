@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.work.order;
 
+import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Need;
 import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Option;
 import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Station;
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
@@ -137,22 +138,28 @@ public final class StationCatalogs {
     }
 
     /**
-     * What this recipe consumes, in the words a player reads. An ingredient is a set of
-     * interchangeable ids, so the first registered one stands for the group.
+     * What this recipe consumes, one line per distinct thing. An ingredient is a set of
+     * interchangeable ids, so the first registered one stands for the group — and groups that
+     * resolve to the same thing merge, because a recipe listing the same bean four times is
+     * asking for four beans, not asking four times.
      */
-    private static List<String> needsOf(DiscoveredRecipe recipe) {
-        List<String> out = new ArrayList<>(recipe.inputs().size());
+    private static List<Need> needsOf(DiscoveredRecipe recipe) {
+        Map<ResourceLocation, Integer> counts = new java.util.LinkedHashMap<>();
         for (RecipeIngredient input : recipe.inputs()) {
-            ResourceLocation named = null;
             for (ResourceLocation id : input.itemIds()) {
-                if (BuiltInRegistries.ITEM.containsKey(id)) {
-                    named = id;
-                    break;
-                }
+                if (!BuiltInRegistries.ITEM.containsKey(id)) continue;
+                counts.merge(id, Math.max(1, input.count()), Integer::sum);
+                break;
             }
-            if (named == null) continue;
-            out.add(Math.max(1, input.count()) + " x " + itemName(named));
         }
+        // The vessel the result leaves in is fetched off the shelves like anything else, so a
+        // stew that never mentioned bowls was reading one thing short of what it takes.
+        ResourceLocation vessel = recipe.containerItemId();
+        if (vessel != null && BuiltInRegistries.ITEM.containsKey(vessel)) {
+            counts.merge(vessel, Math.max(1, recipe.containerCount()), Integer::sum);
+        }
+        List<Need> out = new ArrayList<>(counts.size());
+        counts.forEach((id, count) -> out.add(new Need(id, count)));
         return List.copyOf(out);
     }
 

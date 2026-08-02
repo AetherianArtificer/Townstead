@@ -627,9 +627,9 @@ public final class StationHandler {
         if (stack.isEmpty()) return 0;
         if (!bridge.itemRestoresThirst(stack) || !bridge.isDrink(stack)) return 0;
         if (!bridge.isPurityWaterContainer(stack)) return 0;
-        int purity = Math.max(0, Math.min(3, bridge.purity(stack)));
-        if (purity >= 3) return 0;
-        int impurity = 3 - purity;
+        int purity = Math.max(0, Math.min(ThirstCompatBridge.PURITY_PURIFIED, bridge.purity(stack)));
+        if (purity >= ThirstCompatBridge.PURITY_PURIFIED) return 0;
+        int impurity = ThirstCompatBridge.PURITY_PURIFIED - purity;
         return (impurity * 100) + Math.max(0, bridge.hydration(stack));
     }
 

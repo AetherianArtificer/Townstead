@@ -38,7 +38,8 @@ public final class VillageStores {
             for (VillageStorageIndex.SlotView slot : countableSlots(entry)) {
                 ItemStack stack = slot.stack();
                 if (stack.isEmpty()) continue;
-                if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+                if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                        && OrderStackFilters.counts(item, stack)) {
                     total += stack.getCount();
                 }
             }
@@ -60,7 +61,8 @@ public final class VillageStores {
             for (VillageStorageIndex.SlotView slot : countableSlots(entry)) {
                 ItemStack stack = slot.stack();
                 if (stack.isEmpty() || !stack.is(tag)) continue;
-                if (!OrderTags.permitted(BuiltInRegistries.ITEM.getKey(stack.getItem()))) continue;
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                if (!OrderTags.permitted(id) || !OrderStackFilters.counts(id, stack)) continue;
                 total += stack.getCount();
             }
         }
