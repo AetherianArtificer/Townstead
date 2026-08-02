@@ -27,6 +27,10 @@ import java.util.Set;
  *
  * <p>HEAD cancellable — per Townstead's mixin policy, vanilla and MCA
  * method call sites aren't stable targets across remap configs.
+ *
+ * <p>Pre-v2 MCA only (gated in TownsteadMixinPlugin): floor-system v2 removed
+ * {@code validateBuilding} — synthetics live as ExternalBuildings there, which room
+ * validation never touches.
  */
 @Mixin(Building.class)
 public abstract class BuildingValidateOpenAirMixin {
