@@ -193,17 +193,25 @@ public final class RootServerLogic {
         Allele allele = Allele.of(gid, AllelePayload.encode(incoming.variant(), canonical));
         ResourceLocation locus = Heredity.locusOf(gene);
 
+        // The editor reads, previews, and commits the EXPRESSED payload, so heritage-coupled
+        // channels arrive pre-scaled; store the recovered raw roll or re-expression would
+        // compound the factor (a hybrid's wings shrinking on every edit round trip).
         if (entityId == RootSetC2SPayload.SELF) {
             Genotype genotype = PlayerRoot.getGenotype(sp);
             if (genotype.isEmpty()) return RootSetC2SPayload.NONE;
-            genotype.set(locus, allele, allele);
+            ResourceLocation rootId = ResourceLocation.tryParse(PlayerRoot.getRootId(sp));
+            Allele stored = Heredity.unscaleByHeritage(allele,
+                    RootRegistry.seedHeritage(rootId == null ? RootRegistry.DEFAULT_ID : rootId));
+            genotype.set(locus, stored, stored);
             PlayerRoot.setGenotype(sp, genotype);
             return sp.getId();
         }
         Entity entity = sp.serverLevel().getEntity(entityId);
         if (!(entity instanceof VillagerEntityMCA villager)) return RootSetC2SPayload.NONE;
         TownsteadVillager state = TownsteadVillagers.get(villager);
-        state.life().genotype().set(locus, allele, allele);
+        Allele stored = Heredity.unscaleByHeritage(allele,
+                state.life().hasHeritage() ? state.life().heritage() : null);
+        state.life().genotype().set(locus, stored, stored);
         Heredity.recomputeExpressed(state.life());
         // Pinning the fertility variant flips sterility; mirror it onto MCA's infertile trait.
         Fertility.syncMcaInfertileTrait(villager);

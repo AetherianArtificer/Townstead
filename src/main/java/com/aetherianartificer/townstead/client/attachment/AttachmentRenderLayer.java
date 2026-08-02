@@ -88,8 +88,14 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
             int vertexTint = tint;
             boolean masked = !def.tintMaskSha1().isEmpty();
             if ((def.tintBlend() != 0 || def.tintStrength() < 1f || masked) && tint != 0xFFFFFF) {
+                // A gene tint is picked on an HSV picker whose brightness axis must land in the
+                // render, so its "color" blend upgrades to color-value; authored flat/skin/hair
+                // tints keep plain "color" (their packs tuned against base-brightness preserve).
+                int blendMode = def.tintBlend() == 3 && def.tintSource() == AttachmentDef.TINT_GENE
+                        ? com.aetherianartificer.townstead.client.skin.SkinBlend.MODE_COLOR_VALUE
+                        : def.tintBlend();
                 int packed = com.aetherianartificer.townstead.client.skin.SkinBlend.pack(
-                        tint & 0xF8F8F8, def.tintBlend(), def.tintStrength());
+                        tint & 0xF8F8F8, blendMode, def.tintStrength());
                 ResourceLocation baked = AttachmentClient.blendedTexture(
                         def.textureSha1(), def.tintMaskSha1(), packed);
                 if (baked != null) {

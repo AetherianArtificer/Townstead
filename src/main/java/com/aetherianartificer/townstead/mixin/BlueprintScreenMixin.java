@@ -15,7 +15,6 @@ import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import net.conczin.mca.MCA;
 import net.conczin.mca.client.gui.BlueprintScreen;
-import net.conczin.mca.client.gui.widget.TooltipButtonWidget;
 import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -960,11 +959,28 @@ public abstract class BlueprintScreenMixin extends Screen {
         // Top of MCA's button column — same slot 0 as the side-nav "Map" tab,
         // so the Spirit entry reads as the page's primary action.
         int by = this.height / 2 - 56;
-        addRenderableWidget(new TooltipButtonWidget(
+        addRenderableWidget(townstead$tooltipButton(
                 bx, by, 96, 20,
                 Component.translatable("gui.blueprint.spirit"),
                 Component.translatable("gui.blueprint.spirit.tooltip"),
                 b -> setPage(TOWNSTEAD_SPIRIT_PAGE)));
+    }
+
+    /**
+     * Vanilla stand-in for MCA's TooltipButtonWidget, whose constructor takes
+     * MutableComponent on pre-floor-update builds and Component after — linking
+     * against either signature throws NoSuchMethodError on the other. MCA's
+     * widget is just a vanilla Button plus setTooltip, so this renders the same.
+     */
+    @Unique
+    private static Button townstead$tooltipButton(int x, int y, int width, int height,
+                                                  Component message, Component tooltip,
+                                                  Button.OnPress onPress) {
+        Button button = Button.builder(message, onPress).bounds(x, y, width, height).build();
+        if (!tooltip.getString().isEmpty()) {
+            button.setTooltip(net.minecraft.client.gui.components.Tooltip.create(tooltip));
+        }
+        return button;
     }
 
     @Unique
@@ -1636,12 +1652,12 @@ public abstract class BlueprintScreenMixin extends Screen {
         // matching the padding/width of the map page's right-side buttons.
         int x = this.width / 2 + 100;
         int y = this.height / 2 - 56;
-        addRenderableWidget(new TooltipButtonWidget(
+        addRenderableWidget(townstead$tooltipButton(
                 x, y, 96, 20,
                 Component.translatable("gui.blueprint.shifts"),
                 Component.empty(),
                 b -> net.minecraft.client.Minecraft.getInstance().setScreen(new ShiftManagerScreen((Screen) (Object) this))));
-        addRenderableWidget(new TooltipButtonWidget(
+        addRenderableWidget(townstead$tooltipButton(
                 x, y + 22, 96, 20,
                 Component.translatable("gui.blueprint.professions"),
                 Component.empty(),
