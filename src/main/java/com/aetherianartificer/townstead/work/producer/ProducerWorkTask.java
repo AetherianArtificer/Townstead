@@ -446,6 +446,13 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         return lastWorksite;
     }
 
+    /** The order line the active job was taken from, for engines whose lines carry more than
+     * a count — a commission's escrowed workpiece is collected at gather. */
+    @Nullable
+    protected com.aetherianartificer.townstead.work.order.Order claimedOrder() {
+        return claimedLine;
+    }
+
     /** Hands a claim back when a job ends without producing. Safe to call when nothing is held. */
     protected void releaseOrderClaim() {
         if (claimedLine != null) {

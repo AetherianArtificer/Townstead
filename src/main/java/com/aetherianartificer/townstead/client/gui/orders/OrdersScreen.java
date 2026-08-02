@@ -181,7 +181,7 @@ public class OrdersScreen extends Screen {
     private int ordersLeft() { return catalogueLeft() + CATALOGUE_W + FRAME + SPACING + FRAME; }
     private int ordersWidth() { return this.width - ordersLeft() - SPACING - FRAME; }
     private int listTop() { return contentTop() + STRIP_H; }
-    private int composerTop() { return contentBottom() - COMPOSER_H; }
+    private int composerTop() { return contentBottom() - composerHeight(); }
     private int orderListBottom() { return draft == null ? contentBottom() : composerTop(); }
     // The Field Post's palette column, measure for measure: search at the top, the shared tab
     // bar directly beneath it, then the list.
@@ -715,7 +715,7 @@ public class OrdersScreen extends Screen {
         int y = composerTop();
         int w = ordersWidth();
         g.fill(x + INSET, y, x + w - INSET, y + 1, Palette.DESK_LIP);
-        g.fill(x + INSET, y + 1, x + w - INSET, y + COMPOSER_H - INSET, 0x24FFB347);
+        g.fill(x + INSET, y + 1, x + w - INSET, y + composerHeight() - INSET, 0x24FFB347);
 
         Controls.drawSlot(g, x + INSET + 3, y + 4);
         drawItem(g, d.icon, x + INSET + 4, y + 5);
@@ -745,8 +745,18 @@ public class OrdersScreen extends Screen {
         Controls.drawPill(g, this.font, discard, "Discard", true,
                 discard.contains(mouseX, mouseY), Palette.LABEL_LIGHT);
         Rect add = composerAdd();
-        Controls.drawButton(g, this.font, add, "Add to list", true,
+        Controls.drawButton(g, this.font, add, addLabel(), true,
                 add.contains(mouseX, mouseY), true);
+    }
+
+    /** The commit button doubles as the hand-over hint when the draft is a commission. */
+    private String addLabel() {
+        Draft d = draft;
+        if (d != null) {
+            Option option = optionFor(d.output);
+            if (option != null && option.commission()) return "Add held item";
+        }
+        return "Add to list";
     }
 
     // Three rows, because the mode picker alone is about two hundred pixels and everything used to
@@ -754,6 +764,28 @@ public class OrdersScreen extends Screen {
     // slot's full 18 before the mode row starts, which is what stops them shingling.
     private int composerModeY() { return composerTop() + 26; }
     private int composerActionY() { return composerTop() + 44; }
+
+    /**
+     * Whether the stepper-and-scope run from the left and the Discard-and-Add pair from the
+     * right would meet in the middle of the action row. The same both-ends layout that already
+     * collided once, and it still can on a narrow window — measured, not assumed.
+     */
+    private boolean composerCramped() {
+        Draft d = draft;
+        if (d == null || d.activity || !d.mode.hasTarget()) return false;
+        Rect[] scope = Controls.segmentLayout(this.font, 0, 0, SCOPE_LABELS);
+        int left = INSET + 3 + Controls.stepperWidth(this.font, String.valueOf(d.target))
+                + 8 + scope[scope.length - 1].right();
+        int right = this.font.width("Add to list") + 12 + 6
+                + this.font.width("Discard") + 12 + INSET + 3;
+        return left + 10 + right > ordersWidth();
+    }
+
+    /** A cramped composer grows a fourth row and the buttons take it, instead of colliding. */
+    private int composerHeight() { return composerCramped() ? COMPOSER_H + 18 : COMPOSER_H; }
+
+    /** Where Discard and Add to list sit: the action row, or their own row beneath it. */
+    private int composerButtonsY() { return composerCramped() ? composerTop() + 62 : composerActionY(); }
 
     private Rect[] composerModes() {
         return Controls.segmentLayout(this.font, ordersLeft() + INSET + 3, composerModeY(), MODE_LABELS);
@@ -771,15 +803,15 @@ public class OrdersScreen extends Screen {
     }
 
     private Rect composerAdd() {
-        int w = this.font.width("Add to list") + 12;
-        return new Rect(ordersLeft() + ordersWidth() - INSET - 3 - w, composerActionY(),
+        int w = this.font.width(addLabel()) + 12;
+        return new Rect(ordersLeft() + ordersWidth() - INSET - 3 - w, composerButtonsY(),
                 w, Controls.SEG_H);
     }
 
     private Rect composerDiscard() {
         Rect add = composerAdd();
         Rect probe = Controls.pillLayout(this.font, 0, 0, "Discard");
-        return new Rect(add.x() - 6 - probe.w(), composerActionY(), probe.w(), Controls.PILL_H);
+        return new Rect(add.x() - 6 - probe.w(), composerButtonsY(), probe.w(), Controls.PILL_H);
     }
 
     // ── Details ──
@@ -1272,6 +1304,17 @@ public class OrdersScreen extends Screen {
      */
     private void commitDraft(long site, Draft d) {
         int index = data.rows().size();
+        // A commission carries no item over the wire — only which of the player's slots the
+        // server should take the workpiece from. The held slot is the hand-over gesture.
+        Option commissioned = optionFor(d.output);
+        if (commissioned != null && commissioned.commission()) {
+            int slot = this.minecraft != null && this.minecraft.player != null
+                    ? this.minecraft.player.getInventory().selected : 0;
+            send(new OrderEditC2SPayload(site, OrderEditC2SPayload.Action.COMMISSION,
+                    slot, Math.max(1, d.target), d.output.toString()));
+            draft = null;
+            return;
+        }
         // A category commits with the tag marker, which is how the server knows to add a set line.
         send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.ADD, 0,
                 (d.tag ? "#" : "") + d.output));
@@ -1435,7 +1478,9 @@ public class OrdersScreen extends Screen {
 
     /** What a line or an option is called: its own label when it carries one, else the item's name. */
     private static String nameOf(boolean useLabel, String label, ResourceLocation id) {
-        return useLabel && !label.isEmpty() ? label : itemName(id);
+        // A non-empty label always wins: jobs and categories name themselves, and so do
+        // commissions ("Copy Filled Map") and their lines ("Copy 'Village Map'").
+        return !label.isEmpty() ? label : itemName(id);
     }
 
     private static String itemName(ResourceLocation id) {
@@ -1454,6 +1499,18 @@ public class OrdersScreen extends Screen {
      * shown as what it will actually be.
      */
     private static ItemStack displayStack(ResourceLocation id) {
+        // Supply lines have no item behind them; furnace fuel is shown as the fuel everyone
+        // reaches for, named for what the line actually accepts.
+        if (com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL.equals(id)) {
+            ItemStack fuel = new ItemStack(net.minecraft.world.item.Items.COAL);
+            //? if >=1.21 {
+            fuel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                    net.minecraft.network.chat.Component.literal("Any furnace fuel"));
+            //?} else {
+            /*fuel.setHoverName(net.minecraft.network.chat.Component.literal("Any furnace fuel"));
+            *///?}
+            return fuel;
+        }
         ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(id));
         if (stack.is(net.minecraft.world.item.Items.POTION)) {
             //? if >=1.21 {

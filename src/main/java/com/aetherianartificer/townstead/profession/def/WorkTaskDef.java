@@ -81,14 +81,24 @@ public record WorkTaskDef(
      * exists because the useful line for a cook at a furnace is "food, and these few exceptions",
      * and the food half of that cannot be written as a tag without every mod maintaining one.</p>
      */
-    public record TargetSet(Set<ResourceLocation> ids, List<ResourceLocation> tags, boolean edible) {
-        public static final TargetSet EMPTY = new TargetSet(Set.of(), List.of(), false);
+    public record TargetSet(Set<ResourceLocation> ids, List<ResourceLocation> tags, boolean edible,
+                            Set<String> kinds) {
+        public static final TargetSet EMPTY = new TargetSet(Set.of(), List.of(), false, Set.of());
 
         /** The literal accepted in place of an id to mean "any food output". */
         public static final String EDIBLE_TOKEN = "edible";
 
+        /**
+         * Literals that classify by what the output item IS, so a modded sword counts as a
+         * weapon without anyone tagging it: mods extend the vanilla item classes because that
+         * is where attack damage and durability come from. Tags remain the override seam for
+         * the rare item that extends plain Item.
+         */
+        public static final Set<String> KIND_TOKENS =
+                Set.of("weapon", "armor", "tool", "block", "ranged", "navigation", "book");
+
         public boolean isEmpty() {
-            return ids.isEmpty() && tags.isEmpty() && !edible;
+            return ids.isEmpty() && tags.isEmpty() && !edible && kinds.isEmpty();
         }
     }
 
@@ -153,13 +163,56 @@ public record WorkTaskDef(
         if (recipeId != null && set.ids().contains(recipeId)) return true;
         if (outputId == null) return false;
         if (set.ids().contains(outputId)) return true;
-        if (set.tags().isEmpty() && !set.edible()) return false;
+        if (set.tags().isEmpty() && !set.edible() && set.kinds().isEmpty()) return false;
         var stack = BuiltInRegistries.ITEM.get(outputId).getDefaultInstance();
         if (set.edible() && isEdible(stack)) return true;
+        for (String kind : set.kinds()) {
+            if (matchesKind(kind, stack.getItem())) return true;
+        }
         for (ResourceLocation tagId : set.tags()) {
             if (stack.is(TagKey.create(Registries.ITEM, tagId))) return true;
         }
         return false;
+    }
+
+    /** Class-based classification: what the item is, not what somebody remembered to tag. */
+    private static boolean matchesKind(String kind, net.minecraft.world.item.Item item) {
+        return switch (kind) {
+            case "weapon" -> item instanceof net.minecraft.world.item.SwordItem
+                    || item instanceof net.minecraft.world.item.AxeItem
+                    || item instanceof net.minecraft.world.item.TridentItem
+                    //? if >=1.21 {
+                    || item instanceof net.minecraft.world.item.MaceItem
+                    //?}
+                    ;
+            case "armor" -> item instanceof net.minecraft.world.item.ArmorItem
+                    || item instanceof net.minecraft.world.item.ShieldItem;
+            case "tool" -> item instanceof net.minecraft.world.item.DiggerItem
+                    || item instanceof net.minecraft.world.item.ShearsItem
+                    || item instanceof net.minecraft.world.item.FlintAndSteelItem
+                    || item instanceof net.minecraft.world.item.BrushItem;
+            // Placeable output: the mason's classification. Stone, glass, terracotta and every
+            // modded brick are BlockItems; ingots, food and gear never are.
+            case "block" -> item instanceof net.minecraft.world.item.BlockItem;
+            // The fletcher's classification: everything that launches or is launched. Modded
+            // bows extend ProjectileWeaponItem for draw/charge handling, arrows extend
+            // ArrowItem for flight.
+            case "ranged" -> item instanceof net.minecraft.world.item.ProjectileWeaponItem
+                    || item instanceof net.minecraft.world.item.ArrowItem;
+            // The cartographer's classification: things that show the way. Frames, patterns
+            // and paper have no class of their own and ride the trade's tag instead.
+            case "navigation" -> item instanceof net.minecraft.world.item.EmptyMapItem
+                    || item instanceof net.minecraft.world.item.MapItem
+                    || item instanceof net.minecraft.world.item.CompassItem
+                    || item instanceof net.minecraft.world.item.SpyglassItem;
+            // The librarian's classification. Shelves are BlockItems and ride the trade's tag
+            // instead — "block" here would hand the librarian the mason's whole catalogue.
+            case "book" -> item instanceof net.minecraft.world.item.BookItem
+                    || item instanceof net.minecraft.world.item.WritableBookItem
+                    || item instanceof net.minecraft.world.item.WrittenBookItem
+                    || item instanceof net.minecraft.world.item.EnchantedBookItem;
+            default -> false;
+        };
     }
 
     private static boolean isEdible(net.minecraft.world.item.ItemStack stack) {
@@ -219,11 +272,14 @@ public record WorkTaskDef(
         Set<ResourceLocation> ids = new LinkedHashSet<>();
         List<ResourceLocation> tags = new ArrayList<>();
         boolean edible = false;
+        Set<String> kinds = new LinkedHashSet<>();
         for (JsonElement e : obj.getAsJsonArray(key)) {
             if (!e.isJsonPrimitive()) return null;
             String raw = e.getAsString();
             if (TargetSet.EDIBLE_TOKEN.equals(raw)) {
                 edible = true;
+            } else if (TargetSet.KIND_TOKENS.contains(raw)) {
+                kinds.add(raw);
             } else if (raw.startsWith("#")) {
                 ResourceLocation tagId = ResourceLocation.tryParse(raw.substring(1));
                 if (tagId == null) return null;
@@ -234,6 +290,6 @@ public record WorkTaskDef(
                 ids.add(id);
             }
         }
-        return new TargetSet(Set.copyOf(ids), List.copyOf(tags), edible);
+        return new TargetSet(Set.copyOf(ids), List.copyOf(tags), edible, Set.copyOf(kinds));
     }
 }

@@ -49,6 +49,8 @@ public final class Workstations {
 
     public static void replaceAll(List<WorkstationDef> defs) {
         DEFS = List.copyOf(defs);
+        // Defs reload alongside the recipe manager, so every cached recipe expansion is stale.
+        ProtocolRecipes.invalidate();
     }
 
     public static List<WorkstationDef> all() {

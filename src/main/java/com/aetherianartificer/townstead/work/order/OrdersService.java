@@ -82,7 +82,8 @@ public final class OrdersService {
                 order.isActivity(), order.isTag(),
                 order.isActivity()
                         ? com.aetherianartificer.townstead.work.WorkActivities.labelOf(order.output())
-                        : order.isTag() ? categoryLabel(order.output()) : "");
+                        : order.isTag() ? categoryLabel(order.output())
+                        : !order.workpieceName().isEmpty() ? "Copy " + order.workpieceName() : "");
     }
 
     /** What a category is called on screen: the tag path, minus the orders/ shelf mark. */
@@ -139,6 +140,12 @@ public final class OrdersService {
      * describes what a player clicked, it does not decide what is true.
      */
     public static boolean apply(ServerLevel level, OrderEditC2SPayload edit) {
+        return apply(level, null, edit);
+    }
+
+    public static boolean apply(ServerLevel level,
+                                @Nullable net.minecraft.server.level.ServerPlayer player,
+                                OrderEditC2SPayload edit) {
         WorksiteRegister register = WorksiteRegister.get(level.getServer());
         Worksite site = register.byId(edit.worksiteId());
         if (site == null) return false;
@@ -146,10 +153,27 @@ public final class OrdersService {
 
         boolean changed = switch (edit.action()) {
             case ADD -> add(orders, edit.value());
+            case COMMISSION -> commission(level, player, orders, edit);
             case COPY -> copy(orders, edit.index());
             case REMOVE -> {
                 Order order = orders.at(edit.index());
-                yield order != null && orders.remove(order);
+                if (order == null) yield false;
+                // An escrowed workpiece goes back to whoever is cancelling — never deleted
+                // with the line. With no player to hand it to, the line stays.
+                if (order.workpiece() != null) {
+                    if (player == null) yield false;
+                    net.minecraft.nbt.CompoundTag escrow = order.takeWorkpiece();
+                    //? if >=1.21 {
+                    net.minecraft.world.item.ItemStack held = net.minecraft.world.item.ItemStack
+                            .parse(level.registryAccess(), escrow).orElse(
+                                    net.minecraft.world.item.ItemStack.EMPTY);
+                    //?} else {
+                    /*net.minecraft.world.item.ItemStack held =
+                            net.minecraft.world.item.ItemStack.of(escrow);
+                    *///?}
+                    if (!held.isEmpty()) player.getInventory().placeItemBackInInventory(held);
+                }
+                yield orders.remove(order);
             }
             case MOVE -> orders.move(edit.index(), edit.amount());
             case SET_MODE -> {
@@ -231,6 +255,52 @@ public final class OrdersService {
         if (!BuiltInRegistries.ITEM.containsKey(id)) return false;
         orders.add(new Order(id, Order.Mode.KEEP_STOCKED, 10));
         return true;
+    }
+
+    /**
+     * A commission: escrow the player's real stack into a make-N line. The item never crosses
+     * the wire — the client names a slot, the server takes what actually sits in it, and only
+     * after the stack proves to be the copy-source some station here declares.
+     */
+    private static boolean commission(ServerLevel level,
+                                      @Nullable net.minecraft.server.level.ServerPlayer player,
+                                      OrderList orders, OrderEditC2SPayload edit) {
+        if (player == null) return false;
+        ResourceLocation output = tryParse(edit.value());
+        if (output == null || !BuiltInRegistries.ITEM.containsKey(output)) return false;
+        int slot = edit.index();
+        if (slot < 0 || slot >= player.getInventory().getContainerSize()) return false;
+        net.minecraft.world.item.ItemStack stack = player.getInventory().getItem(slot);
+        if (stack.isEmpty()) return false;
+        ResourceLocation source = copySourceFor(output);
+        if (source == null || !source.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+            return false;
+        }
+        //? if >=1.21 {
+        net.minecraft.nbt.CompoundTag tag =
+                (net.minecraft.nbt.CompoundTag) stack.save(level.registryAccess());
+        //?} else {
+        /*net.minecraft.nbt.CompoundTag tag = stack.save(new net.minecraft.nbt.CompoundTag());
+        *///?}
+        Order order = new Order(output, Order.Mode.MAKE,
+                Math.min(Math.max(1, edit.amount()), MAX_TARGET));
+        order.setWorkpiece(tag, stack.getHoverName().getString());
+        player.getInventory().setItem(slot, net.minecraft.world.item.ItemStack.EMPTY);
+        orders.add(order);
+        return true;
+    }
+
+    /** The input a duplicating produce line copies for this output, from any loaded def. */
+    @Nullable
+    private static ResourceLocation copySourceFor(ResourceLocation output) {
+        for (var def : com.aetherianartificer.townstead.work.station.Workstations.all()) {
+            for (var produce : def.produces()) {
+                if (produce.copies() != null && output.equals(produce.output())) {
+                    return produce.copies();
+                }
+            }
+        }
+        return null;
     }
 
     /** A line's twin, dropped in beneath it, carrying every setting but none of its progress. */

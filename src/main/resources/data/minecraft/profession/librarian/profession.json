@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Librarian"
+  },
+  "icon": "minecraft:book",
+  "description": {
+    "text": "Bind books and copy the written word to build a history of scholarship mastery."
+  },
+  "unlock_model": "experiential",
+  "poi": [
+    {
+      "type": "townstead:job_block",
+      "block": "minecraft:lectern"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "library"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "bookkeeper"
+    }
+  ],
+  "work_tasks": [
+    {
+      "type": "townstead_work:craft",
+      "workstations": [
+        "minecraft:crafting_table",
+        "minecraft:lectern"
+      ],
+      "recipes": [
+        "book",
+        "#townstead:crafts/library"
+      ],
+      "weight": 10
+    }
+  ]
+}

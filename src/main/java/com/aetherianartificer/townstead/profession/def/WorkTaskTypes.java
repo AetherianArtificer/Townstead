@@ -21,6 +21,16 @@ public final class WorkTaskTypes {
 
     private static final Set<ResourceLocation> KNOWN = ConcurrentHashMap.newKeySet();
 
+    /**
+     * Types driven by the generic station engine rather than a bespoke task class. The routing
+     * lives here in the vocabulary because both failure modes of guessing are bad: a type two
+     * engines serve double-drives its stations, and a type no engine serves puts orders on the
+     * sheet that wait forever. Declaring the driver where the type is named makes either mistake
+     * a one-line diff review.
+     */
+    private static final Set<ResourceLocation> STATION_DRIVEN = ConcurrentHashMap.newKeySet();
+    private static volatile ResourceLocation[] STATION_DRIVEN_SNAPSHOT = new ResourceLocation[0];
+
     // Cook family (Farmer's Delight producer machinery).
     public static final ResourceLocation COOK = type("cook");
     public static final ResourceLocation CHOP = type("chop");
@@ -41,6 +51,13 @@ public final class WorkTaskTypes {
     public static final ResourceLocation HAMMER = type("hammer");
     public static final ResourceLocation DELIVER = type("deliver");
 
+    // Smith family, served by the generic station engine: a workstation def naming this type is
+    // all it takes for the work to run.
+    public static final ResourceLocation SMELT = stationDriven("smelt");
+    // Working recipes at a surface that holds nothing (crafting table, stonecutter). What a
+    // trade may craft is its own declaration's recipes filter, never the family's full breadth.
+    public static final ResourceLocation CRAFT = stationDriven("craft");
+
     // Tend / leatherwork / storage.
     public static final ResourceLocation SHEAR = type("shear");
     public static final ResourceLocation TAN = type("tan");
@@ -56,6 +73,22 @@ public final class WorkTaskTypes {
         ResourceLocation id = ResourceLocation.tryParse(NAMESPACE + ":" + path);
         KNOWN.add(id);
         return id;
+    }
+
+    private static ResourceLocation stationDriven(String path) {
+        ResourceLocation id = type(path);
+        STATION_DRIVEN.add(id);
+        STATION_DRIVEN_SNAPSHOT = STATION_DRIVEN.toArray(ResourceLocation[]::new);
+        return id;
+    }
+
+    public static boolean isStationDriven(@Nullable ResourceLocation id) {
+        return id != null && STATION_DRIVEN.contains(id);
+    }
+
+    /** The station-driven types as an array for allocation-free eligibility scans. Do not mutate. */
+    public static ResourceLocation[] stationDrivenTypes() {
+        return STATION_DRIVEN_SNAPSHOT;
     }
 
     public static void register(ResourceLocation id) {

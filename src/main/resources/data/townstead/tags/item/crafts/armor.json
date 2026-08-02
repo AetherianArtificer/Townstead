@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:trimmable_armor",
+    "minecraft:shield",
+    "minecraft:turtle_helmet",
+    {"id": "#forge:armors", "required": false},
+    {"id": "#forge:armors/helmets", "required": false},
+    {"id": "#forge:armors/chestplates", "required": false},
+    {"id": "#forge:armors/leggings", "required": false},
+    {"id": "#forge:armors/boots", "required": false},
+    {"id": "#forge:shields", "required": false},
+    {"id": "#c:armors", "required": false},
+    {"id": "#c:shields", "required": false}
+  ]
+}

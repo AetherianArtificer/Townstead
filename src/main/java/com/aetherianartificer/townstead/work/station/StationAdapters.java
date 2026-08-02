@@ -71,10 +71,14 @@ public final class StationAdapters {
     @Nullable
     public static Adapter forDef(@Nullable WorkstationDef def) {
         if (def == null) return null;
-        // A furnace's slots have fixed roles, so its adapter is implied by the role rather than
-        // stated per def. Authors can still name one to override.
+        // A furnace's slots have fixed roles and a craft surface has none at all, so their
+        // adapters are implied by the role rather than stated per def. Authors can still name
+        // one to override.
         if (def.adapter() == null && def.role() == StationType.FURNACE_STATION) {
             return byName(FurnaceStationAdapter.NAME);
+        }
+        if (def.adapter() == null && def.role() == StationType.CRAFT_SURFACE) {
+            return byName(CraftSurfaceAdapter.NAME);
         }
         return byName(def.adapter());
     }

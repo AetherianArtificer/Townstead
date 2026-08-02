@@ -94,7 +94,7 @@ public final class OrdersOpener {
             return;
         }
         ServerLevel level = player.serverLevel();
-        OrdersService.apply(level, payload);
+        OrdersService.apply(level, player, payload);
         Worksite site = WorksiteRegister.get(level.getServer()).byId(payload.worksiteId());
         if (site != null) open(player, site);
     }

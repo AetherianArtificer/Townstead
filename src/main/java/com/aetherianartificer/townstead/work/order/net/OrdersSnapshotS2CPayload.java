@@ -62,26 +62,37 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
      */
     public record Option(ResourceLocation output, String stationLabel, ResourceLocation stationIcon,
                          boolean available, String blocker, int makes, List<Need> needs,
-                         boolean activity, boolean tag, String label) {
+                         boolean activity, boolean tag, String label, boolean commission) {
 
         /** Something this place can make. */
         public static Option item(ResourceLocation output, String stationLabel,
                                   ResourceLocation stationIcon, boolean available, String blocker,
                                   int makes, List<Need> needs) {
             return new Option(output, stationLabel, stationIcon, available, blocker, makes, needs,
-                    false, false, "");
+                    false, false, "", false);
+        }
+
+        /**
+         * A duplication service: ordering it means handing over the specific item to copy, so
+         * the screen asks for a workpiece instead of adding a plain line.
+         */
+        public static Option commissioned(ResourceLocation output, String stationLabel,
+                                          ResourceLocation stationIcon, boolean available,
+                                          String blocker, int makes, List<Need> needs, String label) {
+            return new Option(output, stationLabel, stationIcon, available, blocker, makes, needs,
+                    false, false, label, true);
         }
 
         /** A job this place can be told to prefer. It makes nothing, so it counts nothing. */
         public static Option job(ResourceLocation id, String label, ResourceLocation icon) {
-            return new Option(id, "Job", icon, true, "", 0, List.of(), true, false, label);
+            return new Option(id, "Job", icon, true, "", 0, List.of(), true, false, label, false);
         }
 
         /** A set of things this place can make some of: "any cooked meat". */
         public static Option category(ResourceLocation tagId, String label, ResourceLocation icon,
                                       boolean available, String blocker) {
             return new Option(tagId, "Kind", icon, available, blocker, 1, List.of(),
-                    false, true, label);
+                    false, true, label, false);
         }
     }
 
@@ -131,6 +142,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             buf.writeBoolean(option.activity());
             buf.writeBoolean(option.tag());
             buf.writeUtf(option.label());
+            buf.writeBoolean(option.commission());
         }
         buf.writeVarInt(stations.size());
         for (Station station : stations) {
@@ -173,8 +185,9 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             boolean activity = buf.readBoolean();
             boolean tag = buf.readBoolean();
             String label = buf.readUtf();
+            boolean commission = buf.readBoolean();
             options.add(new Option(output, stationLabel, stationIcon, available, blocker,
-                    makes, List.copyOf(needs), activity, tag, label));
+                    makes, List.copyOf(needs), activity, tag, label, commission));
         }
         int stationCount = buf.readVarInt();
         List<Station> stations = new ArrayList<>(stationCount);

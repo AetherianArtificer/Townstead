@@ -64,13 +64,39 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             ResourceLocation icon = iconOf(def);
             String label = blockName(icon, def);
             if (onHand == null) onHand = StationCatalogs.stockIn(level, extent);
+            // The claiming trades' own recipe filters decide what the family means HERE: the
+            // crafting family is every recipe in the game, and an armorer's bench offers armor
+            // because the armorer's declaration says so, not because the bench could make boats.
+            // A declaration also names its stations, and that is part of the claim: the mason's
+            // craft is stonecutter-only, so a crafting table in the mason's room drives nothing.
+            List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declared =
+                    WorksiteWork.declaredTasksAt(level, site, extent, def.workTask());
+            if (!declared.isEmpty()) {
+                declared = declared.stream().filter(task -> taskDrivesDef(task, def)).toList();
+                if (declared.isEmpty()) continue;
+            }
             for (DiscoveredRecipe recipe : ProtocolRecipes.discoverFor(def)) {
+                if (!allowedByAny(declared, recipe)) continue;
                 if (!seen.add(recipe.output())) continue;
+                // A duplicating line is a service, not production: the option says so, and the
+                // screen asks for the workpiece instead of adding a plain line.
+                var produce = com.aetherianartificer.townstead.work.station.StationProtocols
+                        .produceFor(def, recipe);
+                if (produce != null && produce.copies() != null) {
+                    var plain = StationCatalogs.option(recipe, label, icon, onHand);
+                    out.add(com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload
+                            .Option.commissioned(plain.output(), plain.stationLabel(),
+                                    plain.stationIcon(), plain.available(), plain.blocker(),
+                                    plain.makes(), plain.needs(),
+                                    "Copy " + StationCatalogs.itemNameOf(produce.copies())));
+                    continue;
+                }
                 out.add(StationCatalogs.option(recipe, label, icon, onHand));
             }
             // A def whose outputs come from a recipe family rather than inline lines (the smoker's
             // smoking recipes) offers that family, which is exactly what the station will do.
             for (DiscoveredRecipe recipe : ProtocolRecipes.discoverByType(level, def)) {
+                if (!allowedByAny(declared, recipe)) continue;
                 if (!seen.add(recipe.output())) continue;
                 out.add(StationCatalogs.option(recipe, label, icon, onHand));
             }
@@ -89,6 +115,13 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
         List<Station> out = new ArrayList<>();
         for (WorkstationDef def : Workstations.all()) {
             if (def.workTask() == null || !worked.contains(def.workTask())) continue;
+            // A station no claiming trade's declaration drives is not missing here — a mason's
+            // room without a crafting table lacks nothing.
+            List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declared =
+                    WorksiteWork.declaredTasksAt(level, site, extent, def.workTask());
+            if (!declared.isEmpty() && declared.stream().noneMatch(task -> taskDrivesDef(task, def))) {
+                continue;
+            }
             ResourceLocation icon = iconOf(def);
             if (NO_ICON.equals(icon)) continue;
             // Absent stations stay listed: a butchery without its grinder should read as a
@@ -96,6 +129,33 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             out.add(new Station(blockName(icon, def), icon, isPresent(def, present)));
         }
         return out;
+    }
+
+    /** Whether this declaration's workstation filter admits any block this def can be. */
+    private static boolean taskDrivesDef(
+            com.aetherianartificer.townstead.profession.def.WorkTaskDef task, WorkstationDef def) {
+        if (task.anyWorkstation()) return true;
+        for (ResourceLocation block : def.blocks()) {
+            if (task.allowsBlock(block)) return true;
+        }
+        for (ResourceLocation tagId : def.blockTags()) {
+            TagKey<Block> tag = TagKey.create(Registries.BLOCK, tagId);
+            for (var holder : BuiltInRegistries.BLOCK.getTagOrEmpty(tag)) {
+                if (task.allowsBlock(BuiltInRegistries.BLOCK.getKey(holder.value()))) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Offered when any claiming trade's declaration admits it; an empty claim list admits all. */
+    private static boolean allowedByAny(
+            List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declared,
+            DiscoveredRecipe recipe) {
+        if (declared.isEmpty()) return true;
+        for (com.aetherianartificer.townstead.profession.def.WorkTaskDef task : declared) {
+            if (task.allowsRecipe(recipe.id(), recipe.output())) return true;
+        }
+        return false;
     }
 
     /** Every distinct block standing in the extent, one representative state each. */

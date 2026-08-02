@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:book",
+    "minecraft:writable_book",
+    "minecraft:bookshelf",
+    "minecraft:chiseled_bookshelf",
+    "minecraft:lectern",
+    "minecraft:paper",
+    {"id": "#c:books", "required": false},
+    {"id": "#forge:books", "required": false}
+  ]
+}

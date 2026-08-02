@@ -33,4 +33,22 @@ public interface StationSupply {
      */
     int pullDistinct(ServerLevel level, VillagerEntityMCA villager, TagKey<Item> tag, int max,
                      BlockPos center, Set<Long> bounds);
+
+    /**
+     * Pull up to {@code count} items matching {@code matcher} into inventory, volume rather than
+     * variety — this is how a recipe's own inputs arrive. Returns how many were pulled.
+     */
+    default int pullMatching(ServerLevel level, VillagerEntityMCA villager, Predicate<ItemStack> matcher,
+                             int count, BlockPos center, Set<Long> bounds) {
+        return 0;
+    }
+
+    /**
+     * Put a finished product onto the worksite's own shelves. Returns how many of the stack were
+     * stored; the caller keeps whatever did not fit.
+     */
+    default int storeOutput(ServerLevel level, VillagerEntityMCA villager, ItemStack stack,
+                            BlockPos center, Set<Long> bounds) {
+        return 0;
+    }
 }

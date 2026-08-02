@@ -55,7 +55,8 @@ public final class StationProtocols {
     public static boolean isProtocolType(@Nullable StationType type) {
         return type == StationType.PASSIVE_STATION
                 || type == StationType.PLACE_SURFACE
-                || type == StationType.FURNACE_STATION;
+                || type == StationType.FURNACE_STATION
+                || type == StationType.CRAFT_SURFACE;
     }
 
     /**
@@ -129,6 +130,9 @@ public final class StationProtocols {
         WorkstationDef def = defAt(level, anchor);
         Adapter adapter = resolveAdapter(level, def);
         if (def == null || adapter == null) return true;
+        // A craft surface has no state to poll: the recipe's declared time IS the work, and the
+        // caller gates on that clock before asking. Once asked, the craft is done.
+        if (def.role() == StationType.CRAFT_SURFACE) return true;
         return phase(level, anchor, def, adapter, recipe) == StationPhase.READY;
     }
 
@@ -340,6 +344,7 @@ public final class StationProtocols {
     public static void bootstrap() {
         StationAdapters.register(StationAdapters.DEFAULT_ITEM_HANDLER, new ItemHandlerAdapter());
         FurnaceStationAdapter.bootstrap();
+        CraftSurfaceAdapter.bootstrap();
     }
 
     /** Insert-wait-collect through a plain item capability. */

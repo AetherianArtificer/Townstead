@@ -37,28 +37,50 @@ public final class WorksiteWork {
 
     /** The work-task types the trades claiming this place declare. Empty means nobody works here. */
     public static Set<ResourceLocation> typesAt(ServerLevel level, Worksite site, Set<Long> extent) {
-        String buildingType = buildingTypeOf(level, site);
-        Set<ResourceLocation> blocks = blocksIn(level, extent);
-
-        // A trade that names this building TYPE owns the place, and owners outrank visitors:
-        // a cafe holds a skillet, the skillet is the cook's job block, and without this rule
-        // the cook's whole menu landed on the barista's sheet. Job-block claims only speak
-        // where no trade owns the type — a lone smoker in an unclassified room is still a
-        // butcher's corner.
         Set<ResourceLocation> types = new HashSet<>();
-        boolean owned = false;
-        for (ProfessionDef def : ProfessionDefs.all().values()) {
-            if (!claimsByType(def, buildingType)) continue;
-            owned = true;
-            for (WorkTaskDef task : def.workTasks()) types.add(task.type());
-        }
-        if (owned) return types;
-
-        for (ProfessionDef def : ProfessionDefs.all().values()) {
-            if (!claimsByBlock(def, blocks)) continue;
+        for (ProfessionDef def : claimants(level, site, extent)) {
             for (WorkTaskDef task : def.workTasks()) types.add(task.type());
         }
         return types;
+    }
+
+    /**
+     * The claiming trades' declarations of one task type, filters and all. This is how the
+     * catalogue narrows a recipe family to what the trades here may actually make: the crafting
+     * family is every recipe in the game, and "what an armorer's bench offers" is the armorer's
+     * own {@code recipes} filter, not the family's.
+     */
+    public static java.util.List<WorkTaskDef> declaredTasksAt(
+            ServerLevel level, Worksite site, Set<Long> extent, ResourceLocation type) {
+        java.util.List<WorkTaskDef> out = new java.util.ArrayList<>();
+        for (ProfessionDef def : claimants(level, site, extent)) {
+            for (WorkTaskDef task : def.workTasks()) {
+                if (task.type().equals(type)) out.add(task);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The trades that claim this place. A trade that names this building TYPE owns the place,
+     * and owners outrank visitors: a cafe holds a skillet, the skillet is the cook's job block,
+     * and without this rule the cook's whole menu landed on the barista's sheet. Job-block
+     * claims only speak where no trade owns the type — a lone smoker in an unclassified room
+     * is still a butcher's corner.
+     */
+    private static java.util.List<ProfessionDef> claimants(ServerLevel level, Worksite site, Set<Long> extent) {
+        String buildingType = buildingTypeOf(level, site);
+        java.util.List<ProfessionDef> owners = new java.util.ArrayList<>();
+        for (ProfessionDef def : ProfessionDefs.all().values()) {
+            if (claimsByType(def, buildingType)) owners.add(def);
+        }
+        if (!owners.isEmpty()) return owners;
+
+        Set<ResourceLocation> blocks = blocksIn(level, extent);
+        for (ProfessionDef def : ProfessionDefs.all().values()) {
+            if (claimsByBlock(def, blocks)) owners.add(def);
+        }
+        return owners;
     }
 
     /** Whether a profession names this building type as its own kind of place. */

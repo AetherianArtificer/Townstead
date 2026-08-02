@@ -95,7 +95,8 @@ public final class ProfessionCapacity {
         return Optional.empty();
     }
 
-    private static List<Building> countedBuildings(Village village, ProfessionDef def) {
+    /** The village's buildings whose type this def claims by prefix, in MCA iteration order. */
+    public static List<Building> countedBuildings(Village village, ProfessionDef def) {
         List<String> prefixes = new ArrayList<>();
         for (JobSiteProvider provider : def.jobSites()) {
             if (provider instanceof JobSiteProvider.Building building) {

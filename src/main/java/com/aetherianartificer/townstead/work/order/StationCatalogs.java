@@ -146,11 +146,21 @@ public final class StationCatalogs {
     private static List<Need> needsOf(DiscoveredRecipe recipe) {
         Map<ResourceLocation, Integer> counts = new java.util.LinkedHashMap<>();
         for (RecipeIngredient input : recipe.inputs()) {
+            ResourceLocation chosen = null;
             for (ResourceLocation id : input.itemIds()) {
                 if (!BuiltInRegistries.ITEM.containsKey(id)) continue;
-                counts.merge(id, Math.max(1, input.count()), Integer::sum);
+                chosen = id;
                 break;
             }
+            // A group with no item behind it can still be a real need: a supply line (furnace
+            // fuel) is fetched off the shelves like anything else, so hiding it read one thing
+            // short of what the work takes. The line id rides the packet; the screen owns how
+            // a line is drawn.
+            if (chosen == null && com.aetherianartificer.townstead.supply.SupplyLines
+                    .isLineId(input.primaryId())) {
+                chosen = input.primaryId();
+            }
+            if (chosen != null) counts.merge(chosen, Math.max(1, input.count()), Integer::sum);
         }
         // The vessel the result leaves in is fetched off the shelves like anything else, so a
         // stew that never mentioned bowls was reading one thing short of what it takes.
@@ -167,6 +177,11 @@ public final class StationCatalogs {
         return BuiltInRegistries.ITEM.containsKey(id)
                 ? new ItemStack(BuiltInRegistries.ITEM.get(id)).getHoverName().getString()
                 : id.getPath().replace('_', ' ');
+    }
+
+    /** An item's display name for catalogue labels ("Copy Filled Map"). */
+    public static String itemNameOf(ResourceLocation id) {
+        return itemName(id);
     }
 
     private static final ResourceLocation NO_ICON = BuiltInRegistries.ITEM.getKey(Items.AIR);
@@ -193,6 +208,7 @@ public final class StationCatalogs {
             case PASSIVE_STATION -> "Station";
             case PLACE_SURFACE -> "Surface";
             case FURNACE_STATION -> "Furnace";
+            case CRAFT_SURFACE -> "Workbench";
         };
     }
 }

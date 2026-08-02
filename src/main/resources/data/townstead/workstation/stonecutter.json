@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:workstation/v1",
+  "type": "craft_surface",
+  "work_task": "townstead_work:craft",
+  "blocks": ["minecraft:stonecutter"],
+  "recipe_type": "minecraft:stonecutting",
+  "cook_time": 40
+}

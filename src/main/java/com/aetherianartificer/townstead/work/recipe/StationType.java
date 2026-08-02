@@ -10,5 +10,11 @@ public enum StationType {
     FIRE_STATION,
     PASSIVE_STATION,
     PLACE_SURFACE,
-    FURNACE_STATION
+    FURNACE_STATION,
+    /**
+     * A block that is only a place to work: it holds nothing and processes nothing. The crafter
+     * carries the inputs, works at the surface for the recipe's time, and the exchange of real
+     * inputs for real output happens in their hands — a crafting table, a stonecutter.
+     */
+    CRAFT_SURFACE
 }

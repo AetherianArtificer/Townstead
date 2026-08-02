@@ -44,6 +44,13 @@ public record OrderEditC2SPayload(long worksiteId, Action action, int index, int
         /** {@code value} is the new worksite name. */
         RENAME,
         /**
+         * A commission: {@code value} names the output, {@code index} the player inventory slot
+         * whose REAL stack the server escrows as the workpiece, {@code amount} the copy count.
+         * Only a slot number crosses the wire — the item itself never does, so it cannot be
+         * forged.
+         */
+        COMMISSION,
+        /**
          * The screen closed, so stop pushing snapshots at it.
          *
          * <p>Rides this payload rather than getting its own because every edit already carries the

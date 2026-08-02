@@ -112,6 +112,14 @@ public final class Order {
     private int produced;
 
     /**
+     * A commission's escrowed workpiece — the actual stack the player handed over, held by the
+     * line until a worker collects it. Serialized NBT rather than a live stack so this class
+     * stays registry-free for the order arithmetic tests; the name rides beside it for display.
+     */
+    @Nullable private net.minecraft.nbt.CompoundTag workpiece;
+    private String workpieceName = "";
+
+    /**
      * Workers who have committed to this line and not yet stored the result. Without it two cooks
      * both read "8 of 10" and both make two.
      */
@@ -186,6 +194,22 @@ public final class Order {
     @Nullable public UUID villager() { return villager; }
 
     public void setVillager(@Nullable UUID value) { this.villager = value; }
+
+    @Nullable public net.minecraft.nbt.CompoundTag workpiece() { return workpiece; }
+
+    public String workpieceName() { return workpieceName; }
+
+    public void setWorkpiece(@Nullable net.minecraft.nbt.CompoundTag tag, @Nullable String name) {
+        this.workpiece = tag;
+        this.workpieceName = name == null ? "" : name;
+    }
+
+    /** Hands the escrowed workpiece to a worker; the name stays for the line's display. */
+    @Nullable public net.minecraft.nbt.CompoundTag takeWorkpiece() {
+        net.minecraft.nbt.CompoundTag taken = workpiece;
+        workpiece = null;
+        return taken;
+    }
 
     public int produced() { return produced; }
 

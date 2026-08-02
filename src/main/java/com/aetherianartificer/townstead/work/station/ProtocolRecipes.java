@@ -38,7 +38,8 @@ public final class ProtocolRecipes {
 
     /** One def's produce lines, expanded; empty for defs of other roles or with none declared. */
     public static List<DiscoveredRecipe> discoverFor(WorkstationDef def) {
-        if (def.role() != StationType.PASSIVE_STATION && def.role() != StationType.PLACE_SURFACE) {
+        if (def.role() != StationType.PASSIVE_STATION && def.role() != StationType.PLACE_SURFACE
+                && def.role() != StationType.CRAFT_SURFACE) {
             return List.of();
         }
         List<DiscoveredRecipe> out = new ArrayList<>();
@@ -101,7 +102,11 @@ public final class ProtocolRecipes {
      */
     public static List<DiscoveredRecipe> discoverByType(ServerLevel level, WorkstationDef def) {
         if (def.recipeType() == null) return List.of();
+        long gameTime = level.getGameTime();
+        ByTypeCacheEntry cached = BY_TYPE_CACHE.get(def.id());
+        if (cached != null && gameTime < cached.expiresAt()) return cached.recipes();
         List<DiscoveredRecipe> out = new ArrayList<>();
+        List<ItemStack> probes = null;
         //? if >=1.21 {
         for (net.minecraft.world.item.crafting.RecipeHolder<?> holder
                 : level.getRecipeManager().getRecipes()) {
@@ -114,16 +119,47 @@ public final class ProtocolRecipes {
         *///?}
             ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
             if (!def.recipeType().equals(typeId)) continue;
+            // Trim recipes compose their result from base and template at craft time; there is
+            // no honest static line for "any armor, any pattern".
+            if (recipe instanceof net.minecraft.world.item.crafting.SmithingTrimRecipe) continue;
             ItemStack result = recipe.getResultItem(level.registryAccess());
             if (result.isEmpty()) continue;
-            List<RecipeIngredient> inputs = new ArrayList<>();
-            for (net.minecraft.world.item.crafting.Ingredient ingredient : recipe.getIngredients()) {
-                Set<ResourceLocation> ids = new LinkedHashSet<>();
-                for (ItemStack option : ingredient.getItems()) {
-                    if (option.isEmpty()) continue;
-                    ids.add(BuiltInRegistries.ITEM.getKey(option.getItem()));
+            List<RecipeIngredient> inputs;
+            if (recipe instanceof net.minecraft.world.item.crafting.SmithingRecipe smithing) {
+                // Smithing recipes do not enumerate ingredients through getIngredients(), but
+                // they answer membership questions. Probing the registry through those public
+                // tests rebuilds the exact template/base/addition sets without reflection —
+                // which is what keeps this correct across both ports' mappings.
+                if (probes == null) probes = buildProbes();
+                inputs = probeSmithing(smithing, probes);
+            } else {
+                inputs = new ArrayList<>();
+                for (net.minecraft.world.item.crafting.Ingredient ingredient : recipe.getIngredients()) {
+                    Set<ResourceLocation> ids = new LinkedHashSet<>();
+                    for (ItemStack option : ingredient.getItems()) {
+                        if (option.isEmpty()) continue;
+                        ids.add(BuiltInRegistries.ITEM.getKey(option.getItem()));
+                    }
+                    if (!ids.isEmpty()) inputs.add(new RecipeIngredient(List.copyOf(ids), 1));
                 }
-                if (!ids.isEmpty()) inputs.add(new RecipeIngredient(List.copyOf(ids), 1));
+                // Single-input recipes (stonecutting) may also decline to enumerate; their own
+                // matches() answers instead. Self-selecting: never runs when getIngredients works.
+                if (inputs.isEmpty()
+                        && recipe instanceof net.minecraft.world.item.crafting.SingleItemRecipe single) {
+                    if (probes == null) probes = buildProbes();
+                    inputs = probeSingleItem(level, single, probes);
+                }
+            }
+            // A recipe whose ingredients cannot be resolved must yield nothing rather than a
+            // zero-input line — a recipe that costs nothing is an item printer.
+            if (inputs.isEmpty()) continue;
+            // A furnace burns something to run. Expressed as an ordinary ingredient on the
+            // supply-line id so planning, staging and the needs list all account for fuel
+            // without knowing what fuel is. Only furnaces: a passive block with a recipe
+            // family processes on its own and must not be handed an input it cannot take.
+            if (def.role() == StationType.FURNACE_STATION) {
+                inputs.add(new RecipeIngredient(List.of(
+                        com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL), 1));
             }
             out.add(new DiscoveredRecipe(
                     recipeId,
@@ -141,6 +177,76 @@ public final class ProtocolRecipes {
                     null
             ));
         }
+        List<DiscoveredRecipe> frozen = List.copyOf(out);
+        BY_TYPE_CACHE.put(def.id(), new ByTypeCacheEntry(frozen, gameTime + BY_TYPE_CACHE_TICKS));
+        return frozen;
+    }
+
+    // The crafting family alone is thousands of recipes, and both the catalogue and the station
+    // engine ask for the same expansion. Recipe managers change only on datapack reload, so a
+    // short TTL keeps the walk rare, and the workstation loader clears it on every reload.
+    private static final long BY_TYPE_CACHE_TICKS = 600L;
+    private record ByTypeCacheEntry(List<DiscoveredRecipe> recipes, long expiresAt) {}
+    private static final java.util.concurrent.ConcurrentHashMap<ResourceLocation, ByTypeCacheEntry>
+            BY_TYPE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Datapack reload changed the recipe manager; every cached expansion is stale. */
+    public static void invalidate() {
+        BY_TYPE_CACHE.clear();
+    }
+
+    /** One probe stack per registered item, built once per discovery pass and reused. */
+    private static List<ItemStack> buildProbes() {
+        List<ItemStack> out = new ArrayList<>();
+        for (net.minecraft.world.item.Item item : BuiltInRegistries.ITEM) {
+            if (item == net.minecraft.world.item.Items.AIR) continue;
+            out.add(item.getDefaultInstance());
+        }
+        return out;
+    }
+
+    /** A single-input recipe's ingredient set, rebuilt through its own matches(). */
+    private static List<RecipeIngredient> probeSingleItem(
+            ServerLevel level, net.minecraft.world.item.crafting.SingleItemRecipe recipe,
+            List<ItemStack> probes) {
+        List<ResourceLocation> ids = new ArrayList<>();
+        for (ItemStack probe : probes) {
+            //? if >=1.21 {
+            boolean matches = recipe.matches(
+                    new net.minecraft.world.item.crafting.SingleRecipeInput(probe), level);
+            //?} else {
+            /*net.minecraft.world.SimpleContainer holder = new net.minecraft.world.SimpleContainer(1);
+            holder.setItem(0, probe);
+            boolean matches = recipe.matches(holder, level);
+            *///?}
+            if (matches) ids.add(BuiltInRegistries.ITEM.getKey(probe.getItem()));
+        }
+        return ids.isEmpty() ? List.of() : List.of(new RecipeIngredient(List.copyOf(ids), 1));
+    }
+
+    /** The template/base/addition sets, rebuilt through the recipe's own membership tests. */
+    private static List<RecipeIngredient> probeSmithing(
+            net.minecraft.world.item.crafting.SmithingRecipe smithing, List<ItemStack> probes) {
+        List<ResourceLocation> template = new ArrayList<>();
+        List<ResourceLocation> base = new ArrayList<>();
+        List<ResourceLocation> addition = new ArrayList<>();
+        for (ItemStack probe : probes) {
+            if (smithing.isTemplateIngredient(probe)) {
+                template.add(BuiltInRegistries.ITEM.getKey(probe.getItem()));
+            }
+            if (smithing.isBaseIngredient(probe)) {
+                base.add(BuiltInRegistries.ITEM.getKey(probe.getItem()));
+            }
+            if (smithing.isAdditionIngredient(probe)) {
+                addition.add(BuiltInRegistries.ITEM.getKey(probe.getItem()));
+            }
+        }
+        List<RecipeIngredient> out = new ArrayList<>(3);
+        if (!template.isEmpty()) out.add(new RecipeIngredient(List.copyOf(template), 1));
+        if (!base.isEmpty()) out.add(new RecipeIngredient(List.copyOf(base), 1));
+        if (!addition.isEmpty()) out.add(new RecipeIngredient(List.copyOf(addition), 1));
+        // A recipe that answered no to everything stays empty, and the caller's zero-input
+        // guard drops it.
         return out;
     }
 }

@@ -329,6 +329,10 @@ public final class ModRecipeRegistry {
             // the two discovery paths self-select: generic discovery reads an empty item result
             // for a fluid recipe and drops it, while the fluid reader finds no fluid fields on an
             // item recipe. Running both means one jar's model works without knowing which it is.
+            // Craft surfaces belong to the station engine; feeding their family (all of
+            // minecraft:crafting) into the cook's registry would offer the kitchen every
+            // recipe in the game at a station the cook cannot operate.
+            if (def.role() == StationType.CRAFT_SURFACE) continue;
             ResourceLocation typeId = def.recipeType();
             if (typeId == null || !seenTypes.add(typeId)) continue;
             //? if >=1.21 {
@@ -566,7 +570,7 @@ public final class ModRecipeRegistry {
         int base = switch (stationType) {
             // A smelted steak is the plainest cooking there is, same as one on a campfire.
             case FIRE_STATION, FURNACE_STATION -> 1;
-            case CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE -> 2;
+            case CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE, CRAFT_SURFACE -> 2;
             case HOT_STATION -> 3;
         };
         int complexity = Math.max(0, (ingredientCount - 1) / 2);

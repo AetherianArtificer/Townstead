@@ -90,7 +90,8 @@ final class KitchenStationIndex {
     private static int stationCapacity(ServerLevel level, BlockPos pos, StationType type) {
         return switch (type) {
             case FIRE_STATION -> StationHandler.surfaceFreeSlotCount(level, pos);
-            case HOT_STATION, CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE, FURNACE_STATION -> 1;
+            case HOT_STATION, CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE, FURNACE_STATION,
+                    CRAFT_SURFACE -> 1;
         };
     }
 

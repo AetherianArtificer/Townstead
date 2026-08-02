@@ -36,11 +36,11 @@ class CookRecipeGateTest {
                 id("townstead_work:cook"),
                 new WorkTaskDef.TargetSet(
                         stations.stream().map(CookRecipeGateTest::id).collect(java.util.stream.Collectors.toSet()),
-                        List.of(), false),
+                        List.of(), false, java.util.Set.of()),
                 WorkTaskDef.TargetSet.EMPTY,
                 new WorkTaskDef.TargetSet(
                         recipes.stream().map(CookRecipeGateTest::id).collect(java.util.stream.Collectors.toSet()),
-                        List.of(), false),
+                        List.of(), false, java.util.Set.of()),
                 WorkTaskDef.TargetSet.EMPTY,
                 1,
                 WorkTaskDef.Scope.WORKSITE,

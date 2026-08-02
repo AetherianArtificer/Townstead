@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Mason"
+  },
+  "icon": "minecraft:stonecutter",
+  "description": {
+    "text": "Cut stone and fire brick to build a history of masonry mastery."
+  },
+  "unlock_model": "experiential",
+  "poi": [
+    {
+      "type": "townstead:job_block",
+      "block": "minecraft:stonecutter"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "mason"
+    }
+  ],
+  "work_tasks": [
+    {
+      "type": "townstead_work:craft",
+      "workstations": [
+        "minecraft:stonecutter"
+      ],
+      "recipes": [
+        "block"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:smelt",
+      "workstations": [
+        "#townstead:furnace_stations"
+      ],
+      "recipes": [
+        "block",
+        "minecraft:brick",
+        "minecraft:nether_brick",
+        "minecraft:quartz"
+      ],
+      "weight": 8
+    }
+  ]
+}

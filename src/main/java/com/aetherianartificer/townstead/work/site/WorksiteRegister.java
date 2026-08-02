@@ -310,6 +310,10 @@ public class WorksiteRegister extends SavedData {
             row.putBoolean(KEY_ORDER_PAUSED, order.paused());
             row.putInt(KEY_ORDER_MIN_RANK, order.minRank());
             row.putInt(KEY_ORDER_PRODUCED, order.produced());
+            if (order.workpiece() != null) {
+                row.put("workpiece", order.workpiece());
+                row.putString("workpieceName", order.workpieceName());
+            }
             if (order.profession() != null) row.putString(KEY_ORDER_PROFESSION, order.profession().toString());
             if (order.villager() != null) row.putUUID(KEY_ORDER_VILLAGER, order.villager());
             // inProgress is deliberately NOT written: it means "a worker is mid-job right now", and
@@ -349,6 +353,9 @@ public class WorksiteRegister extends SavedData {
                 order.setProfession(parseRl(row.getString(KEY_ORDER_PROFESSION)));
             }
             if (row.hasUUID(KEY_ORDER_VILLAGER)) order.setVillager(row.getUUID(KEY_ORDER_VILLAGER));
+            if (row.contains("workpiece")) {
+                order.setWorkpiece(row.getCompound("workpiece"), row.getString("workpieceName"));
+            }
             site.orders().add(order);
         }
     }

@@ -36,4 +36,23 @@ public final class CookStationSupply implements StationSupply {
                             BlockPos center, Set<Long> bounds) {
         return IngredientResolver.pullDistinctTagItems(level, villager, tag, max, center, bounds);
     }
+
+    @Override
+    public int pullMatching(ServerLevel level, VillagerEntityMCA villager, Predicate<ItemStack> matcher,
+                            int count, BlockPos center, Set<Long> bounds) {
+        int pulled = 0;
+        while (pulled < count
+                && IngredientResolver.pullToolMatching(level, villager, matcher, center, bounds)) {
+            pulled++;
+        }
+        return pulled;
+    }
+
+    @Override
+    public int storeOutput(ServerLevel level, VillagerEntityMCA villager, ItemStack stack,
+                           BlockPos center, Set<Long> bounds) {
+        // A copy, because the resolver shrinks what it is given and the seam's contract is
+        // "tell me how many fit" — the caller shrinks its own stack by the answer.
+        return IngredientResolver.storeOutputInCookStorage(level, villager, stack.copy(), center, bounds);
+    }
 }

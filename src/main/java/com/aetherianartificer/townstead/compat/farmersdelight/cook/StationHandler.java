@@ -241,7 +241,8 @@ public final class StationHandler {
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         int capacity = switch (type) {
             case FIRE_STATION -> surfaceDiscoveryCapacity(level, pos);
-            case HOT_STATION, CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE, FURNACE_STATION -> 1;
+            case HOT_STATION, CUTTING_BOARD, PASSIVE_STATION, PLACE_SURFACE, FURNACE_STATION,
+                    CRAFT_SURFACE -> 1;
         };
         if (capacity <= 0) return;
         found.put(key, new Stations.StationSlot(pos.immutable(), type, blockId, capacity));

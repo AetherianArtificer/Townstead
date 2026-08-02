@@ -99,9 +99,15 @@ public record WorkstationDef(
      * {@code #tags}), optionally garnish with up to {@code extrasMax} DISTINCT items from
      * {@code extrasTag} (never required — a plainer product still ships), wait {@code
      * timeTicks}, yield {@code output}.
+     *
+     * <p>{@code copies} names an input whose consumed stack the output is a
+     * component-preserving copy of — a duplicated map is THAT map, a copied book THAT book.
+     * Minting by output id would hand back a blank one, which is the components trap on the
+     * production side.</p>
      */
     public record Produce(List<String> inputs, @Nullable ResourceLocation extrasTag, int extrasMax,
-                          ResourceLocation output, int outputCount, int timeTicks) {}
+                          ResourceLocation output, int outputCount, int timeTicks,
+                          @Nullable ResourceLocation copies) {}
 
     public WorkstationDef(ResourceLocation id, Set<ResourceLocation> blocks, List<ResourceLocation> blockTags,
                           StationType role, int containerSlot, int ingredientSlots,
@@ -121,6 +127,7 @@ public record WorkstationDef(
             case "passive_station" -> StationType.PASSIVE_STATION;
             case "place_surface" -> StationType.PLACE_SURFACE;
             case "furnace_station" -> StationType.FURNACE_STATION;
+            case "craft_surface" -> StationType.CRAFT_SURFACE;
             default -> null;
         };
         if (role == null) return null;
@@ -204,11 +211,17 @@ public record WorkstationDef(
                     extrasTag = ResourceLocation.tryParse(raw.startsWith("#") ? raw.substring(1) : raw);
                     if (extrasTag == null) return null;
                 }
+                ResourceLocation copies = null;
+                if (p.has("copies")) {
+                    copies = ResourceLocation.tryParse(GsonHelper.getAsString(p, "copies", ""));
+                    if (copies == null) return null;
+                }
                 produces.add(new Produce(List.copyOf(inputs), extrasTag,
                         GsonHelper.getAsInt(p, "extras_max", 0),
                         output,
                         GsonHelper.getAsInt(p, "count", 1),
-                        GsonHelper.getAsInt(p, "time", 200)));
+                        GsonHelper.getAsInt(p, "time", 200),
+                        copies));
             }
         }
         // A protocol station has to say what comes out of it, one way or the other: either inline
@@ -219,8 +232,10 @@ public record WorkstationDef(
         if (fluidSource != null && fluidSource.isBlank()) return null;
         boolean fluidStation = GsonHelper.getAsBoolean(obj, "fluid_station", false) || fluidSource != null;
         boolean statesItsOutput = !produces.isEmpty()
-                || (role == StationType.PASSIVE_STATION && (recipeType != null || fluidStation));
-        if ((role == StationType.PASSIVE_STATION || role == StationType.PLACE_SURFACE) && !statesItsOutput) {
+                || ((role == StationType.PASSIVE_STATION || role == StationType.CRAFT_SURFACE)
+                        && (recipeType != null || fluidStation));
+        if ((role == StationType.PASSIVE_STATION || role == StationType.PLACE_SURFACE
+                || role == StationType.CRAFT_SURFACE) && !statesItsOutput) {
             return null;
         }
 

@@ -33,4 +33,16 @@ public final class StationSupplies {
         StationSupply current = supply;
         return current == null ? 0 : current.pullDistinct(level, villager, tag, max, center, bounds);
     }
+
+    public static int pullMatching(ServerLevel level, VillagerEntityMCA villager,
+                                   Predicate<ItemStack> matcher, int count, BlockPos center, Set<Long> bounds) {
+        StationSupply current = supply;
+        return current == null ? 0 : current.pullMatching(level, villager, matcher, count, center, bounds);
+    }
+
+    public static int storeOutput(ServerLevel level, VillagerEntityMCA villager, ItemStack stack,
+                                  BlockPos center, Set<Long> bounds) {
+        StationSupply current = supply;
+        return current == null ? 0 : current.storeOutput(level, villager, stack, center, bounds);
+    }
 }

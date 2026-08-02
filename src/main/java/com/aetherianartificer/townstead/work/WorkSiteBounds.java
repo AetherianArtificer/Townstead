@@ -22,6 +22,7 @@ import java.util.Set;
 public final class WorkSiteBounds {
 
     private static final int MAX_FLOOR_CELLS = 2048;
+    private static final int MAX_FRONTIER_CELLS = 4096;
     private static final int MAX_RANGE = 16;
     private static final int MAX_Y_RANGE = 5;
 
@@ -66,7 +67,14 @@ public final class WorkSiteBounds {
             }
         }
 
-        // Bounded flood over walkable floor: the actual room, discovered from the world.
+        // Bounded flood over walkable floor: the actual room, discovered from the world. Cells
+        // the flood touches but cannot stand in are the room's frontier — its walls, and more
+        // importantly its furniture: stations, chests, a furnace set into the wall. Those are
+        // exactly the blocks work discovery needs to see, and collecting them here is what lets
+        // a newly placed station count immediately, with no building rescan and no building
+        // type having to tag it. MCA's stored geometry records only each type's interest
+        // blocks, which is how an armory's new furnace stayed invisible.
+        Set<Long> frontier = new HashSet<>();
         while (!queue.isEmpty() && floor.size() < MAX_FLOOR_CELLS) {
             BlockPos current = queue.poll();
             for (Direction dir : Direction.Plane.HORIZONTAL) {
@@ -76,16 +84,26 @@ public final class WorkSiteBounds {
                             || Math.abs(next.getZ() - center.getZ()) > MAX_RANGE
                             || Math.abs(next.getY() - center.getY()) > MAX_Y_RANGE) continue;
                     if (floor.contains(next.asLong())) continue;
-                    if (!WorkPathing.isSafeStandPosition(level, next)) continue;
+                    if (!WorkPathing.isSafeStandPosition(level, next)) {
+                        // Only real blocks join the frontier; the air over a floor cell is
+                        // unstandable too, but it is not furniture.
+                        if (frontier.size() < MAX_FRONTIER_CELLS
+                                && !frontier.contains(next.asLong())
+                                && !level.getBlockState(next).isAir()) {
+                            frontier.add(next.asLong());
+                        }
+                        continue;
+                    }
                     floor.add(next.asLong());
                     queue.add(next);
                 }
             }
         }
 
-        // The work area is the walkable floor plus the furniture itself (station and storage
-        // discovery iterate these cells).
+        // The work area is the walkable floor, the frontier it touches, and the recorded
+        // furniture (station and storage discovery iterate these cells).
         Set<Long> area = new HashSet<>(floor);
+        area.addAll(frontier);
         area.addAll(tagged);
         return area;
     }
