@@ -8,31 +8,39 @@ package com.aetherianartificer.townstead.client.skin;
  * <p>Blend modes:
  * {@code 0} multiply (darken, white = identity), {@code 1} screen (lighten, black = identity),
  * {@code 2} overlay (both, mid-grey = identity), {@code 3} color (keep the base's brightness,
- * take the tint's hue+saturation — the only mode that desaturates, e.g. ashen dark-elf skin).
+ * take the tint's hue+saturation — the only mode that desaturates, e.g. ashen dark-elf skin),
+ * {@code 4} color-value (color, then the tint's own value scales the brightness — a picker-driven
+ * tint where the brightness axis must mean something; authored mode-3 tints rely on the base's
+ * brightness surviving, so this is a separate mode, not a change to 3).
  * Strength (0–1) lerps the blended result back toward the untinted base.</p>
  */
 public final class SkinBlend {
 
     private SkinBlend() {}
 
-    // ---- packing: bits 0-23 tint RGB, 24-25 mode, 26-31 strength (×63) ----
+    /** Mode 3 with the tint's value folded in; the render picks it for gene-rolled tints. */
+    public static final int MODE_COLOR_VALUE = 4;
+
+    // ---- packing: bits 0-23 tint RGB, 24-26 mode, 27-31 strength (×31) ----
 
     public static int pack(int tintRgb, int mode, float strength) {
-        int s = Math.round(Math.max(0f, Math.min(1f, strength)) * 63f);
-        return ((s & 0x3F) << 26) | ((mode & 0x3) << 24) | (tintRgb & 0xFFFFFF);
+        int s = Math.round(Math.max(0f, Math.min(1f, strength)) * 31f);
+        return ((s & 0x1F) << 27) | ((mode & 0x7) << 24) | (tintRgb & 0xFFFFFF);
     }
 
-    public static int packMode(int packed) { return (packed >>> 24) & 0x3; }
+    public static int packMode(int packed) { return (packed >>> 24) & 0x7; }
 
     public static int packTint(int packed) { return packed & 0xFFFFFF; }
 
-    public static float packStrength(int packed) { return ((packed >>> 26) & 0x3F) / 63f; }
+    public static float packStrength(int packed) { return ((packed >>> 27) & 0x1F) / 31f; }
 
     /** Apply a packed tint to a 0xRRGGBB base, returning the blended 0xRRGGBB. */
     public static int blend(int baseRgb, int packed) {
         int mode = packMode(packed);
         int tint = packTint(packed);
-        int blended = mode == 3 ? colorBlend(baseRgb, tint) : rgb(baseRgb, tint, mode);
+        int blended = mode == 3 ? colorBlend(baseRgb, tint)
+                : mode == MODE_COLOR_VALUE ? colorValueBlend(baseRgb, tint)
+                : rgb(baseRgb, tint, mode);
         return lerpRgb(baseRgb, blended, packStrength(packed));
     }
 
@@ -67,6 +75,22 @@ public final class SkinBlend {
         int r = clamp255(Math.round(((tintRgb >> 16) & 0xFF) * k));
         int g = clamp255(Math.round(((tintRgb >> 8) & 0xFF) * k));
         int b = clamp255(Math.round((tintRgb & 0xFF) * k));
+        return (r << 16) | (g << 8) | b;
+    }
+
+    /**
+     * "Color" blend with the tint's own value respected: {@link #colorBlend} pins the result to the
+     * BASE's brightness (and is scale-invariant in the tint), which makes a picker's brightness axis
+     * a no-op — and a near-black pick either explodes into a vivid colour (hue/sat survive the
+     * normalization) or, quantized, collapses to black. Here the tint's value scales the colorized
+     * result, so white ≈ mode 3, a dark pick is genuinely dark, and the ramp between is smooth.
+     */
+    public static int colorValueBlend(int baseRgb, int tintRgb) {
+        int colored = colorBlend(baseRgb, tintRgb);
+        int v = Math.max((tintRgb >> 16) & 0xFF, Math.max((tintRgb >> 8) & 0xFF, tintRgb & 0xFF));
+        int r = ((colored >> 16) & 0xFF) * v / 255;
+        int g = ((colored >> 8) & 0xFF) * v / 255;
+        int b = (colored & 0xFF) * v / 255;
         return (r << 16) | (g << 8) | b;
     }
 
