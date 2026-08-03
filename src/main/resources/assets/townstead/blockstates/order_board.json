@@ -1,8 +1,0 @@
-{
-  "variants": {
-    "facing=north": { "model": "townstead:block/order_board" },
-    "facing=east":  { "model": "townstead:block/order_board", "y": 90 },
-    "facing=south": { "model": "townstead:block/order_board", "y": 180 },
-    "facing=west":  { "model": "townstead:block/order_board", "y": 270 }
-  }
-}

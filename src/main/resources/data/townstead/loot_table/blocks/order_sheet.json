@@ -7,7 +7,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "townstead:order_board"
+          "name": "townstead:order_sheet"
         }
       ],
       "conditions": [

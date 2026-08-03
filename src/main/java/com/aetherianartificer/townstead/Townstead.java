@@ -265,16 +265,17 @@ public class Townstead {
     public static final Supplier<Item> NOTICE_BOARD_ITEM = ITEMS.register("notice_board",
             () -> new BlockItem(NOTICE_BOARD.get(), new Item.Properties()));
 
-    // ── Order Board (a worksite's production orders, any hour) ──
+    // ── Order Sheet (a worksite's production orders, any hour) ──
 
-    public static final Supplier<Block> ORDER_BOARD = BLOCKS.register("order_board",
-            () -> new com.aetherianartificer.townstead.block.OrderBoardBlock(BlockBehaviour.Properties.of()
-                    .strength(1.5f)
-                    .sound(SoundType.WOOD)
+    public static final Supplier<Block> ORDER_SHEET = BLOCKS.register("order_sheet",
+            () -> new com.aetherianartificer.townstead.block.OrderSheetBlock(BlockBehaviour.Properties.of()
+                    .strength(0.3f)
+                    .sound(SoundType.WOOL)
+                    .noCollission()
                     .noOcclusion()));
 
-    public static final Supplier<Item> ORDER_BOARD_ITEM = ITEMS.register("order_board",
-            () -> new BlockItem(ORDER_BOARD.get(), new Item.Properties()));
+    public static final Supplier<Item> ORDER_SHEET_ITEM = ITEMS.register("order_sheet",
+            () -> new BlockItem(ORDER_SHEET.get(), new Item.Properties()));
 
     private static final String[] FIELD_POST_WOOD_VARIANTS = {
             "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove",
@@ -378,7 +379,7 @@ public class Townstead {
                             .displayItems((params, output) -> {
                                 output.accept(FIELD_POST_ITEM.get());
                                 output.accept(NOTICE_BOARD_ITEM.get());
-                                output.accept(ORDER_BOARD_ITEM.get());
+                                output.accept(ORDER_SHEET_ITEM.get());
                                 for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
                                     output.accept(variant.get());
                                 }
