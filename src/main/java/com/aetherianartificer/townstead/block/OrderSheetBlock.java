@@ -39,7 +39,9 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>The sheet does not define the worksite, it only points at one: it opens whatever place covers
  * the block it rests on. Pin it to a kitchen wall and it opens that kitchen, lay it on a counter
- * beside a smoker in a yard and it opens the smoker's post.</p>
+ * beside a smoker in a yard and it opens the smoker's post. Inside the village Archives the same
+ * sheet is the career desk instead: it opens the career screen, and it is the block the Archives
+ * is detected by.</p>
  */
 public class OrderSheetBlock extends Block {
 
@@ -132,6 +134,12 @@ public class OrderSheetBlock extends Block {
             return InteractionResult.SUCCESS;
         }
         if (player instanceof ServerPlayer serverPlayer && level instanceof ServerLevel serverLevel) {
+            // In the Archives the sheet is the career desk; everywhere else it is the order list.
+            if (com.aetherianartificer.townstead.village.ArchivesBuilding
+                    .villageIfInside(serverPlayer, pos).isPresent()) {
+                com.aetherianartificer.townstead.profession.career.CareerTreeOpener.send(serverPlayer);
+                return InteractionResult.CONSUME;
+            }
             // Posting a sheet is a deliberate act, so it may mint the worksite it names rather
             // than waiting for a villager to work there first.
             Worksite site = OrdersOpener.siteAt(serverLevel, pos, true);

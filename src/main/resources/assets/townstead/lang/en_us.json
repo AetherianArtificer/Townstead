@@ -1211,7 +1211,6 @@
   "townstead.career.screen.equip": "Equip",
   "townstead.career.screen.take_up": "Take up this work",
   "townstead.career.screen.resume_work": "Return to this work",
-  "block.townstead.notice_board": "Notice Board",
   "block.townstead.order_sheet": "Order Sheet",
   "townstead.orders.filter.makeable": "Show only what can be made from what is stored here",
   "townstead.orders.sheet.no_worksite": "No worksite here. Pin the sheet up inside a recognised building, or beside a workstation.",

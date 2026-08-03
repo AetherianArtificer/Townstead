@@ -1,8 +1,0 @@
-{
-  "variants": {
-    "facing=north": { "model": "townstead:block/notice_board" },
-    "facing=east":  { "model": "townstead:block/notice_board", "y": 90 },
-    "facing=south": { "model": "townstead:block/notice_board", "y": 180 },
-    "facing=west":  { "model": "townstead:block/notice_board", "y": 270 }
-  }
-}

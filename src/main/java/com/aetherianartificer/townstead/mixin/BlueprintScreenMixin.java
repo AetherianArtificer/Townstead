@@ -632,7 +632,8 @@ public abstract class BlueprintScreenMixin extends Screen {
             context.drawString(this.font, Component.literal(qtyText), qtyX, textY, 0xE3D18A);
             int nameX = qtyX + 18;
             int maxNameWidth = Math.max(8, (int) Math.floor((detailsRight - 8) / 0.72f) - nameX);
-            context.drawString(this.font, Component.literal(townstead$truncateToWidth(row.name(), maxNameWidth)), nameX,
+            String rowName = townstead$requirementRowName(row, ingredientIcon);
+            context.drawString(this.font, Component.literal(townstead$truncateToWidth(rowName, maxNameWidth)), nameX,
                     textY, 0x9AD0FF);
             context.pose().popPose();
 
@@ -1528,6 +1529,19 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private String townstead$displayRequirementName(ResourceLocation id) {
         return com.aetherianartificer.townstead.client.catalog.RequirementNameResolver.displayName(id);
+    }
+
+    /**
+     * Tag requirements cycle their icon through the tag's members; the label follows the
+     * member currently shown, and the collective tag name stays on the hover tooltip.
+     */
+    @Unique
+    private String townstead$requirementRowName(RequirementRow row, ItemStack shown) {
+        if (shown.isEmpty()) return row.name();
+        if (BuiltInRegistries.BLOCK.containsKey(row.id()) || BuiltInRegistries.ITEM.containsKey(row.id())) {
+            return row.name();
+        }
+        return shown.getHoverName().getString();
     }
 
     @Unique

@@ -256,16 +256,7 @@ public class Townstead {
     public static final Supplier<Item> FIELD_POST_ITEM = ITEMS.register("field_post",
             () -> new BlockItem(FIELD_POST.get(), new Item.Properties()));
 
-    public static final Supplier<Block> NOTICE_BOARD = BLOCKS.register("notice_board",
-            () -> new com.aetherianartificer.townstead.block.NoticeBoardBlock(BlockBehaviour.Properties.of()
-                    .strength(1.5f)
-                    .sound(SoundType.WOOD)
-                    .noOcclusion()));
-
-    public static final Supplier<Item> NOTICE_BOARD_ITEM = ITEMS.register("notice_board",
-            () -> new BlockItem(NOTICE_BOARD.get(), new Item.Properties()));
-
-    // ── Order Sheet (a worksite's production orders, any hour) ──
+    // ── Order Sheet (a worksite's production orders, any hour; careers in the Archives) ──
 
     public static final Supplier<Block> ORDER_SHEET = BLOCKS.register("order_sheet",
             () -> new com.aetherianartificer.townstead.block.OrderSheetBlock(BlockBehaviour.Properties.of()
@@ -378,7 +369,6 @@ public class Townstead {
                             .icon(() -> new net.minecraft.world.item.ItemStack(FIELD_POST_ITEM.get()))
                             .displayItems((params, output) -> {
                                 output.accept(FIELD_POST_ITEM.get());
-                                output.accept(NOTICE_BOARD_ITEM.get());
                                 output.accept(ORDER_SHEET_ITEM.get());
                                 for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
                                     output.accept(variant.get());
