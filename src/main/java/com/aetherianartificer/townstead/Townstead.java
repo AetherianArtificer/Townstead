@@ -3809,6 +3809,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.RootRegistry.effectiveLifeCycle(rootId);
 
         int[] stageDays;
+        String[] stageIds;
         String[] stageKeys;
         String[] stageFallbacks;
         float[] stageScales;
@@ -3829,6 +3830,7 @@ public class Townstead {
                 && lifeState.hasStageDays() && lifeState.stageDaysLength() == cycle.size()) {
             stageDays = lifeState.stageDays();
             int n = cycle.size();
+            stageIds = new String[n];
             stageKeys = new String[n];
             stageFallbacks = new String[n];
             stageScales = new float[n];
@@ -3836,6 +3838,7 @@ public class Townstead {
             stageNarrativeMin = new float[n];
             stageNarrativeMax = new float[n];
             for (int i = 0; i < n; i++) {
+                stageIds[i] = cycle.stageAt(i).id();
                 String[] parts = com.aetherianartificer.townstead.calendar.ComponentSync.extract(
                         cycle.stageAt(i).label(), locale);
                 stageKeys[i] = parts[0];
@@ -3874,6 +3877,7 @@ public class Townstead {
             }
         } else {
             stageDays = new int[0];
+            stageIds = new String[0];
             stageKeys = new String[0];
             stageFallbacks = new String[0];
             stageScales = new float[0];
@@ -3908,7 +3912,7 @@ public class Townstead {
                 month[0], month[1], ageYears, stamped,
                 isSenior, seniorPermil,
                 bioAgeDays, immortal, ageless, currentStageIndex,
-                stageDays, stageKeys, stageFallbacks, narrativeAge, stageScales, stageModelAges,
+                stageDays, stageIds, stageKeys, stageFallbacks, narrativeAge, stageScales, stageModelAges,
                 stageNarrativeMin, stageNarrativeMax, narrativeRate, seniorStageIndex,
                 personalityName, personalityDesc,
                 personalityPoolRefs, personalityPoolNames

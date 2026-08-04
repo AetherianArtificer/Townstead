@@ -36,6 +36,7 @@ public record VillagerLifeSyncPayload(
         boolean ageless,
         int currentStageIndex,
         int[] stageDays,
+        String[] stageIds,
         String[] stageLabelKeys,
         String[] stageLabelFallbacks,
         float narrativeAge,
@@ -78,7 +79,7 @@ public record VillagerLifeSyncPayload(
     public VillagerLifeSyncPayload withEntityId(int newEntityId) {
         return new VillagerLifeSyncPayload(newEntityId, birthYear, birthMonthIndex, birthDayOfMonth,
                 birthMonthKey, birthMonthFallback, ageYears, stamped, isSenior, seniorProgressPermil,
-                bioAgeDays, immortal, ageless, currentStageIndex, stageDays, stageLabelKeys, stageLabelFallbacks,
+                bioAgeDays, immortal, ageless, currentStageIndex, stageDays, stageIds, stageLabelKeys, stageLabelFallbacks,
                 narrativeAge, stageScales, stageModelAges, stageNarrativeMin, stageNarrativeMax,
                 narrativeRate, seniorStageIndex, personalityName, personalityDesc,
                 personalityPoolRefs, personalityPoolNames);
@@ -108,6 +109,9 @@ public record VillagerLifeSyncPayload(
         int[] days = p.stageDays();
         buf.writeVarInt(days.length);
         for (int d : days) buf.writeVarInt(Math.max(0, d));
+        String[] ids = p.stageIds();
+        buf.writeVarInt(ids.length);
+        for (String id : ids) buf.writeUtf(id == null ? "" : id);
         String[] keys = p.stageLabelKeys();
         String[] fallbacks = p.stageLabelFallbacks();
         buf.writeVarInt(keys.length);
@@ -159,6 +163,9 @@ public record VillagerLifeSyncPayload(
         int dayCount = buf.readVarInt();
         int[] stageDays = new int[dayCount];
         for (int i = 0; i < dayCount; i++) stageDays[i] = buf.readVarInt();
+        int idCount = buf.readVarInt();
+        String[] stageIds = new String[idCount];
+        for (int i = 0; i < idCount; i++) stageIds[i] = buf.readUtf();
         int labelCount = buf.readVarInt();
         String[] keys = new String[labelCount];
         String[] fallbacks = new String[labelCount];
@@ -195,7 +202,7 @@ public record VillagerLifeSyncPayload(
                 birthMonthKey, birthMonthFallback, ageYears, stamped,
                 isSenior, seniorProgressPermil,
                 bioAgeDays, immortal, ageless, currentStageIndex,
-                stageDays, keys, fallbacks, narrativeAge, stageScales, stageModelAges,
+                stageDays, stageIds, keys, fallbacks, narrativeAge, stageScales, stageModelAges,
                 stageNarrativeMin, stageNarrativeMax, narrativeRate, seniorStageIndex,
                 personalityName, personalityDesc,
                 personalityPoolRefs, personalityPoolNames
