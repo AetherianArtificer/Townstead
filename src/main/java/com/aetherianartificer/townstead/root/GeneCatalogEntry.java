@@ -374,7 +374,22 @@ public record GeneCatalogEntry(
     public String skinOverlayTint() {
         if (!isSkinOverlay() || targetId == null) return "";
         int semi = targetId.indexOf(';');
-        return semi < 0 ? "" : targetId.substring(semi + 1);
+        if (semi < 0) return "";
+        int next = targetId.indexOf(';', semi + 1);
+        return next < 0 ? targetId.substring(semi + 1) : targetId.substring(semi + 1, next);
+    }
+
+    /** A SKIN_OVERLAY gene's stacking order. Lower values draw first; missing/invalid is zero. */
+    public int skinOverlayOrder() {
+        if (!isSkinOverlay() || targetId == null) return 0;
+        int first = targetId.indexOf(';');
+        int second = first < 0 ? -1 : targetId.indexOf(';', first + 1);
+        if (second < 0) return 0;
+        try {
+            return Integer.parseInt(targetId.substring(second + 1).trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     /** PARTICLE emitter params, parsed from {@code targetId} {@code "particleId;count;spread;speed;yOffset"}. */

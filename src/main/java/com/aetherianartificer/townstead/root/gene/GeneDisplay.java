@@ -140,12 +140,17 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
     /**
      * A skin-overlay layer (a player-format texture drawn between MCA's skin and face
      * layers: orcish features, freckles, scars, war paint). Packs into {@code targetId}
-     * as {@code "texture;tint"} where {@code tint} is {@code ""} (untinted), a hex
+     * as {@code "texture;tint;order"} where {@code tint} is {@code ""} (untinted), a hex
      * colour, {@code skin}, or {@code hair}. A presence chip in the list.
      */
     public static GeneDisplay skinOverlay(String texture, String tint) {
+        return skinOverlay(texture, tint, 0);
+    }
+
+    public static GeneDisplay skinOverlay(String texture, String tint, int order) {
         return new GeneDisplay(Kind.SKIN_OVERLAY, 0f, 1f,
-                (texture == null ? "" : texture) + ";" + (tint == null ? "" : tint), 0f);
+                (texture == null ? "" : texture) + ";" + (tint == null ? "" : tint)
+                        + ";" + order, 0f);
     }
 
     /**
