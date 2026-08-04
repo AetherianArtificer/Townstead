@@ -1,9 +1,11 @@
 {
+  "schema": "townstead:workstation/v1",
   "mods": "farmersdelight",
   "blocks": [
     "farmersdelight:skillet"
   ],
   "type": "fire_station",
+  "adapter": "townstead:farmersdelight_skillet",
   "stands": [
     [
       1,

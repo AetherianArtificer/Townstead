@@ -1,7 +1,5 @@
 package com.aetherianartificer.townstead.profession;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
 import com.aetherianartificer.townstead.profession.def.JobSiteProvider;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
@@ -35,8 +33,7 @@ public final class ProfessionCapacity {
     private ProfessionCapacity() {}
 
     public static int capacity(ServerLevel level, Village village, ProfessionDef def) {
-        List<Building> counted = countedBuildings(village, def);
-        return buildingSlots(village, def, counted) + standalonePois(level, village, def).size();
+        return ProfessionSites.total(level, village, def);
     }
 
     private static final long POSTS_CACHE_TICKS = 100L;
@@ -46,10 +43,11 @@ public final class ProfessionCapacity {
             new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
-     * Declared {@code via} POIs in the village, in deterministic order — each is a workable
-     * post and (for the cook) a work site of its own, whether it stands in a kitchen or a
-     * courtyard. Cached per village for a few seconds: cook eligibility asks at 20Hz and the
-     * POI query is far too heavy for that.
+     * Declared {@code via} POIs standing OUTSIDE every building, in deterministic order — each
+     * is a post in its own right, the pot in the courtyard rather than the pot in the kitchen.
+     * Indoor ones are deliberately absent: a building's own entry already seats workers by tier,
+     * so counting its furniture again would put two workers on one pot. Cached per village for a
+     * few seconds; eligibility asks at 20Hz and the POI query is far too heavy for that.
      */
     public static List<BlockPos> standalonePois(ServerLevel level, Village village, ProfessionDef def) {
         PostsCacheKey key = new PostsCacheKey(
@@ -112,15 +110,6 @@ public final class ProfessionCapacity {
         return counted;
     }
 
-    private static int buildingSlots(Village village, ProfessionDef def, List<Building> counted) {
-        // Tiered slot rules live with their subsystems; generic defs get one slot per building.
-        // These branches mirror ProfessionScanner.customSlotInfo.
-        String id = def.id().toString();
-        if ("townstead:cook".equals(id)) return FarmersDelightCookAssignment.totalCookSlots(village);
-        if ("townstead:barista".equals(id)) return FarmersDelightBaristaAssignment.totalCafeSlots(village);
-        return counted.size();
-    }
-
     private static List<BlockPos> collectViaPois(ServerLevel level, Village village, ProfessionDef def) {
         List<BlockPos> posts = new ArrayList<>();
         BlockPos center = new BlockPos(village.getCenter());
@@ -139,12 +128,27 @@ public final class ProfessionCapacity {
                     PoiManager.Occupancy.ANY).toList()) {
                 BlockPos immutable = pos.immutable();
                 if (!seen.add(immutable)) continue;
+                // Filtered here rather than at the call site so the answer rides the posts
+                // cache: containment is a walk of every building, and the sites list is
+                // rebuilt on ticks where a villager is only walking to work.
+                if (insideAnyBuilding(village, immutable)) continue;
                 posts.add(immutable);
             }
         }
         posts.sort(java.util.Comparator.<BlockPos>comparingInt(BlockPos::getY)
                 .thenComparingInt(BlockPos::getZ).thenComparingInt(BlockPos::getX));
         return posts;
+    }
+
+    /**
+     * Whether this position stands inside one of the village's buildings — the one question that
+     * separates a workplace from someone's kitchen furniture.
+     */
+    static boolean insideAnyBuilding(Village village, BlockPos pos) {
+        for (Building building : McaBuildings.all(village)) {
+            if (building.containsPos(pos)) return true;
+        }
+        return false;
     }
 
     private static VillagerProfession professionById(ResourceLocation id) {

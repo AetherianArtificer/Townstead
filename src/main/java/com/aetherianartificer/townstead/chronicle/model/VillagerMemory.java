@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.chronicle.model;
 
+
 import net.minecraft.nbt.CompoundTag;
 import org.jetbrains.annotations.Nullable;
 

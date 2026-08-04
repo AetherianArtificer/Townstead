@@ -3,5 +3,7 @@
   "mods": "farm_and_charm",
   "type": "passive_station",
   "blocks": ["farm_and_charm:stove"],
-  "recipe_type": "farm_and_charm:stove"
+  "recipe_type": "farm_and_charm:stove",
+  "orderable": "all",
+  "fuel": true
 }

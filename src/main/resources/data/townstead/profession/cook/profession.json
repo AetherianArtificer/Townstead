@@ -45,6 +45,7 @@
   "mods": {
     "any": [
       "farmersdelight",
+      "farm_and_charm",
       "rusticdelight"
     ]
   },
@@ -61,7 +62,8 @@
   "poi": [
     {
       "type": "townstead:building",
-      "type_prefix": "compat/farmersdelight/kitchen_l"
+      "type_prefix": "compat/farmersdelight/kitchen_l",
+      "slots_per_tier": [1, 1, 2, 2, 3]
     },
     {
       "type": "townstead:job_block",

@@ -51,6 +51,86 @@ class WorkstationDefTest {
     }
 
     @Test
+    void passiveStationOwnsRecipesFromItsDeclaredType() {
+        WorkstationDef stove = parse("""
+                {"block": "farm_and_charm:stove", "type": "passive_station",
+                 "recipe_type": "farm_and_charm:stove", "fuel": true}""");
+        assertNotNull(stove);
+        assertTrue(StationRecipeOwnership.ownsDeclaredType(
+                stove, StationType.PASSIVE_STATION, id("farm_and_charm:stove")));
+        assertFalse(StationRecipeOwnership.ownsDeclaredType(
+                stove, StationType.PASSIVE_STATION, id("farm_and_charm:pot_cooking")));
+        assertFalse(StationRecipeOwnership.ownsDeclaredType(
+                stove, StationType.HOT_STATION, id("farm_and_charm:stove")));
+        assertTrue(StationRecipeOwnership.isFuelRequirement(
+                new com.aetherianartificer.townstead.work.recipe.RecipeIngredient(
+                        java.util.List.of(com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL), 1)),
+                "virtual fuel is handled through the fuel face, not an ingredient slot");
+    }
+
+    @Test
+    void orderableSpeaksAtTheStationAltitude() {
+        WorkstationDef def = parse("""
+                {"block": "examplemod:oven", "type": "passive_station",
+                 "recipe_type": "examplemod:baking", "orderable": "all"}""");
+        assertNotNull(def);
+        assertTrue(def.orderable().all(), "\"all\" admits the station's whole menu");
+
+        def = parse("""
+                {"block": "examplemod:grinder", "type": "passive_station",
+                 "recipe_type": "examplemod:grinding",
+                 "orderable": {"allow": ["examplemod:flour", "#c:breads"], "block": ["minecraft:diamond"]}}""");
+        assertNotNull(def);
+        assertFalse(def.orderable().all(), "an object form without a mode stays tag-gated");
+        assertEquals(java.util.List.of("examplemod:flour", "#c:breads"), def.orderable().allow());
+        assertEquals(java.util.List.of("minecraft:diamond"), def.orderable().block());
+
+        def = parse("""
+                {"block": "examplemod:oven", "type": "passive_station",
+                 "recipe_type": "examplemod:baking"}""");
+        assertNotNull(def);
+        assertEquals(WorkstationDef.Orderable.TAGGED, def.orderable(), "absent means the trade tag decides");
+
+        assertNull(parse("""
+                {"block": "examplemod:oven", "type": "passive_station",
+                 "recipe_type": "examplemod:baking", "orderable": "everything"}"""),
+                "an unrecognised mode must refuse the def, not read as satisfied");
+        assertNull(parse("""
+                {"block": "examplemod:oven", "type": "passive_station",
+                 "recipe_type": "examplemod:baking", "orderable": {"allow": ["not a valid id!"]}}"""),
+                "a malformed id in a list must refuse the def");
+    }
+
+    @Test
+    void supportBelowIsDeclaredAndOptional() {
+        WorkstationDef def = parse("""
+                {"block": "examplemod:pot", "type": "passive_station",
+                 "recipe_type": "examplemod:boiling",
+                 "support_below": ["#examplemod:heat", "minecraft:magma_block"]}""");
+        assertNotNull(def);
+        assertTrue(def.supportBelow().contains(id("minecraft:magma_block")));
+        assertTrue(def.supportBelowTags().contains(id("examplemod:heat")));
+
+        def = parse("""
+                {"block": "examplemod:pot", "type": "passive_station",
+                 "recipe_type": "examplemod:boiling", "support_below": "#examplemod:heat"}""");
+        assertNotNull(def, "a lone entry needs no array");
+        assertTrue(def.supportBelowTags().contains(id("examplemod:heat")));
+
+        def = parse("""
+                {"block": "examplemod:bench", "type": "passive_station",
+                 "recipe_type": "examplemod:carving"}""");
+        assertNotNull(def);
+        assertTrue(def.supportBelow().isEmpty() && def.supportBelowTags().isEmpty(),
+                "a station that needs nothing under it stands on its own");
+
+        assertNull(parse("""
+                {"block": "examplemod:pot", "type": "passive_station",
+                 "recipe_type": "examplemod:boiling", "support_below": []}"""),
+                "an empty requirement is a requirement nothing can satisfy, not 'no requirement'");
+    }
+
+    @Test
     void namingAFluidReaderIsItselfTheOutputDeclaration() {
         WorkstationDef def = parse("""
                 {"block": "caupona:stew_pot", "type": "passive_station",

@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.mixin.compat.farmersdelight;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.PlayerCookingHooks;
+import com.aetherianartificer.townstead.profession.career.PlayerWorkHooks;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,7 +27,7 @@ public abstract class CookingPotResultSlotMixin {
             at = @At("TAIL"), remap = false)
     private void townstead$creditMealTaken(Player player, ItemStack stack, CallbackInfo ci) {
         if (player != null && !player.level().isClientSide) {
-            PlayerCookingHooks.onDishTaken(player, stack, "cooking_pot");
+            PlayerWorkHooks.onDishTaken(player, stack, "cooking_pot");
         }
     }
 }

@@ -428,17 +428,6 @@ public class StationWorkTask extends ProducerWorkTask {
         }
     }
 
-    @Override
-    protected void awardProductionXp(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        DiscoveredRecipe recipe = recipe();
-        if (recipe == null) return;
-        ResourceLocation profession = BuiltInRegistries.VILLAGER_PROFESSION
-                .getKey(villager.getVillagerData().getProfession());
-        if (profession == null) return;
-        int xp = Math.max(1, recipe.tier());
-        CareerProgression.completeWork(villager, ProfessionDefs.canonicalId(profession), xp, gameTime,
-                "townstead:produced", recipe.output(), "item", recipe.tier());
-    }
 
     // ── Sessions / lifecycle hooks ──
 

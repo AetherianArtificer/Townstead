@@ -38,7 +38,8 @@
   "poi": [
     {
       "type": "townstead:building",
-      "type_prefix": "compat/rusticdelight/cafe_l"
+      "type_prefix": "compat/rusticdelight/cafe_l",
+      "slots_per_tier": [1, 1, 2, 2, 3]
     }
   ],
   "work_tasks": [

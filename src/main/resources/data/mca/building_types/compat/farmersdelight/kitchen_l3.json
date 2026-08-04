@@ -8,7 +8,7 @@
   "noBeds": true,
   "blocks": {
     "#townstead:compat/farmersdelight/kitchen_heat_sources": 2,
-    "farmersdelight:cooking_pot": 1,
+    "#townstead:compat/farmersdelight/kitchen_pot": 1,
     "#townstead:compat/farmersdelight/kitchen_copper": 2,
     "#townstead:compat/farmersdelight/kitchen_storage": 2,
     "#townstead:compat/farmersdelight/kitchen_prep_blocks": 1

@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "farmersdelight:skillet",
+      "required": false
+    },
+    {
+      "id": "farm_and_charm:mincer",
+      "required": false
+    }
+  ]
+}

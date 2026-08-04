@@ -31,6 +31,16 @@ public final class StationAdapters {
 
     public interface Adapter {
 
+        /** Dynamic free-job count, or a negative value when the generic capacity rules should answer. */
+        default int capacity(ServerLevel level, BlockPos anchor, WorkstationDef def) {
+            return -1;
+        }
+
+        /** Canonical cell for a multi-block station, or null when the supplied cell is canonical. */
+        default @Nullable BlockPos anchor(ServerLevel level, BlockPos pos, WorkstationDef def) {
+            return null;
+        }
+
         /** Classify the station's current contents/state. */
         StationPhase phase(ServerLevel level, BlockPos anchor, WorkstationDef def, @Nullable DiscoveredRecipe recipe);
 

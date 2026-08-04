@@ -770,7 +770,7 @@ public class Townstead {
                                 com.aetherianartificer.townstead.root.hook.PhenoHooks.breakSpeed(e.getEntity(), e.getNewSpeed())))));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.entity.player.PlayerEvent.ItemSmeltedEvent e) ->
-                com.aetherianartificer.townstead.compat.farmersdelight.PlayerCookingHooks.onSmelted(
+                com.aetherianartificer.townstead.profession.career.PlayerWorkHooks.onSmelted(
                         e.getEntity(), e.getSmelting()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerEvent.HarvestCheck e) -> {
             if (!e.canHarvest() && (com.aetherianartificer.townstead.root.harvest.ModifyHarvest.allows(
@@ -1169,7 +1169,7 @@ public class Townstead {
                                 com.aetherianartificer.townstead.root.hook.PhenoHooks.breakSpeed(e.getEntity(), e.getNewSpeed())))));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.entity.player.PlayerEvent.ItemSmeltedEvent e) ->
-                com.aetherianartificer.townstead.compat.farmersdelight.PlayerCookingHooks.onSmelted(
+                com.aetherianartificer.townstead.profession.career.PlayerWorkHooks.onSmelted(
                         e.getEntity(), e.getSmelting()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerEvent.HarvestCheck e) -> {
             if (!e.canHarvest() && (com.aetherianartificer.townstead.root.harvest.ModifyHarvest.allows(
@@ -1224,31 +1224,29 @@ public class Townstead {
             com.aetherianartificer.townstead.work.recipe.FluidCarriers.bootstrap();
             com.aetherianartificer.townstead.supply.TownsteadSupplyLines.bootstrap();
             com.aetherianartificer.townstead.work.station.StationCapacities.bootstrap();
-            com.aetherianartificer.townstead.compat.farmersdelight.cook.FarmersDelightStationCapacity.bootstrap();
-            com.aetherianartificer.townstead.compat.farmersdelight.cook.CookStationSupply.bootstrap();
-            com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightWorkHazards.bootstrap();
+            com.aetherianartificer.townstead.compat.farmersdelight.cook.FarmersDelightStationAdapters.bootstrap();
+            com.aetherianartificer.townstead.work.station.WorksiteStationSupply.bootstrap();
+            com.aetherianartificer.townstead.work.station.WorkstationHazards.bootstrap();
             com.aetherianartificer.townstead.work.site.WorksiteBindings.bootstrap();
             com.aetherianartificer.townstead.compat.mca.McaRoomBinding.bootstrap();
             com.aetherianartificer.townstead.work.station.StationProtocols.bootstrap();
             com.aetherianartificer.townstead.compat.brewinandchewin.BrewinFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaPotAdapter.bootstrap();
-            com.aetherianartificer.townstead.compat.farmersdelight.CookOrderCatalog.bootstrap();
-            com.aetherianartificer.townstead.compat.farmersdelight.BaristaOrderCatalog.bootstrap();
+            com.aetherianartificer.townstead.work.order.CookOrderCatalog.bootstrap();
+            com.aetherianartificer.townstead.work.order.BaristaOrderCatalog.bootstrap();
             com.aetherianartificer.townstead.compat.butchery.ButcheryActivities.bootstrap();
             com.aetherianartificer.townstead.work.order.ActivityCatalog.bootstrap();
             // After the trade-specific catalogues so their richer entries win the output dedup.
             com.aetherianartificer.townstead.work.order.StationProduceCatalog.bootstrap();
             com.aetherianartificer.townstead.compat.pizzadelight.PizzaDelightCompat.bootstrap();
-            if (!ModCompat.isLoaded("farmersdelight")) return;
+            if (!ModCompat.hasKitchenProvider()) return;
             // Specialization paths read worksite contents through the cook-assignment model.
             com.aetherianartificer.townstead.profession.career.PathAffinity.registerWorksiteProbe(
                     (entity, worksites) -> entity
                             instanceof net.conczin.mca.entity.VillagerEntityMCA villager
                             && entity.level() instanceof net.minecraft.server.level.ServerLevel server
-                            && com.aetherianartificer.townstead.compat.farmersdelight
-                                    .FarmersDelightCookAssignment
-                                    .worksiteContainsAny(server, villager, worksites));
+                            && com.aetherianartificer.townstead.profession.ProfessionSites.worksiteContainsAny(server, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK), worksites));
             VillagerProfession cook = COOK_PROFESSION.get();
             // MCA drops non-important professions with no JOB_SITE memory.
             // Mark cook important so kitchen-assigned cooks are retained.
@@ -2013,7 +2011,8 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ComboSkills.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.station.Workstations.Loader());
-        event.addListener(new com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry.ReloadHook());
+        event.addListener(new com.aetherianartificer.townstead.storage.StorageRoles.Loader());
+        event.addListener(new com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry.ReloadHook());
         event.addListener(new com.aetherianartificer.townstead.root.BaselinePowers.Loader());
         event.addListener(new com.aetherianartificer.townstead.root.trait.TraitJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.attachment.AttachmentServerLoader());

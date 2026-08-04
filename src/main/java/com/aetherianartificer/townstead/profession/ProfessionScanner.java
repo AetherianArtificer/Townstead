@@ -2,8 +2,6 @@ package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.ModCompat;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.profession.ProfessionSlotRules.SlotPolicy;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Village;
@@ -166,45 +164,30 @@ public final class ProfessionScanner {
         com.aetherianartificer.townstead.profession.def.ProfessionDef def =
                 com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(
                         net.minecraft.resources.ResourceLocation.tryParse(professionId));
-        if ("townstead:cook".equals(professionId)) {
-            if (!ModCompat.isLoaded("farmersdelight")) return new int[]{0, 0};
-            int activeCooks = 0;
-            for (VillagerEntityMCA resident : village.getResidents(level)) {
-                if (FarmersDelightCookAssignment.declaresCookWork(resident.getVillagerData().getProfession())) {
-                    activeCooks++;
-                }
-            }
-            // Kitchen slots plus outdoor posts: the same total the acquisition guard enforces.
-            int max = def != null
-                    ? ProfessionCapacity.capacity(level, village, def)
-                    : FarmersDelightCookAssignment.totalCookSlots(village);
-            return new int[]{activeCooks, max};
-        }
-        if ("townstead:barista".equals(professionId)) {
-            if (!ModCompat.isLoaded("rusticdelight")) return new int[]{0, 0};
-            int activeBaristas = 0;
-            for (VillagerEntityMCA resident : village.getResidents(level)) {
-                if (FarmersDelightBaristaAssignment.declaresBaristaWork(resident.getVillagerData().getProfession())) {
-                    activeBaristas++;
-                }
-            }
-            return new int[]{activeBaristas, FarmersDelightBaristaAssignment.totalCafeSlots(village)};
-        }
-        // Generic def-driven slots: building providers give one slot per matching village
-        // building, and subordinate via-surface POIs outside those buildings add theirs.
-        if (def != null) {
-            boolean hasBuildingSites = def.jobSites().stream().anyMatch(provider ->
-                    provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building);
-            if (hasBuildingSites) {
-                int slots = ProfessionCapacity.capacity(level, village, def);
-                int active = 0;
-                for (VillagerEntityMCA resident : village.getResidents(level)) {
-                    if (professionId.equals(professionKey(resident.getVillagerData().getProfession()))) active++;
-                }
-                return new int[]{active, slots};
-            }
-        }
-        return new int[]{0, 0};
+        // One def-driven answer for every trade with building sites. The cook and barista used
+        // to have branches here holding a slot ladder and an occupancy rule; both are data now
+        // (slots_per_tier on the def) and the occupancy rule was already generic — employed()
+        // counts by shared work task, which is what made a Baker fill a kitchen seat.
+        if (def == null) return new int[]{0, 0};
+        boolean hasBuildingSites = def.jobSites().stream().anyMatch(provider ->
+                provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building);
+        if (!hasBuildingSites) return new int[]{0, 0};
+        if (isTradeUnavailable(professionId)) return new int[]{0, 0};
+        return new int[]{
+                ProfessionCapacity.employed(level, village, def),
+                ProfessionCapacity.capacity(level, village, def)};
+    }
+
+    /**
+     * Whether nothing installed can furnish this trade's workplace. Defs carry a {@code mods}
+     * gate, but a def can load while the mod supplying its stations is gone (the kitchen tiers
+     * are role tags several mods contribute to), and a trade with no possible workplace should
+     * report no seats rather than seats nobody can reach.
+     */
+    private static boolean isTradeUnavailable(String professionId) {
+        if ("townstead:cook".equals(professionId)) return !ModCompat.hasKitchenProvider();
+        if ("townstead:barista".equals(professionId)) return !ModCompat.isLoaded("rusticdelight");
+        return false;
     }
 
     private static void releaseStaleJobSites(ServerLevel level, Village village, VillagerProfession profession) {

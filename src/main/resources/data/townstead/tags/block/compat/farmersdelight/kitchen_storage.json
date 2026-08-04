@@ -4,6 +4,8 @@
     "minecraft:chest",
     "minecraft:barrel",
     "minecraft:trapped_chest",
+    "minecraft:decorated_pot",
+    "#minecraft:shulker_boxes",
     {
       "id": "farmersdelight:basket",
       "required": false

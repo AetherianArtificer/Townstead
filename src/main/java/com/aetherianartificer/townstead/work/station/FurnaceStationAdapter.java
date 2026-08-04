@@ -149,14 +149,21 @@ public final class FurnaceStationAdapter implements StationAdapters.Adapter {
         if (!access.get(fuelSlot).isEmpty()) return true;
         var matches = SupplyLines.matcher(level, TownsteadSupplyLines.FURNACE_FUEL);
         var inventory = villager.getInventory();
+        int bestSlot = -1;
+        int bestPreference = Integer.MIN_VALUE;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty() || !matches.test(stack)) continue;
-            ItemStack one = stack.copyWithCount(1);
-            if (!access.place(fuelSlot, one)) continue;
-            stack.shrink(1);
-            return true;
+            int preference = SupplyLines.preference(level, TownsteadSupplyLines.FURNACE_FUEL, stack);
+            if (bestSlot < 0 || preference > bestPreference) {
+                bestSlot = i;
+                bestPreference = preference;
+            }
         }
-        return false;
+        if (bestSlot < 0) return false;
+        ItemStack stack = inventory.getItem(bestSlot);
+        if (!access.place(fuelSlot, stack.copyWithCount(1))) return false;
+        stack.shrink(1);
+        return true;
     }
 }

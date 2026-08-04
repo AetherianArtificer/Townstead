@@ -4,6 +4,10 @@
     {
       "id": "farmersdelight:cutting_board",
       "required": false
+    },
+    {
+      "id": "farm_and_charm:crafting_bowl",
+      "required": false
     }
   ]
 }

@@ -39,6 +39,12 @@ public final class StationCapacities {
     /** The cell that stands for this station, collapsing multi-block stations to one anchor. */
     public static BlockPos anchor(ServerLevel level, BlockPos pos) {
         if (pos == null) return null;
+        WorkstationDef def = Workstations.byState(level.getBlockState(pos));
+        StationAdapters.Adapter adapter = StationAdapters.forDef(def);
+        if (def != null && adapter != null) {
+            BlockPos anchored = adapter.anchor(level, pos, def);
+            if (anchored != null) return anchored;
+        }
         for (StationCapacity provider : PROVIDERS) {
             BlockPos anchored = provider.anchor(level, pos);
             if (anchored != null) return anchored;
@@ -55,6 +61,12 @@ public final class StationCapacities {
         BlockPos anchor = anchor(level, pos);
         BlockState state = level.getBlockState(anchor);
         if (Stations.coverBlocksWork(level, anchor, state)) return 0;
+        WorkstationDef def = Workstations.byState(state);
+        StationAdapters.Adapter adapter = StationAdapters.forDef(def);
+        if (def != null && adapter != null) {
+            int capacity = adapter.capacity(level, anchor, def);
+            if (capacity >= 0) return capacity;
+        }
         for (StationCapacity provider : PROVIDERS) {
             int capacity = provider.capacity(level, anchor, type);
             if (capacity >= 0) return capacity;

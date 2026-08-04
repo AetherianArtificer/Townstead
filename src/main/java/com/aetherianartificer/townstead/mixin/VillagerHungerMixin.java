@@ -12,8 +12,7 @@ import com.aetherianartificer.townstead.hunger.FishermanWorkTask;
 import com.aetherianartificer.townstead.leatherworking.LeatherworkerWorkTask;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
-import com.aetherianartificer.townstead.compat.farmersdelight.BaristaWorkTask;
-import com.aetherianartificer.townstead.compat.farmersdelight.CookWorkTask;
+import com.aetherianartificer.townstead.work.producer.BeverageWorkTask;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.FoodSafety;
 import com.aetherianartificer.townstead.hunger.HarvestWorkTask;
@@ -97,8 +96,17 @@ public abstract class VillagerHungerMixin extends Villager {
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
                         Pair.of(70, new HarvestWorkTask()),
                         Pair.of(71, new FishermanWorkTask()),
-                        Pair.of(72, new CookWorkTask()),
-                        Pair.of(72, new BaristaWorkTask()),
+                        Pair.of(72, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
+                                new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
+                                        "Cook",
+                                        com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK,
+                                        com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP,
+                                        com.aetherianartificer.townstead.work.producer.ProducerRole.COOK,
+                                        "townstead:cooked",
+                                        com.aetherianartificer.townstead.profession.career.Careers.COOK,
+                                        com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled,
+                                        "dialogue.chat.cook_request."))),
+                        Pair.of(72, new BeverageWorkTask()),
                         Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask()),
                         Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.GolemProcessingTask()),
                         Pair.of(74, new com.aetherianartificer.townstead.compat.butchery.GrinderWorkTask()),

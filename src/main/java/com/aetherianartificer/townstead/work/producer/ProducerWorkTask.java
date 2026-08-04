@@ -172,10 +172,32 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected abstract void storeOutputs(
             ServerLevel level, VillagerEntityMCA villager, long gameTime);
 
-    // ── Abstract: XP ──
+    // ── XP ──
 
-    protected abstract void awardProductionXp(
-            ServerLevel level, VillagerEntityMCA villager, long gameTime);
+    /** The history counter a finished job increments. */
+    protected String historyCounter() {
+        return "townstead:produced";
+    }
+
+    /**
+     * Credits the worker's own career for a finished job.
+     *
+     * <p>The career is read off the villager rather than named by the engine: a career levels
+     * itself, so a Baker working a kitchen earns Baker, not Cook. Trades with something extra to
+     * say — a taste appraisal, a mod-loaded gate — override; the rest need only name their
+     * counter.</p>
+     */
+    protected void awardProductionXp(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (activeRecipe == null) return;
+        ResourceLocation profession = net.minecraft.core.registries.BuiltInRegistries
+                .VILLAGER_PROFESSION.getKey(villager.getVillagerData().getProfession());
+        if (profession == null) return;
+        int xp = Math.max(1, activeRecipe.tier());
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager,
+                com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(profession),
+                xp, gameTime, historyCounter(), activeRecipe.output(), "item", activeRecipe.tier());
+    }
 
     // ── Optional hooks (default no-op) ──
 
@@ -201,7 +223,46 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     protected void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {}
 
-    protected void debugChat(ServerLevel level, VillagerEntityMCA villager, String message) {}
+    /** What to call this worker in diagnostics. */
+    protected String debugLabel() {
+        return "Worker";
+    }
+
+    /**
+     * Narrates to the nearest player when villager-AI debugging is on.
+     *
+     * <p>Lives in the base so every producing trade explains itself, not just the one that
+     * happened to grow the plumbing first. A trade nobody can interrogate is a trade whose bugs
+     * get diagnosed by guesswork.</p>
+     */
+    protected void debugChat(ServerLevel level, VillagerEntityMCA villager, String message) {
+        if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!(level.getNearestPlayer(villager, DEBUG_CHAT_RANGE)
+                instanceof net.minecraft.server.level.ServerPlayer player)) return;
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                "[" + debugLabel() + ":" + villager.getName().getString() + "] " + message));
+    }
+
+    private static final int DEBUG_CHAT_RANGE = 24;
+
+    /** The last refusal reported, so a standing gate is stated once rather than every tick. */
+    private @Nullable String lastGateReported;
+
+    /**
+     * Reports why the task will not start — once per change, because these are asked several
+     * times a second and a repeated line is noise rather than information.
+     *
+     * <p>The start gates were the one silent stretch in the whole loop: a villager failing any of
+     * them simply stood there, which is indistinguishable from every other failure at a glance.</p>
+     */
+    private boolean gate(ServerLevel level, VillagerEntityMCA villager, boolean ok, String reason) {
+        if (ok) return true;
+        if (!reason.equals(lastGateReported)) {
+            lastGateReported = reason;
+            debugChat(level, villager, "GATE:" + reason);
+        }
+        return false;
+    }
 
     protected double stationRotationProbability() { return 0.5d; }
 
@@ -218,12 +279,17 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (!isTaskEnabled()) return false;
-        if (isFatigueGated(villager)) return false;
-        if (!isEligibleVillager(level, villager)) return false;
+        if (!gate(level, villager, isTaskEnabled(), "task disabled (mod or config)")) return false;
+        if (!gate(level, villager, !isFatigueGated(villager), "too tired to work")) return false;
+        if (!gate(level, villager, isEligibleVillager(level, villager),
+                "not eligible — no workplace seat, or does not do this work")) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
-        return currentActivity(villager) == Activity.WORK;
+        if (!gate(level, villager, !brain.isPanicking() && villager.getLastHurtByMob() == null,
+                "panicking or recently hurt")) return false;
+        if (!gate(level, villager, currentActivity(villager) == Activity.WORK,
+                "off shift — schedule is not WORK")) return false;
+        lastGateReported = null;
+        return true;
     }
 
     @Override

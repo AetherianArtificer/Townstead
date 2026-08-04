@@ -34,10 +34,87 @@ public interface JobSiteProvider {
         @Override public String typeKey() { return KEY; }
     }
 
-    /** A building whose type id starts with one of the given prefixes. */
-    record Building(List<String> typePrefixes) implements JobSiteProvider {
-        public Building { typePrefixes = List.copyOf(typePrefixes); }
+    /**
+     * A building whose type id starts with one of the given prefixes.
+     *
+     * <p>{@code slotsPerTier} seats more workers in a better building: the entry after the
+     * matched prefix is read as the tier ({@code compat/…/kitchen_l} + {@code 3}), and the list
+     * gives one count per tier. Empty means one worker per building, which is what an untiered
+     * workplace wants. This is the only thing tiered workplaces ever needed over the generic
+     * path — it exists so no trade has to hardcode its own slot ladder in Java.</p>
+     */
+    record Building(List<String> typePrefixes, List<Integer> slotsPerTier) implements JobSiteProvider {
+        public Building {
+            typePrefixes = List.copyOf(typePrefixes);
+            slotsPerTier = List.copyOf(slotsPerTier);
+        }
+
+        public Building(List<String> typePrefixes) { this(typePrefixes, List.of()); }
+
         public static final String KEY = "townstead:building";
+        @Override public String typeKey() { return KEY; }
+
+        /** Whether this building type is one this entry speaks for. */
+        public boolean matches(@Nullable String buildingTypeId) {
+            if (buildingTypeId == null) return false;
+            for (String prefix : typePrefixes) {
+                if (buildingTypeId.startsWith(prefix)) return true;
+            }
+            return false;
+        }
+
+        /** How many workers this building seats; 0 when it is not one of ours. */
+        public int slotsFor(@Nullable String buildingTypeId) {
+            if (buildingTypeId == null) return 0;
+            for (String prefix : typePrefixes) {
+                if (!buildingTypeId.startsWith(prefix)) continue;
+                if (slotsPerTier.isEmpty()) return 1;
+                int tier = tierOf(buildingTypeId, prefix);
+                // An unnumbered or out-of-range building is still a workplace, just an untiered
+                // one: seating nobody would retire a whole building over a naming slip.
+                return tier >= 1 && tier <= slotsPerTier.size() ? slotsPerTier.get(tier - 1) : 1;
+            }
+            return 0;
+        }
+
+        /**
+         * The tier this building type declares, read as whatever follows the matched prefix
+         * ({@code …/kitchen_l} + {@code 3}). Zero when it is not ours or carries no number,
+         * which is the right answer for an untiered workplace.
+         */
+        public int tierOf(@Nullable String buildingTypeId) {
+            if (buildingTypeId == null) return 0;
+            for (String prefix : typePrefixes) {
+                if (buildingTypeId.startsWith(prefix)) return tierOf(buildingTypeId, prefix);
+            }
+            return 0;
+        }
+
+        private static int tierOf(String buildingTypeId, String prefix) {
+            try {
+                return Integer.parseInt(buildingTypeId.substring(prefix.length()));
+            } catch (NumberFormatException | IndexOutOfBoundsException ignored) {
+                return 0;
+            }
+        }
+    }
+
+    /**
+     * A declared workstation block standing on its own, outside every building — a pot in a
+     * courtyard. Distinct from {@link JobBlock}, which borrows another mod's vanilla POI claim
+     * and so only exists where that mod does.
+     *
+     * <p>A station INSIDE a building is never one of these: a building's own entry already
+     * priced the room, and letting stations stack on top of it would make the tier ladder
+     * bypassable by placing pots. A station inside someone's house is not a workplace at all.</p>
+     */
+    record StationPost(Set<ResourceLocation> blocks, List<ResourceLocation> blockTags, int slots)
+            implements JobSiteProvider {
+        public StationPost {
+            blocks = Set.copyOf(blocks);
+            blockTags = List.copyOf(blockTags);
+        }
+        public static final String KEY = "townstead:station_post";
         @Override public String typeKey() { return KEY; }
     }
 

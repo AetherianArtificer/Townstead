@@ -1,8 +1,10 @@
 {
+  "schema": "townstead:workstation/v1",
   "mods": "farmersdelight",
   "blocks": [
     "farmersdelight:stove"
   ],
   "type": "fire_station",
+  "adapter": "townstead:farmersdelight_stove",
   "open_top": true
 }

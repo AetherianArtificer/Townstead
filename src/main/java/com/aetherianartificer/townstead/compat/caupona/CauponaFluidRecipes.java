@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.compat.caupona;
 
 import com.aetherianartificer.townstead.compat.ModCompat;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
+import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.FluidAmount;
 import com.aetherianartificer.townstead.work.recipe.FluidCarriers;
@@ -104,11 +104,11 @@ public final class CauponaFluidRecipes {
         Boiling boiling = Boiling.read(level);
         List<Brew> out = new ArrayList<>();
         //? if >=1.21 {
-        for (var holder : ModRecipeRegistry.getRecipesForType(level, COOKING)) {
+        for (var holder : WorkRecipeRegistry.getRecipesForType(level, COOKING)) {
             Recipe<?> recipe = holder.value();
             ResourceLocation id = holder.id();
         //?} else {
-        /*for (Recipe<?> recipe : ModRecipeRegistry.getRecipesForType(level, COOKING)) {
+        /*for (Recipe<?> recipe : WorkRecipeRegistry.getRecipesForType(level, COOKING)) {
             ResourceLocation id = recipe.getId();
         *///?}
             Brew brew = candidate(id, recipe, boiling);
@@ -195,11 +195,11 @@ public final class CauponaFluidRecipes {
     private static List<FluidRecipes.Pour> pours(ServerLevel level) {
         List<FluidRecipes.Pour> out = new ArrayList<>();
         //? if >=1.21 {
-        for (var holder : ModRecipeRegistry.getRecipesForType(level, BOWL)) {
+        for (var holder : WorkRecipeRegistry.getRecipesForType(level, BOWL)) {
             Recipe<?> recipe = holder.value();
             ResourceLocation id = holder.id();
         //?} else {
-        /*for (Recipe<?> recipe : ModRecipeRegistry.getRecipesForType(level, BOWL)) {
+        /*for (Recipe<?> recipe : WorkRecipeRegistry.getRecipesForType(level, BOWL)) {
             ResourceLocation id = recipe.getId();
         *///?}
             ResourceLocation filled = CauponaRecipeAccess.readItemId(recipe, "getBowl", "bowl");
@@ -233,10 +233,10 @@ public final class CauponaFluidRecipes {
             Map<ResourceLocation, ResourceLocation> next = new HashMap<>();
             Map<ResourceLocation, Integer> times = new HashMap<>();
             //? if >=1.21 {
-            for (var holder : ModRecipeRegistry.getRecipesForType(level, BOILING)) {
+            for (var holder : WorkRecipeRegistry.getRecipesForType(level, BOILING)) {
                 Recipe<?> recipe = holder.value();
             //?} else {
-            /*for (Recipe<?> recipe : ModRecipeRegistry.getRecipesForType(level, BOILING)) {
+            /*for (Recipe<?> recipe : WorkRecipeRegistry.getRecipesForType(level, BOILING)) {
             *///?}
                 ResourceLocation after = CauponaRecipeAccess.readFluidId(recipe, "getAfter", "after");
                 if (after == null) continue;

@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.memory;
 
 import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.KitchenStorageIndex;
+import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
 import com.aetherianartificer.townstead.dock.DockLocationIndex;
 import com.aetherianartificer.townstead.dock.DockScanner;
@@ -37,7 +37,7 @@ public final class TownsteadMemoryLifecycle {
         TargetReachabilityCache.purgeExpired(gameTime);
         NearbyStorageIndex.purgeExpired(gameTime);
         VillageStorageIndex.purgeExpired(gameTime);
-        KitchenStorageIndex.purgeExpired(gameTime);
+        WorksiteStorageIndex.purgeExpired(gameTime);
         DockScanner.purgeExpired(gameTime);
         DockBerthClaims.purgeExpired(gameTime);
         ProducerStationClaims.purgeExpired(gameTime);
@@ -48,7 +48,7 @@ public final class TownsteadMemoryLifecycle {
         TargetReachabilityCache.clearAll();
         NearbyStorageIndex.clearAll();
         VillageStorageIndex.clearAll();
-        KitchenStorageIndex.clearAll();
+        WorksiteStorageIndex.clearAll();
         DockScanner.clearAll();
         DockLocationIndex.clear();
         DockBerthClaims.clearAll();
@@ -90,7 +90,7 @@ public final class TownsteadMemoryLifecycle {
                 TargetReachabilityCache.size(),
                 NearbyStorageIndex.snapshotCount(),
                 VillageStorageIndex.snapshotCount(),
-                KitchenStorageIndex.snapshotCount(),
+                WorksiteStorageIndex.snapshotCount(),
                 DockScanner.cacheSize(),
                 DockLocationIndex.villageCount(),
                 DockLocationIndex.dockCount(),

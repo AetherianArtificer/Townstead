@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.mixin.compat.farmersdelight;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.PlayerCookingHooks;
+import com.aetherianartificer.townstead.profession.career.PlayerWorkHooks;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -34,7 +34,7 @@ public abstract class CookingPotServeMixin {
                 self.getBlockPos().getX() + 0.5, self.getBlockPos().getY() + 0.5,
                 self.getBlockPos().getZ() + 0.5, 5.0, false);
         if (player != null) {
-            PlayerCookingHooks.onDishTaken(player, served, "cooking_pot");
+            PlayerWorkHooks.onDishTaken(player, served, "cooking_pot");
         }
     }
 }

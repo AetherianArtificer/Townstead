@@ -10,8 +10,7 @@ import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
+import com.aetherianartificer.townstead.profession.BaristaAssignment;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.mixin.accessor.AbstractDynamicScreenAccessor;
@@ -195,9 +194,9 @@ public abstract class InteractScreenMixin extends Screen {
         int tier;
         if (mca.getVillagerData().getProfession() == VillagerProfession.FARMER) {
             tier = Math.max(1, HungerClientStore.getFarmerTier(mca.getId()));
-        } else if (FarmersDelightCookAssignment.isExternalCookProfession(mca.getVillagerData().getProfession())) {
+        } else if (com.aetherianartificer.townstead.profession.ProfessionAliases.isAnyOf(mca.getVillagerData().getProfession(), com.aetherianartificer.townstead.profession.ProfessionAliases.COOK)) {
             tier = Math.max(1, HungerClientStore.getCookTier(mca.getId()));
-        } else if (FarmersDelightBaristaAssignment.isBaristaProfession(mca.getVillagerData().getProfession())) {
+        } else if (BaristaAssignment.isBaristaProfession(mca.getVillagerData().getProfession())) {
             tier = Math.max(1, mca.getVillagerData().getLevel());
         } else {
             return base;

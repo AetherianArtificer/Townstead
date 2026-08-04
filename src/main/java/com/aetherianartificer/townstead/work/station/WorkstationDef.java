@@ -83,7 +83,40 @@ public record WorkstationDef(
          * whose outputs already reach the screen another way (the cook's discovered recipes) and
          * for stations nobody's task drives yet.
          */
-        @Nullable ResourceLocation workTask) {
+        @Nullable ResourceLocation workTask,
+        Orderable orderable,
+        /**
+         * Whether this station burns fuel to run. Implied for a {@code furnace_station}; stated
+         * for anything else, because a machine that happens to have a fuel slot is not the same
+         * as one that will not start without it. Declaring it makes fuel a real input — staged,
+         * counted and shown as a need — and loads it through whichever face the block says its
+         * fuel goes in.
+         */
+        boolean needsFuel,
+        /**
+         * Blocks (ids or {@code #tags}) that must sit DIRECTLY BELOW for this station to work —
+         * a cooking pot needs a fire under it. Empty means the station stands on its own.
+         *
+         * <p>An unsupported station is not a station <em>right now</em>, the same way a covered
+         * open-top one is not: a villager will not walk to it and the catalogue reports it
+         * missing, which is the honest answer. Without this a cook loads a cold pot and waits
+         * on a recipe that can never finish, with nothing on screen saying why.</p>
+         */
+        Set<ResourceLocation> supportBelow,
+        List<ResourceLocation> supportBelowTags) {
+
+    /**
+     * Which of this station's outputs a trade may be ordered for. The trade's output tag stays
+     * the base rule; this is the station author speaking at the right altitude — a dedicated
+     * cooking station declares {@code "orderable": "all"} once instead of tagging every dish,
+     * while a general-purpose machine (a mincer that also grinds ore) stays {@code "tagged"}
+     * and names its few food outputs in {@code allow}. {@code block} removes an output even
+     * when tagged or allowed. Entries are item ids or {@code "#tags"}; evaluation lives in
+     * {@link com.aetherianartificer.townstead.work.recipe.WorkOutputTags}.
+     */
+    public record Orderable(boolean all, List<String> allow, List<String> block) {
+        public static final Orderable TAGGED = new Orderable(false, List.of(), List.of());
+    }
 
     /**
      * Which slots a {@code furnace_station} loads and unloads. Defaults are vanilla's, which every
@@ -116,7 +149,7 @@ public record WorkstationDef(
         this(id, blocks, blockTags, role, containerSlot, ingredientSlots, stands, recipeType,
                 recipeTier, cookTimeTicks, beverage,
                 null, Set.of(), List.of(), null, null, List.of(), List.of(), FurnaceSlots.VANILLA,
-                false, null, false, null);
+                false, null, false, null, Orderable.TAGGED, false, Set.of(), List.of());
     }
 
     static @Nullable WorkstationDef parse(ResourceLocation id, JsonObject obj) {
@@ -251,6 +284,25 @@ public record WorkstationDef(
                 ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "work_task", "")) : null;
         if (obj.has("work_task") && workTask == null) return null;
 
+        Orderable orderable = parseOrderable(obj.get("orderable"));
+        if (orderable == null) return null;
+
+        Set<ResourceLocation> supportBelow = new LinkedHashSet<>();
+        List<ResourceLocation> supportBelowTags = new ArrayList<>();
+        if (obj.has("support_below")) {
+            JsonElement support = obj.get("support_below");
+            if (support.isJsonArray()) {
+                for (JsonElement e : support.getAsJsonArray()) {
+                    if (!e.isJsonPrimitive()
+                            || !readEntry(e.getAsString(), supportBelow, supportBelowTags)) return null;
+                }
+            } else if (!support.isJsonPrimitive()
+                    || !readEntry(support.getAsString(), supportBelow, supportBelowTags)) {
+                return null;
+            }
+            if (supportBelow.isEmpty() && supportBelowTags.isEmpty()) return null;
+        }
+
         return new WorkstationDef(id, Set.copyOf(blocks), List.copyOf(tags), role,
                 GsonHelper.getAsInt(obj, "container_slot", 7),
                 GsonHelper.getAsInt(obj, "ingredient_slots", 6),
@@ -264,7 +316,47 @@ public record WorkstationDef(
                 places, doneBlock, List.copyOf(harvestTools), List.copyOf(produces), furnaceSlots,
                 fluidStation, fluidSource,
                 GsonHelper.getAsBoolean(obj, "open_top", false),
-                workTask);
+                workTask,
+                orderable,
+                GsonHelper.getAsBoolean(obj, "fuel", false),
+                Set.copyOf(supportBelow), List.copyOf(supportBelowTags));
+    }
+
+    /**
+     * {@code "orderable"}: absent or {@code "tagged"} → tag-gated (the default); {@code "all"} →
+     * every output; an object with optional {@code "mode": "all"}, {@code allow} and {@code block}
+     * arrays for the mixed cases. Null means the field was present but malformed, refusing the def.
+     */
+    private static @Nullable Orderable parseOrderable(@Nullable JsonElement element) {
+        if (element == null) return Orderable.TAGGED;
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            return switch (element.getAsString()) {
+                case "all" -> new Orderable(true, List.of(), List.of());
+                case "tagged" -> Orderable.TAGGED;
+                default -> null;
+            };
+        }
+        if (!element.isJsonObject()) return null;
+        JsonObject obj = element.getAsJsonObject();
+        String mode = GsonHelper.getAsString(obj, "mode", "tagged");
+        if (!"all".equals(mode) && !"tagged".equals(mode)) return null;
+        List<String> allow = readIdList(obj, "allow");
+        List<String> block = readIdList(obj, "block");
+        if (allow == null || block == null) return null;
+        return new Orderable("all".equals(mode), allow, block);
+    }
+
+    private static @Nullable List<String> readIdList(JsonObject obj, String key) {
+        if (!obj.has(key)) return List.of();
+        if (!obj.get(key).isJsonArray()) return null;
+        List<String> out = new ArrayList<>();
+        for (JsonElement e : obj.getAsJsonArray(key)) {
+            if (!e.isJsonPrimitive() || !e.getAsJsonPrimitive().isString()) return null;
+            String raw = e.getAsString();
+            if (ResourceLocation.tryParse(raw.startsWith("#") ? raw.substring(1) : raw) == null) return null;
+            out.add(raw);
+        }
+        return List.copyOf(out);
     }
 
     private static boolean readEntry(String raw, Set<ResourceLocation> blocks, List<ResourceLocation> tags) {

@@ -6,6 +6,7 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -53,6 +54,9 @@ public final class Stations {
         BlockState state = level.getBlockState(pos);
         // An open-topped station with something sitting on it is not a station right now.
         if (coverBlocksWork(level, pos, state)) return null;
+        // Neither is one standing on the wrong thing: a cooking pot with no fire under it will
+        // never finish anything put in it.
+        if (!supportSatisfied(level, pos, state)) return null;
         // An empty placement anchor (free cell above a declared place-surface) is a station a
         // villager can create; the block-state overload cannot see it, only this one can.
         if (state.isAir() && StationProtocols.surfaceDefBelow(level, pos) != null) {
@@ -94,6 +98,27 @@ public final class Stations {
         // does any block that would not simply be replaced by placing something.
         if (stationType(above) != null) return true;
         return !above.canBeReplaced();
+    }
+
+    /**
+     * Whether whatever this station needs beneath it is there. A def that asks for nothing is
+     * always satisfied, which is every station that does not sit on a fire.
+     */
+    public static boolean supportSatisfied(ServerLevel level, BlockPos pos, BlockState state) {
+        WorkstationDef def = Workstations.byState(state);
+        return def == null || supportSatisfied(level, pos, def);
+    }
+
+    /** The same question asked of a known def, for callers that already resolved one. */
+    public static boolean supportSatisfied(ServerLevel level, BlockPos pos, WorkstationDef def) {
+        if (def.supportBelow().isEmpty() && def.supportBelowTags().isEmpty()) return true;
+        BlockState below = level.getBlockState(pos.below());
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(below.getBlock());
+        if (id != null && def.supportBelow().contains(id)) return true;
+        for (ResourceLocation tag : def.supportBelowTags()) {
+            if (below.is(TagKey.create(Registries.BLOCK, tag))) return true;
+        }
+        return false;
     }
 
     // ── Standing ──

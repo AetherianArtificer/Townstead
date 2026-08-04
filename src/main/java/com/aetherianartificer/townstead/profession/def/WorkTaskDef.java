@@ -39,7 +39,20 @@ public record WorkTaskDef(
         TargetSet recipesDenied,
         int weight,
         Scope scope,
-        Condition requirements) {
+        Condition requirements,
+        /**
+         * The history counter a finished job increments, so a pack's career counts its own verb
+         * ({@code "history_counter": "mypack:distilled"}). Null falls back to the engine's
+         * default for the trade.
+         */
+        @Nullable String historyCounter) {
+
+    /** Pre-counter constructor, for callers and tests that state no counter. */
+    public WorkTaskDef(ResourceLocation type, TargetSet workstations, TargetSet entities,
+                       TargetSet recipes, TargetSet recipesDenied, int weight, Scope scope,
+                       Condition requirements) {
+        this(type, workstations, entities, recipes, recipesDenied, weight, scope, requirements, null);
+    }
 
     /**
      * How far from the assigned work site a task may look for its stations. {@code workstations}
@@ -262,8 +275,11 @@ public record WorkTaskDef(
             requirements = Conditions.parse(obj.get("requirements"));
             if (requirements == null) return null;
         }
+        String historyCounter = obj.has("history_counter")
+                ? GsonHelper.getAsString(obj, "history_counter", "") : null;
+        if (historyCounter != null && historyCounter.isBlank()) return null;
         return new WorkTaskDef(type, workstations, entities, recipes, denied,
-                GsonHelper.getAsInt(obj, "weight", 1), scope, requirements);
+                GsonHelper.getAsInt(obj, "weight", 1), scope, requirements, historyCounter);
     }
 
     /** Reads an id/#tag string array into a {@link TargetSet}; null on any malformed entry. */

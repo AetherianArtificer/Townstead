@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.work.station;
 
 
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.aetherianartificer.townstead.work.recipe.StationType;
 
@@ -303,9 +304,17 @@ public final class StationProtocols {
         return null;
     }
 
-    /** Whether this def's synthetic recipe id space owns {@code recipe} (exclusive pairing). */
+    /**
+     * Whether this def owns {@code recipe} (exclusive pairing). Protocol stations can declare
+     * either inline {@code produces} lines or a normal recipe type. The latter used to be missed,
+     * causing a Farm & Charm stove to reject every recipe discovered from
+     * {@code farm_and_charm:stove} even though that was the type named by its own workstation def.
+     */
     public static boolean defOwnsRecipe(WorkstationDef def, DiscoveredRecipe recipe) {
-        return produceFor(def, recipe) != null && recipe.stationType() == def.role();
+        if (def == null || recipe == null || recipe.stationType() != def.role()) return false;
+        if (produceFor(def, recipe) != null) return true;
+        return StationRecipeOwnership.ownsDeclaredType(def, recipe.stationType(),
+                WorkRecipeRegistry.foreignRecipeTypeId(recipe));
     }
 
     @Nullable
@@ -350,10 +359,25 @@ public final class StationProtocols {
     /** Insert-wait-collect through a plain item capability. */
     static final class ItemHandlerAdapter implements Adapter {
 
+        /**
+         * Which face to work a station through. A sided block states where its slots are — a
+         * cooking pot takes ingredients through the top, hands the dish out of the bottom, and
+         * keeps its bowls on the sides — and asking for the unsided handler instead gets one
+         * view of every slot at once. That view lets an ingredient land in the output slot,
+         * where it is not an ingredient and blocks the recipe from ever completing. Falls back
+         * to unsided for plain containers, which is what every non-sided block wants.
+         */
+        private static @Nullable IItemHandler handler(ServerLevel level, BlockPos anchor,
+                                                      @Nullable Direction side) {
+            IItemHandler sided = side == null ? null : BlockInventories.itemHandler(level, anchor, side);
+            if (sided != null && sided.getSlots() > 0) return sided;
+            return BlockInventories.itemHandler(level, anchor, null);
+        }
+
         @Override
         public StationPhase phase(ServerLevel level, BlockPos anchor, WorkstationDef def,
                                   @Nullable DiscoveredRecipe recipe) {
-            IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
+            IItemHandler handler = handler(level, anchor, null);
             if (handler == null) return StationPhase.FOREIGN;
             boolean any = false;
             for (int slot = 0; slot < handler.getSlots(); slot++) {
@@ -370,9 +394,16 @@ public final class StationProtocols {
         @Override
         public boolean insert(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                               WorkstationDef def, DiscoveredRecipe recipe) {
-            IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
+            IItemHandler handler = handler(level, anchor, Direction.UP);
             if (handler == null) return false;
+            // Fuel first, for the same reason a furnace does it first: ingredients loaded into a
+            // machine that will never light are ingredients the villager cannot cheaply get back.
+            if (def.needsFuel() && !ensureFuel(level, villager, anchor)) return false;
             for (RecipeIngredient ingredient : recipe.inputs()) {
+                // Fuel is a planning requirement represented by a supply-line id, not an item
+                // that belongs in an ingredient slot. ensureFuel above has already moved the
+                // concrete log/coal into the machine's fuel face.
+                if (StationRecipeOwnership.isFuelRequirement(ingredient)) continue;
                 for (int n = 0; n < ingredient.count(); n++) {
                     ItemStack one = takeMatching(villager, ingredient);
                     if (one.isEmpty()) return false;
@@ -389,7 +420,7 @@ public final class StationProtocols {
         @Override
         public boolean collect(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                                WorkstationDef def, DiscoveredRecipe recipe) {
-            IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
+            IItemHandler handler = handler(level, anchor, Direction.DOWN);
             if (handler == null) return false;
             boolean collected = false;
             for (int slot = 0; slot < handler.getSlots(); slot++) {
@@ -403,6 +434,40 @@ public final class StationProtocols {
                 }
             }
             return collected;
+        }
+
+        /**
+         * Loads one fuel item through a side face, which is where a sided machine keeps its fuel
+         * (its top is ingredients and its bottom is the output). Already-fuelled stations are
+         * left alone — a stove that is burning does not want a second log.
+         */
+        private static boolean ensureFuel(ServerLevel level, VillagerEntityMCA villager,
+                                          BlockPos anchor) {
+            IItemHandler fuel = handler(level, anchor, Direction.NORTH);
+            if (fuel == null) return false;
+            for (int slot = 0; slot < fuel.getSlots(); slot++) {
+                if (!fuel.getStackInSlot(slot).isEmpty()) return true;
+            }
+            var matches = com.aetherianartificer.townstead.supply.SupplyLines.matcher(level,
+                    com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL);
+            var inventory = villager.getInventory();
+            int bestSlot = -1;
+            int bestPreference = Integer.MIN_VALUE;
+            for (int i = 0; i < inventory.getContainerSize(); i++) {
+                ItemStack stack = inventory.getItem(i);
+                if (stack.isEmpty() || !matches.test(stack)) continue;
+                int preference = com.aetherianartificer.townstead.supply.SupplyLines.preference(
+                        level, com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL, stack);
+                if (bestSlot < 0 || preference > bestPreference) {
+                    bestSlot = i;
+                    bestPreference = preference;
+                }
+            }
+            if (bestSlot < 0) return false;
+            ItemStack stack = inventory.getItem(bestSlot);
+            if (!insertIntoAnySlot(fuel, stack.copyWithCount(1))) return false;
+            stack.shrink(1);
+            return true;
         }
 
         /**

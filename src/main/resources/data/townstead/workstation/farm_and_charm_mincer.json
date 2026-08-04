@@ -3,5 +3,15 @@
   "mods": "farm_and_charm",
   "type": "passive_station",
   "blocks": ["farm_and_charm:mincer"],
-  "recipe_type": "farm_and_charm:mincer"
+  "recipe_type": "farm_and_charm:mincer",
+  "orderable": {
+    "allow": [
+      "farm_and_charm:bacon",
+      "farm_and_charm:chicken_parts",
+      "farm_and_charm:flour",
+      "farm_and_charm:lamb_ham",
+      "farm_and_charm:minced_beef",
+      "farm_and_charm:raw_pasta"
+    ]
+  }
 }

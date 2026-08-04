@@ -7,9 +7,9 @@
   "iconV": 180,
   "noBeds": true,
   "blocks": {
-    "farmersdelight:stove": 3,
-    "farmersdelight:cooking_pot": 1,
-    "farmersdelight:skillet": 2,
+    "#townstead:compat/farmersdelight/kitchen_advanced_heat": 3,
+    "#townstead:compat/farmersdelight/kitchen_pot": 1,
+    "#townstead:compat/farmersdelight/kitchen_cookware": 2,
     "#townstead:compat/farmersdelight/kitchen_copper": 4,
     "minecraft:gold_block": 2,
     "#townstead:compat/farmersdelight/kitchen_storage_nether": 3,

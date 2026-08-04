@@ -44,6 +44,14 @@ public final class SupplyLines {
 
         /** Whether this stack counts toward the line. Contribution is the stack's own count. */
         boolean matches(ItemStack stack, ServerLevel level);
+
+        /**
+         * Relative preference when several concrete stacks satisfy this line. Higher values are
+         * consumed first. Zero preserves the normal nearest-slot behavior.
+         */
+        default int preference(ItemStack stack, ServerLevel level) {
+            return 0;
+        }
     }
 
     private static final Map<ResourceLocation, Line> LINES = new ConcurrentHashMap<>();
@@ -96,5 +104,13 @@ public final class SupplyLines {
         Line line = LINES.get(id);
         if (line == null || !line.active()) return stack -> false;
         return stack -> !stack.isEmpty() && line.matches(stack, level);
+    }
+
+    public static int preference(ServerLevel level, ResourceLocation id, ItemStack stack) {
+        Line line = LINES.get(id);
+        if (line == null || !line.active() || stack.isEmpty() || !line.matches(stack, level)) {
+            return Integer.MIN_VALUE;
+        }
+        return line.preference(stack, level);
     }
 }

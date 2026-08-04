@@ -93,7 +93,20 @@ public final class WorksiteCatalogs {
      */
     private static void addCategories(List<Option> out) {
         if (out.isEmpty()) return;
-        for (net.minecraft.resources.ResourceLocation tagId : OrderTags.categories()) {
+        // Sorted, so which of two equivalent sets wins is the same on every run and every client.
+        // An unordered registry walk deciding a visible name is the bug this file has already had
+        // once, in WorksiteBindings.
+        List<net.minecraft.resources.ResourceLocation> tagIds =
+                new ArrayList<>(OrderTags.categories());
+        tagIds.sort(java.util.Comparator.comparing(net.minecraft.resources.ResourceLocation::toString));
+
+        // What each surviving category offers HERE, so a later one covering exactly the same
+        // things can be recognised as the same kind under another name.
+        java.util.Map<Set<net.minecraft.resources.ResourceLocation>,
+                net.minecraft.resources.ResourceLocation> byCoverage = new java.util.HashMap<>();
+        List<Option> categories = new ArrayList<>();
+        for (net.minecraft.resources.ResourceLocation tagId : tagIds) {
+            Set<net.minecraft.resources.ResourceLocation> covered = new LinkedHashSet<>();
             Option first = null;
             boolean available = false;
             for (Option option : out) {
@@ -101,12 +114,19 @@ public final class WorksiteCatalogs {
                 if (!OrderTags.contains(tagId, option.output())) continue;
                 if (first == null) first = option;
                 available |= option.available();
-                if (available) break;
+                covered.add(option.output());
             }
             if (first == null) continue;
-            out.add(Option.category(tagId, OrdersService.categoryLabel(tagId), first.output(),
+            // Merge, rather than list the same shelf twice: two sets that offer exactly the same
+            // things at this worksite are indistinguishable to whoever is reading the sheet, so
+            // the first (sorted) name stands for both. Only EQUAL coverage merges — a narrower
+            // kind inside a broader one is a real distinction ("any soup" vs "any meal") and
+            // absorbing it would delete a set the player deliberately declared.
+            if (byCoverage.putIfAbsent(covered, tagId) != null) continue;
+            categories.add(Option.category(tagId, OrdersService.categoryLabel(tagId), first.output(),
                     available, available ? "" : first.blocker()));
         }
+        out.addAll(categories);
     }
 
     /** Every engine's stations, de-duplicated by label. */

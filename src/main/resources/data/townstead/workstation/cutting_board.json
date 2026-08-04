@@ -1,7 +1,9 @@
 {
+  "schema": "townstead:workstation/v1",
   "mods": "farmersdelight",
   "blocks": [
     "farmersdelight:cutting_board"
   ],
-  "type": "cutting_board"
+  "type": "cutting_board",
+  "adapter": "townstead:farmersdelight_cutting_board"
 }

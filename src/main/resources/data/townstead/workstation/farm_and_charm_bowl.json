@@ -4,5 +4,6 @@
   "type": "passive_station",
   "blocks": ["farm_and_charm:crafting_bowl"],
   "recipe_type": "farm_and_charm:crafting_bowl",
+  "orderable": "all",
   "recipe_tier": 1
 }

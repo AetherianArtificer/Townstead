@@ -5,6 +5,8 @@
     "minecraft:cooked_salmon",
     { "id": "#forge:cooked_fishes", "required": false },
     { "id": "#c:cooked_fishes", "required": false },
-    { "id": "#c:foods/cooked_fish", "required": false }
+    { "id": "#c:foods/cooked_fish", "required": false },
+    { "id": "farm_and_charm:cooked_cod", "required": false },
+    { "id": "farm_and_charm:cooked_salmon", "required": false }
   ]
 }

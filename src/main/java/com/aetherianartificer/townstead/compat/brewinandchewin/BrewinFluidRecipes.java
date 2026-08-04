@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.compat.brewinandchewin;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.ModRecipeRegistry;
+import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.FluidAmount;
 import com.aetherianartificer.townstead.work.recipe.FluidRecipes;
@@ -62,14 +62,14 @@ public final class BrewinFluidRecipes {
     private static List<FluidRecipes.Brew> brews(ServerLevel level) {
         List<FluidRecipes.Brew> out = new ArrayList<>();
         //? if >=1.21 {
-        for (var holder : ModRecipeRegistry.getRecipesForType(level, FERMENTING)) {
+        for (var holder : WorkRecipeRegistry.getRecipesForType(level, FERMENTING)) {
             Recipe<?> recipe = holder.value();
             ResourceLocation id = holder.id();
         //?} else {
-        /*for (Recipe<?> recipe : ModRecipeRegistry.getRecipesForType(level, FERMENTING)) {
+        /*for (Recipe<?> recipe : WorkRecipeRegistry.getRecipesForType(level, FERMENTING)) {
             ResourceLocation id = recipe.getId();
         *///?}
-            List<RecipeIngredient> inputs = ModRecipeRegistry.extractIngredients(recipe);
+            List<RecipeIngredient> inputs = WorkRecipeRegistry.extractIngredients(recipe);
             if (inputs.isEmpty()) continue;
             FluidAmount result = fluidField(recipe, "result", "output");
             if (result == null) continue;
@@ -85,11 +85,11 @@ public final class BrewinFluidRecipes {
     private static List<FluidRecipes.Pour> pours(ServerLevel level) {
         List<FluidRecipes.Pour> out = new ArrayList<>();
         //? if >=1.21 {
-        for (var holder : ModRecipeRegistry.getRecipesForType(level, KEG_POURING)) {
+        for (var holder : WorkRecipeRegistry.getRecipesForType(level, KEG_POURING)) {
             Recipe<?> recipe = holder.value();
             ResourceLocation id = holder.id();
         //?} else {
-        /*for (Recipe<?> recipe : ModRecipeRegistry.getRecipesForType(level, KEG_POURING)) {
+        /*for (Recipe<?> recipe : WorkRecipeRegistry.getRecipesForType(level, KEG_POURING)) {
             ResourceLocation id = recipe.getId();
         *///?}
             ResourceLocation fluid = plainFluidField(recipe);

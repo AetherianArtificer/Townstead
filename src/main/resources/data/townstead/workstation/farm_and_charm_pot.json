@@ -3,5 +3,7 @@
   "mods": "farm_and_charm",
   "type": "passive_station",
   "blocks": ["farm_and_charm:cooking_pot"],
-  "recipe_type": "farm_and_charm:pot_cooking"
+  "recipe_type": "farm_and_charm:pot_cooking",
+  "orderable": "all",
+  "support_below": ["#farm_and_charm:allows_cooking"]
 }

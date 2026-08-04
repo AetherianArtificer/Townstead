@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.mixin.compat.farmersdelight;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.PlayerCookingHooks;
+import com.aetherianartificer.townstead.profession.career.PlayerWorkHooks;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,7 +26,7 @@ public abstract class SkilletPlayerCookMixin {
         ItemStack remainder = cir.getReturnValue();
         int accepted = addedStack.getCount() - (remainder == null ? 0 : remainder.getCount());
         if (accepted > 0) {
-            PlayerCookingHooks.onSkilletAdd(player, addedStack, accepted);
+            PlayerWorkHooks.onSkilletAdd(player, addedStack, accepted);
         }
     }
 }

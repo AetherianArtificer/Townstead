@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
 /** The supply lines the mod itself ships. Registered once at startup. */
@@ -75,6 +76,17 @@ public final class TownsteadSupplyLines {
         @Override
         public boolean matches(ItemStack stack, ServerLevel level) {
             return !stack.isEmpty() && AbstractFurnaceBlockEntity.isFuel(stack);
+        }
+
+        @Override
+        public int preference(ItemStack stack, ServerLevel level) {
+            // Keep reusable recipe containers out of the fire whenever ordinary fuel exists.
+            if (stack.is(Items.BOWL)) return -1_000;
+            if (stack.is(Items.COAL_BLOCK)) return 1_000;
+            if (stack.is(Items.COAL) || stack.is(Items.CHARCOAL)) return 900;
+            if (stack.is(Items.BLAZE_ROD)) return 800;
+            if (stack.is(Items.DRIED_KELP_BLOCK)) return 700;
+            return 0;
         }
     }
 }

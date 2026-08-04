@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:storage_role/v1",
+  "mods": "butchery",
+  "role": "storage",
+  "blocks": [
+    "butchery:freezer"
+  ]
+}

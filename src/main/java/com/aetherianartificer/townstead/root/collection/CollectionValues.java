@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.root.collection;
 
+
 import com.aetherianartificer.townstead.root.gene.Gene;
 import com.aetherianartificer.townstead.root.gene.GeneRegistry;
 import com.aetherianartificer.townstead.root.gene.types.CollectionGeneType;

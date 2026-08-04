@@ -17,6 +17,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -53,6 +54,31 @@ public final class StationCatalogs {
     }
 
     /**
+     * Which DECLARED workstations stand inside this worksite, by def id.
+     *
+     * <p>Roles are too coarse to answer "can this place make that". Every data-declared machine
+     * is a {@code passive_station}, so owning one crafting bowl would otherwise advertise the
+     * roaster's whole menu as well. The work engine already pairs a declared recipe type to its
+     * own stations exclusively; this is the catalogue learning the same rule, so the sheet only
+     * offers what the room can actually cook.</p>
+     */
+    public static Set<ResourceLocation> stationDefsIn(ServerLevel level, Set<Long> extent) {
+        Set<ResourceLocation> present = new java.util.HashSet<>();
+        for (long packed : extent) {
+            BlockPos pos = BlockPos.of(packed);
+            // Asked through stationType so a covered or unsupported station counts as absent
+            // here exactly as it does everywhere else.
+            if (com.aetherianartificer.townstead.work.station.Stations.stationType(level, pos) == null) {
+                continue;
+            }
+            WorkstationDef def = com.aetherianartificer.townstead.work.station.Workstations
+                    .byState(level.getBlockState(pos));
+            if (def != null) present.add(def.id());
+        }
+        return present;
+    }
+
+    /**
      * Every item in every container inside the worksite, counted once.
      *
      * <p>One sweep, reused for every recipe. Checking each recipe against the world separately
@@ -74,6 +100,31 @@ public final class StationCatalogs {
     }
 
     /**
+     * The same, named after the station that declared the recipe when one did.
+     *
+     * <p>A role label is right when many blocks share the work ("Fire" covers a campfire and a
+     * skillet alike). It is useless when the role is a catch-all: every data-declared machine is
+     * a {@code passive_station}, so a roaster, a stove and a mincer all read "Station" and the
+     * player cannot tell which block to go build. A declared station names itself.</p>
+     */
+    public static Option optionFrom(DiscoveredRecipe recipe, StationType type,
+                                    @Nullable WorkstationDef def,
+                                    Map<ResourceLocation, Integer> onHand) {
+        if (def == null) return option(recipe, type, onHand);
+        ResourceLocation block = firstRegisteredBlock(def);
+        if (block == null) return option(recipe, type, onHand);
+        return option(recipe, itemName(block), block, onHand);
+    }
+
+    /** The def's first block that actually exists, for naming and for its sprite. */
+    private static @Nullable ResourceLocation firstRegisteredBlock(WorkstationDef def) {
+        for (ResourceLocation block : def.blocks()) {
+            if (BuiltInRegistries.ITEM.containsKey(block)) return block;
+        }
+        return null;
+    }
+
+    /**
      * The same entry named after a specific station rather than a role. A role label is right when
      * many blocks share the work ("Fire"); a produce line belongs to one block, and "Meat Grinder"
      * tells a player more than "Station" ever would.
@@ -84,6 +135,27 @@ public final class StationCatalogs {
         return Option.item(recipe.output(), stationLabel, stationIcon,
                 missing == null, missing == null ? "" : missing,
                 Math.max(1, recipe.outputCount()), needsOf(recipe));
+    }
+
+    /**
+     * One entry per declared station, named after its own block and lit when the worksite has
+     * one. The missing ones are the point: someone looking at a kitchen that cannot roast wants
+     * to be told "Roaster", not left wondering where the roasts went.
+     */
+    public static List<Station> declaredStationList(ServerLevel level, Set<Long> extent,
+                                                    java.util.Collection<WorkstationDef> defs) {
+        if (defs.isEmpty()) return List.of();
+        Set<ResourceLocation> present = stationDefsIn(level, extent);
+        Set<String> seen = new java.util.LinkedHashSet<>();
+        List<Station> out = new ArrayList<>();
+        for (WorkstationDef def : defs) {
+            ResourceLocation block = firstRegisteredBlock(def);
+            if (block == null) continue;
+            String label = itemName(block);
+            if (!seen.add(label)) continue;
+            out.add(new Station(label, block, present.contains(def.id())));
+        }
+        return out;
     }
 
     /** Every station role a pack provides a block for, and whether this worksite has one. */

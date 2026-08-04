@@ -1,5 +1,9 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
+import com.aetherianartificer.townstead.work.recipe.WorkIngredients;
+import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
+import com.aetherianartificer.townstead.work.station.WorksiteStationIndex;
+
 import com.aetherianartificer.townstead.work.station.Stations;
 
 import com.aetherianartificer.townstead.work.station.StationProtocols;
@@ -19,7 +23,6 @@ import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
 import com.aetherianartificer.townstead.work.producer.ProducerStationSessions;
 import com.aetherianartificer.townstead.work.producer.ProducerStationState;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCompat;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
@@ -74,6 +77,25 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 public final class StationHandler {
+
+    static @Nullable ServerPlayer cuttingBoardActor(ServerLevel level) {
+        if (level == null) return null;
+        try {
+            return FakePlayerFactory.get(level, TOWNSTEAD_COOK_PROFILE);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+    // Cutting board (Farmer's Delight)
+    // The protocol lives in FdCuttingBoard; these keep the call sites stable.
+
+    public static boolean placeCuttingBoardInput(ServerLevel level, BlockPos stationAnchor, ItemStack input) {
+        return FdCuttingBoard.placeCuttingBoardInput(level, stationAnchor, input);
+    }
+
+    public static boolean processCuttingBoardStoredItem(ServerLevel level, BlockPos stationAnchor, ItemStack tool) {
+        return FdCuttingBoard.processCuttingBoardStoredItem(level, stationAnchor, tool);
+    }
     private StationHandler() {}
     private static final GameProfile TOWNSTEAD_COOK_PROFILE =
             new GameProfile(UUID.fromString("7d0d7ac4-9d5a-4afc-bcaa-7e6bb86a7a4d"), "[TownsteadCook]");
@@ -111,13 +133,13 @@ public final class StationHandler {
     }
 
     //? if >=1.21 {
-    static ItemStack copyOne(ItemStack stack) { return stack.copyWithCount(1); }
-    static ItemStack copyWithCount(ItemStack stack, int count) { return stack.copyWithCount(count); }
-    static boolean isSameItemComponents(ItemStack a, ItemStack b) { return ItemStack.isSameItemSameComponents(a, b); }
+    public static ItemStack copyOne(ItemStack stack) { return stack.copyWithCount(1); }
+    public static ItemStack copyWithCount(ItemStack stack, int count) { return stack.copyWithCount(count); }
+    public static boolean isSameItemComponents(ItemStack a, ItemStack b) { return ItemStack.isSameItemSameComponents(a, b); }
     //?} else {
-    /*static ItemStack copyOne(ItemStack stack) { ItemStack c = stack.copy(); c.setCount(1); return c; }
-    static ItemStack copyWithCount(ItemStack stack, int count) { ItemStack c = stack.copy(); c.setCount(count); return c; }
-    static boolean isSameItemComponents(ItemStack a, ItemStack b) { return ItemStack.isSameItemSameTags(a, b); }
+    /*public static ItemStack copyOne(ItemStack stack) { ItemStack c = stack.copy(); c.setCount(1); return c; }
+    public static ItemStack copyWithCount(ItemStack stack, int count) { ItemStack c = stack.copy(); c.setCount(count); return c; }
+    public static boolean isSameItemComponents(ItemStack a, ItemStack b) { return ItemStack.isSameItemSameTags(a, b); }
     *///?}
 
     // ── Block IDs ──
@@ -125,7 +147,6 @@ public final class StationHandler {
     // Operational-protocol block ids (skillet/board/stove reflection paths and fire-surface
     // heuristics). Which blocks ARE stations is decided by workstation defs, never these.
     //? if >=1.21 {
-    private static final ResourceLocation FD_CUTTING_BOARD = ResourceLocation.parse("farmersdelight:cutting_board");
     private static final ResourceLocation FD_SKILLET = ResourceLocation.parse("farmersdelight:skillet");
     private static final ResourceLocation FD_STOVE = ResourceLocation.parse("farmersdelight:stove");
     //?} else {
@@ -171,10 +192,6 @@ public final class StationHandler {
     private static Method FD_SKILLET_HAS_STORED_STACK;
     private static Method FD_SKILLET_ADD_ITEM_TO_COOK;
     private static Method FD_SKILLET_IS_HEATED;
-    private static Class<?> FD_CUTTING_BOARD_BE_CLASS;
-    private static Method FD_CUTTING_BOARD_ADD_ITEM;
-    private static Method FD_CUTTING_BOARD_PROCESS;
-    private static Method FD_CUTTING_BOARD_REMOVE_ITEM;
 
     // ── Data-declared workstations (pot protocol) ──
 
@@ -216,7 +233,7 @@ public final class StationHandler {
             int verticalRadius
     ) {
         List<Stations.StationSlot> discovered = new ArrayList<>();
-        for (Stations.StationSlot slot : KitchenStationIndex.snapshot(level, kitchenBounds).stations()) {
+        for (Stations.StationSlot slot : WorksiteStationIndex.snapshot(level, kitchenBounds).stations()) {
             if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) continue;
             if (Stations.findStandingPosition(level, villager, slot.pos()) == null) continue;
             discovered.add(slot);
@@ -605,7 +622,7 @@ public final class StationHandler {
         return loaded > 0;
     }
 
-    static int bestImpureWaterSlot(
+    public static int bestImpureWaterSlot(
             SimpleContainer inv,
             ThirstCompatBridge bridge,
             java.util.function.Predicate<ItemStack> extraFilter
@@ -624,28 +641,7 @@ public final class StationHandler {
         return bestScore > 0 ? bestSlot : -1;
     }
 
-    public static int impureWaterScore(ItemStack stack, ThirstCompatBridge bridge) {
-        if (stack.isEmpty()) return 0;
-        if (!bridge.itemRestoresThirst(stack) || !bridge.isDrink(stack)) return 0;
-        if (!bridge.isPurityWaterContainer(stack)) return 0;
-        int purity = Math.max(0, Math.min(ThirstCompatBridge.PURITY_PURIFIED, bridge.purity(stack)));
-        if (purity >= ThirstCompatBridge.PURITY_PURIFIED) return 0;
-        int impurity = ThirstCompatBridge.PURITY_PURIFIED - purity;
-        return (impurity * 100) + Math.max(0, bridge.hydration(stack));
-    }
 
-    private static int countMatchingImpure(SimpleContainer inv, ItemStack prototype, ThirstCompatBridge bridge) {
-        if (prototype.isEmpty()) return 0;
-        int total = 0;
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty()) continue;
-            if (!isSameItemComponents(stack, prototype)) continue;
-            if (impureWaterScore(stack, bridge) <= 0) continue;
-            total += stack.getCount();
-        }
-        return total;
-    }
 
     private static int consumeMatchingImpure(SimpleContainer inv, ItemStack prototype, ThirstCompatBridge bridge, int amount) {
         if (prototype.isEmpty() || amount <= 0) return 0;
@@ -664,150 +660,13 @@ public final class StationHandler {
 
     // ── Cutting board interaction ──
 
-    public static boolean cuttingBoardProcess(
-            ServerLevel level,
-            VillagerEntityMCA villager,
-            BlockPos stationAnchor,
-            ItemStack inputStack,
-            ItemStack knifeStack
-    ) {
-        if (stationAnchor == null || inputStack.isEmpty()) return false;
-        if (knifeStack.isEmpty()) return false;
 
-        BlockState state = level.getBlockState(stationAnchor);
-        ServerPlayer actor = cuttingBoardActor(level);
-        // FD 1.3 removed all off-hand interaction with cutting boards. The simulated-player path
-        // below relies on placing via off-hand, so on 1.3+ we go straight to the BE reflection path.
-        if (actor != null && !FarmersDelightCompat.isAtLeast13()) {
-            ItemStack previousMain = actor.getMainHandItem().copy();
-            ItemStack previousOff = actor.getOffhandItem().copy();
-            try {
-                actor.setItemInHand(InteractionHand.MAIN_HAND, knifeStack.copy());
-                actor.setItemInHand(InteractionHand.OFF_HAND, inputStack.copy());
-                BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(stationAnchor), Direction.UP, stationAnchor, false);
-                InteractionResult placed = invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.OFF_HAND, hit);
-                if (!placed.consumesAction()) {
-                    return false;
-                }
-                InteractionResult processed = invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.MAIN_HAND, hit);
-                if (processed == InteractionResult.SUCCESS) {
-                    return true;
-                }
-            } catch (Throwable ignored) {
-                // Fall through to the direct block-entity path below.
-            } finally {
-                actor.setItemInHand(InteractionHand.MAIN_HAND, previousMain);
-                actor.setItemInHand(InteractionHand.OFF_HAND, previousOff);
-            }
-        }
-
-        if (!ensureCuttingBoardReflection()) return false;
-        BlockEntity be = level.getBlockEntity(stationAnchor);
-        if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
-        try {
-            Object placed = FD_CUTTING_BOARD_ADD_ITEM.invoke(be, inputStack);
-            if (!cuttingBoardAddItemFullyPlaced(placed)) {
-                ItemStack leftover = placed instanceof ItemStack stack ? stack : inputStack;
-                if (!leftover.isEmpty()) villager.getInventory().addItem(leftover);
-                return false;
-            }
-            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, cuttingBoardActor(level));
-            if (processed instanceof Boolean ok && ok) {
-                return true;
-            }
-            try { FD_CUTTING_BOARD_REMOVE_ITEM.invoke(be); } catch (Throwable ignored) {}
-            villager.getInventory().addItem(new ItemStack(inputStack.getItem(), 1));
-        } catch (Throwable t) {
-            villager.getInventory().addItem(new ItemStack(inputStack.getItem(), 1));
-        }
-        return false;
-    }
-
-    public static boolean placeCuttingBoardInput(
-            ServerLevel level,
-            BlockPos stationAnchor,
-            ItemStack inputStack
-    ) {
-        if (stationAnchor == null || inputStack.isEmpty()) return false;
-        BlockState state = level.getBlockState(stationAnchor);
-        ServerPlayer actor = cuttingBoardActor(level);
-        // FD 1.3 removed off-hand cutting-board interaction; skip the simulated path on 1.3+.
-        if (actor != null && !FarmersDelightCompat.isAtLeast13()) {
-            ItemStack previousMain = actor.getMainHandItem().copy();
-            ItemStack previousOff = actor.getOffhandItem().copy();
-            try {
-                actor.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-                actor.setItemInHand(InteractionHand.OFF_HAND, inputStack.copy());
-                BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(stationAnchor), Direction.UP, stationAnchor, false);
-                InteractionResult placed = invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.OFF_HAND, hit);
-                return placed.consumesAction();
-            } catch (Throwable ignored) {
-                // Fall through to BE path.
-            } finally {
-                actor.setItemInHand(InteractionHand.MAIN_HAND, previousMain);
-                actor.setItemInHand(InteractionHand.OFF_HAND, previousOff);
-            }
-        }
-
-        if (!ensureCuttingBoardReflection()) return false;
-        BlockEntity be = level.getBlockEntity(stationAnchor);
-        if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
-        try {
-            Object placed = FD_CUTTING_BOARD_ADD_ITEM.invoke(be, inputStack);
-            return cuttingBoardAddItemFullyPlaced(placed);
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
 
     // FD <1.3 returned boolean (true = placed). FD 1.3+ returns the leftover ItemStack
     // (empty = fully placed). Reflection callers must accept both shapes.
-    private static boolean cuttingBoardAddItemFullyPlaced(Object result) {
-        if (result instanceof Boolean b) return b;
-        if (result instanceof ItemStack stack) return stack.isEmpty();
-        return false;
-    }
 
-    public static boolean processCuttingBoardStoredItem(
-            ServerLevel level,
-            BlockPos stationAnchor,
-            ItemStack knifeStack
-    ) {
-        if (stationAnchor == null || knifeStack.isEmpty()) return false;
 
-        BlockState state = level.getBlockState(stationAnchor);
-        ServerPlayer actor = cuttingBoardActor(level);
-        // FD 1.3 reworked the cutting board (full-stack handling); go BE-direct on 1.3+ to avoid
-        // depending on block-use semantics that may have shifted.
-        if (actor != null && !FarmersDelightCompat.isAtLeast13()) {
-            ItemStack previousMain = actor.getMainHandItem().copy();
-            ItemStack previousOff = actor.getOffhandItem().copy();
-            try {
-                actor.setItemInHand(InteractionHand.MAIN_HAND, knifeStack.copy());
-                actor.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
-                BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(stationAnchor), Direction.UP, stationAnchor, false);
-                InteractionResult processed = invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.MAIN_HAND, hit);
-                return processed == InteractionResult.SUCCESS;
-            } catch (Throwable ignored) {
-                // Fall through to BE path.
-            } finally {
-                actor.setItemInHand(InteractionHand.MAIN_HAND, previousMain);
-                actor.setItemInHand(InteractionHand.OFF_HAND, previousOff);
-            }
-        }
-
-        if (!ensureCuttingBoardReflection()) return false;
-        BlockEntity be = level.getBlockEntity(stationAnchor);
-        if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
-        try {
-            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, cuttingBoardActor(level));
-            return processed instanceof Boolean ok && ok;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static InteractionResult invokeCuttingBoardBlockUse(
+    static InteractionResult invokeCuttingBoardBlockUse(
             BlockState state,
             ServerLevel level,
             BlockPos pos,
@@ -836,28 +695,7 @@ public final class StationHandler {
         return InteractionResult.PASS;
     }
 
-    public static ItemStack collectCuttingBoardOutput(ServerLevel level, BlockPos stationAnchor) {
-        if (stationAnchor == null) return ItemStack.EMPTY;
-        if (!ensureCuttingBoardReflection()) return ItemStack.EMPTY;
-        BlockEntity be = level.getBlockEntity(stationAnchor);
-        if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return ItemStack.EMPTY;
-        try {
-            Object removed = FD_CUTTING_BOARD_REMOVE_ITEM.invoke(be);
-            if (removed instanceof ItemStack stack && !stack.isEmpty()) {
-                return stack;
-            }
-        } catch (Throwable ignored) {}
-        return ItemStack.EMPTY;
-    }
 
-    private static @Nullable ServerPlayer cuttingBoardActor(ServerLevel level) {
-        if (level == null) return null;
-        try {
-            return FakePlayerFactory.get(level, TOWNSTEAD_COOK_PROFILE);
-        } catch (Throwable ignored) {
-            return null;
-        }
-    }
 
     // ── Station recipe support checks ──
 
@@ -874,7 +712,7 @@ public final class StationHandler {
         // Typed pairing: a recipe riding a workstation-declared recipe type cooks only at
         // stations declaring that type, and such stations cook only their declared type.
         ResourceLocation declaredType = Workstations.declaredRecipeTypeAt(level, pos);
-        ResourceLocation foreignType = ModRecipeRegistry.foreignRecipeTypeId(recipe);
+        ResourceLocation foreignType = WorkRecipeRegistry.foreignRecipeTypeId(recipe);
         if (foreignType != null ? !foreignType.equals(declaredType) : declaredType != null) return false;
         if (recipe.purification()) {
             return recipe.stationType() == StationType.FIRE_STATION && supportsPurificationAt(level, pos);
@@ -1015,7 +853,7 @@ public final class StationHandler {
             }
         }
         if (removed > 0) {
-            KitchenStationIndex.invalidate(level, pos);
+            WorksiteStationIndex.invalidate(level, pos);
         }
         return removed;
     }
@@ -1096,7 +934,7 @@ public final class StationHandler {
             }
         }
         if (remainder.getCount() != stack.getCount()) {
-            KitchenStationIndex.invalidate(level, pos);
+            WorksiteStationIndex.invalidate(level, pos);
         }
         return remainder;
     }
@@ -1130,7 +968,7 @@ public final class StationHandler {
         final ItemStack stackCopy = stack.copy();
         IItemHandler preferred = preferredIngredientHandler(level, pos);
         if (preferred != null && insertIntoFirstEmptyPotIngredientSlot(preferred, stackCopy, ingredientSlots)) {
-            KitchenStationIndex.invalidate(level, pos);
+            WorksiteStationIndex.invalidate(level, pos);
             return true;
         }
         StorageSearchContext searchContext = new StorageSearchContext(level);
@@ -1140,7 +978,7 @@ public final class StationHandler {
             inserted[0] = insertIntoFirstEmptyPotIngredientSlot(handler, stackCopy, ingredientSlots);
         });
         if (inserted[0]) {
-            KitchenStationIndex.invalidate(level, pos);
+            WorksiteStationIndex.invalidate(level, pos);
         }
         return inserted[0];
     }
@@ -1151,7 +989,7 @@ public final class StationHandler {
         final ItemStack singleCopy = single;
         IItemHandler preferred = preferredIngredientHandler(level, pos);
         if (preferred != null && insertIntoFirstEmptyPotIngredientSlot(preferred, singleCopy, ingredientSlots)) {
-            KitchenStationIndex.invalidate(level, pos);
+            WorksiteStationIndex.invalidate(level, pos);
             return true;
         }
         StorageSearchContext searchContext = new StorageSearchContext(level);
@@ -1161,7 +999,7 @@ public final class StationHandler {
             inserted[0] = insertIntoFirstEmptyPotIngredientSlot(handler, singleCopy, ingredientSlots);
         });
         if (inserted[0]) {
-            KitchenStationIndex.invalidate(level, pos);
+            WorksiteStationIndex.invalidate(level, pos);
         }
         return inserted[0];
     }
@@ -1216,7 +1054,7 @@ public final class StationHandler {
                 return ProducerStationState.FINISHED_OUTPUT;
             }
         }
-        if (stationType == StationType.HOT_STATION && stationHasCollectibleOutput(level, pos, ModRecipeRegistry.allOutputIds(level))) {
+        if (stationType == StationType.HOT_STATION && stationHasCollectibleOutput(level, pos, WorkRecipeRegistry.allOutputIds(level))) {
             return ProducerStationState.FINISHED_OUTPUT;
         }
 
@@ -1225,7 +1063,7 @@ public final class StationHandler {
                 return ProducerStationState.FINISHED_OUTPUT;
             }
         }
-        if (stationType == StationType.FIRE_STATION && surfaceHasCollectibleOutput(level, pos, ModRecipeRegistry.allOutputIds(level))) {
+        if (stationType == StationType.FIRE_STATION && surfaceHasCollectibleOutput(level, pos, WorkRecipeRegistry.allOutputIds(level))) {
             return ProducerStationState.FINISHED_OUTPUT;
         }
 
@@ -1255,10 +1093,10 @@ public final class StationHandler {
         if (level == null || villager == null || pos == null || stationType == null) return false;
         boolean movedAny = false;
 
-        Set<ResourceLocation> outputIds = ModRecipeRegistry.allOutputIds(level);
+        Set<ResourceLocation> outputIds = WorkRecipeRegistry.allOutputIds(level);
         List<ItemStack> drops = collectSurfaceCookDrops(level, pos, outputIds);
         for (ItemStack drop : drops) {
-            IngredientResolver.storeOutputInCookStorage(level, villager, drop, pos, storageBounds);
+            WorkIngredients.storeOutputInWorksiteStorage(level, villager, drop, pos, storageBounds);
             if (!drop.isEmpty()) {
                 ItemStack remainder = villager.getInventory().addItem(drop);
                 if (!remainder.isEmpty()) {
@@ -1314,7 +1152,7 @@ public final class StationHandler {
         });
         ItemStack remainder = remainderRef[0];
         if (!simulate && remainder.getCount() != stack.getCount()) {
-            KitchenStationIndex.invalidate(level, pos);
+            WorksiteStationIndex.invalidate(level, pos);
         }
         if (remainder.isEmpty()) return ItemStack.EMPTY;
         return remainder;
@@ -1451,7 +1289,7 @@ public final class StationHandler {
             }
         }
         if (!extracted.isEmpty()) {
-            KitchenStationIndex.invalidate(level, pos);
+            WorksiteStationIndex.invalidate(level, pos);
         }
         return extracted;
     }
@@ -1517,14 +1355,14 @@ public final class StationHandler {
         if (clearRemainingViaReflection(be, villager, level, anchor, storageBounds)) clearedAnyRef[0] = true;
 
         if (clearedAnyRef[0]) {
-            KitchenStationIndex.invalidate(level, pos);
+            WorksiteStationIndex.invalidate(level, pos);
         }
         return clearedAnyRef[0];
     }
 
     private static void routeClearedItem(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, BlockPos stationAnchor, Set<Long> storageBounds) {
         if (stack.isEmpty()) return;
-        IngredientResolver.storeOutputInCookStorage(level, villager, stack, stationAnchor, storageBounds);
+        WorkIngredients.storeOutputInWorksiteStorage(level, villager, stack, stationAnchor, storageBounds);
         if (stack.isEmpty()) return;
         ItemStack remainder = villager.getInventory().addItem(stack);
         if (!remainder.isEmpty()) {
@@ -1572,13 +1410,16 @@ public final class StationHandler {
 
     public static List<Building> kitchenBuildings(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel level)) return List.of();
-        Optional<Building> assigned = FarmersDelightCookAssignment.assignedKitchen(level, villager);
+        Optional<Building> assigned = com.aetherianartificer.townstead.profession.ProfessionSites.assignedSite(level, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK)).map(com.aetherianartificer.townstead.profession.ProfessionSites.Site::building).filter(java.util.Objects::nonNull);
         if (assigned.isPresent()) return List.of(assigned.get());
-        Optional<Village> village = FarmersDelightCookAssignment.resolveVillage(villager);
+        Optional<Village> village = com.aetherianartificer.townstead.profession.ProfessionCapacity.resolveVillage(villager);
         if (village.isEmpty()) return List.of();
-        return com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village.get()).stream()
-                .filter(b -> FarmersDelightCookAssignment.isKitchenType(b.getType()))
-                .toList();
+        // The buildings this career claims, read off its def's prefixes rather than a hardcoded
+        // kitchen id — the same list capacity counts.
+        return com.aetherianartificer.townstead.profession.ProfessionCapacity.countedBuildings(
+                village.get(),
+                com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(
+                        com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK));
     }
 
     public static List<BlockPos> kitchenAnchors(ServerLevel level, VillagerEntityMCA villager) {
@@ -1606,114 +1447,24 @@ public final class StationHandler {
         return false;
     }
 
-    public static boolean isCookStorageCandidate(ServerLevel level, BlockPos pos, BlockEntity be) {
-        BlockState state = level.getBlockState(pos);
-        if (TownsteadConfig.isProtectedStorage(state)) return false;
-        if (NearbyItemSources.isProcessingContainer(level, pos, be)) return false;
-        if (state.is(FD_KITCHEN_STORAGE_TAG)
-                || state.is(FD_KITCHEN_STORAGE_UPGRADED_TAG)
-                || state.is(FD_KITCHEN_STORAGE_NETHER_TAG)
-                || state.is(Blocks.CHEST)
-                || state.is(Blocks.TRAPPED_CHEST)
-                || state.is(Blocks.BARREL)) {
-            return true;
-        }
-        if (be instanceof Container container) {
-            return container.getContainerSize() > 0;
-        }
-        if (getItemHandler(be, level, pos, null) != null) {
-            return true;
-        }
-        for (Direction dir : Direction.values()) {
-            if (getItemHandler(be, level, pos, dir) != null) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     // ── Knife helpers ──
 
-    public static boolean isKnifeStack(ItemStack stack) {
-        if (stack.isEmpty()) return false;
-        if (stack.is(KNIFE_TAG) || stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE) || stack.is(KNIFE_TAG_FD)) return true;
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        if (id == null) return false;
-        String path = id.getPath();
-        return path.endsWith("_knife") || path.contains("/knife") || path.contains("knife");
-    }
 
-    public static boolean hasKnife(SimpleContainer inv) {
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (isKnifeStack(inv.getItem(i))) return true;
-        }
-        return false;
-    }
 
-    public static String describeKnifeLikeInventory(SimpleContainer inv) {
-        List<String> parts = new ArrayList<>();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty()) continue;
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            String itemId = id == null ? stack.getItem().toString() : id.toString();
-            String path = id == null ? "" : id.getPath();
-            if (isKnifeStack(stack) || path.contains("knife") || path.contains("blade") || path.contains("cleaver")) {
-                parts.add(itemId + " x" + stack.getCount() + " match=" + isKnifeStack(stack));
-            }
-        }
-        return parts.isEmpty() ? "<none>" : String.join(", ", parts);
-    }
 
     // ── Inventory helpers ──
 
-    public static int count(SimpleContainer inv, Item item) {
-        int total = 0;
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (inv.getItem(i).is(item)) total += inv.getItem(i).getCount();
-        }
-        return total;
-    }
 
-    public static boolean consume(SimpleContainer inv, Item item, int needed) {
-        int remaining = needed;
-        for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
-            ItemStack stack = inv.getItem(i);
-            if (!stack.is(item)) continue;
-            int take = Math.min(remaining, stack.getCount());
-            stack.shrink(take);
-            remaining -= take;
-        }
-        return remaining <= 0;
-    }
 
-    public static int removeUpTo(SimpleContainer inv, Item item, int maxCount) {
-        int removed = 0;
-        for (int i = 0; i < inv.getContainerSize() && removed < maxCount; i++) {
-            ItemStack stack = inv.getItem(i);
-            if (!stack.is(item)) continue;
-            int take = Math.min(maxCount - removed, stack.getCount());
-            stack.shrink(take);
-            removed += take;
-        }
-        return removed;
-    }
 
     // ── Handler helpers ──
 
-    public static ItemStack insertIntoHandler(IItemHandler handler, ItemStack stack, boolean simulate) {
-        ItemStack remainder = stack.copy();
-        for (int i = 0; i < handler.getSlots(); i++) {
-            remainder = handler.insertItem(i, remainder, simulate);
-            if (remainder.isEmpty()) return ItemStack.EMPTY;
-        }
-        return remainder;
-    }
 
     public static IItemHandler preferredIngredientHandler(ServerLevel level, BlockPos pos) {
         if (pos == null) return null;
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
-        if (isPotBlock(id) || FD_SKILLET.equals(id) || FD_CUTTING_BOARD.equals(id)) {
+        if (isPotBlock(id) || FD_SKILLET.equals(id) || FdCuttingBoard.FD_CUTTING_BOARD.equals(id)) {
             IItemHandler up = getItemHandler(level, pos, Direction.UP);
             if (up != null) return up;
         }
@@ -1986,22 +1737,98 @@ public final class StationHandler {
 
     // ── Cutting board reflection ──
 
-    private static boolean ensureCuttingBoardReflection() {
-        if (FD_CUTTING_BOARD_BE_CLASS != null && FD_CUTTING_BOARD_ADD_ITEM != null
-                && FD_CUTTING_BOARD_PROCESS != null && FD_CUTTING_BOARD_REMOVE_ITEM != null) {
-            return true;
+public static int impureWaterScore(ItemStack stack, ThirstCompatBridge bridge) {
+        if (stack.isEmpty()) return 0;
+        if (!bridge.itemRestoresThirst(stack) || !bridge.isDrink(stack)) return 0;
+        if (!bridge.isPurityWaterContainer(stack)) return 0;
+        int purity = Math.max(0, Math.min(ThirstCompatBridge.PURITY_PURIFIED, bridge.purity(stack)));
+        if (purity >= ThirstCompatBridge.PURITY_PURIFIED) return 0;
+        int impurity = ThirstCompatBridge.PURITY_PURIFIED - purity;
+        return (impurity * 100) + Math.max(0, bridge.hydration(stack));
+    }
+
+    public static int countMatchingImpure(SimpleContainer inv, ItemStack prototype, ThirstCompatBridge bridge) {
+        if (prototype.isEmpty()) return 0;
+        int total = 0;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty()) continue;
+            if (!isSameItemComponents(stack, prototype)) continue;
+            if (impureWaterScore(stack, bridge) <= 0) continue;
+            total += stack.getCount();
         }
-        try {
-            Class<?> playerClass = Class.forName("net.minecraft.world.entity.player.Player");
-            FD_CUTTING_BOARD_BE_CLASS = Class.forName("vectorwing.farmersdelight.common.block.entity.CuttingBoardBlockEntity");
-            FD_CUTTING_BOARD_ADD_ITEM = FD_CUTTING_BOARD_BE_CLASS.getMethod("addItem", ItemStack.class);
-            FD_CUTTING_BOARD_PROCESS = FD_CUTTING_BOARD_BE_CLASS.getMethod("processStoredItemUsingTool", ItemStack.class, playerClass);
-            FD_CUTTING_BOARD_REMOVE_ITEM = FD_CUTTING_BOARD_BE_CLASS.getMethod("removeItem");
-            return true;
-        } catch (Throwable ignored) {
-            FD_CUTTING_BOARD_BE_CLASS = null; FD_CUTTING_BOARD_ADD_ITEM = null;
-            FD_CUTTING_BOARD_PROCESS = null; FD_CUTTING_BOARD_REMOVE_ITEM = null;
-            return false;
+        return total;
+    }
+
+    public static boolean isKnifeStack(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        if (stack.is(KNIFE_TAG) || stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE) || stack.is(KNIFE_TAG_FD)) return true;
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id == null) return false;
+        String path = id.getPath();
+        return path.endsWith("_knife") || path.contains("/knife") || path.contains("knife");
+    }
+
+    public static boolean hasKnife(SimpleContainer inv) {
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (isKnifeStack(inv.getItem(i))) return true;
         }
+        return false;
+    }
+
+    public static String describeKnifeLikeInventory(SimpleContainer inv) {
+        List<String> parts = new ArrayList<>();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty()) continue;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            String itemId = id == null ? stack.getItem().toString() : id.toString();
+            String path = id == null ? "" : id.getPath();
+            if (isKnifeStack(stack) || path.contains("knife") || path.contains("blade") || path.contains("cleaver")) {
+                parts.add(itemId + " x" + stack.getCount() + " match=" + isKnifeStack(stack));
+            }
+        }
+        return parts.isEmpty() ? "<none>" : String.join(", ", parts);
+    }
+
+    public static int count(SimpleContainer inv, Item item) {
+        int total = 0;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (inv.getItem(i).is(item)) total += inv.getItem(i).getCount();
+        }
+        return total;
+    }
+
+    public static boolean consume(SimpleContainer inv, Item item, int needed) {
+        int remaining = needed;
+        for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!stack.is(item)) continue;
+            int take = Math.min(remaining, stack.getCount());
+            stack.shrink(take);
+            remaining -= take;
+        }
+        return remaining <= 0;
+    }
+
+    public static int removeUpTo(SimpleContainer inv, Item item, int maxCount) {
+        int removed = 0;
+        for (int i = 0; i < inv.getContainerSize() && removed < maxCount; i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!stack.is(item)) continue;
+            int take = Math.min(maxCount - removed, stack.getCount());
+            stack.shrink(take);
+            removed += take;
+        }
+        return removed;
+    }
+
+    public static ItemStack insertIntoHandler(IItemHandler handler, ItemStack stack, boolean simulate) {
+        ItemStack remainder = stack.copy();
+        for (int i = 0; i < handler.getSlots(); i++) {
+            remainder = handler.insertItem(i, remainder, simulate);
+            if (remainder.isEmpty()) return ItemStack.EMPTY;
+        }
+        return remainder;
     }
 }

@@ -3,5 +3,7 @@
   "mods": "farm_and_charm",
   "type": "passive_station",
   "blocks": ["farm_and_charm:roaster"],
-  "recipe_type": "farm_and_charm:roaster"
+  "recipe_type": "farm_and_charm:roaster",
+  "orderable": "all",
+  "support_below": ["#farm_and_charm:allows_cooking"]
 }

@@ -51,7 +51,27 @@ public final class JobSiteProviders {
             }
             if (json.has("type_prefix")) prefixes.add(GsonHelper.getAsString(json, "type_prefix", ""));
             prefixes.removeIf(String::isBlank);
-            return prefixes.isEmpty() ? null : new JobSiteProvider.Building(prefixes);
+            if (prefixes.isEmpty()) return null;
+            List<Integer> slotsPerTier = new ArrayList<>();
+            for (JsonElement e : GsonHelper.getAsJsonArray(json, "slots_per_tier", new JsonArray())) {
+                if (!e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber()) return null;
+                slotsPerTier.add(Math.max(0, e.getAsInt()));
+            }
+            return new JobSiteProvider.Building(prefixes, slotsPerTier);
+        });
+        register(JobSiteProvider.StationPost.KEY, json -> {
+            Set<ResourceLocation> blocks = new LinkedHashSet<>();
+            List<ResourceLocation> tags = new ArrayList<>();
+            for (JsonElement e : GsonHelper.getAsJsonArray(json, "blocks", new JsonArray())) {
+                if (!e.isJsonPrimitive()) return null;
+                String raw = e.getAsString();
+                ResourceLocation id = ResourceLocation.tryParse(raw.startsWith("#") ? raw.substring(1) : raw);
+                if (id == null) return null;
+                if (raw.startsWith("#")) tags.add(id); else blocks.add(id);
+            }
+            if (blocks.isEmpty() && tags.isEmpty()) return null;
+            return new JobSiteProvider.StationPost(blocks, tags,
+                    Math.max(1, GsonHelper.getAsInt(json, "slots", 1)));
         });
         register(JobSiteProvider.Always.KEY, json -> new JobSiteProvider.Always());
     }

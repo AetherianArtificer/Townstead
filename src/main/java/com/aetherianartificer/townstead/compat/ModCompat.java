@@ -7,17 +7,48 @@ import net.neoforged.fml.ModList;
 /*import net.minecraftforge.fml.ModList;
 *///?}
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class ModCompat {
     private static final Map<String, Boolean> LOADED_CACHE = new ConcurrentHashMap<>();
 
+    /**
+     * Mods that furnish a kitchen: cooking stations to work at and the blocks the kitchen tiers
+     * are built from. Any ONE of them makes a cook possible, which is why nothing may gate the
+     * trade on Farmer's Delight by name — the tier lines are role tags every provider
+     * contributes to, so a kitchen can be built, staffed and worked without it.
+     */
+    public static final List<String> KITCHEN_PROVIDERS = List.of("farmersdelight", "farm_and_charm");
+
+    /**
+     * Compat paths whose requirements are satisfiable by more than one provider mod (their
+     * tier lines are role tags each provider contributes to). Matched by prefix; available
+     * when ANY listed mod is loaded. Other compat paths gate on the mod id in the path.
+     */
+    private static final Map<String, List<String>> ANY_PROVIDER_PREFIXES = Map.of(
+            "compat/farmersdelight/kitchen", KITCHEN_PROVIDERS);
+
     private ModCompat() {}
 
     public static boolean isLoaded(String modId) {
         if (modId == null || modId.isBlank()) return false;
         return LOADED_CACHE.computeIfAbsent(modId, id -> ModList.get().isLoaded(id));
+    }
+
+    /** Whether any one of these mods is present. */
+    public static boolean anyLoaded(List<String> modIds) {
+        if (modIds == null) return false;
+        for (String modId : modIds) {
+            if (isLoaded(modId)) return true;
+        }
+        return false;
+    }
+
+    /** Whether anything installed can furnish a kitchen; see {@link #KITCHEN_PROVIDERS}. */
+    public static boolean hasKitchenProvider() {
+        return anyLoaded(KITCHEN_PROVIDERS);
     }
 
     public static boolean isFromLoadedMod(ResourceLocation id, String modId) {
@@ -45,6 +76,13 @@ public final class ModCompat {
      * Use this to gate any compat-prefixed features (building types, patterns, etc.).
      */
     public static boolean isCompatAvailable(String path) {
+        if (path != null) {
+            for (Map.Entry<String, List<String>> entry : ANY_PROVIDER_PREFIXES.entrySet()) {
+                if (path.startsWith(entry.getKey())) {
+                    return entry.getValue().stream().anyMatch(ModCompat::isLoaded);
+                }
+            }
+        }
         String modId = extractCompatModId(path);
         return modId == null || isLoaded(modId);
     }

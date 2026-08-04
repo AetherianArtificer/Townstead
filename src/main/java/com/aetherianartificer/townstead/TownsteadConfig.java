@@ -383,7 +383,7 @@ public final class TownsteadConfig {
         b.pop();
 
         // ── Cooking ──
-        if (ModCompat.isLoaded("farmersdelight")) {
+        if (ModCompat.hasKitchenProvider()) {
             b.translation("townstead.configuration.cooking").push("cooking");
             ENABLE_COOK_REQUEST_CHAT = b
                     .translation("townstead.configuration.cooking.enableCookRequestChat")
@@ -674,7 +674,7 @@ public final class TownsteadConfig {
     }
 
     public static boolean isTownsteadCookEnabled() {
-        if (!ModCompat.isLoaded("farmersdelight")) return false;
+        if (!ModCompat.hasKitchenProvider()) return false;
         if (ENABLE_TOWNSTEAD_COOK == null) return true;
         return ENABLE_TOWNSTEAD_COOK.get();
     }

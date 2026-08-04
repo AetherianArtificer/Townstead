@@ -12,6 +12,7 @@ import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -154,18 +155,31 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     }
 
     private static void loadOverride(String buildingType, JsonObject json) {
-        Optional<ResourceLocation> nodeItem = Optional.empty();
-        if (json.has("node_item")) {
-            ResourceLocation parsed = ResourceLocation.tryParse(GsonHelper.getAsString(json, "node_item"));
-            if (parsed != null)
-                nodeItem = Optional.of(parsed);
-        }
-        boolean hide = GsonHelper.getAsBoolean(json, "hide", false);
+        Optional<ResourceLocation> nodeItem = json.has("node_item")
+                ? resolveNodeItem(json.get("node_item")) : Optional.empty();
+        boolean hide = GsonHelper.getAsBoolean(json, "hide", false)
+                || (json.has("node_item") && nodeItem.isEmpty());
         putOverride(buildingType, new BuildingOverride(nodeItem, hide), true);
         if (json.has("townsteadSpirit")) {
             Map<String, Integer> spirit = parseSpiritMap(json.getAsJsonObject("townsteadSpirit"), null);
             if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
         }
+    }
+
+    /**
+     * Resolves {@code node_item}: a single item id or a list of candidates, first one present
+     * in the item registry wins (so per-mod icon variants degrade gracefully). Empty when
+     * nothing resolves — callers treat a specified-but-unresolvable icon as {@code hide},
+     * since a building whose signature item doesn't exist shouldn't be offered.
+     */
+    private static Optional<ResourceLocation> resolveNodeItem(JsonElement element) {
+        List<JsonElement> candidates = element.isJsonArray()
+                ? element.getAsJsonArray().asList() : List.of(element);
+        for (JsonElement candidate : candidates) {
+            ResourceLocation id = ResourceLocation.tryParse(GsonHelper.convertToString(candidate, "node_item"));
+            if (id != null && BuiltInRegistries.ITEM.containsKey(id)) return Optional.of(id);
+        }
+        return Optional.empty();
     }
 
     private static void loadTheme(JsonObject json) {
@@ -405,12 +419,10 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
 
                 if (json.has("catalog") && json.get("catalog").isJsonObject()) {
                     JsonObject cat = json.getAsJsonObject("catalog");
-                    Optional<ResourceLocation> nodeItem = Optional.empty();
-                    if (cat.has("node_item")) {
-                        ResourceLocation parsed = ResourceLocation.tryParse(GsonHelper.getAsString(cat, "node_item"));
-                        if (parsed != null) nodeItem = Optional.of(parsed);
-                    }
-                    boolean hide = GsonHelper.getAsBoolean(cat, "hide", false);
+                    Optional<ResourceLocation> nodeItem = cat.has("node_item")
+                            ? resolveNodeItem(cat.get("node_item")) : Optional.empty();
+                    boolean hide = GsonHelper.getAsBoolean(cat, "hide", false)
+                            || (cat.has("node_item") && nodeItem.isEmpty());
                     putOverride(buildingType, new BuildingOverride(nodeItem, hide), true);
                 }
                 if (json.has("spirit") && json.get("spirit").isJsonObject()) {
