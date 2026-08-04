@@ -35,8 +35,8 @@ public record GeneCatalogEntry(
         // localized client at sync-read time (empty when the source was literal).
         String nameKey,
         String descriptionKey,
-        // Face-overlay slot for a custom-face gene: "eyes" / "mouth" / "eye_color", else "". Lets the
-        // client face layer identify the eyes/mouth/colour genes among an origin's inherited genes.
+        // Render slot for a gene whose generic VARIANTS display would otherwise hide its concrete
+        // kind: "eyes" / "mouth" / "eye_color" / "skin_overlay", else "".
         String faceSlot,
         // A sized attachment gene's editor-slider label ("Ear Size") + its translate key; both empty
         // when the gene carries no size or authored no label (the editor uses the gene name then).
@@ -174,7 +174,7 @@ public record GeneCatalogEntry(
     public boolean isEyes() { return "eyes".equals(faceSlot); }
     public boolean isMouth() { return "mouth".equals(faceSlot); }
     public boolean isEyeColor() { return "eye_color".equals(faceSlot); }
-    public boolean isFace() { return !faceSlot.isEmpty(); }
+    public boolean isFace() { return isEyes() || isMouth() || isEyeColor(); }
 
     public boolean isVariants() {
         return displayKind == GeneDisplay.Kind.VARIANTS.ordinal();
@@ -360,7 +360,7 @@ public record GeneCatalogEntry(
 
     /** True when this gene paints a skin-overlay layer ({@code "texture;tint"} rides in {@code targetId}). */
     public boolean isSkinOverlay() {
-        return displayKind == GeneDisplay.Kind.SKIN_OVERLAY.ordinal();
+        return displayKind == GeneDisplay.Kind.SKIN_OVERLAY.ordinal() || "skin_overlay".equals(faceSlot);
     }
 
     /** A SKIN_OVERLAY gene's texture id (a data-pack texture reference); empty otherwise. */
