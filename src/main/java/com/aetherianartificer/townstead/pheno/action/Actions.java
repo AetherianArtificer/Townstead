@@ -36,7 +36,12 @@ public final class Actions {
                 actions.add(action);
             }
             if (actions.isEmpty()) return null;
-            return ctx -> actions.forEach(a -> a.run(ctx));
+            return ctx -> {
+                for (Action action : actions) {
+                    if (!ctx.succeeded()) break;
+                    action.run(ctx);
+                }
+            };
         }
         if (!element.isJsonObject()) return null;
         JsonObject json = element.getAsJsonObject();
@@ -49,7 +54,9 @@ public final class Actions {
         Action core = inner;
         return ctx -> {
             for (LivingEntity target : selector.select(SelectorContext.of(ctx))) {
-                core.run(new ActionContext(target, ctx.entity(), ctx.origin()));
+                ActionContext selected = new ActionContext(target, ctx.entity(), ctx.origin());
+                core.run(selected);
+                if (!selected.succeeded()) ctx.fail();
             }
         };
     }

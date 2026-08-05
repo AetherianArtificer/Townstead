@@ -35,8 +35,8 @@ public record GeneCatalogEntry(
         // localized client at sync-read time (empty when the source was literal).
         String nameKey,
         String descriptionKey,
-        // Face-overlay slot for a custom-face gene: "eyes" / "mouth" / "eye_color", else "". Lets the
-        // client face layer identify the eyes/mouth/colour genes among an origin's inherited genes.
+        // Render slot for a gene whose generic VARIANTS display would otherwise hide its concrete
+        // kind: "eyes" / "mouth" / "eye_color" / "skin_overlay", else "".
         String faceSlot,
         // A sized attachment gene's editor-slider label ("Ear Size") + its translate key; both empty
         // when the gene carries no size or authored no label (the editor uses the gene name then).
@@ -174,7 +174,7 @@ public record GeneCatalogEntry(
     public boolean isEyes() { return "eyes".equals(faceSlot); }
     public boolean isMouth() { return "mouth".equals(faceSlot); }
     public boolean isEyeColor() { return "eye_color".equals(faceSlot); }
-    public boolean isFace() { return !faceSlot.isEmpty(); }
+    public boolean isFace() { return isEyes() || isMouth() || isEyeColor(); }
 
     public boolean isVariants() {
         return displayKind == GeneDisplay.Kind.VARIANTS.ordinal();
@@ -360,7 +360,7 @@ public record GeneCatalogEntry(
 
     /** True when this gene paints a skin-overlay layer ({@code "texture;tint"} rides in {@code targetId}). */
     public boolean isSkinOverlay() {
-        return displayKind == GeneDisplay.Kind.SKIN_OVERLAY.ordinal();
+        return displayKind == GeneDisplay.Kind.SKIN_OVERLAY.ordinal() || "skin_overlay".equals(faceSlot);
     }
 
     /** A SKIN_OVERLAY gene's texture id (a data-pack texture reference); empty otherwise. */
@@ -374,7 +374,22 @@ public record GeneCatalogEntry(
     public String skinOverlayTint() {
         if (!isSkinOverlay() || targetId == null) return "";
         int semi = targetId.indexOf(';');
-        return semi < 0 ? "" : targetId.substring(semi + 1);
+        if (semi < 0) return "";
+        int next = targetId.indexOf(';', semi + 1);
+        return next < 0 ? targetId.substring(semi + 1) : targetId.substring(semi + 1, next);
+    }
+
+    /** A SKIN_OVERLAY gene's stacking order. Lower values draw first; missing/invalid is zero. */
+    public int skinOverlayOrder() {
+        if (!isSkinOverlay() || targetId == null) return 0;
+        int first = targetId.indexOf(';');
+        int second = first < 0 ? -1 : targetId.indexOf(';', first + 1);
+        if (second < 0) return 0;
+        try {
+            return Integer.parseInt(targetId.substring(second + 1).trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     /** PARTICLE emitter params, parsed from {@code targetId} {@code "particleId;count;spread;speed;yOffset"}. */

@@ -169,6 +169,12 @@ public final class RootCatalog {
                 && gene.instance() instanceof com.aetherianartificer.townstead.root.gene.types.EyesGeneType.Instance eyes) {
             return GeneDisplay.eyes("", eyes.glow(), eyes.row(), eyes.tint()).targetId();
         }
+        if (display.targetId().isEmpty()
+                && gene.instance() instanceof com.aetherianartificer.townstead.root.gene.types.SkinOverlayGeneType.Instance overlay) {
+            // Multi-variant genes use the generic VARIANTS display descriptor. Preserve the
+            // underlying overlay metadata here; the selected texture still comes from Variant.
+            return overlay.display().targetId();
+        }
         return display.targetId();
     }
 
@@ -243,6 +249,8 @@ public final class RootCatalog {
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.EyesGeneType.Instance) return "eyes";
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.MouthGeneType.Instance) return "mouth";
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.EyeColorGeneType.Instance) return "eye_color";
+        // This synced slot also preserves the concrete render kind of a generic VARIANTS gene.
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinOverlayGeneType.Instance) return "skin_overlay";
         return "";
     }
 

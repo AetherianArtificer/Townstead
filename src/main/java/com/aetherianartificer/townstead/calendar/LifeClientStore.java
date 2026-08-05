@@ -29,6 +29,7 @@ public final class LifeClientStore {
             boolean ageless,
             int currentStageIndex,
             int[] stageDays,
+            String[] stageIds,
             String[] stageLabelKeys,
             String[] stageLabelFallbacks,
             float narrativeAge,
@@ -120,6 +121,12 @@ public final class LifeClientStore {
             return stageLabel(currentStageIndex);
         }
 
+        /** Authored id of the current life stage (for example {@code egg}), or empty when unavailable. */
+        public String currentStageId() {
+            return stageIds != null && currentStageIndex >= 0 && currentStageIndex < stageIds.length
+                    ? stageIds[currentStageIndex] : "";
+        }
+
         /**
          * Apparent ("life years") age for a biological age, interpolated across the
          * stage's authored narrative range. Mirrors the server's {@code narrativeAgeAt}
@@ -202,6 +209,7 @@ public final class LifeClientStore {
                 payload.ageless(),
                 payload.currentStageIndex(),
                 payload.stageDays(),
+                payload.stageIds(),
                 payload.stageLabelKeys(),
                 payload.stageLabelFallbacks(),
                 payload.narrativeAge(),

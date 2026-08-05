@@ -22,18 +22,28 @@ public final class RootSkinTintProvider implements SkinTintProvider {
 
     @Override
     public OptionalInt resolve(LivingEntity entity) {
+        // The expressed-gene payload is the authoritative per-bearer result and is also available
+        // on MCA 7.6 when its player root-id cache has not populated yet. This keeps skin tone on
+        // the same sync path as eyes, overlays, and other expressed appearance genes.
+        for (String geneId : RootClientStore.expressedGenes(entity)) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
+            if (gene != null && gene.isColor()) return packed(gene);
+        }
+
+        // Editor dummies and legacy entities may have only a root preview, with no expressed set.
         String rootId = RootClientStore.resolve(entity);
         if (rootId.isEmpty()) return OptionalInt.empty();
         RootCatalogEntry origin = RootCatalogClient.origin(rootId);
         if (origin == null) return OptionalInt.empty();
         for (RootCatalogEntry.Inherited inherited : origin.inheritedGenes()) {
             GeneCatalogEntry gene = RootCatalogClient.gene(inherited.geneId());
-            if (gene != null && gene.isColor()) {
-                // Packed tint+mode+strength; the skin mixin and picker unpack it via SkinBlend.
-                return OptionalInt.of(SkinBlend.pack(
-                        gene.colorFrom(), gene.blendMode(), gene.blendStrength()));
-            }
+            if (gene != null && gene.isColor()) return packed(gene);
         }
         return OptionalInt.empty();
+    }
+
+    private static OptionalInt packed(GeneCatalogEntry gene) {
+        return OptionalInt.of(SkinBlend.pack(
+                gene.colorFrom(), gene.blendMode(), gene.blendStrength()));
     }
 }

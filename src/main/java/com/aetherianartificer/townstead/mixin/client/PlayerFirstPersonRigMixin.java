@@ -7,6 +7,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -41,12 +42,52 @@ public abstract class PlayerFirstPersonRigMixin {
     }
 
     //? if neoforge {
+    @Inject(method = "renderRightHand", at = @At("RETURN"), require = 1)
+    //?} else {
+    /*@Inject(method = "m_117770_", at = @At("RETURN"), remap = false, require = 1)
+    *///?}
+    private void townstead$overlayRightHand(PoseStack pose, MultiBufferSource buffers, int light,
+                                            AbstractClientPlayer player, CallbackInfo ci) {
+        if (!RigModels.isAlternate(RigModels.rigBaseFor(player))) {
+            //? if neoforge {
+            PlayerModel<AbstractClientPlayer> renderedModel =
+                    ((PlayerRenderer) (Object) this).getModel();
+            //?} else {
+            /*PlayerModel<AbstractClientPlayer> renderedModel =
+                    ((PlayerRenderer) (Object) this).getModel();
+            *///?}
+            com.aetherianartificer.townstead.client.species.SkinOverlayLayer
+                    .renderFirstPersonArm(pose, buffers, light, player, renderedModel, false);
+        }
+    }
+
+    //? if neoforge {
     @Inject(method = "renderLeftHand", at = @At("HEAD"), cancellable = true, require = 1)
     //?} else {
     /*@Inject(method = "m_117813_", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
     *///?}
     private void townstead$rigLeftHand(PoseStack pose, MultiBufferSource buffers, int light, AbstractClientPlayer player, CallbackInfo ci) {
         if (townstead$renderRigArm(pose, buffers, light, player, true)) ci.cancel();
+    }
+
+    //? if neoforge {
+    @Inject(method = "renderLeftHand", at = @At("RETURN"), require = 1)
+    //?} else {
+    /*@Inject(method = "m_117813_", at = @At("RETURN"), remap = false, require = 1)
+    *///?}
+    private void townstead$overlayLeftHand(PoseStack pose, MultiBufferSource buffers, int light,
+                                           AbstractClientPlayer player, CallbackInfo ci) {
+        if (!RigModels.isAlternate(RigModels.rigBaseFor(player))) {
+            //? if neoforge {
+            PlayerModel<AbstractClientPlayer> renderedModel =
+                    ((PlayerRenderer) (Object) this).getModel();
+            //?} else {
+            /*PlayerModel<AbstractClientPlayer> renderedModel =
+                    ((PlayerRenderer) (Object) this).getModel();
+            *///?}
+            com.aetherianartificer.townstead.client.species.SkinOverlayLayer
+                    .renderFirstPersonArm(pose, buffers, light, player, renderedModel, true);
+        }
     }
 
     private static boolean townstead$renderRigArm(PoseStack pose, MultiBufferSource buffers, int light,

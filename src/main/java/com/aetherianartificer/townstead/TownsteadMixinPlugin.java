@@ -28,9 +28,12 @@ import java.util.Set;
 public class TownsteadMixinPlugin implements IMixinConfigPlugin {
     private static final String NEW_API_MARKER = "net/conczin/mca/client/gui/BlueprintMapRenderer.class";
     private static final String FLOOR_V2_MARKER = "net/conczin/mca/server/world/data/ExternalBuilding.class";
+    private static final String MCA_76_FORGE_PLAYER_MIXIN =
+            "forge/net/mca/mixin/client/MixinPlayerEntityRenderer.class";
 
     private Boolean newApi;
     private Boolean floorV2;
+    private Boolean mca76Forge;
 
     private boolean isNewApi() {
         if (newApi == null) {
@@ -46,8 +49,19 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         return floorV2;
     }
 
+    private boolean isMca76Forge() {
+        if (mca76Forge == null) {
+            mca76Forge = TownsteadMixinPlugin.class.getClassLoader()
+                    .getResource(MCA_76_FORGE_PLAYER_MIXIN) != null;
+        }
+        return mca76Forge;
+    }
+
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.endsWith("McaPlayerArmOverlayMixin")) {
+            return isMca76Forge();
+        }
         if (mixinClassName.endsWith("WidgetUtilsBuildingIconMixin")
                 || mixinClassName.endsWith("BlueprintMapRendererIconMixin")) {
             return isNewApi();

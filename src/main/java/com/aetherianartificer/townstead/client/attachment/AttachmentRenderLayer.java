@@ -58,13 +58,14 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
         if (attachments.isEmpty()) return;
 
         AnimationTargetMap<T> bones = AnimationTargetMap.forMcaModel(getParentModel());
-        String stageKey = stageKey(entity);
+        StageKeys stageKeys = stageKeys(entity);
         for (Expressed expressed : attachments) {
             AttachmentDef def = expressed.def();
             if (hiddenByEquipment(entity, def)) continue;
             if (!AttachmentPoses.defActive(entity, def)) continue;
             // A life-stage override can swap the model, add an offset, and scale (baby ears).
-            AttachmentDef.StageOverride stage = def.stages().get(stageKey);
+            AttachmentDef.StageOverride stage = def.stages().get(stageKeys.named());
+            if (stage == null) stage = def.stages().get(stageKeys.canonical());
             String activeSha = def.geoSha1();
             if (stage != null && stage.geoSha1() != null
                     && AttachmentClient.attachmentGeometry(stage.geoSha1()) != null) {
@@ -210,14 +211,18 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
      * synced life snapshot, else MCA's age state ({@code baby}/{@code toddler}/{@code child}/
      * {@code teen}/{@code adult}); players and unknown entities read as adults.
      */
-    private static String stageKey(LivingEntity entity) {
+    private record StageKeys(String named, String canonical) {}
+
+    private static StageKeys stageKeys(LivingEntity entity) {
         if (entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
             com.aetherianartificer.townstead.calendar.LifeClientStore.Snapshot snap =
                     com.aetherianartificer.townstead.calendar.LifeClientStore.get(entity.getId());
-            if (snap != null && snap.isSenior()) return "senior";
-            return villager.getAgeState().name().toLowerCase(java.util.Locale.ROOT);
+            String canonical = snap != null && snap.isSenior() ? "senior"
+                    : villager.getAgeState().name().toLowerCase(java.util.Locale.ROOT);
+            String named = snap == null ? "" : snap.currentStageId();
+            return new StageKeys(named, canonical);
         }
-        return "adult";
+        return new StageKeys("", "adult");
     }
 
     private static void rotateZyx(PoseStack pose, float[] degrees) {

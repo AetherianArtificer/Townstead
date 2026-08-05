@@ -10,13 +10,18 @@ import com.aetherianartificer.townstead.root.gene.AllelePayload;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.conczin.mca.client.render.layer.VillagerLayer;
 import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -43,9 +48,8 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
     public void renderFinal(PoseStack transform, MultiBufferSource provider, int light, T entity,
                             float tickDelta, boolean visible, boolean glowing) {
         int overlay = LivingEntityRenderer.getOverlayCoords(entity, 0);
-        for (String geneId : overlayGenes(entity)) {
+        for (String geneId : orderedOverlayGenes(entity)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
-            if (gene == null || !gene.isSkinOverlay()) continue;
             ResourceLocation texture = resolveTexture(textureFor(entity, gene));
             if (texture == null) continue;
             int color = resolveTint(entity, gene.skinOverlayTint());
@@ -82,6 +86,22 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         Set<String> out = new LinkedHashSet<>();
         for (RootCatalogEntry.Inherited inherited : origin.inheritedGenes()) out.add(inherited.geneId());
         return out;
+    }
+
+    /** Stable back-to-front order shared by third-person bodies and first-person hands. */
+    private static List<String> orderedOverlayGenes(LivingEntity entity) {
+        return overlayGenes(entity).stream()
+                .filter(id -> {
+                    GeneCatalogEntry gene = RootCatalogClient.gene(id);
+                    return gene != null && gene.isSkinOverlay();
+                })
+                .sorted((left, right) -> {
+                    GeneCatalogEntry a = RootCatalogClient.gene(left);
+                    GeneCatalogEntry b = RootCatalogClient.gene(right);
+                    int byOrder = Integer.compare(a.skinOverlayOrder(), b.skinOverlayOrder());
+                    return byOrder != 0 ? byOrder : left.compareTo(right);
+                })
+                .toList();
     }
 
     /** The overlay texture id: the carried variant's own style when the gene has options. */
@@ -122,5 +142,66 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
                 }
             }
         };
+    }
+
+    /**
+     * Paint the same expressed overlay textures onto Minecraft's separate first-person hand pass.
+     * Entity render layers are not invoked by {@code PlayerRenderer.renderRightHand/renderLeftHand},
+     * so without this explicit pass arm pixels only appear in third person.
+     */
+    public static void renderFirstPersonArm(PoseStack pose, MultiBufferSource buffers, int light,
+                                            AbstractClientPlayer player,
+                                            HumanoidModel<AbstractClientPlayer> renderedModel,
+                                            boolean left) {
+        // Use the renderer's actual arm, after every animation mod has posed it. A separately baked
+        // shell drifts away whenever Fresh Player Animations replaces or transforms the hand model.
+        ModelPart arm = left ? renderedModel.leftArm : renderedModel.rightArm;
+        renderFirstPersonPart(pose, buffers, light, player, arm);
+    }
+
+    /** Paint overlays on an already-posed arm supplied by MCA's own 1.20.1 custom-arm pass. */
+    public static void renderFirstPersonPart(PoseStack pose, MultiBufferSource buffers, int light,
+                                             AbstractClientPlayer player, ModelPart arm) {
+        int layerIndex = 0;
+        for (String geneId : orderedOverlayGenes(player)) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
+            ResourceLocation texture = resolveTexture(textureFor(player, gene));
+            if (texture == null) continue;
+            int color = resolveTint(player, gene.skinOverlayTint());
+            com.mojang.blaze3d.vertex.VertexConsumer buffer =
+                    buffers.getBuffer(RenderType.entityTranslucent(texture));
+
+            // Expand around the already-animated arm's own pivot. This keeps Fresh Player's exact
+            // rotation/translation while moving the overlay a fraction of a texel off the base
+            // surface. Each additional overlay is slightly farther out to preserve stack order.
+            float xScale = arm.xScale;
+            float yScale = arm.yScale;
+            float zScale = arm.zScale;
+            //? if neoforge {
+            float shell = 1.0025f + layerIndex++ * 0.001f;
+            //?} else {
+            /*// MCA 7.6 supplies its own custom arm geometry. It needs only a minimal depth
+            // separation; the 1.21 expansion visibly bloats the outer hand edges here.
+            float shell = 1.0005f + layerIndex++ * 0.00025f;
+            *///?}
+            arm.xScale *= shell;
+            arm.yScale *= shell;
+            arm.zScale *= shell;
+            try {
+                //? if neoforge {
+                arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
+                        0xFF000000 | (color & 0xFFFFFF));
+                //?} else {
+                /*arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
+                        ((color >> 16) & 0xFF) / 255f,
+                        ((color >> 8) & 0xFF) / 255f,
+                        (color & 0xFF) / 255f, 1f);
+                *///?}
+            } finally {
+                arm.xScale = xScale;
+                arm.yScale = yScale;
+                arm.zScale = zScale;
+            }
+        }
     }
 }
