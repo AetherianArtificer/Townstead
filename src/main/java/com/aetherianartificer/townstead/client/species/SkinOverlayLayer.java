@@ -156,6 +156,12 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         // Use the renderer's actual arm, after every animation mod has posed it. A separately baked
         // shell drifts away whenever Fresh Player Animations replaces or transforms the hand model.
         ModelPart arm = left ? renderedModel.leftArm : renderedModel.rightArm;
+        renderFirstPersonPart(pose, buffers, light, player, arm);
+    }
+
+    /** Paint overlays on an already-posed arm supplied by MCA's own 1.20.1 custom-arm pass. */
+    public static void renderFirstPersonPart(PoseStack pose, MultiBufferSource buffers, int light,
+                                             AbstractClientPlayer player, ModelPart arm) {
         int layerIndex = 0;
         for (String geneId : orderedOverlayGenes(player)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
@@ -171,7 +177,13 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
             float xScale = arm.xScale;
             float yScale = arm.yScale;
             float zScale = arm.zScale;
+            //? if neoforge {
             float shell = 1.0025f + layerIndex++ * 0.001f;
+            //?} else {
+            /*// MCA 7.6 supplies its own custom arm geometry. It needs only a minimal depth
+            // separation; the 1.21 expansion visibly bloats the outer hand edges here.
+            float shell = 1.0005f + layerIndex++ * 0.00025f;
+            *///?}
             arm.xScale *= shell;
             arm.yScale *= shell;
             arm.zScale *= shell;

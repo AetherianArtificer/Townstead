@@ -49,8 +49,13 @@ public abstract class PlayerFirstPersonRigMixin {
     private void townstead$overlayRightHand(PoseStack pose, MultiBufferSource buffers, int light,
                                             AbstractClientPlayer player, CallbackInfo ci) {
         if (!RigModels.isAlternate(RigModels.rigBaseFor(player))) {
+            //? if neoforge {
             PlayerModel<AbstractClientPlayer> renderedModel =
                     ((PlayerRenderer) (Object) this).getModel();
+            //?} else {
+            /*PlayerModel<AbstractClientPlayer> renderedModel =
+                    ((PlayerRenderer) (Object) this).getModel();
+            *///?}
             com.aetherianartificer.townstead.client.species.SkinOverlayLayer
                     .renderFirstPersonArm(pose, buffers, light, player, renderedModel, false);
         }
@@ -73,8 +78,13 @@ public abstract class PlayerFirstPersonRigMixin {
     private void townstead$overlayLeftHand(PoseStack pose, MultiBufferSource buffers, int light,
                                            AbstractClientPlayer player, CallbackInfo ci) {
         if (!RigModels.isAlternate(RigModels.rigBaseFor(player))) {
+            //? if neoforge {
             PlayerModel<AbstractClientPlayer> renderedModel =
                     ((PlayerRenderer) (Object) this).getModel();
+            //?} else {
+            /*PlayerModel<AbstractClientPlayer> renderedModel =
+                    ((PlayerRenderer) (Object) this).getModel();
+            *///?}
             com.aetherianartificer.townstead.client.species.SkinOverlayLayer
                     .renderFirstPersonArm(pose, buffers, light, player, renderedModel, true);
         }

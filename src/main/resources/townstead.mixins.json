@@ -112,6 +112,7 @@
     "client.VillagerBodyLayerSuppressMixin",
     "client.PlayerSpeciesRigLayerMixin",
     "client.PlayerFirstPersonRigMixin",
+    "client.McaPlayerArmOverlayMixin",
     "client.McaRenderArmsMixin",
     "client.BreastSwitchMixin",
     "client.HeldItemSuppressMixin",

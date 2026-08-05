@@ -51,7 +51,8 @@ public abstract class PlayerAttachmentLayerMixin
     @Inject(method = "scale(Lnet/minecraft/client/player/AbstractClientPlayer;Lcom/mojang/blaze3d/vertex/PoseStack;F)V",
             at = @At("HEAD"))
     //?} else {
-    /*@Inject(method = "m_6973_", at = @At("HEAD"), remap = false)
+    /*@Inject(method = "m_7546_(Lnet/minecraft/client/player/AbstractClientPlayer;Lcom/mojang/blaze3d/vertex/PoseStack;F)V",
+            at = @At("HEAD"), remap = false, require = 1)
     *///?}
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void townstead$insertSkinOverlay(AbstractClientPlayer player, PoseStack matrices, float f,
@@ -63,7 +64,11 @@ public abstract class PlayerAttachmentLayerMixin
                 var overlayModel = new net.conczin.mca.client.model.PlayerEntityExtendedModel<AbstractClientPlayer>(
                         net.minecraft.client.model.geom.builders.LayerDefinition.create(
                                 net.conczin.mca.client.model.VillagerEntityModelMCA.bodyData(
+                                        //? if neoforge {
                                         new net.minecraft.client.model.geom.builders.CubeDeformation(0.005f)),
+                                        //?} else {
+                                        /*new net.minecraft.client.model.geom.builders.CubeDeformation(0.001f)),
+                                        *///?}
                                 64, 64).bakeRoot());
                 RenderLayer layer = new com.aetherianartificer.townstead.client.species.SkinOverlayLayer(
                         this, overlayModel);
