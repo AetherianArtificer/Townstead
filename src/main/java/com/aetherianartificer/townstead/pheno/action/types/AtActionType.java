@@ -12,6 +12,8 @@ import com.google.gson.JsonObject;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 
+import java.util.List;
+
 /**
  * Runs a block action at blocks chosen from an entity context: the bridge from an entity action to
  * a block action (a raycast's block hit, a place, a region). The {@code blocks} field is a block
@@ -38,8 +40,18 @@ public final class AtActionType implements ActionType {
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel level)) return;
             SelectorContext sc = SelectorContext.of(ctx);
-            for (BlockPos pos : selector.select(sc)) {
-                action.run(new BlockActionContext(level, pos, ctx.entity()));
+            List<BlockPos> selected = selector.select(sc);
+            if (selected.isEmpty()) {
+                ctx.fail();
+                return;
+            }
+            for (BlockPos pos : selected) {
+                BlockActionContext blockContext = new BlockActionContext(level, pos, ctx.entity());
+                action.run(blockContext);
+                if (!blockContext.succeeded()) {
+                    ctx.fail();
+                    break;
+                }
             }
         };
     }

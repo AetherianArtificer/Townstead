@@ -15,6 +15,7 @@ public final class ActionContext {
     private final LivingEntity entity;
     private final LivingEntity other;
     private final LivingEntity origin;
+    private boolean successful = true;
 
     public ActionContext(LivingEntity entity) {
         this(entity, null, entity);
@@ -47,5 +48,15 @@ public final class ActionContext {
 
     public Level level() {
         return entity.level();
+    }
+
+    /** Mark this action chain as unsuccessful (for example, no safe teleport destination). */
+    public void fail() {
+        successful = false;
+    }
+
+    /** Whether the action chain has completed successfully so far. */
+    public boolean succeeded() {
+        return successful;
     }
 }

@@ -178,6 +178,20 @@ public final class PhenoSchemas {
                         + "strength; clears fall distance so a mid-air jump banks no fall damage.")
                 .field(of("strength", PhenoType.FLOAT)).build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:teleport", NodeDomain.ACTION)
+                .doc("Teleports the entities selected by on to a place, role, or entity selection; "
+                        + "supports world/look-relative offsets, formation preservation, and constrained random placement.")
+                .field(of("to", PhenoType.ANY).doc("Destination: a place/role string, {at}/{offset}, or entity selector."))
+                .field(of("offset", PhenoType.FLOAT).asList().doc("[x,y,z] destination offset."))
+                .field(of("space", PhenoType.STRING).doc("world (default) or local/look-relative."))
+                .field(of("relative", PhenoType.BOOL).doc("Legacy-friendly alias for space: local."))
+                .field(of("preserve_offset_from", PhenoType.ANY)
+                        .doc("Source anchor whose per-entity displacement is retained at the destination."))
+                .field(of("random", PhenoType.ANY)
+                        .doc("true, a radius, [x,y,z], or {radius,min_distance,shape,attempts}."))
+                .field(of("safe", PhenoType.BOOL).doc("Require vanilla collision-safe placement; defaults true for random."))
+                .field(of("reset_velocity", PhenoType.BOOL)).build());
+
         NodeSchemas.register(NodeSchema.of("pheno:emit_game_event", NodeDomain.ACTION)
                 .doc("Emits a vanilla game event from the entity (Apoli emit_game_event).")
                 .field(required("event", PhenoType.ID)).build());

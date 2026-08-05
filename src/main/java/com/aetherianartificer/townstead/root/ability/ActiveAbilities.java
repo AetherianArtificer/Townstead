@@ -196,7 +196,11 @@ public final class ActiveAbilities {
                 && ResourceValues.get(entity, instance.costResource()) < instance.costAmount()) {
             return false;
         }
-        instance.action().run(new ActionContext(entity));
+        ActionContext actionContext = new ActionContext(entity);
+        instance.action().run(actionContext);
+        // Failed effects (currently safe teleports with no valid destination) are not activations:
+        // do not charge their resource and do not begin their cooldown.
+        if (!actionContext.succeeded()) return false;
         if (instance.costResource() != null) {
             ResourceValues.change(entity, instance.costResource(), -instance.costAmount());
         }

@@ -16,15 +16,21 @@ public final class BlockActionContext {
     private final ServerLevel level;
     private final BlockPos pos;
     private final LivingEntity cause;
+    private final Outcome outcome;
 
     public BlockActionContext(ServerLevel level, BlockPos pos) {
         this(level, pos, null);
     }
 
     public BlockActionContext(ServerLevel level, BlockPos pos, @Nullable LivingEntity cause) {
+        this(level, pos, cause, new Outcome());
+    }
+
+    private BlockActionContext(ServerLevel level, BlockPos pos, @Nullable LivingEntity cause, Outcome outcome) {
         this.level = level;
         this.pos = pos;
         this.cause = cause;
+        this.outcome = outcome;
     }
 
     public ServerLevel level() {
@@ -42,6 +48,12 @@ public final class BlockActionContext {
 
     /** The same context at a different block (used by offset / area-of-effect). */
     public BlockActionContext at(BlockPos newPos) {
-        return new BlockActionContext(level, newPos, cause);
+        return new BlockActionContext(level, newPos, cause, outcome);
     }
+
+    public void fail() { outcome.successful = false; }
+
+    public boolean succeeded() { return outcome.successful; }
+
+    private static final class Outcome { private boolean successful = true; }
 }

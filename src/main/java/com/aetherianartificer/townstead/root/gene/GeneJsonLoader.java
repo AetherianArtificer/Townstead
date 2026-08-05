@@ -125,7 +125,9 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 continue;
             }
             String shortName = id.getPath().substring(id.getPath().lastIndexOf('/') + 1);
-            Component name = Component.literal(shortName);
+            Component name = config.has("display_name")
+                    ? DataPackLang.parseComponent(config.get("display_name"), id.toString(), lang)
+                    : Component.literal(shortName);
             ResourceLocation locus = type.get().defaultLocus(instance);
             String category = ResourceGeneType.KEY.equals(typeKey) ? "resource" : "companion";
             parsed.put(id, new Gene(id, name, null, category, Dominance.fromString("recessive"),
