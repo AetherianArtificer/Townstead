@@ -3,7 +3,7 @@ package com.aetherianartificer.townstead.hunger;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Personality;
 
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 
 public record FarmerPersonalityProfile(
@@ -14,7 +14,8 @@ public record FarmerPersonalityProfile(
             1.0, 1.0
     );
 
-    private static final Map<Personality, FarmerPersonalityProfile> PROFILES = new EnumMap<>(Personality.class);
+    // Personality stopped being a Java enum in newer MCA, so EnumMap would fail during class init.
+    private static final Map<Personality, FarmerPersonalityProfile> PROFILES = new HashMap<>();
 
     static {
         PROFILES.put(Personality.UNASSIGNED, DEFAULT);

@@ -1453,15 +1453,23 @@ public abstract class VillagerEditorRootMixin extends Screen {
      */
     @Unique
     private void townstead$replacePersonalityButtons() {
+        // MCA edits a throwaway preview villager whose entity id is not the real target id. Newer
+        // MCA consistently gives that dummy its own id, so looking up the life snapshot by
+        // villager.getId() loses the origin's personality pool and leaves MCA's native grid intact.
+        // townstead$target was resolved from villagerUUID when the editor was primed.
         com.aetherianartificer.townstead.calendar.LifeClientStore.Snapshot life =
-                com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.getId());
+                com.aetherianartificer.townstead.calendar.LifeClientStore.get(townstead$target);
+        // Defensive fallback for editor implementations that operate on the tracked entity itself.
+        if (life == null) {
+            life = com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.getId());
+        }
         if (life == null) return;
         String[] pool = life.personalityPool();
         if (pool.length == 0) return;
 
         java.util.Set<String> enumNames = new java.util.HashSet<>();
         for (net.conczin.mca.entity.ai.relationship.Personality p
-                : net.conczin.mca.entity.ai.relationship.Personality.values()) {
+                : com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat.all()) {
             if (p != net.conczin.mca.entity.ai.relationship.Personality.UNASSIGNED) enumNames.add(p.getName().getString());
         }
         int col0X = Integer.MAX_VALUE;

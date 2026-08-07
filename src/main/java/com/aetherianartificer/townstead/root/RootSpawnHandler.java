@@ -229,7 +229,7 @@ public final class RootSpawnHandler {
      */
     /**
      * Roll a personality from the origin's allowlist and apply it: store the chosen ref on the Life
-     * (drives display + voice) and set the MCA brain personality to the base enum it extends (so MCA's
+     * (drives display + voice) and set the MCA brain personality to the MCA type it extends (so MCA's
      * own mechanics apply). An origin with no personality policy yields a null ref, leaving MCA's own
      * rolled personality untouched (vanilla behaviour).
      */
@@ -254,8 +254,8 @@ public final class RootSpawnHandler {
 
     /** A random assignable base MCA personality (excludes the {@code UNASSIGNED} sentinel). */
     private static Personality randomVanillaPersonality(net.minecraft.util.RandomSource random) {
-        Personality[] all = Personality.values();
-        java.util.List<Personality> pick = new ArrayList<>(all.length);
+        java.util.List<Personality> all = com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat.all();
+        java.util.List<Personality> pick = new ArrayList<>(all.size());
         for (Personality p : all) {
             if (p != Personality.UNASSIGNED) pick.add(p);
         }

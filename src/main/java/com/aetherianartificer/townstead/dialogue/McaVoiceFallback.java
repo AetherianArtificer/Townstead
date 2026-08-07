@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.dialogue;
 
+import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.PlayerSaveData;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -39,7 +40,8 @@ public final class McaVoiceFallback {
             if (!villager.isBaby()) {
                 professionString = "#P" + BuiltInRegistries.VILLAGER_PROFESSION.getKey(villager.getProfession()).getPath() + ".";
             }
-            String personalityString = "#E" + villager.getVillagerBrain().getPersonality().name() + ".";
+            String personalityString = "#E" + McaPersonalityCompat.dialogueId(
+                    villager.getVillagerBrain().getPersonality()) + ".";
 
             return Component.translatable(genderString + personalityString + professionString
                     + "#T" + villager.getDialogueType(target).name() + "." + phraseId, newParams);
