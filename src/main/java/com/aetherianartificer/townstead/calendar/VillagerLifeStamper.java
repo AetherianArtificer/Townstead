@@ -26,6 +26,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * Called from {@link com.aetherianartificer.townstead.tick.VillagerServerTickDispatcher}.
  */
 public final class VillagerLifeStamper {
+    // This is migration/initialization maintenance, not simulation. Tracking and
+    // editor entry call ensureStamped directly, so the fallback tick only needs to
+    // catch unattended loaded villagers on a coarse, staggered cadence.
+    private static final int MAINTENANCE_INTERVAL_TICKS = 200;
     private static final Set<ServerVillageKey> KNOWN_STAMPED_VILLAGES =
             ConcurrentHashMap.newKeySet();
 
@@ -33,6 +37,7 @@ public final class VillagerLifeStamper {
 
     public static void tick(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel serverLevel)) return;
+        if ((serverLevel.getGameTime() + villager.getId()) % MAINTENANCE_INTERVAL_TICKS != 0) return;
         MinecraftServer server = serverLevel.getServer();
         if (server == null) return;
 
@@ -62,6 +67,9 @@ public final class VillagerLifeStamper {
         // neutral-size ears). The life sync below doesn't carry expressed genes, so push them too.
         boolean genotypeGrew = state.life().genotype().loci().size() != lociBefore
                 || !expressedBefore.equals(state.life().expressedAlleles());
+        if (genotypeGrew) {
+            com.aetherianartificer.townstead.pheno.power.Powers.invalidate(villager);
+        }
 
         boolean stamped = false;
         if (!state.life().hasBirth()) {

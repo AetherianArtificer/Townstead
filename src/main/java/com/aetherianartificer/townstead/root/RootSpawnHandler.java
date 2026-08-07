@@ -14,6 +14,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Applies origins to villagers at runtime.
@@ -25,6 +26,11 @@ import java.util.Set;
  * already-rolled genes.</p>
  */
 public final class RootSpawnHandler {
+
+    // A founder only needs the expensive canonicalize/heal/recompute migration
+    // once per loaded entity per gene-data generation. Weak keys disappear when
+    // the entity unloads; a datapack reload advances GeneRegistry.revision().
+    private static final Map<VillagerEntityMCA, Long> MIGRATED_GENE_REVISION = new WeakHashMap<>();
 
     private RootSpawnHandler() {}
 
@@ -175,7 +181,12 @@ public final class RootSpawnHandler {
         // Legacy villagers predate the diploid genotype: fill in any genes they lack
         // (homozygous from a legacy expressed variant where present) without re-rolling
         // what they already carry, and seed their heritage from the origin.
-        Heredity.migrateFounder(state.life(), rootId, villager.getRandom());
+        long geneRevision = com.aetherianartificer.townstead.root.gene.GeneRegistry.revision();
+        Long migratedRevision = MIGRATED_GENE_REVISION.get(villager);
+        if (migratedRevision == null || migratedRevision != geneRevision) {
+            Heredity.migrateFounder(state.life(), rootId, villager.getRandom());
+            MIGRATED_GENE_REVISION.put(villager, geneRevision);
+        }
         LifeCycle cycle = RootRegistry.effectiveLifeCycle(rootId);
         // Re-roll when the stored stageDays don't match the current cycle — either a
         // different length (origin reassigned), a re-authored shape, or a changed

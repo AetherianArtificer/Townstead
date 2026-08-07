@@ -27,6 +27,7 @@ import java.util.function.Predicate;
  * the shift ends, the profession changes, or no matching tool is in inventory.
  */
 public final class WorkToolTicker {
+    private static final int CHECK_INTERVAL_TICKS = 10;
     private WorkToolTicker() {}
 
     private record Rule(VillagerProfession profession, Predicate<ItemStack> matcher) {}
@@ -115,6 +116,7 @@ public final class WorkToolTicker {
 
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
+        if ((villager.level().getGameTime() + villager.getId()) % CHECK_INTERVAL_TICKS != 0) return;
 
         Rule rule = ruleFor(villager.getVillagerData().getProfession());
         if (rule == null) {

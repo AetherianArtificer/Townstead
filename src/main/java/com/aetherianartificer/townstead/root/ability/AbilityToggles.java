@@ -59,9 +59,11 @@ public final class AbilityToggles {
         Set<ResourceLocation> set = FLIPPED.computeIfAbsent(entity.getUUID(), k -> ConcurrentHashMap.newKeySet());
         if (set.contains(geneId)) {
             set.remove(geneId);
+            Powers.invalidate(entity);
             return false;
         }
         set.add(geneId);
+        Powers.invalidate(entity);
         return true;
     }
 
@@ -71,8 +73,8 @@ public final class AbilityToggles {
      */
     public static void set(LivingEntity entity, ResourceLocation geneId, boolean on) {
         Set<ResourceLocation> set = FLIPPED.computeIfAbsent(entity.getUUID(), k -> ConcurrentHashMap.newKeySet());
-        if (on) set.add(geneId);
-        else set.remove(geneId);
+        boolean changed = on ? set.add(geneId) : set.remove(geneId);
+        if (changed) Powers.invalidate(entity);
     }
 
     /** Whether the entity has any toggle deviating from its default — a cheap gate for per-tick AI. */

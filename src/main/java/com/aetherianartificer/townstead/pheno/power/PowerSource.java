@@ -11,6 +11,11 @@ import java.util.List;
  */
 public interface PowerSource {
 
+    /** Cheap carrier gate for broad LivingEntity hooks. */
+    default boolean supports(LivingEntity entity) {
+        return true;
+    }
+
     /** Append the powers this source grants {@code entity} right now to {@code out}. */
     void collect(LivingEntity entity, List<Power> out);
 }

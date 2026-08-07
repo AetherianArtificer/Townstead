@@ -14,6 +14,7 @@ import java.util.Map;
 public final class GeneRegistry {
     private static volatile Map<ResourceLocation, Gene> ENTRIES = Map.of();
     private static volatile Map<ResourceLocation, List<ResourceLocation>> COMPANIONS = Map.of();
+    private static volatile long revision;
 
     private GeneRegistry() {}
 
@@ -21,6 +22,8 @@ public final class GeneRegistry {
                            Map<ResourceLocation, List<ResourceLocation>> companions) {
         ENTRIES = Map.copyOf(new LinkedHashMap<>(next));
         COMPANIONS = Map.copyOf(new LinkedHashMap<>(companions));
+        revision++;
+        com.aetherianartificer.townstead.pheno.power.Powers.dataReloaded();
     }
 
     @Nullable
@@ -43,5 +46,10 @@ public final class GeneRegistry {
 
     public static int size() {
         return ENTRIES.size();
+    }
+
+    /** Monotonic data-reload generation used by loaded-entity migration caches. */
+    public static long revision() {
+        return revision;
     }
 }

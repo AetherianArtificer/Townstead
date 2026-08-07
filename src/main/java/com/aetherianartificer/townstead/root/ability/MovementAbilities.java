@@ -17,6 +17,9 @@ public final class MovementAbilities {
     private MovementAbilities() {}
 
     public static boolean isActive(LivingEntity entity, Ability ability) {
+        // These mixins target LivingEntity/Entity hot paths, but ordinary animals
+        // and hostile mobs cannot carry Townstead genotype or synced abilities.
+        if (!com.aetherianartificer.townstead.root.ExpressedGenes.canCarry(entity)) return false;
         if (entity.level().isClientSide) {
             return com.aetherianartificer.townstead.client.root.ClientAbilities.isActive(entity, ability);
         }

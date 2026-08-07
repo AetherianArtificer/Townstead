@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class BedOccupancySanitizer {
     private static final long SANITIZE_INTERVAL_TICKS = 200L;
+    private static final int ELIGIBILITY_INTERVAL_TICKS = 20;
     private static final int BED_SCAN_RADIUS = 64;
     private static final Map<Integer, Long> LAST_SANITIZE_BY_VILLAGE = new ConcurrentHashMap<>();
 
@@ -30,6 +31,8 @@ public final class BedOccupancySanitizer {
 
     public static void tick(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel level)) return;
+        long gameTime = level.getGameTime();
+        if ((gameTime + villager.getId()) % ELIGIBILITY_INTERVAL_TICKS != 0) return;
         if (villager.isBaby() || villager.isSleeping()) return;
         if (scheduledActivity(villager) != Activity.REST) return;
 
@@ -37,7 +40,6 @@ public final class BedOccupancySanitizer {
         if (village.isEmpty()) return;
 
         Village homeVillage = village.get();
-        long gameTime = level.getGameTime();
         Long lastSanitize = LAST_SANITIZE_BY_VILLAGE.get(homeVillage.getId());
         if (lastSanitize != null && gameTime - lastSanitize < SANITIZE_INTERVAL_TICKS) return;
         LAST_SANITIZE_BY_VILLAGE.put(homeVillage.getId(), gameTime);

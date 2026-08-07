@@ -20,6 +20,11 @@ public final class ExpressedGenes {
 
     private ExpressedGenes() {}
 
+    /** Only MCA villagers and players can carry Townstead's persisted genotype. */
+    public static boolean canCarry(LivingEntity entity) {
+        return entity instanceof VillagerEntityMCA || entity instanceof Player;
+    }
+
     /** The entity's diploid genotype, or an empty one for entities that carry none. */
     public static Genotype genotypeOf(LivingEntity entity) {
         if (entity instanceof VillagerEntityMCA villager) {
