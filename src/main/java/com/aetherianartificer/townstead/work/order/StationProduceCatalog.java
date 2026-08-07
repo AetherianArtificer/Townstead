@@ -153,7 +153,7 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             DiscoveredRecipe recipe) {
         if (declared.isEmpty()) return true;
         for (com.aetherianartificer.townstead.profession.def.WorkTaskDef task : declared) {
-            if (task.allowsRecipe(recipe.id(), recipe.output())) return true;
+            if (task.allowsRecipe(recipe.id(), recipe.output(), recipe.inputs())) return true;
         }
         return false;
     }

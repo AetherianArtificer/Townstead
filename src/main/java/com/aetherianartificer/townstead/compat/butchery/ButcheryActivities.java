@@ -45,6 +45,8 @@ public final class ButcheryActivities {
 
         register(WorkTaskTypes.BUTCHER, "Dress carcasses", Items.IRON_AXE, false,
                 CarcassWorkTask::hasActionableWork);
+        register(WorkTaskTypes.GRIND, "Grind meat", Items.IRON_NUGGET, false,
+                GrinderWorkTask::hasPendingWork);
         register(WorkTaskTypes.CURE, "Hang sausages", Items.STRING, false,
                 SausageHookTask::hasWorkWaiting);
         register(WorkTaskTypes.DELIVER, "Deliver", Items.CHEST, false,

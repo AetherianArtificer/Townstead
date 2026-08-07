@@ -14,6 +14,11 @@
   ],
   "poi": [
     {
+      "type": "townstead:building",
+      "type_prefix": "compat/butchery/butcher_shop_l",
+      "slots_per_tier": [1, 1, 2]
+    },
+    {
       "type": "townstead:job_block",
       "block": "minecraft:smoker"
     }
@@ -33,6 +38,9 @@
     },
     {
       "type": "townstead_work:smoke",
+      "workstations": ["#townstead:smoker_stations"],
+      "recipe_inputs": ["#townstead:butcher_smoker_input"],
+      "history_counter": "townstead:butchered",
       "weight": 8
     },
     {

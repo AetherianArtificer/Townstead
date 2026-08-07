@@ -241,7 +241,8 @@ public class StationWorkTask extends ProducerWorkTask {
         WorkTaskDef declared = WorkTaskDeclarations.first(villager, def.workTask());
         List<DiscoveredRecipe> out = new ArrayList<>();
         for (DiscoveredRecipe recipe : recipesFor(level, def)) {
-            if (declared != null && !declared.allowsRecipe(recipe.id(), recipe.output())) continue;
+            if (declared != null && !declared.allowsRecipe(
+                    recipe.id(), recipe.output(), recipe.inputs())) continue;
             out.add(recipe);
         }
         return out;
@@ -259,7 +260,8 @@ public class StationWorkTask extends ProducerWorkTask {
         for (DiscoveredRecipe recipe : recipesFor(level, def)) {
             Long cooldown = recipeCooldownUntil.get(recipe.output());
             if (cooldown != null && gameTime < cooldown) continue;
-            if (declared != null && !declared.allowsRecipe(recipe.id(), recipe.output())) continue;
+            if (declared != null && !declared.allowsRecipe(
+                    recipe.id(), recipe.output(), recipe.inputs())) continue;
             if (!inputsAvailable(level, villager, recipe, stock)) continue;
             return recipe;
         }

@@ -3,5 +3,6 @@
     "#minecraft:campfires"
   ],
   "type": "fire_station",
+  "adapter": "townstead:campfire",
   "open_top": true
 }

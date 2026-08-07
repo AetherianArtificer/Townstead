@@ -2,6 +2,9 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.butchery.GrinderStateMachine;
+import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
+import com.aetherianartificer.townstead.work.recipe.WorkIngredients;
+import com.aetherianartificer.townstead.work.site.Worksites;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 //? if >=1.21 {
@@ -24,19 +27,19 @@ import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 public final class ButcherSupplyManager {
-    private static final int SEARCH_RADIUS = 16;
-    private static final int VERTICAL_RADIUS = 3;
     private static final int FOOD_RESERVE_COUNT = 4;
 
     // Smoker recipes match by Item identity (no NBT / data components), so
     // isRawInput / isSmokerBlockerInput are pure functions of Item once
     // recipes are loaded. RecipeManager.getRecipeFor is a linear scan, and
-    // isRawInput is called for every slot in every nearby storage container
-    // every time ButcherWorkTask.isEligibleVillager runs (i.e. every tick
-    // per butcher). Memoize by Item, invalidating when the RecipeManager
+    // The remaining unique butchery helpers can inspect many storage slots.
+    // Memoize by Item, invalidating when the RecipeManager
     // instance changes (a fresh ReloadableServerResources is built on every
     // datapack reload, so identity comparison is sufficient).
     private static final Map<Item, Boolean> RAW_INPUT_CACHE = new ConcurrentHashMap<>();
@@ -59,14 +62,68 @@ public final class ButcherSupplyManager {
             Registries.ITEM, ResourceLocation.parse("c:cooked_meat"));
     private static final TagKey<Item> COOKED_MEAT_TAG_FORGE = TagKey.create(
             Registries.ITEM, ResourceLocation.parse("forge:cooked_meat"));
+    private static final TagKey<Item> BUTCHER_SMOKER_INPUT_TAG = TagKey.create(
+            Registries.ITEM, ResourceLocation.parse("townstead:butcher_smoker_input"));
     //?} else {
     /*private static final TagKey<Item> COOKED_MEAT_TAG_C = TagKey.create(
             Registries.ITEM, new ResourceLocation("c", "cooked_meat"));
     private static final TagKey<Item> COOKED_MEAT_TAG_FORGE = TagKey.create(
             Registries.ITEM, new ResourceLocation("forge", "cooked_meat"));
+    private static final TagKey<Item> BUTCHER_SMOKER_INPUT_TAG = TagKey.create(
+            Registries.ITEM, new ResourceLocation("townstead", "butcher_smoker_input"));
     *///?}
 
     private ButcherSupplyManager() {}
+
+    /** Storage owned by the worksite containing {@code anchor}; never an unowned radius. */
+    static Set<Long> storageBounds(ServerLevel level, BlockPos anchor) {
+        if (level == null || anchor == null) return Set.of();
+        return Worksites.extentOf(level, Worksites.of(level, anchor));
+    }
+
+    private static NearbyItemSources.ContainerSlot findWorksiteSlot(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+            Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer) {
+        Set<Long> bounds = storageBounds(level, anchor);
+        if (bounds.isEmpty()) return null;
+        return WorksiteStorageIndex.snapshot(level, villager, bounds)
+                .findBestSlot(villager, matcher, scorer);
+    }
+
+    private static ItemStack takeOneFromWorksite(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+            Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer) {
+        NearbyItemSources.ContainerSlot slot = findWorksiteSlot(level, villager, anchor, matcher, scorer);
+        return slot == null ? ItemStack.EMPTY : NearbyItemSources.extractOne(level, slot);
+    }
+
+    private static boolean pullOneFromWorksite(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+            Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer) {
+        ItemStack extracted = takeOneFromWorksite(level, villager, anchor, matcher, scorer);
+        if (extracted.isEmpty()) return false;
+        ItemStack remainder = villager.getInventory().addItem(extracted);
+        if (remainder.isEmpty()) return true;
+        WorkIngredients.storeOutputInWorksiteStorage(
+                level, villager, remainder, anchor, storageBounds(level, anchor));
+        return false;
+    }
+
+    static boolean storeInWorksite(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos anchor, ItemStack stack) {
+        if (stack.isEmpty()) return true;
+        WorkIngredients.storeOutputInWorksiteStorage(
+                level, villager, stack, anchor, storageBounds(level, anchor));
+        return stack.isEmpty();
+    }
+
+    static boolean hasFuelAvailable(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        if (hasFuel(villager.getInventory())) return true;
+        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
+        return findWorksiteSlot(level, villager, anchor,
+                ButcherSupplyManager::isFuel, ButcherSupplyManager::fuelScore) != null;
+    }
 
     public static boolean hasRawInput(SimpleContainer inv, ServerLevel level) {
         return findRawInputSlot(inv, level) >= 0;
@@ -112,14 +169,10 @@ public final class ButcherSupplyManager {
             BlockPos anchor
     ) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level,
-                villager,
-                SEARCH_RADIUS,
-                VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 stack -> isRawInput(stack, level),
-                ButcherSupplyManager::rawInputScore,
-                anchor
+                ButcherSupplyManager::rawInputScore
         );
     }
 
@@ -131,23 +184,16 @@ public final class ButcherSupplyManager {
             java.util.function.Predicate<ItemStack> wanted
     ) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level,
-                villager,
-                SEARCH_RADIUS,
-                VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 stack -> wanted.test(stack) && isRawInput(stack, level),
-                ButcherSupplyManager::rawInputScore,
-                anchor
+                ButcherSupplyManager::rawInputScore
         );
     }
 
     /**
      * Non-mutating availability check: true if raw smoker input exists in the
-     * villager's inventory OR in nearby storage. Used by {@code ButcherWorkTask}
-     * to gate the smoker walk; without this the producer would path the
-     * villager all the way to the smoker before discovering it has no input
-     * (NO_RECIPE), creating a "stand at smoker, walk away, walk back" loop.
+     * villager's inventory OR in nearby storage.
      */
     public static boolean hasRawInputAvailable(
             ServerLevel level,
@@ -156,24 +202,19 @@ public final class ButcherSupplyManager {
     ) {
         if (hasRawInput(villager.getInventory(), level)) return true;
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        NearbyItemSources.ContainerSlot slot = NearbyItemSources.findBestNearbySlot(
-                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        NearbyItemSources.ContainerSlot slot = findWorksiteSlot(
+                level, villager, anchor,
                 stack -> isRawInput(stack, level),
-                ButcherSupplyManager::rawInputScore,
-                anchor);
+                ButcherSupplyManager::rawInputScore);
         return slot != null;
     }
 
     public static boolean pullFuel(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level,
-                villager,
-                SEARCH_RADIUS,
-                VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 ButcherSupplyManager::isFuel,
-                ButcherSupplyManager::fuelScore,
-                anchor
+                ButcherSupplyManager::fuelScore
         );
     }
 
@@ -187,11 +228,10 @@ public final class ButcherSupplyManager {
      */
     public static ItemStack takeFuel(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return ItemStack.EMPTY;
-        NearbyItemSources.ContainerSlot slot = NearbyItemSources.findBestNearbySlot(
-                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        NearbyItemSources.ContainerSlot slot = findWorksiteSlot(
+                level, villager, anchor,
                 ButcherSupplyManager::isFuel,
-                ButcherSupplyManager::fuelScore,
-                anchor);
+                ButcherSupplyManager::fuelScore);
         return slot == null ? ItemStack.EMPTY : NearbyItemSources.extractOne(level, slot);
     }
 
@@ -200,11 +240,10 @@ public final class ButcherSupplyManager {
                                          BlockPos anchor,
                                          java.util.function.@org.jetbrains.annotations.Nullable Predicate<ItemStack> wanted) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return ItemStack.EMPTY;
-        NearbyItemSources.ContainerSlot slot = NearbyItemSources.findBestNearbySlot(
-                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        NearbyItemSources.ContainerSlot slot = findWorksiteSlot(
+                level, villager, anchor,
                 stack -> isRawInput(stack, level) && (wanted == null || wanted.test(stack)),
-                ButcherSupplyManager::rawInputScore,
-                anchor);
+                ButcherSupplyManager::rawInputScore);
         return slot == null ? ItemStack.EMPTY : NearbyItemSources.extractOne(level, slot);
     }
 
@@ -215,14 +254,10 @@ public final class ButcherSupplyManager {
      */
     public static boolean pullCleaver(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level,
-                villager,
-                SEARCH_RADIUS,
-                VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 com.aetherianartificer.townstead.tick.WorkToolTicker::isCleaver,
-                ButcherSupplyManager::toolScore,
-                anchor
+                ButcherSupplyManager::toolScore
         );
     }
 
@@ -232,14 +267,10 @@ public final class ButcherSupplyManager {
      */
     public static boolean pullKnife(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level,
-                villager,
-                SEARCH_RADIUS,
-                VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 com.aetherianartificer.townstead.tick.WorkToolTicker::isKnife,
-                ButcherSupplyManager::toolScore,
-                anchor
+                ButcherSupplyManager::toolScore
         );
     }
 
@@ -250,14 +281,10 @@ public final class ButcherSupplyManager {
      */
     public static boolean pullHacksaw(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level,
-                villager,
-                SEARCH_RADIUS,
-                VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 com.aetherianartificer.townstead.tick.WorkToolTicker::isHacksaw,
-                ButcherSupplyManager::toolScore,
-                anchor
+                ButcherSupplyManager::toolScore
         );
     }
 
@@ -267,14 +294,10 @@ public final class ButcherSupplyManager {
      */
     public static boolean pullHammer(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level,
-                villager,
-                SEARCH_RADIUS,
-                VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 com.aetherianartificer.townstead.tick.WorkToolTicker::isHammer,
-                ButcherSupplyManager::toolScore,
-                anchor
+                ButcherSupplyManager::toolScore
         );
     }
 
@@ -285,14 +308,10 @@ public final class ButcherSupplyManager {
      */
     public static boolean pullCloth(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level,
-                villager,
-                SEARCH_RADIUS,
-                VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 com.aetherianartificer.townstead.compat.butchery.SpongeRagHelper::isCloth,
-                ButcherSupplyManager::clothScore,
-                anchor
+                ButcherSupplyManager::clothScore
         );
     }
 
@@ -315,29 +334,26 @@ public final class ButcherSupplyManager {
 
     public static boolean pullIntestines(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 GrinderStateMachine::isIntestines,
-                ItemStack::getCount,
-                anchor);
+                ItemStack::getCount);
     }
 
     public static boolean pullSausageAttachment(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 GrinderStateMachine::isSausageAttachment,
-                ItemStack::getCount,
-                anchor);
+                ItemStack::getCount);
     }
 
     public static boolean pullBloodBottle(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 GrinderStateMachine::isBloodBottle,
-                ItemStack::getCount,
-                anchor);
+                ItemStack::getCount);
     }
 
     public static boolean pullGrinderInput(
@@ -347,11 +363,10 @@ public final class ButcherSupplyManager {
             GrinderStateMachine.Recipe recipe
     ) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+        return pullOneFromWorksite(
+                level, villager, anchor,
                 stack -> GrinderStateMachine.isInputForRecipe(stack, recipe),
-                ItemStack::getCount,
-                anchor);
+                ItemStack::getCount);
     }
 
     /** True if the villager carries everything needed to stage the recipe. */
@@ -412,14 +427,7 @@ public final class ButcherSupplyManager {
             //?} else {
             /*ItemStack moving = stack.copy(); moving.setCount(moveCount);
             *///?}
-            boolean fullyStored = NearbyItemSources.insertIntoNearbyStorage(
-                    level,
-                    villager,
-                    moving,
-                    SEARCH_RADIUS,
-                    VERTICAL_RADIUS,
-                    anchor
-            );
+            boolean fullyStored = storeInWorksite(level, villager, anchor, moving);
             if (!fullyStored && moving.getCount() == stack.getCount()) continue;
             if (i == reserveFoodSlot) {
                 stack.setCount(FOOD_RESERVE_COUNT + moving.getCount());
@@ -450,6 +458,9 @@ public final class ButcherSupplyManager {
 
     private static boolean computeIsRawInput(ItemStack stack, ServerLevel level) {
         if (isButcherOutput(stack)) return false;
+        // A smoker recipe is only station capability. It does not make coffee, kelp, potatoes,
+        // or every future modded smoking recipe butcher work. Trade ownership is data-authored.
+        if (!stack.is(BUTCHER_SMOKER_INPUT_TAG)) return false;
         //? if >=1.21 {
         var recipe = level.getRecipeManager().getRecipeFor(
                 RecipeType.SMOKING,
@@ -518,25 +529,13 @@ public final class ButcherSupplyManager {
         ensureCacheFresh(level);
         Boolean cached = SMOKER_BLOCKER_CACHE.get(stack.getItem());
         if (cached != null) return cached;
-        //? if >=1.21 {
-        boolean result = level.getRecipeManager().getRecipeFor(
-                RecipeType.SMOKING,
-                new SingleRecipeInput(stack),
-                level
-        ).isEmpty();
-        //?} else {
-        /*boolean result = level.getRecipeManager().getRecipeFor(
-                RecipeType.SMOKING,
-                new net.minecraft.world.SimpleContainer(stack),
-                level
-        ).isEmpty();
-        *///?}
+        boolean result = !isRawInput(stack, level);
         SMOKER_BLOCKER_CACHE.put(stack.getItem(), result);
         return result;
     }
 
     public static boolean hasUsableSmokingRecipe(ItemStack stack, ServerLevel level) {
-        if (stack.isEmpty()) return false;
+        if (!isRawInput(stack, level)) return false;
         //? if >=1.21 {
         var recipe = level.getRecipeManager().getRecipeFor(
                 RecipeType.SMOKING,

@@ -123,6 +123,17 @@ public final class FurnaceStationAdapter implements StationAdapters.Adapter {
     @Override
     public boolean collect(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                            WorkstationDef def, DiscoveredRecipe recipe) {
+        return collectOutput(level, villager, anchor, def);
+    }
+
+    @Override
+    public boolean collectAvailable(ServerLevel level, VillagerEntityMCA villager,
+                                    BlockPos anchor, WorkstationDef def) {
+        return collectOutput(level, villager, anchor, def);
+    }
+
+    private boolean collectOutput(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+                                  WorkstationDef def) {
         FurnaceSlotAccess access = FurnaceSlotAccess.of(level, anchor);
         if (access == null) return false;
         WorkstationDef.FurnaceSlots slots = def.furnaceSlots();

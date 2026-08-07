@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.work.recipe;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 
 import com.aetherianartificer.townstead.work.station.WorkstationDef;
 import com.aetherianartificer.townstead.work.station.Workstations;
@@ -42,20 +41,12 @@ public final class WorkRecipeRegistry {
     private static final ResourceLocation FD_CUTTING_TYPE_ID = ResourceLocation.parse("farmersdelight:cutting");
     private static final ResourceLocation MINECRAFT_BOWL = ResourceLocation.parse("minecraft:bowl");
     private static final ResourceLocation MINECRAFT_POTION = ResourceLocation.parse("minecraft:potion");
-    private static final ResourceLocation RUSTIC_COFFEE_BEANS =
-            ResourceLocation.parse("rusticdelight:coffee_beans");
-    private static final ResourceLocation RUSTIC_ROASTED_COFFEE_BEANS =
-            ResourceLocation.parse("rusticdelight:roasted_coffee_beans");
     //?} else {
     /*private static final ResourceLocation FD_COOKING_POT = new ResourceLocation("farmersdelight", "cooking_pot");
     private static final ResourceLocation FD_COOKING_TYPE_ID = new ResourceLocation("farmersdelight", "cooking");
     private static final ResourceLocation FD_CUTTING_TYPE_ID = new ResourceLocation("farmersdelight", "cutting");
     private static final ResourceLocation MINECRAFT_BOWL = new ResourceLocation("minecraft", "bowl");
     private static final ResourceLocation MINECRAFT_POTION = new ResourceLocation("minecraft", "potion");
-    private static final ResourceLocation RUSTIC_COFFEE_BEANS =
-            new ResourceLocation("rusticdelight", "coffee_beans");
-    private static final ResourceLocation RUSTIC_ROASTED_COFFEE_BEANS =
-            new ResourceLocation("rusticdelight", "roasted_coffee_beans");
     *///?}
 
     /** One definition of the id, shared with the line that fills it. */
@@ -234,18 +225,7 @@ public final class WorkRecipeRegistry {
             recipes.add(purification);
         }
 
-        // 5. Synthetic coffee roasting recipe (if Rustic Delight is present and no campfire recipe already covers it)
-        if (BuiltInRegistries.ITEM.containsKey(RUSTIC_COFFEE_BEANS)
-                && BuiltInRegistries.ITEM.containsKey(RUSTIC_ROASTED_COFFEE_BEANS)) {
-            boolean alreadyHasRoasting = recipes.stream().anyMatch(r ->
-                    r.stationType() == StationType.FIRE_STATION
-                            && r.output().equals(RUSTIC_ROASTED_COFFEE_BEANS));
-            if (!alreadyHasRoasting) {
-                recipes.add(syntheticCoffeeRoastingRecipe());
-            }
-        }
-
-        // 6. Apply tag-based tier overrides
+        // 5. Apply tag-based tier overrides
         applyTierTagOverrides(level, recipes);
 
         return recipes;
@@ -302,7 +282,7 @@ public final class WorkRecipeRegistry {
      * Generic discovery for data-declared workstations: every recipe of a def's declared
      * {@code recipe_type} maps through the vanilla recipe interface (ingredients + result) onto
      * the def's station role. Pairing back to those stations is exclusive and enforced in
-     * {@link StationHandler#stationSupportsRecipe}.
+     * {@link com.aetherianartificer.townstead.work.station.StationProtocols#supports}.
      */
     private static void discoverWorkstationRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
         List<WorkstationDef> defs = Workstations.all();
@@ -671,30 +651,6 @@ public final class WorkRecipeRegistry {
         );
     }
 
-    // ── Synthetic coffee roasting recipe ──
-
-    private static DiscoveredRecipe syntheticCoffeeRoastingRecipe() {
-        return new DiscoveredRecipe(
-                //? if >=1.21 {
-                ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "coffee_roasting"),
-                //?} else {
-                /*new ResourceLocation(Townstead.MOD_ID, "coffee_roasting"),
-                *///?}
-                StationType.FIRE_STATION,
-                1,
-                RUSTIC_ROASTED_COFFEE_BEANS,
-                1,
-                100,
-                false,
-                null,
-                0,
-                List.of(new RecipeIngredient(List.of(RUSTIC_COFFEE_BEANS), 1)),
-                false,
-                true,
-                null
-        );
-    }
-
     // ── Recipe type lookup ──
 
     /**
@@ -812,7 +768,7 @@ public final class WorkRecipeRegistry {
                 return !toolIng.isEmpty() && toolIng.test(stack);
             }
         } catch (Throwable ignored) {}
-        return StationHandler.isKnifeStack(stack);
+        return com.aetherianartificer.townstead.compat.farming.FarmerHarvestToolCompatRegistry.isCompatibleTool(stack);
     }
 
     public static List<RecipeIngredient> extractIngredients(Recipe<?> recipe) {

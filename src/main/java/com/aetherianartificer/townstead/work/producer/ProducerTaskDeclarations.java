@@ -59,9 +59,26 @@ public final class ProducerTaskDeclarations {
                                        DiscoveredRecipe recipe) {
         ResourceLocation type = beveragesOnly ? BREW
                 : stationType == StationType.CUTTING_BOARD ? CHOP : COOK;
-        List<WorkTaskDef> tasks = WorkTaskDeclarations.declared(villager, type);
+        return allowsRecipe(villager, stationType, recipe, type);
+    }
+
+    /** Recipe gate for an arbitrary discovered-production task family. */
+    public static boolean allowsRecipe(VillagerEntityMCA villager, StationType stationType,
+                                       DiscoveredRecipe recipe, ResourceLocation... taskTypes) {
+        List<WorkTaskDef> tasks = WorkTaskDeclarations.declared(villager, taskTypes);
         if (tasks == null || tasks.isEmpty()) return true;
-        return allowsRecipe(tasks, stationType, recipe.id(), recipe.output());
+        return allowsRecipe(tasks, stationType, recipe);
+    }
+
+    static boolean allowsRecipe(List<WorkTaskDef> tasks, StationType stationType,
+                                DiscoveredRecipe recipe) {
+        boolean governed = false;
+        for (WorkTaskDef task : tasks) {
+            if (!governsStationType(task, stationType)) continue;
+            governed = true;
+            if (task.allowsRecipe(recipe.id(), recipe.output(), recipe.inputs())) return true;
+        }
+        return !governed;
     }
 
     /**

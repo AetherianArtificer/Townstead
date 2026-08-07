@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.work.recipe;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
 
 import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
@@ -58,8 +57,29 @@ public final class RecipeSelector {
             boolean excludeBeverages,
             boolean beveragesOnly
     ) {
+        return pickRecipe(level, villager, targetStationType, stationPos, kitchenBounds,
+                recipeCooldownUntil, excludeBeverages, beveragesOnly,
+                beveragesOnly
+                        ? new ResourceLocation[]{com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW}
+                        : targetStationType == StationType.CUTTING_BOARD
+                                ? new ResourceLocation[]{com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP}
+                                : new ResourceLocation[]{com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK});
+    }
+
+    public static @Nullable DiscoveredRecipe pickRecipe(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            StationType targetStationType,
+            @Nullable BlockPos stationPos,
+            Set<Long> kitchenBounds,
+            Map<ResourceLocation, Long> recipeCooldownUntil,
+            boolean excludeBeverages,
+            boolean beveragesOnly,
+            ResourceLocation... taskTypes
+    ) {
         List<ScoredRecipe> viableRecipes = viableRecipes(
-                level, villager, targetStationType, stationPos, kitchenBounds, recipeCooldownUntil, excludeBeverages, beveragesOnly);
+                level, villager, targetStationType, stationPos, kitchenBounds, recipeCooldownUntil,
+                excludeBeverages, beveragesOnly, taskTypes);
         if (viableRecipes.isEmpty()) return null;
         if (viableRecipes.size() == 1) return viableRecipes.get(0).recipe();
         List<DiscoveredRecipe> viable = viableRecipes.stream().map(ScoredRecipe::recipe).toList();
@@ -75,6 +95,25 @@ public final class RecipeSelector {
             Map<ResourceLocation, Long> recipeCooldownUntil,
             boolean excludeBeverages,
             boolean beveragesOnly
+    ) {
+        ResourceLocation type = beveragesOnly
+                ? com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW
+                : targetStationType == StationType.CUTTING_BOARD
+                        ? com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP
+                        : com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK;
+        return candidateRecipes(level, villager, targetStationType, kitchenBounds,
+                recipeCooldownUntil, excludeBeverages, beveragesOnly, type);
+    }
+
+    public static List<ScoredRecipe> candidateRecipes(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            StationType targetStationType,
+            Set<Long> kitchenBounds,
+            Map<ResourceLocation, Long> recipeCooldownUntil,
+            boolean excludeBeverages,
+            boolean beveragesOnly,
+            ResourceLocation... taskTypes
     ) {
         if (targetStationType == null) return List.of();
         List<DiscoveredRecipe> recipes = stationRecipes(level, targetStationType, excludeBeverages, beveragesOnly);
@@ -99,7 +138,7 @@ public final class RecipeSelector {
             // Declared recipe scoping: every selection path funnels through here, so a task's
             // recipes/deny_recipes lists bind initial picks and per-station re-picks alike.
             if (!com.aetherianartificer.townstead.work.producer.ProducerTaskDeclarations
-                    .allowsRecipe(villager, targetStationType, beveragesOnly, recipe)) continue;
+                    .allowsRecipe(villager, targetStationType, recipe, taskTypes)) continue;
             Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
             if (cooldownUntil != null && cooldownUntil > now) continue;
             boolean candidatePlanable = WorkIngredients.canPlanWithVirtual(
@@ -147,15 +186,36 @@ public final class RecipeSelector {
             boolean excludeBeverages,
             boolean beveragesOnly
     ) {
+        ResourceLocation type = beveragesOnly
+                ? com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW
+                : targetStationType == StationType.CUTTING_BOARD
+                        ? com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP
+                        : com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK;
+        return viableRecipes(level, villager, targetStationType, stationPos, kitchenBounds,
+                recipeCooldownUntil, excludeBeverages, beveragesOnly, type);
+    }
+
+    public static List<ScoredRecipe> viableRecipes(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            StationType targetStationType,
+            @Nullable BlockPos stationPos,
+            Set<Long> kitchenBounds,
+            Map<ResourceLocation, Long> recipeCooldownUntil,
+            boolean excludeBeverages,
+            boolean beveragesOnly,
+            ResourceLocation... taskTypes
+    ) {
         if (targetStationType == null) return List.of();
         List<ScoredRecipe> candidates = candidateRecipes(
-                level, villager, targetStationType, kitchenBounds, recipeCooldownUntil, excludeBeverages, beveragesOnly);
+                level, villager, targetStationType, kitchenBounds, recipeCooldownUntil,
+                excludeBeverages, beveragesOnly, taskTypes);
         if (candidates.isEmpty()) return List.of();
         WorksiteStorageIndex.Snapshot kitchenSnapshot = WorksiteStorageIndex.snapshot(level, villager, kitchenBounds);
         List<ScoredRecipe> viable = new ArrayList<>();
         for (ScoredRecipe candidate : candidates) {
             DiscoveredRecipe recipe = candidate.recipe();
-            if (stationPos != null && !StationHandler.stationSupportsRecipe(level, stationPos, recipe)) continue;
+            if (stationPos != null && !com.aetherianartificer.townstead.work.station.StationProtocols.supports(level, stationPos, recipe)) continue;
             if (!WorkIngredients.canFulfill(level, villager, recipe, stationPos, kitchenBounds, kitchenSnapshot)) continue;
             viable.add(candidate);
         }

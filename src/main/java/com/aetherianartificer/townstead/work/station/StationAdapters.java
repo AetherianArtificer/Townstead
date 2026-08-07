@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.work.station;
 
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.StationType;
+import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -31,6 +32,24 @@ public final class StationAdapters {
 
     public interface Adapter {
 
+        /** Whether this physical station can perform this recipe. */
+        default boolean supports(ServerLevel level, BlockPos anchor, WorkstationDef def,
+                                 DiscoveredRecipe recipe) {
+            return StationProtocols.defOwnsRecipe(def, recipe);
+        }
+
+        /** Optional special-cycle support for water purification. */
+        default boolean supportsPurification(ServerLevel level, BlockPos anchor, WorkstationDef def) {
+            return false;
+        }
+
+        /** Insert impure water for the optional purification cycle. */
+        default boolean insertPurification(ServerLevel level, VillagerEntityMCA villager,
+                                           BlockPos anchor, WorkstationDef def,
+                                           ThirstCompatBridge bridge) {
+            return false;
+        }
+
         /** Dynamic free-job count, or a negative value when the generic capacity rules should answer. */
         default int capacity(ServerLevel level, BlockPos anchor, WorkstationDef def) {
             return -1;
@@ -52,6 +71,12 @@ public final class StationAdapters {
         boolean insert(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                        WorkstationDef def, DiscoveredRecipe recipe);
 
+        /** Optional explicit player-like work action after insertion (cut, press, crank, etc.). */
+        default boolean work(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+                             WorkstationDef def, DiscoveredRecipe recipe) {
+            return true;
+        }
+
         /**
          * Move the finished product out of the station into the villager's inventory or the
          * world at the station (drops are picked up by the collect sweep). Returns true when
@@ -59,6 +84,16 @@ public final class StationAdapters {
          */
         boolean collect(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                         WorkstationDef def, DiscoveredRecipe recipe);
+
+        /**
+         * Recover finished output whose producer session no longer remembers a recipe. Most
+         * stations need the recipe to identify their product; furnace/campfire-style stations
+         * have a physical output channel and can unload it safely without one.
+         */
+        default boolean collectAvailable(ServerLevel level, VillagerEntityMCA villager,
+                                         BlockPos anchor, WorkstationDef def) {
+            return false;
+        }
     }
 
     public static final String DEFAULT_ITEM_HANDLER = "townstead:item_handler";

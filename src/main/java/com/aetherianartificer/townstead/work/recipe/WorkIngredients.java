@@ -1,12 +1,15 @@
 package com.aetherianartificer.townstead.work.recipe;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 
 import com.aetherianartificer.townstead.storage.StorageRoles;
 
 import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
 
 import com.aetherianartificer.townstead.work.station.StationProtocols;
+import com.aetherianartificer.townstead.work.station.BlockInventories;
+import com.aetherianartificer.townstead.work.station.StationInventoryOps;
+import com.aetherianartificer.townstead.work.station.StationContents;
+import com.aetherianartificer.townstead.work.station.StationCapacities;
 
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
@@ -160,23 +163,21 @@ public final class WorkIngredients {
         if (recipe.purification()) {
             ThirstCompatBridge bridge = ThirstBridgeResolver.get();
             if (bridge == null || !TownsteadConfig.isCookWaterPurificationEnabled() || !bridge.supportsPurification()) return false;
-            if (!StationHandler.supportsPurificationAt(level, center)) return false;
+            if (!StationProtocols.supportsPurification(level, center)) return false;
             // For purification, only check if the item is impure water — don't require a
             // campfire cooking recipe, since TWP handles purification via its own event system
             // and the station validity is already confirmed above.
             java.util.function.Predicate<ItemStack> matcher = stack ->
-                    StationHandler.impureWaterScore(stack, bridge) > 0;
-            if (StationHandler.bestImpureWaterSlot(villager.getInventory(), bridge, matcher) >= 0) return true;
-            NearbyItemSources.ContainerSlot nearbySlot = NearbyItemSources.findBestNearbySlot(
-                    level, villager, 16, 3, matcher, ItemStack::getCount, center);
-            if (nearbySlot != null) return true;
+                    WaterPurificationItems.impurityScore(stack, bridge) > 0;
+            if (WaterPurificationItems.bestSlot(villager.getInventory(), bridge, matcher) >= 0) return true;
             return findWorksiteStorageSlot(level, villager, matcher, kitchenBounds) != null;
         }
 
         if (recipe.stationType() == StationType.FIRE_STATION && stationPos != null) {
-            if (StationHandler.isSurfaceFireStation(level, center) && !StationHandler.surfaceHasFreeSlot(level, center)) return false;
+            if (StationProtocols.handles(level, center)
+                    && StationCapacities.capacity(level, center, StationType.FIRE_STATION) <= 0) return false;
         }
-        if (stationPos != null && !StationHandler.stationSupportsRecipe(level, center, recipe)) return false;
+        if (stationPos != null && !StationProtocols.supports(level, center, recipe)) return false;
         if (recipe.requiresTool()) {
             boolean toolAvailable = toolAvailableByRecipe != null
                     ? toolAvailableByRecipe.computeIfAbsent(
@@ -188,12 +189,9 @@ public final class WorkIngredients {
         if (recipe.containerItemId() != null && recipe.containerCount() > 0) {
             Item containerItem = BuiltInRegistries.ITEM.get(recipe.containerItemId());
             if (containerItem == Items.AIR) return false;
-            int containerAlreadyStaged = StationHandler.cookingPotContainerItemCount(level, center, containerItem);
+            int containerAlreadyStaged = StationContents.containerCount(level, center, containerItem);
             int containersNeeded = Math.max(0, recipe.containerCount() - containerAlreadyStaged);
-            int containers = StationHandler.count(villager.getInventory(), containerItem);
-            NearbyItemSources.ContainerSlot nearbySlot = NearbyItemSources.findBestNearbySlot(
-                    level, villager, 16, 3, s -> s.is(containerItem), ItemStack::getCount, center);
-            if (nearbySlot != null) containers += Math.max(1, nearbySlot.score());
+            int containers = StationInventoryOps.count(villager.getInventory(), containerItem);
             if (containers < containersNeeded) {
                 NearbyItemSources.ContainerSlot villageSlot = findWorksiteStorageSlot(level, villager, s -> s.is(containerItem), kitchenBounds);
                 if (villageSlot != null) containers += Math.max(1, villageSlot.score());
@@ -300,13 +298,12 @@ public final class WorkIngredients {
             if (bridge == null || !TownsteadConfig.isCookWaterPurificationEnabled() || !bridge.supportsPurification()) {
                 return "a water purification source";
             }
-            if (!StationHandler.supportsPurificationAt(level, center)) {
+            if (!StationProtocols.supportsPurification(level, center)) {
                 return "a heated skillet or campfire with space";
             }
             java.util.function.Predicate<ItemStack> matcher = stack ->
-                    StationHandler.impureWaterScore(stack, bridge) > 0;
-            boolean hasImpureWater = StationHandler.bestImpureWaterSlot(villager.getInventory(), bridge, matcher) >= 0
-                    || NearbyItemSources.findBestNearbySlot(level, villager, 16, 3, matcher, ItemStack::getCount, center) != null
+                    WaterPurificationItems.impurityScore(stack, bridge) > 0;
+            boolean hasImpureWater = WaterPurificationItems.bestSlot(villager.getInventory(), bridge, matcher) >= 0
                     || findWorksiteStorageSlot(level, villager, matcher, kitchenBounds) != null;
             if (!hasImpureWater) return "impure water";
             return "";
@@ -321,11 +318,8 @@ public final class WorkIngredients {
             if (containerItem == Items.AIR) {
                 missing.merge(recipe.containerItemId().toString(), recipe.containerCount(), Integer::sum);
             } else {
-                int staged = StationHandler.cookingPotContainerItemCount(level, center, containerItem);
-                int available = StationHandler.count(villager.getInventory(), containerItem);
-                NearbyItemSources.ContainerSlot nearbySlot = NearbyItemSources.findBestNearbySlot(
-                        level, villager, 16, 3, s -> s.is(containerItem), ItemStack::getCount, center);
-                if (nearbySlot != null) available += Math.max(1, nearbySlot.score());
+                int staged = StationContents.containerCount(level, center, containerItem);
+                int available = StationInventoryOps.count(villager.getInventory(), containerItem);
                 NearbyItemSources.ContainerSlot kitchenSlot = findWorksiteStorageSlot(level, villager, s -> s.is(containerItem), kitchenBounds);
                 if (kitchenSlot != null) available += Math.max(1, kitchenSlot.score());
                 int missingCount = Math.max(0, recipe.containerCount() - staged - available);
@@ -344,7 +338,7 @@ public final class WorkIngredients {
             for (ResourceLocation id : neededIds) {
                 Item item = BuiltInRegistries.ITEM.get(id);
                 if (item == Items.AIR) continue;
-                int inStation = StationHandler.countItemInStation(level, center, item);
+                int inStation = StationContents.count(level, center, item);
                 if (inStation > 0) totalSupply.merge(id, inStation, Integer::sum);
             }
         }
@@ -456,11 +450,11 @@ public final class WorkIngredients {
             }
             // Pull impure water from nearby/kitchen storage into inventory
             java.util.function.Predicate<ItemStack> impureMatcher = stack ->
-                    StationHandler.impureWaterScore(stack, bridge) > 0;
+                    WaterPurificationItems.impurityScore(stack, bridge) > 0;
             for (int i = 0; i < 8; i++) {
                 if (!pullSingleTool(level, villager, impureMatcher, center, kitchenBounds)) break;
             }
-            if (StationHandler.loadPurificationFireStation(level, villager, stationAnchor, bridge)) {
+            if (StationProtocols.insertPurification(level, villager, stationAnchor, bridge)) {
                 return PullResult.successResult();
             }
             return PullResult.failure("a heated skillet or campfire with space");
@@ -477,9 +471,9 @@ public final class WorkIngredients {
         Item recipeContainerItem = recipe.containerItemId() == null ? Items.AIR : BuiltInRegistries.ITEM.get(recipe.containerItemId());
         int containersNeededForStage = 0;
         if (recipeContainerItem != Items.AIR && recipe.containerCount() > 0) {
-            int containersAlreadyStaged = StationHandler.cookingPotContainerItemCount(level, stationAnchor, recipeContainerItem);
+            int containersAlreadyStaged = StationContents.containerCount(level, stationAnchor, recipeContainerItem);
             containersNeededForStage = Math.max(0, recipe.containerCount() - containersAlreadyStaged);
-            while (StationHandler.count(villager.getInventory(), recipeContainerItem) < containersNeededForStage) {
+            while (StationInventoryOps.count(villager.getInventory(), recipeContainerItem) < containersNeededForStage) {
                 if (!pullSingleIngredient(level, villager, recipeContainerItem, center, kitchenBounds)) {
                     return PullResult.failure(itemDisplayName(recipeContainerItem));
                 }
@@ -530,7 +524,7 @@ public final class WorkIngredients {
 
         // Fire station: pull extras + load surface
         if (stationType == StationType.FIRE_STATION
-                && StationHandler.isSurfaceFireStation(level, stationAnchor)
+                && StationProtocols.handles(level, stationAnchor)
                 && !recipe.inputs().isEmpty()) {
             RecipeIngredient input = recipe.inputs().get(0);
             Item item = resolveItem(input, inv);
@@ -547,7 +541,7 @@ public final class WorkIngredients {
                 return PullResult.failure(ingredientDisplayName(input, null), diagnostics);
             }
             int ingredientPerLoad = Math.max(1, input.count());
-            int freeSlots = StationHandler.surfaceFreeSlotCount(level, stationAnchor);
+            int freeSlots = StationCapacities.capacity(level, stationAnchor, StationType.FIRE_STATION);
             ResourceLocation stationId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(stationAnchor).getBlock());
             //? if >=1.21 {
             int maxStack = item.getDefaultMaxStackSize();
@@ -557,21 +551,13 @@ public final class WorkIngredients {
             int target = new ResourceLocation("farmersdelight", "skillet").equals(stationId)
             *///?}
                     ? maxStack : freeSlots * ingredientPerLoad;
-            while (StationHandler.count(inv, item) < target) {
+            while (StationInventoryOps.count(inv, item) < target) {
                 if (!pullSingleIngredient(level, villager, item, center, kitchenBounds)) break;
             }
-            if (StationHandler.loadSurfaceFireStation(level, villager, stationAnchor, recipe)) {
+            if (StationProtocols.insert(level, villager, stationAnchor, recipe, kitchenBounds)) {
                 return PullResult.successResult();
             }
-            while (StationHandler.surfaceHasFreeSlot(level, stationAnchor)) {
-                ItemStack extracted = extractSingleForStaging(level, villager, item, kitchenBounds);
-                if (extracted.isEmpty()) break;
-                if (!StationHandler.loadSurfaceFireStationItem(level, villager, stationAnchor, recipe, extracted)) {
-                    addToInventoryOrNearbyStorage(level, villager, extracted, center);
-                    break;
-                }
-            }
-            if (!StationHandler.surfaceHasFreeSlot(level, stationAnchor)) {
+            if (StationCapacities.capacity(level, stationAnchor, StationType.FIRE_STATION) <= 0) {
                 return PullResult.successResult();
             }
             return PullResult.failure(townsteadStationLoadDetail(recipe));
@@ -601,7 +587,7 @@ public final class WorkIngredients {
                 WorksiteStorageIndex.ExtractionPlan plan = kitchenSnapshot.planItemExtraction(recipe.containerItemId(), containersNeededForStage);
                 diagnostics.add("container req=" + itemDisplayName(recipeContainerItem)
                         + " x" + containersNeededForStage
-                        + " inv=" + StationHandler.count(villager.getInventory(), recipeContainerItem)
+                        + " inv=" + StationInventoryOps.count(villager.getInventory(), recipeContainerItem)
                         + " plan=" + describeExtractionPlan(plan));
                 int stagedContainers = stageContainerDirect(level, villager, stationAnchor, recipeContainerItem,
                         containersNeededForStage, kitchenBounds, center, kitchenSnapshot, diagnostics);
@@ -611,8 +597,8 @@ public final class WorkIngredients {
                 }
                 stagedInputs.merge(recipe.containerItemId(), stagedContainers, Integer::sum);
             }
-            if (stationAnchor != null && !StationHandler.cookingPotMatchesRecipe(level, stationAnchor, recipe)) {
-                String staged = StationHandler.describeCookingPotInputs(level, stationAnchor);
+            if (stationAnchor != null && !StationContents.matchesRecipe(level, stationAnchor, recipe)) {
+                String staged = StationContents.describeInputs(level, stationAnchor);
                 rollbackStagedInputs(level, villager, stationAnchor, stagedInputs);
                 diagnostics.add("pot match failed: " + (staged == null || staged.isBlank() ? "<blank>" : staged));
                 return PullResult.failure(staged == null || staged.isBlank() ? "the pot contents" : staged, diagnostics);
@@ -669,7 +655,7 @@ public final class WorkIngredients {
             if (staged >= count) break;
             Item item = BuiltInRegistries.ITEM.get(id);
             if (item == Items.AIR) continue;
-            int available = StationHandler.count(villager.getInventory(), item);
+            int available = StationInventoryOps.count(villager.getInventory(), item);
             int desired = Math.min(count - staged, available);
             if (desired <= 0) continue;
             int added = stageFromInventory(level, villager, stationAnchor, stationType, item, desired);
@@ -690,7 +676,7 @@ public final class WorkIngredients {
             int count
     ) {
         if (count <= 0) return 0;
-        int removed = StationHandler.removeUpTo(villager.getInventory(), item, count);
+        int removed = StationInventoryOps.removeUpTo(villager.getInventory(), item, count);
         if (removed <= 0) return 0;
 
         ItemStack toInsert = new ItemStack(item, removed);
@@ -702,10 +688,10 @@ public final class WorkIngredients {
         *///?}
         if (stationType == StationType.HOT_STATION && item != Items.BOWL && stationAnchor != null
                 && FD_COOKING_POT.equals(BuiltInRegistries.BLOCK.getKey(level.getBlockState(stationAnchor).getBlock()))) {
-            boolean inserted = StationHandler.insertIntoCookingPotNextIngredientSlot(level, stationAnchor, toInsert);
+            boolean inserted = StationContents.insertIngredient(level, stationAnchor, toInsert);
             remainder = inserted ? ItemStack.EMPTY : toInsert;
         } else {
-            remainder = StationHandler.insertIntoStation(level, stationAnchor, toInsert);
+            remainder = StationContents.insert(level, stationAnchor, toInsert);
         }
         if (!remainder.isEmpty()) villager.getInventory().addItem(remainder);
         return removed - remainder.getCount();
@@ -713,10 +699,10 @@ public final class WorkIngredients {
 
     private static int stageContainerFromInventory(ServerLevel level, VillagerEntityMCA villager, BlockPos stationAnchor, Item item, int count) {
         if (count <= 0) return 0;
-        int removed = StationHandler.removeUpTo(villager.getInventory(), item, count);
+        int removed = StationInventoryOps.removeUpTo(villager.getInventory(), item, count);
         if (removed <= 0) return 0;
         ItemStack toInsert = new ItemStack(item, removed);
-        ItemStack remainder = StationHandler.insertIntoCookingPotContainerSlot(level, stationAnchor, toInsert, false);
+        ItemStack remainder = StationContents.insertContainer(level, stationAnchor, toInsert, false);
         if (!remainder.isEmpty()) villager.getInventory().addItem(remainder);
         return removed - remainder.getCount();
     }
@@ -746,7 +732,8 @@ public final class WorkIngredients {
             if (remaining <= 0) break;
             Item item = BuiltInRegistries.ITEM.get(extraction.itemId());
             if (item == Items.AIR) continue;
-            int inserted = stageIngredientFromPlannedSlot(level, villager, stationAnchor, extraction, remaining, center, diagnostics);
+            int inserted = stageIngredientFromPlannedSlot(level, villager, stationAnchor, extraction, remaining,
+                    center, kitchenBounds, diagnostics);
             if (inserted <= 0) continue;
             staged += inserted;
             remaining -= inserted;
@@ -778,7 +765,8 @@ public final class WorkIngredients {
         WorksiteStorageIndex.ExtractionPlan plan = kitchenSnapshot.planItemExtraction(itemId, remaining);
         for (WorksiteStorageIndex.PlannedExtraction extraction : plan.slots()) {
             if (remaining <= 0) break;
-            int inserted = stageContainerFromPlannedSlot(level, villager, stationAnchor, extraction, remaining, center, diagnostics);
+            int inserted = stageContainerFromPlannedSlot(level, villager, stationAnchor, extraction, remaining,
+                    center, kitchenBounds, diagnostics);
             if (inserted <= 0) continue;
             staged += inserted;
             remaining -= inserted;
@@ -792,7 +780,7 @@ public final class WorkIngredients {
             BlockPos stationAnchor,
             Item item
     ) {
-        if (StationHandler.count(villager.getInventory(), item) <= 0) return false;
+        if (StationInventoryOps.count(villager.getInventory(), item) <= 0) return false;
         return stageFromInventory(level, villager, stationAnchor, StationType.HOT_STATION, item, 1) == 1;
     }
 
@@ -806,10 +794,10 @@ public final class WorkIngredients {
     ) {
         ItemStack extracted = extractSingleForStaging(level, villager, item, kitchenBounds);
         if (extracted.isEmpty()) return false;
-        if (StationHandler.insertIntoCookingPotNextIngredientSlot(level, stationAnchor, extracted)) {
+        if (StationContents.insertIngredient(level, stationAnchor, extracted)) {
             return true;
         }
-        return addToInventoryOrNearbyStorage(level, villager, extracted, center);
+        return addToInventoryOrWorksiteStorage(level, villager, extracted, center, kitchenBounds);
     }
 
     private static int stageIngredientFromPlannedSlot(
@@ -819,6 +807,7 @@ public final class WorkIngredients {
             WorksiteStorageIndex.PlannedExtraction extraction,
             int remaining,
             BlockPos center,
+            Set<Long> kitchenBounds,
             List<String> diagnostics
     ) {
         int requested = Math.min(remaining, extraction.count());
@@ -833,10 +822,10 @@ public final class WorkIngredients {
         diagnostics.add("ingredient stage item=" + extraction.itemId()
                 + " extractedCount=" + extracted.getCount()
                 + " inserted=" + inserted
-                + " pot=" + StationHandler.describeCookingPotInputs(level, stationAnchor));
+                + " pot=" + StationContents.describeInputs(level, stationAnchor));
         if (inserted < extracted.getCount()) {
-            ItemStack remainder = StationHandler.copyWithCount(extracted, extracted.getCount() - inserted);
-            addToInventoryOrNearbyStorage(level, villager, remainder, center);
+            ItemStack remainder = StationInventoryOps.copyWithCount(extracted, extracted.getCount() - inserted);
+            addToInventoryOrWorksiteStorage(level, villager, remainder, center, kitchenBounds);
         }
         return inserted;
     }
@@ -851,9 +840,9 @@ public final class WorkIngredients {
     ) {
         ItemStack extracted = extractSingleForStaging(level, villager, item, kitchenBounds);
         if (extracted.isEmpty()) return false;
-        ItemStack remainder = StationHandler.insertIntoCookingPotContainerSlot(level, stationAnchor, extracted, false);
+        ItemStack remainder = StationContents.insertContainer(level, stationAnchor, extracted, false);
         if (remainder.isEmpty()) return true;
-        return addToInventoryOrNearbyStorage(level, villager, remainder, center);
+        return addToInventoryOrWorksiteStorage(level, villager, remainder, center, kitchenBounds);
     }
 
     private static int stageContainerFromPlannedSlot(
@@ -863,6 +852,7 @@ public final class WorkIngredients {
             WorksiteStorageIndex.PlannedExtraction extraction,
             int remaining,
             BlockPos center,
+            Set<Long> kitchenBounds,
             List<String> diagnostics
     ) {
         int requested = Math.min(remaining, extraction.count());
@@ -873,15 +863,15 @@ public final class WorkIngredients {
                 + " extracted=" + describeStack(extracted));
         if (extracted.isEmpty()) return 0;
         WorksiteStorageIndex.invalidate(level, extraction.slot().pos());
-        ItemStack remainder = StationHandler.insertIntoCookingPotContainerSlot(level, stationAnchor, extracted, false);
+        ItemStack remainder = StationContents.insertContainer(level, stationAnchor, extracted, false);
         int inserted = extracted.getCount() - remainder.getCount();
         diagnostics.add("container stage item=" + extraction.itemId()
                 + " extractedCount=" + extracted.getCount()
                 + " inserted=" + inserted
                 + " remainder=" + describeStack(remainder)
-                + " pot=" + StationHandler.describeCookingPotInputs(level, stationAnchor));
+                + " pot=" + StationContents.describeInputs(level, stationAnchor));
         if (!remainder.isEmpty()) {
-            addToInventoryOrNearbyStorage(level, villager, remainder, center);
+            addToInventoryOrWorksiteStorage(level, villager, remainder, center, kitchenBounds);
         }
         return inserted;
     }
@@ -912,17 +902,17 @@ public final class WorkIngredients {
             BlockEntity be = level.getBlockEntity(slotRef.pos());
             if (be == null) return ItemStack.EMPTY;
             Direction side = slotRef.side();
-            IItemHandler handler = side != null ? StationHandler.getItemHandler(be, level, slotRef.pos(), side) : null;
+            IItemHandler handler = side != null ? BlockInventories.itemHandler(be, level, slotRef.pos(), side) : null;
             ItemStack extracted = extractUpToFromHandler(handler, slotRef.slot(), count);
             if (!extracted.isEmpty()) return extracted;
 
-            handler = StationHandler.getItemHandler(be, level, slotRef.pos(), null);
+            handler = BlockInventories.itemHandler(be, level, slotRef.pos(), null);
             extracted = extractUpToFromHandler(handler, slotRef.slot(), count);
             if (!extracted.isEmpty()) return extracted;
 
             for (Direction dir : Direction.values()) {
                 if (side != null && dir == side) continue;
-                handler = StationHandler.getItemHandler(be, level, slotRef.pos(), dir);
+                handler = BlockInventories.itemHandler(be, level, slotRef.pos(), dir);
                 extracted = extractUpToFromHandler(handler, slotRef.slot(), count);
                 if (!extracted.isEmpty()) return extracted;
             }
@@ -934,7 +924,7 @@ public final class WorkIngredients {
         ItemStack stack = container.getItem(slotRef.slot());
         if (stack.isEmpty()) return ItemStack.EMPTY;
         int moved = Math.min(count, stack.getCount());
-        ItemStack extracted = StationHandler.copyWithCount(stack, moved);
+        ItemStack extracted = StationInventoryOps.copyWithCount(stack, moved);
         stack.shrink(moved);
         container.setChanged();
         return extracted;
@@ -949,8 +939,8 @@ public final class WorkIngredients {
         if (extracted.isEmpty()) return 0;
         int inserted = 0;
         while (inserted < extracted.getCount()) {
-            ItemStack single = StationHandler.copyOne(extracted);
-            if (!StationHandler.insertIntoCookingPotNextIngredientSlot(level, stationAnchor, single)) break;
+            ItemStack single = StationInventoryOps.copyOne(extracted);
+            if (!StationContents.insertIngredient(level, stationAnchor, single)) break;
             inserted++;
         }
         return inserted;
@@ -993,7 +983,7 @@ public final class WorkIngredients {
         for (Map.Entry<ResourceLocation, Integer> entry : stagedInputs.entrySet()) {
             Item item = BuiltInRegistries.ITEM.get(entry.getKey());
             if (item == Items.AIR) continue;
-            int removed = StationHandler.extractFromStation(level, stationAnchor, item, entry.getValue());
+            int removed = StationContents.extract(level, stationAnchor, item, entry.getValue());
             if (removed > 0) villager.getInventory().addItem(new ItemStack(item, removed));
         }
         stagedInputs.clear();
@@ -1049,7 +1039,6 @@ public final class WorkIngredients {
             BlockPos center,
             Set<Long> kitchenBounds
     ) {
-        if (NearbyItemSources.pullSingleToInventory(level, villager, 16, 3, s -> s.is(item), ItemStack::getCount, center)) return true;
         NearbyItemSources.ContainerSlot slot = findClaimedKitchenStorageSlot(level, villager, s -> s.is(item), kitchenBounds);
         if (slot == null) {
             slot = findWorksiteStorageSlotLive(level, villager, s -> s.is(item), kitchenBounds);
@@ -1064,7 +1053,7 @@ public final class WorkIngredients {
         }
         if (extracted.isEmpty()) return false;
         WorksiteStorageIndex.invalidate(level, slot.pos());
-        return addToInventoryOrNearbyStorage(level, villager, extracted, center);
+        return addToInventoryOrWorksiteStorage(level, villager, extracted, center, kitchenBounds);
     }
 
     private static boolean pullSingleIngredientVariant(
@@ -1089,7 +1078,6 @@ public final class WorkIngredients {
             BlockPos center,
             Set<Long> kitchenBounds
     ) {
-        if (NearbyItemSources.pullSingleToInventory(level, villager, 16, 3, matcher, ItemStack::getCount, center)) return true;
         NearbyItemSources.ContainerSlot slot = findClaimedKitchenStorageSlot(level, villager, matcher, kitchenBounds);
         if (slot == null) {
             slot = findWorksiteStorageSlotLive(level, villager, matcher, kitchenBounds);
@@ -1104,7 +1092,7 @@ public final class WorkIngredients {
         }
         if (extracted.isEmpty()) return false;
         WorksiteStorageIndex.invalidate(level, slot.pos());
-        return addToInventoryOrNearbyStorage(level, villager, extracted, center);
+        return addToInventoryOrWorksiteStorage(level, villager, extracted, center, kitchenBounds);
     }
 
     // ── Output storage ──
@@ -1139,7 +1127,7 @@ public final class WorkIngredients {
                 final ItemStack[] remainingRef = new ItemStack[]{stack};
                 searchContext.forEachUniqueItemHandler(observed.pos(), (side, handler) -> {
                     if (remainingRef[0].isEmpty()) return;
-                    ItemStack remainder = StationHandler.insertIntoHandler(handler, remainingRef[0], false);
+                    ItemStack remainder = StationInventoryOps.insert(handler, remainingRef[0], false);
                     int inserted = remainingRef[0].getCount() - remainder.getCount();
                     if (inserted > 0) remainingRef[0].shrink(inserted);
                 });
@@ -1375,11 +1363,18 @@ public final class WorkIngredients {
         return candidateDist < currentBest.distanceSqr() + 4.0d && candidateScore > currentBest.score();
     }
 
-    private static boolean addToInventoryOrNearbyStorage(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, BlockPos center) {
+    private static boolean addToInventoryOrWorksiteStorage(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            ItemStack stack,
+            BlockPos center,
+            Set<Long> kitchenBounds
+    ) {
         if (stack.isEmpty()) return true;
         ItemStack remainder = villager.getInventory().addItem(stack);
         if (remainder.isEmpty()) return true;
-        NearbyItemSources.insertIntoNearbyStorage(level, villager, remainder, 16, 3, center != null ? center : villager.blockPosition());
+        storeOutputInWorksiteStorage(level, villager, remainder,
+                center != null ? center : villager.blockPosition(), kitchenBounds);
         if (remainder.isEmpty()) return true;
         net.minecraft.world.entity.item.ItemEntity drop = new net.minecraft.world.entity.item.ItemEntity(
                 level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
@@ -1394,7 +1389,7 @@ public final class WorkIngredients {
         for (ResourceLocation id : ingredient.itemIds()) {
             Item item = BuiltInRegistries.ITEM.get(id);
             if (item == Items.AIR) continue;
-            total += StationHandler.count(inv, item);
+            total += StationInventoryOps.count(inv, item);
         }
         return total;
     }
@@ -1405,7 +1400,7 @@ public final class WorkIngredients {
         for (ResourceLocation id : ingredient.itemIds()) {
             Item item = BuiltInRegistries.ITEM.get(id);
             if (item == Items.AIR) continue;
-            total += StationHandler.countItemInStation(level, pos, item);
+            total += StationContents.count(level, pos, item);
         }
         return total;
     }
@@ -1417,7 +1412,7 @@ public final class WorkIngredients {
             if (remaining <= 0) break;
             Item item = BuiltInRegistries.ITEM.get(id);
             if (item == Items.AIR) continue;
-            int removed = StationHandler.removeUpTo(inv, item, remaining);
+            int removed = StationInventoryOps.removeUpTo(inv, item, remaining);
             remaining -= removed;
         }
         return remaining <= 0;
@@ -1426,13 +1421,13 @@ public final class WorkIngredients {
     private static Item resolveItem(RecipeIngredient ingredient, SimpleContainer inv) {
         for (ResourceLocation id : ingredient.itemIds()) {
             Item item = BuiltInRegistries.ITEM.get(id);
-            if (item != Items.AIR && StationHandler.count(inv, item) > 0) return item;
+            if (item != Items.AIR && StationInventoryOps.count(inv, item) > 0) return item;
         }
         return BuiltInRegistries.ITEM.get(ingredient.primaryId());
     }
 
     private static boolean hasItem(SimpleContainer inv, Item item) {
-        return StationHandler.count(inv, item) > 0;
+        return StationInventoryOps.count(inv, item) > 0;
     }
 
     private static String formatMissingRequirements(Map<String, Integer> missing) {
@@ -1493,7 +1488,7 @@ public final class WorkIngredients {
             if (stack.isEmpty()) return;
             ItemStack slot = container.getItem(i);
             if (slot.isEmpty()) continue;
-            if (!StationHandler.isSameItemComponents(slot, stack)) continue;
+            if (!StationInventoryOps.sameItemAndComponents(slot, stack)) continue;
             if (!container.canPlaceItem(i, stack)) continue;
             int limit = Math.min(container.getMaxStackSize(), slot.getMaxStackSize());
             if (slot.getCount() >= limit) continue;
@@ -1510,7 +1505,7 @@ public final class WorkIngredients {
             if (!container.canPlaceItem(i, stack)) continue;
             int move = Math.min(stack.getCount(), Math.min(container.getMaxStackSize(), stack.getMaxStackSize()));
             if (move <= 0) continue;
-            container.setItem(i, StationHandler.copyWithCount(stack, move));
+            container.setItem(i, StationInventoryOps.copyWithCount(stack, move));
             stack.shrink(move);
             container.setChanged();
         }

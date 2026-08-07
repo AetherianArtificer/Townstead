@@ -4,7 +4,10 @@ import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
 import com.aetherianartificer.townstead.work.station.StationAdapters;
 import com.aetherianartificer.townstead.work.station.WorkstationDef;
+import com.aetherianartificer.townstead.work.station.BlockInventories;
+import com.aetherianartificer.townstead.work.station.StationDropOutputs;
 import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCompat;
+import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -51,14 +54,33 @@ public final class FarmersDelightStationAdapters {
         }
 
         @Override
+        public boolean supportsPurification(ServerLevel level, BlockPos anchor, WorkstationDef def) {
+            return !multiBlock && FarmersDelightStationInternals.supportsPurificationAt(level, anchor);
+        }
+
+        @Override
+        public boolean insertPurification(ServerLevel level, VillagerEntityMCA villager,
+                                          BlockPos anchor, WorkstationDef def,
+                                          ThirstCompatBridge bridge) {
+            return !multiBlock && FarmersDelightStationInternals.loadPurificationFireStation(level, villager, anchor, bridge);
+        }
+
+        @Override
+        public boolean supports(ServerLevel level, BlockPos anchor, WorkstationDef def,
+                                DiscoveredRecipe recipe) {
+            return recipe.stationType() == def.role()
+                    && FarmersDelightStationInternals.surfaceCanCookRecipeInput(level, anchor, recipe);
+        }
+
+        @Override
         public int capacity(ServerLevel level, BlockPos anchor, WorkstationDef def) {
-            return StationHandler.surfaceFreeSlotCount(level, anchor);
+            return FarmersDelightStationInternals.surfaceFreeSlotCount(level, anchor);
         }
 
         @Override
         public @Nullable BlockPos anchor(ServerLevel level, BlockPos pos, WorkstationDef def) {
             if (!multiBlock) return null;
-            BlockPos canonical = StationHandler.canonicalStationAnchor(level, pos);
+            BlockPos canonical = FarmersDelightStationInternals.canonicalStationAnchor(level, pos);
             return canonical.equals(pos) ? null : canonical;
         }
 
@@ -66,25 +88,39 @@ public final class FarmersDelightStationAdapters {
         public StationAdapters.StationPhase phase(ServerLevel level, BlockPos anchor,
                                                   WorkstationDef def,
                                                   @Nullable DiscoveredRecipe recipe) {
-            if (StationHandler.stationHasCollectibleOutput(
-                    level, anchor, WorkRecipeRegistry.allOutputIds(level))) {
+            if (StationDropOutputs.has(level, anchor, WorkRecipeRegistry.allOutputIds(level))) {
                 return StationAdapters.StationPhase.READY;
             }
-            return StationHandler.stationHasAnyContents(level, anchor, def.role())
-                    ? StationAdapters.StationPhase.WORKING
+            int free = FarmersDelightStationInternals.surfaceFreeSlotCount(level, anchor);
+            int emptyCapacity = multiBlock ? 6 : 1;
+            return free < emptyCapacity ? StationAdapters.StationPhase.WORKING
                     : StationAdapters.StationPhase.IDLE;
         }
 
         @Override
         public boolean insert(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                               WorkstationDef def, DiscoveredRecipe recipe) {
-            return StationHandler.loadSurfaceFireStation(level, villager, anchor, recipe);
+            return FarmersDelightStationInternals.loadSurfaceFireStation(level, villager, anchor, recipe);
+        }
+
+        @Override
+        public boolean work(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+                            WorkstationDef def, DiscoveredRecipe recipe) {
+            ItemStack tool = ItemStack.EMPTY;
+            for (int slot = 0; slot < villager.getInventory().getContainerSize(); slot++) {
+                ItemStack candidate = villager.getInventory().getItem(slot);
+                if (WorkRecipeRegistry.recipeToolMatches(recipe, candidate)) {
+                    tool = candidate;
+                    break;
+                }
+            }
+            return !tool.isEmpty() && FdCuttingBoard.processCuttingBoardStoredItem(level, anchor, tool);
         }
 
         @Override
         public boolean collect(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                                WorkstationDef def, DiscoveredRecipe recipe) {
-            List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(
+            List<ItemStack> drops = StationDropOutputs.collect(
                     level, anchor, WorkRecipeRegistry.allOutputIds(level));
             for (ItemStack drop : drops) villager.getInventory().addItem(drop);
             return !drops.isEmpty();
@@ -94,17 +130,32 @@ public final class FarmersDelightStationAdapters {
     private static final class CuttingBoardAdapter implements StationAdapters.Adapter {
 
         @Override
+        public boolean supports(ServerLevel level, BlockPos anchor, WorkstationDef def,
+                                DiscoveredRecipe recipe) {
+            return recipe.stationType() == def.role();
+        }
+
+        @Override
         public int capacity(ServerLevel level, BlockPos anchor, WorkstationDef def) {
-            return StationHandler.stationHasAnyContents(level, anchor, def.role()) ? 0 : 1;
+            return hasStoredItem(level, anchor) ? 0 : 1;
         }
 
         @Override
         public StationAdapters.StationPhase phase(ServerLevel level, BlockPos anchor,
                                                   WorkstationDef def,
                                                   @Nullable DiscoveredRecipe recipe) {
-            return StationHandler.stationHasAnyContents(level, anchor, def.role())
+            return hasStoredItem(level, anchor)
                     ? StationAdapters.StationPhase.WORKING
                     : StationAdapters.StationPhase.IDLE;
+        }
+
+        private static boolean hasStoredItem(ServerLevel level, BlockPos anchor) {
+            var handler = BlockInventories.itemHandler(level, anchor, null);
+            if (handler == null) return false;
+            for (int slot = 0; slot < handler.getSlots(); slot++) {
+                if (!handler.getStackInSlot(slot).isEmpty()) return true;
+            }
+            return false;
         }
 
         @Override
@@ -167,7 +218,7 @@ final class FdCuttingBoard {
         if (knifeStack.isEmpty()) return false;
 
         BlockState state = level.getBlockState(stationAnchor);
-        ServerPlayer actor = StationHandler.cuttingBoardActor(level);
+        ServerPlayer actor = FarmersDelightStationInternals.cuttingBoardActor(level);
         // FD 1.3 removed all off-hand interaction with cutting boards. The simulated-player path
         // below relies on placing via off-hand, so on 1.3+ we go straight to the BE reflection path.
         if (actor != null && !FarmersDelightCompat.isAtLeast13()) {
@@ -177,11 +228,11 @@ final class FdCuttingBoard {
                 actor.setItemInHand(InteractionHand.MAIN_HAND, knifeStack.copy());
                 actor.setItemInHand(InteractionHand.OFF_HAND, inputStack.copy());
                 BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(stationAnchor), Direction.UP, stationAnchor, false);
-                InteractionResult placed = StationHandler.invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.OFF_HAND, hit);
+                InteractionResult placed = FarmersDelightStationInternals.invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.OFF_HAND, hit);
                 if (!placed.consumesAction()) {
                     return false;
                 }
-                InteractionResult processed = StationHandler.invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.MAIN_HAND, hit);
+                InteractionResult processed = FarmersDelightStationInternals.invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.MAIN_HAND, hit);
                 if (processed == InteractionResult.SUCCESS) {
                     return true;
                 }
@@ -203,7 +254,7 @@ final class FdCuttingBoard {
                 if (!leftover.isEmpty()) villager.getInventory().addItem(leftover);
                 return false;
             }
-            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, StationHandler.cuttingBoardActor(level));
+            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, FarmersDelightStationInternals.cuttingBoardActor(level));
             if (processed instanceof Boolean ok && ok) {
                 return true;
             }
@@ -222,7 +273,7 @@ final class FdCuttingBoard {
     ) {
         if (stationAnchor == null || inputStack.isEmpty()) return false;
         BlockState state = level.getBlockState(stationAnchor);
-        ServerPlayer actor = StationHandler.cuttingBoardActor(level);
+        ServerPlayer actor = FarmersDelightStationInternals.cuttingBoardActor(level);
         // FD 1.3 removed off-hand cutting-board interaction; skip the simulated path on 1.3+.
         if (actor != null && !FarmersDelightCompat.isAtLeast13()) {
             ItemStack previousMain = actor.getMainHandItem().copy();
@@ -231,7 +282,7 @@ final class FdCuttingBoard {
                 actor.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
                 actor.setItemInHand(InteractionHand.OFF_HAND, inputStack.copy());
                 BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(stationAnchor), Direction.UP, stationAnchor, false);
-                InteractionResult placed = StationHandler.invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.OFF_HAND, hit);
+                InteractionResult placed = FarmersDelightStationInternals.invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.OFF_HAND, hit);
                 return placed.consumesAction();
             } catch (Throwable ignored) {
                 // Fall through to BE path.
@@ -260,7 +311,7 @@ final class FdCuttingBoard {
         if (stationAnchor == null || knifeStack.isEmpty()) return false;
 
         BlockState state = level.getBlockState(stationAnchor);
-        ServerPlayer actor = StationHandler.cuttingBoardActor(level);
+        ServerPlayer actor = FarmersDelightStationInternals.cuttingBoardActor(level);
         // FD 1.3 reworked the cutting board (full-stack handling); go BE-direct on 1.3+ to avoid
         // depending on block-use semantics that may have shifted.
         if (actor != null && !FarmersDelightCompat.isAtLeast13()) {
@@ -270,7 +321,7 @@ final class FdCuttingBoard {
                 actor.setItemInHand(InteractionHand.MAIN_HAND, knifeStack.copy());
                 actor.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
                 BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(stationAnchor), Direction.UP, stationAnchor, false);
-                InteractionResult processed = StationHandler.invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.MAIN_HAND, hit);
+                InteractionResult processed = FarmersDelightStationInternals.invokeCuttingBoardBlockUse(state, level, stationAnchor, actor, InteractionHand.MAIN_HAND, hit);
                 return processed == InteractionResult.SUCCESS;
             } catch (Throwable ignored) {
                 // Fall through to BE path.
@@ -284,7 +335,7 @@ final class FdCuttingBoard {
         BlockEntity be = level.getBlockEntity(stationAnchor);
         if (be == null || !FD_CUTTING_BOARD_BE_CLASS.isInstance(be)) return false;
         try {
-            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, StationHandler.cuttingBoardActor(level));
+            Object processed = FD_CUTTING_BOARD_PROCESS.invoke(be, knifeStack, FarmersDelightStationInternals.cuttingBoardActor(level));
             return processed instanceof Boolean ok && ok;
         } catch (Throwable ignored) {
             return false;

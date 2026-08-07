@@ -15,6 +15,7 @@ import com.aetherianartificer.townstead.work.producer.ProducerStationSessions;
 import com.aetherianartificer.townstead.work.producer.ProducerStationState;
 import com.aetherianartificer.townstead.work.station.StationAdapters.Adapter;
 import com.aetherianartificer.townstead.work.station.StationAdapters.StationPhase;
+import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -60,6 +61,35 @@ public final class StationProtocols {
                 || type == StationType.CRAFT_SURFACE;
     }
 
+    /** Whether the declared station and its adapter accept this recipe. */
+    public static boolean supports(ServerLevel level, BlockPos anchor, DiscoveredRecipe recipe) {
+        if (level == null || anchor == null || recipe == null) return false;
+        WorkstationDef def = defAt(level, anchor);
+        Adapter adapter = resolveAdapter(level, def);
+        return def != null && adapter != null && adapter.supports(level, anchor, def, recipe);
+    }
+
+    /** True when this anchor resolves to a declared station with a registered lifecycle adapter. */
+    public static boolean handles(ServerLevel level, BlockPos anchor) {
+        if (level == null || anchor == null) return false;
+        WorkstationDef def = defAt(level, anchor);
+        return def != null && resolveAdapter(level, def) != null;
+    }
+
+    public static boolean supportsPurification(ServerLevel level, BlockPos anchor) {
+        WorkstationDef def = defAt(level, anchor);
+        Adapter adapter = resolveAdapter(level, def);
+        return def != null && adapter != null && adapter.supportsPurification(level, anchor, def);
+    }
+
+    public static boolean insertPurification(ServerLevel level, VillagerEntityMCA villager,
+                                             BlockPos anchor, ThirstCompatBridge bridge) {
+        WorkstationDef def = defAt(level, anchor);
+        Adapter adapter = resolveAdapter(level, def);
+        return def != null && adapter != null
+                && adapter.insertPurification(level, villager, anchor, def, bridge);
+    }
+
     /**
      * The def governing this anchor: the block itself (placed work blocks, passive stations),
      * or — for an empty placement anchor — the place-surface def whose surface is below.
@@ -68,7 +98,11 @@ public final class StationProtocols {
     public static WorkstationDef defAt(ServerLevel level, BlockPos anchor) {
         BlockState state = level.getBlockState(anchor);
         WorkstationDef def = Workstations.byState(state);
-        if (def != null && isProtocolType(def.role())) return def;
+        // An explicit adapter is the declaration that this station participates in the generic
+        // lifecycle. Do not second-guess it with a closed list of roles: surface fire stations
+        // such as the Farmer's Delight skillet are FIRE_STATIONs, but still implement the same
+        // insert/wait/collect protocol through their adapter.
+        if (def != null && (def.adapter() != null || isProtocolType(def.role()))) return def;
         if (state.isAir()) return surfaceDefBelow(level, anchor);
         return null;
     }
@@ -137,6 +171,13 @@ public final class StationProtocols {
         return phase(level, anchor, def, adapter, recipe) == StationPhase.READY;
     }
 
+    /** True once an adapter-backed station has no staged work left in it. */
+    public static boolean isIdle(ServerLevel level, BlockPos anchor, @Nullable DiscoveredRecipe recipe) {
+        WorkstationDef def = defAt(level, anchor);
+        Adapter adapter = resolveAdapter(level, def);
+        return def != null && adapter != null && phase(level, anchor, def, adapter, recipe) == StationPhase.IDLE;
+    }
+
     public static boolean hasAnyContents(ServerLevel level, BlockPos anchor) {
         WorkstationDef def = defAt(level, anchor);
         Adapter adapter = resolveAdapter(level, def);
@@ -169,6 +210,14 @@ public final class StationProtocols {
             return true;
         }
         return adapter.insert(level, villager, anchor, def, recipe);
+    }
+
+    /** Perform a station's explicit work action after its inputs have been inserted. */
+    public static boolean work(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+                               DiscoveredRecipe recipe) {
+        WorkstationDef def = defAt(level, anchor);
+        Adapter adapter = resolveAdapter(level, def);
+        return def != null && adapter != null && adapter.work(level, villager, anchor, def, recipe);
     }
 
     private static boolean composePlaced(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
@@ -261,7 +310,8 @@ public final class StationProtocols {
                                   @Nullable DiscoveredRecipe recipe, Set<Long> storageBounds) {
         WorkstationDef def = defAt(level, anchor);
         Adapter adapter = resolveAdapter(level, def);
-        if (def == null || adapter == null || recipe == null) return false;
+        if (def == null || adapter == null) return false;
+        if (recipe == null) return adapter.collectAvailable(level, villager, anchor, def);
         if (def.role() == StationType.PLACE_SURFACE
                 && !ensureHarvestTool(level, villager, anchor, def, storageBounds)) {
             return false;
@@ -313,6 +363,9 @@ public final class StationProtocols {
     public static boolean defOwnsRecipe(WorkstationDef def, DiscoveredRecipe recipe) {
         if (def == null || recipe == null || recipe.stationType() != def.role()) return false;
         if (produceFor(def, recipe) != null) return true;
+        // Built-in recipe families predate workstation declarations. A def with no declared
+        // recipe source intentionally adopts that built-in family for its role.
+        if (def.recipeType() == null && def.produces().isEmpty()) return true;
         return StationRecipeOwnership.ownsDeclaredType(def, recipe.stationType(),
                 WorkRecipeRegistry.foreignRecipeTypeId(recipe));
     }
@@ -352,6 +405,7 @@ public final class StationProtocols {
     /** Registers the default capability-driven adapter for slot-based passive blocks. */
     public static void bootstrap() {
         StationAdapters.register(StationAdapters.DEFAULT_ITEM_HANDLER, new ItemHandlerAdapter());
+        CampfireStationAdapter.bootstrap();
         FurnaceStationAdapter.bootstrap();
         CraftSurfaceAdapter.bootstrap();
     }
@@ -381,10 +435,15 @@ public final class StationProtocols {
             if (handler == null) return StationPhase.FOREIGN;
             boolean any = false;
             for (int slot = 0; slot < handler.getSlots(); slot++) {
+                if (def.role() == StationType.HOT_STATION && slot == def.containerSlot()) continue;
                 ItemStack stack = handler.getStackInSlot(slot);
                 if (stack.isEmpty()) continue;
                 any = true;
-                if (isFinished(def, recipe, BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+                ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                if (recipe == null && WorkRecipeRegistry.allOutputIds(level).contains(itemId)) {
+                    return StationPhase.READY;
+                }
+                if (isFinished(def, recipe, itemId)) {
                     return StationPhase.READY;
                 }
             }

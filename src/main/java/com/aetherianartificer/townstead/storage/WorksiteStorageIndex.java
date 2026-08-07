@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.storage;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 
@@ -29,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 public final class WorksiteStorageIndex {
     private static final long SNAPSHOT_TTL_TICKS = 20L;
@@ -160,11 +160,16 @@ public final class WorksiteStorageIndex {
         }
 
         public @Nullable NearbyItemSources.ContainerSlot findBestSlot(VillagerEntityMCA villager, Predicate<ItemStack> matcher) {
+            return findBestSlot(villager, matcher, ItemStack::getCount);
+        }
+
+        public @Nullable NearbyItemSources.ContainerSlot findBestSlot(
+                VillagerEntityMCA villager, Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer) {
             NearbyItemSources.ContainerSlot best = null;
             for (Entry entry : entries) {
                 for (SlotView slot : entry.slots()) {
                     if (!matcher.test(slot.stack())) continue;
-                    int score = slot.stack().getCount();
+                    int score = scorer.applyAsInt(slot.stack());
                     double dist = villager.distanceToSqr(
                             slot.pos().getX() + 0.5,
                             slot.pos().getY() + 0.5,

@@ -44,7 +44,7 @@ import java.util.List;
  * simply to stock the right combination.
  *
  * <p>Raw sausage and raw blood sausage output flows back through the
- * smoker via {@link com.aetherianartificer.townstead.hunger.ButcherWorkTask}
+ * smoker via the shared discovered-station producer
  * naturally — those items have {@code minecraft:smoking} recipes in
  * Butchery's data, so our existing {@code isRawInput} picks them up as
  * smoker inputs with no extra plumbing.
@@ -271,7 +271,7 @@ public class GrinderWorkTask extends Behavior<VillagerEntityMCA> {
 
     /**
      * True if the villager has an actionable grinder pending anywhere in
-     * their shops. Used by {@link com.aetherianartificer.townstead.hunger.ButcherWorkTask}
+     * their shops. The shared producer reads the resulting smoke recipes from data.
      * to yield the smoker while there's grinder work, so the butcher
      * prioritizes mince/sausage production over plain smoking.
      */

@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.work.producer;
 
 import com.aetherianartificer.townstead.work.producer.ProducerRole;
-import com.aetherianartificer.townstead.work.producer.ProducerWorkPolicy;
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.StationType;
 
@@ -26,7 +25,10 @@ public final class ProducerWorkSupport {
     }
 
     public static boolean excludeBeverages(ProducerRole role, ServerLevel level, VillagerEntityMCA villager) {
-        return role == ProducerRole.COOK && ProducerWorkPolicy.cookExcludesBeverages(level, villager);
+        // Recipe ownership belongs to the role, not to whoever happens to be on shift nearby.
+        // Cooks must never consume the barista's production inputs just because no barista is
+        // currently considered "working" by the assignment scanner.
+        return role == ProducerRole.COOK;
     }
 
     public static @Nullable DiscoveredRecipe pickRecipe(
@@ -36,7 +38,8 @@ public final class ProducerWorkSupport {
             StationType stationType,
             @Nullable net.minecraft.core.BlockPos stationPos,
             Set<Long> worksiteBounds,
-            Map<ResourceLocation, Long> recipeCooldownUntil
+            Map<ResourceLocation, Long> recipeCooldownUntil,
+            ResourceLocation... taskTypes
     ) {
         return RecipeSelector.pickRecipe(
                 level,
@@ -46,7 +49,8 @@ public final class ProducerWorkSupport {
                 worksiteBounds,
                 recipeCooldownUntil,
                 excludeBeverages(role, level, villager),
-                beveragesOnly(role)
+                beveragesOnly(role),
+                taskTypes
         );
     }
 

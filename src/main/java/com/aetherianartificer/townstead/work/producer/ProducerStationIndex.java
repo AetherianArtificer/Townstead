@@ -17,8 +17,6 @@ import com.aetherianartificer.townstead.work.recipe.WorkIngredients;
 import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
 import com.aetherianartificer.townstead.work.recipe.RecipeSelector;
 import com.aetherianartificer.townstead.work.recipe.RecipeSelector.ScoredRecipe;
-import com.aetherianartificer.townstead.work.recipe.RecipeSelector.ScoredRecipe;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
 import com.aetherianartificer.townstead.work.station.Stations.StationSlot;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -62,7 +60,7 @@ public final class ProducerStationIndex {
             long gameTime,
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil
     ) {
-        return chooseSelection(
+        return chooseForRole(
                 ProducerRole.COOK,
                 level,
                 villager,
@@ -84,7 +82,7 @@ public final class ProducerStationIndex {
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
             @Nullable java.util.function.Predicate<StationSlot> stationFilter
     ) {
-        return chooseSelection(ProducerRole.COOK, level, villager, snapshot, worksiteBounds,
+        return chooseForRole(ProducerRole.COOK, level, villager, snapshot, worksiteBounds,
                 abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter);
     }
 
@@ -111,11 +109,11 @@ public final class ProducerStationIndex {
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
             @Nullable java.util.function.Predicate<StationSlot> stationFilter
     ) {
-        return chooseSelection(ProducerRole.BARISTA, level, villager, snapshot, worksiteBounds,
+        return chooseForRole(ProducerRole.BARISTA, level, villager, snapshot, worksiteBounds,
                 abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter);
     }
 
-    private static @Nullable Selection chooseSelection(
+    public static @Nullable Selection chooseForRole(
             ProducerRole role,
             ServerLevel level,
             VillagerEntityMCA villager,
@@ -125,6 +123,26 @@ public final class ProducerStationIndex {
             long gameTime,
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
             @Nullable java.util.function.Predicate<StationSlot> stationFilter
+    ) {
+        net.minecraft.resources.ResourceLocation[] taskTypes = role == ProducerRole.BARISTA
+                ? new net.minecraft.resources.ResourceLocation[]{com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW}
+                : new net.minecraft.resources.ResourceLocation[]{com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK,
+                        com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP};
+        return chooseForRole(role, level, villager, snapshot, worksiteBounds,
+                abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter, taskTypes);
+    }
+
+    public static @Nullable Selection chooseForRole(
+            ProducerRole role,
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            WorkBuildingNav.Snapshot snapshot,
+            Set<Long> worksiteBounds,
+            Map<Long, Long> abandonedUntilByStation,
+            long gameTime,
+            Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
+            @Nullable java.util.function.Predicate<StationSlot> stationFilter,
+            net.minecraft.resources.ResourceLocation... taskTypes
     ) {
         if (level == null || villager == null || snapshot == null || snapshot.stations().isEmpty()) return null;
 
@@ -151,7 +169,7 @@ public final class ProducerStationIndex {
             }
 
             SessionSnapshot session = ProducerStationSessions.snapshot(level, slot.pos());
-            ProducerStationState state = StationHandler.classifyProducerStation(level, villager, slot.pos(), slot.type(), null, session);
+            ProducerStationState state = ProductionStations.classify(level, villager, slot.pos(), slot.type(), null, session);
             int usableCapacity = stationUsableCapacity(level, slot);
             double distanceSq = villager.distanceToSqr(slot.pos().getX() + 0.5, slot.pos().getY() + 0.5, slot.pos().getZ() + 0.5);
 
@@ -173,10 +191,11 @@ public final class ProducerStationIndex {
                             worksiteBounds,
                             recipeCooldownUntil,
                             ProducerWorkSupport.excludeBeverages(role, level, villager),
-                            ProducerWorkSupport.beveragesOnly(role)));
+                            ProducerWorkSupport.beveragesOnly(role),
+                            taskTypes));
             List<ScoredRecipe> viable = new ArrayList<>();
             for (ScoredRecipe candidate : stationTypeCandidates) {
-                if (!StationHandler.stationSupportsRecipe(level, slot.pos(), candidate.recipe())) continue;
+                if (!com.aetherianartificer.townstead.work.station.StationProtocols.supports(level, slot.pos(), candidate.recipe())) continue;
                 if (!WorkIngredients.canFulfill(
                         level,
                         villager,
@@ -188,7 +207,8 @@ public final class ProducerStationIndex {
                 viable.add(candidate);
             }
             if (viable.isEmpty()) {
-                logNoRecipe(role, level, villager, slot, worksiteBounds, recipeCooldownUntil, stationTypeCandidates.size());
+                logNoRecipe(role, level, villager, slot, worksiteBounds, recipeCooldownUntil,
+                        stationTypeCandidates.size(), taskTypes);
                 continue;
             }
 
@@ -270,15 +290,21 @@ public final class ProducerStationIndex {
             StationSlot slot,
             Set<Long> worksiteBounds,
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
-            int candidateCount
+            int candidateCount,
+            net.minecraft.resources.ResourceLocation... taskTypes
     ) {
         if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
         // Name the first recipe that failed and why. "Nothing is makeable" is not an answer a
         // player can act on; "needs a bowl" is.
         String detail = "";
         for (ScoredRecipe candidate : RecipeSelector.candidateRecipes(
-                level, villager, slot.type(), worksiteBounds, recipeCooldownUntil, false, false)) {
-            if (!StationHandler.stationSupportsRecipe(level, slot.pos(), candidate.recipe())) continue;
+                level, villager, slot.type(), worksiteBounds, recipeCooldownUntil,
+                ProducerWorkSupport.excludeBeverages(role, level, villager),
+                ProducerWorkSupport.beveragesOnly(role), taskTypes)) {
+            if (!com.aetherianartificer.townstead.work.station.StationProtocols.supports(level, slot.pos(), candidate.recipe())) {
+                detail = " first-rejected=" + candidate.recipe().output() + " -> station adapter does not support recipe";
+                break;
+            }
             detail = " first-blocked=" + candidate.recipe().output() + " -> "
                     + WorkIngredients.describeMissingRequirements(
                             level, villager, candidate.recipe(), slot.pos(), worksiteBounds);

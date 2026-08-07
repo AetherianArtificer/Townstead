@@ -78,6 +78,18 @@ public final class WorkTaskDeclarations {
         return out;
     }
 
+    /** Every currently available task declared by this villager's profession, by weight. */
+    public static List<WorkTaskDef> all(VillagerEntityMCA villager) {
+        ProfessionDef def = defOf(villager);
+        if (def == null || def.workTasks().isEmpty()) return List.of();
+        List<WorkTaskDef> out = new ArrayList<>();
+        for (WorkTaskDef task : def.workTasks()) {
+            if (task.available(villager)) out.add(task);
+        }
+        out.sort(Comparator.comparingInt(WorkTaskDef::weight).reversed());
+        return List.copyOf(out);
+    }
+
     /** The highest-weight declared entry of this type, for engines that read parameters; null when not declared. */
     public static @Nullable WorkTaskDef first(VillagerEntityMCA villager, ResourceLocation type) {
         ProfessionDef def = defOf(villager);

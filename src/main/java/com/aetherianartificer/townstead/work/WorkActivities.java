@@ -133,4 +133,26 @@ public final class WorkActivities {
             return false;
         }
     }
+
+    /**
+     * Whether a declared job above {@code activeTask} in the profession's data-authored weight
+     * order has actionable work. Producer engines call this before claiming WALK_TARGET, so a
+     * continuously available station cannot starve a carcass, grinder, delivery, or any future
+     * higher-priority job that registered a probe.
+     */
+    public static boolean hasHigherPriorityWork(ServerLevel level, VillagerEntityMCA villager,
+                                                ResourceLocation activeTask) {
+        List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> tasks =
+                com.aetherianartificer.townstead.work.WorkTaskDeclarations.all(villager);
+        int activeWeight = Integer.MIN_VALUE;
+        for (var task : tasks) {
+            if (task.type().equals(activeTask)) activeWeight = Math.max(activeWeight, task.weight());
+        }
+        if (activeWeight == Integer.MIN_VALUE) return false;
+        for (var task : tasks) {
+            if (task.weight() <= activeWeight) break;
+            if (hasWork(level, villager, task.type())) return true;
+        }
+        return false;
+    }
 }

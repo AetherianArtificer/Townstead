@@ -5,7 +5,8 @@ import com.aetherianartificer.townstead.work.recipe.StationType;
 
 import com.aetherianartificer.townstead.work.recipe.WorkIngredients;
 import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
-import com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler;
+import com.aetherianartificer.townstead.work.station.StationDropOutputs;
+import com.aetherianartificer.townstead.work.station.StationContents;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -20,6 +21,7 @@ import net.minecraft.world.phys.AABB;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public final class ProducerOutputHelper {
     public record CollectResult(boolean collected, boolean shouldWait) {}
@@ -34,7 +36,8 @@ public final class ProducerOutputHelper {
             Set<ResourceLocation> outputIds
     ) {
         if (stationAnchor == null) return false;
-        List<ItemStack> drops = StationHandler.collectSurfaceCookDrops(level, stationAnchor, outputIds);
+        List<ItemStack> drops = StationDropOutputs.collectWithinWorksite(
+                level, stationAnchor, outputIds, worksiteBounds);
         if (drops.isEmpty()) return false;
         for (ItemStack drop : drops) {
             storeOutput(level, villager, drop, stationAnchor, worksiteBounds);
@@ -50,8 +53,8 @@ public final class ProducerOutputHelper {
         if (stationAnchor == null || activeRecipe == null) return false;
         Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
         if (outputItem == Items.AIR) return false;
-        if (StationHandler.countItemInStation(level, stationAnchor, outputItem) < activeRecipe.outputCount()) return false;
-        return StationHandler.canExtractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
+        if (StationContents.count(level, stationAnchor, outputItem) < activeRecipe.outputCount()) return false;
+        return StationContents.canExtract(level, stationAnchor, outputItem, activeRecipe.outputCount());
     }
 
     public static CollectResult collectHotStationOutputs(
@@ -69,7 +72,7 @@ public final class ProducerOutputHelper {
         if (activeRecipe != null) {
             Item outputItem = BuiltInRegistries.ITEM.get(activeRecipe.output());
             if (outputItem != Items.AIR) {
-                int extracted = StationHandler.extractFromStation(level, stationAnchor, outputItem, activeRecipe.outputCount());
+                int extracted = StationContents.extract(level, stationAnchor, outputItem, activeRecipe.outputCount());
                 if (extracted > 0) {
                     storeOutput(level, villager, new ItemStack(outputItem, extracted), stationAnchor, worksiteBounds);
                     collected = true;
@@ -79,7 +82,7 @@ public final class ProducerOutputHelper {
             }
         }
 
-        List<ItemStack> outputs = StationHandler.extractMatchingStationStacks(level, stationAnchor, outputIds);
+        List<ItemStack> outputs = StationContents.extractMatching(level, stationAnchor, outputIds);
         for (ItemStack output : outputs) {
             storeOutput(level, villager, output, stationAnchor, worksiteBounds);
             collected = true;
@@ -110,29 +113,70 @@ public final class ProducerOutputHelper {
         }
     }
 
-    public static void sweepNearbyOutputs(
+    public static boolean sweepWorksiteOutputs(
             ServerLevel level,
             VillagerEntityMCA villager,
-            @Nullable BlockPos storageRef,
+            @Nullable BlockPos watchedStation,
+            @Nullable ResourceLocation watchedOutput,
             Set<Long> worksiteBounds,
             Set<ResourceLocation> outputIds
     ) {
-        if (outputIds.isEmpty()) return;
-        AABB area = villager.getBoundingBox().inflate(3.0, 2.0, 3.0);
+        if (outputIds.isEmpty()) return false;
+        return sweepWorksiteItems(
+                level, villager, watchedStation, watchedOutput, worksiteBounds,
+                stack -> {
+                    ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    return id != null && outputIds.contains(id);
+                });
+    }
+
+    /** Shared worksite housekeeping with a trade-owned definition of finished goods. */
+    public static boolean sweepWorksiteItems(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            @Nullable BlockPos watchedStation,
+            @Nullable ResourceLocation watchedOutput,
+            Set<Long> worksiteBounds,
+            Predicate<ItemStack> finishedGood
+    ) {
+        if (finishedGood == null || worksiteBounds == null || worksiteBounds.isEmpty()) return false;
+        int minX = Integer.MAX_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int maxY = Integer.MIN_VALUE;
+        int maxZ = Integer.MIN_VALUE;
+        for (long packed : worksiteBounds) {
+            BlockPos pos = BlockPos.of(packed);
+            minX = Math.min(minX, pos.getX());
+            minY = Math.min(minY, pos.getY());
+            minZ = Math.min(minZ, pos.getZ());
+            maxX = Math.max(maxX, pos.getX());
+            maxY = Math.max(maxY, pos.getY());
+            maxZ = Math.max(maxZ, pos.getZ());
+        }
+        AABB area = new AABB(minX, minY - 3, minZ, maxX + 1, maxY + 4, maxZ + 1);
         List<ItemEntity> drops = level.getEntitiesOfClass(ItemEntity.class, area, entity -> {
+            if (!StationDropOutputs.insideWorksiteColumn(entity.blockPosition(), worksiteBounds)) return false;
             ItemStack stack = entity.getItem();
-            if (stack.isEmpty()) return false;
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            return id != null && outputIds.contains(id);
+            return !stack.isEmpty() && finishedGood.test(stack);
         });
-        if (drops.isEmpty()) return;
-        BlockPos effectiveStorageRef = storageRef != null ? storageRef : villager.blockPosition();
+        if (drops.isEmpty()) return false;
+        boolean sweptWatchedOutput = false;
+        AABB watchedArea = watchedStation == null ? null : new AABB(watchedStation).inflate(3.0, 2.0, 3.0);
         for (ItemEntity drop : drops) {
             ItemStack stack = drop.getItem().copy();
             if (stack.isEmpty()) continue;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (watchedArea != null && watchedOutput != null && watchedOutput.equals(id)
+                    && watchedArea.contains(drop.position())) {
+                sweptWatchedOutput = true;
+            }
+            BlockPos dropPos = drop.blockPosition();
             drop.discard();
-            storeOutput(level, villager, stack, effectiveStorageRef, worksiteBounds);
+            storeOutput(level, villager, stack, dropPos, worksiteBounds);
         }
+        return sweptWatchedOutput;
     }
 
     public static void storeOutput(

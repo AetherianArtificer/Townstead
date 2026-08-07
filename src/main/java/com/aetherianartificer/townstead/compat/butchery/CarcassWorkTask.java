@@ -401,7 +401,7 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
 
     /**
      * True if the villager has a processable carcass waiting in any of their
-     * carcass-capable shops. Called by {@link com.aetherianartificer.townstead.hunger.ButcherWorkTask}
+     * carcass-capable shops. Used by generic producer priority arbitration.
      * to yield the smoker while there's slaughterhouse work pending, so the
      * butcher prioritizes the higher-value carcass pipeline over smoking.
      */

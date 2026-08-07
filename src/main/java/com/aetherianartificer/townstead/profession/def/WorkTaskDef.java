@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.profession.def;
 
 import com.aetherianartificer.townstead.work.station.Workstations;
+import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 
 import com.aetherianartificer.townstead.pheno.condition.Condition;
 import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
@@ -26,7 +27,8 @@ import java.util.Set;
  * engines (the state machines that path, claim stations, gather, and produce); the profession
  * file owns which behaviors its workers run, at which workstation blocks, against which entity
  * targets, producing which recipes, in what preference order, and behind what gate.
- * {@code workstations}, {@code entities}, {@code recipes}, and {@code deny_recipes} entries are
+ * {@code workstations}, {@code entities}, {@code recipes}, {@code deny_recipes},
+ * {@code recipe_inputs}, and {@code deny_recipe_inputs} entries are
  * ids or {@code #tag} references; an empty allow set means the task type's full default set.
  * Declared sets can only narrow an engine's targets, never widen past its own safety rules
  * (e.g. the slaughter never-kill list is absolute).
@@ -37,6 +39,8 @@ public record WorkTaskDef(
         TargetSet entities,
         TargetSet recipes,
         TargetSet recipesDenied,
+        TargetSet recipeInputs,
+        TargetSet recipeInputsDenied,
         int weight,
         Scope scope,
         Condition requirements,
@@ -51,7 +55,8 @@ public record WorkTaskDef(
     public WorkTaskDef(ResourceLocation type, TargetSet workstations, TargetSet entities,
                        TargetSet recipes, TargetSet recipesDenied, int weight, Scope scope,
                        Condition requirements) {
-        this(type, workstations, entities, recipes, recipesDenied, weight, scope, requirements, null);
+        this(type, workstations, entities, recipes, recipesDenied,
+                TargetSet.EMPTY, TargetSet.EMPTY, weight, scope, requirements, null);
     }
 
     /**
@@ -166,14 +171,44 @@ public record WorkTaskDef(
      * empty allow set admits every recipe the engine offers.
      */
     public boolean allowsRecipe(@Nullable ResourceLocation recipeId, @Nullable ResourceLocation outputId) {
+        return allowsRecipe(recipeId, outputId, List.of());
+    }
+
+    /**
+     * Full discovered-recipe gate. Output filters classify what a task makes; input filters
+     * classify what raw material the task owns. The latter is important for shared recipe
+     * engines such as furnaces and smokers, where station capability alone must not make every
+     * smeltable item part of every profession.
+     */
+    public boolean allowsRecipe(@Nullable ResourceLocation recipeId,
+                                @Nullable ResourceLocation outputId,
+                                List<RecipeIngredient> inputs) {
         if (matchesRecipe(recipesDenied, recipeId, outputId)) return false;
-        return recipes.isEmpty() || matchesRecipe(recipes, recipeId, outputId);
+        if (!recipes.isEmpty() && !matchesRecipe(recipes, recipeId, outputId)) return false;
+        if (matchesAnyInput(recipeInputsDenied, inputs)) return false;
+        return recipeInputs.isEmpty() || matchesAnyInput(recipeInputs, inputs);
+    }
+
+    private static boolean matchesAnyInput(TargetSet set, List<RecipeIngredient> inputs) {
+        if (set.isEmpty() || inputs == null || inputs.isEmpty()) return false;
+        for (RecipeIngredient ingredient : inputs) {
+            for (ResourceLocation itemId : ingredient.itemIds()) {
+                if (matchesItem(set, itemId)) return true;
+            }
+        }
+        return false;
     }
 
     private static boolean matchesRecipe(TargetSet set, @Nullable ResourceLocation recipeId,
                                          @Nullable ResourceLocation outputId) {
         if (set.isEmpty()) return false;
         if (recipeId != null && set.ids().contains(recipeId)) return true;
+        if (outputId == null) return false;
+        if (set.ids().contains(outputId)) return true;
+        return matchesItem(set, outputId);
+    }
+
+    private static boolean matchesItem(TargetSet set, @Nullable ResourceLocation outputId) {
         if (outputId == null) return false;
         if (set.ids().contains(outputId)) return true;
         if (set.tags().isEmpty() && !set.edible() && set.kinds().isEmpty()) return false;
@@ -261,7 +296,10 @@ public record WorkTaskDef(
         TargetSet entities = readIdSet(obj, "entities");
         TargetSet recipes = readIdSet(obj, "recipes");
         TargetSet denied = readIdSet(obj, "deny_recipes");
-        if (workstations == null || entities == null || recipes == null || denied == null) return null;
+        TargetSet recipeInputs = readIdSet(obj, "recipe_inputs");
+        TargetSet deniedInputs = readIdSet(obj, "deny_recipe_inputs");
+        if (workstations == null || entities == null || recipes == null || denied == null
+                || recipeInputs == null || deniedInputs == null) return null;
 
         Scope scope = Scope.WORKSITE;
         if (obj.has("scope")) {
@@ -279,6 +317,7 @@ public record WorkTaskDef(
                 ? GsonHelper.getAsString(obj, "history_counter", "") : null;
         if (historyCounter != null && historyCounter.isBlank()) return null;
         return new WorkTaskDef(type, workstations, entities, recipes, denied,
+                recipeInputs, deniedInputs,
                 GsonHelper.getAsInt(obj, "weight", 1), scope, requirements, historyCounter);
     }
 

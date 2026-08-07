@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Scans around a barrel anchor for fishable water source blocks, each paired with
  * a precomputed safe stand position. Results are cached per (dim, anchor, radius)
- * with a short TTL, matching the ButcherWorkIndex cadence pattern.
+ * with a short TTL, matching the other worksite spatial indexes.
  */
 public final class FishingWaterIndex {
     private static final long SNAPSHOT_TTL_TICKS = 60L;

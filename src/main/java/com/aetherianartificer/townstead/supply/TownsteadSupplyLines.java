@@ -52,8 +52,8 @@ public final class TownsteadSupplyLines {
         public boolean matches(ItemStack stack, ServerLevel level) {
             ThirstCompatBridge bridge = ThirstBridgeResolver.get();
             if (bridge == null) return false;
-            return com.aetherianartificer.townstead.compat.farmersdelight.cook.StationHandler
-                    .impureWaterScore(stack, bridge) > 0;
+            return com.aetherianartificer.townstead.work.recipe.WaterPurificationItems
+                    .impurityScore(stack, bridge) > 0;
         }
     }
 

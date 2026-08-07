@@ -184,6 +184,44 @@ class WorkTaskSchemaTest {
     }
 
     @Test
+    void recipeInputSetsScopeSharedStationRecipes() {
+        ProfessionDef def = parse("""
+                {"work_tasks": [{"type": "townstead_work:smoke",
+                                  "recipe_inputs": ["minecraft:beef"],
+                                  "deny_recipe_inputs": ["minecraft:poisonous_potato"]}]}""",
+                new Diagnostics());
+        WorkTaskDef smoke = def.workTasks().get(0);
+        var beef = java.util.List.of(new com.aetherianartificer.townstead.work.recipe.RecipeIngredient(
+                java.util.List.of(id("minecraft:beef")), 1));
+        var beans = java.util.List.of(new com.aetherianartificer.townstead.work.recipe.RecipeIngredient(
+                java.util.List.of(id("farmersdelight:coffee_beans")), 1));
+        var denied = java.util.List.of(new com.aetherianartificer.townstead.work.recipe.RecipeIngredient(
+                java.util.List.of(id("minecraft:poisonous_potato")), 1));
+
+        assertTrue(smoke.allowsRecipe(id("minecraft:cooked_beef"), id("minecraft:cooked_beef"), beef));
+        assertFalse(smoke.allowsRecipe(id("farmersdelight:roasted_coffee_beans"),
+                id("farmersdelight:roasted_coffee_beans"), beans),
+                "station capability must not grant recipe ownership");
+        assertFalse(smoke.allowsRecipe(id("test:poison"), id("test:poison"), denied),
+                "input denies win just like output denies");
+    }
+
+    @Test
+    void shippedButcherScopesSmokingByWorkstationAndRawInputTag() {
+        ProfessionDef butcher = load("/data/minecraft/profession/butcher/profession.json", "minecraft:butcher");
+        assertTrue(butcher.jobSites().stream().anyMatch(site ->
+                        site instanceof JobSiteProvider.Building building
+                                && building.typePrefixes().contains("compat/butchery/butcher_shop_l")),
+                "the generic producer needs an assigned building; an indoor smoker is not a standalone post");
+        WorkTaskDef smoke = butcher.workTasks().stream()
+                .filter(task -> task.type().equals(WorkTaskTypes.SMOKE))
+                .findFirst().orElseThrow();
+        assertTrue(smoke.workstations().tags().contains(id("townstead:smoker_stations")));
+        assertTrue(smoke.recipeInputs().tags().contains(id("townstead:butcher_smoker_input")));
+        assertEquals("townstead:butchered", smoke.historyCounter());
+    }
+
+    @Test
     void unknownTypeDropsWithDiagnostic() {
         Diagnostics diagnostics = new Diagnostics();
         ProfessionDef def = parse("""
