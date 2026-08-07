@@ -23,7 +23,8 @@ public final class VillagerServerTickDispatcher {
         // Clean up dead/removed entities
         if (!villager.isAlive() || villager.isRemoved()) {
             if (villager.level() instanceof ServerLevel level) {
-                EmergencyBedClaims.releaseAll(level, villager.getUUID());
+            EmergencyBedClaims.releaseAll(level, villager.getUUID());
+            com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask.forget(villager);
             }
             BedOccupancySanitizer.forget(villager);
             WorkToolTicker.forget(villager);

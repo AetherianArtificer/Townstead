@@ -21,10 +21,14 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 
 import java.util.Optional;
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
- * When a villager is fatigued (energy low), they will seek out their assigned bed
- * regardless of their current shift schedule. This fires before collapse.
+ * Emergency fallback for a fatigued villager whose assigned HOME is unavailable.
+ * The fatigue ticker requests MCA's native REST behavior for normal HOME beds;
+ * this task only claims a temporary nearby bed when that native route cannot run.
  */
 public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     private static final String SEARCH_CADENCE_KEY = "fatigue_bed_search";
@@ -35,6 +39,8 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     private static final int BED_SEARCH_RADIUS = 48;
     private static final long EMERGENCY_CLAIM_TTL = MAX_DURATION + 200L;
     private static final int UNREACHABLE_BED_TTL_TICKS = 60;
+    private static final Set<VillagerEntityMCA> EMERGENCY_FALLBACK_REQUESTED =
+            Collections.newSetFromMap(new WeakHashMap<>());
 
     private BlockPos bedPos;
     private BlockPos emergencyClaimPos;
@@ -50,6 +56,9 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return false;
+        // The fatigue ticker performs the full rest decision once and lets MCA
+        // handle an assigned HOME. This behavior is only the exceptional path.
+        if (!EMERGENCY_FALLBACK_REQUESTED.contains(villager)) return false;
         if (villager.isSleeping()) return false;
         if (cooldown > 0) { cooldown--; return false; }
 
@@ -61,36 +70,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
 
         emergencyClaimPos = null;
 
-        // Try assigned bed first (HOME memory)
-        Optional<GlobalPos> home = villager.getBrain().getMemory(MemoryModuleType.HOME);
-        if (home.isPresent()) {
-            GlobalPos globalBed = home.get();
-            if (globalBed.dimension() == level.dimension()) {
-                BlockPos pos = normalizeBedHead(level, globalBed.pos());
-                if (pos != null && villager.blockPosition().distSqr(pos) <= 64 * 64) {
-                    BlockState state = level.getBlockState(pos);
-                    if (state.getBlock() instanceof BedBlock) {
-                        //? if >=1.21 {
-                        if (!state.getValue(BedBlock.OCCUPIED) && TargetReachabilityCache.canAttempt(level, villager, pos)) {
-                            // HOME beds are MCA-owned. Push the villager into REST and let
-                            // MCA's REST package handle the final walk + SleepInBed flow.
-                            villager.getBrain().setActiveActivityIfPossible(Activity.REST);
-                            RestCoordinator.recordDecision(villager, needs, decision, pos);
-                            return false;
-                        }
-                        //?} else {
-                        /*if (!state.getValue(BedBlock.OCCUPIED) && TargetReachabilityCache.canAttempt(level, villager, pos)) {
-                            villager.getBrain().setActiveActivityIfPossible(Activity.REST);
-                            RestCoordinator.recordDecision(villager, needs, decision, pos);
-                            return false;
-                        }
-                        *///?}
-                    }
-                }
-            }
-        }
-
-        // No assigned bed or it's unavailable — find any nearby unclaimed bed
+        // No usable assigned bed — find any nearby unclaimed bed.
         if (!VillagerSearchCadence.isDue(level, villager, SEARCH_CADENCE_KEY)) return false;
         BlockPos found = findNearbyUnclaimedBed(level, villager, level.getGameTime());
         if (found == null) {
@@ -199,6 +179,7 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (!EMERGENCY_FALLBACK_REQUESTED.contains(villager)) return false;
         if (villager.isSleeping()) return false;
         if (bedPos == null) {
             releaseEmergencyClaim(level, villager);
@@ -290,5 +271,15 @@ public class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         if (emergencyClaimPos == null) return;
         EmergencyBedClaims.release(level, villager.getUUID(), emergencyClaimPos);
         emergencyClaimPos = null;
+    }
+
+    /** Called by the fatigue ticker after its single authoritative rest decision. */
+    public static void requestEmergencyFallback(VillagerEntityMCA villager, boolean requested) {
+        if (requested) EMERGENCY_FALLBACK_REQUESTED.add(villager);
+        else EMERGENCY_FALLBACK_REQUESTED.remove(villager);
+    }
+
+    public static void forget(VillagerEntityMCA villager) {
+        EMERGENCY_FALLBACK_REQUESTED.remove(villager);
     }
 }

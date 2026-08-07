@@ -85,6 +85,12 @@ public final class TownsteadEditorCommitServer {
 
         com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload lifeSync =
                 lifeChanged ? Townstead.townstead$lifeSync(villager, player) : null;
+
+        // Editor changes must reach the entity-backed snapshot before the
+        // player can leave or the entity unloads. The runtime state is the
+        // source of truth while loaded, but it is deliberately not persisted
+        // by each individual setter.
+        TownsteadVillagers.flush(villager);
         return new Result(villager, hungerSync, thirstSync, fatigueSync, lifeSync);
     }
 

@@ -44,6 +44,7 @@ public final class RestCoordinator {
                 && blockReason == SleepBlockReason.NONE;
         boolean shouldOverride = !context.sleeping()
                 && reason == SleepReason.FATIGUE_REST
+                && !context.restOverrideActive()
                 && context.scheduleActivity() != Activity.REST
                 && blockReason == SleepBlockReason.NONE;
         boolean shouldHoldGuardAtRest = context.guardRole()

@@ -53,6 +53,27 @@ class RestCoordinatorTest {
     }
 
     @Test
+    void activeFatigueOverrideStillRequestsBedAgainstNaturalSchedule() {
+        RestDecision decision = RestCoordinator.decide(new RestContext(
+                true,
+                Activity.WORK, // natural schedule retained while all-REST override is installed
+                FatigueData.DROWSY_THRESHOLD,
+                false,
+                false,
+                false,
+                false,
+                true,
+                false,
+                false,
+                true
+        ));
+
+        assertEquals(SleepReason.FATIGUE_REST, decision.reason());
+        assertTrue(decision.shouldSeekBed());
+        assertFalse(decision.shouldOverrideScheduleToRest(), "override is already active");
+    }
+
+    @Test
     void combatThreatBlocksBedSeeking() {
         RestDecision decision = RestCoordinator.decide(new RestContext(
                 true,

@@ -16,6 +16,20 @@ public abstract class VillagerServerTickMixin {
     // collide when two dimensions reuse the same numeric entity id.
     @Unique private long townstead$lastServerTick = Long.MIN_VALUE;
 
+    // Fatigue-forced sleepers must be held in REST before MCA ticks its brain;
+    // the main dispatcher intentionally remains at TAIL for all other systems.
+    //? if neoforge {
+    @Inject(method = "aiStep", at = @At("HEAD"))
+    //?} else {
+    /*@Inject(method = "m_8107_", remap = false, at = @At("HEAD"))
+    *///?}
+    private void townstead$beforeServerAiStep(CallbackInfo ci) {
+        VillagerEntityMCA villager = (VillagerEntityMCA) (Object) this;
+        if (!villager.level().isClientSide) {
+            com.aetherianartificer.townstead.tick.FatigueVillagerTicker.preAiStep(villager);
+        }
+    }
+
     //? if neoforge {
     @Inject(method = "aiStep", at = @At("TAIL"))
     //?} else {
