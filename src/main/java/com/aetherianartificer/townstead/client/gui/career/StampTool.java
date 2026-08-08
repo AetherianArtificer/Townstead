@@ -6,6 +6,7 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 
 /**
@@ -22,16 +23,20 @@ import net.minecraft.util.Mth;
 final class StampTool {
 
     static final int WELL_W = 46;
-    static final int WELL_H = 26;
-    private static final int DIE_W = 26;
-    private static final int DIE_H = 22;
+    static final int WELL_H = 36;
+    private static final int DIE_W = 36;
+    private static final int DIE_H = 32;
+
+    //? if >=1.21 {
+    private static final ResourceLocation TOOL_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "townstead", "textures/gui/career/stamp_tool.png");
+    //?} else {
+    /*private static final ResourceLocation TOOL_TEXTURE = new ResourceLocation(
+            "townstead", "textures/gui/career/stamp_tool.png");
+    *///?}
 
     private static final int INK = 0xFFA8322A;
-    private static final int INK_DEEP = 0xFF7A1F18;
     private static final int INK_LIGHT = 0xFFC8564A;
-    private static final int WOOD = 0xFF8A5A2E;
-    private static final int WOOD_HI = 0xFFB07C46;
-    private static final int WOOD_LO = 0xFF4A2E14;
 
     private final Font font;
 
@@ -112,7 +117,8 @@ final class StampTool {
         if (held) return;
         // An unaffordable stamp sits in its well and will not lift, which is a quieter refusal than
         // a greyed button you can still click.
-        drawTool(g, wellX + (WELL_W - DIE_W) / 2, wellY + 3, 0f, afford ? 1f : 0.4f);
+        drawTool(g, wellX + (WELL_W - DIE_W) / 2,
+                wellY + (WELL_H - DIE_H) / 2, 0f, afford ? 1f : 0.4f);
     }
 
     boolean overWell(double mouseX, double mouseY) {
@@ -142,9 +148,11 @@ final class StampTool {
         int x = (int) Math.round(toolX);
         int y = (int) Math.round(toolY);
         g.pose().pushPose();
-        g.pose().translate(x + DIE_W / 2f, y + DIE_H / 2f + 3, 0);
+        // Only the die is projected onto the page. A full tool-sized rectangle made the new,
+        // taller sprite look as if it were dragging a paving slab behind it.
+        g.pose().translate(x + DIE_W / 2f, y + DIE_H - 4f + 3, 0);
         g.pose().mulPose(com.mojang.math.Axis.ZP.rotationDegrees((float) Math.toDegrees(rotation)));
-        g.fill(-DIE_W / 2, -DIE_H / 2, DIE_W / 2, DIE_H / 2,
+        g.fill(-DIE_W / 2 + 1, -4, DIE_W / 2 - 1, 4,
                 validDrop ? 0x4D000000 : 0x4D8A2018);
         g.pose().popPose();
         drawTool(g, x, y, rotation, 1f);
@@ -201,25 +209,22 @@ final class StampTool {
         }
     }
 
-    /** The wooden handle and inked die, drawn from its top-left corner. */
+    /**
+     * The wooden handle and inked die, drawn from its top-left corner.
+     *
+     * <p>The sprite is authored at its exact GUI size. Keeping it as one image preserves the shape
+     * and material separation through every state; rebuilding it from overlapping rectangles made
+     * the wood, collar, and inked die collapse into three unrelated horizontal stripes.</p>
+     */
     private void drawTool(GuiGraphics g, int x, int y, float rot, float alpha) {
         g.pose().pushPose();
         g.pose().translate(x + DIE_W / 2f, y + DIE_H / 2f, 250);
         g.pose().mulPose(com.mojang.math.Axis.ZP.rotationDegrees((float) Math.toDegrees(rot)));
-        int a = (int) (Mth.clamp(alpha, 0f, 1f) * 255f) << 24;
-        int handleW = 20;
-        int hx = -handleW / 2;
-        int hy = -DIE_H / 2 - 2;
-        g.fill(hx + 2, hy, hx + handleW - 2, hy + 7, a | (WOOD & 0xFFFFFF));
-        g.fill(hx + 2, hy, hx + handleW - 2, hy + 1, a | (WOOD_HI & 0xFFFFFF));
-        g.fill(hx + 2, hy + 6, hx + handleW - 2, hy + 7, a | (WOOD_LO & 0xFFFFFF));
-        g.fill(hx, hy + 2, hx + 2, hy + 6, a | (WOOD & 0xFFFFFF));
-        g.fill(hx + handleW - 2, hy + 2, hx + handleW, hy + 6, a | (WOOD & 0xFFFFFF));
-        g.fill(-3, hy + 7, 3, hy + 11, a | (WOOD_LO & 0xFFFFFF));
-        int dieY = hy + 11;
-        g.fill(-DIE_W / 2, dieY, DIE_W / 2, dieY + 5, a | 0x002E2016);
-        g.fill(-DIE_W / 2, dieY, DIE_W / 2, dieY + 1, a | 0x004A3524);
-        g.fill(-DIE_W / 2 + 1, dieY + 5, DIE_W / 2 - 1, dieY + 7, a | (INK_DEEP & 0xFFFFFF));
+        float opacity = Mth.clamp(alpha, 0f, 1f);
+        g.setColor(1f, 1f, 1f, opacity);
+        g.blit(TOOL_TEXTURE, -DIE_W / 2, -DIE_H / 2, DIE_W, DIE_H,
+                0f, 0f, DIE_W, DIE_H, DIE_W, DIE_H);
+        g.setColor(1f, 1f, 1f, 1f);
         g.pose().popPose();
     }
 
