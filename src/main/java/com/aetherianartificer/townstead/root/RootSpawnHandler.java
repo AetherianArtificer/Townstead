@@ -157,7 +157,7 @@ public final class RootSpawnHandler {
         }
         for (Map.Entry<String, Float> entry : chance.entrySet()) {
             net.conczin.mca.entity.ai.Traits.Trait trait =
-                    com.aetherianartificer.townstead.root.trait.McaTraitResolver.resolve(entry.getKey());
+                    com.aetherianartificer.townstead.compat.mca.McaTraitCompat.resolve(entry.getKey()).orElse(null);
             if (trait == null) continue; // gene references a trait this MCA version lacks
             float p = Math.min(1f, entry.getValue());
             if (p >= 1f || villager.getRandom().nextFloat() < p) {
@@ -293,7 +293,7 @@ public final class RootSpawnHandler {
         for (com.aetherianartificer.townstead.root.gene.types.TraitOccurrenceGeneType.Instance gene
                 : RootRegistry.traitGenes(rootId)) {
             net.conczin.mca.entity.ai.Traits.Trait trait =
-                    com.aetherianartificer.townstead.root.trait.McaTraitResolver.resolve(gene.trait());
+                    com.aetherianartificer.townstead.compat.mca.McaTraitCompat.resolve(gene.trait()).orElse(null);
             if (trait == null) continue; // gene references a trait this MCA version lacks
             if (gene.delta() >= 1.0f || villager.getRandom().nextFloat() < gene.delta()) {
                 villager.getTraits().addTrait(trait);

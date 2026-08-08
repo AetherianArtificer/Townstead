@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.root.trait;
 
+import com.aetherianartificer.townstead.compat.mca.McaTraitCompat;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Traits;
 
@@ -18,13 +19,15 @@ public final class NoAgingTrait {
 
     /** Whether the villager currently carries the age-lock trait. */
     public static boolean has(VillagerEntityMCA villager) {
-        return villager != null && villager.getTraits().hasTrait(ID);
+        if (villager == null) return false;
+        Traits.Trait trait = McaTraitCompat.resolve(ID).orElse(null);
+        return trait != null && villager.getTraits().hasTrait(trait);
     }
 
     /** Adds or removes the age-lock trait to mirror {@code locked}. */
     public static void set(VillagerEntityMCA villager, boolean locked) {
         if (villager == null) return;
-        Traits.Trait trait = McaTraitResolver.resolve(ID);
+        Traits.Trait trait = McaTraitCompat.resolve(ID).orElse(null);
         if (trait == null) return;
         if (locked) {
             villager.getTraits().addTrait(trait);

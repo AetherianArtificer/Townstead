@@ -44,7 +44,7 @@ public final class Fertility {
     public static void syncMcaInfertileTrait(VillagerEntityMCA villager) {
         if (villager == null) return;
         Traits.Trait infertile =
-                com.aetherianartificer.townstead.root.trait.McaTraitResolver.resolve("INFERTILE");
+                com.aetherianartificer.townstead.compat.mca.McaTraitCompat.resolve("INFERTILE").orElse(null);
         if (infertile == null) return; // absent on this MCA version
         if (isFertile(villager)) {
             villager.getTraits().removeTrait(infertile);
