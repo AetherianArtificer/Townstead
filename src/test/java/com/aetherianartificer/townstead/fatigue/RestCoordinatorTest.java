@@ -32,11 +32,32 @@ class RestCoordinatorTest {
     }
 
     @Test
-    void drowsyVillagerOverridesScheduleOutsideRest() {
+    void drowsyVillagerKeepsWorkingOutsideRest() {
         RestDecision decision = RestCoordinator.decide(new RestContext(
                 true,
                 Activity.WORK,
                 FatigueData.DROWSY_THRESHOLD,
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+                false,
+                false
+        ));
+
+        assertEquals(SleepReason.NONE, decision.reason());
+        assertFalse(decision.shouldSeekBed());
+        assertFalse(decision.shouldOverrideScheduleToRest());
+    }
+
+    @Test
+    void exhaustedVillagerStartsEmergencyRestOutsideRest() {
+        RestDecision decision = RestCoordinator.decide(new RestContext(
+                true,
+                Activity.WORK,
+                FatigueData.EXHAUSTED_THRESHOLD,
                 false,
                 false,
                 false,

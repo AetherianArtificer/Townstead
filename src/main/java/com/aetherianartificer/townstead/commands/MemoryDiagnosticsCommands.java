@@ -60,7 +60,6 @@ public final class MemoryDiagnosticsCommands {
                         + ", dockScan=" + memory.dockScanCache()
                         + ", indexedDocks=" + memory.dockIndexedDocks()
                         + ", berthGroups=" + memory.dockBerthGroups()
-                        + ", emergencyBeds=" + memory.emergencyBedClaims()
                         + ", producerStations=" + memory.producerStationClaims()
                         + ", villagerStates=" + memory.villagerStates()
                         + ", dirtyVillagerStates=" + memory.dirtyVillagerStates()

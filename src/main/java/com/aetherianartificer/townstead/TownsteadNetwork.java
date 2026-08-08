@@ -733,6 +733,7 @@ public final class TownsteadNetwork {
         if (newFatigue < FatigueData.RECOVERY_GATE) {
             state.needs().setGated(false);
         }
+        TownsteadVillagers.flush(villager);
         FatigueSyncPayload sync = Townstead.townstead$fatigueSync(villager, state.needs().fatigueTag());
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);

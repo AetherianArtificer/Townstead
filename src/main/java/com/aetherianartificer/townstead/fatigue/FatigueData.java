@@ -52,6 +52,7 @@ public final class FatigueData {
     // Collapse at energy 0, recover when energy reaches 2
     public static final int COLLAPSE_THRESHOLD = 20;
     public static final int RECOVERY_GATE = 18;
+    public static final int EXHAUSTED_THRESHOLD = 16;
     public static final int TIRED_THRESHOLD = 8;
     public static final int DROWSY_THRESHOLD = 12;
 

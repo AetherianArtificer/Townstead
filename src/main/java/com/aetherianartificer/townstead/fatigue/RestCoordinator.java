@@ -89,8 +89,12 @@ public final class RestCoordinator {
 
     static SleepReason determineReason(RestContext context) {
         if (context.collapsed()) return SleepReason.EMERGENCY_COLLAPSE;
-        if (context.isDrowsyOrWorse()) return SleepReason.FATIGUE_REST;
+        // Once emergency rest has begun, keep it authoritative through
+        // interruptions until recovery completes. Merely being drowsy does
+        // not supersede a WORK shift.
+        if (context.restOverrideActive() && context.fatigue() > 0) return SleepReason.FATIGUE_REST;
         if (context.isScheduledRest()) return SleepReason.SCHEDULED_REST;
+        if (context.isExhaustedOrWorse()) return SleepReason.FATIGUE_REST;
         return SleepReason.NONE;
     }
 

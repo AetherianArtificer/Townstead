@@ -151,6 +151,8 @@ public final class TownsteadVillager {
         private String restDebugBlock = "none";
         private long restDebugTargetBed = Long.MIN_VALUE;
         private long emergencyBedPos = Long.MIN_VALUE;
+        private String emergencyBedDim = null;
+        private boolean emergencyBedPoiClaimed;
         private long savedHomePos = Long.MIN_VALUE;
         private String savedHomeDim = null;
 
@@ -491,13 +493,39 @@ public final class TownsteadVillager {
             return hasEmergencyBed() ? BlockPos.of(emergencyBedPos) : null;
         }
 
+        public net.minecraft.core.GlobalPos emergencyBedGlobal() {
+            if (!hasEmergencyBed() || emergencyBedDim == null || emergencyBedDim.isEmpty()) return null;
+            //? if >=1.21 {
+            var id = net.minecraft.resources.ResourceLocation.parse(emergencyBedDim);
+            //?} else {
+            /*var id = new net.minecraft.resources.ResourceLocation(emergencyBedDim);
+            *///?}
+            var key = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, id);
+            return net.minecraft.core.GlobalPos.of(key, BlockPos.of(emergencyBedPos));
+        }
+
+        public boolean ownsEmergencyBedPoi() {
+            return emergencyBedPoiClaimed;
+        }
+
         public void setEmergencyBed(BlockPos pos) {
             emergencyBedPos = pos == null ? Long.MIN_VALUE : pos.asLong();
+            emergencyBedDim = null;
+            emergencyBedPoiClaimed = false;
+            markDirty();
+        }
+
+        public void setEmergencyBed(net.minecraft.core.GlobalPos pos, boolean poiClaimed) {
+            emergencyBedPos = pos == null ? Long.MIN_VALUE : pos.pos().asLong();
+            emergencyBedDim = pos == null ? null : pos.dimension().location().toString();
+            emergencyBedPoiClaimed = pos != null && poiClaimed;
             markDirty();
         }
 
         public void clearEmergencyBed() {
             emergencyBedPos = Long.MIN_VALUE;
+            emergencyBedDim = null;
+            emergencyBedPoiClaimed = false;
             markDirty();
         }
 
@@ -626,6 +654,8 @@ public final class TownsteadVillager {
             tag.putString("restDebugBlock", restDebugBlock);
             if (restDebugTargetBed != Long.MIN_VALUE) tag.putLong("restDebugTarget", restDebugTargetBed);
             if (emergencyBedPos != Long.MIN_VALUE) tag.putLong("emergencyBedPos", emergencyBedPos);
+            if (emergencyBedDim != null) tag.putString("emergencyBedDim", emergencyBedDim);
+            if (emergencyBedPoiClaimed) tag.putBoolean("emergencyBedPoiClaimed", true);
             if (savedHomeDim != null) {
                 tag.putLong("savedHomePos", savedHomePos);
                 tag.putString("savedHomeDim", savedHomeDim);
@@ -644,6 +674,8 @@ public final class TownsteadVillager {
             restDebugBlock = FatigueData.getRestDebugBlockId(tag);
             restDebugTargetBed = FatigueData.getRestDebugTargetBed(tag);
             emergencyBedPos = FatigueData.hasEmergencyBed(tag) ? FatigueData.getEmergencyBed(tag).asLong() : Long.MIN_VALUE;
+            emergencyBedDim = tag.contains("emergencyBedDim") ? tag.getString("emergencyBedDim") : null;
+            emergencyBedPoiClaimed = tag.getBoolean("emergencyBedPoiClaimed");
             if (FatigueData.hasSavedHome(tag)) {
                 net.minecraft.core.GlobalPos home = FatigueData.getSavedHome(tag);
                 savedHomeDim = home == null ? "" : home.dimension().location().toString();

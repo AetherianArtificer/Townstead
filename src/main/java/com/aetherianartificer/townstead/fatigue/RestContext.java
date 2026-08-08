@@ -23,6 +23,10 @@ public record RestContext(
         return fatigueEnabled && fatigue >= FatigueData.DROWSY_THRESHOLD;
     }
 
+    public boolean isExhaustedOrWorse() {
+        return fatigueEnabled && fatigue >= FatigueData.EXHAUSTED_THRESHOLD;
+    }
+
     /**
      * Whether the villager still needs rest before waking.
      * During fatigue-forced rest (override active), requires full recovery
