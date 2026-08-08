@@ -1,12 +1,14 @@
 package com.aetherianartificer.townstead.root.trait;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.compat.mca.McaTraitCompat;
 import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.aetherianartificer.townstead.root.trait.effect.TraitEffectTypes;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.conczin.mca.Config;
+import net.conczin.mca.entity.ai.Traits;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
@@ -105,10 +107,24 @@ public final class TraitJsonLoader extends SimpleJsonResourceReloadListener {
         if (any) enableRegisteredTraits();
     }
 
-    /** MCA's own "default every registered trait to enabled" pass; isolated so drift can't crash reload. */
+    /**
+     * MCA's own "default every registered trait to enabled" pass; isolated so drift can't crash reload.
+     * MCA 1.20.1 includes its lookup-failure sentinel in the trait registry, so autocomplete also
+     * enables and exposes an editor entry named "Unknown" unless we explicitly disable it again.
+     */
     public static void enableRegisteredTraits() {
         try {
-            Config.getInstance().autocomplete();
+            Config config = Config.getInstance();
+            config.autocomplete();
+
+            Traits.Trait unknown = McaTraitCompat.resolve("UNKNOWN").orElse(null);
+            String unknownId = McaTraitCompat.id(unknown);
+            if (unknownId != null) {
+                config.enabledTraits.put(unknownId, false);
+                // During play MCA may read the synchronized server-config copy rather
+                // than the mutable local config instance. Keep both views consistent.
+                Config.getServerConfig().enabledTraits.put(unknownId, false);
+            }
         } catch (Throwable e) {
             LOGGER.warn("MCA Config.autocomplete() unavailable: {}", e.toString());
         }
