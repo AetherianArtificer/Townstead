@@ -17,6 +17,11 @@ import java.util.List;
 public final class GenePowerSource implements PowerSource {
 
     @Override
+    public boolean supports(LivingEntity entity) {
+        return ExpressedGenes.canCarry(entity);
+    }
+
+    @Override
     public void collect(LivingEntity entity, List<Power> out) {
         if (!expresses(entity)) return;
         for (Gene gene : Heredity.expressedGenes(ExpressedGenes.genotypeOf(entity))) {

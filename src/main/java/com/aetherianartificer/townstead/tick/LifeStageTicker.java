@@ -38,7 +38,8 @@ public final class LifeStageTicker {
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
 
-        if (villager.tickCount % BODY_SYNC_INTERVAL_TICKS == 0) {
+        boolean reconcile = villager.tickCount % BODY_SYNC_INTERVAL_TICKS == 0;
+        if (reconcile) {
             LifeStageProgression.syncMcaAgeToStage(villager);
             reconcileNoAgingTrait(villager);
         }
@@ -50,18 +51,20 @@ public final class LifeStageTicker {
             }
         }
 
-        TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
-        if (life.isSenior()) {
-            SeniorEffects.applySenior(villager);
-        } else {
-            SeniorEffects.clearSenior(villager);
-        }
+        if (reconcile) {
+            TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+            if (life.isSenior()) {
+                SeniorEffects.applySenior(villager);
+            } else {
+                SeniorEffects.clearSenior(villager);
+            }
 
-        // Per-stage movement: a non-mobile stage (e.g. an egg) freezes the villager's AI so it sits still
-        // instead of wandering. noAi persists across save/load, so we just keep it in sync with the stage.
-        com.aetherianartificer.townstead.root.LifeStage stage = LifeStageProgression.currentStage(villager);
-        boolean immobile = stage != null && !stage.mobile();
-        if (villager.isNoAi() != immobile) villager.setNoAi(immobile);
+            // Per-stage movement changes only when stage data changes. Reconcile at
+            // the same 1 Hz cadence as body state rather than rebuilding it every tick.
+            com.aetherianartificer.townstead.root.LifeStage stage = LifeStageProgression.currentStage(villager);
+            boolean immobile = stage != null && !stage.mobile();
+            if (villager.isNoAi() != immobile) villager.setNoAi(immobile);
+        }
 
         if (!villager.isAlive() || villager.isRemoved()) {
             LAST_NO_AGING.remove(villager.getId());

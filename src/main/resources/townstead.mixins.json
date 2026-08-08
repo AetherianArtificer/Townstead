@@ -42,6 +42,7 @@
     "MessengerVoiceMixin",
     "VillagerHungerMixin",
     "VillagerServerTickMixin",
+    "LivingEntityPowerCacheMixin",
     "WalkNodeEvaluatorFenceGateMixin",
     "WalkNodeEvaluatorFenceGateVanillaMixin",
     "PlayerElytraGeneMixin",

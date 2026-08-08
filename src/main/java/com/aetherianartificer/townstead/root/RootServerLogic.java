@@ -221,7 +221,7 @@ public final class RootServerLogic {
 
     /**
      * Set a villager's personality from the editor's dynamic picker. Stores the chosen ref on the Life
-     * (drives display + voice) and sets the MCA brain personality to the base enum it maps to. Returns
+     * (drives display + voice) and sets the MCA brain personality to the MCA type it maps to. Returns
      * the entity id so the caller can re-broadcast the life sync, or {@link RootSetC2SPayload#NONE}.
      */
     public static int setPersonality(ServerPlayer sp, int entityId, String ref) {

@@ -32,7 +32,7 @@ class RestCoordinatorTest {
     }
 
     @Test
-    void drowsyVillagerOverridesScheduleOutsideRest() {
+    void drowsyVillagerKeepsWorkingOutsideRest() {
         RestDecision decision = RestCoordinator.decide(new RestContext(
                 true,
                 Activity.WORK,
@@ -47,9 +47,51 @@ class RestCoordinatorTest {
                 false
         ));
 
+        assertEquals(SleepReason.NONE, decision.reason());
+        assertFalse(decision.shouldSeekBed());
+        assertFalse(decision.shouldOverrideScheduleToRest());
+    }
+
+    @Test
+    void exhaustedVillagerStartsEmergencyRestOutsideRest() {
+        RestDecision decision = RestCoordinator.decide(new RestContext(
+                true,
+                Activity.WORK,
+                FatigueData.EXHAUSTED_THRESHOLD,
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+                false,
+                false
+        ));
+
         assertEquals(SleepReason.FATIGUE_REST, decision.reason());
         assertTrue(decision.shouldSeekBed());
         assertTrue(decision.shouldOverrideScheduleToRest());
+    }
+
+    @Test
+    void activeFatigueOverrideStillRequestsBedAgainstNaturalSchedule() {
+        RestDecision decision = RestCoordinator.decide(new RestContext(
+                true,
+                Activity.WORK, // natural schedule retained while all-REST override is installed
+                FatigueData.DROWSY_THRESHOLD,
+                false,
+                false,
+                false,
+                false,
+                true,
+                false,
+                false,
+                true
+        ));
+
+        assertEquals(SleepReason.FATIGUE_REST, decision.reason());
+        assertTrue(decision.shouldSeekBed());
+        assertFalse(decision.shouldOverrideScheduleToRest(), "override is already active");
     }
 
     @Test

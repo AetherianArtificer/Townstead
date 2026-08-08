@@ -1526,7 +1526,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                     "Farmer {} blueprint plan: source=cell_plan, post={}, personality={}, cells={}",
                     farmAnchor,
                     peekPost != null ? peekPost.getBlockPos() : null,
-                    villager.getVillagerBrain().getPersonality().name(),
+                    com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat.id(
+                            villager.getVillagerBrain().getPersonality()),
                     farmBlueprint.soilCells().size()
             );
             StringBuilder cellDump = new StringBuilder("Farmer ").append(farmAnchor).append(" planned cells:");

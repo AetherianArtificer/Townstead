@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.root.personality;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.root.Lineage;
 import com.aetherianartificer.townstead.root.LineageRegistry;
 import com.aetherianartificer.townstead.root.Root;
@@ -12,7 +13,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -77,28 +77,18 @@ public final class PersonalityResolver {
         return new java.util.ArrayList<>(pool(rootId).keySet());
     }
 
-    /** The custom definition for a ref, or {@code null} if the ref is a bare base-enum name (or unknown). */
+    /** The custom definition for a ref, or {@code null} if the ref directly names an MCA personality (or is unknown). */
     @Nullable
     public static PersonalityDef def(@Nullable String ref) {
         if (ref == null || ref.isBlank()) return null;
         return PersonalityRegistry.byId(DataPackLang.parseId(ref));
     }
 
-    /** The base MCA personality a ref maps to: a custom def's {@code extends}, or the ref itself if it names a base enum. */
+    /** The MCA personality a ref maps to: a custom def's {@code extends}, or the ref itself. */
     @Nullable
     public static Personality baseOf(@Nullable String ref) {
         if (ref == null || ref.isBlank()) return null;
         PersonalityDef def = def(ref);
-        return enumByName(def != null ? def.base() : ref);
-    }
-
-    @Nullable
-    private static Personality enumByName(String name) {
-        if (name == null || name.isBlank()) return null;
-        try {
-            return Personality.valueOf(name.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
+        return McaPersonalityCompat.resolve(def != null ? def.base() : ref).orElse(null);
     }
 }

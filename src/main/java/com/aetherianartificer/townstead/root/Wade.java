@@ -35,6 +35,7 @@ public final class Wade {
 
     public static void tick(LivingEntity entity) {
         if (entity.level().isClientSide) return;
+        if (!ExpressedGenes.canCarry(entity)) return;
         AttributeInstance attr = entity.getAttribute(Attributes.MOVEMENT_SPEED);
         if (attr == null) return;
         boolean present = attr.getModifier(MODIFIER_ID) != null;

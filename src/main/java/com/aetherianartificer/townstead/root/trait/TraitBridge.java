@@ -39,7 +39,7 @@ public final class TraitBridge {
         // Identity probe, not an id guard (a stale entry from a previous /reload can
         // answer for the id): unless valueOf round-trips to the entry just registered,
         // this MCA uppercases lookups — move the entry to the key valueOf will ask for.
-        if (!upper.equals(id) && Traits.Trait.valueOf(id) != trait) {
+        if (!upper.equals(id) && com.aetherianartificer.townstead.compat.mca.McaTraitCompat.resolve(id).orElse(null) != trait) {
             Traits.TRAIT_REGISTRY.remove(id);
             Traits.TRAIT_REGISTRY.put(upper, trait);
         }

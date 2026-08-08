@@ -7,45 +7,69 @@ import com.aetherianartificer.townstead.diagnostics.TownsteadProfiler;
 import com.aetherianartificer.townstead.leatherworking.LeatherworkerComplaintsTicker;
 import com.aetherianartificer.townstead.leatherworking.LeatherworkerSupplyAcquisitionTicker;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
-import com.aetherianartificer.townstead.fatigue.EmergencyBedClaims;
 import com.aetherianartificer.townstead.storage.EmptyContainerDropoff;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.server.level.ServerLevel;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 public final class VillagerServerTickDispatcher {
     private VillagerServerTickDispatcher() {}
-
-    // Guard against double-ticking caused by Sinytra Connector dispatching
-    // MCA's tick event through both Forge and Fabric paths.
-    private static final Map<Integer, Long> LAST_TICK = new ConcurrentHashMap<>();
 
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
 
         long gameTime = villager.level().getGameTime();
-        Long lastTick = LAST_TICK.get(villager.getId());
-        if (lastTick != null && lastTick == gameTime) return;
-        LAST_TICK.put(villager.getId(), gameTime);
 
         // Clean up dead/removed entities
         if (!villager.isAlive() || villager.isRemoved()) {
-            if (villager.level() instanceof ServerLevel level) {
-                EmergencyBedClaims.releaseAll(level, villager.getUUID());
-            }
-            BedOccupancySanitizer.forget(villager);
+            FatigueVillagerTicker.forget(villager);
             WorkToolTicker.forget(villager);
             ButcherToolAcquisitionTicker.forget(villager);
             LeatherworkerSupplyAcquisitionTicker.forget(villager);
             SkinRackJob.forget(villager);
             EmptyContainerDropoff.forget(villager);
-            LAST_TICK.remove(villager.getId());
             return;
         }
 
-        profile("villager.bed_occupancy", () -> BedOccupancySanitizer.tick(villager));
+        if (!TownsteadProfiler.enabled()) {
+            tickUnprofiled(villager, gameTime);
+            return;
+        }
+
+        tickProfiled(villager, gameTime);
+    }
+
+    private static void tickUnprofiled(VillagerEntityMCA villager, long gameTime) {
+        CookAutoAssignTicker.tick(villager);
+        BaristaAutoAssignTicker.tick(villager);
+        CookTradeBackfillTicker.tick(villager);
+        BaristaTradeBackfillTicker.tick(villager);
+        HungerVillagerTicker.tick(villager);
+        if (ThirstBridgeResolver.isActive()) ThirstVillagerTicker.tick(villager);
+        FatigueVillagerTicker.tick(villager);
+        EmptyContainerDropoff.tick(villager);
+        ProfessionProgressMemoryTicker.tick(villager);
+        GuardRestEnforcerTicker.tick(villager);
+        ButcherToolAcquisitionTicker.tick(villager);
+        LeatherworkerSupplyAcquisitionTicker.tick(villager);
+        WorkToolTicker.tick(villager);
+        ButcheryComplaintsTicker.tick(villager);
+        LeatherworkerComplaintsTicker.tick(villager);
+        com.aetherianartificer.townstead.reaction.ReactionLockTracker.tickFreeze(villager, gameTime);
+        com.aetherianartificer.townstead.reaction.trigger.event.ContextTickHook.tick(villager, gameTime);
+        com.aetherianartificer.townstead.calendar.VillagerLifeStamper.tick(villager);
+        LifeStageTicker.tick(villager);
+        com.aetherianartificer.townstead.root.rig.RigCrouch.tick(villager);
+        com.aetherianartificer.townstead.root.ability.GeneAbilityTicker.tick(villager);
+        com.aetherianartificer.townstead.root.disposition.DispositionReactions.tick(villager);
+        com.aetherianartificer.townstead.root.attribute.GeneAttributeApplier.tick(villager);
+        com.aetherianartificer.townstead.root.ability.ActiveAbilities.aiTick(villager);
+        com.aetherianartificer.townstead.root.ability.GlideAI.tick(villager);
+        com.aetherianartificer.townstead.root.ability.ResourceValues.tick(villager);
+        com.aetherianartificer.townstead.root.collection.CollectionValues.tick(villager);
+    }
+
+    private static void tickProfiled(VillagerEntityMCA villager, long gameTime) {
+
         profile("villager.cook_auto_assign", () -> CookAutoAssignTicker.tick(villager));
         profile("villager.barista_auto_assign", () -> BaristaAutoAssignTicker.tick(villager));
         profile("villager.cook_trade_backfill", () -> CookTradeBackfillTicker.tick(villager));

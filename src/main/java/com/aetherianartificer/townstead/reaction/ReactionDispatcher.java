@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.reaction;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.reaction.backend.EmoteDurationIndex;
 import com.aetherianartificer.townstead.reaction.backend.EmotecraftReactionBackend;
 import com.aetherianartificer.townstead.reaction.backend.ReactionBackend;
@@ -312,7 +313,7 @@ public final class ReactionDispatcher {
         if (entity instanceof VillagerEntityMCA mca) {
             try {
                 Personality personality = mca.getVillagerBrain().getPersonality();
-                if (personality != null) return personality.name().toLowerCase(Locale.ROOT);
+                if (personality != null) return McaPersonalityCompat.id(personality).toLowerCase(Locale.ROOT);
             } catch (Throwable ignored) {}
         }
         return "default";

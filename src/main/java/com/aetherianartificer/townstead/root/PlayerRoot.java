@@ -87,6 +87,7 @@ public final class PlayerRoot {
         CompoundTag tag = data(player);
         if (genotype == null || genotype.isEmpty()) tag.remove(GENOTYPE_KEY);
         else tag.put(GENOTYPE_KEY, genotype.toTag());
+        com.aetherianartificer.townstead.pheno.power.Powers.invalidate(player);
         store(player, tag);
     }
 

@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Personality;
@@ -171,33 +172,33 @@ public final class FarmerCropPreferences {
     }
 
     private static double categoryWeight(Personality p, CropCategory c) {
-        return switch (p) {
-            case FRIENDLY -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.FODDER, CropCategory.VEGETABLE);
-            case FLIRTY -> pref(c, 2.2, CropCategory.LUXURY, CropCategory.FRUIT, CropCategory.SPICE);
+        return switch (McaPersonalityCompat.legacyName(p)) {
+            case "FRIENDLY" -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.FODDER, CropCategory.VEGETABLE);
+            case "FLIRTY" -> pref(c, 2.2, CropCategory.LUXURY, CropCategory.FRUIT, CropCategory.SPICE);
             //? if neoforge {
-            case PLAYFUL -> pref(c, 2.1, CropCategory.FAST, CropCategory.FRUIT, CropCategory.DYE);
+            case "PLAYFUL" -> pref(c, 2.1, CropCategory.FAST, CropCategory.FRUIT, CropCategory.DYE);
             //?} else {
-            /*case WITTY -> pref(c, 2.1, CropCategory.FAST, CropCategory.FRUIT, CropCategory.DYE);
+            /*case "WITTY" -> pref(c, 2.1, CropCategory.FAST, CropCategory.FRUIT, CropCategory.DYE);
             *///?}
-            case GLOOMY -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.MEDICINAL);
-            case SENSITIVE -> pref(c, 2.0, CropCategory.MEDICINAL, CropCategory.STAPLE, CropCategory.FRUIT);
-            case GREEDY -> pref(c, 2.5, CropCategory.CASH, CropCategory.BREW, CropCategory.LUXURY);
-            case ODD -> pref(c, 2.3, CropCategory.SPICE, CropCategory.BREW, CropCategory.LUXURY);
+            case "GLOOMY" -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.MEDICINAL);
+            case "SENSITIVE" -> pref(c, 2.0, CropCategory.MEDICINAL, CropCategory.STAPLE, CropCategory.FRUIT);
+            case "GREEDY" -> pref(c, 2.5, CropCategory.CASH, CropCategory.BREW, CropCategory.LUXURY);
+            case "ODD" -> pref(c, 2.3, CropCategory.SPICE, CropCategory.BREW, CropCategory.LUXURY);
             //? if neoforge {
-            case CRABBY -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.VEGETABLE);
-            case EXTROVERTED -> pref(c, 2.2, CropCategory.CASH, CropCategory.FAST, CropCategory.FRUIT);
-            case INTROVERTED -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.MEDICINAL);
-            case RELAXED -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.INDUSTRIAL);
-            case ANXIOUS -> pref(c, 2.1, CropCategory.FAST, CropCategory.STAPLE);
-            case PEACEFUL -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.FRUIT, CropCategory.MEDICINAL);
-            case UPBEAT -> pref(c, 2.2, CropCategory.FAST, CropCategory.CASH, CropCategory.FRUIT);
+            case "CRABBY" -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.VEGETABLE);
+            case "EXTROVERTED" -> pref(c, 2.2, CropCategory.CASH, CropCategory.FAST, CropCategory.FRUIT);
+            case "INTROVERTED" -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.MEDICINAL);
+            case "RELAXED" -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.INDUSTRIAL);
+            case "ANXIOUS" -> pref(c, 2.1, CropCategory.FAST, CropCategory.STAPLE);
+            case "PEACEFUL" -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.FRUIT, CropCategory.MEDICINAL);
+            case "UPBEAT" -> pref(c, 2.2, CropCategory.FAST, CropCategory.CASH, CropCategory.FRUIT);
             //?} else {
-            /*case GRUMPY -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.VEGETABLE);
-            case CONFIDENT -> pref(c, 2.2, CropCategory.CASH, CropCategory.FAST, CropCategory.FRUIT);
-            case SHY -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.MEDICINAL);
-            case LAZY -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.INDUSTRIAL);
-            case ATHLETIC -> pref(c, 2.1, CropCategory.FAST, CropCategory.STAPLE);
-            case PEPPY -> pref(c, 2.2, CropCategory.FAST, CropCategory.CASH, CropCategory.FRUIT);
+            /*case "GRUMPY" -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.VEGETABLE);
+            case "CONFIDENT" -> pref(c, 2.2, CropCategory.CASH, CropCategory.FAST, CropCategory.FRUIT);
+            case "SHY" -> pref(c, 2.0, CropCategory.STAPLE, CropCategory.MEDICINAL);
+            case "LAZY" -> pref(c, 1.8, CropCategory.STAPLE, CropCategory.INDUSTRIAL);
+            case "ATHLETIC" -> pref(c, 2.1, CropCategory.FAST, CropCategory.STAPLE);
+            case "PEPPY" -> pref(c, 2.2, CropCategory.FAST, CropCategory.CASH, CropCategory.FRUIT);
             *///?}
             default -> pref(c, 1.6, CropCategory.STAPLE, CropCategory.VEGETABLE);
         };
@@ -211,77 +212,77 @@ public final class FarmerCropPreferences {
     }
 
     private static double yieldWeight(Personality p) {
-        return switch (p) {
-            case GREEDY -> 0.55;
+        return switch (McaPersonalityCompat.legacyName(p)) {
+            case "GREEDY" -> 0.55;
             //? if neoforge {
-            case CRABBY, RELAXED -> 0.35;
+            case "CRABBY", "RELAXED" -> 0.35;
             //?} else {
-            /*case GRUMPY, LAZY -> 0.35;
+            /*case "GRUMPY", "LAZY" -> 0.35;
             *///?}
             default -> 0.45;
         };
     }
 
     private static double growthWeight(Personality p) {
-        return switch (p) {
+        return switch (McaPersonalityCompat.legacyName(p)) {
             //? if neoforge {
-            case PLAYFUL, EXTROVERTED, ANXIOUS, UPBEAT -> 0.55;
-            case GLOOMY, CRABBY -> 0.30;
+            case "PLAYFUL", "EXTROVERTED", "ANXIOUS", "UPBEAT" -> 0.55;
+            case "GLOOMY", "CRABBY" -> 0.30;
             //?} else {
-            /*case WITTY, CONFIDENT, PEPPY -> 0.55;
-            case GLOOMY, GRUMPY -> 0.30;
+            /*case "WITTY", "CONFIDENT", "PEPPY" -> 0.55;
+            case "GLOOMY", "GRUMPY" -> 0.30;
             *///?}
             default -> 0.40;
         };
     }
 
     private static double valueWeight(Personality p) {
-        return switch (p) {
+        return switch (McaPersonalityCompat.legacyName(p)) {
             //? if neoforge {
-            case GREEDY, FLIRTY, EXTROVERTED -> 0.65;
-            case GLOOMY, INTROVERTED -> 0.30;
+            case "GREEDY", "FLIRTY", "EXTROVERTED" -> 0.65;
+            case "GLOOMY", "INTROVERTED" -> 0.30;
             //?} else {
-            /*case GREEDY, FLIRTY, CONFIDENT -> 0.65;
-            case GLOOMY, SHY -> 0.30;
+            /*case "GREEDY", "FLIRTY", "CONFIDENT" -> 0.65;
+            case "GLOOMY", "SHY" -> 0.30;
             *///?}
             default -> 0.45;
         };
     }
 
     private static double riskWeight(Personality p) {
-        return switch (p) {
+        return switch (McaPersonalityCompat.legacyName(p)) {
             //? if neoforge {
-            case ANXIOUS, SENSITIVE, PEACEFUL, INTROVERTED -> 0.45;
-            case ODD, PLAYFUL -> 0.20;
+            case "ANXIOUS", "SENSITIVE", "PEACEFUL", "INTROVERTED" -> 0.45;
+            case "ODD", "PLAYFUL" -> 0.20;
             //?} else {
-            /*case SENSITIVE, SHY -> 0.45;
-            case ODD, WITTY -> 0.20;
+            /*case "SENSITIVE", "SHY" -> 0.45;
+            case "ODD", "WITTY" -> 0.20;
             *///?}
             default -> 0.30;
         };
     }
 
     private static double laborWeight(Personality p) {
-        return switch (p) {
+        return switch (McaPersonalityCompat.legacyName(p)) {
             //? if neoforge {
-            case CRABBY, RELAXED -> 0.35;
-            case GREEDY, UPBEAT -> 0.20;
+            case "CRABBY", "RELAXED" -> 0.35;
+            case "GREEDY", "UPBEAT" -> 0.20;
             //?} else {
-            /*case GRUMPY, LAZY -> 0.35;
-            case GREEDY, PEPPY -> 0.20;
+            /*case "GRUMPY", "LAZY" -> 0.35;
+            case "GREEDY", "PEPPY" -> 0.20;
             *///?}
             default -> 0.25;
         };
     }
 
     private static double dryPenaltyWeight(Personality p) {
-        return switch (p) {
+        return switch (McaPersonalityCompat.legacyName(p)) {
             //? if neoforge {
-            case ANXIOUS, SENSITIVE, PEACEFUL, INTROVERTED -> 0.65;
-            case GREEDY, PLAYFUL, ODD -> 0.30;
+            case "ANXIOUS", "SENSITIVE", "PEACEFUL", "INTROVERTED" -> 0.65;
+            case "GREEDY", "PLAYFUL", "ODD" -> 0.30;
             //?} else {
-            /*case SENSITIVE, SHY -> 0.65;
-            case GREEDY, WITTY, ODD -> 0.30;
+            /*case "SENSITIVE", "SHY" -> 0.65;
+            case "GREEDY", "WITTY", "ODD" -> 0.30;
             *///?}
             default -> 0.45;
         };

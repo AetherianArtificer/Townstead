@@ -23,6 +23,7 @@ public final class Buoyancy {
     /** True when the entity is in a fluid its genes mark as nullified, so vanilla treats it as not in fluid. */
     public static boolean ignoresCurrentFluid(LivingEntity entity) {
         if (!entity.isInWater() && !entity.isInLava()) return false;
+        if (!ExpressedGenes.canCarry(entity)) return false;
         List<TagKey<Fluid>> fluids = entity.level().isClientSide
                 ? com.aetherianartificer.townstead.client.root.ClientBuoyancy.ignoredFluids(entity)
                 : serverFluids(entity);

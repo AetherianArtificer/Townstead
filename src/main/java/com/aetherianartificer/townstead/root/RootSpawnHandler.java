@@ -14,6 +14,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Applies origins to villagers at runtime.
@@ -25,6 +26,11 @@ import java.util.Set;
  * already-rolled genes.</p>
  */
 public final class RootSpawnHandler {
+
+    // A founder only needs the expensive canonicalize/heal/recompute migration
+    // once per loaded entity per gene-data generation. Weak keys disappear when
+    // the entity unloads; a datapack reload advances GeneRegistry.revision().
+    private static final Map<VillagerEntityMCA, Long> MIGRATED_GENE_REVISION = new WeakHashMap<>();
 
     private RootSpawnHandler() {}
 
@@ -151,7 +157,7 @@ public final class RootSpawnHandler {
         }
         for (Map.Entry<String, Float> entry : chance.entrySet()) {
             net.conczin.mca.entity.ai.Traits.Trait trait =
-                    com.aetherianartificer.townstead.root.trait.McaTraitResolver.resolve(entry.getKey());
+                    com.aetherianartificer.townstead.compat.mca.McaTraitCompat.resolve(entry.getKey()).orElse(null);
             if (trait == null) continue; // gene references a trait this MCA version lacks
             float p = Math.min(1f, entry.getValue());
             if (p >= 1f || villager.getRandom().nextFloat() < p) {
@@ -175,7 +181,12 @@ public final class RootSpawnHandler {
         // Legacy villagers predate the diploid genotype: fill in any genes they lack
         // (homozygous from a legacy expressed variant where present) without re-rolling
         // what they already carry, and seed their heritage from the origin.
-        Heredity.migrateFounder(state.life(), rootId, villager.getRandom());
+        long geneRevision = com.aetherianartificer.townstead.root.gene.GeneRegistry.revision();
+        Long migratedRevision = MIGRATED_GENE_REVISION.get(villager);
+        if (migratedRevision == null || migratedRevision != geneRevision) {
+            Heredity.migrateFounder(state.life(), rootId, villager.getRandom());
+            MIGRATED_GENE_REVISION.put(villager, geneRevision);
+        }
         LifeCycle cycle = RootRegistry.effectiveLifeCycle(rootId);
         // Re-roll when the stored stageDays don't match the current cycle — either a
         // different length (origin reassigned), a re-authored shape, or a changed
@@ -229,7 +240,7 @@ public final class RootSpawnHandler {
      */
     /**
      * Roll a personality from the origin's allowlist and apply it: store the chosen ref on the Life
-     * (drives display + voice) and set the MCA brain personality to the base enum it extends (so MCA's
+     * (drives display + voice) and set the MCA brain personality to the MCA type it extends (so MCA's
      * own mechanics apply). An origin with no personality policy yields a null ref, leaving MCA's own
      * rolled personality untouched (vanilla behaviour).
      */
@@ -254,8 +265,8 @@ public final class RootSpawnHandler {
 
     /** A random assignable base MCA personality (excludes the {@code UNASSIGNED} sentinel). */
     private static Personality randomVanillaPersonality(net.minecraft.util.RandomSource random) {
-        Personality[] all = Personality.values();
-        java.util.List<Personality> pick = new ArrayList<>(all.length);
+        java.util.List<Personality> all = com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat.all();
+        java.util.List<Personality> pick = new ArrayList<>(all.size());
         for (Personality p : all) {
             if (p != Personality.UNASSIGNED) pick.add(p);
         }
@@ -282,7 +293,7 @@ public final class RootSpawnHandler {
         for (com.aetherianartificer.townstead.root.gene.types.TraitOccurrenceGeneType.Instance gene
                 : RootRegistry.traitGenes(rootId)) {
             net.conczin.mca.entity.ai.Traits.Trait trait =
-                    com.aetherianartificer.townstead.root.trait.McaTraitResolver.resolve(gene.trait());
+                    com.aetherianartificer.townstead.compat.mca.McaTraitCompat.resolve(gene.trait()).orElse(null);
             if (trait == null) continue; // gene references a trait this MCA version lacks
             if (gene.delta() >= 1.0f || villager.getRandom().nextFloat() < gene.delta()) {
                 villager.getTraits().addTrait(trait);

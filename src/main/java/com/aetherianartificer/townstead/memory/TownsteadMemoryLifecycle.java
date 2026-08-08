@@ -7,7 +7,6 @@ import com.aetherianartificer.townstead.dock.DockLocationIndex;
 import com.aetherianartificer.townstead.dock.DockScanner;
 import com.aetherianartificer.townstead.dock.DockSuppression;
 import com.aetherianartificer.townstead.enclosure.EnclosureSuppression;
-import com.aetherianartificer.townstead.fatigue.EmergencyBedClaims;
 import com.aetherianartificer.townstead.hunger.NearbyStorageIndex;
 import com.aetherianartificer.townstead.hunger.TargetReachabilityCache;
 import com.aetherianartificer.townstead.spirit.VillageSpiritCache;
@@ -41,7 +40,6 @@ public final class TownsteadMemoryLifecycle {
         KitchenStorageIndex.purgeExpired(gameTime);
         DockScanner.purgeExpired(gameTime);
         DockBerthClaims.purgeExpired(gameTime);
-        EmergencyBedClaims.purgeExpired(gameTime);
         ProducerStationClaims.purgeExpired(gameTime);
         TownsteadVillagers.purgeExpired(gameTime, VILLAGER_STATE_IDLE_TICKS);
     }
@@ -56,7 +54,6 @@ public final class TownsteadMemoryLifecycle {
         DockBerthClaims.clearAll();
         DockSuppression.clearAll();
         EnclosureSuppression.clearAll();
-        EmergencyBedClaims.clearAll();
         ProducerStationClaims.clearAll();
         TownsteadVillagers.clearAll();
         VillageAiBudget.clear();
@@ -74,7 +71,6 @@ public final class TownsteadMemoryLifecycle {
             int dockBerthGroups,
             int dockSuppressions,
             int enclosureSuppressions,
-            int emergencyBedClaims,
             int producerStationClaims,
             int villagerStates,
             int dirtyVillagerStates,
@@ -93,7 +89,6 @@ public final class TownsteadMemoryLifecycle {
                 DockBerthClaims.claimGroupCount(),
                 DockSuppression.entryCount(),
                 EnclosureSuppression.entryCount(),
-                EmergencyBedClaims.size(),
                 ProducerStationClaims.size(),
                 TownsteadVillagers.size(),
                 TownsteadVillagers.dirtyCount(),
