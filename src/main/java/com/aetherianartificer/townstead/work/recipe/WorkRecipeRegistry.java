@@ -413,17 +413,45 @@ public final class WorkRecipeRegistry {
     }
 
     /**
-     * The workstation whose declared recipe type this recipe rides; null for the built-in
-     * vanilla/FD families and synthetics, whose station is named by their role instead.
+     * Every workstation whose declared or block-attached recipe type this recipe rides.
+     *
+     * <p>There may be more than one: attachments are additive, so a datapack can teach another
+     * block the same custom recipe family without replacing the original machine. Catalogue code
+     * must retain that fact long enough to choose the owner that actually stands in the worksite.</p>
      */
+    public static List<WorkstationDef> defsFor(DiscoveredRecipe recipe) {
+        ResourceLocation typeId = recipeTypeId(recipe);
+        if (typeId == null) return List.of();
+        LinkedHashMap<ResourceLocation, WorkstationDef> found = new LinkedHashMap<>();
+
+        // V2's recipe association belongs to the exact block, not to the workstation document.
+        // Recover that owner for catalogue filtering/naming. Vanilla families remain role-owned:
+        // campfire_cooking is legitimately shared by campfires, skillets and stoves, so choosing
+        // one attached V2 block as its exclusive owner would hide recipes in the other two.
+        if (!"minecraft".equals(typeId.getNamespace())) {
+            for (WorkstationV2Def v2 : Workstations.v2All()) {
+                for (ResourceLocation block : v2.blocks()) {
+                    if (!WorkstationRecipeTypes.forBlock(block).contains(typeId)) continue;
+                    WorkstationDef compatibility = Workstations.byId(v2.id());
+                    if (compatibility != null) found.putIfAbsent(compatibility.id(), compatibility);
+                }
+            }
+        }
+        if (!found.isEmpty()) return List.copyOf(found.values());
+
+        typeId = foreignRecipeTypeId(recipe);
+        if (typeId == null) return List.of();
+        for (WorkstationDef def : Workstations.all()) {
+            if (typeId.equals(def.recipeType())) found.putIfAbsent(def.id(), def);
+        }
+        return List.copyOf(found.values());
+    }
+
+    /** First declaring workstation, retained for callers that do not have a physical worksite. */
     @Nullable
     public static WorkstationDef defFor(DiscoveredRecipe recipe) {
-        ResourceLocation typeId = foreignRecipeTypeId(recipe);
-        if (typeId == null) return null;
-        for (WorkstationDef def : Workstations.all()) {
-            if (typeId.equals(def.recipeType())) return def;
-        }
-        return null;
+        List<WorkstationDef> defs = defsFor(recipe);
+        return defs.isEmpty() ? null : defs.get(0);
     }
 
     /**

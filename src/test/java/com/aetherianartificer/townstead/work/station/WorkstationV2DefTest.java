@@ -46,6 +46,8 @@ class WorkstationV2DefTest {
         assertEquals(java.util.Set.of(id("farm_and_charm:stove")), def.blocks());
         assertTrue(def.containerSlots().isEmpty());
         assertNull(def.behavior());
+        assertTrue(def.legacyView(java.util.Set.of(id("farm_and_charm:stove")))
+                .orderable().all(), "an exact block-owned recipe family needs no duplicate output tag");
     }
 
     @Test

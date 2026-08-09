@@ -116,6 +116,7 @@ public record WorkstationDef(
      */
     public record Orderable(boolean all, List<String> allow, List<String> block) {
         public static final Orderable TAGGED = new Orderable(false, List.of(), List.of());
+        public static final Orderable ALL = new Orderable(true, List.of(), List.of());
     }
 
     /**

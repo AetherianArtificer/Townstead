@@ -64,9 +64,11 @@ public final class CookOrderCatalog implements WorksiteCatalogs.Catalog {
         List<Option> out = new ArrayList<>();
         for (StationType type : present) {
             for (DiscoveredRecipe recipe : WorkRecipeRegistry.getFoodRecipesForStation(level, type)) {
-                com.aetherianartificer.townstead.work.station.WorkstationDef station =
-                        WorkRecipeRegistry.defFor(recipe);
-                if (station != null && !presentDefs.contains(station.id())) continue;
+                List<com.aetherianartificer.townstead.work.station.WorkstationDef> declared =
+                        WorkRecipeRegistry.defsFor(recipe);
+                com.aetherianartificer.townstead.work.station.WorkstationDef station = declared.stream()
+                        .filter(def -> presentDefs.contains(def.id())).findFirst().orElse(null);
+                if (!declared.isEmpty() && station == null) continue;
                 // Stated, not inferred. The registry's "food" only means "not a beverage", so a
                 // furnace's smelting lands in it, and no property of the recipe distinguishes a
                 // baked potato from an iron ingot. What a cook may be asked for is a tag, which
@@ -74,7 +76,7 @@ public final class CookOrderCatalog implements WorksiteCatalogs.Catalog {
                 // dedicated cooking station admits its whole menu in one line.
                 if (!com.aetherianartificer.townstead.work.recipe.WorkOutputTags
                         .allows(com.aetherianartificer.townstead.work.recipe.WorkOutputTags.COOK,
-                                recipe.output(), WorkRecipeRegistry.orderableOf(recipe))) {
+                                recipe.output(), station == null ? null : station.orderable())) {
                     continue;
                 }
                 if (!seen.add(recipe.output())) continue;
@@ -96,9 +98,9 @@ public final class CookOrderCatalog implements WorksiteCatalogs.Catalog {
                 new java.util.LinkedHashSet<>();
         for (StationType type : StationType.values()) {
             for (DiscoveredRecipe recipe : WorkRecipeRegistry.getFoodRecipesForStation(level, type)) {
-                com.aetherianartificer.townstead.work.station.WorkstationDef station =
-                        WorkRecipeRegistry.defFor(recipe);
-                if (station != null) declared.add(station); else cookRoles.add(type);
+                List<com.aetherianartificer.townstead.work.station.WorkstationDef> stations =
+                        WorkRecipeRegistry.defsFor(recipe);
+                if (!stations.isEmpty()) declared.addAll(stations); else cookRoles.add(type);
             }
         }
         List<Station> out = new ArrayList<>(StationCatalogs.stationList(level, extent, cookRoles));

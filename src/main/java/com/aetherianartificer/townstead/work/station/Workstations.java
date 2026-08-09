@@ -121,6 +121,13 @@ public final class Workstations {
         return null;
     }
 
+    /** The compatibility view with this stable definition id, if one is loaded. */
+    public static @Nullable WorkstationDef byId(@Nullable ResourceLocation id) {
+        if (id == null) return null;
+        for (WorkstationDef def : DEFS) if (id.equals(def.id())) return def;
+        return null;
+    }
+
     /** The station's declared recipe type, for exclusive recipe/station pairing; null when built-in. */
     public static @Nullable ResourceLocation declaredRecipeTypeAt(ServerLevel level, BlockPos pos) {
         if (DEFS.isEmpty()) return null;

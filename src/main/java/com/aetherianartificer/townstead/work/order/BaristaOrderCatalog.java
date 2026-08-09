@@ -48,12 +48,18 @@ public final class BaristaOrderCatalog implements WorksiteCatalogs.Catalog {
         if (present.isEmpty()) return List.of();
 
         Map<ResourceLocation, Integer> onHand = StationCatalogs.stockIn(level, extent);
+        Set<ResourceLocation> presentDefs = StationCatalogs.stationDefsIn(level, extent);
         Set<ResourceLocation> seen = new LinkedHashSet<>();
         List<Option> out = new ArrayList<>();
         for (StationType type : present) {
             for (DiscoveredRecipe recipe : WorkRecipeRegistry.getBeverageRecipesForStation(level, type)) {
+                List<com.aetherianartificer.townstead.work.station.WorkstationDef> declared =
+                        WorkRecipeRegistry.defsFor(recipe);
+                com.aetherianartificer.townstead.work.station.WorkstationDef station = declared.stream()
+                        .filter(def -> presentDefs.contains(def.id())).findFirst().orElse(null);
+                if (!declared.isEmpty() && station == null) continue;
                 if (!seen.add(recipe.output())) continue;
-                out.add(StationCatalogs.option(recipe, type, onHand));
+                out.add(StationCatalogs.optionFrom(recipe, type, station, onHand));
             }
         }
         return out;

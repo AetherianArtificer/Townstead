@@ -100,7 +100,11 @@ public record WorkstationV2Def(
                 List.of(), null, 0, 200, false,
                 DataDrivenStationAdapter.NAME, Set.of(), List.of(), null, null, List.of(), List.of(),
                 WorkstationDef.FurnaceSlots.VANILLA, false, null, false, null,
-                WorkstationDef.Orderable.TAGGED, false, Set.of(), List.of());
+                // A V2 recipe family is attached to this exact block. That public association is
+                // already the author's statement that the block performs the recipe; requiring a
+                // second, manually maintained output-item tag would make the order catalogue a
+                // different (and inevitably stale) source of truth from the work engine.
+                WorkstationDef.Orderable.ALL, false, Set.of(), List.of());
     }
 
     public boolean behaviorUses(String role) {
