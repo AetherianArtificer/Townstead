@@ -460,11 +460,10 @@ public final class CareerScreen extends Screen {
         if (!recordLayout.wellShown()) return;
         // The well's position comes from the record's pinned head rather than being computed here,
         // so the tool and its slot can never drift apart when the head's height changes.
-        if (!stamp.held()) {
-            stamp.drawWell(g, recordLayout.wellX(), recordLayout.wellY(), stampReady(selected));
-        } else {
-            stamp.drawHeld(g, overPanel(mouseX, mouseY));
-        }
+        // Keep drawing the empty well while the stamp is held. Besides preserving the furniture,
+        // this makes returning the tool to cancel a visible action instead of a hidden gesture.
+        stamp.drawWell(g, recordLayout.wellX(), recordLayout.wellY(), stampReady(selected));
+        if (stamp.held()) stamp.drawHeld(g, overPanel(mouseX, mouseY));
     }
 
     /** Unspent points on the career this record belongs to. */
@@ -692,7 +691,11 @@ public final class CareerScreen extends Screen {
         if (board != null) board.setDragging(false);
         if (layout != null && stamp.held() && button == 0) {
             CareerGraphS2CPayload.Node selected = nodeById(selectedId);
-            if (overPanel(mouseX, mouseY) && StampTool.available(selected, inspect)) {
+            // The well is part of the page, so it must win this test. Otherwise returning the stamp
+            // to its obvious home registered a mark exactly where the player meant to cancel one.
+            if (stamp.overWell(mouseX, mouseY)) {
+                stamp.reset();
+            } else if (overPanel(mouseX, mouseY) && StampTool.available(selected, inspect)) {
                 // Position is stored relative to the panel, not the screen, so the mark survives a
                 // resize or a change of GUI scale. The server re-validates the press itself.
                 sendStamp(new com.aetherianartificer.townstead.profession.career
