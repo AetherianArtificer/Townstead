@@ -241,6 +241,13 @@ public record ReactionBinding(
     public float personalityMultiplier(String personalityKeyLower) {
         Float exact = personalityWeights.get(personalityKeyLower);
         if (exact != null) return exact;
+        if (personalityKeyLower != null) {
+            String alias = personalityKeyLower.startsWith("mca:")
+                    ? personalityKeyLower.substring("mca:".length())
+                    : "mca:" + personalityKeyLower;
+            exact = personalityWeights.get(alias);
+            if (exact != null) return exact;
+        }
         Float def = personalityWeights.get("default");
         return def != null ? def : 1.0F;
     }

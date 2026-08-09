@@ -33,16 +33,9 @@ public final class TraitBridge {
      * it. Throws on MCA API drift; callers isolate per trait so one failure can't
      * abort a reload.
      */
-    public static void register(String id, float chance, float inherit, boolean usableOnPlayer) {
-        Traits.Trait trait = Traits.registerTrait(id, chance, inherit, usableOnPlayer);
-        String upper = id.toUpperCase(Locale.ROOT);
-        // Identity probe, not an id guard (a stale entry from a previous /reload can
-        // answer for the id): unless valueOf round-trips to the entry just registered,
-        // this MCA uppercases lookups — move the entry to the key valueOf will ask for.
-        if (!upper.equals(id) && com.aetherianartificer.townstead.compat.mca.McaTraitCompat.resolve(id).orElse(null) != trait) {
-            Traits.TRAIT_REGISTRY.remove(id);
-            Traits.TRAIT_REGISTRY.put(upper, trait);
-        }
+    public static boolean register(String id, float chance, float inherit, boolean usableOnPlayer) {
+        return com.aetherianartificer.townstead.compat.mca.McaTraitCompat
+                .register(id, chance, inherit, usableOnPlayer).isPresent();
     }
 
     /**
@@ -58,16 +51,24 @@ public final class TraitBridge {
             CompoundTag traits = villager.getTrackedValue(TRAITS_PARAM);
             CompoundTag fixed = null;
             for (String key : traits.getAllKeys()) {
-                String lower = key.toLowerCase(Locale.ROOT);
-                if (lower.equals(key) || TraitRegistry.byId(lower) == null) continue;
+                String canonical = canonicalStoredId(key);
+                if (canonical.equals(key) || TraitRegistry.byId(canonical) == null) continue;
                 if (fixed == null) fixed = traits.copy();
                 fixed.remove(key);
-                fixed.putBoolean(lower, true);
+                fixed.putBoolean(canonical, traits.getBoolean(key) || fixed.getBoolean(canonical));
             }
             if (fixed != null) villager.setTrackedValue(TRAITS_PARAM, fixed);
         } catch (Throwable e) {
             LOGGER.warn("Could not normalize trait keys: {}", e.toString());
         }
+    }
+
+    private static String canonicalStoredId(String key) {
+        String lower = key.toLowerCase(Locale.ROOT);
+        return switch (lower) {
+            case "townstead_origins:immortal" -> "townstead_roots:immortal";
+            default -> lower;
+        };
     }
 
     /** MCA's private tracked-data parameter for the traits compound; null on drift. */

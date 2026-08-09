@@ -1139,6 +1139,8 @@
   "effect.townstead.aging": "Aging",
   "trait.townstead_roots:immortal": "Immortal",
   "traitDescription.townstead_roots:immortal": "Ageless, and cannot be killed by any worldly harm.",
+  "trait.townstead_roots.immortal": "Immortal",
+  "traitDescription.townstead_roots.immortal": "Ageless, and cannot be killed by any worldly harm.",
   "item.minecraft.potion.effect.townstead_agelessness": "Potion of Agelessness",
   "item.minecraft.splash_potion.effect.townstead_agelessness": "Splash Potion of Agelessness",
   "item.minecraft.lingering_potion.effect.townstead_agelessness": "Lingering Potion of Agelessness",

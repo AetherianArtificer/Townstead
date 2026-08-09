@@ -1119,6 +1119,8 @@
   "effect.townstead.mortality": "Sterblichkeit",
   "trait.townstead_roots:immortal": "Unsterblich",
   "traitDescription.townstead_roots:immortal": "Altert nicht und kann nicht an Altersschwäche sterben.",
+  "trait.townstead_roots.immortal": "Unsterblich",
+  "traitDescription.townstead_roots.immortal": "Altert nicht und kann nicht an Altersschwäche sterben.",
   "item.minecraft.potion.effect.townstead_immortality": "Trank der Unsterblichkeit",
   "item.minecraft.splash_potion.effect.townstead_immortality": "Wurftrank der Unsterblichkeit",
   "item.minecraft.lingering_potion.effect.townstead_immortality": "Verweiltrank der Unsterblichkeit",

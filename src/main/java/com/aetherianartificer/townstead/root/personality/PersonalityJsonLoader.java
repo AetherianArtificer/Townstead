@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.root.personality;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.data.DataPackLang;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -40,6 +41,10 @@ public final class PersonalityJsonLoader extends SimpleJsonResourceReloadListene
                 String base = GsonHelper.getAsString(obj, "extends", "");
                 if (base.isBlank()) {
                     LOGGER.warn("Personality {} has no 'extends' base, skipping", file);
+                    continue;
+                }
+                if (McaPersonalityCompat.resolve(base).isEmpty()) {
+                    LOGGER.warn("Personality {} extends unknown MCA personality '{}', skipping", file, base);
                     continue;
                 }
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), file.toString(), lang);

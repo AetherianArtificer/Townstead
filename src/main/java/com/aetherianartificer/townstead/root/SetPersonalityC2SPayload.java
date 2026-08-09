@@ -39,10 +39,10 @@ public record SetPersonalityC2SPayload(int entityId, String ref) implements Cust
 
     public void write(FriendlyByteBuf buf) {
         buf.writeInt(entityId);
-        buf.writeUtf(ref);
+        buf.writeUtf(ref, 256);
     }
 
     public static SetPersonalityC2SPayload read(FriendlyByteBuf buf) {
-        return new SetPersonalityC2SPayload(buf.readInt(), buf.readUtf());
+        return new SetPersonalityC2SPayload(buf.readInt(), buf.readUtf(256));
     }
 }

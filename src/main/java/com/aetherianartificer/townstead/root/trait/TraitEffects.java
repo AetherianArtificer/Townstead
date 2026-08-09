@@ -32,7 +32,9 @@ public final class TraitEffects {
     public static boolean isImmortal(VillagerEntityMCA villager) {
         if (villager == null || IMMORTAL_TRAIT_IDS.isEmpty()) return false;
         for (String id : IMMORTAL_TRAIT_IDS) {
-            if (villager.getTraits().hasTrait(id)) return true;
+            net.conczin.mca.entity.ai.Traits.Trait trait =
+                    com.aetherianartificer.townstead.compat.mca.McaTraitCompat.resolve(id).orElse(null);
+            if (trait != null && villager.getTraits().hasTrait(trait)) return true;
         }
         return false;
     }

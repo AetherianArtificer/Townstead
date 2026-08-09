@@ -1496,8 +1496,9 @@ public abstract class VillagerEditorRootMixin extends Screen {
             String resolved = life.personalityPoolName(i);
             if (resolved.isEmpty()) {
                 try {
-                    resolved = net.conczin.mca.entity.ai.relationship.Personality
-                            .valueOf(ref.toUpperCase(java.util.Locale.ROOT)).getName().getString();
+                    resolved = com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat.resolve(ref)
+                            .map(p -> p.getName().getString())
+                            .orElse(ref);
                 } catch (IllegalArgumentException e) {
                     resolved = ref;
                 }

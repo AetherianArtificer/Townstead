@@ -49,8 +49,14 @@ public final class LifeStageProgression {
      * Steady state touches nothing (no NBT churn).
      */
     public static long agingDisplayDay(TownsteadVillager.Life life, long today) {
+        return agingDisplayDay(null, life, today);
+    }
+
+    /** Entity-aware variant that also freezes the clock for data-trait immortality. */
+    public static long agingDisplayDay(@Nullable VillagerEntityMCA villager,
+                                       TownsteadVillager.Life life, long today) {
         if (life == null) return today;
-        if (freezesAging(life)) {
+        if (freezesAging(villager, life)) {
             if (!life.hasAgingFrozenDay()) life.setAgingFrozenDay(today);
             return life.agingFrozenDay();
         }
@@ -60,7 +66,13 @@ public final class LifeStageProgression {
 
     /** Read-only variant: honor an existing freeze stamp without creating or clearing one. */
     public static long agingDisplayDayView(TownsteadVillager.Life life, long today) {
-        if (life != null && freezesAging(life) && life.hasAgingFrozenDay()) {
+        return agingDisplayDayView(null, life, today);
+    }
+
+    /** Read-only entity-aware variant, including data-trait immortality. */
+    public static long agingDisplayDayView(@Nullable VillagerEntityMCA villager,
+                                           TownsteadVillager.Life life, long today) {
+        if (life != null && freezesAging(villager, life) && life.hasAgingFrozenDay()) {
             return life.agingFrozenDay();
         }
         return today;
@@ -73,14 +85,16 @@ public final class LifeStageProgression {
      * and immortal are a per-villager frozen clock: the admin still picks an apparent age with the
      * continuous slider, it just never advances on its own. (Immortal additionally can't die.)
      *
-     * <p>Keyed on {@link TownsteadVillager.Life} so the display-day helpers can call it without an
-     * entity; a config-driven MCA <em>trait</em> conferring immortality (rare, see
-     * {@code TraitEffects.isImmortal}) is only seen by the entity-aware {@link #isStageFrozen}, so such
-     * a villager still holds its stage but its displayed age may climb. The shipped immortal gene sets
-     * {@code life.immortal()}, so it is fully frozen here.</p>
+     * <p>The entity-aware display-day helpers also include data-trait immortality. The life-only
+     * overloads remain for callers that genuinely have no entity context.</p>
      */
     private static boolean freezesAging(TownsteadVillager.Life life) {
         return TownsteadConfig.isVillagerAgingDisabled() || isAgeless(life) || life.immortal();
+    }
+
+    private static boolean freezesAging(@Nullable VillagerEntityMCA villager, TownsteadVillager.Life life) {
+        return freezesAging(life) || (villager != null
+                && com.aetherianartificer.townstead.root.trait.TraitEffects.isImmortal(villager));
     }
 
     /**
@@ -161,7 +175,7 @@ public final class LifeStageProgression {
         // held at the frozen stage, so resolve against the frozen day too. Using the live
         // day here makes the body look "stale" once the calendar advances, which the
         // stamper's self-heal then "fixes" by re-fabricating a birth, wiping editor edits.
-        long today = agingDisplayDayView(life, TownsteadCalendar.lifeDay(server));
+        long today = agingDisplayDayView(villager, life, TownsteadCalendar.lifeDay(server));
         LifeStageResolver.Resolved resolved = LifeStageResolver.resolve(
                 cycle, life.stageDays(), life.birthWorldDay(), today);
         if (resolved == null) return true;
@@ -301,7 +315,7 @@ public final class LifeStageProgression {
         long today = TownsteadCalendar.lifeDay(server);
         // Re-anchor the freeze stamp to the edit day so a frozen-in-time villager (ageless, immortal,
         // or globally non-aging) holds the chosen apparent age instead of resuming from a stale day.
-        if (freezesAging(life)) {
+        if (freezesAging(villager, life)) {
             life.setAgingFrozenDay(today);
         }
 
@@ -389,7 +403,7 @@ public final class LifeStageProgression {
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
         // Maintain the apparent-age freeze stamp even for unsynced villagers, so it lands
         // within a day of the toggle rather than whenever a player next observes them.
-        agingDisplayDay(life, TownsteadCalendar.lifeDay(server));
+        agingDisplayDay(villager, life, TownsteadCalendar.lifeDay(server));
         if (TownsteadConfig.isVillagerAgingDisabled()) return false;
         if (isStageFrozen(villager, life) && !life.currentStageId().isEmpty()) return false;
         if (!life.hasBirth() || !life.hasStageDays()) return false;
@@ -474,7 +488,7 @@ public final class LifeStageProgression {
         LifeCycle cycle = resolveCycle(life);
         if (cycle == null || cycle.isEmpty() || life.stageDaysLength() != cycle.size()) return;
 
-        long today = agingDisplayDayView(life, TownsteadCalendar.lifeDay(server));
+        long today = agingDisplayDayView(villager, life, TownsteadCalendar.lifeDay(server));
         long bioAge = Math.max(0L, today - life.birthWorldDay());
         int modelAge = modelAgeForBio(cycle, life.stageDays(), bioAge);
         if (modelAge >= 0 || villager.getAge() == modelAge) return;
@@ -552,7 +566,7 @@ public final class LifeStageProgression {
 
         int[] days = life.stageDays();
         long cumulative = LifeStageResolver.cumulativeDaysBefore(days, seniorIndex);
-        long today = agingDisplayDayView(life, TownsteadCalendar.lifeDay(server));
+        long today = agingDisplayDayView(villager, life, TownsteadCalendar.lifeDay(server));
         long daysAlive = Math.max(0L, today - life.birthWorldDay());
         long daysIntoSenior = daysAlive - cumulative;
         int seniorSpan = Math.max(1, days[seniorIndex]);

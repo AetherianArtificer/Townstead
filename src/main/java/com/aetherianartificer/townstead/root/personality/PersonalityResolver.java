@@ -51,6 +51,9 @@ public final class PersonalityResolver {
             if (!policy.inherit()) break;                 // nearest defining node is final unless it inherits
         }
         deny.forEach(allow::remove);
+        // Policy files are datapack input. Never let an unknown custom id/base reach the
+        // editor, spawn assignment, or MCA compatibility boundary.
+        allow.entrySet().removeIf(entry -> baseOf(entry.getKey()) == null);
         return allow;
     }
 

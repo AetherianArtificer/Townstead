@@ -119,7 +119,7 @@ public final class VillagerLifeStamper {
         // display day, not the live calendar, so a deliberately-frozen villager isn't
         // judged "older than its cycle" and re-fabricated (which wipes editor age edits).
         long today = com.aetherianartificer.townstead.root.LifeStageProgression
-                .agingDisplayDayView(state.life(), TownsteadCalendar.lifeDay(server));
+                .agingDisplayDayView(villager, state.life(), TownsteadCalendar.lifeDay(server));
         long bioAge = today - state.life().birthWorldDay();
         long total = 0;
         for (int d : state.life().stageDays()) total += Math.max(0, d);

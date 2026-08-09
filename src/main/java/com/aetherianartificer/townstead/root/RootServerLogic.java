@@ -225,12 +225,29 @@ public final class RootServerLogic {
      * the entity id so the caller can re-broadcast the life sync, or {@link RootSetC2SPayload#NONE}.
      */
     public static int setPersonality(ServerPlayer sp, int entityId, String ref) {
+        if (sp == null || ref == null) return RootSetC2SPayload.NONE;
         Entity entity = sp.serverLevel().getEntity(entityId);
-        if (!(entity instanceof VillagerEntityMCA villager)) return RootSetC2SPayload.NONE;
+        if (!(entity instanceof VillagerEntityMCA villager) || !villager.isAlive()
+                || sp.distanceToSqr(villager) > 64.0D) return RootSetC2SPayload.NONE;
+
+        String requested = ref.trim();
+        if (requested.isEmpty() || requested.length() > 256) return RootSetC2SPayload.NONE;
         TownsteadVillager state = TownsteadVillagers.get(villager);
-        state.life().setPersonalityId(ref == null ? "" : ref);
-        Personality base = PersonalityResolver.baseOf(ref);
-        if (base != null) villager.getVillagerBrain().setPersonality(base);
+        Personality base = PersonalityResolver.baseOf(requested);
+        if (base == null) return RootSetC2SPayload.NONE;
+
+        ResourceLocation rootId = ResourceLocation.tryParse(state.life().rootId());
+        if (rootId == null) rootId = RootRegistry.DEFAULT_ID;
+        java.util.Map<String, Integer> permitted = PersonalityResolver.pool(rootId);
+        if (!permitted.isEmpty() && !permitted.containsKey(requested)) return RootSetC2SPayload.NONE;
+        // A policy-less root may choose MCA personalities, but not an arbitrary custom
+        // Townstead definition belonging to another origin's allowlist.
+        if (permitted.isEmpty() && PersonalityResolver.def(requested) != null) {
+            return RootSetC2SPayload.NONE;
+        }
+
+        state.life().setPersonalityId(requested);
+        villager.getVillagerBrain().setPersonality(base);
         TownsteadVillagers.flush(villager);
         return villager.getId();
     }
