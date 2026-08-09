@@ -7,7 +7,13 @@ import com.mojang.authlib.GameProfile;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+//? if >=1.21 {
+import net.minecraft.world.ItemInteractionResult;
+//?}
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 //? if neoforge {
@@ -40,17 +46,36 @@ public final class UseBlockBlockActionType implements BlockActionType {
                 // returned products of this one.
                 actor.getInventory().clearContent();
                 actor.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+                actor.setShiftKeyDown(false);
+                actor.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
                 if (context.cause() != null) {
                     actor.setPos(context.cause().getX(), context.cause().getY(), context.cause().getZ());
                 }
                 actor.setItemInHand(InteractionHand.MAIN_HAND, supplied);
                 BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(context.pos()),
                         Direction.UP, context.pos(), false);
-                // Use the actual server-side player interaction pipeline. In 1.21 many block
-                // hooks are protected (useItemOn/useWithoutItem), so reflecting public methods
-                // silently skips precisely the exceptional interactions this action represents.
-                var result = actor.gameMode.useItemOn(actor, context.level(),
+                //? if >=1.21 {
+                /* Dispatch through BlockState, which is Minecraft's public polymorphic block-use
+                 * contract. ServerPlayerGameMode wraps this same dispatch in advancement and
+                 * player-session bookkeeping; a transactional machine actor must not run those
+                 * player-only effects. The fallback order below mirrors vanilla useItemOn. */
+                ItemInteractionResult blockResult = context.level().getBlockState(context.pos())
+                        .useItemOn(actor.getMainHandItem(), context.level(), actor,
+                                InteractionHand.MAIN_HAND, hit);
+                InteractionResult result = blockResult.result();
+                if (!blockResult.consumesAction()
+                        && blockResult == ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
+                    result = context.level().getBlockState(context.pos())
+                            .useWithoutItem(context.level(), actor, hit);
+                }
+                if (!result.consumesAction() && !actor.getMainHandItem().isEmpty()) {
+                    result = actor.getMainHandItem().useOn(
+                            new UseOnContext(actor, InteractionHand.MAIN_HAND, hit));
+                }
+                //?} else {
+                /*InteractionResult result = actor.gameMode.useItemOn(actor, context.level(),
                         actor.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
+                *///?}
                 if (!result.consumesAction()) context.fail();
                 context.setItemRole(role, actor.getMainHandItem().copy());
 

@@ -35,6 +35,7 @@ import net.minecraft.world.item.ItemStack;
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> implements WorkTaskAdapter {
 
@@ -151,7 +152,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     // ── Abstract: recipe / gather / produce / collect ──
 
     protected abstract @Nullable ProducerRecipe pickRecipe(
-            ServerLevel level, VillagerEntityMCA villager, long gameTime);
+            ServerLevel level, VillagerEntityMCA villager, long gameTime,
+            Predicate<ResourceLocation> outputAllowed);
 
     protected abstract GatherResult gatherInputs(
             ServerLevel level, VillagerEntityMCA villager, long gameTime);
@@ -349,6 +351,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             transitionToNavigationState(level, villager, gameTime);
             releaseStationClaim(level, villager, stationAnchor);
             onSessionRelease(level, villager, stationAnchor, gameTime);
+            releaseOrderClaim();
             stationAnchor = null;
             standPos = null;
             activeRecipe = null;
@@ -508,6 +511,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     /** The line the active job was taken from, held so it can be credited or released. */
     @Nullable private com.aetherianartificer.townstead.work.order.Order claimedLine;
+    /** Output units reserved on that line; batching stations can claim more than one. */
+    private int claimedLineAmount;
+    /** Number of copies of the active recipe physically committed in this cycle. */
+    private int activeBatchOperations = 1;
 
     /** The worksite this villager is working, for subclasses that need to ask it things. */
     @Nullable
@@ -522,11 +529,24 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         return claimedLine;
     }
 
+    /** Physical recipe copies planned for the current cycle. */
+    protected int activeBatchOperations() {
+        return Math.max(1, activeBatchOperations);
+    }
+
+    /** Maximum copies this station can execute together. Subclasses opt into batching. */
+    protected int maximumBatchOperations(ServerLevel level, VillagerEntityMCA villager,
+                                         ProducerRecipe recipe) {
+        return 1;
+    }
+
     /** Hands a claim back when a job ends without producing. Safe to call when nothing is held. */
     protected void releaseOrderClaim() {
         if (claimedLine != null) {
-            claimedLine.abandon();
+            claimedLine.abandon(claimedLineAmount);
             claimedLine = null;
+            claimedLineAmount = 0;
+            activeBatchOperations = 1;
             markOrdersChanged();
         }
     }
@@ -534,8 +554,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     /** Credits the ordered line for what was just stored. */
     private void creditOrderClaim(int count) {
         if (claimedLine != null) {
-            claimedLine.finish(count);
+            claimedLine.finish(claimedLineAmount, count);
             claimedLine = null;
+            claimedLineAmount = 0;
+            activeBatchOperations = 1;
             markOrdersChanged();
         }
     }
@@ -594,9 +616,18 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                     // them would retire the wrong one.
                     releaseOrderClaim();
                     claimedLine = ordered.order();
-                    claimedLine.claim();
+                    int outputPerOperation = Math.max(1, ordered.recipe().outputCount());
+                    int maximumOperations = Math.max(1,
+                            maximumBatchOperations(level, villager, ordered.recipe()));
+                    int outstanding = Math.max(1, claimedLine.outstanding(context));
+                    activeBatchOperations = Math.max(1, Math.min(maximumOperations,
+                            (outstanding + outputPerOperation - 1) / outputPerOperation));
+                    claimedLineAmount = Math.min(outstanding,
+                            activeBatchOperations * outputPerOperation);
+                    claimedLine.claim(claimedLineAmount);
                     markOrdersChanged();
-                    debugChat(level, villager, "SELECT:ordered " + ordered.recipe().output());
+                    debugChat(level, villager, "SELECT:ordered " + ordered.recipe().output()
+                            + " x" + claimedLineAmount);
                     return ordered.recipe();
                 }
             }
@@ -607,7 +638,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         // carried on brewing. It binds every producer at this worksite, list or no list, engine or
         // no engine.
         if (orders != null && orders.listOnly()) return null;
-        return pickRecipe(level, villager, gameTime);
+        Predicate<ResourceLocation> autonomousOutputAllowed = orders == null || orders.isEmpty()
+                ? output -> true
+                : output -> !orders.governs(output);
+        return pickRecipe(level, villager, gameTime, autonomousOutputAllowed);
     }
 
     private void tickSelectRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -672,9 +706,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
         if (!beginProduce(level, villager, gameTime)) {
             debugChat(level, villager, "BEGIN_PRODUCE:failed, rotating station");
-            if (activeRecipe != null) {
-                recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
-            }
+            // The station refused this hand-off; that condemns this physical station, not the
+            // recipe at every other compatible station. The per-station abandonment below keeps
+            // us from retrying the covered/busy block while allowing an immediate skillet try.
             abandonCurrentStation(level, villager, gameTime, true);
             return;
         }
@@ -751,7 +785,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     private void finishCollect(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         storeOutputs(level, villager, gameTime);
-        creditOrderClaim(activeRecipe == null ? 1 : Math.max(1, activeRecipe.outputCount()));
+        creditOrderClaim(activeRecipe == null ? 1
+                : Math.max(1, activeRecipe.outputCount()) * activeBatchOperations());
         pendingOutput = ItemStack.EMPTY;
         awardProductionXp(level, villager, gameTime);
 
@@ -760,13 +795,15 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         stagedInputs.clear();
         onSessionRelease(level, villager, stationAnchor, gameTime);
 
-        // A successful recipe is evidence that this station/worker pairing is healthy, not a
-        // reason to blacklist the result for ten seconds. Stay at the already-claimed station
-        // and let the authoritative selector immediately choose the next order. If nothing is
-        // workable it will release and rotate normally. Besides making production continuous,
-        // this is the cheap path: no worksite scan, stand search, or extra navigation cycle.
-        claimStation(level, villager, gameTime);
-        transition(ProducerState.SELECT_RECIPE, gameTime);
+        // Reconsider the whole ordered station set after every delivery. Restricting selection to
+        // the station already under the worker made a lower coffee line win repeatedly at a pot
+        // after it consumed the roasted beans protected by the higher skillet line. The station
+        // and recipe indexes are cached, so this is one cheap global decision on the next tick;
+        // when the same station is still correct there is no extra walk.
+        releaseStationClaim(level, villager, stationAnchor);
+        stationAnchor = null;
+        standPos = null;
+        transition(ProducerState.PATH_TO_STATION, gameTime);
     }
 
     // ── Navigation helpers ──
@@ -823,6 +860,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         }
         releaseStationClaim(level, villager, stationAnchor);
         onSessionRelease(level, villager, stationAnchor, gameTime);
+        releaseOrderClaim();
         stationAnchor = null;
         standPos = null;
         activeRecipe = null;

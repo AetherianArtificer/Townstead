@@ -6,6 +6,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+//? if neoforge {
+import net.neoforged.neoforge.common.util.FakePlayer;
+//?} else if forge {
+/*import net.minecraftforge.common.util.FakePlayer;
+*///?}
 
 import java.util.Map;
 
@@ -22,7 +27,7 @@ public final class PlayerWorkHooks {
 
     /** A meal leaves the cooking pot's serving slot in the taker's hands. */
     public static void onDishTaken(Player player, ItemStack stack, String station) {
-        if (!(player instanceof ServerPlayer sp) || stack.isEmpty()) return;
+        if (!(player instanceof ServerPlayer sp) || sp instanceof FakePlayer || stack.isEmpty()) return;
         int count = Math.max(1, stack.getCount());
         CareerProgression.completeWork(sp, Careers.COOK, count, sp.serverLevel().getGameTime(),
                 "townstead:cooked", BuiltInRegistries.ITEM.getKey(stack.getItem()),
@@ -32,7 +37,7 @@ public final class PlayerWorkHooks {
 
     /** Food accepted onto a skillet; the cook is whoever set it sizzling. */
     public static void onSkilletAdd(Player player, ItemStack stack, int accepted) {
-        if (!(player instanceof ServerPlayer sp) || accepted <= 0) return;
+        if (!(player instanceof ServerPlayer sp) || sp instanceof FakePlayer || accepted <= 0) return;
         CareerProgression.completeWork(sp, Careers.COOK, accepted, sp.serverLevel().getGameTime(),
                 "townstead:cooked", BuiltInRegistries.ITEM.getKey(stack.getItem()),
                 "dish", accepted,

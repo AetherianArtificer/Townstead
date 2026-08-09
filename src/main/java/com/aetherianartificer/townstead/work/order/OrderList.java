@@ -76,6 +76,33 @@ public final class OrderList {
     }
 
     /**
+     * Whether the sheet has taken authority over this output. A satisfied or paused line still
+     * governs its item: falling through to autonomous production would immediately violate the
+     * quantity the player just set. Removing the line hands that item back to autonomy.
+     */
+    public boolean governs(@Nullable ResourceLocation output) {
+        if (output == null) return false;
+        for (Order order : orders) {
+            if (order.matches(output)) return true;
+        }
+        return false;
+    }
+
+    /** Position of the first active line governing this output, or MAX when it is disallowed. */
+    public int priority(@Nullable ResourceLocation output, OrderContext context) {
+        if (output == null) return Integer.MAX_VALUE;
+        boolean governed = false;
+        for (int index = 0; index < orders.size(); index++) {
+            Order order = orders.get(index);
+            if (!order.matches(output)) continue;
+            governed = true;
+            if (order.wantsWork(context) && context.mayWork(order)) return index;
+        }
+        if (governed || listOnly) return Integer.MAX_VALUE;
+        return orders.size();
+    }
+
+    /**
      * Takes over another list's lines, keeping this one authoritative, and reports how many moved.
      *
      * <p>Used when two records turn out to be the same place. A line is only taken when nothing

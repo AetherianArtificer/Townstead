@@ -249,7 +249,9 @@ public class StationWorkTask extends ProducerWorkTask {
     }
 
     @Override
-    protected @Nullable ProducerRecipe pickRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+    protected @Nullable ProducerRecipe pickRecipe(ServerLevel level, VillagerEntityMCA villager,
+                                                  long gameTime,
+                                                  Predicate<ResourceLocation> outputAllowed) {
         if (stationAnchor == null) return null;
         WorkstationDef def = StationProtocols.defAt(level, stationAnchor);
         if (def == null || !servesDef(villager, def, blockIdAt(level, stationAnchor))) return null;
@@ -258,6 +260,7 @@ public class StationWorkTask extends ProducerWorkTask {
         Set<Long> bounds = worksiteBounds(level, villager);
         Map<ResourceLocation, Integer> stock = StationCatalogs.stockIn(level, bounds);
         for (DiscoveredRecipe recipe : recipesFor(level, def)) {
+            if (!outputAllowed.test(recipe.output())) continue;
             Long cooldown = recipeCooldownUntil.get(recipe.output());
             if (cooldown != null && gameTime < cooldown) continue;
             if (declared != null && !declared.allowsRecipe(

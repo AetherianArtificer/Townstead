@@ -79,6 +79,32 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     }
 
     @Override
+    public int batchCapacity(ServerLevel level, BlockPos anchor, WorkstationDef ignored,
+                             DiscoveredRecipe recipe) {
+        WorkstationV2Def def = v2(level, anchor);
+        if (def == null || def.capacity() == null || !def.capacity().isJsonObject()) return 1;
+        JsonObject capacity = def.capacity().getAsJsonObject();
+        if (!capacity.has("per_position")
+                || !capacity.get("per_position").isJsonPrimitive()
+                || !"stack".equals(capacity.get("per_position").getAsString())) return 1;
+        int positions = capacity.has("positions") ? Math.max(1, capacity.get("positions").getAsInt()) : 1;
+        int operationsPerStack = Integer.MAX_VALUE;
+        for (RecipeIngredient ingredient : recipe.inputs()) {
+            int ingredientStack = 64;
+            for (ResourceLocation id : ingredient.itemIds()) {
+                net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.get(id);
+                if (item != net.minecraft.world.item.Items.AIR) {
+                    ingredientStack = Math.min(ingredientStack, new ItemStack(item).getMaxStackSize());
+                }
+            }
+            operationsPerStack = Math.min(operationsPerStack,
+                    ingredientStack / Math.max(1, ingredient.count()));
+        }
+        if (operationsPerStack == Integer.MAX_VALUE) operationsPerStack = 1;
+        return Math.max(1, positions * operationsPerStack);
+    }
+
+    @Override
     public @Nullable BlockPos anchor(ServerLevel level, BlockPos pos, WorkstationDef ignored) {
         WorkstationV2Def def = v2(level, pos);
         if (def == null || !connectedStructure(def)) return null;
@@ -112,12 +138,19 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     @Override
     public boolean insert(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                           WorkstationDef ignored, DiscoveredRecipe recipe) {
+        return insertBatch(level, villager, anchor, ignored, recipe, 1);
+    }
+
+    @Override
+    public boolean insertBatch(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+                               WorkstationDef ignored, DiscoveredRecipe recipe, int copies) {
         WorkstationV2Def def = v2(level, anchor);
         if (def == null || !def.isOperational(level, anchor)) return false;
 
         // A declared ingredient interaction is authoritative (skillets, mincers and silos).
         if (def.behaviorUses("ingredient")) {
-            if (!runPreparationActions(level, villager, anchor, def, recipe)) return false;
+            if (!runPreparationActions(level, villager, anchor, def, recipe,
+                    Math.max(1, copies))) return false;
         } else {
             // A cutting board has no separate ingredient declaration: its normal player contract
             // accepts the ingredient, then the exceptional tool action processes it.
@@ -177,11 +210,12 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
 
     private static boolean runPreparationActions(ServerLevel level, VillagerEntityMCA villager,
                                                  BlockPos anchor, WorkstationV2Def def,
-                                                 DiscoveredRecipe recipe) {
+                                                 DiscoveredRecipe recipe, int copies) {
         for (JsonObject action : actions(def.behavior())) {
             String role = role(action);
             if ("ingredient".equals(role)) {
-                if (!interactIngredient(level, villager, anchor, recipe, def, stackBatch(def))) return false;
+                if (!interactIngredient(level, villager, anchor, recipe, def,
+                        stackBatch(def), copies)) return false;
                 return true;
             }
             if ("empty".equals(role)
@@ -387,10 +421,18 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     private static boolean interactIngredient(ServerLevel level, VillagerEntityMCA villager,
                                               BlockPos anchor, DiscoveredRecipe recipe,
                                               WorkstationV2Def def, boolean stack) {
+        return interactIngredient(level, villager, anchor, recipe, def, stack, 1);
+    }
+
+    private static boolean interactIngredient(ServerLevel level, VillagerEntityMCA villager,
+                                              BlockPos anchor, DiscoveredRecipe recipe,
+                                              WorkstationV2Def def, boolean stack, int copies) {
         if (recipe.inputs().isEmpty()) return false;
         RecipeIngredient ingredient = recipe.inputs().get(0);
-        int amount = stack ? Integer.MAX_VALUE : Math.max(1, ingredient.count());
-        ItemStack held = takeMatching(villager, ingredient, amount);
+        ItemStack held = stack
+                ? takeMatchingBatch(villager, ingredient,
+                        Math.max(1, ingredient.count()) * Math.max(1, copies))
+                : takeMatching(villager, ingredient, Math.max(1, ingredient.count()));
         if (held.isEmpty()) return false;
         JsonObject action = new JsonObject();
         action.addProperty("type", "pheno:use_block");
@@ -589,6 +631,42 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                 int amount = Math.min(remaining, candidate.getCount());
                 candidate.shrink(amount);
                 remaining -= amount;
+            }
+            return taken;
+        }
+        return ItemStack.EMPTY;
+    }
+
+    /**
+     * Takes the largest compatible batch currently on hand, up to the item's real stack limit.
+     * A stack-capacity station means "as many as available", not "require an infinite stack".
+     */
+    private static ItemStack takeMatchingBatch(VillagerEntityMCA villager,
+                                               RecipeIngredient ingredient, int maximum) {
+        var inventory = villager.getInventory();
+        int minimum = Math.max(1, ingredient.count());
+        for (int seedSlot = 0; seedSlot < inventory.getContainerSize(); seedSlot++) {
+            ItemStack seed = inventory.getItem(seedSlot);
+            ResourceLocation seedId = BuiltInRegistries.ITEM.getKey(seed.getItem());
+            if (seed.isEmpty() || !ingredient.itemIds().contains(seedId)) continue;
+            int available = 0;
+            for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+                ItemStack candidate = inventory.getItem(slot);
+                if (StationInventoryOps.sameItemAndComponents(seed, candidate)) {
+                    available += candidate.getCount();
+                }
+            }
+            int amount = Math.min(Math.max(1, maximum),
+                    Math.min(seed.getMaxStackSize(), available));
+            if (amount < minimum) continue;
+            ItemStack taken = StationInventoryOps.copyWithCount(seed, amount);
+            int remaining = amount;
+            for (int slot = 0; slot < inventory.getContainerSize() && remaining > 0; slot++) {
+                ItemStack candidate = inventory.getItem(slot);
+                if (!StationInventoryOps.sameItemAndComponents(seed, candidate)) continue;
+                int moved = Math.min(remaining, candidate.getCount());
+                candidate.shrink(moved);
+                remaining -= moved;
             }
             return taken;
         }

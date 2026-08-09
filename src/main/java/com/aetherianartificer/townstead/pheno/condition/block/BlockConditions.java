@@ -19,6 +19,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.shapes.BooleanOp;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -29,7 +32,7 @@ import java.util.Locale;
  * Parses a block-condition JSON into a {@link BlockCondition}. The Apoli subset with a
  * uniform public API on both branches: {@code block}/{@code in_tag}, {@code block_state},
  * {@code fluid}, {@code exposed_to_sky}, {@code light_level}, {@code height},
- * {@code hardness}, {@code blast_resistance}, {@code slipperiness}, {@code replaceable},
+ * {@code hardness}, {@code blast_resistance}, {@code slipperiness}, {@code block_shape}, {@code replaceable},
  * {@code movement_blocking}, {@code light_blocking}, {@code water_loggable},
  * {@code block_entity}, {@code distance_from_coordinates}; the Apugli weather/air leaves
  * {@code air}, {@code in_rain}, {@code raining}, {@code thundering}; meta {@code offset} /
@@ -56,14 +59,14 @@ public final class BlockConditions {
             case "block": {
                 ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "block", ""));
                 if (id == null) return null;
-                Block block = BuiltInRegistries.BLOCK.get(id);
-                return (level, pos) -> level.getBlockState(pos).is(block);
+                // Resolution belongs to evaluation, when Minecraft's registries are guaranteed to
+                // be bootstrapped. Datapack parsing itself remains a data-only operation.
+                return (level, pos) -> level.getBlockState(pos).is(BuiltInRegistries.BLOCK.get(id));
             }
             case "in_tag": {
                 ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "tag", ""));
                 if (id == null) return null;
-                TagKey<Block> tag = TagKey.create(Registries.BLOCK, id);
-                return (level, pos) -> level.getBlockState(pos).is(tag);
+                return (level, pos) -> level.getBlockState(pos).is(TagKey.create(Registries.BLOCK, id));
             }
             case "block_state": {
                 String property = GsonHelper.getAsString(json, "property", "");
@@ -145,6 +148,38 @@ public final class BlockConditions {
                     float f = level.getBlockState(pos).getBlock().getFriction();
                     return f >= min && f <= max;
                 };
+            }
+            case "block_shape": {
+                if (!json.has("box") || !json.get("box").isJsonArray()) return null;
+                JsonArray box = json.getAsJsonArray("box");
+                if (box.size() != 6) return null;
+                double x1;
+                double y1;
+                double z1;
+                double x2;
+                double y2;
+                double z2;
+                try {
+                    x1 = box.get(0).getAsDouble();
+                    y1 = box.get(1).getAsDouble();
+                    z1 = box.get(2).getAsDouble();
+                    x2 = box.get(3).getAsDouble();
+                    y2 = box.get(4).getAsDouble();
+                    z2 = box.get(5).getAsDouble();
+                } catch (RuntimeException ignored) {
+                    return null;
+                }
+                if (!Double.isFinite(x1) || !Double.isFinite(y1) || !Double.isFinite(z1)
+                        || !Double.isFinite(x2) || !Double.isFinite(y2) || !Double.isFinite(z2)
+                        || x1 >= x2 || y1 >= y2 || z1 >= z2) return null;
+                // Block.box is just this conversion, but calling it while parsing eagerly loads
+                // BlockBehaviour. Keeping the condition parser data-only also keeps unit tests and
+                // data reloads independent of Minecraft's bootstrapped block-state internals.
+                VoxelShape region = Shapes.box(
+                        x1 / 16.0, y1 / 16.0, z1 / 16.0,
+                        x2 / 16.0, y2 / 16.0, z2 / 16.0);
+                return (level, pos) -> Shapes.joinIsNotEmpty(
+                        region, level.getBlockState(pos).getShape(level, pos), BooleanOp.AND);
             }
             case "replaceable":
                 return (level, pos) -> level.getBlockState(pos).canBeReplaced();

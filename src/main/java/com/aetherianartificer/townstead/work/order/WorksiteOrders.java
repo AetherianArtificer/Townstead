@@ -212,8 +212,25 @@ public final class WorksiteOrders {
 
         List<T> out = new ArrayList<>(wanted);
         for (T candidate : candidates) {
-            if (!out.contains(candidate)) out.add(candidate);
+            ResourceLocation output = outputOf.apply(candidate);
+            // Listed outputs stay under the sheet's authority even when their line is satisfied,
+            // paused, or assigned elsewhere. The unordered tail is for genuinely unlisted work.
+            if (!orders.governs(output) && !out.contains(candidate)) out.add(candidate);
         }
         return List.copyOf(out);
+    }
+
+    /**
+     * Global station-selection rank for an output. This is asked before a worker chooses which
+     * machine to walk to, preventing a lower line supported by a nearby pot from jumping ahead
+     * of the first line whose recipe belongs on a skillet across the room.
+     */
+    public static int outputPriority(ServerLevel level, VillagerEntityMCA villager,
+                                     @Nullable Worksite site, ResourceLocation output) {
+        if (site == null || output == null) return 0;
+        OrderList orders = site.orders();
+        if (orders.isEmpty()) return orders.listOnly() ? Integer.MAX_VALUE : 0;
+        OrderContext context = contextFor(level, site, villager);
+        return orders.priority(output, context);
     }
 }

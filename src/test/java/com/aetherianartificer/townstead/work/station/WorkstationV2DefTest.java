@@ -107,4 +107,24 @@ class WorkstationV2DefTest {
             }
         }
     }
+
+    @Test
+    void onlyFarmersDelightStoveRequiresClearGrillingArea() throws Exception {
+        WorkstationV2Def farmersDelight = resource("stove");
+        WorkstationV2Def farmAndCharm = resource("farm_and_charm_stove");
+
+        assertNotNull(farmersDelight.requires());
+        assertTrue(farmersDelight.requiresJson().toString().contains("pheno:block_shape"));
+        assertNull(farmAndCharm.requires());
+    }
+
+    private WorkstationV2Def resource(String name) throws Exception {
+        String path = "/data/townstead/workstation/" + name + ".json";
+        try (var stream = getClass().getResourceAsStream(path)) {
+            assertNotNull(stream, path);
+            return WorkstationV2Def.parse(id("test:" + name),
+                    JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+                            .getAsJsonObject());
+        }
+    }
 }

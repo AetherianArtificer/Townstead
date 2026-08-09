@@ -92,6 +92,23 @@ class OrderListTest {
     }
 
     @Test
+    void batchClaimReservesAndReleasesItsWholeQuantity() {
+        Order order = new Order(BREAD, Order.Mode.MAKE, 10);
+        Ctx ctx = new Ctx();
+
+        order.claim(10);
+        assertEquals(10, order.inProgress());
+        assertEquals(0, order.outstanding(ctx), "another worker must not duplicate the batch");
+
+        order.abandon(10);
+        assertEquals(10, order.outstanding(ctx));
+        order.claim(10);
+        order.finish(10, 10);
+        assertEquals(0, order.inProgress());
+        assertTrue(order.retired());
+    }
+
+    @Test
     void pausingStopsWorkWithoutLosingProgress() {
         Order order = new Order(BREAD, Order.Mode.MAKE, 10);
         Ctx ctx = new Ctx();
@@ -220,6 +237,44 @@ class OrderListTest {
         assertEquals(1, list.sweepRetired());
         assertEquals(1, list.size());
         assertEquals(STEW, list.at(0).output());
+    }
+
+    @Test
+    void outputPriorityCanChooseTheRightStationBeforeRecipeSelection() {
+        OrderList list = new OrderList();
+        list.add(new Order(BREAD, Order.Mode.MAKE, 10));
+        list.add(new Order(STEW, Order.Mode.MAKE, 10));
+        Ctx ctx = new Ctx();
+
+        assertEquals(0, list.priority(BREAD, ctx));
+        assertEquals(1, list.priority(STEW, ctx));
+        assertEquals(2, list.priority(PIE, ctx), "unlisted work follows every active line");
+
+        list.at(0).claim(10);
+        assertEquals(Integer.MAX_VALUE, list.priority(BREAD, ctx),
+                "a fully reserved line must not leak into autonomous work");
+        assertEquals(1, list.priority(STEW, ctx));
+    }
+
+    @Test
+    void satisfiedAndPausedLinesStillGovernAutonomousOutput() {
+        OrderList list = new OrderList();
+        Order satisfied = new Order(BREAD, Order.Mode.MAKE, 2);
+        satisfied.finish(2);
+        Order pausedTag = new Order(id("townstead:orders/meats"), Order.Kind.TAG,
+                Order.Mode.KEEP_STOCKED, 10);
+        pausedTag.setPaused(true);
+        list.add(satisfied);
+        list.add(pausedTag);
+
+        OrderTags.resolveWith((tag, item) -> tag.equals(pausedTag.output()) && item.equals(STEW));
+        try {
+            assertTrue(list.governs(BREAD), "10/10 remains a ceiling while its line exists");
+            assertTrue(list.governs(STEW), "paused tag lines govern all matching outputs");
+            assertFalse(list.governs(PIE), "unlisted output remains available to autonomy");
+        } finally {
+            OrderTags.resolveWith(null);
+        }
     }
 
     // ── Tag lines ──

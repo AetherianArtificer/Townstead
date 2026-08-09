@@ -28,6 +28,7 @@ import net.minecraft.world.item.Items;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Predicate;
 
 public final class RecipeSelector {
     private static final Map<PlanningKey, PlanningData> PLANNING_CACHE = new HashMap<>();
@@ -77,9 +78,28 @@ public final class RecipeSelector {
             boolean beveragesOnly,
             ResourceLocation... taskTypes
     ) {
+        return pickRecipe(level, villager, targetStationType, stationPos, kitchenBounds,
+                recipeCooldownUntil, excludeBeverages, beveragesOnly, output -> true, taskTypes);
+    }
+
+    public static @Nullable DiscoveredRecipe pickRecipe(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            StationType targetStationType,
+            @Nullable BlockPos stationPos,
+            Set<Long> kitchenBounds,
+            Map<ResourceLocation, Long> recipeCooldownUntil,
+            boolean excludeBeverages,
+            boolean beveragesOnly,
+            Predicate<ResourceLocation> outputAllowed,
+            ResourceLocation... taskTypes
+    ) {
         List<ScoredRecipe> viableRecipes = viableRecipes(
                 level, villager, targetStationType, stationPos, kitchenBounds, recipeCooldownUntil,
                 excludeBeverages, beveragesOnly, taskTypes);
+        viableRecipes = viableRecipes.stream()
+                .filter(candidate -> outputAllowed.test(candidate.recipe().output()))
+                .toList();
         if (viableRecipes.isEmpty()) return null;
         if (viableRecipes.size() == 1) return viableRecipes.get(0).recipe();
         List<DiscoveredRecipe> viable = viableRecipes.stream().map(ScoredRecipe::recipe).toList();

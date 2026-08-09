@@ -195,6 +195,11 @@ public final class StationProtocols {
      */
     public static boolean insert(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                                  DiscoveredRecipe recipe, Set<Long> storageBounds) {
+        return insert(level, villager, anchor, recipe, storageBounds, 1);
+    }
+
+    public static boolean insert(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+                                 DiscoveredRecipe recipe, Set<Long> storageBounds, int copies) {
         WorkstationDef def = defAt(level, anchor);
         Adapter adapter = resolveAdapter(level, def);
         if (def == null || adapter == null) return false;
@@ -209,7 +214,7 @@ public final class StationProtocols {
             insertExtras(level, villager, anchor, def, recipe, storageBounds);
             return true;
         }
-        return adapter.insert(level, villager, anchor, def, recipe);
+        return adapter.insertBatch(level, villager, anchor, def, recipe, Math.max(1, copies));
     }
 
     /** Perform a station's explicit work action after its inputs have been inserted. */
@@ -409,6 +414,15 @@ public final class StationProtocols {
         FurnaceStationAdapter.bootstrap();
         CraftSurfaceAdapter.bootstrap();
         DataDrivenStationAdapter.bootstrap();
+    }
+
+    /** Physical copies of one recipe the declared station can accept together. */
+    public static int batchCapacity(ServerLevel level, BlockPos anchor, DiscoveredRecipe recipe) {
+        if (level == null || anchor == null || recipe == null) return 1;
+        WorkstationDef def = defAt(level, anchor);
+        Adapter adapter = resolveAdapter(level, def);
+        return def == null || adapter == null ? 1
+                : Math.max(1, adapter.batchCapacity(level, anchor, def, recipe));
     }
 
     /** Insert-wait-collect through a plain item capability. */

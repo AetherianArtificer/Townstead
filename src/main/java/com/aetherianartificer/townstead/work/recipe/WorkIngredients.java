@@ -437,6 +437,52 @@ public final class WorkIngredients {
         virtualSupply.merge(recipe.output(), recipe.outputCount(), Integer::sum);
     }
 
+    /**
+     * How many complete copies can be reserved from the worker and its worksite right now.
+     * This is intentionally bounded by the caller's physical station limit, so the calculation
+     * remains tiny even for a large warehouse.
+     */
+    public static int craftableCopies(ServerLevel level, VillagerEntityMCA villager,
+                                      DiscoveredRecipe recipe, Set<Long> kitchenBounds,
+                                      int physicalLimit) {
+        int limit = Math.max(1, physicalLimit);
+        Set<ResourceLocation> tracked = new HashSet<>();
+        if (recipe.containerItemId() != null) tracked.add(recipe.containerItemId());
+        for (RecipeIngredient ingredient : recipe.inputs()) tracked.addAll(ingredient.itemIds());
+        Map<ResourceLocation, Integer> supply = buildSupplySnapshot(
+                level, villager, tracked, kitchenBounds);
+        int copies = 0;
+        while (copies < limit && consumeVirtualCopy(recipe, supply)) copies++;
+        return Math.max(1, copies);
+    }
+
+    private static boolean consumeVirtualCopy(DiscoveredRecipe recipe,
+                                              Map<ResourceLocation, Integer> supply) {
+        Map<ResourceLocation, Integer> claimed = new HashMap<>();
+        if (recipe.containerItemId() != null && recipe.containerCount() > 0) {
+            int available = supply.getOrDefault(recipe.containerItemId(), 0);
+            if (available < recipe.containerCount()) return false;
+            claimed.put(recipe.containerItemId(), recipe.containerCount());
+        }
+        for (RecipeIngredient ingredient : recipe.inputs()) {
+            int remaining = Math.max(1, ingredient.count());
+            for (ResourceLocation id : ingredient.itemIds()) {
+                int available = supply.getOrDefault(id, 0) - claimed.getOrDefault(id, 0);
+                int taken = Math.min(Math.max(0, available), remaining);
+                if (taken > 0) {
+                    claimed.merge(id, taken, Integer::sum);
+                    remaining -= taken;
+                }
+                if (remaining == 0) break;
+            }
+            if (remaining > 0) return false;
+        }
+        for (Map.Entry<ResourceLocation, Integer> entry : claimed.entrySet()) {
+            supply.put(entry.getKey(), supply.getOrDefault(entry.getKey(), 0) - entry.getValue());
+        }
+        return true;
+    }
+
     // ── Pull and consume ──
 
     public static boolean pullAndConsume(
@@ -460,6 +506,21 @@ public final class WorkIngredients {
             Map<ResourceLocation, Integer> stagedInputs,
             Set<Long> kitchenBounds
     ) {
+        return pullAndConsumeDetailed(level, villager, recipe, stationAnchor, stationType,
+                stagedInputs, kitchenBounds, 1);
+    }
+
+    public static PullResult pullAndConsumeDetailed(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            DiscoveredRecipe recipe,
+            @Nullable BlockPos stationAnchor,
+            StationType stationType,
+            Map<ResourceLocation, Integer> stagedInputs,
+            Set<Long> kitchenBounds,
+            int batchOperations
+    ) {
+        batchOperations = Math.max(1, batchOperations);
         BlockPos center = stationAnchor != null ? stationAnchor : villager.blockPosition();
         List<String> diagnostics = new ArrayList<>();
 
@@ -493,7 +554,8 @@ public final class WorkIngredients {
         int containersNeededForStage = 0;
         if (recipeContainerItem != Items.AIR && recipe.containerCount() > 0) {
             int containersAlreadyStaged = StationContents.containerCount(level, stationAnchor, recipeContainerItem);
-            containersNeededForStage = Math.max(0, recipe.containerCount() - containersAlreadyStaged);
+            containersNeededForStage = Math.max(0,
+                    recipe.containerCount() * batchOperations - containersAlreadyStaged);
             while (StationInventoryOps.count(villager.getInventory(), recipeContainerItem) < containersNeededForStage) {
                 if (!pullSingleIngredient(level, villager, recipeContainerItem, center, kitchenBounds)) {
                     return PullResult.failure(itemDisplayName(recipeContainerItem));
@@ -514,14 +576,15 @@ public final class WorkIngredients {
                 Predicate<ItemStack> matcher = SupplyLines.matcher(level, supplyLine);
                 Predicate<ItemStack> preferred = stack -> matcher.test(stack)
                         && SupplyLines.preference(level, supplyLine, stack) > 0;
+                int required = ingredient.count() * batchOperations;
                 int available = countMatching(inv, preferred);
-                while (available < ingredient.count()
+                while (available < required
                         && pullSingleTool(level, villager, preferred, center, kitchenBounds)) {
                     available = countMatching(inv, preferred);
                 }
                 // If no preferred stack exists, all valid supplies remain usable as a fallback.
                 available = countMatching(inv, matcher);
-                while (available < ingredient.count()) {
+                while (available < required) {
                     if (!pullSingleTool(level, villager, matcher, center, kitchenBounds)) {
                         return PullResult.failure(ingredientDisplayName(ingredient, null), diagnostics);
                     }
@@ -531,7 +594,8 @@ public final class WorkIngredients {
                 // the correct protocol slot (for example the stove's side-facing fuel slot).
                 continue;
             }
-            totalNeededByIngredient.merge(ingredient, ingredient.count(), Integer::sum);
+            totalNeededByIngredient.merge(ingredient,
+                    ingredient.count() * batchOperations, Integer::sum);
         }
         for (Map.Entry<RecipeIngredient, Integer> entry : totalNeededByIngredient.entrySet()) {
             RecipeIngredient ingredient = entry.getKey();
@@ -1140,6 +1204,7 @@ public final class WorkIngredients {
             if (!StorageRoles.isStorageCandidate(level, pos, be)) continue;
 
             int before = stack.getCount();
+            ResourceLocation storedItemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             boolean mutated = false;
             if (be instanceof Container container) {
                 insertIntoContainer(container, stack);
@@ -1155,10 +1220,13 @@ public final class WorkIngredients {
                 });
                 stack = remainingRef[0];
             }
-            totalInserted += before - stack.getCount();
+            int insertedHere = before - stack.getCount();
+            totalInserted += insertedHere;
             mutated |= stack.getCount() != before;
             if (mutated) {
                 WorksiteStorageIndex.invalidate(level, observed.pos());
+                Townstead.LOGGER.debug("Worksite storage inserted {} x{} at {}", storedItemId, insertedHere,
+                        observed.pos().toShortString());
             }
         }
         return totalInserted;

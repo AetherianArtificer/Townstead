@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class ProducerWorkSupport {
     private ProducerWorkSupport() {}
@@ -39,6 +40,7 @@ public final class ProducerWorkSupport {
             @Nullable net.minecraft.core.BlockPos stationPos,
             Set<Long> worksiteBounds,
             Map<ResourceLocation, Long> recipeCooldownUntil,
+            Predicate<ResourceLocation> outputAllowed,
             ResourceLocation... taskTypes
     ) {
         return RecipeSelector.pickRecipe(
@@ -50,6 +52,7 @@ public final class ProducerWorkSupport {
                 recipeCooldownUntil,
                 excludeBeverages(role, level, villager),
                 beveragesOnly(role),
+                outputAllowed,
                 taskTypes
         );
     }

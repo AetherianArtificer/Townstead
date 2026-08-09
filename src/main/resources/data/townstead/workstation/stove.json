@@ -4,5 +4,19 @@
   "blocks": ["farmersdelight:stove"],
   "capacity": { "positions": 6, "per_position": 1 },
   "behavior": { "type": "pheno:use_block", "item": "ingredient" },
-  "requires": { "type": "pheno:block_state", "property": "lit", "value": "true" }
+  "requires": {
+    "type": "pheno:and",
+    "conditions": [
+      { "type": "pheno:block_state", "property": "lit", "value": "true" },
+      {
+        "type": "pheno:offset",
+        "y": 1,
+        "condition": {
+          "type": "pheno:block_shape",
+          "box": [3, 0, 3, 13, 1, 13],
+          "inverted": true
+        }
+      }
+    ]
+  }
 }

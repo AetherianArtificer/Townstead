@@ -219,19 +219,28 @@ public final class Order {
 
     public void setInProgress(int value) { this.inProgress = Math.max(0, value); }
 
-    /** A worker has committed to this line. Released by {@link #finish} or {@link #abandon}. */
-    public void claim() { inProgress++; }
+    /** A worker has committed this many output items to the line. */
+    public void claim(int count) { inProgress += Math.max(1, count); }
 
-    /** A commitment produced something: it stops being in progress and starts counting. */
-    public void finish(int count) {
-        if (inProgress > 0) inProgress--;
-        produced += Math.max(0, count);
+    /** One-output compatibility form used by non-batching work engines. */
+    public void claim() { claim(1); }
+
+    /** A quantity commitment produced something: release its reservation and count the result. */
+    public void finish(int claimed, int producedCount) {
+        inProgress = Math.max(0, inProgress - Math.max(1, claimed));
+        produced += Math.max(0, producedCount);
     }
 
-    /** A commitment came to nothing. The line goes back to where it was. */
-    public void abandon() {
-        if (inProgress > 0) inProgress--;
+    /** One-output compatibility form used by non-batching work engines. */
+    public void finish(int count) { finish(1, count); }
+
+    /** A quantity commitment came to nothing. The line goes back to where it was. */
+    public void abandon(int claimed) {
+        inProgress = Math.max(0, inProgress - Math.max(1, claimed));
     }
+
+    /** One-output compatibility form used by non-batching work engines. */
+    public void abandon() { abandon(1); }
 
     // ── Progress ──
 

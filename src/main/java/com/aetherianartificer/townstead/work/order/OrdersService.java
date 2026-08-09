@@ -61,19 +61,10 @@ public final class OrdersService {
                         ? context.stockOfTag(order.output(), order.scope())
                         : context.stockOf(order.output(), order.scope());
 
-        OrdersSnapshotS2CPayload.Status status;
+        OrdersSnapshotS2CPayload.Status status = statusOf(order, context);
         String reason = "";
-        if (order.paused()) {
-            status = OrdersSnapshotS2CPayload.Status.PAUSED;
-        } else if (!order.wantsWork(context)) {
-            status = OrdersSnapshotS2CPayload.Status.SATISFIED;
-        } else if (order.inProgress() > 0) {
-            status = OrdersSnapshotS2CPayload.Status.WORKING;
-        } else if (!context.mayWork(order)) {
-            status = OrdersSnapshotS2CPayload.Status.BLOCKED;
+        if (status == OrdersSnapshotS2CPayload.Status.BLOCKED) {
             reason = "Nobody working here is allowed to take this.";
-        } else {
-            status = OrdersSnapshotS2CPayload.Status.WAITING;
         }
 
         return new Row(order.output(), order.mode(), order.target(), order.scope(), order.paused(),
@@ -84,6 +75,18 @@ public final class OrdersService {
                         ? com.aetherianartificer.townstead.work.WorkActivities.labelOf(order.output())
                         : order.isTag() ? categoryLabel(order.output())
                         : !order.workpieceName().isEmpty() ? "Copy " + order.workpieceName() : "");
+    }
+
+    /**
+     * A fully claimed line has no unreserved work left, but it is not done: those items are still
+     * physically in a station. Active claims therefore win over the arithmetic satisfied state.
+     */
+    static OrdersSnapshotS2CPayload.Status statusOf(Order order, OrderContext context) {
+        if (order.paused()) return OrdersSnapshotS2CPayload.Status.PAUSED;
+        if (order.inProgress() > 0) return OrdersSnapshotS2CPayload.Status.WORKING;
+        if (!order.wantsWork(context)) return OrdersSnapshotS2CPayload.Status.SATISFIED;
+        if (!context.mayWork(order)) return OrdersSnapshotS2CPayload.Status.BLOCKED;
+        return OrdersSnapshotS2CPayload.Status.WAITING;
     }
 
     /** What a category is called on screen: the tag path, minus the orders/ shelf mark. */

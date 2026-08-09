@@ -55,6 +55,12 @@ public final class StationAdapters {
             return -1;
         }
 
+        /** Copies of one recipe this station can commit in a single producer cycle. */
+        default int batchCapacity(ServerLevel level, BlockPos anchor, WorkstationDef def,
+                                  DiscoveredRecipe recipe) {
+            return 1;
+        }
+
         /** Canonical cell for a multi-block station, or null when the supplied cell is canonical. */
         default @Nullable BlockPos anchor(ServerLevel level, BlockPos pos, WorkstationDef def) {
             return null;
@@ -70,6 +76,12 @@ public final class StationAdapters {
          */
         boolean insert(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                        WorkstationDef def, DiscoveredRecipe recipe);
+
+        /** Batched form; adapters that advertise batching consume exactly this many copies. */
+        default boolean insertBatch(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+                                    WorkstationDef def, DiscoveredRecipe recipe, int copies) {
+            return insert(level, villager, anchor, def, recipe);
+        }
 
         /** Optional explicit player-like work action after insertion (cut, press, crank, etc.). */
         default boolean work(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
