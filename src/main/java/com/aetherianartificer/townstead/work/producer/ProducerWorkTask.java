@@ -467,7 +467,13 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
         ProducerStationState stationState = classifyStation(level, villager, gameTime);
         switch (stationState) {
-            case EMPTY_READY -> transition(activeRecipe != null ? ProducerState.GATHER : ProducerState.SELECT_RECIPE, gameTime);
+            // Station acquisition may carry a speculative autonomous recipe so it can rank
+            // viable station/recipe pairs. An empty station has committed to none of it yet and
+            // must pass through the one authoritative selector: that is where ordered output and
+            // list-only/stand-down policy are applied. Skipping straight to GATHER let a worker
+            // obey an order once, reacquire the same empty station, then brew the acquisition
+            // guess instead of consulting the list.
+            case EMPTY_READY -> transition(ProducerState.SELECT_RECIPE, gameTime);
             case OWNED_STAGED, COMPATIBLE_PARTIAL -> {
                 if (activeRecipe != null) {
                     produceDoneTick = Math.max(gameTime + 10L, produceDoneTick);
