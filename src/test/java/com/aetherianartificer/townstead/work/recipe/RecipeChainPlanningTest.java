@@ -130,4 +130,21 @@ class RecipeChainPlanningTest {
         assertFalse(WorkIngredients.canPlanWithVirtual(cake, after, true, true),
                 "spending the shared wheat should only ever remove options, never add them");
     }
+
+    @Test
+    void repeatedRecipePositionsRequireTheFullRepeatedSupply() {
+        DiscoveredRecipe coffee = recipe("test:coffee", "test:coffee_cup",
+                List.of("test:bean", "test:bean", "test:bean", "test:bean"),
+                "minecraft:glass_bottle", 1);
+
+        Map<ResourceLocation, Integer> shortStock = new HashMap<>();
+        shortStock.put(id("test:bean"), 1);
+        shortStock.put(id("minecraft:glass_bottle"), 1);
+        assertFalse(WorkIngredients.canPlanWithVirtual(coffee, shortStock, true, true),
+                "one bean cannot satisfy four recipe positions");
+
+        Map<ResourceLocation, Integer> exactStock = new HashMap<>(shortStock);
+        exactStock.put(id("test:bean"), 4);
+        assertTrue(WorkIngredients.canPlanWithVirtual(coffee, exactStock, true, true));
+    }
 }

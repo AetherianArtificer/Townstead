@@ -105,6 +105,8 @@ public final class Stations {
      * always satisfied, which is every station that does not sit on a fire.
      */
     public static boolean supportSatisfied(ServerLevel level, BlockPos pos, BlockState state) {
+        WorkstationV2Def v2 = Workstations.v2ByState(state);
+        if (v2 != null) return v2.isOperational(level, pos);
         WorkstationDef def = Workstations.byState(state);
         return def == null || supportSatisfied(level, pos, def);
     }

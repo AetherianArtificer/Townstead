@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.work.recipe;
 
 import com.aetherianartificer.townstead.work.station.WorkstationDef;
 import com.aetherianartificer.townstead.work.station.Workstations;
+import com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes;
+import com.aetherianartificer.townstead.work.station.WorkstationV2Def;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
@@ -36,17 +38,9 @@ public final class WorkRecipeRegistry {
     private WorkRecipeRegistry() {}
 
     //? if >=1.21 {
-    private static final ResourceLocation FD_COOKING_POT = ResourceLocation.parse("farmersdelight:cooking_pot");
-    private static final ResourceLocation FD_COOKING_TYPE_ID = ResourceLocation.parse("farmersdelight:cooking");
-    private static final ResourceLocation FD_CUTTING_TYPE_ID = ResourceLocation.parse("farmersdelight:cutting");
-    private static final ResourceLocation MINECRAFT_BOWL = ResourceLocation.parse("minecraft:bowl");
     private static final ResourceLocation MINECRAFT_POTION = ResourceLocation.parse("minecraft:potion");
     //?} else {
-    /*private static final ResourceLocation FD_COOKING_POT = new ResourceLocation("farmersdelight", "cooking_pot");
-    private static final ResourceLocation FD_COOKING_TYPE_ID = new ResourceLocation("farmersdelight", "cooking");
-    private static final ResourceLocation FD_CUTTING_TYPE_ID = new ResourceLocation("farmersdelight", "cutting");
-    private static final ResourceLocation MINECRAFT_BOWL = new ResourceLocation("minecraft", "bowl");
-    private static final ResourceLocation MINECRAFT_POTION = new ResourceLocation("minecraft", "potion");
+    /*private static final ResourceLocation MINECRAFT_POTION = new ResourceLocation("minecraft", "potion");
     *///?}
 
     /** One definition of the id, shared with the line that fills it. */
@@ -196,22 +190,16 @@ public final class WorkRecipeRegistry {
         // 1. Campfire cooking recipes → FIRE_STATION
         discoverCampfireRecipes(level, recipes);
 
-        // 2. FD cooking pot recipes → HOT_STATION
-        discoverCookingPotRecipes(level, recipes);
-
-        // 3. FD cutting board recipes → CUTTING_BOARD
-        discoverCuttingBoardRecipes(level, recipes);
-
-        // 3b. Workstation-declared recipe types → their stations' roles
+        // 2. Block-attached and legacy workstation recipe types → their stations' roles
         discoverWorkstationRecipes(level, recipes);
 
-        // 3c. Protocol stations' declared production lines → synthetic recipes
+        // 3. Protocol stations' declared production lines → synthetic recipes
         discoverProtocolRecipes(level, recipes);
 
-        // 3d. Two-stage fluid stations (ferment then pour), joined into item-in/item-out form
+        // 4. Two-stage fluid stations (ferment then pour), joined into item-in/item-out form
         discoverFluidRecipes(level, recipes);
 
-        // 4. Synthetic purification recipe
+        // 5. Synthetic purification recipe
         ThirstCompatBridge thirstBridge = ThirstBridgeResolver.get();
         if (thirstBridge != null && TownsteadConfig.isCookWaterPurificationEnabled() && thirstBridge.supportsPurification()) {
             DiscoveredRecipe purification = syntheticPurificationRecipe(thirstBridge);
@@ -225,7 +213,7 @@ public final class WorkRecipeRegistry {
             recipes.add(purification);
         }
 
-        // 5. Apply tag-based tier overrides
+        // 6. Apply tag-based tier overrides
         applyTierTagOverrides(level, recipes);
 
         return recipes;
@@ -286,11 +274,25 @@ public final class WorkRecipeRegistry {
      */
     private static void discoverWorkstationRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
         List<WorkstationDef> defs = Workstations.all();
-        if (defs.isEmpty()) return;
+        if (defs.isEmpty() && Workstations.v2All().isEmpty()) return;
         Set<ResourceLocation> existingIds = new HashSet<>();
         for (DiscoveredRecipe r : out) existingIds.add(r.id());
         Set<ResourceLocation> seenTypes = new HashSet<>();
+
+        // V2: the exact block owns an additive recipe-type attachment. The workstation document
+        // is intentionally absent from this join.
+        for (WorkstationV2Def def : Workstations.v2All()) {
+            Set<ResourceLocation> attached = new LinkedHashSet<>();
+            for (ResourceLocation block : def.blocks()) attached.addAll(WorkstationRecipeTypes.forBlock(block));
+            StationType role = def.schedulingRole(attached);
+            for (ResourceLocation typeId : attached) {
+                if (!seenTypes.add(typeId)) continue;
+                discoverAttachedType(level, typeId, role, def, existingIds, out);
+            }
+        }
+
         for (WorkstationDef def : defs) {
+            if (Workstations.v2ByBlockId(def.blocks().stream().findFirst().orElse(null)) != null) continue;
             // Fluid stations are NOT skipped. A mod can change its recipe model between versions
             // (Brewin' 3.x fermented into a fluid; its rewrite is plain item-in, item-out), and
             // the two discovery paths self-select: generic discovery reads an empty item result
@@ -354,6 +356,42 @@ public final class WorkRecipeRegistry {
         }
     }
 
+    private static void discoverAttachedType(ServerLevel level, ResourceLocation typeId,
+                                             StationType role, WorkstationV2Def def,
+                                             Set<ResourceLocation> existingIds,
+                                             List<DiscoveredRecipe> out) {
+        //? if >=1.21 {
+        for (RecipeHolder<?> holder : getRecipesForType(level, typeId)) {
+            Recipe<?> recipe = holder.value();
+            ResourceLocation recipeId = holder.id();
+        //?} else {
+        /*for (Recipe<?> recipe : getRecipesForType(level, typeId)) {
+            ResourceLocation recipeId = recipe.getId();
+        *///?}
+            if (!existingIds.add(recipeId)) continue;
+            ItemStack result = safeGetResult(level, recipe);
+            if (result.isEmpty()) continue;
+            ResourceLocation outputId = BuiltInRegistries.ITEM.getKey(result.getItem());
+            if (outputId == null) continue;
+            List<RecipeIngredient> inputs = extractIngredients(recipe);
+            if (inputs.isEmpty()) continue;
+            ResourceLocation container = containerOf(recipe);
+            int cookTime = safeCookTime(recipe, 200);
+            boolean tool = def.behaviorUses("tool");
+            boolean beverage = outputId.getPath().contains("coffee") || outputId.getPath().contains("tea");
+            out.add(new DiscoveredRecipe(recipeId, role,
+                    autoTier(role, inputs.size(), cookTime), outputId,
+                    Math.max(1, result.getCount()), cookTime, tool,
+                    container, container == null ? 0 : 1, inputs, false, beverage,
+                    //? if >=1.21 {
+                    holder
+                    //?} else {
+                    /*recipe
+                    *///?}
+            ));
+        }
+    }
+
     /**
      * Protocol stations declare their production inline ({@code produces}): each line becomes
      * a synthetic recipe under the def's role, so recipe selection, ingredient staging, and
@@ -393,6 +431,21 @@ public final class WorkRecipeRegistry {
      * vanilla/FD families and synthetics. Drives the exclusive recipe/station pairing.
      */
     public static @Nullable ResourceLocation foreignRecipeTypeId(DiscoveredRecipe recipe) {
+        ResourceLocation id = recipeTypeId(recipe);
+        if (id == null) return null;
+        if ("minecraft".equals(id.getNamespace())) return null;
+        // V2 types are owned by block attachments and paired at the physical station. They are
+        // not legacy "foreign" recipe families, irrespective of which mod supplied the id.
+        for (WorkstationV2Def def : Workstations.v2All()) {
+            for (ResourceLocation block : def.blocks()) {
+                if (WorkstationRecipeTypes.forBlock(block).contains(id)) return null;
+            }
+        }
+        return id;
+    }
+
+    /** Exact public recipe-type registry id, including vanilla and Farmer's Delight families. */
+    public static @Nullable ResourceLocation recipeTypeId(DiscoveredRecipe recipe) {
         if (recipe == null || recipe.source() == null) return null;
         //? if >=1.21 {
         RecipeType<?> type = recipe.source().value().getType();
@@ -400,125 +453,8 @@ public final class WorkRecipeRegistry {
         /*RecipeType<?> type = recipe.source().getType();
         *///?}
         ResourceLocation id = BuiltInRegistries.RECIPE_TYPE.getKey(type);
-        if (id == null || id.equals(FD_COOKING_TYPE_ID) || id.equals(FD_CUTTING_TYPE_ID)) return null;
-        if ("minecraft".equals(id.getNamespace())) return null;
         return id;
     }
-
-    // ── Cooking pot recipes ──
-
-    @SuppressWarnings("unchecked")
-    private static void discoverCookingPotRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
-        //? if >=1.21 {
-        Collection<RecipeHolder<?>> holders = getRecipesForType(level, FD_COOKING_TYPE_ID);
-        //?} else {
-        /*Collection<Recipe<?>> holders = getRecipesForType(level, FD_COOKING_TYPE_ID);
-        *///?}
-
-        Set<String> signatures = new HashSet<>();
-        //? if >=1.21 {
-        for (RecipeHolder<?> holder : holders) {
-            Recipe<?> recipe = holder.value();
-            ResourceLocation recipeId = holder.id();
-        //?} else {
-        /*for (Recipe<?> recipe : holders) {
-            ResourceLocation recipeId = recipe.getId();
-        *///?}
-
-            ItemStack result = safeGetResult(level, recipe);
-            if (result.isEmpty()) continue;
-            ResourceLocation outputId = BuiltInRegistries.ITEM.getKey(result.getItem());
-            if (outputId == null) continue;
-
-            List<RecipeIngredient> inputs = extractIngredients(recipe);
-            if (inputs.isEmpty()) continue;
-
-            ContainerInfo container = reflectContainer(recipe);
-            int cookTime = safeCookTime(recipe, 120);
-            int tier = autoTier(StationType.HOT_STATION, inputs.size(), cookTime);
-
-            String sig = outputId + "|" + result.getCount() + "|" + inputs;
-            if (!signatures.add(sig)) continue;
-
-            out.add(new DiscoveredRecipe(
-                    recipeId,
-                    StationType.HOT_STATION,
-                    tier,
-                    outputId,
-                    Math.max(1, result.getCount()),
-                    cookTime,
-                    false,
-                    container.itemId(),
-                    container.count(),
-                    inputs,
-                    false,
-                    container.beverage(),
-                    //? if >=1.21 {
-                    holder
-                    //?} else {
-                    /*recipe
-                    *///?}
-            ));
-        }
-    }
-
-    // ── Cutting board recipes ──
-
-    @SuppressWarnings("unchecked")
-    private static void discoverCuttingBoardRecipes(ServerLevel level, List<DiscoveredRecipe> out) {
-        //? if >=1.21 {
-        Collection<RecipeHolder<?>> holders = getRecipesForType(level, FD_CUTTING_TYPE_ID);
-        //?} else {
-        /*Collection<Recipe<?>> holders = getRecipesForType(level, FD_CUTTING_TYPE_ID);
-        *///?}
-
-        Set<String> signatures = new HashSet<>();
-        //? if >=1.21 {
-        for (RecipeHolder<?> holder : holders) {
-            Recipe<?> recipe = holder.value();
-            ResourceLocation recipeId = holder.id();
-        //?} else {
-        /*for (Recipe<?> recipe : holders) {
-            ResourceLocation recipeId = recipe.getId();
-        *///?}
-
-            ItemStack result = safeGetResult(level, recipe);
-            if (result.isEmpty()) continue;
-            ResourceLocation outputId = BuiltInRegistries.ITEM.getKey(result.getItem());
-            if (outputId == null) continue;
-
-            List<RecipeIngredient> inputs = extractIngredients(recipe);
-            if (inputs.isEmpty()) continue;
-
-            boolean requiresTool = reflectRequiresTool(recipe);
-            int cookTime = safeCookTime(recipe, 80);
-            int tier = autoTier(StationType.CUTTING_BOARD, inputs.size(), cookTime);
-
-            String sig = outputId + "|" + result.getCount() + "|" + inputs;
-            if (!signatures.add(sig)) continue;
-
-            out.add(new DiscoveredRecipe(
-                    recipeId,
-                    StationType.CUTTING_BOARD,
-                    tier,
-                    outputId,
-                    Math.max(1, result.getCount()),
-                    cookTime,
-                    requiresTool,
-                    null,
-                    0,
-                    inputs,
-                    false,
-                    false,
-                    //? if >=1.21 {
-                    holder
-                    //?} else {
-                    /*recipe
-                    *///?}
-            ));
-        }
-    }
-
 
     /**
      * Stations whose work happens as fluid inside the block. Each mod reads its own recipes, and
@@ -547,6 +483,20 @@ public final class WorkRecipeRegistry {
      * and reports "No bowl stored here" against a dish the kitchen can in fact make.</p>
      */
     private static @Nullable ResourceLocation containerOf(Recipe<?> recipe) {
+        // Prefer an explicit public recipe contract when one exists. These are semantic names,
+        // not mod checks; any recipe implementation may expose one of them.
+        for (String methodName : List.of("getContainer", "getOutputContainer", "getRequiredContainer")) {
+            try {
+                Method method = recipe.getClass().getMethod(methodName);
+                if (method.invoke(recipe) instanceof ItemStack stack && !stack.isEmpty()) {
+                    ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    if (id != null && stack.getItem() != Items.AIR) return id;
+                }
+            } catch (NoSuchMethodException ignored) {
+            } catch (Throwable ignored) {
+                return null;
+            }
+        }
         for (Class<?> c = recipe.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
             for (java.lang.reflect.Field f : c.getDeclaredFields()) {
                 if (f.getType() != ItemStack.class) continue;
@@ -713,45 +663,6 @@ public final class WorkRecipeRegistry {
             } catch (Throwable ignored) {}
         }
         return fallback;
-    }
-
-    private record ContainerInfo(@Nullable ResourceLocation itemId, int count, boolean beverage) {
-        static final ContainerInfo NONE = new ContainerInfo(null, 0, false);
-    }
-
-    private static ContainerInfo reflectContainer(Recipe<?> recipe) {
-        String[] methods = {"getContainer", "getOutputContainer"};
-        for (String name : methods) {
-            try {
-                Method m = recipe.getClass().getMethod(name);
-                Object value = m.invoke(recipe);
-                if (value instanceof ItemStack stack && !stack.isEmpty()) {
-                    if (stack.is(Items.BOWL)) {
-                        return new ContainerInfo(MINECRAFT_BOWL, Math.max(1, stack.getCount()), false);
-                    }
-                    if (stack.is(Items.GLASS_BOTTLE)) {
-                        ResourceLocation bottleId = BuiltInRegistries.ITEM.getKey(Items.GLASS_BOTTLE);
-                        return new ContainerInfo(bottleId, Math.max(1, stack.getCount()), true);
-                    }
-                    ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-                    if (itemId != null && stack.getItem() != Items.AIR) {
-                        return new ContainerInfo(itemId, Math.max(1, stack.getCount()), false);
-                    }
-                }
-            } catch (Throwable ignored) {}
-        }
-        return ContainerInfo.NONE;
-    }
-
-    private static boolean reflectRequiresTool(Recipe<?> recipe) {
-        try {
-            Method m = recipe.getClass().getMethod("getTool");
-            Object value = m.invoke(recipe);
-            if (value instanceof net.minecraft.world.item.crafting.Ingredient toolIng) {
-                return !toolIng.isEmpty();
-            }
-        } catch (Throwable ignored) {}
-        return true; // Default: assume cutting board recipes need a knife
     }
 
     public static boolean recipeToolMatches(DiscoveredRecipe recipe, ItemStack stack) {

@@ -374,7 +374,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         if (activeRecipe == null) return false;
         sweptProducedOutput = false;
         DiscoveredRecipe recipe = fdRecipe();
-        if (com.aetherianartificer.townstead.work.station.StationProtocols.isProtocolType(stationType)) {
+        if (com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {
             // The physical hand-off: place the work block and/or push the gathered items from
             // the villager's inventory into the station, the way a player's hands would.
             Set<Long> bounds = activeWorksiteBounds(level, villager);
@@ -394,6 +394,15 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     protected boolean isProduceDone(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (activeRecipe == null) return true;
         DiscoveredRecipe recipe = fdRecipe();
+
+        if (com.aetherianartificer.townstead.work.station.Workstations
+                .v2ByState(level.getBlockState(stationAnchor)) != null
+                && com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {
+            com.aetherianartificer.townstead.work.station.StationProtocols.work(
+                    level, villager, stationAnchor, recipe);
+            return com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
+                    level, villager, stationAnchor, recipe);
+        }
 
         if (stationType != StationType.CUTTING_BOARD
                 && com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {

@@ -195,7 +195,7 @@ public final class ProducerStationIndex {
                             taskTypes));
             List<ScoredRecipe> viable = new ArrayList<>();
             for (ScoredRecipe candidate : stationTypeCandidates) {
-                if (!com.aetherianartificer.townstead.work.station.StationProtocols.supports(level, slot.pos(), candidate.recipe())) continue;
+                if (!ProductionStations.supportsRecipe(level, slot.pos(), candidate.recipe())) continue;
                 if (!WorkIngredients.canFulfill(
                         level,
                         villager,
@@ -301,8 +301,8 @@ public final class ProducerStationIndex {
                 level, villager, slot.type(), worksiteBounds, recipeCooldownUntil,
                 ProducerWorkSupport.excludeBeverages(role, level, villager),
                 ProducerWorkSupport.beveragesOnly(role), taskTypes)) {
-            if (!com.aetherianartificer.townstead.work.station.StationProtocols.supports(level, slot.pos(), candidate.recipe())) {
-                detail = " first-rejected=" + candidate.recipe().output() + " -> station adapter does not support recipe";
+            if (!ProductionStations.supportsRecipe(level, slot.pos(), candidate.recipe())) {
+                detail = " first-rejected=" + candidate.recipe().output() + " -> station does not support recipe";
                 break;
             }
             detail = " first-blocked=" + candidate.recipe().output() + " -> "

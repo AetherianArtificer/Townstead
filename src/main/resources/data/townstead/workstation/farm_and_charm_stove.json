@@ -1,9 +1,5 @@
 {
-  "schema": "townstead:workstation/v1",
-  "mods": "farm_and_charm",
-  "type": "passive_station",
-  "blocks": ["farm_and_charm:stove"],
-  "recipe_type": "farm_and_charm:stove",
-  "orderable": "all",
-  "fuel": true
+  "schema": "townstead:workstation/v2",
+  "mods": ["farm_and_charm"],
+  "blocks": ["farm_and_charm:stove"]
 }

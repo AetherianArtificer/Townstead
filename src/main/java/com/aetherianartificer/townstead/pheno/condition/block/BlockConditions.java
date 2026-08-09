@@ -68,8 +68,13 @@ public final class BlockConditions {
             case "block_state": {
                 String property = GsonHelper.getAsString(json, "property", "");
                 String value = GsonHelper.getAsString(json, "value", "");
+                boolean passMissing = "pass".equals(GsonHelper.getAsString(json, "if_missing", "fail"));
                 if (property.isEmpty()) return null;
-                return (level, pos) -> matchesProperty(level.getBlockState(pos), property, value);
+                return (level, pos) -> {
+                    BlockState state = level.getBlockState(pos);
+                    return state.getBlock().getStateDefinition().getProperty(property) == null
+                            ? passMissing : matchesProperty(state, property, value);
+                };
             }
             case "fluid": {
                 if (json.has("fluid_condition")) {
@@ -177,6 +182,30 @@ public final class BlockConditions {
                 return (level, pos) -> {
                     for (Direction direction : Direction.values()) {
                         if (inner.test(level, pos.relative(direction))) return true;
+                    }
+                    return false;
+                };
+            }
+            case "block_chain": {
+                Direction direction;
+                try {
+                    direction = Direction.byName(GsonHelper.getAsString(json, "direction", "down"));
+                } catch (Throwable ignored) {
+                    direction = null;
+                }
+                if (direction == null) return null;
+                int max = GsonHelper.getAsInt(json, "max", 0);
+                if (max < 0) return null;
+                BlockCondition through = json.has("through") ? parse(json.get("through")) : null;
+                BlockCondition end = parse(json.get("end"));
+                if (end == null || (json.has("through") && through == null)) return null;
+                Direction step = direction;
+                return (level, pos) -> {
+                    BlockPos cursor = pos.relative(step);
+                    for (int crossed = 0; crossed <= max; crossed++) {
+                        if (end.test(level, cursor)) return true;
+                        if (crossed == max || through == null || !through.test(level, cursor)) return false;
+                        cursor = cursor.relative(step);
                     }
                     return false;
                 };

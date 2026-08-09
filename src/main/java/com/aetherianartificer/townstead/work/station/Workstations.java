@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Registry of data-declared workstations, replaced each datapack reload. Consulted from the
@@ -44,6 +45,7 @@ public final class Workstations {
     public static final String SCHEMA = "townstead:workstation/v1";
 
     private static volatile List<WorkstationDef> DEFS = List.of();
+    private static volatile List<WorkstationV2Def> V2_DEFS = List.of();
 
     private Workstations() {}
 
@@ -55,6 +57,40 @@ public final class Workstations {
 
     public static List<WorkstationDef> all() {
         return DEFS;
+    }
+
+    public static List<WorkstationV2Def> v2All() {
+        return V2_DEFS;
+    }
+
+    public static @Nullable WorkstationV2Def v2ByState(BlockState state) {
+        ResourceLocation block = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        for (WorkstationV2Def def : V2_DEFS) if (def.blocks().contains(block)) return def;
+        return null;
+    }
+
+    public static @Nullable WorkstationV2Def v2ByBlockId(@Nullable ResourceLocation block) {
+        if (block == null) return null;
+        for (WorkstationV2Def def : V2_DEFS) if (def.blocks().contains(block)) return def;
+        return null;
+    }
+
+    /** Rebuilds the V1 task-state compatibility views after either V2 defs or attachments reload. */
+    static void refreshV2CompatibilityViews() {
+        List<WorkstationDef> retained = new ArrayList<>();
+        for (WorkstationDef def : DEFS) {
+            boolean shadowed = false;
+            for (ResourceLocation block : def.blocks()) {
+                if (v2ByBlockId(block) != null) { shadowed = true; break; }
+            }
+            if (!shadowed) retained.add(def);
+        }
+        for (WorkstationV2Def v2 : V2_DEFS) {
+            Set<ResourceLocation> types = new java.util.LinkedHashSet<>();
+            for (ResourceLocation block : v2.blocks()) types.addAll(WorkstationRecipeTypes.forBlock(block));
+            retained.add(v2.legacyView(Set.copyOf(types)));
+        }
+        replaceAll(retained);
     }
 
     public static @Nullable WorkstationDef byState(BlockState state) {
@@ -93,7 +129,7 @@ public final class Workstations {
     }
 
     /** Loads {@code data/<ns>/workstation/*.json}; defs behind unmet {@code mods} gates don't exist. */
-    public static final class Loader extends SimplePreparableReloadListener<Map<ResourceLocation, JsonObject>> {
+        public static final class Loader extends SimplePreparableReloadListener<Map<ResourceLocation, JsonObject>> {
 
         @Override
         protected Map<ResourceLocation, JsonObject> prepare(ResourceManager resourceManager, ProfilerFiller profiler) {
@@ -119,16 +155,29 @@ public final class Workstations {
         protected void apply(Map<ResourceLocation, JsonObject> prepared, ResourceManager resourceManager,
                              ProfilerFiller profiler) {
             List<WorkstationDef> defs = new ArrayList<>();
+            List<WorkstationV2Def> v2Defs = new ArrayList<>();
             for (Map.Entry<ResourceLocation, JsonObject> e : prepared.entrySet()) {
                 JsonObject obj = e.getValue();
+                String declaredSchema = obj.has("schema") && obj.get("schema").isJsonPrimitive()
+                        ? obj.get("schema").getAsString() : SCHEMA;
                 try {
-                    com.aetherianartificer.townstead.data.TownsteadSchema.validate(obj, SCHEMA);
+                    com.aetherianartificer.townstead.data.TownsteadSchema.validate(
+                            obj, WorkstationV2Def.SCHEMA.equals(declaredSchema) ? WorkstationV2Def.SCHEMA : SCHEMA);
                 } catch (RuntimeException ex) {
                     LOGGER.warn("Workstation {} rejected: {}", e.getKey(), ex.getMessage());
                     continue;
                 }
                 if (obj.has("mods") && !Boolean.TRUE.equals(ModGate.evaluate(obj.get("mods")))) {
                     LOGGER.debug("Workstation {} skipped: mods gate unmet or malformed", e.getKey());
+                    continue;
+                }
+                if (WorkstationV2Def.SCHEMA.equals(declaredSchema)) {
+                    WorkstationV2Def def = WorkstationV2Def.parse(e.getKey(), obj);
+                    if (def == null) {
+                        LOGGER.warn("Invalid V2 workstation def {}", e.getKey());
+                        continue;
+                    }
+                    v2Defs.add(def);
                     continue;
                 }
                 WorkstationDef def = WorkstationDef.parse(e.getKey(), obj);
@@ -138,8 +187,12 @@ public final class Workstations {
                 }
                 defs.add(def);
             }
+            V2_DEFS = List.copyOf(v2Defs);
             replaceAll(defs);
-            if (!defs.isEmpty()) LOGGER.info("Loaded {} workstation defs", defs.size());
+            refreshV2CompatibilityViews();
+            if (!defs.isEmpty() || !v2Defs.isEmpty()) {
+                LOGGER.info("Loaded {} V1 and {} V2 workstation defs", defs.size(), v2Defs.size());
+            }
         }
     }
 }

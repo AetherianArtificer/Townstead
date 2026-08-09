@@ -11,6 +11,8 @@ import com.aetherianartificer.townstead.work.station.StationProtocols;
 import com.aetherianartificer.townstead.work.station.StationContents;
 import com.aetherianartificer.townstead.work.station.StationDropOutputs;
 import com.aetherianartificer.townstead.work.station.StationCapacities;
+import com.aetherianartificer.townstead.work.station.Stations;
+import com.aetherianartificer.townstead.work.station.Workstations;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -27,6 +29,76 @@ import java.util.Set;
 /** Classifies station ownership/content state and coordinates foreign-content cleanup. */
 public final class ProductionStations {
     private ProductionStations() {}
+
+    /**
+     * Whether this physical station can perform {@code recipe}, across both station engines.
+     *
+     * <p>{@link StationProtocols#supports} deliberately answers only for adapter-backed stations.
+     * Farmer's Delight's cooking pot is not one: it is the built-in {@link StationType#HOT_STATION}
+     * lifecycle driven through {@link StationContents}. Routing every station through the protocol
+     * method therefore rejects every cooking-pot recipe before ingredients are considered.</p>
+     */
+    public static boolean supportsRecipe(
+            ServerLevel level, BlockPos pos, @Nullable DiscoveredRecipe recipe
+    ) {
+        if (recipe == null) return true;
+        if (level == null || pos == null) return false;
+
+        StationType stationType = Stations.stationType(level, pos);
+        if (stationType == null) return false;
+
+        // Purification is a special cycle, not an ordinary campfire recipe. Its adapter exposes
+        // that capability separately because the synthetic impure-water input has no vanilla
+        // campfire recipe for the normal supports() check to match.
+        if (recipe.purification()) {
+            return recipe.stationType() == StationType.FIRE_STATION
+                    && StationProtocols.handles(level, pos)
+                    && StationProtocols.supportsPurification(level, pos);
+        }
+
+        if (StationProtocols.handles(level, pos)) {
+            return StationProtocols.supports(level, pos, recipe);
+        }
+
+        return supportsUnadaptedRecipe(
+                stationType,
+                Workstations.declaredRecipeTypeAt(level, pos),
+                WorkRecipeRegistry.foreignRecipeTypeId(recipe),
+                level.getBlockEntity(pos) != null,
+                recipe);
+    }
+
+    /** The world-free half of {@link #supportsRecipe}, kept explicit for regression coverage. */
+    static boolean supportsUnadaptedRecipe(
+            @Nullable StationType stationType,
+            @Nullable ResourceLocation declaredRecipeType,
+            @Nullable ResourceLocation recipeType,
+            boolean hasBlockEntity,
+            DiscoveredRecipe recipe
+    ) {
+        if (stationType == null || recipe == null) return false;
+        // Protocol lifecycles are never allowed to fall through to the built-in station engine.
+        if (isProtocolType(stationType) || isProtocolType(recipe.stationType())) return false;
+
+        // A station declaring a custom recipe type owns only that family; a built-in station has
+        // no declaration and accepts only the built-in family for its role.
+        if (recipeType != null
+                ? !recipeType.equals(declaredRecipeType)
+                : declaredRecipeType != null) return false;
+        if (stationType != recipe.stationType()) return false;
+
+        // The built-in cutting-board interaction needs a real block entity. Hot stations use the
+        // normal StationContents lifecycle and need no protocol adapter.
+        return stationType != StationType.CUTTING_BOARD || hasBlockEntity;
+    }
+
+    /** Kept world-free so recipe-pairing tests do not have to load a platform station adapter. */
+    private static boolean isProtocolType(StationType type) {
+        return type == StationType.PASSIVE_STATION
+                || type == StationType.PLACE_SURFACE
+                || type == StationType.FURNACE_STATION
+                || type == StationType.CRAFT_SURFACE;
+    }
 
     public static ProducerStationState classify(
             ServerLevel level, VillagerEntityMCA villager, BlockPos pos,

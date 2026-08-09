@@ -1,9 +1,10 @@
 {
-  "schema": "townstead:workstation/v1",
-  "mods": "farm_and_charm",
-  "type": "passive_station",
+  "schema": "townstead:workstation/v2",
+  "mods": ["farm_and_charm"],
   "blocks": ["farm_and_charm:cooking_pot"],
-  "recipe_type": "farm_and_charm:pot_cooking",
-  "orderable": "all",
-  "support_below": ["#farm_and_charm:allows_cooking"]
+  "inventory": { "slots": { "containers": [6] } },
+  "requires": {
+    "type": "pheno:offset", "y": -1,
+    "condition": { "type": "pheno:in_tag", "tag": "farm_and_charm:allows_cooking" }
+  }
 }

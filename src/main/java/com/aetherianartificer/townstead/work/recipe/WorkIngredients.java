@@ -177,7 +177,21 @@ public final class WorkIngredients {
             if (StationProtocols.handles(level, center)
                     && StationCapacities.capacity(level, center, StationType.FIRE_STATION) <= 0) return false;
         }
-        if (stationPos != null && !StationProtocols.supports(level, center, recipe)) return false;
+        if (stationPos != null
+                && !com.aetherianartificer.townstead.work.producer.ProductionStations.supportsRecipe(
+                        level, center, recipe)) return false;
+        if (stationPos != null
+                && com.aetherianartificer.townstead.work.station.Workstations
+                        .v2ByState(level.getBlockState(center)) != null
+                && com.aetherianartificer.townstead.work.station.DataDrivenStationAdapter
+                        .acceptsFuel(level, center)
+                && !com.aetherianartificer.townstead.work.station.DataDrivenStationAdapter
+                        .hasFuel(level, center)) {
+            java.util.function.Predicate<ItemStack> fuel = SupplyLines.matcher(
+                    level, com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL);
+            if (countMatching(villager.getInventory(), fuel) <= 0
+                    && findWorksiteStorageSlot(level, villager, fuel, kitchenBounds) == null) return false;
+        }
         if (recipe.requiresTool()) {
             boolean toolAvailable = toolAvailableByRecipe != null
                     ? toolAvailableByRecipe.computeIfAbsent(
@@ -386,12 +400,19 @@ public final class WorkIngredients {
         if (recipe.containerItemId() != null && recipe.containerCount() > 0) {
             if (virtualSupply.getOrDefault(recipe.containerItemId(), 0) < recipe.containerCount()) return false;
         }
+        Map<ResourceLocation, Integer> claimed = new HashMap<>();
         for (RecipeIngredient ingredient : recipe.inputs()) {
-            int available = 0;
+            int remaining = Math.max(1, ingredient.count());
             for (ResourceLocation id : ingredient.itemIds()) {
-                available += virtualSupply.getOrDefault(id, 0);
+                int available = virtualSupply.getOrDefault(id, 0) - claimed.getOrDefault(id, 0);
+                int allocated = Math.min(Math.max(0, available), remaining);
+                if (allocated > 0) {
+                    claimed.merge(id, allocated, Integer::sum);
+                    remaining -= allocated;
+                }
+                if (remaining == 0) break;
             }
-            if (available < ingredient.count()) return false;
+            if (remaining > 0) return false;
         }
         return true;
     }
@@ -522,6 +543,27 @@ public final class WorkIngredients {
             }
         }
 
+        // V2 owns the physical hand-off. Gathering reserves real stacks in the villager's
+        // inventory; the generic adapter then negotiates the block's public inventory and/or
+        // player interaction contract transactionally at the station.
+        if (stationAnchor != null
+                && com.aetherianartificer.townstead.work.station.Workstations
+                        .v2ByState(level.getBlockState(stationAnchor)) != null) {
+            if (com.aetherianartificer.townstead.work.station.DataDrivenStationAdapter
+                    .acceptsFuel(level, stationAnchor)
+                    && !com.aetherianartificer.townstead.work.station.DataDrivenStationAdapter
+                            .hasFuel(level, stationAnchor)) {
+                java.util.function.Predicate<ItemStack> fuel = SupplyLines.matcher(
+                        level, com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL);
+                if (countMatching(villager.getInventory(), fuel) <= 0
+                        && !pullSingleTool(level, villager, fuel, center, kitchenBounds)) {
+                    return PullResult.failure("fuel", diagnostics);
+                }
+            }
+            stagedInputs.clear();
+            return PullResult.successResult();
+        }
+
         // Fire station: pull extras + load surface
         if (stationType == StationType.FIRE_STATION
                 && StationProtocols.handles(level, stationAnchor)
@@ -542,15 +584,7 @@ public final class WorkIngredients {
             }
             int ingredientPerLoad = Math.max(1, input.count());
             int freeSlots = StationCapacities.capacity(level, stationAnchor, StationType.FIRE_STATION);
-            ResourceLocation stationId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(stationAnchor).getBlock());
-            //? if >=1.21 {
-            int maxStack = item.getDefaultMaxStackSize();
-            int target = ResourceLocation.parse("farmersdelight:skillet").equals(stationId)
-            //?} else {
-            /*int maxStack = item.getMaxStackSize();
-            int target = new ResourceLocation("farmersdelight", "skillet").equals(stationId)
-            *///?}
-                    ? maxStack : freeSlots * ingredientPerLoad;
+            int target = freeSlots * ingredientPerLoad;
             while (StationInventoryOps.count(inv, item) < target) {
                 if (!pullSingleIngredient(level, villager, item, center, kitchenBounds)) break;
             }
@@ -680,19 +714,7 @@ public final class WorkIngredients {
         if (removed <= 0) return 0;
 
         ItemStack toInsert = new ItemStack(item, removed);
-        ItemStack remainder;
-        //? if >=1.21 {
-        ResourceLocation FD_COOKING_POT = ResourceLocation.parse("farmersdelight:cooking_pot");
-        //?} else {
-        /*ResourceLocation FD_COOKING_POT = new ResourceLocation("farmersdelight", "cooking_pot");
-        *///?}
-        if (stationType == StationType.HOT_STATION && item != Items.BOWL && stationAnchor != null
-                && FD_COOKING_POT.equals(BuiltInRegistries.BLOCK.getKey(level.getBlockState(stationAnchor).getBlock()))) {
-            boolean inserted = StationContents.insertIngredient(level, stationAnchor, toInsert);
-            remainder = inserted ? ItemStack.EMPTY : toInsert;
-        } else {
-            remainder = StationContents.insert(level, stationAnchor, toInsert);
-        }
+        ItemStack remainder = StationContents.insert(level, stationAnchor, toInsert);
         if (!remainder.isEmpty()) villager.getInventory().addItem(remainder);
         return removed - remainder.getCount();
     }

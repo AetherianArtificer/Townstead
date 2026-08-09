@@ -215,7 +215,9 @@ public final class RecipeSelector {
         List<ScoredRecipe> viable = new ArrayList<>();
         for (ScoredRecipe candidate : candidates) {
             DiscoveredRecipe recipe = candidate.recipe();
-            if (stationPos != null && !com.aetherianartificer.townstead.work.station.StationProtocols.supports(level, stationPos, recipe)) continue;
+            if (stationPos != null
+                    && !com.aetherianartificer.townstead.work.producer.ProductionStations.supportsRecipe(
+                            level, stationPos, recipe)) continue;
             if (!WorkIngredients.canFulfill(level, villager, recipe, stationPos, kitchenBounds, kitchenSnapshot)) continue;
             viable.add(candidate);
         }

@@ -408,6 +408,7 @@ public final class StationProtocols {
         CampfireStationAdapter.bootstrap();
         FurnaceStationAdapter.bootstrap();
         CraftSurfaceAdapter.bootstrap();
+        DataDrivenStationAdapter.bootstrap();
     }
 
     /** Insert-wait-collect through a plain item capability. */

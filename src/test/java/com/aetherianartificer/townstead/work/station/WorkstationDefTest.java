@@ -149,21 +149,17 @@ class WorkstationDefTest {
 
     @Test
     void shippedFarmersDelightDefsMirrorTheEngine() throws Exception {
-        record Expected(String file, StationType role, String block) {}
+        record Expected(String file, String block) {}
         for (Expected e : new Expected[]{
-                new Expected("cooking_pot", StationType.HOT_STATION, "farmersdelight:cooking_pot"),
-                new Expected("skillet", StationType.FIRE_STATION, "farmersdelight:skillet"),
-                new Expected("stove", StationType.FIRE_STATION, "farmersdelight:stove"),
-                new Expected("cutting_board", StationType.CUTTING_BOARD, "farmersdelight:cutting_board")}) {
-            WorkstationDef def = parseResource("/data/townstead/workstation/" + e.file() + ".json");
-            assertEquals(e.role(), def.role(), e.file());
+                new Expected("cooking_pot", "farmersdelight:cooking_pot"),
+                new Expected("skillet", "farmersdelight:skillet"),
+                new Expected("stove", "farmersdelight:stove"),
+                new Expected("cutting_board", "farmersdelight:cutting_board")}) {
+            WorkstationV2Def def = parseV2Resource("/data/townstead/workstation/" + e.file() + ".json");
             assertTrue(def.blocks().contains(id(e.block())), e.file());
-            assertNull(def.recipeType(),
-                    e.file() + ": FD defs must use the built-in recipe families, never an exclusive type");
         }
-        WorkstationDef pot = parseResource("/data/townstead/workstation/cooking_pot.json");
-        assertEquals(7, pot.containerSlot());
-        assertEquals(6, pot.ingredientSlots());
+        WorkstationV2Def pot = parseV2Resource("/data/townstead/workstation/cooking_pot.json");
+        assertEquals(java.util.List.of(7), pot.containerSlots());
         WorkstationDef campfire = parseResource("/data/townstead/workstation/campfire.json");
         assertEquals(StationType.FIRE_STATION, campfire.role());
         assertTrue(campfire.blockTags().contains(id("minecraft:campfires")));
@@ -180,6 +176,17 @@ class WorkstationDefTest {
         }
     }
 
+    private static WorkstationV2Def parseV2Resource(String resource) throws Exception {
+        try (var in = WorkstationDefTest.class.getResourceAsStream(resource)) {
+            assertNotNull(in, "shipped resource missing: " + resource);
+            WorkstationV2Def def = WorkstationV2Def.parse(id("townstead:test"),
+                    JsonParser.parseReader(new java.io.InputStreamReader(
+                            in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject());
+            assertNotNull(def, resource + " must parse as V2");
+            return def;
+        }
+    }
+
     @Test
     void authoredStandsParseAsOffsets() throws Exception {
         WorkstationDef def = parse("""
@@ -192,9 +199,8 @@ class WorkstationDefTest {
                 {"block": "examplemod:grill", "type": "fire_station",
                  "stands": [[1, 0]]}"""), "offsets must be three ints");
 
-        WorkstationDef skillet = parseResource("/data/townstead/workstation/skillet.json");
-        assertFalse(skillet.stands().isEmpty(),
-                "the skillet ships authored stands so villagers never climb the counter");
+        WorkstationV2Def skillet = parseV2Resource("/data/townstead/workstation/skillet.json");
+        assertTrue(skillet.containerSlots().isEmpty(), "pathfinding discovers a safe stand at runtime");
     }
 
     @Test

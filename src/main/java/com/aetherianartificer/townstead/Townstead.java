@@ -450,7 +450,9 @@ public class Townstead {
         townstead$registerMenuScreens(modBus);
         townstead$registerAnimationReloadListener(modBus);
         // Live keybind detail for mods that own their bindings. No-ops when absent.
-        com.aetherianartificer.townstead.compat.ironsspells.IronsQuickCast.register();
+        if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+            com.aetherianartificer.townstead.compat.ironsspells.IronsQuickCast.register();
+        }
         townstead$registerBlockEntityRenderers(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
         com.aetherianartificer.townstead.assign.Assignables.register(
@@ -833,7 +835,9 @@ public class Townstead {
         townstead$registerMenuScreens(modBus);
         townstead$registerAnimationReloadListener(modBus);
         // Live keybind detail for mods that own their bindings. No-ops when absent.
-        com.aetherianartificer.townstead.compat.ironsspells.IronsQuickCast.register();
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
+            com.aetherianartificer.townstead.compat.ironsspells.IronsQuickCast.register();
+        }
         townstead$registerBlockEntityRenderers(modBus);
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::addPackFinders);
@@ -1224,7 +1228,6 @@ public class Townstead {
             com.aetherianartificer.townstead.work.recipe.FluidCarriers.bootstrap();
             com.aetherianartificer.townstead.supply.TownsteadSupplyLines.bootstrap();
             com.aetherianartificer.townstead.work.station.StationCapacities.bootstrap();
-            com.aetherianartificer.townstead.compat.farmersdelight.cook.FarmersDelightStationAdapters.bootstrap();
             com.aetherianartificer.townstead.work.station.WorksiteStationSupply.bootstrap();
             com.aetherianartificer.townstead.work.station.WorkstationHazards.bootstrap();
             com.aetherianartificer.townstead.work.site.WorksiteBindings.bootstrap();
@@ -1807,6 +1810,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.selector.types.RaySelectorType());
         com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
                 new com.aetherianartificer.townstead.pheno.selector.types.RayBlockSelectorType());
+        com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
+                new com.aetherianartificer.townstead.pheno.selector.types.ConnectedBlockSelectorType());
         // Value sources (the object form of a number)
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.CountValueType());
@@ -1984,6 +1989,8 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.block.types.ScheduleTickBlockActionType());
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.UseBlockBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.root.collection.ChangeCollectionBlockActionType());
     }
 
@@ -2011,6 +2018,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ComboSkills.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.station.Workstations.Loader());
+        event.addListener(new com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes.Loader());
         event.addListener(new com.aetherianartificer.townstead.storage.StorageRoles.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry.ReloadHook());
         event.addListener(new com.aetherianartificer.townstead.root.BaselinePowers.Loader());

@@ -1,9 +1,6 @@
 {
-  "schema": "townstead:workstation/v1",
-  "mods": "farm_and_charm",
-  "type": "passive_station",
+  "schema": "townstead:workstation/v2",
+  "mods": ["farm_and_charm"],
   "blocks": ["farm_and_charm:crafting_bowl"],
-  "recipe_type": "farm_and_charm:crafting_bowl",
-  "orderable": "all",
-  "recipe_tier": 1
+  "behavior": { "type": "pheno:use_block" }
 }

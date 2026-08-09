@@ -1,10 +1,8 @@
 {
-  "schema": "townstead:workstation/v1",
-  "mods": "farmersdelight",
-  "blocks": [
-    "farmersdelight:stove"
-  ],
-  "type": "fire_station",
-  "adapter": "townstead:farmersdelight_stove",
-  "open_top": true
+  "schema": "townstead:workstation/v2",
+  "mods": ["farmersdelight"],
+  "blocks": ["farmersdelight:stove"],
+  "capacity": { "positions": 6, "per_position": 1 },
+  "behavior": { "type": "pheno:use_block", "item": "ingredient" },
+  "requires": { "type": "pheno:block_state", "property": "lit", "value": "true" }
 }
