@@ -313,7 +313,7 @@ public final class ReactionDispatcher {
         if (entity instanceof VillagerEntityMCA mca) {
             try {
                 Personality personality = mca.getVillagerBrain().getPersonality();
-                if (personality != null) return McaPersonalityCompat.id(personality).toLowerCase(Locale.ROOT);
+                if (personality != null) return McaPersonalityCompat.legacyName(personality).toLowerCase(Locale.ROOT);
             } catch (Throwable ignored) {}
         }
         return "default";

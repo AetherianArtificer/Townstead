@@ -6,7 +6,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -14,15 +15,20 @@ import java.util.Optional;
 /**
  * Binary compatibility boundary for MCA's personality enum-to-registry migration.
  *
- * <p>MCA 7.6/7.7 exposes a Java enum. Newer MCA exposes a registry-backed class while retaining
- * most enum-shaped methods. Calls to new methods must remain reflective so the same Townstead jar
- * can still load with an older MCA.</p>
+ * <p>Legacy MCA exposes a Java enum; newer MCA exposes a registry-backed class and removes the
+ * enum methods. Both generations are accessed reflectively here so one Townstead source tree can
+ * compile and run against either supported line without linking absent methods.</p>
  */
 public final class McaPersonalityCompat {
     private static final Method GET_ID = method("getId");
     private static final Method GET_STRING = method("get", String.class);
     private static final Method ALL = method("all");
     private static final Method ENCODE_DIALOGUE_ID = method("encodeDialogueId", ResourceLocation.class);
+    private static final Method IS_VALID_FOR = method("isValidFor",
+            net.conczin.mca.entity.ai.relationship.AgeState.class);
+    private static final Method LEGACY_NAME = method("name");
+    private static final Method LEGACY_VALUE_OF = method("valueOf", String.class);
+    private static final Method LEGACY_VALUES = method("values");
 
     private McaPersonalityCompat() {}
 
@@ -31,12 +37,17 @@ public final class McaPersonalityCompat {
         if (personality == null) return "mca:unassigned";
         Object value = invoke(GET_ID, personality);
         if (value instanceof ResourceLocation id) return id.toString();
-        return "mca:" + legacyName(personality).toLowerCase(Locale.ROOT);
+        Object legacy = invoke(LEGACY_NAME, personality);
+        return legacy instanceof String name
+                ? "mca:" + name.toLowerCase(Locale.ROOT)
+                : "mca:unassigned";
     }
 
     /** Enum-style uppercase name for legacy behavior tables. Custom registered types retain their id. */
     public static String legacyName(@Nullable Personality personality) {
         if (personality == null) return "UNASSIGNED";
+        Object legacy = invoke(LEGACY_NAME, personality);
+        if (legacy instanceof String name) return name;
         String id = idWithoutLegacyFallback(personality);
         if (id != null) {
             int separator = id.indexOf(':');
@@ -44,7 +55,7 @@ public final class McaPersonalityCompat {
                     ? id.substring(separator + 1).toUpperCase(Locale.ROOT)
                     : id;
         }
-        return personality.name();
+        return "UNASSIGNED";
     }
 
     /** Resolve either a legacy enum name or a namespaced registry id. */
@@ -61,11 +72,8 @@ public final class McaPersonalityCompat {
             if (!legacy.regionMatches(true, 0, "mca", 0, 3)) return Optional.empty();
             legacy = legacy.substring(separator + 1);
         }
-        try {
-            return Optional.of(Personality.valueOf(legacy.toUpperCase(Locale.ROOT)));
-        } catch (IllegalArgumentException ignored) {
-            return Optional.empty();
-        }
+        Object enumResult = invoke(LEGACY_VALUE_OF, null, legacy.toUpperCase(Locale.ROOT));
+        return enumResult instanceof Personality personality ? Optional.of(personality) : Optional.empty();
     }
 
     /** All personalities known to MCA. On old MCA this is simply the enum constants. */
@@ -74,7 +82,16 @@ public final class McaPersonalityCompat {
         if (registryResult instanceof List<?> list) {
             return list.stream().filter(Personality.class::isInstance).map(Personality.class::cast).toList();
         }
-        return Arrays.asList(Personality.values());
+        Object enumResult = invoke(LEGACY_VALUES, null);
+        if (enumResult != null && enumResult.getClass().isArray()) {
+            List<Personality> personalities = new ArrayList<>(Array.getLength(enumResult));
+            for (int i = 0; i < Array.getLength(enumResult); i++) {
+                Object value = Array.get(enumResult, i);
+                if (value instanceof Personality personality) personalities.add(personality);
+            }
+            return List.copyOf(personalities);
+        }
+        return List.of();
     }
 
     /** Value placed after MCA's {@code #E} dialogue flag, in the format that MCA version expects. */
@@ -85,7 +102,21 @@ public final class McaPersonalityCompat {
             Object encoded = invoke(ENCODE_DIALOGUE_ID, null, id);
             return encoded instanceof String text ? text : id.toString().replace(".", "%2E");
         }
-        return personality.name();
+        return legacyName(personality);
+    }
+
+    /** Whether MCA permits this personality for the supplied age; old enum MCA had no age predicate. */
+    public static boolean isValidFor(@Nullable Personality personality,
+                                     @Nullable net.conczin.mca.entity.ai.relationship.AgeState age) {
+        if (personality == null || age == null) return false;
+        if (IS_VALID_FOR == null) return true;
+        return Boolean.TRUE.equals(invoke(IS_VALID_FOR, personality, age));
+    }
+
+    /** True for MCA's own namespace, excluding personalities registered by addons. */
+    public static boolean isBuiltIn(@Nullable Personality personality) {
+        String id = id(personality);
+        return id.regionMatches(true, 0, "mca:", 0, 4);
     }
 
     private static @Nullable String idWithoutLegacyFallback(Personality personality) {
@@ -96,7 +127,7 @@ public final class McaPersonalityCompat {
     private static @Nullable Method method(String name, Class<?>... parameterTypes) {
         try {
             return Personality.class.getMethod(name, parameterTypes);
-        } catch (ReflectiveOperationException ignored) {
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             return null;
         }
     }
@@ -105,7 +136,7 @@ public final class McaPersonalityCompat {
         if (method == null) return null;
         try {
             return method.invoke(Modifier.isStatic(method.getModifiers()) ? null : receiver, args);
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             return null;
         }
     }

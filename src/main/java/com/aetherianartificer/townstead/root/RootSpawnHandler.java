@@ -254,7 +254,7 @@ public final class RootSpawnHandler {
             // MCA's own freshly-rolled personality is left untouched (vanilla behaviour).
             if (!state.life().personalityId().isEmpty()) {
                 state.life().setPersonalityId("");
-                villager.getVillagerBrain().setPersonality(randomVanillaPersonality(villager.getRandom()));
+                villager.getVillagerBrain().setPersonality(randomVanillaPersonality(villager));
             }
             return;
         }
@@ -264,13 +264,16 @@ public final class RootSpawnHandler {
     }
 
     /** A random assignable base MCA personality (excludes the {@code UNASSIGNED} sentinel). */
-    private static Personality randomVanillaPersonality(net.minecraft.util.RandomSource random) {
+    private static Personality randomVanillaPersonality(VillagerEntityMCA villager) {
         java.util.List<Personality> all = com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat.all();
         java.util.List<Personality> pick = new ArrayList<>(all.size());
         for (Personality p : all) {
-            if (p != Personality.UNASSIGNED) pick.add(p);
+            if (p != Personality.UNASSIGNED
+                    && com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat.isBuiltIn(p)
+                    && com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat
+                            .isValidFor(p, villager.getAgeState())) pick.add(p);
         }
-        return pick.isEmpty() ? Personality.UNASSIGNED : pick.get(random.nextInt(pick.size()));
+        return pick.isEmpty() ? Personality.UNASSIGNED : pick.get(villager.getRandom().nextInt(pick.size()));
     }
 
     /**

@@ -26,7 +26,7 @@ import java.util.Map;
  * {@code Traits} registry so it behaves as a first-class MCA trait. Each file may
  * declare {@code chance} (default 0 — never random-rolls), {@code inherit} (default
  * 1.0), {@code usable_on_player} (default true so MCA's editor lists it),
- * {@code hidden}, and an {@code effects} array of single-entry objects
+ * {@code hidden} (forces the MCA editor-facing flag off), and an {@code effects} array of single-entry objects
  * {@code [{ "<key>": <config> }]} keyed by a registered {@link TraitEffectTypes} key.
  *
  * <p>The same registration runs client-side from the catalog sync, so the editor
@@ -98,8 +98,8 @@ public final class TraitJsonLoader extends SimpleJsonResourceReloadListener {
         boolean any = false;
         for (DataTrait t : traits) {
             try {
-                TraitBridge.register(t.id(), t.chance(), t.inherit(), t.usableOnPlayer());
-                any = true;
+                any |= TraitBridge.register(t.id(), t.chance(), t.inherit(),
+                        t.usableOnPlayer() && !t.hidden());
             } catch (Throwable e) {
                 LOGGER.warn("Could not register trait {} with MCA: {}", t.id(), e.toString());
             }
@@ -115,6 +115,8 @@ public final class TraitJsonLoader extends SimpleJsonResourceReloadListener {
     public static void enableRegisteredTraits() {
         try {
             Config config = Config.getInstance();
+            migrateLegacyEnabledTraits(config.enabledTraits);
+            migrateLegacyEnabledTraits(Config.getServerConfig().enabledTraits);
             config.autocomplete();
 
             Traits.Trait unknown = McaTraitCompat.resolve("UNKNOWN").orElse(null);
@@ -128,5 +130,23 @@ public final class TraitJsonLoader extends SimpleJsonResourceReloadListener {
         } catch (Throwable e) {
             LOGGER.warn("MCA Config.autocomplete() unavailable: {}", e.toString());
         }
+    }
+
+    /** Preserve old Townstead Origins trait toggles when the datapack namespace moved. */
+    private static void migrateLegacyEnabledTraits(Map<String, Boolean> enabledTraits) {
+        if (enabledTraits == null || enabledTraits.isEmpty()) return;
+        Map<String, Boolean> migrated = new LinkedHashMap<>();
+        for (Map.Entry<String, Boolean> entry : enabledTraits.entrySet()) {
+            String lower = entry.getKey().toLowerCase(java.util.Locale.ROOT);
+            if (!lower.startsWith("townstead_origins:")) continue;
+            String current = "townstead_roots:" + lower.substring("townstead_origins:".length());
+            if (TraitRegistry.byId(current) != null) migrated.put(current, entry.getValue());
+        }
+        if (migrated.isEmpty()) return;
+        enabledTraits.keySet().removeIf(key -> key.toLowerCase(java.util.Locale.ROOT)
+                .startsWith("townstead_origins:")
+                && TraitRegistry.byId("townstead_roots:" + key.substring(key.indexOf(':') + 1)
+                        .toLowerCase(java.util.Locale.ROOT)) != null);
+        migrated.forEach(enabledTraits::putIfAbsent);
     }
 }

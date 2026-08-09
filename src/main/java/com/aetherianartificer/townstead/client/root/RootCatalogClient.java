@@ -46,11 +46,11 @@ public final class RootCatalogClient {
         boolean any = false;
         for (com.aetherianartificer.townstead.root.TraitCatalogEntry t : payload.traits()) {
             try {
-                com.aetherianartificer.townstead.root.trait.TraitBridge.register(
-                        t.id(), t.chance(), t.inherit(), t.usableOnPlayer());
-                any = true;
-            } catch (Throwable ignored) {
-                // Older/newer MCA without this exact signature — skip; trait just won't list.
+                any |= com.aetherianartificer.townstead.root.trait.TraitBridge.register(
+                        t.id(), t.chance(), t.inherit(), t.usableOnPlayer() && !t.hidden());
+            } catch (Throwable e) {
+                com.aetherianartificer.townstead.Townstead.LOGGER.warn(
+                        "Could not register synced trait {} with MCA: {}", t.id(), e.toString());
             }
         }
         if (any) com.aetherianartificer.townstead.root.trait.TraitJsonLoader.enableRegisteredTraits();

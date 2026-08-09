@@ -1139,6 +1139,8 @@
   "effect.townstead.aging": "衰老",
   "trait.townstead_roots:immortal": "永生",
   "traitDescription.townstead_roots:immortal": "不老不死，不受任何世俗伤害。",
+  "trait.townstead_roots.immortal": "永生",
+  "traitDescription.townstead_roots.immortal": "不老不死，不受任何世俗伤害。",
   "item.minecraft.potion.effect.townstead_agelessness": "不老药水",
   "item.minecraft.splash_potion.effect.townstead_agelessness": "喷溅型不老药水",
   "item.minecraft.lingering_potion.effect.townstead_agelessness": "滞留型不老药水",

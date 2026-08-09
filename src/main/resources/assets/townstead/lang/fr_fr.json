@@ -1119,6 +1119,8 @@
   "effect.townstead.mortality": "Mortalité",
   "trait.townstead_roots:immortal": "Immortel",
   "traitDescription.townstead_roots:immortal": "Ne vieillit pas et ne peut pas mourir de vieillesse.",
+  "trait.townstead_roots.immortal": "Immortel",
+  "traitDescription.townstead_roots.immortal": "Ne vieillit pas et ne peut pas mourir de vieillesse.",
   "item.minecraft.potion.effect.townstead_immortality": "Potion d'immortalité",
   "item.minecraft.splash_potion.effect.townstead_immortality": "Potion jetable d'immortalité",
   "item.minecraft.lingering_potion.effect.townstead_immortality": "Potion persistante d'immortalité",

@@ -3781,7 +3781,7 @@ public class Townstead {
         // Day used for apparent-age, stage, and senior-progress display. Frozen at the day
         // aging was disabled when "villagers do not age" is on, so the readouts stop climbing.
         long today = com.aetherianartificer.townstead.root.LifeStageProgression.agingDisplayDay(
-                lifeState, com.aetherianartificer.townstead.calendar.TownsteadCalendar.lifeDay(server));
+                villager, lifeState, com.aetherianartificer.townstead.calendar.TownsteadCalendar.lifeDay(server));
         // Celebrated birthday (month/day) is decoupled from birthWorldDay/age: if set,
         // it overrides the age-derived month/day in the display. The year stays the
         // age-derived one (it's not shown anyway).

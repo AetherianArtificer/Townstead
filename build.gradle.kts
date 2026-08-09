@@ -38,7 +38,7 @@ dependencies {
     // folder: signature drift between the compile jar and runtime jar compiles
     // cleanly but throws NoSuchMethodError in-game. APIs that only exist on other
     // MCA builds are handled via runtime-gated mixins (see TownsteadMixinPlugin).
-    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-1.21.1-20260729-SNAPSHOT.jar"))
+    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.33-beta.3+1.21.1.jar"))
     compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")

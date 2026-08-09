@@ -40,4 +40,18 @@ class ReactionV2Test {
                 ResourceLocation.tryParse("example:bad"),
                 obj("{'schema':'townstead:reaction/v99'}")));
     }
+
+    @Test
+    void personalityWeightsAcceptBareAndNamespacedMcaIds() {
+        Reaction reaction = Reaction.parse(
+                ResourceLocation.tryParse("example:weighted"),
+                obj("{'schema':'townstead:reaction/v2','choices':[{'animation':"
+                        + "{'type':'emotecraft','id':'wave'},'personality_weights':"
+                        + "{'playful':3.0,'mca:friendly':2.0,'default':0.5}}]}"));
+
+        ReactionBinding binding = reaction.bindings().get(0);
+        assertEquals(3.0F, binding.personalityMultiplier("mca:playful"));
+        assertEquals(2.0F, binding.personalityMultiplier("friendly"));
+        assertEquals(0.5F, binding.personalityMultiplier("mca:gloomy"));
+    }
 }

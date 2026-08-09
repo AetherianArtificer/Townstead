@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.util.RandomSource;
@@ -71,13 +72,16 @@ public final class FishermanRequestDialogue {
      * shipped for this state; otherwise returns the generic variant.
      */
     public static String pickKey(VillagerEntityMCA villager, String state, RandomSource random) {
-        Personality personality = safePersonality(villager);
+        return pickKey(safePersonality(villager), state, random);
+    }
+
+    static String pickKey(Personality personality, String state, RandomSource random) {
         Map<String, Integer> flavored = COVERED_PERSONALITIES.get(personality);
         Integer flavoredCount = flavored == null ? null : flavored.get(state);
         if (flavoredCount != null && flavoredCount > 0) {
             int n = 1 + random.nextInt(flavoredCount);
             return "dialogue.chat.fisherman_request." + state + "." +
-                    personality.name().toLowerCase(Locale.ROOT) + "/" + n;
+                    McaPersonalityCompat.legacyName(personality).toLowerCase(Locale.ROOT) + "/" + n;
         }
         Integer genericCount = GENERIC_COUNTS.get(state);
         int n = 1 + random.nextInt(Math.max(1, genericCount == null ? 1 : genericCount));

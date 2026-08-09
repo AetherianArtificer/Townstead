@@ -1119,6 +1119,8 @@
   "effect.townstead.mortality": "Смертність",
   "trait.townstead_roots:immortal": "Безсмертний",
   "traitDescription.townstead_roots:immortal": "Не старіє й не може померти від старості.",
+  "trait.townstead_roots.immortal": "Безсмертний",
+  "traitDescription.townstead_roots.immortal": "Не старіє й не може померти від старості.",
   "item.minecraft.potion.effect.townstead_immortality": "Зілля безсмертя",
   "item.minecraft.splash_potion.effect.townstead_immortality": "Вибухове зілля безсмертя",
   "item.minecraft.lingering_potion.effect.townstead_immortality": "Осідаюче зілля безсмертя",

@@ -1119,6 +1119,8 @@
   "effect.townstead.mortality": "Смертность",
   "trait.townstead_roots:immortal": "Бессмертный",
   "traitDescription.townstead_roots:immortal": "Не стареет и не может умереть от старости.",
+  "trait.townstead_roots.immortal": "Бессмертный",
+  "traitDescription.townstead_roots.immortal": "Не стареет и не может умереть от старости.",
   "item.minecraft.potion.effect.townstead_immortality": "Зелье бессмертия",
   "item.minecraft.splash_potion.effect.townstead_immortality": "Взрывное зелье бессмертия",
   "item.minecraft.lingering_potion.effect.townstead_immortality": "Оседающее зелье бессмертия",
