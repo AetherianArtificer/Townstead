@@ -418,13 +418,23 @@ public class StationWorkTask extends ProducerWorkTask {
     @Override
     protected void storeOutputs(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         DiscoveredRecipe recipe = recipe();
-        if (recipe == null) return;
+        Set<ResourceLocation> outputs;
+        if (recipe != null) {
+            outputs = Set.of(recipe.output());
+        } else {
+            WorkstationDef def = stationAnchor == null ? null : StationProtocols.defAt(level, stationAnchor);
+            if (def == null) return;
+            outputs = recipesFor(level, def).stream()
+                    .map(DiscoveredRecipe::output)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        }
+        if (outputs.isEmpty()) return;
         Set<Long> bounds = worksiteBounds(level, villager);
         SimpleContainer inv = villager.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
-            if (!recipe.output().equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) continue;
+            if (!outputs.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()))) continue;
             int stored = StationSupplies.storeOutput(level, villager, stack, stationAnchor, bounds);
             if (stored > 0) stack.shrink(stored);
         }

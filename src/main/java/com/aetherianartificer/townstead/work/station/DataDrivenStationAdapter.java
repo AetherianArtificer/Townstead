@@ -34,6 +34,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,6 +43,8 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     public static final String NAME = "townstead:data_driven";
     private static final GameProfile PROFILE = new GameProfile(
             UUID.fromString("266f5434-42bb-47d9-b014-2b42e12ca454"), "[TownsteadWorker]");
+    private static int outputCacheGeneration = Integer.MIN_VALUE;
+    private static final Map<ResourceLocation, Set<ResourceLocation>> OUTPUTS_BY_BLOCK = new java.util.HashMap<>();
 
     private DataDrivenStationAdapter() {}
 
@@ -89,10 +92,14 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                                               WorkstationDef ignored,
                                               @Nullable DiscoveredRecipe recipe) {
         WorkstationV2Def def = v2(level, anchor);
-        if (def == null || !def.isOperational(level, anchor)) return StationAdapters.StationPhase.FOREIGN;
+        if (def == null) return StationAdapters.StationPhase.FOREIGN;
+        // Requirements gate starting/continuing work, never unloading a finished product. A pot
+        // does not stop containing dinner merely because its heat source went out overnight.
         if (recipe != null && hasOutput(level, anchor, recipe.output())) {
             return StationAdapters.StationPhase.READY;
         }
+        if (hasAvailableOutput(level, anchor)) return StationAdapters.StationPhase.READY;
+        if (!def.isOperational(level, anchor)) return StationAdapters.StationPhase.FOREIGN;
         IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
         if (handler != null) {
             for (int slot = 0; slot < handler.getSlots(); slot++) {
@@ -153,6 +160,17 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                            WorkstationDef ignored, DiscoveredRecipe recipe) {
         boolean collected = extractOutput(level, villager, anchor, recipe.output());
         List<ItemStack> drops = StationDropOutputs.collect(level, anchor, Set.of(recipe.output()));
+        for (ItemStack drop : drops) StationProtocols.giveBack(villager, drop);
+        return collected || !drops.isEmpty();
+    }
+
+    @Override
+    public boolean collectAvailable(ServerLevel level, VillagerEntityMCA villager,
+                                    BlockPos anchor, WorkstationDef ignored) {
+        Set<ResourceLocation> outputs = outputIds(level, anchor);
+        if (outputs.isEmpty()) return false;
+        boolean collected = extractAvailableOutputs(level, villager, anchor, outputs);
+        List<ItemStack> drops = StationDropOutputs.collect(level, anchor, outputs);
         for (ItemStack drop : drops) StationProtocols.giveBack(villager, drop);
         return collected || !drops.isEmpty();
     }
@@ -427,6 +445,100 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
             }
         }
         return StationDropOutputs.has(level, anchor, Set.of(output));
+    }
+
+    /**
+     * Finished output is public machine state, not producer-session state. The block-owned recipe
+     * types tell us which items can be results, while the block's sided extraction contract tells
+     * us whether one is actually sitting in its output channel. No mod slot number is involved.
+     */
+    private static boolean hasAvailableOutput(ServerLevel level, BlockPos anchor) {
+        Set<ResourceLocation> outputs = outputIds(level, anchor);
+        if (outputs.isEmpty()) return false;
+        IItemHandler down = BlockInventories.itemHandler(level, anchor, Direction.DOWN);
+        if (hasExtractableKnownOutput(down, outputs, false)) return true;
+        for (Direction side : Direction.values()) {
+            if (side == Direction.DOWN) continue;
+            if (hasExtractableKnownOutput(
+                    BlockInventories.itemHandler(level, anchor, side), outputs, true)) return true;
+        }
+        return StationDropOutputs.has(level, anchor, outputs);
+    }
+
+    private static boolean extractAvailableOutputs(ServerLevel level, VillagerEntityMCA villager,
+                                                   BlockPos anchor, Set<ResourceLocation> outputs) {
+        IItemHandler down = BlockInventories.itemHandler(level, anchor, Direction.DOWN);
+        boolean collected = extractKnownOutputs(down, villager, outputs, false);
+        if (collected) return true;
+        Set<IItemHandler> visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        if (down != null) visited.add(down);
+        for (Direction side : Direction.values()) {
+            IItemHandler handler = BlockInventories.itemHandler(level, anchor, side);
+            if (handler == null || !visited.add(handler)) continue;
+            collected |= extractKnownOutputs(handler, villager, outputs, true);
+        }
+        return collected;
+    }
+
+    private static boolean hasExtractableKnownOutput(@Nullable IItemHandler handler,
+                                                     Set<ResourceLocation> outputs,
+                                                     boolean requireOutputOnly) {
+        if (handler == null) return false;
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (!isKnownOutput(stack, outputs)) continue;
+            if (handler.extractItem(slot, 1, true).isEmpty()) continue;
+            if (!requireOutputOnly || rejectsInsertion(handler, slot, stack)) return true;
+        }
+        return false;
+    }
+
+    private static boolean extractKnownOutputs(@Nullable IItemHandler handler,
+                                               VillagerEntityMCA villager,
+                                               Set<ResourceLocation> outputs,
+                                               boolean requireOutputOnly) {
+        if (handler == null) return false;
+        boolean collected = false;
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (!isKnownOutput(stack, outputs)) continue;
+            if (handler.extractItem(slot, 1, true).isEmpty()) continue;
+            if (requireOutputOnly && !rejectsInsertion(handler, slot, stack)) continue;
+            ItemStack extracted = handler.extractItem(slot, stack.getCount(), false);
+            if (extracted.isEmpty()) continue;
+            StationProtocols.giveBack(villager, extracted);
+            collected = true;
+        }
+        return collected;
+    }
+
+    private static boolean rejectsInsertion(IItemHandler handler, int slot, ItemStack stack) {
+        ItemStack probe = stack.copy();
+        probe.setCount(1);
+        return !handler.insertItem(slot, probe, true).isEmpty();
+    }
+
+    private static boolean isKnownOutput(ItemStack stack, Set<ResourceLocation> outputs) {
+        return !stack.isEmpty() && outputs.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+    }
+
+    private static synchronized Set<ResourceLocation> outputIds(ServerLevel level, BlockPos anchor) {
+        int generation = WorkRecipeRegistry.generation();
+        if (outputCacheGeneration != generation) {
+            OUTPUTS_BY_BLOCK.clear();
+            outputCacheGeneration = generation;
+        }
+        ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
+        return OUTPUTS_BY_BLOCK.computeIfAbsent(block, ignored -> {
+            Set<ResourceLocation> types = WorkstationRecipeTypes.forBlock(block);
+            if (types.isEmpty()) return Set.of();
+            LinkedHashSet<ResourceLocation> outputs = new LinkedHashSet<>();
+            for (DiscoveredRecipe candidate : WorkRecipeRegistry.getRecipes(level)) {
+                ResourceLocation type = WorkRecipeRegistry.recipeTypeId(candidate);
+                if (type != null && types.contains(type)) outputs.add(candidate.output());
+            }
+            return Set.copyOf(outputs);
+        });
     }
 
     private static boolean extractOutput(ServerLevel level, VillagerEntityMCA villager,

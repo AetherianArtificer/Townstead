@@ -35,7 +35,6 @@ import net.minecraft.world.item.ItemStack;
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> implements WorkTaskAdapter {
 
@@ -263,8 +262,6 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         }
         return false;
     }
-
-    protected double stationRotationProbability() { return 0.5d; }
 
     protected int stateTimeoutTicks(ProducerState state) {
         return switch (state) {
@@ -758,22 +755,18 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         pendingOutput = ItemStack.EMPTY;
         awardProductionXp(level, villager, gameTime);
 
-        if (activeRecipe != null) {
-            recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
-        }
-
         debugChat(level, villager, "COLLECT:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
         activeRecipe = null;
         stagedInputs.clear();
         onSessionRelease(level, villager, stationAnchor, gameTime);
 
-        if (ThreadLocalRandom.current().nextDouble() < stationRotationProbability()) {
-            releaseStationClaim(level, villager, stationAnchor);
-            transitionToNavigationState(level, villager, gameTime);
-        } else {
-            claimStation(level, villager, gameTime);
-            transition(ProducerState.SELECT_RECIPE, gameTime);
-        }
+        // A successful recipe is evidence that this station/worker pairing is healthy, not a
+        // reason to blacklist the result for ten seconds. Stay at the already-claimed station
+        // and let the authoritative selector immediately choose the next order. If nothing is
+        // workable it will release and rotate normally. Besides making production continuous,
+        // this is the cheap path: no worksite scan, stand search, or extra navigation cycle.
+        claimStation(level, villager, gameTime);
+        transition(ProducerState.SELECT_RECIPE, gameTime);
     }
 
     // ── Navigation helpers ──
