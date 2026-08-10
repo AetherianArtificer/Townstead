@@ -45,6 +45,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
             UUID.fromString("266f5434-42bb-47d9-b014-2b42e12ca454"), "[TownsteadWorker]");
     private static int outputCacheGeneration = Integer.MIN_VALUE;
     private static final Map<ResourceLocation, Set<ResourceLocation>> OUTPUTS_BY_BLOCK = new java.util.HashMap<>();
+    private static final Map<ResourceLocation, Set<ResourceLocation>> CONTAINERS_BY_BLOCK = new java.util.HashMap<>();
 
     private DataDrivenStationAdapter() {}
 
@@ -68,7 +69,16 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     public int capacity(ServerLevel level, BlockPos anchor, WorkstationDef ignored) {
         WorkstationV2Def def = v2(level, anchor);
         if (def == null || !def.isOperational(level, anchor)) return 0;
-        if (connectedStructure(def)) return connected(level, anchor, def).size();
+        if (connectedStructure(def)) {
+            List<BlockPos> structure = connected(level, anchor, def);
+            if (def.capacityValue() == null) return structure.size();
+            var context = stationSelectorContext(level, anchor, def)
+                    .withBlockRole("structure", structure);
+            return Math.max(0, (int) Math.floor(def.capacityValue().get(context)));
+        }
+        if (def.capacity() != null && def.capacityValue() == null) {
+            return def.capacityPositions();
+        }
         IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
         if (handler == null) return 1;
         int free = 0;
@@ -88,12 +98,8 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     public int batchCapacity(ServerLevel level, BlockPos anchor, WorkstationDef ignored,
                              DiscoveredRecipe recipe) {
         WorkstationV2Def def = v2(level, anchor);
-        if (def == null || def.capacity() == null || !def.capacity().isJsonObject()) return 1;
-        JsonObject capacity = def.capacity().getAsJsonObject();
-        if (!capacity.has("per_position")
-                || !capacity.get("per_position").isJsonPrimitive()
-                || !"stack".equals(capacity.get("per_position").getAsString())) return 1;
-        int positions = capacity.has("positions") ? Math.max(1, capacity.get("positions").getAsInt()) : 1;
+        if (def == null || !def.stackPerPosition()) return 1;
+        int positions = def.capacityPositions();
         int operationsPerStack = Integer.MAX_VALUE;
         for (RecipeIngredient ingredient : recipe.inputs()) {
             int ingredientStack = 64;
@@ -134,9 +140,15 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         if (!def.isOperational(level, anchor)) return StationAdapters.StationPhase.FOREIGN;
         IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
         if (handler != null) {
+            Set<ResourceLocation> knownContainers = containerIds(level, anchor);
             for (int slot = 0; slot < handler.getSlots(); slot++) {
                 if (def.catalystSlots().contains(slot)) continue;
-                if (!handler.getStackInSlot(slot).isEmpty()) return StationAdapters.StationPhase.WORKING;
+                ItemStack stack = handler.getStackInSlot(slot);
+                if (stack.isEmpty()) continue;
+                ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                if (def.containerSlots().contains(slot) && knownContainers.contains(item)) continue;
+                if (isFuelStock(level, anchor, slot, stack)) continue;
+                return StationAdapters.StationPhase.WORKING;
             }
         }
         return StationAdapters.StationPhase.IDLE;
@@ -153,23 +165,36 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                                WorkstationDef ignored, DiscoveredRecipe recipe, int copies) {
         WorkstationV2Def def = v2(level, anchor);
         if (def == null || !def.isOperational(level, anchor)) return false;
+        InsertionTransaction transaction = new InsertionTransaction();
+
+        // Stage reversible inventory state before any interaction which may be irreversible.
+        if (!insertContainer(level, villager, anchor, def, recipe, transaction)) {
+            rollback(villager, transaction);
+            return false;
+        }
 
         // A declared ingredient interaction is authoritative (skillets, mincers and silos).
         if (def.behaviorUses("ingredient")) {
             if (!runPreparationActions(level, villager, anchor, def, recipe,
-                    Math.max(1, copies))) return false;
+                    Math.max(1, copies))) {
+                rollback(villager, transaction);
+                return false;
+            }
         } else {
             // A cutting board has no separate ingredient declaration: its normal player contract
             // accepts the ingredient, then the exceptional tool action processes it.
             boolean boardLike = def.behaviorUses("tool");
             if (boardLike) {
-                if (!interactIngredient(level, villager, anchor, recipe, def, false)) return false;
-            } else if (!insertIngredients(level, villager, anchor, def, recipe)) {
+                if (!interactIngredient(level, villager, anchor, recipe, def, false)) {
+                    rollback(villager, transaction);
+                    return false;
+                }
+            } else if (!insertIngredients(level, villager, anchor, def, recipe, transaction)) {
+                rollback(villager, transaction);
                 return false;
             }
         }
 
-        if (!insertContainer(level, villager, anchor, def, recipe)) return false;
         opportunisticallyFuel(level, villager, anchor);
         return true;
     }
@@ -257,7 +282,8 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
 
     private static boolean insertIngredients(ServerLevel level, VillagerEntityMCA villager,
                                              BlockPos anchor, WorkstationV2Def def,
-                                             DiscoveredRecipe recipe) {
+                                             DiscoveredRecipe recipe,
+                                             InsertionTransaction transaction) {
         // Recipe entries are positions, not merely an amount ledger. Four identical entries in a
         // cooking-pot recipe mean four occupied ingredient slots; merging them into a stack of
         // four makes the real block reject the recipe. Preserve entry boundaries and only stack
@@ -285,8 +311,8 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                 return false;
             }
             ItemStack remainder = targetSlot == null
-                    ? insertEntryIntoEmptyPublicSlot(level, anchor, def, entry)
-                    : insertEntryIntoDeclaredSlot(level, anchor, targetSlot, entry);
+                    ? insertEntryIntoEmptyPublicSlot(level, anchor, def, entry, transaction)
+                    : insertEntryIntoDeclaredSlot(level, anchor, targetSlot, entry, transaction);
             if (!remainder.isEmpty()) {
                 StationProtocols.giveBack(villager, remainder);
                 return false;
@@ -301,14 +327,15 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     }
 
     private static ItemStack insertEntryIntoEmptyPublicSlot(ServerLevel level, BlockPos anchor,
-                                                            WorkstationV2Def def, ItemStack stack) {
+                                                            WorkstationV2Def def, ItemStack stack,
+                                                            InsertionTransaction transaction) {
         Direction[] priority = {Direction.UP, Direction.NORTH, Direction.SOUTH,
                 Direction.WEST, Direction.EAST, Direction.DOWN};
         Set<IItemHandler> visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         for (Direction side : priority) {
             IItemHandler handler = BlockInventories.itemHandler(level, anchor, side);
             if (handler == null || !visited.add(handler)) continue;
-            ItemStack remainder = insertEntryIntoEmptySlot(handler, def, stack);
+            ItemStack remainder = insertEntryIntoEmptySlot(handler, def, stack, transaction);
             if (remainder.isEmpty()) return ItemStack.EMPTY;
         }
         // Unsided is a fallback for blocks that expose no automation face. Vanilla Container's
@@ -316,7 +343,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         // correctly narrow insertion to the block's declared ingredient positions.
         IItemHandler all = BlockInventories.itemHandler(level, anchor, null);
         if (all != null && visited.add(all)) {
-            ItemStack remainder = insertEntryIntoEmptySlot(all, def, stack);
+            ItemStack remainder = insertEntryIntoEmptySlot(all, def, stack, transaction);
             if (remainder.isEmpty()) return ItemStack.EMPTY;
         }
         return stack;
@@ -324,6 +351,12 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
 
     static ItemStack insertEntryIntoEmptySlot(IItemHandler handler, WorkstationV2Def def,
                                               ItemStack entry) {
+        return insertEntryIntoEmptySlot(handler, def, entry, new InsertionTransaction());
+    }
+
+    private static ItemStack insertEntryIntoEmptySlot(IItemHandler handler, WorkstationV2Def def,
+                                                      ItemStack entry,
+                                                      InsertionTransaction transaction) {
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             if (def.reservedForInsertion(slot) || !handler.getStackInSlot(slot).isEmpty()) continue;
             ItemStack simulated = handler.insertItem(slot, entry, true);
@@ -334,14 +367,15 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     }
 
     private static ItemStack insertEntryIntoDeclaredSlot(ServerLevel level, BlockPos anchor,
-                                                         int slot, ItemStack entry) {
+                                                         int slot, ItemStack entry,
+                                                         InsertionTransaction transaction) {
         LinkedHashSet<IItemHandler> handlers = handlers(level, anchor);
         for (IItemHandler handler : handlers) {
             if (slot >= handler.getSlots()) continue;
             ItemStack current = handler.getStackInSlot(slot);
             if (!current.isEmpty()) continue;
             if (!handler.insertItem(slot, entry, true).isEmpty()) continue;
-            return handler.insertItem(slot, entry, false);
+            return transaction.insert(handler, slot, entry);
         }
         return entry;
     }
@@ -371,7 +405,8 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
 
     private static boolean insertContainer(ServerLevel level, VillagerEntityMCA villager,
                                            BlockPos anchor, WorkstationV2Def def,
-                                           DiscoveredRecipe recipe) {
+                                           DiscoveredRecipe recipe,
+                                           InsertionTransaction transaction) {
         if (recipe.containerItemId() == null || recipe.containerCount() <= 0) return true;
         if (def.containerSlots().isEmpty()) return false;
         List<IItemHandler> handlers = new ArrayList<>();
@@ -395,7 +430,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                 for (int slot : def.containerSlots()) {
                     if (slot >= handler.getSlots()
                             || !handler.insertItem(slot, remainder, true).isEmpty()) continue;
-                    remainder = handler.insertItem(slot, remainder, false);
+                    remainder = transaction.insert(handler, slot, remainder);
                     if (remainder.isEmpty()) break;
                 }
                 if (remainder.isEmpty()) break;
@@ -675,6 +710,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         int generation = WorkRecipeRegistry.generation();
         if (outputCacheGeneration != generation) {
             OUTPUTS_BY_BLOCK.clear();
+            CONTAINERS_BY_BLOCK.clear();
             outputCacheGeneration = generation;
         }
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
@@ -688,6 +724,37 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
             }
             return Set.copyOf(outputs);
         });
+    }
+
+    private static synchronized Set<ResourceLocation> containerIds(ServerLevel level,
+                                                                   BlockPos anchor) {
+        // outputIds owns generation invalidation for both recipe-derived caches.
+        outputIds(level, anchor);
+        ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
+        return CONTAINERS_BY_BLOCK.computeIfAbsent(block, ignored -> {
+            Set<ResourceLocation> types = WorkstationRecipeTypes.forBlock(block);
+            if (types.isEmpty()) return Set.of();
+            LinkedHashSet<ResourceLocation> containers = new LinkedHashSet<>();
+            for (DiscoveredRecipe candidate : WorkRecipeRegistry.getRecipes(level)) {
+                ResourceLocation type = WorkRecipeRegistry.recipeTypeId(candidate);
+                if (type != null && types.contains(type) && candidate.containerItemId() != null) {
+                    containers.add(candidate.containerItemId());
+                }
+            }
+            return Set.copyOf(containers);
+        });
+    }
+
+    /** Fuel is persistent machine stock, including a non-fuel remainder occupying its fuel slot. */
+    private static boolean isFuelStock(ServerLevel level, BlockPos anchor, int slot,
+                                       ItemStack ignored) {
+        for (ItemStack probe : List.of(new ItemStack(net.minecraft.world.item.Items.COAL),
+                new ItemStack(net.minecraft.world.item.Items.OAK_PLANKS))) {
+            for (int fuelSlot : fuelSlots(level, anchor, probe)) {
+                if (fuelSlot == slot) return true;
+            }
+        }
+        return false;
     }
 
     private static boolean extractOutput(ServerLevel level, VillagerEntityMCA villager,
@@ -906,21 +973,64 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         return action.has("item") ? action.get("item").getAsString() : "empty";
     }
 
+    private static void rollback(VillagerEntityMCA villager, InsertionTransaction transaction) {
+        for (ItemStack returned : transaction.rollback()) {
+            StationProtocols.giveBack(villager, returned);
+        }
+    }
+
+    /** Journal of inventory writes made while staging one recipe operation. */
+    static final class InsertionTransaction {
+        private record Commit(IItemHandler handler, int slot, ItemStack inserted) {}
+
+        private final List<Commit> commits = new ArrayList<>();
+
+        ItemStack insert(IItemHandler handler, int slot, ItemStack offered) {
+            ItemStack remainder = handler.insertItem(slot, offered, false);
+            int insertedCount = offered.getCount() - remainder.getCount();
+            if (insertedCount > 0) {
+                commits.add(new Commit(handler, slot,
+                        StationInventoryOps.copyWithCount(offered, insertedCount)));
+            }
+            return remainder;
+        }
+
+        List<ItemStack> rollback() {
+            List<ItemStack> returned = new ArrayList<>();
+            for (int i = commits.size() - 1; i >= 0; i--) {
+                Commit commit = commits.get(i);
+                ItemStack present = commit.handler().getStackInSlot(commit.slot());
+                if (present.isEmpty()
+                        || !StationInventoryOps.sameItemAndComponents(present, commit.inserted())) {
+                    continue;
+                }
+                int count = Math.min(present.getCount(), commit.inserted().getCount());
+                ItemStack extracted = commit.handler().extractItem(commit.slot(), count, false);
+                if (!extracted.isEmpty()) returned.add(extracted);
+            }
+            commits.clear();
+            return returned;
+        }
+    }
+
     private static boolean stackBatch(WorkstationV2Def def) {
-        if (def.capacity() == null) return false;
-        return def.capacity().toString().contains("\"per_position\":\"stack\"");
+        return def.stackPerPosition();
     }
 
     private static boolean connectedStructure(WorkstationV2Def def) {
-        return def.structure() != null && def.structure().isJsonObject()
-                && "pheno:connected".equals(def.structure().getAsJsonObject().has("type")
-                        ? def.structure().getAsJsonObject().get("type").getAsString() : "");
+        return def.structureSelector() != null;
     }
 
     private static List<BlockPos> connected(ServerLevel level, BlockPos origin, WorkstationV2Def def) {
-        return com.aetherianartificer.townstead.pheno.selector.types.ConnectedBlockSelectorType.connected(
-                level, origin,
-                pos -> def.blocks().contains(BuiltInRegistries.BLOCK.getKey(
-                        level.getBlockState(pos).getBlock())), 256);
+        if (def.structureSelector() == null) return List.of();
+        return def.structureSelector().select(stationSelectorContext(level, origin, def));
+    }
+
+    private static com.aetherianartificer.townstead.pheno.selector.SelectorContext stationSelectorContext(
+            ServerLevel level, BlockPos origin, WorkstationV2Def def) {
+        return com.aetherianartificer.townstead.pheno.selector.SelectorContext
+                .ofBlock(level, origin, null)
+                .withDefaultBlockMembership(pos -> def.blocks().contains(
+                        BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock())));
     }
 }

@@ -69,7 +69,25 @@ public class StationWorkTask extends ProducerWorkTask {
     protected boolean isEligibleVillager(ServerLevel level, VillagerEntityMCA villager) {
         ResourceLocation[] types = WorkTaskTypes.stationDrivenTypes();
         if (types.length == 0) return false;
-        return WorkTaskDeclarations.permitsTask(villager, types);
+        List<WorkTaskDef> declared = WorkTaskDeclarations.declared(villager, types);
+        if (declared == null || declared.isEmpty()) return false;
+        // A profession may ship optional-mod task declarations unconditionally. They become
+        // executable only when at least one loaded workstation definition satisfies them.
+        for (WorkTaskDef task : declared) {
+            if (task.anyWorkstation() && !Workstations.all().isEmpty()) return true;
+            for (ResourceLocation requested : task.workstations().ids()) {
+                if (Workstations.byBlockId(requested) != null) return true;
+            }
+            for (WorkstationDef station : Workstations.all()) {
+                for (ResourceLocation block : station.blocks()) {
+                    if (task.allowsBlock(block)) return true;
+                }
+                for (ResourceLocation tag : station.blockTags()) {
+                    if (task.workstations().tags().contains(tag)) return true;
+                }
+            }
+        }
+        return false;
     }
 
     // ── Worksite ──

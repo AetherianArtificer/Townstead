@@ -2,6 +2,10 @@ package com.aetherianartificer.townstead.work.station;
 
 import com.aetherianartificer.townstead.pheno.condition.block.BlockCondition;
 import com.aetherianartificer.townstead.pheno.condition.block.BlockConditions;
+import com.aetherianartificer.townstead.pheno.selector.BlockSelector;
+import com.aetherianartificer.townstead.pheno.selector.BlockSelectors;
+import com.aetherianartificer.townstead.pheno.value.Value;
+import com.aetherianartificer.townstead.pheno.value.Values;
 import com.aetherianartificer.townstead.data.ModGate;
 import com.aetherianartificer.townstead.work.recipe.StationType;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
@@ -38,7 +42,11 @@ public record WorkstationV2Def(
         @Nullable BlockCondition requires,
         @Nullable JsonElement behavior,
         @Nullable JsonElement structure,
-        @Nullable JsonElement capacity) {
+        @Nullable BlockSelector structureSelector,
+        @Nullable JsonElement capacity,
+        @Nullable Value capacityValue,
+        int capacityPositions,
+        boolean stackPerPosition) {
 
     public static final String SCHEMA = "townstead:workstation/v2";
 
@@ -57,7 +65,7 @@ public record WorkstationV2Def(
 
     /** A narrowly scoped correction for a public recipe whose owning machine demonstrably differs. */
     public record RecipeCorrection(ResourceLocation recipe, ResourceLocation output,
-                                   @Nullable JsonElement mods) {}
+                                   @Nullable JsonElement mods, @Nullable JsonElement config) {}
 
     static @Nullable WorkstationV2Def parse(ResourceLocation id, JsonObject json) {
         if (id == null || json == null || !json.has("blocks") || !json.get("blocks").isJsonArray()) {
@@ -120,7 +128,10 @@ public record WorkstationV2Def(
                 ResourceLocation output = correction.has("output")
                         ? ResourceLocation.tryParse(correction.get("output").getAsString()) : null;
                 if (recipe == null || output == null) return null;
-                corrections.add(new RecipeCorrection(recipe, output, copy(correction.get("mods"))));
+                JsonElement config = copy(correction.get("config"));
+                if (config != null && !com.aetherianartificer.townstead.data.ConfigGate.valid(config)) return null;
+                corrections.add(new RecipeCorrection(recipe, output,
+                        copy(correction.get("mods")), config));
             }
         }
 
@@ -130,13 +141,43 @@ public record WorkstationV2Def(
         JsonElement behavior = copy(json.get("behavior"));
         if (behavior != null && !validBehavior(behavior)) return null;
         JsonElement structure = copy(json.get("structure"));
+        BlockSelector structureSelector = structure == null ? null : BlockSelectors.parse(structure);
+        if (structure != null && structureSelector == null) return null;
         JsonElement capacity = copy(json.get("capacity"));
+        Value capacityValue = null;
+        int capacityPositions = 1;
+        boolean stackPerPosition = false;
+        if (capacity != null) {
+            if (capacity.isJsonObject() && capacity.getAsJsonObject().has("positions")) {
+                JsonObject lane = capacity.getAsJsonObject();
+                if (lane.has("type") || !lane.get("positions").isJsonPrimitive()
+                        || !lane.get("positions").getAsJsonPrimitive().isNumber()) return null;
+                double positions = lane.get("positions").getAsDouble();
+                capacityPositions = (int) positions;
+                if (capacityPositions <= 0 || !lane.has("per_position")
+                        || positions != capacityPositions
+                        || !lane.get("per_position").isJsonPrimitive()) return null;
+                JsonElement perPosition = lane.get("per_position");
+                if (perPosition.getAsJsonPrimitive().isString()) {
+                    if (!"stack".equals(perPosition.getAsString())) return null;
+                    stackPerPosition = true;
+                } else if (!perPosition.getAsJsonPrimitive().isNumber()) return null;
+                else {
+                    double amount = perPosition.getAsDouble();
+                    if (amount <= 0 || amount != (int) amount) return null;
+                }
+            } else {
+                capacityValue = Values.parse(capacity);
+                if (capacityValue == null) return null;
+            }
+        }
 
         return new WorkstationV2Def(id, Set.copyOf(blocks), List.copyOf(containers),
                 List.copyOf(ingredients), List.copyOf(catalysts), List.copyOf(outputs),
                 List.copyOf(returns), List.copyOf(previews), List.copyOf(layout),
                 List.copyOf(corrections),
-                requiresJson, requires, behavior, structure, capacity);
+                requiresJson, requires, behavior, structure, structureSelector,
+                capacity, capacityValue, capacityPositions, stackPerPosition);
     }
 
     private static boolean parseSlots(JsonObject slots, String key, List<Integer> out) {
@@ -179,6 +220,8 @@ public record WorkstationV2Def(
                     continue;
                 }
             }
+            if (correction.config() != null && !Boolean.TRUE.equals(
+                    com.aetherianartificer.townstead.data.ConfigGate.evaluate(correction.config()))) continue;
             return correction.output();
         }
         return fallback;

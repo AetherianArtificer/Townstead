@@ -23,6 +23,11 @@
   "recipe_corrections": [
     {
       "mods": ["farmersdelight"],
+      "config": {
+        "file": "Butchery.toml",
+        "path": ["Farmers Delight Compatibility", "Farmers Delight"],
+        "equals": true
+      },
       "recipe": "butchery:beefmincerecipe",
       "output": "farmersdelight:minced_beef"
     }

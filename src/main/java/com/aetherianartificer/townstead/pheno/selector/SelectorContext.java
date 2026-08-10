@@ -8,6 +8,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
+
 /**
  * The frame a selector resolves against. {@code self} is the current focus (an entity, or null in
  * a pure block context), {@code other} the contextual counterpart, {@code origin} the fixed
@@ -22,14 +26,25 @@ public final class SelectorContext {
     private final LivingEntity origin;
     private final Level level;
     private final Vec3 pos;
+    private final Map<String, List<BlockPos>> blockRoles;
+    private final @Nullable Predicate<BlockPos> defaultBlockMembership;
 
     public SelectorContext(@Nullable LivingEntity self, @Nullable LivingEntity other,
                            @Nullable LivingEntity origin, Level level, Vec3 pos) {
+        this(self, other, origin, level, pos, Map.of(), null);
+    }
+
+    private SelectorContext(@Nullable LivingEntity self, @Nullable LivingEntity other,
+                            @Nullable LivingEntity origin, Level level, Vec3 pos,
+                            Map<String, List<BlockPos>> blockRoles,
+                            @Nullable Predicate<BlockPos> defaultBlockMembership) {
         this.self = self;
         this.other = other;
         this.origin = origin;
         this.level = level;
         this.pos = pos;
+        this.blockRoles = blockRoles;
+        this.defaultBlockMembership = defaultBlockMembership;
     }
 
     public static SelectorContext of(ActionContext ctx) {
@@ -56,4 +71,25 @@ public final class SelectorContext {
     public Vec3 pos() { return pos; }
 
     public BlockPos focusBlock() { return BlockPos.containing(pos); }
+
+    /** Names a previously resolved block selection for expressions such as count(of=structure). */
+    public SelectorContext withBlockRole(String role, List<BlockPos> positions) {
+        java.util.LinkedHashMap<String, List<BlockPos>> roles = new java.util.LinkedHashMap<>(blockRoles);
+        roles.put(role, List.copyOf(positions));
+        return new SelectorContext(self, other, origin, level, pos, Map.copyOf(roles),
+                defaultBlockMembership);
+    }
+
+    public List<BlockPos> blockRole(String role) {
+        return blockRoles.getOrDefault(role, List.of());
+    }
+
+    /** Supplies domain membership when a generic selector omits an explicit condition. */
+    public SelectorContext withDefaultBlockMembership(Predicate<BlockPos> membership) {
+        return new SelectorContext(self, other, origin, level, pos, blockRoles, membership);
+    }
+
+    public @Nullable Predicate<BlockPos> defaultBlockMembership() {
+        return defaultBlockMembership;
+    }
 }

@@ -7,6 +7,7 @@ import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.aetherianartificer.townstead.work.recipe.StationType;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeAll;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +16,14 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WorkstationV2DefTest {
+
+    @BeforeAll
+    static void registerTypedWorkstationExpressions() {
+        com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
+                new com.aetherianartificer.townstead.pheno.selector.types.ConnectedBlockSelectorType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.CountValueType());
+    }
 
     @Test
     void insertionPlanPreservesRepeatedRecipePositions() {
@@ -110,6 +119,25 @@ class WorkstationV2DefTest {
                 assertFalse(json.getAsJsonArray("values").isEmpty(), path);
             }
         }
+    }
+
+    @Test
+    void rejectsUnparseableStructureAndCapacityInsteadOfKeepingRawJson() {
+        assertNull(parse("{\"blocks\":[\"example:machine\"],\"structure\":{\"type\":\"pheno:not_real\"}}"));
+        assertNull(parse("{\"blocks\":[\"example:machine\"],\"capacity\":{\"type\":\"pheno:not_real\"}}"));
+        assertNull(parse("{\"blocks\":[\"example:machine\"],\"capacity\":{\"positions\":0,\"per_position\":1}}"));
+    }
+
+    @Test
+    void parsesNamedStructureCapacityAsRealPhenoObjects() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:machine"],
+                 "structure":{"type":"pheno:connected"},
+                 "capacity":{"type":"pheno:count","of":"structure"}}
+                """);
+        assertNotNull(def);
+        assertNotNull(def.structureSelector());
+        assertNotNull(def.capacityValue());
     }
 
     @Test

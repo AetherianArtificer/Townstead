@@ -32,7 +32,9 @@ public final class ConnectedBlockSelectorType implements BlockSelectorType {
             BlockPos origin = context.focusBlock();
             var initial = context.level().getBlockState(origin).getBlock();
             Predicate<BlockPos> match = condition == null
-                    ? pos -> context.level().getBlockState(pos).is(initial)
+                    ? (context.defaultBlockMembership() != null
+                            ? context.defaultBlockMembership()
+                            : pos -> context.level().getBlockState(pos).is(initial))
                     : pos -> condition.test(context.level(), pos);
             return connected(context.level(), origin, match, limit);
         };

@@ -228,11 +228,26 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         }
         DamageSource source = level.damageSources().mobAttack(villager);
         float damage = strokeDamageFor(target);
-        boolean killed = target.hurt(source, damage);
+        float healthBefore = target.getHealth();
+        boolean hurt = target.hurt(source, damage);
         nextAttackTick = gameTime + ATTACK_COOLDOWN_TICKS;
-        if (killed && !target.isAlive()) {
+        if (hurt && !target.isAlive()) {
             onTargetKilled(level, villager, target, gameTime);
             target = null;
+            return;
+        }
+
+        // Butchery can cancel the lethal death event, leave the animal alive, and materialize
+        // its carcass as an item. Observe that public result instead of attacking forever or
+        // importing Butchery's event implementation. Only consume a same-tick expected carcass.
+        if (target.isAlive() && damage >= healthBefore) {
+            ItemStack externalCarcass = takeFreshExternalCarcass(level, target);
+            if (!externalCarcass.isEmpty()) {
+                LivingEntity killed = target;
+                killed.discard();
+                onTargetKilled(level, villager, killed, gameTime, externalCarcass);
+                target = null;
+            }
         }
     }
 
@@ -365,13 +380,18 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
      */
     private void onTargetKilled(ServerLevel level, VillagerEntityMCA villager,
                                 LivingEntity killed, long gameTime) {
+        onTargetKilled(level, villager, killed, gameTime, makeCarcassItemFor(killed));
+    }
+
+    private void onTargetKilled(ServerLevel level, VillagerEntityMCA villager,
+                                LivingEntity killed, long gameTime, ItemStack carcassItem) {
         BlockPos hook = selectFreeHook(level, villager, killed.blockPosition());
         if (hook == null) {
             // No available hook anywhere; drop the carcass item at the kill
             // site so the player can hang it manually. Better than losing
             // it silently.
             BlockPos dropAt = killed.blockPosition();
-            ItemStack drop = makeCarcassItemFor(killed);
+            ItemStack drop = carcassItem;
             if (!drop.isEmpty()) {
                 ItemEntity ie = new ItemEntity(level,
                         dropAt.getX() + 0.5, dropAt.getY() + 0.25, dropAt.getZ() + 0.5, drop);
@@ -383,7 +403,6 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        ItemStack carcassItem = makeCarcassItemFor(killed);
         if (carcassItem.isEmpty()) {
             markThrottle(villager, gameTime);
             return;
@@ -407,6 +426,21 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         phase = Phase.CARRY;
         lastPathTick = gameTime;
         setWalkTarget(villager, hookStandPos != null ? hookStandPos : targetHook.below());
+    }
+
+    private static ItemStack takeFreshExternalCarcass(ServerLevel level, LivingEntity target) {
+        ResourceLocation expected = SlaughterPolicy.carcassIdFor(target.getType());
+        if (expected == null) return ItemStack.EMPTY;
+        AABB area = target.getBoundingBox().inflate(2.0);
+        for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, area,
+                candidate -> candidate.tickCount <= 1
+                        && expected.equals(BuiltInRegistries.ITEM.getKey(
+                                candidate.getItem().getItem())))) {
+            ItemStack carcass = item.getItem().split(1);
+            if (item.getItem().isEmpty()) item.discard();
+            return carcass;
+        }
+        return ItemStack.EMPTY;
     }
 
     /** Nearest free hook: either in the building that held the target
