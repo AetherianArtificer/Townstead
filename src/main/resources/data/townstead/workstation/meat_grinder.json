@@ -1,15 +1,30 @@
 {
-  "schema": "townstead:workstation/v1",
-  "mods": "butchery",
-  "type": "passive_station",
-  "work_task": "townstead_work:grind",
+  "schema": "townstead:workstation/v2",
+  "mods": ["butchery"],
   "blocks": ["butchery:meat_grinder"],
-  "container_slot": 0,
-  "ingredient_slots": 3,
-  "produces": [
-    { "inputs": ["#townstead:grindable_mutton"], "output": "butchery:raw_lamb_mince", "time": 200 },
-    { "inputs": ["#butchery:scrappable"], "output": "butchery:meat_scraps", "time": 200 },
-    { "inputs": ["#townstead:grindable_meat", "butchery:intestines", "butchery:sausage_attachment"], "output": "butchery:raw_sausage", "time": 200 },
-    { "inputs": ["#townstead:blood_bottle", "butchery:intestines", "butchery:sausage_attachment"], "output": "butchery:raw_blood_sausage", "time": 200 }
+
+  "inventory": {
+    "slots": {
+      "ingredients": [0, 1, 3],
+      "catalysts": [2],
+      "outputs": [4],
+      "returns": [5]
+    }
+  },
+
+  "recipe_layout": [
+    "ingredient",
+    "ingredient",
+    "catalyst",
+    "ingredient",
+    "return"
+  ],
+
+  "recipe_corrections": [
+    {
+      "mods": ["farmersdelight"],
+      "recipe": "butchery:beefmincerecipe",
+      "output": "farmersdelight:minced_beef"
+    }
   ]
 }

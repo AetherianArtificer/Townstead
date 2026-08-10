@@ -238,7 +238,7 @@ public class StationWorkTask extends ProducerWorkTask {
         if (stationAnchor == null) return List.of();
         WorkstationDef def = StationProtocols.defAt(level, stationAnchor);
         if (def == null || !servesDef(villager, def, blockIdAt(level, stationAnchor))) return List.of();
-        WorkTaskDef declared = WorkTaskDeclarations.first(villager, def.workTask());
+        WorkTaskDef declared = declarationFor(villager, def, blockIdAt(level, stationAnchor));
         List<DiscoveredRecipe> out = new ArrayList<>();
         for (DiscoveredRecipe recipe : recipesFor(level, def)) {
             if (declared != null && !declared.allowsRecipe(
@@ -255,7 +255,7 @@ public class StationWorkTask extends ProducerWorkTask {
         if (stationAnchor == null) return null;
         WorkstationDef def = StationProtocols.defAt(level, stationAnchor);
         if (def == null || !servesDef(villager, def, blockIdAt(level, stationAnchor))) return null;
-        WorkTaskDef declared = WorkTaskDeclarations.first(villager, def.workTask());
+        WorkTaskDef declared = declarationFor(villager, def, blockIdAt(level, stationAnchor));
 
         Set<Long> bounds = worksiteBounds(level, villager);
         Map<ResourceLocation, Integer> stock = StationCatalogs.stockIn(level, bounds);
@@ -278,7 +278,7 @@ public class StationWorkTask extends ProducerWorkTask {
      */
     private boolean inputsAvailable(ServerLevel level, VillagerEntityMCA villager,
                                     DiscoveredRecipe recipe, Map<ResourceLocation, Integer> stock) {
-        for (RecipeIngredient input : RecipeIngredient.merge(recipe.inputs())) {
+        for (RecipeIngredient input : requiredInputs(level, recipe)) {
             int needed = Math.max(1, input.count());
             if (SupplyLines.isLineId(input.primaryId())) {
                 if (!lineAvailable(level, villager, input.primaryId(), stock)) return false;
@@ -344,7 +344,7 @@ public class StationWorkTask extends ProducerWorkTask {
             }
         }
 
-        for (RecipeIngredient input : RecipeIngredient.merge(recipe.inputs())) {
+        for (RecipeIngredient input : requiredInputs(level, recipe)) {
             int needed = Math.max(1, input.count());
             Predicate<ItemStack> matcher;
             String shortName;
@@ -377,6 +377,20 @@ public class StationWorkTask extends ProducerWorkTask {
             }
         }
         return GatherResult.ok();
+    }
+
+    private List<RecipeIngredient> requiredInputs(ServerLevel level, DiscoveredRecipe recipe) {
+        if (stationAnchor == null) return RecipeIngredient.merge(recipe.inputs());
+        ResourceLocation block = blockIdAt(level, stationAnchor);
+        var def = Workstations.v2ByBlockId(block);
+        if (def == null || def.catalystSlots().isEmpty()) return RecipeIngredient.merge(recipe.inputs());
+        List<RecipeIngredient> required = new ArrayList<>();
+        for (int i = 0; i < recipe.inputs().size(); i++) {
+            if (com.aetherianartificer.townstead.work.station.DataDrivenStationAdapter
+                    .hasStagedCatalyst(level, stationAnchor, def, recipe, i)) continue;
+            required.add(recipe.inputs().get(i));
+        }
+        return RecipeIngredient.merge(required);
     }
 
     private boolean ensureOnHand(ServerLevel level, VillagerEntityMCA villager,
@@ -532,11 +546,26 @@ public class StationWorkTask extends ProducerWorkTask {
      */
     private boolean servesDef(VillagerEntityMCA villager, WorkstationDef def,
                               @Nullable ResourceLocation blockId) {
+        return declarationFor(villager, def, blockId) != null;
+    }
+
+    private @Nullable WorkTaskDef declarationFor(VillagerEntityMCA villager, WorkstationDef def,
+                                                 @Nullable ResourceLocation blockId) {
+        // V2 deliberately carries no work-task field. The profession declaration owns who uses
+        // a station, and its workstation filter is the join. This keeps adding a new profession
+        // from requiring edits to the station profile.
+        if (Workstations.v2ByBlockId(blockId) != null) {
+            for (WorkTaskDef declared : WorkTaskDeclarations.all(villager)) {
+                if (!WorkTaskTypes.isStationDriven(declared.type())) continue;
+                if (declared.anyWorkstation() || declared.allowsBlock(blockId)) return declared;
+            }
+            return null;
+        }
         ResourceLocation task = def.workTask();
-        if (task == null || !WorkTaskTypes.isStationDriven(task)) return false;
+        if (task == null || !WorkTaskTypes.isStationDriven(task)) return null;
         WorkTaskDef declared = WorkTaskDeclarations.first(villager, task);
-        if (declared == null) return false;
-        return declared.anyWorkstation() || declared.allowsBlock(blockId);
+        return declared != null && (declared.anyWorkstation() || declared.allowsBlock(blockId))
+                ? declared : null;
     }
 
     private @Nullable ResourceLocation blockIdAt(ServerLevel level, BlockPos pos) {
@@ -546,6 +575,23 @@ public class StationWorkTask extends ProducerWorkTask {
     private List<DiscoveredRecipe> recipesFor(ServerLevel level, WorkstationDef def) {
         List<DiscoveredRecipe> recipes = new ArrayList<>(ProtocolRecipes.discoverFor(def));
         recipes.addAll(ProtocolRecipes.discoverByType(level, def));
+        // V2 recipe families are attached to the exact block, not copied into the workstation
+        // document or its temporary V1 compatibility view.
+        java.util.LinkedHashSet<ResourceLocation> attached = new java.util.LinkedHashSet<>();
+        for (ResourceLocation block : def.blocks()) {
+            if (Workstations.v2ByBlockId(block) != null) {
+                attached.addAll(com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes
+                        .forBlock(block));
+            }
+        }
+        if (!attached.isEmpty()) {
+            for (DiscoveredRecipe recipe : com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry
+                    .getRecipes(level)) {
+                ResourceLocation type = com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry
+                        .recipeTypeId(recipe);
+                if (type != null && attached.contains(type)) recipes.add(recipe);
+            }
+        }
         return recipes;
     }
 

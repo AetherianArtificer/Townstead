@@ -371,8 +371,13 @@ public final class StationProtocols {
         // Built-in recipe families predate workstation declarations. A def with no declared
         // recipe source intentionally adopts that built-in family for its role.
         if (def.recipeType() == null && def.produces().isEmpty()) return true;
+        // Adapter-backed definitions own the exact public recipe family they declare, including
+        // vanilla families such as minecraft:smoking.  foreignRecipeTypeId() intentionally hides
+        // minecraft:* from the unadapted role-based engine; using it here turned a smoker's
+        // explicit minecraft:smoking declaration into null and made the furnace adapter reject
+        // every smoking recipe before it could even inspect the input slot.
         return StationRecipeOwnership.ownsDeclaredType(def, recipe.stationType(),
-                WorkRecipeRegistry.foreignRecipeTypeId(recipe));
+                WorkRecipeRegistry.recipeTypeId(recipe));
     }
 
     @Nullable

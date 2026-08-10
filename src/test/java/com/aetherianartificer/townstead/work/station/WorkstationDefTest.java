@@ -69,6 +69,18 @@ class WorkstationDefTest {
     }
 
     @Test
+    void furnaceStationOwnsAnExplicitVanillaRecipeType() {
+        WorkstationDef smoker = parse("""
+                {"block": "minecraft:smoker", "type": "furnace_station",
+                 "recipe_type": "minecraft:smoking"}""");
+        assertNotNull(smoker);
+        assertTrue(StationRecipeOwnership.ownsDeclaredType(
+                smoker, StationType.FURNACE_STATION, id("minecraft:smoking")));
+        assertFalse(StationRecipeOwnership.ownsDeclaredType(
+                smoker, StationType.FURNACE_STATION, id("minecraft:smelting")));
+    }
+
+    @Test
     void orderableSpeaksAtTheStationAltitude() {
         WorkstationDef def = parse("""
                 {"block": "examplemod:oven", "type": "passive_station",

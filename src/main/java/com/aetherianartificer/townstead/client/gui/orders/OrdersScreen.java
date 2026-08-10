@@ -52,6 +52,8 @@ public class OrdersScreen extends Screen {
     private static final int STRIP_H = 22;
     private static final int SEARCH_H = 16;
     private static final int INSET = 3;
+    private static final int MIN_CATALOGUE_W = 96;
+    private static final int COMPACT_STRIP_H = 38;
 
     /** The order row's columns. Both of a row's lines are placed against these. */
     private static final int COL_MOVE = 11;
@@ -69,8 +71,11 @@ public class OrdersScreen extends Screen {
     // A row's two lines and their bands. Line two used to start inside line one's slot and run
     // past the row's own bottom edge, which is what the controls overlapping the divider was.
     private static final int ROW_H = 42;
+    private static final int COMPACT_ROW_H = 64;
     private static final int LINE1_Y = 3;
     private static final int LINE2_Y = 22;
+    private static final int COMPACT_LINE2_Y = 22;
+    private static final int COMPACT_LINE3_Y = 42;
     private static final int BAND_Y = 12;
     private static final int REASON_H = 11;
     private static final int COMPOSER_H = 64;
@@ -178,9 +183,16 @@ public class OrdersScreen extends Screen {
     private int contentTop() { return SPACING + TITLE_H + FRAME; }
     private int contentBottom() { return this.height - SPACING - FRAME; }
     private int catalogueLeft() { return SPACING + FRAME; }
-    private int ordersLeft() { return catalogueLeft() + CATALOGUE_W + FRAME + SPACING + FRAME; }
+    /** Gives the order pane first claim on narrow screens; the palette remains searchable. */
+    private int catalogueWidth() {
+        int widthForMinimumOrderPane = this.width - 54 - 260;
+        return Math.max(MIN_CATALOGUE_W, Math.min(CATALOGUE_W, widthForMinimumOrderPane));
+    }
+    private int ordersLeft() { return catalogueLeft() + catalogueWidth() + FRAME + SPACING + FRAME; }
     private int ordersWidth() { return this.width - ordersLeft() - SPACING - FRAME; }
-    private int listTop() { return contentTop() + STRIP_H; }
+    private boolean compactRows() { return ordersWidth() < 320; }
+    private int stripHeight() { return compactRows() ? COMPACT_STRIP_H : STRIP_H; }
+    private int listTop() { return contentTop() + stripHeight(); }
     private int composerTop() { return contentBottom() - composerHeight(); }
     private int orderListBottom() { return draft == null ? contentBottom() : composerTop(); }
     // The Field Post's palette column, measure for measure: search at the top, the shared tab
@@ -193,7 +205,7 @@ public class OrdersScreen extends Screen {
         String previous = search == null ? "" : search.getValue();
         int toggle = 14;
         search = new EditBox(this.font, catalogueLeft() + INSET + 1, searchTop(),
-                CATALOGUE_W - INSET * 2 - toggle - 4, SEARCH_H - 4, Component.literal("Search"));
+                catalogueWidth() - INSET * 2 - toggle - 4, SEARCH_H - 4, Component.literal("Search"));
         search.setMaxLength(64);
         search.setBordered(true);
         search.setHint(Component.literal("Search..."));
@@ -206,7 +218,7 @@ public class OrdersScreen extends Screen {
                     updateMakeableLabel();
                     refreshCatalogue();
                 })
-                .bounds(catalogueLeft() + CATALOGUE_W - INSET - toggle, searchTop(),
+                .bounds(catalogueLeft() + catalogueWidth() - INSET - toggle, searchTop(),
                         toggle, SEARCH_H - 4)
                 .tooltip(Tooltip.create(Component.translatable("townstead.orders.filter.makeable")))
                 .build();
@@ -219,7 +231,7 @@ public class OrdersScreen extends Screen {
                 .bounds(this.width - SPACING - 60, contentTop() - FRAME - 23, 60, 20)
                 .build());
 
-        catalogue = new PaletteList(this.minecraft, catalogueLeft(), CATALOGUE_W,
+        catalogue = new PaletteList(this.minecraft, catalogueLeft(), catalogueWidth(),
                 contentBottom() - catalogueListTop(), catalogueListTop(), this::pickFromCatalogue);
         catalogue.setOnHeaderClick(key -> {
             catalogue.toggleCategory(key);
@@ -340,8 +352,8 @@ public class OrdersScreen extends Screen {
 
         int top = contentTop();
         int h = contentBottom() - top;
-        FrameRenderer.drawWoodenFrame(g, catalogueLeft(), top, CATALOGUE_W, h, FRAME);
-        FrameRenderer.drawChatPanel(g, catalogueLeft(), top, CATALOGUE_W, h);
+        FrameRenderer.drawWoodenFrame(g, catalogueLeft(), top, catalogueWidth(), h, FRAME);
+        FrameRenderer.drawChatPanel(g, catalogueLeft(), top, catalogueWidth(), h);
         FrameRenderer.drawWoodenFrame(g, ordersLeft(), top, ordersWidth(), h, FRAME);
         FrameRenderer.drawChatPanel(g, ordersLeft(), top, ordersWidth(), h);
         // The palette's rows each carry their own plate, which reads as a darker column; the
@@ -393,7 +405,7 @@ public class OrdersScreen extends Screen {
         String empty = emptyCatalogueReason();
         if (empty != null) {
             int lineY = catalogueListTop() + 4;
-            for (var line : this.font.split(Component.literal(empty), CATALOGUE_W - INSET * 2 - 4)) {
+            for (var line : this.font.split(Component.literal(empty), catalogueWidth() - INSET * 2 - 4)) {
                 g.drawString(this.font, line, x + INSET + 2, lineY, Palette.LABEL_DIM, false);
                 lineY += this.font.lineHeight + 1;
             }
@@ -426,7 +438,7 @@ public class OrdersScreen extends Screen {
     /** The two shelves the catalogue is split across, sitting where the Field Post puts its own. */
     private Rect[] catalogueTabs() {
         return Controls.tabLayout(catalogueLeft(), contentTop() + SEARCH_H + 4,
-                CATALOGUE_W, TAB_LABELS.length);
+                catalogueWidth(), TAB_LABELS.length);
     }
 
     // ── Orders ──
@@ -439,12 +451,15 @@ public class OrdersScreen extends Screen {
     private void drawOrdersStrip(GuiGraphics g, int mouseX, int mouseY) {
         int x = ordersLeft();
         int y = contentTop();
-        int textY = y + (STRIP_H - this.font.lineHeight) / 2;
+        boolean compact = compactRows();
+        int textY = compact ? y + 5 : y + (STRIP_H - this.font.lineHeight) / 2;
 
         Rect[] listSeg = listSegments();
         String label = "WHEN DONE";
-        int labelRoom = listSeg[0].x() - this.font.width(label) - 10;
-        String name = trim(data.worksiteName(), labelRoom - (x + INSET + 2) - 8);
+        int nameRoom = compact
+                ? x + ordersWidth() - INSET - Controls.SCROLLBAR_W - (x + INSET + 2)
+                : listSeg[0].x() - this.font.width(label) - 10 - (x + INSET + 2) - 8;
+        String name = trim(data.worksiteName(), nameRoom);
         g.drawString(this.font, name, x + INSET + 2, textY, Palette.CARD, false);
         // What kind of place the record is bound to lives in a tooltip; spelling "ROOM" out
         // beside the name made the strip read like a form.
@@ -452,17 +467,21 @@ public class OrdersScreen extends Screen {
                 mouseX, mouseY,
                 "post".equals(data.worksiteDetail()) ? "Bound to a post" : "Bound to this room");
 
-        // The label sits on the buttons' own text row, so the pair reads as one control.
-        g.drawString(this.font, label, listSeg[0].x() - this.font.width(label) - 10,
-                listSeg[0].y() + (Controls.SEG_H - this.font.lineHeight) / 2 + 1,
-                Palette.LABEL_DIM, false);
+        // At compact widths the place name gets its own line. The policy drops beneath it; its
+        // caption is shown only when the remaining room can hold it instead of crushing the name.
+        int labelX = listSeg[0].x() - this.font.width(label) - 10;
+        if (!compact || labelX >= x + INSET + 2) {
+            g.drawString(this.font, label, labelX,
+                    listSeg[0].y() + (Controls.SEG_H - this.font.lineHeight) / 2 + 1,
+                    Palette.LABEL_DIM, false);
+        }
         Controls.drawSegments(g, this.font, listSeg, LIST_LABELS, data.listOnly() ? 1 : 0,
                 Controls.segmentAt(listSeg, mouseX, mouseY));
         tip(new Rect(listSeg[0].x(), listSeg[0].y(),
                         listSeg[listSeg.length - 1].right() - listSeg[0].x(), Controls.SEG_H),
                 mouseX, mouseY, "Stand down: work only this list, and rest once it is done");
 
-        g.fill(x + INSET, y + STRIP_H - 1, x + ordersWidth() - INSET, y + STRIP_H,
+        g.fill(x + INSET, y + stripHeight() - 1, x + ordersWidth() - INSET, y + stripHeight(),
                 FrameRenderer.FRAME_HIGHLIGHT);
     }
 
@@ -473,7 +492,9 @@ public class OrdersScreen extends Screen {
         // short of the frame by the scrollbar's lane.
         return Controls.segmentLayout(this.font,
                 ordersLeft() + ordersWidth() - INSET - Controls.SCROLLBAR_W - total,
-                contentTop() + (STRIP_H - Controls.SEG_H) / 2, LIST_LABELS);
+                compactRows() ? contentTop() + 20
+                        : contentTop() + (STRIP_H - Controls.SEG_H) / 2,
+                LIST_LABELS);
     }
 
     private void drawOrders(GuiGraphics g, int mouseX, int mouseY) {
@@ -507,7 +528,8 @@ public class OrdersScreen extends Screen {
     private int drawRow(GuiGraphics g, Row row, int index, int x, int rowY, int w,
                         int mouseX, int mouseY) {
         boolean showReason = !row.reason().isEmpty();
-        int height = ROW_H + (showReason ? REASON_H : 0);
+        boolean compact = compactRows();
+        int height = rowBaseHeight() + (showReason ? REASON_H : 0);
         boolean satisfied = row.status() == OrdersSnapshotS2CPayload.Status.SATISFIED;
         Rect body = rowBody(x, rowY, w, height);
         boolean hover = body.contains(mouseX, mouseY);
@@ -537,26 +559,35 @@ public class OrdersScreen extends Screen {
         g.drawString(this.font, trim(nameOf(row.activity() || row.tag(), row.label(), row.output()), c.mainW), c.main, body.y() + 8,
                 nameInk, false);
 
-        if (row.want() > 0 && c.showMeter && !row.activity()) {
+        if (!compact && row.want() > 0 && c.showMeter && !row.activity()) {
             Controls.drawBar(g, c.meter, body.y() + 9, COL_METER,
                     row.have() / (float) row.want(), row.have() >= row.want());
         }
         String count = row.activity() ? ""
                 : row.want() > 0 ? row.have() + "/" + row.want() : String.valueOf(row.have());
-        g.drawString(this.font, count, c.count + COL_COUNT - this.font.width(count), body.y() + 8,
-                satisfied ? Palette.LABEL_DIM : Palette.LABEL_LIGHT, false);
+        if (compact) {
+            Rect details = detailsLink(c, body, row);
+            String shownCount = trim(count, Math.max(0, details.x() - COL_GAP - c.main));
+            g.drawString(this.font, shownCount, c.main, body.y() + COMPACT_LINE2_Y + 3,
+                    satisfied ? Palette.LABEL_DIM : Palette.LABEL_LIGHT, false);
+        } else {
+            g.drawString(this.font, count, c.count + COL_COUNT - this.font.width(count), body.y() + 8,
+                    satisfied ? Palette.LABEL_DIM : Palette.LABEL_LIGHT, false);
+        }
 
         // The chip rides line one and the Details link line two, both right-aligned against the
         // ruled margin with the same gap the marks keep on its far side — one straight edge.
         String status = statusLabel(row.status());
         Controls.drawChip(g, this.font, chipStyle(row.status()), status,
-                c.state + COL_STATE - Controls.chipWidth(this.font, status), body.y() + 5);
+                c.state + COL_STATE - Controls.chipWidth(this.font, status),
+                body.y() + (compact ? COMPACT_LINE2_Y : 5));
 
         // Line two: mode, stepper and details, all inside the flexible column.
         Rect mode = modeButton(c, body, row);
         if (row.activity()) {
             // Nothing to cycle: a job is on the list or it is not, and held or not.
-            g.drawString(this.font, trim(row.modeLabel(), mode.w() + 40), mode.x(), mode.y() + 3,
+            g.drawString(this.font, trim(row.modeLabel(), compact ? mode.w() : mode.w() + 40),
+                    mode.x(), mode.y() + 3,
                     Palette.LABEL_DIM, false);
         } else {
             Controls.drawButton(g, this.font, mode, MODE_LABELS[row.mode().ordinal()],
@@ -592,7 +623,8 @@ public class OrdersScreen extends Screen {
 
         if (showReason) {
             g.drawString(this.font, trim(row.reason(), body.right() - 8 - c.main), c.main,
-                    body.y() + LINE2_Y + Controls.SEG_H + 3, Palette.LABEL_WARM, false);
+                    body.y() + (compact ? COMPACT_LINE3_Y : LINE2_Y)
+                            + Controls.SEG_H + 3, Palette.LABEL_WARM, false);
         }
         // Striking previews itself: the name is ruled through before anything is committed.
         if (strike.contains(mouseX, mouseY)) {
@@ -606,6 +638,8 @@ public class OrdersScreen extends Screen {
     private Rect rowBody(int x, int rowY, int w, int height) {
         return new Rect(x + INSET, rowY, w - INSET * 2 - Controls.SCROLLBAR_W, height - 3);
     }
+
+    private int rowBaseHeight() { return compactRows() ? COMPACT_ROW_H : ROW_H; }
 
     private static String modeTip(Order.Mode mode) {
         return switch (mode) {
@@ -629,6 +663,18 @@ public class OrdersScreen extends Screen {
      * a progress bar nobody needed kept its full width. The meter is the first thing to go.
      */
     private Columns columns(Rect body) {
+        if (compactRows()) {
+            // The three row actions turn into a vertical rail. That returns two button-widths to
+            // the actual order, then the order uses three calm lines instead of making every
+            // control fight for the old two-line grid.
+            int marks = body.right() - Controls.MARK;
+            int contentRight = marks - MARGIN_GAP - 7;
+            int item = body.x() + INSET + COL_MOVE + COL_GAP;
+            int main = item + 16 + COL_GAP;
+            int state = contentRight - COL_STATE;
+            return new Columns(item, main, Math.max(24, contentRight - main),
+                    main, main, state, marks, false);
+        }
         // Right-aligned so the last mark shares its right edge with the strip's picker above.
         int marks = body.right() - COL_MARKS;
         // The chip/Details stack ends the same distance left of the rule as the marks sit right
@@ -647,6 +693,12 @@ public class OrdersScreen extends Screen {
     }
 
     private Rect[] caretRects(Rect body) {
+        if (compactRows()) {
+            return new Rect[]{
+                    new Rect(body.x() + INSET, body.y() + 2, COL_MOVE, 9),
+                    new Rect(body.x() + INSET, body.y() + 11, COL_MOVE, 9)
+            };
+        }
         // Anchored to the two-line block rather than the body, so a row that grew a reason line
         // does not pull its carets down away from the name they move.
         int mid = body.y() + (LINE1_Y + LINE2_Y + Controls.SEG_H) / 2;
@@ -672,6 +724,12 @@ public class OrdersScreen extends Screen {
      * right edge, which means the number changing width never shifts the link.
      */
     private Rect modeButton(Columns c, Rect body, Row row) {
+        if (compactRows()) {
+            Rect[] stepper = compactRowStepper(c, body, row);
+            int right = row.mode().hasTarget() ? stepper[0].x() - 5 : compactContentRight(c);
+            return new Rect(c.main, body.y() + COMPACT_LINE3_Y,
+                    Math.max(24, Math.min(COL_MODE, right - c.main)), Controls.SEG_H);
+        }
         int stepper = row.mode().hasTarget()
                 ? Controls.stepperWidth(this.font, String.valueOf(row.target())) + 5 : 0;
         int details = this.font.width("Details") + 12 + 5;
@@ -681,27 +739,50 @@ public class OrdersScreen extends Screen {
     }
 
     private Rect[] rowStepper(Columns c, Rect body, Row row) {
+        if (compactRows()) return compactRowStepper(c, body, row);
         return Controls.stepperLayout(this.font, modeButton(c, body, row).right() + 5,
                 body.y() + LINE2_Y, String.valueOf(row.target()));
+    }
+
+    private Rect[] compactRowStepper(Columns c, Rect body, Row row) {
+        int width = Controls.stepperWidth(this.font, String.valueOf(row.target()));
+        return Controls.stepperLayout(this.font, compactContentRight(c) - width,
+                body.y() + COMPACT_LINE3_Y, String.valueOf(row.target()));
+    }
+
+    private static int compactContentRight(Columns c) {
+        return c.marks - MARGIN_GAP - 7;
     }
 
     /** Right-aligned under the chip, so every row's Details sits on the same vertical line. */
     private Rect detailsLink(Columns c, Rect body, Row row) {
         int w = this.font.width("Details") + 12;
+        if (compactRows()) {
+            return new Rect(c.state - 5 - w, body.y() + COMPACT_LINE2_Y,
+                    w, Controls.SEG_H);
+        }
         return new Rect(c.state + COL_STATE - w, body.y() + LINE2_Y, w, Controls.SEG_H);
     }
 
     private Rect holdMark(Columns c, Rect body) {
-        return new Rect(c.marks, body.y() + BAND_Y, Controls.MARK, Controls.MARK);
+        return new Rect(c.marks, body.y() + (compactRows() ? 5 : BAND_Y),
+                Controls.MARK, Controls.MARK);
     }
 
     private Rect copyMark(Columns c, Rect body) {
         Rect hold = holdMark(c, body);
+        if (compactRows()) {
+            return new Rect(hold.x(), hold.bottom() + MARK_GAP, Controls.MARK, Controls.MARK);
+        }
         return new Rect(hold.right() + MARK_GAP, hold.y(), Controls.MARK, Controls.MARK);
     }
 
     private Rect strikeMark(Columns c, Rect body) {
         Rect hold = holdMark(c, body);
+        if (compactRows()) {
+            return new Rect(hold.x(), hold.y() + (Controls.MARK + MARK_GAP) * 2,
+                    Controls.MARK, Controls.MARK);
+        }
         return new Rect(hold.x() + (Controls.MARK + MARK_GAP) * 2, hold.y(),
                 Controls.MARK, Controls.MARK);
     }
@@ -719,8 +800,9 @@ public class OrdersScreen extends Screen {
 
         Controls.drawSlot(g, x + INSET + 3, y + 4);
         drawItem(g, d.icon, x + INSET + 4, y + 5);
-        g.drawString(this.font, (d.activity ? "NEW JOB — " : "NEW ORDER — ")
-                        + d.name().toUpperCase(Locale.ROOT),
+        String draftTitle = (d.activity ? "NEW JOB — " : "NEW ORDER — ")
+                + d.name().toUpperCase(Locale.ROOT);
+        g.drawString(this.font, trim(draftTitle, w - INSET * 2 - 32),
                 x + INSET + 26, y + 9, Palette.BAR_FILL, false);
 
         if (d.activity) {
@@ -763,7 +845,15 @@ public class OrdersScreen extends Screen {
     // be laid on one line from both ends until it collided in the middle. The title row gets the
     // slot's full 18 before the mode row starts, which is what stops them shingling.
     private int composerModeY() { return composerTop() + 26; }
-    private int composerActionY() { return composerTop() + 44; }
+    private int composerActionY() { return composerTop() + 44 + (composerModesWrapped() ? 16 : 0); }
+
+    /** Two rows of modes when four fully labelled segments do not fit the order pane. */
+    private boolean composerModesWrapped() {
+        Draft d = draft;
+        if (d == null || d.activity) return false;
+        Rect[] probe = Controls.segmentLayout(this.font, 0, 0, MODE_LABELS);
+        return probe[probe.length - 1].right() > ordersWidth() - (INSET + 3) * 2;
+    }
 
     /**
      * Whether the stepper-and-scope run from the left and the Discard-and-Add pair from the
@@ -782,12 +872,25 @@ public class OrdersScreen extends Screen {
     }
 
     /** A cramped composer grows a fourth row and the buttons take it, instead of colliding. */
-    private int composerHeight() { return composerCramped() ? COMPOSER_H + 18 : COMPOSER_H; }
+    private int composerHeight() {
+        return COMPOSER_H + (composerModesWrapped() ? 16 : 0) + (composerCramped() ? 18 : 0);
+    }
 
     /** Where Discard and Add to list sit: the action row, or their own row beneath it. */
-    private int composerButtonsY() { return composerCramped() ? composerTop() + 62 : composerActionY(); }
+    private int composerButtonsY() { return composerCramped() ? composerActionY() + 18 : composerActionY(); }
 
     private Rect[] composerModes() {
+        if (composerModesWrapped()) {
+            int x = ordersLeft() + INSET + 3;
+            int available = ordersWidth() - (INSET + 3) * 2;
+            int each = available / 2;
+            return new Rect[]{
+                    new Rect(x, composerModeY(), each, Controls.SEG_H),
+                    new Rect(x + each, composerModeY(), available - each, Controls.SEG_H),
+                    new Rect(x, composerModeY() + 16, each, Controls.SEG_H),
+                    new Rect(x + each, composerModeY() + 16, available - each, Controls.SEG_H)
+            };
+        }
         return Controls.segmentLayout(this.font, ordersLeft() + INSET + 3, composerModeY(), MODE_LABELS);
     }
 
@@ -855,11 +958,11 @@ public class OrdersScreen extends Screen {
             return;
         }
         if (row.tag()) {
-            drawSetColumn(g, row, win.x() + DETAIL_PAD, detailsFieldsTop(), win.bottom() - DETAIL_PAD);
+            drawSetColumn(g, row, win.x() + DETAIL_PAD, detailsFieldsTop(), detailsFactsBottom());
         } else {
-            drawFactsColumn(g, row, win.x() + DETAIL_PAD, detailsFieldsTop(), win.bottom() - DETAIL_PAD);
+            drawFactsColumn(g, row, win.x() + DETAIL_PAD, detailsFieldsTop(), detailsFactsBottom());
         }
-        drawSettingsColumn(g, row, mouseX, mouseY, detailsFieldsTop());
+        drawSettingsColumn(g, row, mouseX, mouseY, detailsSettingsTop());
     }
 
     /** One member row per this many pixels: a 16px sprite plus its breathing room. */
@@ -871,7 +974,7 @@ public class OrdersScreen extends Screen {
      * drawn as itself — sprite and name — and the list scrolls by wheel or by its bar.
      */
     private void drawSetColumn(GuiGraphics g, Row row, int x, int top, int bottom) {
-        Rect box = new Rect(x, top, FACTS_W, bottom - top);
+        Rect box = new Rect(x, top, factsWidth(), bottom - top);
         Controls.drawBox(g, this.font, box, "Counts as");
         List<ItemStack> members = setMembers(row.output());
         if (members.isEmpty()) {
@@ -913,8 +1016,8 @@ public class OrdersScreen extends Screen {
         Rect win = detailsWindow();
         int x = win.x() + DETAIL_PAD + 1;
         int top = detailsFieldsTop() + (row.tag() ? 6 : NEEDS_LIST_Y);
-        int bottom = win.bottom() - DETAIL_PAD - 4;
-        return new Rect(x, top, FACTS_W - 2, bottom - top);
+        int bottom = detailsFactsBottom() - 4;
+        return new Rect(x, top, factsWidth() - 2, Math.max(1, bottom - top));
     }
 
     /**
@@ -963,7 +1066,7 @@ public class OrdersScreen extends Screen {
      * before it blocks. Needs are drawn as the things themselves, exactly as a set's members are.
      */
     private void drawFactsColumn(GuiGraphics g, Row row, int x, int top, int bottom) {
-        Rect box = new Rect(x, top, FACTS_W, bottom - top);
+        Rect box = new Rect(x, top, factsWidth(), bottom - top);
         Controls.drawBox(g, this.font, box, "This recipe");
         Option option = optionFor(row.output());
         if (option == null) {
@@ -1076,7 +1179,15 @@ public class OrdersScreen extends Screen {
     }
 
     private int settingsLeft() {
-        return detailsWindow().x() + DETAIL_PAD + FACTS_W + DETAIL_PAD;
+        return detailsStacked()
+                ? detailsWindow().x() + DETAIL_PAD
+                : detailsWindow().x() + DETAIL_PAD + FACTS_W + DETAIL_PAD;
+    }
+
+    private boolean detailsStacked() { return this.width < 470; }
+
+    private int factsWidth() {
+        return detailsStacked() ? detailsWindow().w() - DETAIL_PAD * 2 : FACTS_W;
     }
 
     private Rect detailsWindow() {
@@ -1092,6 +1203,12 @@ public class OrdersScreen extends Screen {
         Rect[] scopes = Controls.segmentLayout(this.font, 0, 0, SCOPE_LABELS);
         int settings = Math.max(modes[modes.length - 1].right() + 12,
                 this.font.width("Counted across") + 8 + scopes[scopes.length - 1].right() + 12);
+        if (detailsStacked()) {
+            int w = Math.min(this.width - SPACING * 2 - FRAME * 2, 360);
+            int desiredH = DETAIL_STRIP_H + DETAIL_PAD + 4 + 88 + DETAIL_PAD + 88 + DETAIL_PAD;
+            int h = Math.min(this.height - SPACING * 2 - FRAME * 2, desiredH);
+            return new Rect((this.width - w) / 2, (this.height - h) / 2, w, h);
+        }
         int w = Math.min(this.width - SPACING * 2 - FRAME * 2,
                 DETAIL_PAD + FACTS_W + DETAIL_PAD + settings + DETAIL_PAD);
         // Both columns end together: the left list scrolls for the rest, so a taller window
@@ -1113,20 +1230,33 @@ public class OrdersScreen extends Screen {
         return detailsWindow().y() + DETAIL_STRIP_H + DETAIL_PAD + 4;
     }
 
+    /** Bottom of the facts/list box; on compact screens the settings begin beneath it. */
+    private int detailsFactsBottom() {
+        Rect win = detailsWindow();
+        if (!detailsStacked()) return win.bottom() - DETAIL_PAD;
+        int reservedSettings = 88;
+        return Math.max(detailsFieldsTop() + 54,
+                win.bottom() - DETAIL_PAD - reservedSettings - DETAIL_PAD);
+    }
+
+    private int detailsSettingsTop() {
+        return detailsStacked() ? detailsFactsBottom() + DETAIL_PAD : detailsFieldsTop();
+    }
+
     private Rect[] detailsModes() {
-        return Controls.segmentLayout(this.font, settingsLeft() + 6, detailsFieldsTop() + 8,
+        return Controls.segmentLayout(this.font, settingsLeft() + 6, detailsSettingsTop() + 8,
                 MODE_LABELS);
     }
 
     private Rect[] detailsStepper(Row row) {
-        return Controls.stepperLayout(this.font, settingsLeft() + 6, detailsFieldsTop() + 28,
+        return Controls.stepperLayout(this.font, settingsLeft() + 6, detailsSettingsTop() + 28,
                 String.valueOf(row.target()));
     }
 
     private Rect[] detailsScope() {
         return Controls.segmentLayout(this.font,
                 settingsLeft() + 6 + this.font.width("Counted across") + 8,
-                detailsFieldsTop() + 66, SCOPE_LABELS);
+                detailsSettingsTop() + 66, SCOPE_LABELS);
     }
 
     @Nullable
@@ -1177,7 +1307,7 @@ public class OrdersScreen extends Screen {
         int rowY = listTop() + 2;
         int shown = 0;
         for (int i = orderScroll; i < rows.size() && rowY < bottom; i++) {
-            rowY += ROW_H + (rows.get(i).reason().isEmpty() ? 0 : REASON_H);
+            rowY += rowBaseHeight() + (rows.get(i).reason().isEmpty() ? 0 : REASON_H);
             shown++;
         }
         return shown;
@@ -1218,7 +1348,7 @@ public class OrdersScreen extends Screen {
         int w = ordersWidth();
         for (int i = orderScroll; i < rows.size() && rowY < bottom; i++) {
             Row row = rows.get(i);
-            int height = ROW_H + (row.reason().isEmpty() ? 0 : REASON_H);
+            int height = rowBaseHeight() + (row.reason().isEmpty() ? 0 : REASON_H);
             Rect body = rowBody(x, rowY, w, height);
             Columns c = columns(body);
             Rect[] carets = caretRects(body);

@@ -116,7 +116,6 @@ public abstract class VillagerHungerMixin extends Villager {
                                         "dialogue.chat.barista_request."))),
                         Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask()),
                         Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.GolemProcessingTask()),
-                        Pair.of(74, new com.aetherianartificer.townstead.compat.butchery.GrinderWorkTask()),
                         Pair.of(75, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
                                         "Butcher",

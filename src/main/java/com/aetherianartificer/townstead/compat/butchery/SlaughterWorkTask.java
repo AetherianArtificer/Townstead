@@ -1,13 +1,13 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
-import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.aetherianartificer.townstead.tick.WorkToolTicker;
 import com.google.common.collect.ImmutableMap;
 import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
+import com.aetherianartificer.townstead.work.job.WorkJobDef;
+import com.aetherianartificer.townstead.work.job.WorkJobs;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
@@ -26,12 +26,9 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
-import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -94,6 +91,7 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Nullable private LivingEntity target;
     @Nullable private Building activeBuilding;
+    @Nullable private WorkJobDef activeJob;
     @Nullable private BlockPos targetHook;
     @Nullable private BlockPos hookStandPos;
     private Phase phase = Phase.PATH;
@@ -137,6 +135,7 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         Pick pick = pickBuildingWithTarget(level, villager);
         if (pick == null) return;
         activeBuilding = pick.building;
+        activeJob = jobDef();
         target = pick.target;
         phase = Phase.PATH;
         startedTick = gameTime;
@@ -150,12 +149,14 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Nullable
     private static Pick pickBuildingWithTarget(ServerLevel level, VillagerEntityMCA villager) {
-        // Require a hook somewhere in the village so the carcass has a destination,
-        // regardless of whether the animal is in a shop or in a pen.
-        if (ButcheryShopScanner.findHookInAnyShop(level, villager) == null) return null;
-        for (ButcheryShopScanner.HuntRef ref : ButcheryShopScanner.huntableBuildings(level, villager)) {
-            LivingEntity t = findTargetIn(level, villager, ref.building());
-            if (t != null) return new Pick(ref.building(), t);
+        WorkJobDef job = jobDef();
+        if (job == null || !hasAvailableDestination(level, villager, job)) return null;
+        WorkJobDef.Role source = job.first(WorkJobDef.RoleKind.ENTITY);
+        if (source == null) return null;
+        for (Building building : villageBuildings(villager)) {
+            if (!building.isComplete() || !source.matchesBuilding(building.getType())) continue;
+            LivingEntity target = findTargetIn(level, villager, building);
+            if (target != null) return new Pick(building, target);
         }
         return null;
     }
@@ -174,15 +175,15 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
             }
             case CARRY -> {
                 if (targetHook == null) return false;
-                if (!isHook(level, targetHook)) return false;
-                if (!hookBelowAvailable(level, targetHook)) return false;
+                if (!isDestination(level, targetHook, activeJob)) return false;
+                if (!destinationAvailable(level, targetHook, activeJob)) return false;
                 if (gameTime - lastPathTick > CARRY_PATH_TIMEOUT_TICKS) return false;
                 if (!villagerCarriesCarcass(villager)) return false;
             }
             case PLACE -> {
                 if (targetHook == null) return false;
-                if (!isHook(level, targetHook)) return false;
-                if (!hookBelowAvailable(level, targetHook)) return false;
+                if (!isDestination(level, targetHook, activeJob)) return false;
+                if (!destinationAvailable(level, targetHook, activeJob)) return false;
                 if (!villagerCarriesCarcass(villager)) return false;
             }
         }
@@ -265,11 +266,11 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         Block carcass = resolveCarcassBlock(carried);
         if (carcass == null) return;
 
-        BlockPos carcassPos = targetHook.below();
+        BlockPos carcassPos = placementPos(activeJob, targetHook);
         BlockState existing = level.getBlockState(carcassPos);
         if (!existing.isAir() && !existing.canBeReplaced()) return;
 
-        BlockState placed = freshHungState(carcass, level.getBlockState(targetHook));
+        BlockState placed = placedState(activeJob, carcass, level.getBlockState(targetHook));
         level.setBlock(carcassPos, placed, 3);
         level.playSound(null, targetHook,
                 BuiltInRegistries.SOUND_EVENT.get(SOUND_CHAIN_HIT),
@@ -298,6 +299,7 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         target = null;
         activeBuilding = null;
+        activeJob = null;
         targetHook = null;
         hookStandPos = null;
         phase = Phase.PATH;
@@ -412,8 +414,11 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
      *  (pen kill). A "free" hook has air at hook.below(). */
     @Nullable
     private BlockPos selectFreeHook(ServerLevel level, VillagerEntityMCA villager, BlockPos origin) {
-        if (activeBuilding != null) {
-            BlockPos local = findFreeHookInBuilding(level, activeBuilding);
+        WorkJobDef job = activeJob != null ? activeJob : jobDef();
+        WorkJobDef.Role destination = job == null ? null : job.first(WorkJobDef.RoleKind.BLOCK);
+        if (job == null || destination == null) return null;
+        if (activeBuilding != null && destination.matchesBuilding(activeBuilding.getType())) {
+            BlockPos local = findFreeDestinationInBuilding(level, activeBuilding, job);
             if (local != null) return local;
         }
         // Fall back to the nearest free hook elsewhere in the village. The
@@ -422,8 +427,9 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
         // first. Distance keeps the carcass pipeline visually local.
         BlockPos best = null;
         double bestDsq = Double.MAX_VALUE;
-        for (ButcheryShopScanner.ShopRef ref : ButcheryShopScanner.carcassCapableShops(level, villager)) {
-            BlockPos hook = findFreeHookInBuilding(level, ref.building());
+        for (Building building : villageBuildings(villager)) {
+            if (!building.isComplete() || !destination.matchesBuilding(building.getType())) continue;
+            BlockPos hook = findFreeDestinationInBuilding(level, building, job);
             if (hook == null) continue;
             double dsq = hook.distSqr(origin);
             if (dsq < bestDsq) {
@@ -435,34 +441,32 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     @Nullable
-    private static BlockPos findFreeHookInBuilding(ServerLevel level, Building building) {
-        //? if >=1.21 {
-        ResourceLocation hookId = ResourceLocation.fromNamespaceAndPath("butchery", "hook");
-        //?} else {
-        /*ResourceLocation hookId = new ResourceLocation("butchery", "hook");
-        *///?}
-        var positions = building.getBlocks().get(hookId);
-        if (positions == null) return null;
-        for (BlockPos pos : positions) {
-            if (!isHook(level, pos)) continue;
-            if (!hookBelowAvailable(level, pos)) continue;
-            return pos;
+    private static BlockPos findFreeDestinationInBuilding(ServerLevel level, Building building,
+                                                          WorkJobDef job) {
+        WorkJobDef.Role destination = job.first(WorkJobDef.RoleKind.BLOCK);
+        if (destination == null) return null;
+        for (ResourceLocation block : destination.blocks()) {
+            var positions = building.getBlocks().get(block);
+            if (positions == null) continue;
+            for (BlockPos pos : positions) {
+                if (isDestination(level, pos, job) && destinationAvailable(level, pos, job)) return pos;
+            }
         }
         return null;
     }
 
-    private static boolean isHook(ServerLevel level, BlockPos pos) {
+    private static boolean isDestination(ServerLevel level, BlockPos pos, @Nullable WorkJobDef job) {
+        if (job == null) return false;
+        WorkJobDef.Role destination = job.first(WorkJobDef.RoleKind.BLOCK);
+        if (destination == null) return false;
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
-        //? if >=1.21 {
-        return ResourceLocation.fromNamespaceAndPath("butchery", "hook").equals(id);
-        //?} else {
-        /*return new ResourceLocation("butchery", "hook").equals(id);
-        *///?}
+        return destination.blocks().contains(id);
     }
 
-    private static boolean hookBelowAvailable(ServerLevel level, BlockPos hook) {
-        BlockState below = level.getBlockState(hook.below());
-        return below.isAir() || below.canBeReplaced();
+    private static boolean destinationAvailable(ServerLevel level, BlockPos destination,
+                                                @Nullable WorkJobDef job) {
+        BlockState existing = level.getBlockState(placementPos(job, destination));
+        return existing.isAir() || existing.canBeReplaced();
     }
 
     private static ItemStack makeCarcassItemFor(LivingEntity killed) {
@@ -485,24 +489,40 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
      * sits at blockstate=1 and takes its facing from the hook above so
      * the body orientation reads naturally under that specific hook.
      */
-    private static BlockState freshHungState(Block carcass, BlockState hookState) {
+    private static BlockState placedState(@Nullable WorkJobDef job, Block carcass, BlockState sourceState) {
         BlockState state = carcass.defaultBlockState();
-        Property<?> blockstate = state.getBlock().getStateDefinition()
-                .getProperty(CarcassStateMachine.BLOCKSTATE_PROPERTY);
-        if (blockstate instanceof IntegerProperty ip
-                && ip.getPossibleValues().contains(CarcassStateMachine.HUNG_BLOCKSTATE)) {
-            state = state.setValue(ip, CarcassStateMachine.HUNG_BLOCKSTATE);
+        WorkJobDef.Role destination = job == null ? null : job.first(WorkJobDef.RoleKind.BLOCK);
+        WorkJobDef.Placement placement = destination == null
+                ? WorkJobDef.Placement.DEFAULT : destination.placement();
+        for (var entry : placement.properties().entrySet()) {
+            state = setProperty(state, entry.getKey(), entry.getValue());
         }
-        Property<?> facing = state.getBlock().getStateDefinition().getProperty("facing");
-        Property<?> hookFacing = hookState.getBlock().getStateDefinition().getProperty("facing");
-        if (facing instanceof DirectionProperty dp
-                && hookFacing instanceof DirectionProperty hdp) {
-            Direction d = hookState.getValue(hdp);
-            if (dp.getPossibleValues().contains(d)) {
-                state = state.setValue(dp, d);
-            }
+        for (String property : placement.copyProperties()) {
+            String value = propertyValue(sourceState, property);
+            if (value != null) state = setProperty(state, property, value);
         }
         return state;
+    }
+
+    private static BlockPos placementPos(@Nullable WorkJobDef job, BlockPos destination) {
+        WorkJobDef.Role role = job == null ? null : job.first(WorkJobDef.RoleKind.BLOCK);
+        WorkJobDef.Placement placement = role == null ? WorkJobDef.Placement.DEFAULT : role.placement();
+        return destination.offset(placement.x(), placement.y(), placement.z());
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static BlockState setProperty(BlockState state, String name, String rawValue) {
+        Property property = state.getBlock().getStateDefinition().getProperty(name);
+        if (property == null) return state;
+        Optional value = property.getValue(rawValue);
+        return value.isPresent() ? state.setValue(property, (Comparable) value.get()) : state;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static @Nullable String propertyValue(BlockState state, String name) {
+        Property property = state.getBlock().getStateDefinition().getProperty(name);
+        if (property == null) return null;
+        return property.getName((Comparable) state.getValue(property));
     }
 
     @Nullable
@@ -550,14 +570,41 @@ public class SlaughterWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private static int findCarriedCarcassSlot(VillagerEntityMCA villager) {
+        WorkJobDef job = jobDef();
+        if (job == null) return -1;
         SimpleContainer inv = villager.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
             if (!(stack.getItem() instanceof net.minecraft.world.item.BlockItem bi)) continue;
-            if (bi.getBlock().defaultBlockState().is(CarcassStateMachine.CARCASS_TAG)) return i;
+            ResourceLocation block = BuiltInRegistries.BLOCK.getKey(bi.getBlock());
+            if (job.producesBlock(block)) return i;
         }
         return -1;
+    }
+
+    private static @Nullable WorkJobDef jobDef() {
+        return WorkJobs.first(WorkTaskTypes.SLAUGHTER, WorkJobDef.ENTITY_DELIVERY);
+    }
+
+    private static boolean hasAvailableDestination(ServerLevel level, VillagerEntityMCA villager,
+                                                   WorkJobDef job) {
+        WorkJobDef.Role destination = job.first(WorkJobDef.RoleKind.BLOCK);
+        if (destination == null) return false;
+        for (Building building : villageBuildings(villager)) {
+            if (!building.isComplete() || !destination.matchesBuilding(building.getType())) continue;
+            if (findFreeDestinationInBuilding(level, building, job) != null) return true;
+        }
+        return false;
+    }
+
+    private static List<Building> villageBuildings(VillagerEntityMCA villager) {
+        Optional<net.conczin.mca.server.world.data.Village> village = villager.getResidency().getHomeVillage();
+        if (village.isEmpty() || !village.get().isWithinBorder(villager)) {
+            village = net.conczin.mca.server.world.data.Village.findNearest(villager);
+        }
+        if (village.isEmpty() || !village.get().isWithinBorder(villager)) return List.of();
+        return List.copyOf(com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village.get()));
     }
 
     private static final String SLAUGHTER_TICK_KEY = "townstead_lastSlaughterTick";

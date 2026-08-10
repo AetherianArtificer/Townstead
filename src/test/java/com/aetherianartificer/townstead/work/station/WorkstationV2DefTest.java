@@ -76,7 +76,8 @@ class WorkstationV2DefTest {
     void everyTargetDefinitionAndBlockOwnedAssociationShips() throws Exception {
         String[] definitions = {"cooking_pot", "cutting_board", "skillet", "stove",
                 "farm_and_charm_pot", "farm_and_charm_roaster", "farm_and_charm_stove",
-                "farm_and_charm_bowl", "farm_and_charm_mincer", "farm_and_charm_drying"};
+                "farm_and_charm_bowl", "farm_and_charm_mincer", "farm_and_charm_drying",
+                "meat_grinder", "pestle_and_mortar", "taxidermy_table"};
         for (String definition : definitions) {
             String path = "/data/townstead/workstation/" + definition + ".json";
             try (var stream = getClass().getResourceAsStream(path)) {
@@ -96,7 +97,8 @@ class WorkstationV2DefTest {
                 "farm_and_charm/cooking_pot", "farm_and_charm/roaster",
                 "farm_and_charm/stove", "farm_and_charm/crafting_bowl",
                 "farm_and_charm/mincer", "farm_and_charm/silo_wood",
-                "farm_and_charm/silo_copper"};
+                "farm_and_charm/silo_copper", "butchery/meat_grinder",
+                "butchery/pestle_and_mortar", "butchery/taxidermy_table"};
         for (String attachment : attachments) {
             String[] parts = attachment.split("/", 2);
             String path = "/data/" + parts[0] + "/tags/recipe_type/" + parts[1] + ".json";
@@ -108,6 +110,39 @@ class WorkstationV2DefTest {
                 assertFalse(json.getAsJsonArray("values").isEmpty(), path);
             }
         }
+    }
+
+    @Test
+    void parsesAuditedButcheryInventorySemantics() throws Exception {
+        WorkstationV2Def grinder = resource("meat_grinder");
+        assertEquals(List.of(0, 1, 3), grinder.ingredientSlots());
+        assertEquals(List.of(2), grinder.catalystSlots());
+        assertEquals(List.of(4), grinder.outputSlots());
+        assertEquals(List.of(5), grinder.returnSlots());
+        assertEquals(WorkstationV2Def.RecipeSlotRole.RETURN, grinder.recipeRole(4));
+
+        RecipeIngredient ingredient = new RecipeIngredient(List.of(id("example:item")), 1);
+        assertEquals(4, grinder.executableInputs(List.of(
+                ingredient, ingredient, ingredient, ingredient, ingredient)).size());
+
+        WorkstationV2Def taxidermy = resource("taxidermy_table");
+        assertEquals(List.of(0, 1, 2), taxidermy.ingredientSlots());
+        assertEquals(List.of(3), taxidermy.previewSlots());
+    }
+
+    @Test
+    void recipeCorrectionsAreNarrowAndOptional() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:machine"],
+                 "recipe_corrections":[
+                   {"recipe":"example:misreported","output":"example:actual"}
+                 ]}
+                """);
+        assertNotNull(def);
+        assertEquals(id("example:actual"),
+                def.correctedOutput(id("example:misreported"), id("example:reported")));
+        assertEquals(id("example:reported"),
+                def.correctedOutput(id("example:other"), id("example:reported")));
     }
 
     @Test

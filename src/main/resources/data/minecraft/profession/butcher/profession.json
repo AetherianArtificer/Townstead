@@ -34,6 +34,15 @@
     },
     {
       "type": "townstead_work:grind",
+      "workstations": [
+        "butchery:meat_grinder",
+        "butchery:pestle_and_mortar"
+      ],
+      "weight": 9
+    },
+    {
+      "type": "townstead_work:taxidermy",
+      "workstations": ["butchery:taxidermy_table"],
       "weight": 9
     },
     {

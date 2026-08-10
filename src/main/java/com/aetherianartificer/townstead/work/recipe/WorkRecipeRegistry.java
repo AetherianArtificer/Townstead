@@ -373,7 +373,11 @@ public final class WorkRecipeRegistry {
             if (result.isEmpty()) continue;
             ResourceLocation outputId = BuiltInRegistries.ITEM.getKey(result.getItem());
             if (outputId == null) continue;
+            outputId = def.correctedOutput(recipeId, outputId);
+            if (!BuiltInRegistries.ITEM.containsKey(outputId)) continue;
             List<RecipeIngredient> inputs = extractIngredients(recipe);
+            if (inputs.isEmpty()) continue;
+            inputs = def.executableInputs(inputs);
             if (inputs.isEmpty()) continue;
             ResourceLocation container = containerOf(recipe);
             int cookTime = safeCookTime(recipe, 200);

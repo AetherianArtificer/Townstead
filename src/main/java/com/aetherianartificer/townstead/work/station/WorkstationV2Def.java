@@ -2,7 +2,9 @@ package com.aetherianartificer.townstead.work.station;
 
 import com.aetherianartificer.townstead.pheno.condition.block.BlockCondition;
 import com.aetherianartificer.townstead.pheno.condition.block.BlockConditions;
+import com.aetherianartificer.townstead.data.ModGate;
 import com.aetherianartificer.townstead.work.recipe.StationType;
+import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
@@ -25,6 +27,13 @@ public record WorkstationV2Def(
         ResourceLocation id,
         Set<ResourceLocation> blocks,
         List<Integer> containerSlots,
+        List<Integer> ingredientSlots,
+        List<Integer> catalystSlots,
+        List<Integer> outputSlots,
+        List<Integer> returnSlots,
+        List<Integer> previewSlots,
+        List<RecipeSlotRole> recipeLayout,
+        List<RecipeCorrection> recipeCorrections,
         @Nullable JsonElement requiresJson,
         @Nullable BlockCondition requires,
         @Nullable JsonElement behavior,
@@ -32,6 +41,23 @@ public record WorkstationV2Def(
         @Nullable JsonElement capacity) {
 
     public static final String SCHEMA = "townstead:workstation/v2";
+
+    public enum RecipeSlotRole {
+        INGREDIENT, CATALYST, RETURN;
+
+        static @Nullable RecipeSlotRole parse(String raw) {
+            return switch (raw) {
+                case "ingredient" -> INGREDIENT;
+                case "catalyst" -> CATALYST;
+                case "return" -> RETURN;
+                default -> null;
+            };
+        }
+    }
+
+    /** A narrowly scoped correction for a public recipe whose owning machine demonstrably differs. */
+    public record RecipeCorrection(ResourceLocation recipe, ResourceLocation output,
+                                   @Nullable JsonElement mods) {}
 
     static @Nullable WorkstationV2Def parse(ResourceLocation id, JsonObject json) {
         if (id == null || json == null || !json.has("blocks") || !json.get("blocks").isJsonArray()) {
@@ -48,20 +74,53 @@ public record WorkstationV2Def(
         if (blocks.isEmpty()) return null;
 
         List<Integer> containers = new ArrayList<>();
+        List<Integer> ingredients = new ArrayList<>();
+        List<Integer> catalysts = new ArrayList<>();
+        List<Integer> outputs = new ArrayList<>();
+        List<Integer> returns = new ArrayList<>();
+        List<Integer> previews = new ArrayList<>();
         if (json.has("inventory")) {
             if (!json.get("inventory").isJsonObject()) return null;
             JsonObject inventory = json.getAsJsonObject("inventory");
             if (inventory.has("slots")) {
                 if (!inventory.get("slots").isJsonObject()) return null;
                 JsonObject slots = inventory.getAsJsonObject("slots");
-                if (slots.has("containers")) {
-                    if (!slots.get("containers").isJsonArray()) return null;
-                    for (JsonElement slot : slots.getAsJsonArray("containers")) {
-                        if (!slot.isJsonPrimitive() || !slot.getAsJsonPrimitive().isNumber()
-                                || slot.getAsInt() < 0) return null;
-                        containers.add(slot.getAsInt());
-                    }
+                if (!parseSlots(slots, "containers", containers)) return null;
+                if (!parseSlots(slots, "ingredients", ingredients)) return null;
+                if (!parseSlots(slots, "catalysts", catalysts)) return null;
+                if (!parseSlots(slots, "outputs", outputs)) return null;
+                if (!parseSlots(slots, "returns", returns)) return null;
+                if (!parseSlots(slots, "preview", previews)) return null;
+                Set<Integer> assigned = new LinkedHashSet<>();
+                for (List<Integer> role : List.of(containers, ingredients, catalysts, outputs, returns, previews)) {
+                    for (int slot : role) if (!assigned.add(slot)) return null;
                 }
+            }
+        }
+
+        List<RecipeSlotRole> layout = new ArrayList<>();
+        if (json.has("recipe_layout")) {
+            if (!json.get("recipe_layout").isJsonArray()) return null;
+            for (JsonElement element : json.getAsJsonArray("recipe_layout")) {
+                if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) return null;
+                RecipeSlotRole role = RecipeSlotRole.parse(element.getAsString());
+                if (role == null) return null;
+                layout.add(role);
+            }
+        }
+
+        List<RecipeCorrection> corrections = new ArrayList<>();
+        if (json.has("recipe_corrections")) {
+            if (!json.get("recipe_corrections").isJsonArray()) return null;
+            for (JsonElement element : json.getAsJsonArray("recipe_corrections")) {
+                if (!element.isJsonObject()) return null;
+                JsonObject correction = element.getAsJsonObject();
+                ResourceLocation recipe = correction.has("recipe")
+                        ? ResourceLocation.tryParse(correction.get("recipe").getAsString()) : null;
+                ResourceLocation output = correction.has("output")
+                        ? ResourceLocation.tryParse(correction.get("output").getAsString()) : null;
+                if (recipe == null || output == null) return null;
+                corrections.add(new RecipeCorrection(recipe, output, copy(correction.get("mods"))));
             }
         }
 
@@ -74,7 +133,60 @@ public record WorkstationV2Def(
         JsonElement capacity = copy(json.get("capacity"));
 
         return new WorkstationV2Def(id, Set.copyOf(blocks), List.copyOf(containers),
+                List.copyOf(ingredients), List.copyOf(catalysts), List.copyOf(outputs),
+                List.copyOf(returns), List.copyOf(previews), List.copyOf(layout),
+                List.copyOf(corrections),
                 requiresJson, requires, behavior, structure, capacity);
+    }
+
+    private static boolean parseSlots(JsonObject slots, String key, List<Integer> out) {
+        if (!slots.has(key)) return true;
+        if (!slots.get(key).isJsonArray()) return false;
+        for (JsonElement slot : slots.getAsJsonArray(key)) {
+            if (!slot.isJsonPrimitive() || !slot.getAsJsonPrimitive().isNumber()
+                    || slot.getAsInt() < 0 || out.contains(slot.getAsInt())) return false;
+            out.add(slot.getAsInt());
+        }
+        return true;
+    }
+
+    public RecipeSlotRole recipeRole(int ingredientIndex) {
+        return ingredientIndex >= 0 && ingredientIndex < recipeLayout.size()
+                ? recipeLayout.get(ingredientIndex) : RecipeSlotRole.INGREDIENT;
+    }
+
+    /** Removes recipe-view-only return entries before planning and gathering ingredients. */
+    public List<RecipeIngredient> executableInputs(List<RecipeIngredient> publicInputs) {
+        if (recipeLayout.isEmpty()) return publicInputs;
+        List<RecipeIngredient> out = new ArrayList<>();
+        for (int i = 0; i < publicInputs.size(); i++) {
+            if (recipeRole(i) != RecipeSlotRole.RETURN) out.add(publicInputs.get(i));
+        }
+        return List.copyOf(out);
+    }
+
+    public boolean hasExplicitIngredientSlots() {
+        return !ingredientSlots.isEmpty() || !catalystSlots.isEmpty();
+    }
+
+    public ResourceLocation correctedOutput(ResourceLocation recipe, ResourceLocation fallback) {
+        for (RecipeCorrection correction : recipeCorrections) {
+            if (!correction.recipe().equals(recipe)) continue;
+            if (correction.mods() != null) {
+                try {
+                    if (!Boolean.TRUE.equals(ModGate.evaluate(correction.mods()))) continue;
+                } catch (RuntimeException ignored) {
+                    continue;
+                }
+            }
+            return correction.output();
+        }
+        return fallback;
+    }
+
+    public boolean reservedForInsertion(int slot) {
+        return containerSlots.contains(slot) || outputSlots.contains(slot)
+                || returnSlots.contains(slot) || previewSlots.contains(slot);
     }
 
     public boolean isOperational(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) {

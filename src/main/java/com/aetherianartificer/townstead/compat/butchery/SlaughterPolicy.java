@@ -18,7 +18,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
 import javax.annotation.Nullable;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -36,15 +35,6 @@ public final class SlaughterPolicy {
     private static final boolean DEFAULT_ENABLED = true;
     private static final boolean DEFAULT_ALLOW_HUMANOID = false;
     private static final int DEFAULT_THROTTLE_TICKS = 2400;
-
-    /** Whitelisted farm animal species → Butchery carcass block path. */
-    private static final Map<EntityType<?>, String> SPECIES_TO_CARCASS = Map.of(
-            EntityType.COW, "cow_carcass",
-            EntityType.PIG, "pig_carcass",
-            EntityType.SHEEP, "sheep_carcass",
-            EntityType.CHICKEN, "chicken_carcass",
-            EntityType.RABBIT, "rabbit_carcass"
-    );
 
     /** Never-kill list, independent of humanoid config. */
     private static final Set<EntityType<?>> NEVER_KILL = Set.of(
@@ -100,7 +90,7 @@ public final class SlaughterPolicy {
         // additions.
         if (animal instanceof TamableAnimal tamable && tamable.isTame()) return false;
         if (NEVER_KILL.contains(animal.getType())) return false;
-        if (!SPECIES_TO_CARCASS.containsKey(animal.getType())) return false;
+        if (carcassIdFor(animal.getType()) == null) return false;
         if (butcher == null || butcher.getUUID().equals(animal.getUUID())) return false;
         // A declared work task may narrow the species this profession slaughters;
         // it can never widen past the whitelist or NEVER_KILL above.
@@ -112,12 +102,10 @@ public final class SlaughterPolicy {
     /** Returns the carcass block ResourceLocation for this mob, or null if not supported. */
     @Nullable
     public static ResourceLocation carcassIdFor(EntityType<?> type) {
-        String path = SPECIES_TO_CARCASS.get(type);
-        if (path == null) return null;
-        //? if >=1.21 {
-        return ResourceLocation.fromNamespaceAndPath("butchery", path);
-        //?} else {
-        /*return new ResourceLocation("butchery", path);
-        *///?}
+        ResourceLocation entityId = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+        var job = com.aetherianartificer.townstead.work.job.WorkJobs.first(
+                WorkTaskTypes.SLAUGHTER,
+                com.aetherianartificer.townstead.work.job.WorkJobDef.ENTITY_DELIVERY);
+        return job == null ? null : job.resultFor(entityId);
     }
 }

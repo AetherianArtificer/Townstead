@@ -44,7 +44,8 @@ public final class WorkTaskTypes {
     public static final ResourceLocation SLAUGHTER = type("slaughter");
     public static final ResourceLocation BUTCHER = type("butcher");
     public static final ResourceLocation DISMANTLE = type("dismantle");
-    public static final ResourceLocation GRIND = type("grind");
+    public static final ResourceLocation GRIND = stationDriven("grind");
+    public static final ResourceLocation TAXIDERMY = stationDriven("taxidermy");
     public static final ResourceLocation SMOKE = type("smoke");
     public static final ResourceLocation CURE = type("cure");
     public static final ResourceLocation CLEAN = type("clean");
@@ -65,7 +66,7 @@ public final class WorkTaskTypes {
 
     /** Every butchery-suite type, for gates that serve the whole shop. Do not mutate. */
     public static final ResourceLocation[] BUTCHERY_SUITE = {
-            SLAUGHTER, BUTCHER, DISMANTLE, GRIND, SMOKE, CURE, CLEAN, HAMMER, DELIVER};
+            SLAUGHTER, BUTCHER, DISMANTLE, GRIND, TAXIDERMY, SMOKE, CURE, CLEAN, HAMMER, DELIVER};
 
     private WorkTaskTypes() {}
 

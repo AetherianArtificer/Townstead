@@ -59,7 +59,9 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
         Set<ResourceLocation> seen = new LinkedHashSet<>();
         List<Option> out = new ArrayList<>();
         for (WorkstationDef def : Workstations.all()) {
-            if (def.workTask() == null || !worked.contains(def.workTask())) continue;
+            List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declared =
+                    declarationsForDef(level, site, extent, worked, def);
+            if (declared.isEmpty()) continue;
             if (!isPresent(def, present)) continue;
             ResourceLocation icon = iconOf(def);
             String label = blockName(icon, def);
@@ -69,12 +71,6 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             // because the armorer's declaration says so, not because the bench could make boats.
             // A declaration also names its stations, and that is part of the claim: the mason's
             // craft is stonecutter-only, so a crafting table in the mason's room drives nothing.
-            List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declared =
-                    WorksiteWork.declaredTasksAt(level, site, extent, def.workTask());
-            if (!declared.isEmpty()) {
-                declared = declared.stream().filter(task -> taskDrivesDef(task, def)).toList();
-                if (declared.isEmpty()) continue;
-            }
             for (DiscoveredRecipe recipe : ProtocolRecipes.discoverFor(def)) {
                 if (!allowedByAny(declared, recipe)) continue;
                 if (!seen.add(recipe.output())) continue;
@@ -100,6 +96,11 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
                 if (!seen.add(recipe.output())) continue;
                 out.add(StationCatalogs.option(recipe, label, icon, onHand));
             }
+            for (DiscoveredRecipe recipe : v2Recipes(level, def)) {
+                if (!allowedByAny(declared, recipe)) continue;
+                if (!seen.add(recipe.output())) continue;
+                out.add(StationCatalogs.option(recipe, label, icon, onHand));
+            }
         }
         return out;
     }
@@ -114,14 +115,11 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
         Map<ResourceLocation, BlockState> present = blocksIn(level, extent);
         List<Station> out = new ArrayList<>();
         for (WorkstationDef def : Workstations.all()) {
-            if (def.workTask() == null || !worked.contains(def.workTask())) continue;
+            List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declared =
+                    declarationsForDef(level, site, extent, worked, def);
+            if (declared.isEmpty()) continue;
             // A station no claiming trade's declaration drives is not missing here — a mason's
             // room without a crafting table lacks nothing.
-            List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declared =
-                    WorksiteWork.declaredTasksAt(level, site, extent, def.workTask());
-            if (!declared.isEmpty() && declared.stream().noneMatch(task -> taskDrivesDef(task, def))) {
-                continue;
-            }
             ResourceLocation icon = iconOf(def);
             if (NO_ICON.equals(icon)) continue;
             // Absent stations stay listed: a butchery without its grinder should read as a
@@ -129,6 +127,47 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             out.add(new Station(blockName(icon, def), icon, isPresent(def, present)));
         }
         return out;
+    }
+
+    private static List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declarationsForDef(
+            ServerLevel level, Worksite site, Set<Long> extent, Set<ResourceLocation> worked,
+            WorkstationDef def) {
+        List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> out = new ArrayList<>();
+        if (def.workTask() != null) {
+            if (!worked.contains(def.workTask())) return List.of();
+            for (var task : WorksiteWork.declaredTasksAt(level, site, extent, def.workTask())) {
+                if (taskDrivesDef(task, def)) out.add(task);
+            }
+            return List.copyOf(out);
+        }
+        boolean v2 = def.blocks().stream().anyMatch(block -> Workstations.v2ByBlockId(block) != null);
+        if (!v2) return List.of();
+        for (ResourceLocation type : worked) {
+            if (!com.aetherianartificer.townstead.profession.def.WorkTaskTypes.isStationDriven(type)) continue;
+            for (var task : WorksiteWork.declaredTasksAt(level, site, extent, type)) {
+                if (taskDrivesDef(task, def)) out.add(task);
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    private static List<DiscoveredRecipe> v2Recipes(ServerLevel level, WorkstationDef def) {
+        Set<ResourceLocation> attached = new LinkedHashSet<>();
+        for (ResourceLocation block : def.blocks()) {
+            if (Workstations.v2ByBlockId(block) != null) {
+                attached.addAll(com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes
+                        .forBlock(block));
+            }
+        }
+        if (attached.isEmpty()) return List.of();
+        List<DiscoveredRecipe> out = new ArrayList<>();
+        for (DiscoveredRecipe recipe : com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry
+                .getRecipes(level)) {
+            ResourceLocation type = com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry
+                    .recipeTypeId(recipe);
+            if (type != null && attached.contains(type)) out.add(recipe);
+        }
+        return List.copyOf(out);
     }
 
     /** Whether this declaration's workstation filter admits any block this def can be. */

@@ -2019,6 +2019,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.profession.def.ComboSkills.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.station.Workstations.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes.Loader());
+        event.addListener(new com.aetherianartificer.townstead.work.job.WorkJobs.Loader());
         event.addListener(new com.aetherianartificer.townstead.storage.StorageRoles.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry.ReloadHook());
         event.addListener(new com.aetherianartificer.townstead.root.BaselinePowers.Loader());
