@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeAll;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -37,6 +38,30 @@ class WorkstationV2DefTest {
         List<RecipeIngredient> entries = DataDrivenStationAdapter.insertionEntries(coffee);
         assertEquals(4, entries.size());
         assertTrue(entries.stream().allMatch(entry -> entry.count() == 1));
+    }
+
+    @Test
+    void stationContentsCanRecoverMincerRecipeWithoutSession() {
+        RecipeIngredient wheat = new RecipeIngredient(List.of(id("minecraft:wheat")), 1);
+        assertTrue(DataDrivenStationAdapter.contentsMatchRecipe(
+                Map.of(id("minecraft:wheat"), 2), List.of(wheat)));
+        assertFalse(DataDrivenStationAdapter.contentsMatchRecipe(
+                Map.of(id("minecraft:coal"), 1), List.of(wheat)));
+    }
+
+    @Test
+    void stationContentsRequireTheWholeBowlRecipe() {
+        List<RecipeIngredient> oatmeal = List.of(
+                new RecipeIngredient(List.of(id("minecraft:milk_bucket")), 1),
+                new RecipeIngredient(List.of(id("farm_and_charm:oat")), 1),
+                new RecipeIngredient(List.of(id("farm_and_charm:strawberry")), 1));
+        assertTrue(DataDrivenStationAdapter.contentsMatchRecipe(Map.of(
+                id("minecraft:milk_bucket"), 1,
+                id("farm_and_charm:oat"), 1,
+                id("farm_and_charm:strawberry"), 1), oatmeal));
+        assertFalse(DataDrivenStationAdapter.contentsMatchRecipe(Map.of(
+                id("minecraft:milk_bucket"), 1,
+                id("farm_and_charm:oat"), 1), oatmeal));
     }
     private static ResourceLocation id(String value) { return ResourceLocation.tryParse(value); }
 
@@ -64,12 +89,15 @@ class WorkstationV2DefTest {
         WorkstationV2Def def = parse("""
                 {"schema":"townstead:workstation/v2","blocks":["example:pot"],
                  "inventory":{"slots":{"containers":[7]}},
-                 "behavior":{"type":"pheno:use_block","item":"tool"}}
+                 "behavior":{"type":"pheno:use_block","item":"tool"},
+                 "collect":{"type":"pheno:use_block",
+                    "condition":{"type":"pheno:block_state","property":"busy","value":"false"}}}
                 """);
         assertNotNull(def);
         assertEquals(List.of(7), def.containerSlots());
         assertTrue(def.behaviorUses("tool"));
         assertFalse(def.behaviorUses("ingredient"));
+        assertNotNull(def.collect());
     }
 
     @Test
@@ -79,6 +107,11 @@ class WorkstationV2DefTest {
                 {"blocks":["example:machine"],
                  "behavior":{"type":"pheno:use_block","item":"knife_dig"}}
                 """));
+        assertNull(parse("""
+                {"blocks":["example:machine"],
+                 "collect":{"type":"pheno:use_block",
+                    "condition":{"type":"pheno:not_a_real_condition"}}}
+                """));
     }
 
     @Test
@@ -86,6 +119,9 @@ class WorkstationV2DefTest {
         String[] definitions = {"cooking_pot", "cutting_board", "skillet", "stove",
                 "farm_and_charm_pot", "farm_and_charm_roaster", "farm_and_charm_stove",
                 "farm_and_charm_bowl", "farm_and_charm_mincer", "farm_and_charm_drying",
+                "kaleidoscope_cookery_chopping_board", "kaleidoscope_cookery_pot",
+                "kaleidoscope_cookery_stockpot", "kaleidoscope_cookery_millstone",
+                "kaleidoscope_cookery_steamer",
                 "meat_grinder", "pestle_and_mortar", "taxidermy_table"};
         for (String definition : definitions) {
             String path = "/data/townstead/workstation/" + definition + ".json";
@@ -106,7 +142,10 @@ class WorkstationV2DefTest {
                 "farm_and_charm/cooking_pot", "farm_and_charm/roaster",
                 "farm_and_charm/stove", "farm_and_charm/crafting_bowl",
                 "farm_and_charm/mincer", "farm_and_charm/silo_wood",
-                "farm_and_charm/silo_copper", "butchery/meat_grinder",
+                "farm_and_charm/silo_copper", "kaleidoscope_cookery/chopping_board",
+                "kaleidoscope_cookery/pot", "kaleidoscope_cookery/stockpot",
+                "kaleidoscope_cookery/millstone", "kaleidoscope_cookery/steamer",
+                "butchery/meat_grinder",
                 "butchery/pestle_and_mortar", "butchery/taxidermy_table"};
         for (String attachment : attachments) {
             String[] parts = attachment.split("/", 2);
@@ -117,6 +156,39 @@ class WorkstationV2DefTest {
                         .getAsJsonObject();
                 assertFalse(json.get("replace").getAsBoolean(), path);
                 assertFalse(json.getAsJsonArray("values").isEmpty(), path);
+            }
+        }
+    }
+
+    @Test
+    void kitchenRolesAreNeutralAndLegacyTagsAreAliasesOnly() throws Exception {
+        String[] roles = {"advanced_heat", "cookware", "copper", "heat_sources", "pots",
+                "preparation", "storage", "upgraded_storage", "nether_storage", "workstations"};
+        for (String role : roles) {
+            String path = "/data/townstead/tags/block/kitchen/" + role + ".json";
+            try (var stream = blockTag(path)) {
+                assertNotNull(stream, path);
+                var json = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+                        .getAsJsonObject();
+                assertFalse(json.getAsJsonArray("values").isEmpty(), path);
+            }
+        }
+
+        String[][] aliases = {
+                {"kitchen_advanced_heat", "advanced_heat"}, {"kitchen_cookware", "cookware"},
+                {"kitchen_copper", "copper"}, {"kitchen_heat_sources", "heat_sources"},
+                {"kitchen_pot", "pots"}, {"kitchen_prep_blocks", "preparation"},
+                {"kitchen_storage", "storage"}, {"kitchen_storage_upgraded", "upgraded_storage"},
+                {"kitchen_storage_nether", "nether_storage"}, {"kitchen_workstations", "workstations"}
+        };
+        for (String[] alias : aliases) {
+            String path = "/data/townstead/tags/block/compat/farmersdelight/" + alias[0] + ".json";
+            try (var stream = blockTag(path)) {
+                assertNotNull(stream, path);
+                var values = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+                        .getAsJsonObject().getAsJsonArray("values");
+                assertEquals(1, values.size(), path + " must contain no provider blocks");
+                assertEquals("#townstead:kitchen/" + alias[1], values.get(0).getAsString());
             }
         }
     }
@@ -174,6 +246,24 @@ class WorkstationV2DefTest {
     }
 
     @Test
+    void parsesEventDrivenReadinessAndFixedSupplies() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:wok"],"supplies":["#example:oils"],
+                 "ready":{"type":"pheno:block_entity","property":"status","value":2},
+                 "behavior":[
+                   {"type":"pheno:use_block","item":"supply","supply":"#example:oils"},
+                   {"type":"pheno:use_block","item":"ingredient","all":true}
+                 ],
+                 "collect":{"type":"pheno:use_block","item":"container"}}
+                """);
+        assertNotNull(def);
+        assertNotNull(def.ready());
+        assertEquals(List.of("#example:oils"), def.recipeSupplies());
+        assertTrue(def.behaviorUses("supply"));
+        assertTrue(def.collectUses("container"));
+    }
+
+    @Test
     void onlyFarmersDelightStoveRequiresClearGrillingArea() throws Exception {
         WorkstationV2Def farmersDelight = resource("stove");
         WorkstationV2Def farmAndCharm = resource("farm_and_charm_stove");
@@ -181,6 +271,33 @@ class WorkstationV2DefTest {
         assertNotNull(farmersDelight.requires());
         assertTrue(farmersDelight.requiresJson().toString().contains("pheno:block_shape"));
         assertNull(farmAndCharm.requires());
+    }
+
+    @Test
+    void repeatableWorkDistinguishesProcessingFromPreparation() throws Exception {
+        WorkstationV2Def bowl = resource("farm_and_charm_bowl");
+        assertTrue(bowl.hasRepeatableWorkAction());
+        assertNotNull(bowl.collect(),
+                "the bowl must collect through its resetting player interaction");
+        assertTrue(bowl.behavior().isJsonArray(),
+                "the bowl declares terminal-state recovery as data, not mod-specific Java");
+        WorkstationV2Def mincer = resource("farm_and_charm_mincer");
+        assertTrue(mincer.hasRepeatableWorkAction());
+        assertEquals(1, mincer.capacityPositions());
+        assertTrue(mincer.stackPerPosition(),
+                "the mincer consumes repeated operations from one real input stack");
+        assertFalse(resource("farm_and_charm_drying").hasRepeatableWorkAction(),
+                "closing a silo before loading is preparation, not a processing pulse");
+    }
+
+    @Test
+    void fuelInferenceRequiresAHorizontalOnlyInventoryChannel() {
+        assertArrayEquals(new int[0], DataDrivenStationAdapter.sideOnlySlots(
+                new int[]{0, 1}, new int[]{0, 1}, new int[]{0, 1}),
+                "a mincer exposes its permissive input/output slots on every face");
+        assertArrayEquals(new int[]{4}, DataDrivenStationAdapter.sideOnlySlots(
+                new int[]{4}, new int[]{1, 2, 3}, new int[]{0}),
+                "the Farm & Charm stove exposes its real fuel slot only horizontally");
     }
 
     private WorkstationV2Def resource(String name) throws Exception {
@@ -191,5 +308,11 @@ class WorkstationV2DefTest {
                     JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
                             .getAsJsonObject());
         }
+    }
+
+    private java.io.InputStream blockTag(String path) {
+        var stream = getClass().getResourceAsStream(path);
+        return stream != null ? stream : getClass().getResourceAsStream(
+                path.replace("/tags/block/", "/tags/blocks/"));
     }
 }

@@ -41,15 +41,15 @@ class LevelSchemaTest {
             assertTrue(level.skills().isEmpty(),
                     "a level's options come from the skills' tiers, not from a second list");
         }
-        assertTrue(cook.skills().contains(id("townstead:cook/open_flame")),
-                "referenced skills join the flat membership list");
+        assertFalse(cook.skills().contains(id("townstead:cook/open_flame")),
+                "removed paths must not leak their orphaned skills into the general pool");
         assertTrue(cook.skills().contains(id("townstead:cook/pizza_craft")),
                 "path skills pool like any other skill; the path steers who buys them");
         assertTrue(cook.skills().contains(id("townstead:cook/pizza_spin")),
                 "ability skills are ordinary skills; only their power block differs");
-        // Three paths of ten options each (two per level, five levels) plus the two skills
-        // belonging to no path, which compete for the same picks.
-        assertEquals(32, cook.skills().size());
+        // One path of ten options plus the two skills belonging to no path, which compete for
+        // the same picks.
+        assertEquals(12, cook.skills().size());
     }
 
     /** Cook's progression ships as a sidecar, merged here the same way {@code apply()} does. */

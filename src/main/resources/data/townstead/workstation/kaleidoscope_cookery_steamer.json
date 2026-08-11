@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["kaleidoscope_cookery"],
+  "blocks": ["kaleidoscope_cookery:steamer"],
+  "requires": {
+    "type": "pheno:block_chain",
+    "direction": "down",
+    "through": { "type": "pheno:block", "block": "kaleidoscope_cookery:steamer" },
+    "max": 16,
+    "end": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:in_tag", "tag": "townstead:kitchen/heat_sources" },
+        { "type": "pheno:block_state", "property": "lit", "value": "true", "if_missing": "pass" }
+      ]
+    }
+  },
+  "ready": { "type": "pheno:block_entity", "property": "cookingTime", "contains": -1 },
+  "behavior": { "type": "pheno:use_block", "item": "ingredient" },
+  "collect": { "type": "pheno:use_block", "item": "empty" }
+}

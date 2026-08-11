@@ -640,7 +640,9 @@ public abstract class BlueprintScreenMixin extends Screen {
             int hoverLeft = detailsTextX + 14;
             int hoverRight = detailsRight - 6;
             if (mouseX >= hoverLeft && mouseX <= hoverRight && mouseY >= rowY - 1 && mouseY <= rowY + rowHeight) {
-                hovered = row.name();
+                // A tag row cycles through its concrete installed members. Its tooltip must name
+                // the member the player is actually looking at, not expose the backing tag id.
+                hovered = rowName;
             }
         }
         if (hovered != null) {
@@ -1461,9 +1463,12 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private String townstead$resolveModDisplayName(String buildingTypeId) {
-        String[] parts = buildingTypeId.split("/");
-        if (parts.length < 2) return null;
-        return com.aetherianartificer.townstead.client.catalog.ModDisplayNameResolver.displayName(parts[1]);
+        List<String> providers = ModCompat.loadedCompatProviders(buildingTypeId);
+        if (providers.isEmpty()) return null;
+        return providers.stream()
+                .map(com.aetherianartificer.townstead.client.catalog.ModDisplayNameResolver::displayName)
+                .distinct()
+                .collect(Collectors.joining(" + "));
     }
 
     @Unique

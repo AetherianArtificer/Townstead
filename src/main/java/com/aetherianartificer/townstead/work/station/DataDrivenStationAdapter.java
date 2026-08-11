@@ -46,6 +46,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     private static int outputCacheGeneration = Integer.MIN_VALUE;
     private static final Map<ResourceLocation, Set<ResourceLocation>> OUTPUTS_BY_BLOCK = new java.util.HashMap<>();
     private static final Map<ResourceLocation, Set<ResourceLocation>> CONTAINERS_BY_BLOCK = new java.util.HashMap<>();
+    private static final Map<ResourceLocation, Set<ResourceLocation>> INPUTS_BY_BLOCK = new java.util.HashMap<>();
 
     private DataDrivenStationAdapter() {}
 
@@ -137,10 +138,13 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
             return StationAdapters.StationPhase.READY;
         }
         if (hasAvailableOutput(level, anchor)) return StationAdapters.StationPhase.READY;
+        if (def.isReady(level, anchor)) return StationAdapters.StationPhase.READY;
         if (!def.isOperational(level, anchor)) return StationAdapters.StationPhase.FOREIGN;
         IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
         if (handler != null) {
             Set<ResourceLocation> knownContainers = containerIds(level, anchor);
+            Set<ResourceLocation> knownInputs = inputIds(level, anchor);
+            boolean working = false;
             for (int slot = 0; slot < handler.getSlots(); slot++) {
                 if (def.catalystSlots().contains(slot)) continue;
                 ItemStack stack = handler.getStackInSlot(slot);
@@ -148,8 +152,12 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                 ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
                 if (def.containerSlots().contains(slot) && knownContainers.contains(item)) continue;
                 if (isFuelStock(level, anchor, slot, stack)) continue;
-                return StationAdapters.StationPhase.WORKING;
+                if (!knownInputs.contains(item)) {
+                    return StationAdapters.StationPhase.INVALID_CONTENTS;
+                }
+                working = true;
             }
+            if (working) return StationAdapters.StationPhase.WORKING;
         }
         return StationAdapters.StationPhase.IDLE;
     }
@@ -223,8 +231,14 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     @Override
     public boolean collect(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                            WorkstationDef ignored, DiscoveredRecipe recipe) {
+        WorkstationV2Def def = v2(level, anchor);
+        if (def != null && def.collect() != null) {
+            return collectThroughInteraction(level, villager, anchor, def, recipe,
+                    Set.of(recipe.output()));
+        }
         boolean collected = extractOutput(level, villager, anchor, recipe.output());
         collected |= extractDeclaredReturns(level, villager, anchor);
+        collected |= extractRecipeRemainders(level, villager, anchor, recipe);
         List<ItemStack> drops = StationDropOutputs.collect(level, anchor, Set.of(recipe.output()));
         for (ItemStack drop : drops) StationProtocols.giveBack(villager, drop);
         return collected || !drops.isEmpty();
@@ -235,12 +249,154 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                                     BlockPos anchor, WorkstationDef ignored) {
         Set<ResourceLocation> outputs = outputIds(level, anchor);
         if (outputs.isEmpty()) return false;
+        WorkstationV2Def def = v2(level, anchor);
+        if (def != null && def.collect() != null) {
+            return collectThroughInteraction(level, villager, anchor, def, null, outputs);
+        }
         boolean collected = extractAvailablePreview(level, villager, anchor, outputs);
         collected |= extractAvailableOutputs(level, villager, anchor, outputs);
         collected |= extractDeclaredReturns(level, villager, anchor);
         List<ItemStack> drops = StationDropOutputs.collect(level, anchor, outputs);
         for (ItemStack drop : drops) StationProtocols.giveBack(villager, drop);
         return collected || !drops.isEmpty();
+    }
+
+    /**
+     * Some stations expose an output slot for observation but require their normal player
+     * interaction to take the result and reset the machine. The action's condition controls when
+     * that interaction is legal; while it is false the output remains resident and collection
+     * simply waits.
+     */
+    private static boolean collectThroughInteraction(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
+            WorkstationV2Def def, @Nullable DiscoveredRecipe recipe,
+            Set<ResourceLocation> outputs) {
+        List<ItemStack> alreadyDropped = StationDropOutputs.collect(level, anchor, outputs);
+        for (ItemStack drop : alreadyDropped) StationProtocols.giveBack(villager, drop);
+        if (!alreadyDropped.isEmpty()) return true;
+        if (!hasResidentOutput(level, anchor, outputs) && !def.isReady(level, anchor)) return false;
+
+        boolean collectedOutput = false;
+        int attempts = recipe == null ? 64 : Math.max(1, recipe.outputCount());
+        for (int attempt = 0; attempt < attempts; attempt++) {
+            boolean returnedOutput = false;
+            for (JsonObject action : actions(def.collect())) {
+                String role = role(action);
+                if (!"empty".equals(role) && !"tool".equals(role) && !"container".equals(role)) return false;
+                UseOutcome outcome = runActionOutcome(level, villager, anchor, recipe, action, role, def, outputs);
+                if (!outcome.succeeded()) return collectedOutput;
+                returnedOutput |= outcome.returnedExpected();
+            }
+            List<ItemStack> outputDrops = StationDropOutputs.collect(level, anchor, outputs);
+            for (ItemStack drop : outputDrops) StationProtocols.giveBack(villager, drop);
+            boolean progressed = returnedOutput || !outputDrops.isEmpty();
+            collectedOutput |= progressed;
+            if (!progressed || !def.isReady(level, anchor)) break;
+        }
+        if (!collectedOutput) return false;
+
+        Set<ResourceLocation> remainders = recipe == null
+                ? remainderIds(inputIds(level, anchor)) : remainderIds(recipe);
+        if (!remainders.isEmpty()) {
+            List<ItemStack> returned = StationDropOutputs.collect(level, anchor, remainders);
+            for (ItemStack stack : returned) StationProtocols.giveBack(villager, stack);
+        }
+        if (recipe != null) {
+            extractDeclaredReturns(level, villager, anchor);
+            extractRecipeRemainders(level, villager, anchor, recipe);
+        }
+        return true;
+    }
+
+    @Override
+    public List<ItemStack> extractInvalidContents(ServerLevel level, BlockPos anchor,
+                                                  WorkstationDef ignored) {
+        WorkstationV2Def def = v2(level, anchor);
+        IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
+        if (def == null || handler == null) return List.of();
+        Set<ResourceLocation> inputs = inputIds(level, anchor);
+        Set<ResourceLocation> outputs = outputIds(level, anchor);
+        Set<ResourceLocation> containers = containerIds(level, anchor);
+        List<ItemStack> recovered = new ArrayList<>();
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            if (def.catalystSlots().contains(slot)) continue;
+            ItemStack present = handler.getStackInSlot(slot);
+            if (present.isEmpty()) continue;
+            ResourceLocation item = BuiltInRegistries.ITEM.getKey(present.getItem());
+            if (inputs.contains(item) || outputs.contains(item)) continue;
+            if (def.containerSlots().contains(slot) && containers.contains(item)) continue;
+            if (isFuelStock(level, anchor, slot, present)) continue;
+            ItemStack extracted = handler.extractItem(slot, present.getCount(), false);
+            if (!extracted.isEmpty()) recovered.add(extracted);
+        }
+        return recovered;
+    }
+
+    @Override
+    public boolean hasPendingInputs(ServerLevel level, BlockPos anchor, WorkstationDef ignored,
+                                    DiscoveredRecipe recipe) {
+        for (IItemHandler handler : handlers(level, anchor)) {
+            for (int slot = 0; slot < handler.getSlots(); slot++) {
+                ItemStack present = handler.getStackInSlot(slot);
+                if (present.isEmpty()) continue;
+                ResourceLocation item = BuiltInRegistries.ITEM.getKey(present.getItem());
+                if (recipe.output().equals(item)) continue;
+                for (RecipeIngredient ingredient : recipe.inputs()) {
+                    if (ingredient.itemIds().contains(item)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean matchesPendingInputs(ServerLevel level, BlockPos anchor, WorkstationDef ignored,
+                                        DiscoveredRecipe recipe) {
+        WorkstationV2Def def = v2(level, anchor);
+        IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
+        if (def == null || handler == null || recipe == null) return false;
+
+        Map<ResourceLocation, Integer> contents = new java.util.LinkedHashMap<>();
+        Set<ResourceLocation> outputs = outputIds(level, anchor);
+        Set<ResourceLocation> containers = containerIds(level, anchor);
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            if (def.hasExplicitIngredientSlots() && !def.ingredientSlots().contains(slot)) continue;
+            if (def.reservedForInsertion(slot) || def.catalystSlots().contains(slot)) continue;
+            ItemStack present = handler.getStackInSlot(slot);
+            if (present.isEmpty() || isFuelStock(level, anchor, slot, present)) continue;
+            ResourceLocation item = BuiltInRegistries.ITEM.getKey(present.getItem());
+            if (outputs.contains(item)) continue;
+            if (def.containerSlots().contains(slot) && containers.contains(item)) continue;
+            contents.merge(item, present.getCount(), Integer::sum);
+        }
+        return contentsMatchRecipe(contents, def.executableInputs(recipe.inputs()));
+    }
+
+    /** World-free recovery predicate: all observed inputs belong to, and satisfy, one recipe. */
+    static boolean contentsMatchRecipe(Map<ResourceLocation, Integer> contents,
+                                       List<RecipeIngredient> recipeInputs) {
+        if (contents == null || contents.isEmpty() || recipeInputs == null || recipeInputs.isEmpty()) {
+            return false;
+        }
+        List<RecipeIngredient> required = RecipeIngredient.merge(recipeInputs);
+        for (ResourceLocation observed : contents.keySet()) {
+            boolean accepted = false;
+            for (RecipeIngredient ingredient : required) {
+                if (ingredient.itemIds().contains(observed)) {
+                    accepted = true;
+                    break;
+                }
+            }
+            if (!accepted) return false;
+        }
+        for (RecipeIngredient ingredient : required) {
+            int available = 0;
+            for (ResourceLocation accepted : ingredient.itemIds()) {
+                available += Math.max(0, contents.getOrDefault(accepted, 0));
+            }
+            if (available < Math.max(1, ingredient.count())) return false;
+        }
+        return true;
     }
 
     private static boolean extractAvailablePreview(ServerLevel level, VillagerEntityMCA villager,
@@ -267,17 +423,28 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     private static boolean runPreparationActions(ServerLevel level, VillagerEntityMCA villager,
                                                  BlockPos anchor, WorkstationV2Def def,
                                                  DiscoveredRecipe recipe, int copies) {
+        boolean insertedIngredient = false;
         for (JsonObject action : actions(def.behavior())) {
             String role = role(action);
-            if ("ingredient".equals(role)) {
-                if (!interactIngredient(level, villager, anchor, recipe, def,
-                        stackBatch(def), copies)) return false;
-                return true;
+            if ("supply".equals(role)) {
+                if (!runAction(level, villager, anchor, recipe, action, role, def)) return false;
+                continue;
             }
-            if ("empty".equals(role)
+            if ("ingredient".equals(role)) {
+                if (action.has("all") && action.get("all").getAsBoolean()) {
+                    for (RecipeIngredient ingredient : def.ordinaryInputs(recipe.inputs())) {
+                        if (!interactIngredient(level, villager, anchor, ingredient, def,
+                                false, copies)) return false;
+                    }
+                } else if (!interactIngredient(level, villager, anchor, recipe, def,
+                        stackBatch(def), copies)) return false;
+                insertedIngredient = true;
+                continue;
+            }
+            if (!insertedIngredient && "empty".equals(role)
                     && !runAction(level, villager, anchor, recipe, action, role, def)) return false;
         }
-        return false;
+        return insertedIngredient;
     }
 
     private static boolean insertIngredients(ServerLevel level, VillagerEntityMCA villager,
@@ -408,6 +575,9 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                                            DiscoveredRecipe recipe,
                                            InsertionTransaction transaction) {
         if (recipe.containerItemId() == null || recipe.containerCount() <= 0) return true;
+        // Some machines accept the serving vessel only when the finished product is taken out.
+        // Gathering already put it in the worker's inventory; keep it there until collect.
+        if (def.collectUses("container")) return true;
         if (def.containerSlots().isEmpty()) return false;
         List<IItemHandler> handlers = new ArrayList<>();
         Set<IItemHandler> visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
@@ -531,11 +701,27 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         if (!(level.getBlockEntity(anchor) instanceof WorldlyContainer sided)) return new int[0];
         WorkstationV2Def def = v2(level, anchor);
         java.util.stream.IntStream.Builder slots = java.util.stream.IntStream.builder();
-        for (int slot : sided.getSlotsForFace(Direction.NORTH)) {
+        for (int slot : sideOnlySlots(sided.getSlotsForFace(Direction.NORTH),
+                sided.getSlotsForFace(Direction.UP), sided.getSlotsForFace(Direction.DOWN))) {
+            // Ingredient/output surfaces commonly accept arbitrary items when empty. A real
+            // furnace-style fuel channel is distinguished by being exposed from a horizontal
+            // face but not from the top or bottom (vanilla furnaces and Farm & Charm's stove).
             if (def != null && def.containerSlots().contains(slot)) continue;
+            if (def != null && (def.ingredientSlots().contains(slot)
+                    || def.catalystSlots().contains(slot)
+                    || def.outputSlots().contains(slot)
+                    || def.returnSlots().contains(slot)
+                    || def.previewSlots().contains(slot))) continue;
             if (sided.canPlaceItemThroughFace(slot, probe, Direction.NORTH)) slots.add(slot);
         }
         return slots.build().toArray();
+    }
+
+    static int[] sideOnlySlots(int[] horizontal, int[] up, int[] down) {
+        Set<Integer> vertical = new java.util.HashSet<>();
+        for (int slot : up) vertical.add(slot);
+        for (int slot : down) vertical.add(slot);
+        return java.util.Arrays.stream(horizontal).filter(slot -> !vertical.contains(slot)).toArray();
     }
 
     private static boolean interactIngredient(ServerLevel level, VillagerEntityMCA villager,
@@ -548,7 +734,12 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                                               BlockPos anchor, DiscoveredRecipe recipe,
                                               WorkstationV2Def def, boolean stack, int copies) {
         if (recipe.inputs().isEmpty()) return false;
-        RecipeIngredient ingredient = recipe.inputs().get(0);
+        return interactIngredient(level, villager, anchor, recipe.inputs().get(0), def, stack, copies);
+    }
+
+    private static boolean interactIngredient(ServerLevel level, VillagerEntityMCA villager,
+                                              BlockPos anchor, RecipeIngredient ingredient,
+                                              WorkstationV2Def def, boolean stack, int copies) {
         ItemStack held = stack
                 ? takeMatchingBatch(villager, ingredient,
                         Math.max(1, ingredient.count()) * Math.max(1, copies))
@@ -561,62 +752,121 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     }
 
     private static boolean runAction(ServerLevel level, VillagerEntityMCA villager,
-                                     BlockPos anchor, DiscoveredRecipe recipe, JsonObject action,
+                                     BlockPos anchor, @Nullable DiscoveredRecipe recipe, JsonObject action,
                                      String role, WorkstationV2Def def) {
+        return runActionOutcome(level, villager, anchor, recipe, action, role, def, Set.of()).succeeded();
+    }
+
+    private static UseOutcome runActionOutcome(ServerLevel level, VillagerEntityMCA villager,
+                                     BlockPos anchor, @Nullable DiscoveredRecipe recipe, JsonObject action,
+                                     String role, WorkstationV2Def def, Set<ResourceLocation> expected) {
         if (action.has("condition")) {
             BlockCondition condition = BlockConditions.parse(action.get("condition"));
-            if (condition == null || !condition.test(level, anchor)) return true;
+            if (condition == null) return new UseOutcome(false, false);
+            if (!condition.test(level, anchor)) return new UseOutcome(true, false);
         }
         ItemStack held = ItemStack.EMPTY;
         if ("tool".equals(role)) {
+            if (recipe == null) return new UseOutcome(false, false);
             for (int slot = 0; slot < villager.getInventory().getContainerSize(); slot++) {
                 ItemStack candidate = villager.getInventory().getItem(slot);
-                if (WorkRecipeRegistry.recipeToolMatches(recipe, candidate)) {
+                boolean matches = action.has("tool")
+                        ? WorkstationV2Def.actionToolMatches(action, candidate)
+                        : WorkRecipeRegistry.recipeToolMatches(recipe, candidate);
+                if (matches) {
                     held = candidate.split(1);
                     break;
                 }
             }
-            if (held.isEmpty()) return false;
+            if (held.isEmpty()) return new UseOutcome(false, false);
+        } else if ("supply".equals(role)) {
+            if (!action.has("supply")) return new UseOutcome(false, false);
+            String selector = action.get("supply").getAsString();
+            for (int slot = 0; slot < villager.getInventory().getContainerSize(); slot++) {
+                ItemStack candidate = villager.getInventory().getItem(slot);
+                if (WorkstationV2Def.actionSelectorMatches(selector, candidate)) {
+                    held = candidate.split(1);
+                    break;
+                }
+            }
+            if (held.isEmpty()) return new UseOutcome(false, false);
+        } else if ("container".equals(role)) {
+            if (recipe == null) return new UseOutcome(false, false);
+            if (recipe.containerItemId() == null) {
+                return useBlockOutcome(level, villager, anchor, action, ItemStack.EMPTY, expected);
+            }
+            net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.get(recipe.containerItemId());
+            for (int slot = 0; slot < villager.getInventory().getContainerSize(); slot++) {
+                ItemStack candidate = villager.getInventory().getItem(slot);
+                if (candidate.is(item)) {
+                    held = candidate.split(1);
+                    break;
+                }
+            }
+            if (held.isEmpty()) return new UseOutcome(false, false);
         }
-        return useBlock(level, villager, anchor, action, held);
+        return useBlockOutcome(level, villager, anchor, action, held, expected);
     }
 
     private static boolean useBlock(ServerLevel level, VillagerEntityMCA villager,
                                     BlockPos pos, JsonObject action, ItemStack supplied) {
+        return useBlockOutcome(level, villager, pos, action, supplied, Set.of()).succeeded();
+    }
+
+    private record UseOutcome(boolean succeeded, boolean returnedExpected) {}
+
+    private static UseOutcome useBlockOutcome(ServerLevel level, VillagerEntityMCA villager,
+                                    BlockPos pos, JsonObject action, ItemStack supplied,
+                                    Set<ResourceLocation> expected) {
         String role = action.has("item") ? action.get("item").getAsString() : "empty";
         var parsed = com.aetherianartificer.townstead.pheno.action.block.BlockActions.parse(action);
         if (parsed == null) {
             if (!supplied.isEmpty()) StationProtocols.giveBack(villager, supplied);
-            return false;
+            return new UseOutcome(false, false);
         }
         var context = new com.aetherianartificer.townstead.pheno.action.block.BlockActionContext(
                 level, pos, villager).withItemRole(role, supplied.copy());
         parsed.run(context);
         ItemStack remainder = context.itemRole(role);
+        boolean returnedExpected = !remainder.isEmpty()
+                && expected.contains(BuiltInRegistries.ITEM.getKey(remainder.getItem()));
         if (!remainder.isEmpty()) StationProtocols.giveBack(villager, remainder);
-        for (ItemStack returned : context.returnedItems()) StationProtocols.giveBack(villager, returned);
-        return context.succeeded();
+        for (ItemStack returned : context.returnedItems()) {
+            returnedExpected |= expected.contains(BuiltInRegistries.ITEM.getKey(returned.getItem()));
+            StationProtocols.giveBack(villager, returned);
+        }
+        return new UseOutcome(context.succeeded(), returnedExpected);
     }
 
     private static boolean hasOutput(ServerLevel level, BlockPos anchor, ResourceLocation output) {
+        return hasResidentOutput(level, anchor, Set.of(output))
+                || StationDropOutputs.has(level, anchor, Set.of(output));
+    }
+
+    private static boolean hasResidentOutput(ServerLevel level, BlockPos anchor,
+                                             Set<ResourceLocation> outputs) {
         WorkstationV2Def def = v2(level, anchor);
-        IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
-        if (handler != null) {
+        LinkedHashSet<IItemHandler> available = handlers(level, anchor);
+        if (!available.isEmpty()) {
             List<Integer> declared = def == null ? List.of() : declaredOutputSlots(def);
             if (!declared.isEmpty()) {
-                for (int slot : declared) {
-                    if (slot >= handler.getSlots()) continue;
-                    ItemStack stack = handler.getStackInSlot(slot);
-                    if (output.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) return true;
+                for (IItemHandler handler : available) {
+                    for (int slot : declared) {
+                        if (slot >= handler.getSlots()) continue;
+                        ItemStack stack = handler.getStackInSlot(slot);
+                        if (outputs.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()))) return true;
+                    }
                 }
-                return StationDropOutputs.has(level, anchor, Set.of(output));
+                return false;
             }
-            for (int slot = 0; slot < handler.getSlots(); slot++) {
-                ItemStack stack = handler.getStackInSlot(slot);
-                if (output.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) return true;
+            for (IItemHandler handler : available) {
+                for (int slot = 0; slot < handler.getSlots(); slot++) {
+                    ItemStack stack = handler.getStackInSlot(slot);
+                    if (outputs.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()))) return true;
+                }
             }
         }
-        return StationDropOutputs.has(level, anchor, Set.of(output));
+        return false;
     }
 
     /**
@@ -711,6 +961,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         if (outputCacheGeneration != generation) {
             OUTPUTS_BY_BLOCK.clear();
             CONTAINERS_BY_BLOCK.clear();
+            INPUTS_BY_BLOCK.clear();
             outputCacheGeneration = generation;
         }
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
@@ -742,6 +993,26 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                 }
             }
             return Set.copyOf(containers);
+        });
+    }
+
+    private static synchronized Set<ResourceLocation> inputIds(ServerLevel level,
+                                                               BlockPos anchor) {
+        // outputIds owns generation invalidation for every recipe-derived block cache.
+        outputIds(level, anchor);
+        ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
+        return INPUTS_BY_BLOCK.computeIfAbsent(block, ignored -> {
+            Set<ResourceLocation> types = WorkstationRecipeTypes.forBlock(block);
+            if (types.isEmpty()) return Set.of();
+            LinkedHashSet<ResourceLocation> inputs = new LinkedHashSet<>();
+            for (DiscoveredRecipe candidate : WorkRecipeRegistry.getRecipes(level)) {
+                ResourceLocation type = WorkRecipeRegistry.recipeTypeId(candidate);
+                if (type == null || !types.contains(type)) continue;
+                for (RecipeIngredient ingredient : candidate.inputs()) {
+                    inputs.addAll(ingredient.itemIds());
+                }
+            }
+            return Set.copyOf(inputs);
         });
     }
 
@@ -815,7 +1086,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     }
 
     private static boolean extractDeclaredReturns(ServerLevel level, VillagerEntityMCA villager,
-                                                  BlockPos anchor) {
+                                                   BlockPos anchor) {
         WorkstationV2Def def = v2(level, anchor);
         IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
         if (def == null || handler == null || def.returnSlots().isEmpty()) return false;
@@ -828,6 +1099,59 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
             collected = true;
         }
         return collected;
+    }
+
+    /**
+     * Recipes can leave vanilla crafting remainders in their former ingredient positions. Their
+     * item identity is public recipe/item behavior, so ordinary bowls and similar inventories do
+     * not need mod-specific return-slot JSON merely to get a bucket or bottle back.
+     */
+    private static boolean extractRecipeRemainders(ServerLevel level, VillagerEntityMCA villager,
+                                                   BlockPos anchor, DiscoveredRecipe recipe) {
+        LinkedHashSet<net.minecraft.world.item.Item> remainderItems = new LinkedHashSet<>();
+        for (RecipeIngredient ingredient : recipe.inputs()) {
+            for (ResourceLocation id : ingredient.itemIds()) {
+                net.minecraft.world.item.Item input = BuiltInRegistries.ITEM.get(id);
+                if (input == net.minecraft.world.item.Items.AIR || !input.hasCraftingRemainingItem()) continue;
+                net.minecraft.world.item.Item remainder = input.getCraftingRemainingItem();
+                if (remainder != null && remainder != net.minecraft.world.item.Items.AIR) {
+                    remainderItems.add(remainder);
+                }
+            }
+        }
+        if (remainderItems.isEmpty()) return false;
+
+        boolean collected = false;
+        for (IItemHandler handler : handlers(level, anchor)) {
+            for (int slot = 0; slot < handler.getSlots(); slot++) {
+                ItemStack present = handler.getStackInSlot(slot);
+                if (present.isEmpty() || !remainderItems.contains(present.getItem())) continue;
+                ItemStack extracted = handler.extractItem(slot, present.getCount(), false);
+                if (extracted.isEmpty()) continue;
+                StationProtocols.giveBack(villager, extracted);
+                collected = true;
+            }
+        }
+        return collected;
+    }
+
+    private static Set<ResourceLocation> remainderIds(DiscoveredRecipe recipe) {
+        LinkedHashSet<ResourceLocation> inputs = new LinkedHashSet<>();
+        for (RecipeIngredient ingredient : recipe.inputs()) inputs.addAll(ingredient.itemIds());
+        return remainderIds(inputs);
+    }
+
+    private static Set<ResourceLocation> remainderIds(Set<ResourceLocation> inputs) {
+        LinkedHashSet<ResourceLocation> remainders = new LinkedHashSet<>();
+        for (ResourceLocation id : inputs) {
+            net.minecraft.world.item.Item input = BuiltInRegistries.ITEM.get(id);
+            if (input == net.minecraft.world.item.Items.AIR || !input.hasCraftingRemainingItem()) continue;
+            net.minecraft.world.item.Item remainder = input.getCraftingRemainingItem();
+            if (remainder != null && remainder != net.minecraft.world.item.Items.AIR) {
+                remainders.add(BuiltInRegistries.ITEM.getKey(remainder));
+            }
+        }
+        return Set.copyOf(remainders);
     }
 
     private static boolean hasKnownOutputInSlots(IItemHandler handler, Set<ResourceLocation> outputs,

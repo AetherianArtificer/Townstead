@@ -7,8 +7,10 @@ import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class StationAdapters {
 
     /** Where a protocol station is in its cycle. */
-    public enum StationPhase { IDLE, WORKING, READY, FOREIGN }
+    public enum StationPhase { IDLE, WORKING, READY, INVALID_CONTENTS, FOREIGN }
 
     public interface Adapter {
 
@@ -104,6 +106,27 @@ public final class StationAdapters {
          */
         default boolean collectAvailable(ServerLevel level, VillagerEntityMCA villager,
                                          BlockPos anchor, WorkstationDef def) {
+            return false;
+        }
+
+        /** Extracts contents which cannot participate in any recipe owned by this block. */
+        default List<ItemStack> extractInvalidContents(ServerLevel level, BlockPos anchor,
+                                                       WorkstationDef def) {
+            return List.of();
+        }
+
+        /** Whether a committed batch still has recipe inputs physically resident in the block. */
+        default boolean hasPendingInputs(ServerLevel level, BlockPos anchor, WorkstationDef def,
+                                         DiscoveredRecipe recipe) {
+            return false;
+        }
+
+        /**
+         * Whether the station's observed, unfinished contents can be explained by this recipe.
+         * Used to resume work after reload without relying on an in-memory ownership record.
+         */
+        default boolean matchesPendingInputs(ServerLevel level, BlockPos anchor, WorkstationDef def,
+                                             DiscoveredRecipe recipe) {
             return false;
         }
     }

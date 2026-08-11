@@ -1,7 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
   "catalog": {
-    "node_item": ["farmersdelight:netherite_knife", "farm_and_charm:roaster"]
+    "node_item": ["farmersdelight:netherite_knife", "farm_and_charm:roaster", "kaleidoscope_cookery:netherite_kitchen_knife"]
   },
   "spirit": {
     "pastoral": 25,

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["kaleidoscope_cookery"],
+  "blocks": ["kaleidoscope_cookery:millstone"],
+  "capacity": { "positions": 1, "per_position": "stack" },
+  "requires": {
+    "type": "pheno:and",
+    "conditions": [
+      { "type": "pheno:block_state", "property": "part", "value": "center" },
+      { "type": "pheno:block_entity", "property": "entity", "value": true }
+    ]
+  },
+  "behavior": { "type": "pheno:use_block", "item": "ingredient" }
+}

@@ -4,8 +4,8 @@
     "minecraft:chest",
     "minecraft:trapped_chest",
     "minecraft:barrel",
-    {"id": "#townstead:compat/farmersdelight/kitchen_storage", "required": false},
-    {"id": "#townstead:compat/farmersdelight/kitchen_storage_upgraded", "required": false},
-    {"id": "#townstead:compat/farmersdelight/kitchen_storage_nether", "required": false}
+    {"id": "#townstead:kitchen/storage", "required": false},
+    {"id": "#townstead:kitchen/upgraded_storage", "required": false},
+    {"id": "#townstead:kitchen/nether_storage", "required": false}
   ]
 }

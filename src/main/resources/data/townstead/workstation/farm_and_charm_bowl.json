@@ -2,5 +2,41 @@
   "schema": "townstead:workstation/v2",
   "mods": ["farm_and_charm"],
   "blocks": ["farm_and_charm:crafting_bowl"],
-  "behavior": { "type": "pheno:use_block" }
+  "behavior": [
+    {
+      "type": "pheno:use_block",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:block_state",
+            "property": "stirred",
+            "value": "51"
+          },
+          {
+            "type": "pheno:block_state",
+            "property": "stirring",
+            "value": "0"
+          }
+        ]
+      }
+    },
+    {
+      "type": "pheno:use_block",
+      "condition": {
+        "type": "pheno:block_state",
+        "property": "stirred",
+        "value": "51",
+        "inverted": true
+      }
+    }
+  ],
+  "collect": {
+    "type": "pheno:use_block",
+    "condition": {
+      "type": "pheno:block_state",
+      "property": "stirring",
+      "value": "0"
+    }
+  }
 }

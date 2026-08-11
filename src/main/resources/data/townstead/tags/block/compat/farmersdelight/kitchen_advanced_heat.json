@@ -1,17 +1,1 @@
-{
-  "replace": false,
-  "values": [
-    {
-      "id": "farmersdelight:stove",
-      "required": false
-    },
-    {
-      "id": "farm_and_charm:stove",
-      "required": false
-    },
-    {
-      "id": "farm_and_charm:roaster",
-      "required": false
-    }
-  ]
-}
+{ "replace": false, "values": ["#townstead:kitchen/advanced_heat"] }

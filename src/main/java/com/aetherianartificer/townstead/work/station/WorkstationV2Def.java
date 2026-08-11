@@ -12,6 +12,11 @@ import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -38,9 +43,13 @@ public record WorkstationV2Def(
         List<Integer> previewSlots,
         List<RecipeSlotRole> recipeLayout,
         List<RecipeCorrection> recipeCorrections,
+        List<String> recipeSupplies,
         @Nullable JsonElement requiresJson,
         @Nullable BlockCondition requires,
+        @Nullable JsonElement readyJson,
+        @Nullable BlockCondition ready,
         @Nullable JsonElement behavior,
+        @Nullable JsonElement collect,
         @Nullable JsonElement structure,
         @Nullable BlockSelector structureSelector,
         @Nullable JsonElement capacity,
@@ -135,11 +144,29 @@ public record WorkstationV2Def(
             }
         }
 
+        List<String> supplies = new ArrayList<>();
+        if (json.has("supplies")) {
+            if (!json.get("supplies").isJsonArray()) return null;
+            for (JsonElement element : json.getAsJsonArray("supplies")) {
+                if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) return null;
+                String selector = element.getAsString();
+                ResourceLocation supply = ResourceLocation.tryParse(selector.startsWith("#")
+                        ? selector.substring(1) : selector);
+                if (supply == null) return null;
+                supplies.add(selector);
+            }
+        }
+
         JsonElement requiresJson = copy(json.get("requires"));
         BlockCondition requires = requiresJson == null ? null : BlockConditions.parse(requiresJson);
         if (requiresJson != null && requires == null) return null;
+        JsonElement readyJson = copy(json.get("ready"));
+        BlockCondition ready = readyJson == null ? null : BlockConditions.parse(readyJson);
+        if (readyJson != null && ready == null) return null;
         JsonElement behavior = copy(json.get("behavior"));
         if (behavior != null && !validBehavior(behavior)) return null;
+        JsonElement collect = copy(json.get("collect"));
+        if (collect != null && !validBehavior(collect)) return null;
         JsonElement structure = copy(json.get("structure"));
         BlockSelector structureSelector = structure == null ? null : BlockSelectors.parse(structure);
         if (structure != null && structureSelector == null) return null;
@@ -175,8 +202,8 @@ public record WorkstationV2Def(
         return new WorkstationV2Def(id, Set.copyOf(blocks), List.copyOf(containers),
                 List.copyOf(ingredients), List.copyOf(catalysts), List.copyOf(outputs),
                 List.copyOf(returns), List.copyOf(previews), List.copyOf(layout),
-                List.copyOf(corrections),
-                requiresJson, requires, behavior, structure, structureSelector,
+                List.copyOf(corrections), List.copyOf(supplies),
+                requiresJson, requires, readyJson, ready, behavior, collect, structure, structureSelector,
                 capacity, capacityValue, capacityPositions, stackPerPosition);
     }
 
@@ -236,6 +263,46 @@ public record WorkstationV2Def(
         return requires == null || requires.test(level, pos);
     }
 
+    /** A public, event-driven completion predicate for machines without extractable output slots. */
+    public boolean isReady(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) {
+        return ready != null && ready.test(level, pos);
+    }
+
+    /** Resolves fixed station supplies through the live item registry, including datapack tags. */
+    public List<RecipeIngredient> resolvedSupplies() {
+        List<RecipeIngredient> resolved = new ArrayList<>();
+        for (String selector : recipeSupplies) {
+            LinkedHashSet<ResourceLocation> ids = new LinkedHashSet<>();
+            if (selector.startsWith("#")) {
+                ResourceLocation tagId = ResourceLocation.tryParse(selector.substring(1));
+                if (tagId != null) {
+                    BuiltInRegistries.ITEM.getTag(TagKey.create(Registries.ITEM, tagId)).ifPresent(set ->
+                            set.forEach(holder -> holder.unwrapKey().ifPresent(key -> ids.add(key.location()))));
+                }
+            } else {
+                ResourceLocation id = ResourceLocation.tryParse(selector);
+                if (id != null && BuiltInRegistries.ITEM.containsKey(id)) ids.add(id);
+            }
+            if (!ids.isEmpty()) resolved.add(new RecipeIngredient(List.copyOf(ids), 1));
+        }
+        return List.copyOf(resolved);
+    }
+
+    public List<RecipeIngredient> withSupplies(List<RecipeIngredient> publicInputs) {
+        List<RecipeIngredient> supplies = resolvedSupplies();
+        if (supplies.isEmpty()) return publicInputs;
+        List<RecipeIngredient> out = new ArrayList<>(publicInputs.size() + supplies.size());
+        out.addAll(publicInputs);
+        out.addAll(supplies);
+        return List.copyOf(out);
+    }
+
+    public List<RecipeIngredient> ordinaryInputs(List<RecipeIngredient> plannedInputs) {
+        int supplyCount = Math.min(recipeSupplies.size(), plannedInputs.size());
+        return supplyCount == 0 ? plannedInputs
+                : plannedInputs.subList(0, plannedInputs.size() - supplyCount);
+    }
+
     /**
      * Internal scheduling hint while the V1 state machine is retired. It is derived from public
      * recipe/behavior facts and is never author-facing workstation syntax.
@@ -243,8 +310,10 @@ public record WorkstationV2Def(
     public StationType schedulingRole(Set<ResourceLocation> recipeTypes) {
         ResourceLocation campfire = ResourceLocation.tryParse("minecraft:campfire_cooking");
         if (recipeTypes.contains(campfire)) return StationType.FIRE_STATION;
-        if (behaviorUses("tool")) return StationType.CUTTING_BOARD;
-        if (!containerSlots.isEmpty()) return StationType.HOT_STATION;
+        if (behaviorUses("tool") && !behaviorUses("ingredient")) return StationType.CUTTING_BOARD;
+        if (!containerSlots.isEmpty() || collectUses("container") || !recipeSupplies.isEmpty()) {
+            return StationType.HOT_STATION;
+        }
         return StationType.PASSIVE_STATION;
     }
 
@@ -273,6 +342,71 @@ public record WorkstationV2Def(
         return uses(behavior, role);
     }
 
+    public boolean collectUses(String role) {
+        if (collect == null || role == null) return false;
+        for (JsonElement action : actions(collect)) if (uses(action, role)) return true;
+        return false;
+    }
+
+    /** Whether an action names the public item/tag contract for its exceptional tool. */
+    public boolean hasDeclaredTool() {
+        for (JsonElement action : actions(behavior)) {
+            JsonObject object = action.getAsJsonObject();
+            if (uses(object, "tool") && object.has("tool")) return true;
+        }
+        return false;
+    }
+
+    /** Matches an action's exact item or item tag without knowing which mod declared it. */
+    public boolean toolMatches(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        for (JsonElement action : actions(behavior)) {
+            JsonObject object = action.getAsJsonObject();
+            if (uses(object, "tool") && actionToolMatches(object, stack)) return true;
+        }
+        return false;
+    }
+
+    public static boolean actionToolMatches(JsonObject action, ItemStack stack) {
+        if (action == null || stack == null || stack.isEmpty() || !action.has("tool")) return false;
+        return actionSelectorMatches(action.get("tool").getAsString(), stack);
+    }
+
+    public static boolean actionSelectorMatches(String value, ItemStack stack) {
+        if (value == null || stack == null || stack.isEmpty()) return false;
+        if (value.startsWith("#")) {
+            ResourceLocation id = ResourceLocation.tryParse(value.substring(1));
+            return id != null && stack.is(TagKey.create(Registries.ITEM, id));
+        }
+        ResourceLocation id = ResourceLocation.tryParse(value);
+        Item item = id == null ? null : BuiltInRegistries.ITEM.get(id);
+        return item != null && stack.is(item);
+    }
+
+    private static Iterable<JsonElement> actions(@Nullable JsonElement value) {
+        if (value == null) return List.of();
+        return value.isJsonArray() ? value.getAsJsonArray() : List.of(value);
+    }
+
+    /**
+     * Whether processing requires an empty-hand pulse after ingredients have been committed.
+     * Preparation actions before an ingredient (closing a silo) are one-shot and do not qualify.
+     */
+    public boolean hasRepeatableWorkAction() {
+        if (behavior == null) return false;
+        boolean afterIngredient = !behaviorUses("ingredient");
+        Iterable<JsonElement> actions = behavior.isJsonArray()
+                ? behavior.getAsJsonArray() : List.of(behavior);
+        for (JsonElement action : actions) {
+            if (uses(action, "ingredient")) {
+                afterIngredient = true;
+            } else if (afterIngredient && uses(action, "empty")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean uses(JsonElement action, String role) {
         if (!action.isJsonObject()) return false;
         JsonObject object = action.getAsJsonObject();
@@ -294,9 +428,29 @@ public record WorkstationV2Def(
         JsonObject object = action.getAsJsonObject();
         if (!object.has("type") || !object.get("type").isJsonPrimitive()) return false;
         if (!"pheno:use_block".equals(object.get("type").getAsString())) return false;
+        if (object.has("condition") && BlockConditions.parse(object.get("condition")) == null) {
+            return false;
+        }
+        if (object.has("tool")) {
+            if (!object.get("tool").isJsonPrimitive()
+                    || !object.getAsJsonPrimitive("tool").isString()) return false;
+            String tool = object.get("tool").getAsString();
+            ResourceLocation toolId = ResourceLocation.tryParse(tool.startsWith("#")
+                    ? tool.substring(1) : tool);
+            if (toolId == null || !"tool".equals(
+                    object.has("item") ? object.get("item").getAsString() : "empty")) return false;
+        }
         if (!object.has("item")) return true;
         String role = object.get("item").getAsString();
-        return role.equals("empty") || role.equals("ingredient") || role.equals("tool");
+        if (!(role.equals("empty") || role.equals("ingredient") || role.equals("tool")
+                || role.equals("supply") || role.equals("container"))) return false;
+        if (role.equals("supply")) {
+            if (!object.has("supply") || !object.get("supply").isJsonPrimitive()) return false;
+            String selector = object.get("supply").getAsString();
+            return ResourceLocation.tryParse(selector.startsWith("#")
+                    ? selector.substring(1) : selector) != null;
+        }
+        return true;
     }
 
     private static @Nullable JsonElement copy(@Nullable JsonElement element) {

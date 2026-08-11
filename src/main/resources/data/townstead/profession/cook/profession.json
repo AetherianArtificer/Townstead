@@ -8,44 +8,25 @@
     "text": "Prepare food to build a history of culinary mastery."
   },
   "skills": [
-    "banked_coals",
-    "bitter_splash",
     "blistered_crust",
-    "cast_iron_stomach",
-    "deglaze",
-    "dry_rub",
-    "ember_bed",
-    "ember_toss",
-    "feast_fire",
     "kitchen_rhythm",
-    "long_reduction",
-    "mise_en_place",
-    "mother_sauce",
-    "open_flame",
     "peel_sweep",
     "peel_vault",
-    "pit_master",
     "pizza_craft",
     "pizza_spin",
-    "restorative_broth",
-    "sear",
-    "searing_wind",
     "seasoned_hands",
-    "simmer",
-    "slow_stove",
     "starter_culture",
     "steady_simmer",
     "stone_heat",
     "stone_oven",
-    "stone_wisdom",
-    "table_service",
-    "turning_spit"
+    "stone_wisdom"
   ],
   "unlock_model": "experiential",
   "mods": {
     "any": [
       "farmersdelight",
       "farm_and_charm",
+      "kaleidoscope_cookery",
       "rusticdelight"
     ]
   },
@@ -84,6 +65,10 @@
         "farmersdelight:skillet",
         "farmersdelight:stove",
         "#minecraft:campfires",
+        "kaleidoscope_cookery:pot",
+        "kaleidoscope_cookery:stockpot",
+        "kaleidoscope_cookery:millstone",
+        "kaleidoscope_cookery:steamer",
         "pizzadelight:basin",
         "pizzadelight:raw_pizza",
         "pizzadelight:pizza"
@@ -93,7 +78,8 @@
     {
       "type": "townstead_work:chop",
       "workstations": [
-        "farmersdelight:cutting_board"
+        "farmersdelight:cutting_board",
+        "kaleidoscope_cookery:chopping_board"
       ],
       "weight": 10
     },
@@ -117,6 +103,7 @@
         "farm_and_charm:cooking_pot",
         "farm_and_charm:stove",
         "farm_and_charm:roaster",
+        "farm_and_charm:crafting_bowl",
         "farm_and_charm:mincer"
       ],
       "weight": 10
@@ -157,87 +144,13 @@
         "pizzadelight:pizza",
         "farmersdelight:stove"
       ]
-    },
-    {
-      "id": "rotisseur",
-      "color": "#B2452C",
-      "name": {
-        "text": "Rotisseur"
-      },
-      "gateway": "open_flame",
-      "skills": [
-        "turning_spit",
-        "ember_bed",
-        "sear",
-        "ember_toss",
-        "feast_fire",
-        "dry_rub",
-        "banked_coals",
-        "searing_wind",
-        "pit_master"
-      ],
-      "worksites": [
-        "farmersdelight:skillet",
-        "minecraft:campfire",
-        "minecraft:soul_campfire"
-      ]
-    },
-    {
-      "id": "saucier",
-      "color": "#7A8F52",
-      "name": {
-        "text": "Saucier"
-      },
-      "gateway": "slow_stove",
-      "skills": [
-        "long_reduction",
-        "cast_iron_stomach",
-        "simmer",
-        "restorative_broth",
-        "bitter_splash",
-        "mise_en_place",
-        "mother_sauce",
-        "deglaze",
-        "table_service"
-      ],
-      "worksites": [
-        "farmersdelight:cooking_pot"
-      ]
     }
   ],
   "titles": [
     {
-      "id": "rotisseur",
-      "name": {
-        "text": "Rotisseur"
-      },
-      "skills": [
-        "open_flame",
-        "turning_spit",
-        "ember_bed",
-        "sear",
-        "ember_toss",
-        "feast_fire"
-      ]
-    },
-    {
-      "id": "saucier",
-      "name": {
-        "text": "Saucier"
-      },
-      "skills": [
-        "slow_stove",
-        "long_reduction",
-        "cast_iron_stomach",
-        "simmer",
-        "restorative_broth",
-        "bitter_splash"
-      ]
-    },
-    {
       "id": "chef_de_cuisine",
       "name": {
-        "text": "Chef de Cuisine"
+        "text": "Head Chef"
       },
       "skills": [
         "seasoned_hands",

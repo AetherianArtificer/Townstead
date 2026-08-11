@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["kaleidoscope_cookery"],
+  "blocks": ["kaleidoscope_cookery:stockpot"],
+  "supplies": ["minecraft:water_bucket", "kaleidoscope_cookery:stockpot_lid"],
+  "requires": {
+    "type": "pheno:offset", "y": -1,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:in_tag", "tag": "townstead:kitchen/heat_sources" },
+        { "type": "pheno:block_state", "property": "lit", "value": "true", "if_missing": "pass" }
+      ]
+    }
+  },
+  "ready": { "type": "pheno:block_entity", "property": "status", "value": 3 },
+  "behavior": [
+    {
+      "type": "pheno:use_block", "item": "supply", "supply": "minecraft:water_bucket",
+      "condition": { "type": "pheno:block_entity", "property": "status", "value": 0 }
+    },
+    { "type": "pheno:use_block", "item": "ingredient", "all": true },
+    {
+      "type": "pheno:use_block", "item": "supply", "supply": "kaleidoscope_cookery:stockpot_lid",
+      "condition": { "type": "pheno:block_entity", "property": "status", "value": 1 }
+    }
+  ],
+  "collect": [
+    {
+      "type": "pheno:use_block", "item": "empty",
+      "condition": { "type": "pheno:block_state", "property": "has_lid", "value": "true" }
+    },
+    { "type": "pheno:use_block", "item": "container" }
+  ]
+}

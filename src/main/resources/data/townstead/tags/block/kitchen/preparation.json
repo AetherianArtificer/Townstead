@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "farmersdelight:cutting_board", "required": false },
+    { "id": "farm_and_charm:crafting_bowl", "required": false },
+    { "id": "kaleidoscope_cookery:chopping_board", "required": false },
+    { "id": "kaleidoscope_cookery:millstone", "required": false }
+  ]
+}

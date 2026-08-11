@@ -378,6 +378,7 @@ public final class WorkRecipeRegistry {
             List<RecipeIngredient> inputs = extractIngredients(recipe);
             if (inputs.isEmpty()) continue;
             inputs = def.executableInputs(inputs);
+            inputs = def.withSupplies(inputs);
             if (inputs.isEmpty()) continue;
             ResourceLocation container = containerOf(recipe);
             int cookTime = safeCookTime(recipe, 200);
@@ -386,7 +387,8 @@ public final class WorkRecipeRegistry {
             out.add(new DiscoveredRecipe(recipeId, role,
                     autoTier(role, inputs.size(), cookTime), outputId,
                     Math.max(1, result.getCount()), cookTime, tool,
-                    container, container == null ? 0 : 1, inputs, false, beverage,
+                    container, container == null ? 0 : Math.max(1, result.getCount()),
+                    inputs, false, beverage,
                     //? if >=1.21 {
                     holder
                     //?} else {
@@ -517,12 +519,22 @@ public final class WorkRecipeRegistry {
     private static @Nullable ResourceLocation containerOf(Recipe<?> recipe) {
         // Prefer an explicit public recipe contract when one exists. These are semantic names,
         // not mod checks; any recipe implementation may expose one of them.
-        for (String methodName : List.of("getContainer", "getOutputContainer", "getRequiredContainer")) {
+        for (String methodName : List.of("getContainer", "getOutputContainer", "getRequiredContainer",
+                "container", "carrier", "getCarrier")) {
             try {
                 Method method = recipe.getClass().getMethod(methodName);
-                if (method.invoke(recipe) instanceof ItemStack stack && !stack.isEmpty()) {
+                Object value = method.invoke(recipe);
+                if (value instanceof ItemStack stack && !stack.isEmpty()) {
                     ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
                     if (id != null && stack.getItem() != Items.AIR) return id;
+                }
+                if (value instanceof net.minecraft.world.item.crafting.Ingredient ingredient
+                        && !ingredient.isEmpty()) {
+                    ItemStack[] options = ingredient.getItems();
+                    if (options.length > 0 && !options[0].isEmpty()) {
+                        ResourceLocation id = BuiltInRegistries.ITEM.getKey(options[0].getItem());
+                        if (id != null && options[0].getItem() != Items.AIR) return id;
+                    }
                 }
             } catch (NoSuchMethodException ignored) {
             } catch (Throwable ignored) {
@@ -686,7 +698,8 @@ public final class WorkRecipeRegistry {
     }
 
     private static int safeCookTime(Recipe<?> recipe, int fallback) {
-        String[] methods = {"getCookingTime", "getCookTime", "getCookTimeInTicks"};
+        String[] methods = {"getCookingTime", "getCookTime", "getCookTimeInTicks", "time",
+                "getTime", "cookTick", "getCookTick"};
         for (String name : methods) {
             try {
                 Method m = recipe.getClass().getMethod(name);
@@ -699,6 +712,15 @@ public final class WorkRecipeRegistry {
 
     public static boolean recipeToolMatches(DiscoveredRecipe recipe, ItemStack stack) {
         if (recipe == null || !recipe.requiresTool() || stack == null || stack.isEmpty()) return false;
+        boolean declared = false;
+        for (WorkstationDef workstation : defsFor(recipe)) {
+            WorkstationV2Def v2 = Workstations.v2ByBlockId(
+                    workstation.blocks().stream().findFirst().orElse(null));
+            if (v2 == null || !v2.hasDeclaredTool()) continue;
+            declared = true;
+            if (v2.toolMatches(stack)) return true;
+        }
+        if (declared) return false;
         Object source = recipe.source();
         //? if >=1.21 {
         if (source instanceof RecipeHolder<?> holder) source = holder.value();
@@ -723,7 +745,35 @@ public final class WorkRecipeRegistry {
             int count = reflectIngredientCount(mcIng);
             result.add(new RecipeIngredient(ids, count));
         }
+        if (!result.isEmpty()) return result;
+
+        // Single-input recipe implementations are allowed to expose their ingredient directly
+        // while leaving Recipe#getIngredients empty. That is still a public recipe contract.
+        for (String methodName : List.of("ingredient", "getIngredient")) {
+            try {
+                Method method = recipe.getClass().getMethod(methodName);
+                Object value = method.invoke(recipe);
+                if (!(value instanceof net.minecraft.world.item.crafting.Ingredient ingredient)
+                        || ingredient.isEmpty()) continue;
+                List<ResourceLocation> ids = itemIdsFromIngredient(ingredient);
+                if (ids.isEmpty()) continue;
+                int count = semanticIngredientCount(recipe, reflectIngredientCount(ingredient));
+                result.add(new RecipeIngredient(ids, count));
+                break;
+            } catch (Throwable ignored) {}
+        }
         return result;
+    }
+
+    private static int semanticIngredientCount(Recipe<?> recipe, int fallback) {
+        for (String name : List.of("ingredientCount", "getIngredientCount")) {
+            try {
+                Method method = recipe.getClass().getMethod(name);
+                Object value = method.invoke(recipe);
+                if (value instanceof Number number && number.intValue() > 0) return number.intValue();
+            } catch (Throwable ignored) {}
+        }
+        return Math.max(1, fallback);
     }
 
     private static int reflectIngredientCount(net.minecraft.world.item.crafting.Ingredient ingredient) {

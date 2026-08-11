@@ -2,6 +2,7 @@
   "schema": "townstead:workstation/v2",
   "mods": ["farm_and_charm"],
   "blocks": ["farm_and_charm:mincer"],
+  "capacity": { "positions": 1, "per_position": "stack" },
   "behavior": [
     { "type": "pheno:use_block", "item": "ingredient" },
     { "type": "pheno:use_block" }

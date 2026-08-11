@@ -10,6 +10,7 @@ import net.neoforged.fml.ModList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public final class ModCompat {
     private static final Map<String, Boolean> LOADED_CACHE = new ConcurrentHashMap<>();
@@ -20,7 +21,8 @@ public final class ModCompat {
      * trade on Farmer's Delight by name — the tier lines are role tags every provider
      * contributes to, so a kitchen can be built, staffed and worked without it.
      */
-    public static final List<String> KITCHEN_PROVIDERS = List.of("farmersdelight", "farm_and_charm");
+    public static final List<String> KITCHEN_PROVIDERS = List.of(
+            "farmersdelight", "farm_and_charm", "kaleidoscope_cookery");
 
     /**
      * Compat paths whose requirements are satisfiable by more than one provider mod (their
@@ -85,5 +87,21 @@ public final class ModCompat {
         }
         String modId = extractCompatModId(path);
         return modId == null || isLoaded(modId);
+    }
+
+    /**
+     * Loaded mods that actually provide a compat building. Shared families return every loaded
+     * provider instead of leaking the legacy mod id embedded in their stable building-type path.
+     */
+    public static List<String> loadedCompatProviders(String path) {
+        if (path != null) {
+            for (Map.Entry<String, List<String>> entry : ANY_PROVIDER_PREFIXES.entrySet()) {
+                if (path.startsWith(entry.getKey())) {
+                    return entry.getValue().stream().filter(ModCompat::isLoaded).collect(Collectors.toList());
+                }
+            }
+        }
+        String modId = extractCompatModId(path);
+        return modId != null && isLoaded(modId) ? List.of(modId) : List.of();
     }
 }

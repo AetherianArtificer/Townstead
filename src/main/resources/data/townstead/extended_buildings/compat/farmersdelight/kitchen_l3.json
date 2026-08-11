@@ -1,7 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
   "catalog": {
-    "node_item": ["farmersdelight:cooking_pot", "farm_and_charm:cooking_pot"]
+    "node_item": ["farmersdelight:cooking_pot", "farm_and_charm:cooking_pot", "kaleidoscope_cookery:stockpot"]
   },
   "spirit": {
     "pastoral": 12,

@@ -495,6 +495,14 @@ public class StationWorkTask extends ProducerWorkTask {
     }
 
     @Override
+    protected boolean hasResumableStationSession(
+            ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos, long gameTime) {
+        if (pos == null) return false;
+        ProducerStationSessions.SessionSnapshot session = ProducerStationSessions.snapshot(level, pos);
+        return session != null && session.isOwner(villager.getUUID());
+    }
+
+    @Override
     protected void onStop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         clearCaches();
     }

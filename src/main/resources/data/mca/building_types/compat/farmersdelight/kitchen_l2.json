@@ -7,9 +7,9 @@
   "iconV": 180,
   "noBeds": true,
   "blocks": {
-    "#townstead:compat/farmersdelight/kitchen_heat_sources": 1,
-    "#townstead:compat/farmersdelight/kitchen_workstations": 1,
-    "#townstead:compat/farmersdelight/kitchen_storage": 1,
-    "#townstead:compat/farmersdelight/kitchen_prep_blocks": 1
+    "#townstead:kitchen/heat_sources": 1,
+    "#townstead:kitchen/workstations": 1,
+    "#townstead:kitchen/storage": 1,
+    "#townstead:kitchen/preparation": 1
   }
 }

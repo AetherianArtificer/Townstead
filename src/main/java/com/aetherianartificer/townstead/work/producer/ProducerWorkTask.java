@@ -204,11 +204,29 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     protected void onProduceTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {}
 
+    /** A committed input set vanished without producing an output and must be reloaded. */
+    protected boolean isProductionInterrupted(ServerLevel level, VillagerEntityMCA villager,
+                                              long gameTime) { return false; }
+
+    /** Clears engine-specific interruption bookkeeping after the base restarts the cycle. */
+    protected void onProductionInterrupted(ServerLevel level, VillagerEntityMCA villager,
+                                           long gameTime) {}
+
     protected boolean mustWaitBeyondCollectTimeout(ServerLevel level, VillagerEntityMCA villager) { return false; }
 
     protected void onSessionRefresh(ServerLevel level, VillagerEntityMCA villager, long gameTime) {}
 
     protected void onSessionRelease(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos, long gameTime) {}
+
+    /**
+     * Whether a committed station cycle can survive a scheduler-level Behavior rollover.
+     * Concrete station engines answer from their cycle record; ordinary producers have nothing
+     * to resume.  This is deliberately a state question, not a longer timeout.
+     */
+    protected boolean hasResumableStationSession(
+            ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos, long gameTime) {
+        return false;
+    }
 
     protected void onOpportunisticSweep(ServerLevel level, VillagerEntityMCA villager, long gameTime) {}
 
@@ -314,9 +332,20 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        // Behavior's duration is a scheduler lease, not a production lifecycle. If that lease
+        // rolls over while this is still the villager's enabled, eligible WORK activity, retain
+        // the committed station cycle. The physical claim is still released below, so the next
+        // behavior must reacquire the station normally. Completion, abandonment, job loss,
+        // disablement and a real shift boundary all continue to release the cycle explicitly.
+        boolean resumeCommittedCycle = isTaskEnabled()
+                && isEligibleVillager(level, villager)
+                && currentActivity(villager) == Activity.WORK
+                && hasResumableStationSession(level, villager, stationAnchor, gameTime);
         onStop(level, villager, gameTime);
         releaseStationClaim(level, villager, stationAnchor);
-        onSessionRelease(level, villager, stationAnchor, gameTime);
+        if (!resumeCommittedCycle) {
+            onSessionRelease(level, villager, stationAnchor, gameTime);
+        }
         String reactionStopReason = blocked != ProducerBlockedReason.NONE ? "give_up" : null;
         clearTransientState();
         state = ProducerState.PATH_TO_WORKSITE;
@@ -730,6 +759,20 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         }
 
         onProduceTick(level, villager, gameTime);
+
+        if (isProductionInterrupted(level, villager, gameTime)) {
+            debugChat(level, villager, "PRODUCE:inputs left station without output; reloading recipe");
+            onProductionInterrupted(level, villager, gameTime);
+            releaseOrderClaim();
+            onSessionRelease(level, villager, stationAnchor, gameTime);
+            releaseStationClaim(level, villager, stationAnchor);
+            stationAnchor = null;
+            standPos = null;
+            activeRecipe = null;
+            stagedInputs.clear();
+            transitionToNavigationState(level, villager, gameTime);
+            return;
+        }
 
         if (gameTime < produceDoneTick) return;
         if (!isProduceDone(level, villager, gameTime)) {

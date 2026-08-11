@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.work.producer.ProducerRole;
 import com.aetherianartificer.townstead.work.producer.ProducerWorkSupport;
 
 import com.aetherianartificer.townstead.work.station.Stations;
+import com.aetherianartificer.townstead.work.station.StationProtocols;
 
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.StationType;
@@ -193,17 +194,6 @@ public final class ProducerStationIndex {
             int usableCapacity = stationUsableCapacity(level, slot);
             double distanceSq = villager.distanceToSqr(slot.pos().getX() + 0.5, slot.pos().getY() + 0.5, slot.pos().getZ() + 0.5);
 
-            if (state == ProducerStationState.BLOCKED) {
-                logSkip(role, villager, slot, "blocked");
-                continue;
-            }
-
-            if (state == ProducerStationState.FINISHED_OUTPUT || state == ProducerStationState.OWNED_STAGED) {
-                candidates.add(new Candidate(slot, stand, state, usableCapacity, distanceSq,
-                        null, 0, Double.POSITIVE_INFINITY));
-                continue;
-            }
-
             List<ScoredRecipe> stationTypeCandidates = candidateRecipesByType.computeIfAbsent(slot.type(), type ->
                     RecipeSelector.candidateRecipes(
                             level,
@@ -214,6 +204,26 @@ public final class ProducerStationIndex {
                             ProducerWorkSupport.excludeBeverages(role, level, villager),
                             ProducerWorkSupport.beveragesOnly(role),
                             taskTypes));
+
+            if (state == ProducerStationState.BLOCKED) {
+                ScoredRecipe resumable = bestResumableRecipe(
+                        level, slot, stationTypeCandidates, outputPriority);
+                if (resumable != null) {
+                    int orderRank = outputPriority.applyAsInt(resumable.recipe().output());
+                    candidates.add(new Candidate(slot, stand, ProducerStationState.COMPATIBLE_PARTIAL,
+                            usableCapacity, distanceSq, resumable.recipe(), orderRank, resumable.score()));
+                    continue;
+                }
+                logSkip(role, villager, slot, "blocked");
+                continue;
+            }
+
+            if (state == ProducerStationState.FINISHED_OUTPUT || state == ProducerStationState.OWNED_STAGED) {
+                candidates.add(new Candidate(slot, stand, state, usableCapacity, distanceSq,
+                        null, 0, Double.POSITIVE_INFINITY));
+                continue;
+            }
+
             List<ScoredRecipe> viable = new ArrayList<>();
             for (ScoredRecipe candidate : stationTypeCandidates) {
                 if (outputPriority.applyAsInt(candidate.recipe().output()) == Integer.MAX_VALUE) continue;
@@ -279,6 +289,28 @@ public final class ProducerStationIndex {
         return new Selection(choice.station(), choice.standPos(), choice.state(), choice.usableCapacity(), choice.recipe());
     }
 
+    /**
+     * Reconstruct a lost cycle from public station inventory plus the recipe types owned by the
+     * block. Order priority disambiguates compatible recipes before the normal recipe score.
+     */
+    private static @Nullable ScoredRecipe bestResumableRecipe(
+            ServerLevel level, StationSlot slot, List<ScoredRecipe> candidates,
+            java.util.function.ToIntFunction<net.minecraft.resources.ResourceLocation> outputPriority) {
+        ScoredRecipe best = null;
+        int bestOrder = Integer.MAX_VALUE;
+        for (ScoredRecipe candidate : candidates) {
+            int order = outputPriority.applyAsInt(candidate.recipe().output());
+            if (!ProductionStations.supportsRecipe(level, slot.pos(), candidate.recipe())) continue;
+            if (!StationProtocols.matchesPendingInputs(level, slot.pos(), candidate.recipe())) continue;
+            if (best == null || order < bestOrder
+                    || (order == bestOrder && candidate.score() > best.score())) {
+                best = candidate;
+                bestOrder = order;
+            }
+        }
+        return best;
+    }
+
     private static int stationUsableCapacity(ServerLevel level, StationSlot slot) {
         return Math.max(0, slot.capacity());
     }
@@ -287,8 +319,8 @@ public final class ProducerStationIndex {
         return switch (state) {
             case FINISHED_OUTPUT -> 0;
             case OWNED_STAGED -> 1;
-            case EMPTY_READY -> 2;
-            case COMPATIBLE_PARTIAL -> 3;
+            case COMPATIBLE_PARTIAL -> 2;
+            case EMPTY_READY -> 3;
             case FOREIGN_CONTENTS -> 4;
             case BLOCKED -> 5;
         };

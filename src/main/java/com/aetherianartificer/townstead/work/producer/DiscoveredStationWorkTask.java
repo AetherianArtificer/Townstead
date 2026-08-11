@@ -72,6 +72,7 @@ import java.util.Set;
  * shortage requests, appraisal XP — with no Java.</p>
  */
 public class DiscoveredStationWorkTask extends ProducerWorkTask {
+    private static final int WORK_ACTION_INTERVAL_TICKS = 4;
 
     /** What this instance serves and says; the rest of the class is trade-neutral. */
     public record Spec(
@@ -116,6 +117,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
      * physical entity is gone.
      */
     private boolean sweptProducedOutput;
+    /** The station consumed/ejected its inputs without exposing the selected recipe's output. */
+    private boolean interruptedProduction;
 
     // Kitchen bounds cache
     private Set<Long> cachedWorksiteWorkArea = Set.of();
@@ -391,6 +394,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     protected boolean beginProduce(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (activeRecipe == null) return false;
         sweptProducedOutput = false;
+        interruptedProduction = false;
         DiscoveredRecipe recipe = fdRecipe();
         if (com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {
             // The physical hand-off: place the work block and/or push the gathered items from
@@ -402,7 +406,11 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 return false;
             }
         }
+        var v2 = stationAnchor == null ? null
+                : com.aetherianartificer.townstead.work.station.Workstations
+                        .v2ByState(level.getBlockState(stationAnchor));
         produceDoneTick = stationType == StationType.CUTTING_BOARD
+                || (v2 != null && v2.hasRepeatableWorkAction())
                 ? gameTime + 4L
                 : gameTime + (long) recipe.cookTimeTicks() * activeBatchOperations();
         return true;
@@ -416,13 +424,23 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         if (com.aetherianartificer.townstead.work.station.Workstations
                 .v2ByState(level.getBlockState(stationAnchor)) != null
                 && com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {
-            com.aetherianartificer.townstead.work.station.StationProtocols.work(
+            var v2 = com.aetherianartificer.townstead.work.station.Workstations
+                    .v2ByState(level.getBlockState(stationAnchor));
+            if (v2 != null && v2.behaviorUses("tool")) {
+                com.aetherianartificer.townstead.work.station.StationProtocols.work(
+                        level, villager, stationAnchor, recipe);
+            }
+            boolean ready = com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
                     level, villager, stationAnchor, recipe);
-            if (activeBatchOperations() > 1 && sweptProducedOutput
+            if (activeBatchOperations() > 1) {
+                if (com.aetherianartificer.townstead.work.station.StationProtocols.hasPendingInputs(
+                        level, stationAnchor, recipe)) return false;
+                return ready || sweptProducedOutput;
+            }
+            if (sweptProducedOutput
                     && com.aetherianartificer.townstead.work.station.StationProtocols.isIdle(
                             level, stationAnchor, recipe)) return true;
-            return com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
-                    level, villager, stationAnchor, recipe);
+            return ready;
         }
 
         if (stationType != StationType.CUTTING_BOARD
@@ -581,6 +599,31 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
 
     @Override
     protected void onProduceTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor != null && activeRecipe != null
+                && gameTime % WORK_ACTION_INTERVAL_TICKS == 0) {
+            var v2 = com.aetherianartificer.townstead.work.station.Workstations
+                    .v2ByState(level.getBlockState(stationAnchor));
+            boolean pendingBatch = activeBatchOperations() > 1
+                    && com.aetherianartificer.townstead.work.station.StationProtocols.hasPendingInputs(
+                            level, stationAnchor, fdRecipe());
+            if (v2 != null && v2.hasRepeatableWorkAction()
+                    && (pendingBatch
+                    || !com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
+                            level, villager, stationAnchor, fdRecipe()))) {
+                boolean pendingBefore = com.aetherianartificer.townstead.work.station.StationProtocols
+                        .hasPendingInputs(level, stationAnchor, fdRecipe());
+                boolean acted = com.aetherianartificer.townstead.work.station.StationProtocols.work(
+                        level, villager, stationAnchor, fdRecipe());
+                boolean pendingAfter = com.aetherianartificer.townstead.work.station.StationProtocols
+                        .hasPendingInputs(level, stationAnchor, fdRecipe());
+                boolean readyAfter = com.aetherianartificer.townstead.work.station.StationProtocols
+                        .isReady(level, villager, stationAnchor, fdRecipe());
+                if (acted && pendingBefore && !pendingAfter && !readyAfter && !sweptProducedOutput) {
+                    recoverInterruptedInputs(level, villager);
+                    interruptedProduction = true;
+                }
+            }
+        }
         if (stationType == StationType.FIRE_STATION && stationAnchor != null) {
             Set<ResourceLocation> outputIds = WorkRecipeRegistry.allOutputIds(level);
             Set<Long> worksiteBoundsLocal = activeWorksiteBounds(level, villager);
@@ -603,7 +646,11 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
 
     @Override
     protected boolean mustWaitBeyondCollectTimeout(ServerLevel level, VillagerEntityMCA villager) {
-        return stationType == StationType.HOT_STATION || stationType == StationType.CUTTING_BOARD;
+        var v2 = stationAnchor == null ? null
+                : com.aetherianartificer.townstead.work.station.Workstations
+                        .v2ByState(level.getBlockState(stationAnchor));
+        return stationType == StationType.HOT_STATION || stationType == StationType.CUTTING_BOARD
+                || (v2 != null && v2.collect() != null);
     }
 
     @Override
@@ -623,12 +670,64 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     }
 
     @Override
+    protected boolean isProductionInterrupted(ServerLevel level, VillagerEntityMCA villager,
+                                              long gameTime) {
+        return interruptedProduction;
+    }
+
+    @Override
+    protected void onProductionInterrupted(ServerLevel level, VillagerEntityMCA villager,
+                                           long gameTime) {
+        interruptedProduction = false;
+        sweptProducedOutput = false;
+    }
+
+    /**
+     * A real block interaction may eject its rejected/reset inputs as item entities. Recover only
+     * items accepted by the active recipe, then let the ordinary gather path reload the station.
+     */
+    private void recoverInterruptedInputs(ServerLevel level, VillagerEntityMCA villager) {
+        if (stationAnchor == null || activeRecipe == null) return;
+        java.util.LinkedHashSet<ResourceLocation> recoverable = new java.util.LinkedHashSet<>();
+        for (com.aetherianartificer.townstead.work.recipe.RecipeIngredient ingredient : fdRecipe().inputs()) {
+            recoverable.addAll(ingredient.itemIds());
+        }
+        if (fdRecipe().containerItemId() != null) recoverable.add(fdRecipe().containerItemId());
+        if (recoverable.isEmpty()) return;
+        Set<Long> bounds = activeWorksiteBounds(level, villager);
+        List<ItemStack> drops = com.aetherianartificer.townstead.work.station.StationDropOutputs
+                .collectWithinWorksite(level, stationAnchor, recoverable, bounds);
+        for (ItemStack drop : drops) {
+            WorkIngredients.storeOutputInWorksiteStorage(level, villager, drop, stationAnchor, bounds);
+            if (!drop.isEmpty()) {
+                ItemStack remainder = villager.getInventory().addItem(drop);
+                if (!remainder.isEmpty()) villager.spawnAtLocation(remainder);
+            }
+        }
+    }
+
+    @Override
+    protected boolean hasResumableStationSession(
+            ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos, long gameTime) {
+        if (pos == null) return false;
+        ProducerStationSessions.SessionSnapshot session = ProducerStationSessions.snapshot(level, pos);
+        return session != null && session.isOwner(villager.getUUID());
+    }
+
+    @Override
     protected void onOpportunisticSweep(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         ResourceLocation watchedOutput = activeRecipe == null ? null : activeRecipe.output();
         boolean sweptActiveOutput = ProducerOutputHelper.sweepWorksiteOutputs(
                 level, villager, stationAnchor, watchedOutput,
                 activeWorksiteBounds(level, villager), WorkRecipeRegistry.allOutputIds(level));
-        if (stationType == StationType.FIRE_STATION && sweptActiveOutput) {
+        // Some stations expose their result only as an item entity (campfires and the Farm &
+        // Charm mincer), while interaction-driven stations may eject a completed inventory result
+        // before the next phase poll. The worksite sweep has already conserved that real stack in
+        // storage; remember it for every active protocol station so an empty, drained machine can
+        // finish instead of repeating its work action until the Behavior's one-minute lease ends.
+        if (sweptActiveOutput && stationAnchor != null && activeRecipe != null
+                && com.aetherianartificer.townstead.work.station.StationProtocols.handles(
+                        level, stationAnchor)) {
             sweptProducedOutput = true;
         }
     }
@@ -639,6 +738,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         stationType = null;
         lastAppraisal = null;
         sweptProducedOutput = false;
+        interruptedProduction = false;
         cachedWorksiteWorkArea = Set.of();
         cachedWorksiteWorkAnchor = null;
         cachedWorksiteWorkUntil = 0L;
@@ -652,6 +752,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         stationType = null;
         lastAppraisal = null;
         sweptProducedOutput = false;
+        interruptedProduction = false;
         cachedWorksiteWorkArea = Set.of();
         cachedWorksiteWorkAnchor = null;
         cachedWorksiteWorkUntil = 0L;

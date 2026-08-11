@@ -100,7 +100,7 @@ class ComboAndTitleTest {
         record Expected(String profession, String[] titleIds) {}
         for (Expected e : new Expected[]{
                 new Expected("cook", new String[]{
-                        "rotisseur", "saucier", "chef_de_cuisine", "pizzaiolo"}),
+                        "chef_de_cuisine", "pizzaiolo"}),
                 new Expected("scribe", new String[]{"chronicler"})}) {
             try (var in = ComboAndTitleTest.class.getResourceAsStream(
                     "/data/townstead/profession/" + e.profession() + "/profession.json")) {

@@ -1,13 +1,1 @@
-{
-  "replace": false,
-  "values": [
-    {
-      "id": "farmersdelight:cutting_board",
-      "required": false
-    },
-    {
-      "id": "farm_and_charm:crafting_bowl",
-      "required": false
-    }
-  ]
-}
+{ "replace": false, "values": ["#townstead:kitchen/preparation"] }

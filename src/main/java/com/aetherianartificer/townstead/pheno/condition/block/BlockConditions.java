@@ -12,9 +12,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
@@ -25,6 +27,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.lang.reflect.Array;
+import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
@@ -189,8 +194,23 @@ public final class BlockConditions {
                 return (level, pos) -> level.getBlockState(pos).getLightBlock(level, pos) > 0;
             case "water_loggable":
                 return (level, pos) -> level.getBlockState(pos).getBlock() instanceof SimpleWaterloggedBlock;
-            case "block_entity":
-                return (level, pos) -> level.getBlockEntity(pos) != null;
+            case "block_entity": {
+                String property = GsonHelper.getAsString(json, "property", "");
+                if (property.isEmpty()) return (level, pos) -> level.getBlockEntity(pos) != null;
+                JsonElement expected = json.get("value");
+                JsonElement contains = json.get("contains");
+                boolean nonEmpty = GsonHelper.getAsBoolean(json, "non_empty", false);
+                if (expected == null && contains == null && !json.has("non_empty")) return null;
+                return (level, pos) -> {
+                    BlockEntity entity = level.getBlockEntity(pos);
+                    if (entity == null) return false;
+                    Object value = readPublicProperty(entity, property);
+                    if (value == null) return false;
+                    if (contains != null) return containsValue(value, contains);
+                    if (json.has("non_empty")) return hasContents(value) == nonEmpty;
+                    return matchesJson(value, expected);
+                };
+            }
             case "distance_from_coordinates": {
                 double x = GsonHelper.getAsDouble(json, "x", 0);
                 double y = GsonHelper.getAsDouble(json, "y", 0);
@@ -291,5 +311,56 @@ public final class BlockConditions {
     private static String stripNamespace(String type) {
         int colon = type.indexOf(':');
         return colon < 0 ? type : type.substring(colon + 1);
+    }
+
+    @Nullable
+    private static Object readPublicProperty(BlockEntity entity, String property) {
+        String title = Character.toUpperCase(property.charAt(0)) + property.substring(1);
+        for (String name : List.of(property, "get" + title, "is" + title, "has" + title)) {
+            try {
+                Method method = entity.getClass().getMethod(name);
+                if (method.getParameterCount() == 0) return method.invoke(entity);
+            } catch (Throwable ignored) {}
+        }
+        return null;
+    }
+
+    private static boolean matchesJson(Object value, @Nullable JsonElement expected) {
+        if (expected == null || expected.isJsonNull()) return value == null;
+        if (value instanceof Number number && expected.isJsonPrimitive()
+                && expected.getAsJsonPrimitive().isNumber()) {
+            return Double.compare(number.doubleValue(), expected.getAsDouble()) == 0;
+        }
+        if (value instanceof Boolean bool && expected.isJsonPrimitive()
+                && expected.getAsJsonPrimitive().isBoolean()) return bool == expected.getAsBoolean();
+        if (value instanceof ResourceLocation id && expected.isJsonPrimitive()) {
+            return id.toString().equals(expected.getAsString());
+        }
+        if (value instanceof ItemStack stack && expected.isJsonPrimitive()) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            return id != null && id.toString().equals(expected.getAsString());
+        }
+        return expected.isJsonPrimitive() && String.valueOf(value).equals(expected.getAsString());
+    }
+
+    private static boolean containsValue(Object value, JsonElement expected) {
+        if (value.getClass().isArray()) {
+            for (int i = 0; i < Array.getLength(value); i++) {
+                if (matchesJson(Array.get(value, i), expected)) return true;
+            }
+            return false;
+        }
+        if (value instanceof Iterable<?> iterable) {
+            for (Object element : iterable) if (matchesJson(element, expected)) return true;
+            return false;
+        }
+        return false;
+    }
+
+    private static boolean hasContents(Object value) {
+        if (value instanceof ItemStack stack) return !stack.isEmpty();
+        if (value instanceof Collection<?> collection) return !collection.isEmpty();
+        if (value.getClass().isArray()) return Array.getLength(value) > 0;
+        return true;
     }
 }

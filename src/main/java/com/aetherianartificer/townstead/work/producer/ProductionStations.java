@@ -153,6 +153,10 @@ public final class ProductionStations {
     ) {
         if (level == null || villager == null || pos == null || stationType == null) return false;
         boolean movedAny = false;
+        if (StationProtocols.handles(level, pos)) {
+            movedAny |= StationProtocols.cleanupInvalidContents(
+                    level, villager, pos, storageBounds);
+        }
         List<ItemStack> drops = StationDropOutputs.collectWithinWorksite(
                 level, pos, WorkRecipeRegistry.allOutputIds(level), storageBounds);
         for (ItemStack drop : drops) {

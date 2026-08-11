@@ -37,6 +37,7 @@ class WorkTaskSchemaTest {
         WorkTaskDef chopTask = cook.workTasks().get(1);
         assertEquals(id("townstead_work:chop"), chopTask.type());
         assertTrue(chopTask.allowsBlock(id("farmersdelight:cutting_board")));
+        assertTrue(chopTask.allowsBlock(id("kaleidoscope_cookery:chopping_board")));
         assertFalse(chopTask.allowsBlock(id("farmersdelight:stove")),
                 "chop admits only its declared boards");
         assertEquals(cookTask.weight(), chopTask.weight(),
@@ -61,6 +62,11 @@ class WorkTaskSchemaTest {
                 "village furnaces are rarely inside a recognised kitchen");
         assertEquals(WorkTaskDef.Scope.WORKSITE, cookTask.scope(),
                 "cookware stays in the kitchen it belongs to");
+
+        WorkTaskDef farmAndCharmTask = cook.workTasks().get(3);
+        assertTrue(farmAndCharmTask.allowsBlock(id("farm_and_charm:crafting_bowl")),
+                "a recognized V2 station still needs profession task ownership");
+        assertTrue(farmAndCharmTask.allowsBlock(id("farm_and_charm:mincer")));
 
         WorkTaskDef potTask = cook.workTasks().get(4);
         assertTrue(potTask.allowsBlock(id("caupona:stew_pot")),

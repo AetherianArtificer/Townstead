@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.work.station;
 
 
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
+import com.aetherianartificer.townstead.work.recipe.WorkIngredients;
 import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.aetherianartificer.townstead.work.recipe.StationType;
@@ -140,9 +141,14 @@ public final class StationProtocols {
         return switch (phase) {
             case IDLE -> ProducerStationState.EMPTY_READY;
             case READY -> ProducerStationState.FINISHED_OUTPUT;
+            case INVALID_CONTENTS -> ProducerStationState.FOREIGN_CONTENTS;
             // The block is mid-cycle: ours to keep waiting on, someone else's to leave alone.
             // Never FOREIGN_CONTENTS — a fermenting basin cannot be "cleaned up".
-            case WORKING -> ownsSession ? ProducerStationState.OWNED_STAGED : ProducerStationState.BLOCKED;
+            case WORKING -> ownsSession
+                    ? ProducerStationState.OWNED_STAGED
+                    : recipe != null && adapter.matchesPendingInputs(level, anchor, def, recipe)
+                            ? ProducerStationState.COMPATIBLE_PARTIAL
+                            : ProducerStationState.BLOCKED;
             case FOREIGN -> ProducerStationState.BLOCKED;
         };
     }
@@ -322,6 +328,41 @@ public final class StationProtocols {
             return false;
         }
         return adapter.collect(level, villager, anchor, def, recipe);
+    }
+
+    public static boolean hasPendingInputs(ServerLevel level, BlockPos anchor,
+                                           DiscoveredRecipe recipe) {
+        WorkstationDef def = defAt(level, anchor);
+        Adapter adapter = resolveAdapter(level, def);
+        return def != null && adapter != null
+                && adapter.hasPendingInputs(level, anchor, def, recipe);
+    }
+
+    /** True when physical station contents identify an unfinished copy of {@code recipe}. */
+    public static boolean matchesPendingInputs(ServerLevel level, BlockPos anchor,
+                                               @Nullable DiscoveredRecipe recipe) {
+        if (level == null || anchor == null || recipe == null) return false;
+        WorkstationDef def = defAt(level, anchor);
+        Adapter adapter = resolveAdapter(level, def);
+        return def != null && adapter != null
+                && adapter.matchesPendingInputs(level, anchor, def, recipe);
+    }
+
+    /** Conservatively recovers only items which no recipe attached to this block can consume. */
+    public static boolean cleanupInvalidContents(ServerLevel level, VillagerEntityMCA villager,
+                                                 BlockPos anchor, Set<Long> storageBounds) {
+        WorkstationDef def = defAt(level, anchor);
+        Adapter adapter = resolveAdapter(level, def);
+        if (def == null || adapter == null) return false;
+        java.util.List<ItemStack> invalid = adapter.extractInvalidContents(level, anchor, def);
+        for (ItemStack stack : invalid) {
+            WorkIngredients.storeOutputInWorksiteStorage(level, villager, stack, anchor, storageBounds);
+            if (!stack.isEmpty()) {
+                ItemStack remainder = villager.getInventory().addItem(stack);
+                if (!remainder.isEmpty()) villager.spawnAtLocation(remainder);
+            }
+        }
+        return !invalid.isEmpty();
     }
 
     /** The declared harvest tool must actually be in the villager's hands (pulled from storage). */
