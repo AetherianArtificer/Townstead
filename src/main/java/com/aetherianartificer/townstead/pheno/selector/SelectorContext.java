@@ -28,16 +28,20 @@ public final class SelectorContext {
     private final Vec3 pos;
     private final Map<String, List<BlockPos>> blockRoles;
     private final @Nullable Predicate<BlockPos> defaultBlockMembership;
+    private final @Nullable Integer villageId;
+    private final @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations;
 
     public SelectorContext(@Nullable LivingEntity self, @Nullable LivingEntity other,
                            @Nullable LivingEntity origin, Level level, Vec3 pos) {
-        this(self, other, origin, level, pos, Map.of(), null);
+        this(self, other, origin, level, pos, Map.of(), null, null, null);
     }
 
     private SelectorContext(@Nullable LivingEntity self, @Nullable LivingEntity other,
                             @Nullable LivingEntity origin, Level level, Vec3 pos,
                             Map<String, List<BlockPos>> blockRoles,
-                            @Nullable Predicate<BlockPos> defaultBlockMembership) {
+                            @Nullable Predicate<BlockPos> defaultBlockMembership,
+                            @Nullable Integer villageId,
+                            @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations) {
         this.self = self;
         this.other = other;
         this.origin = origin;
@@ -45,10 +49,13 @@ public final class SelectorContext {
         this.pos = pos;
         this.blockRoles = blockRoles;
         this.defaultBlockMembership = defaultBlockMembership;
+        this.villageId = villageId;
+        this.reservations = reservations;
     }
 
     public static SelectorContext of(ActionContext ctx) {
-        return new SelectorContext(ctx.entity(), ctx.other(), ctx.origin(), ctx.level(), ctx.entity().position());
+        return new SelectorContext(ctx.entity(), ctx.other(), ctx.origin(), ctx.level(),
+                ctx.entity().position(), Map.of(), null, null, ctx.reservations());
     }
 
     public static SelectorContext of(ConditionContext ctx) {
@@ -77,7 +84,7 @@ public final class SelectorContext {
         java.util.LinkedHashMap<String, List<BlockPos>> roles = new java.util.LinkedHashMap<>(blockRoles);
         roles.put(role, List.copyOf(positions));
         return new SelectorContext(self, other, origin, level, pos, Map.copyOf(roles),
-                defaultBlockMembership);
+                defaultBlockMembership, villageId, reservations);
     }
 
     public List<BlockPos> blockRole(String role) {
@@ -86,10 +93,30 @@ public final class SelectorContext {
 
     /** Supplies domain membership when a generic selector omits an explicit condition. */
     public SelectorContext withDefaultBlockMembership(Predicate<BlockPos> membership) {
-        return new SelectorContext(self, other, origin, level, pos, blockRoles, membership);
+        return new SelectorContext(self, other, origin, level, pos, blockRoles, membership,
+                villageId, reservations);
     }
 
     public @Nullable Predicate<BlockPos> defaultBlockMembership() {
         return defaultBlockMembership;
+    }
+
+    /**
+     * Supplies the exact village owned by the surrounding host (for example a worksite).  Generic
+     * Pheno entry points may omit it, in which case village-aware selectors resolve the village
+     * from the focus position.
+     */
+    public SelectorContext withVillage(int id) {
+        return new SelectorContext(self, other, origin, level, pos, blockRoles,
+                defaultBlockMembership, id, reservations);
+    }
+
+    public @Nullable Integer villageId() {
+        return villageId;
+    }
+
+    /** The execution-owned reservation frame, when selection happens inside an action. */
+    public @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations() {
+        return reservations;
     }
 }

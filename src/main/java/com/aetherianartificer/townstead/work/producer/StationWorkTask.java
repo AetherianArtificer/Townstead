@@ -54,6 +54,7 @@ public class StationWorkTask extends ProducerWorkTask {
 
     private @Nullable ProfessionWorksites.Assignment cachedAssignment;
     private long cachedAssignmentUntil = Long.MIN_VALUE;
+    private long assignmentDecisionTick = Long.MIN_VALUE;
     private WorkBuildingNav.Snapshot cachedSnapshot = WorkBuildingNav.Snapshot.EMPTY;
     private @Nullable BlockPos cachedSnapshotAnchor;
     private long cachedSnapshotUntil = Long.MIN_VALUE;
@@ -499,7 +500,8 @@ public class StationWorkTask extends ProducerWorkTask {
             ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos, long gameTime) {
         if (pos == null) return false;
         ProducerStationSessions.SessionSnapshot session = ProducerStationSessions.snapshot(level, pos);
-        return session != null && session.isOwner(villager.getUUID());
+        return session != null && session.isOwner(villager.getUUID())
+                && session.mayResume(currentActivity(villager) == net.minecraft.world.entity.schedule.Activity.WORK);
     }
 
     @Override
@@ -515,6 +517,7 @@ public class StationWorkTask extends ProducerWorkTask {
     private void clearCaches() {
         cachedAssignment = null;
         cachedAssignmentUntil = Long.MIN_VALUE;
+        assignmentDecisionTick = Long.MIN_VALUE;
         cachedSnapshot = WorkBuildingNav.Snapshot.EMPTY;
         cachedSnapshotAnchor = null;
         cachedSnapshotUntil = Long.MIN_VALUE;
@@ -528,10 +531,13 @@ public class StationWorkTask extends ProducerWorkTask {
 
     private @Nullable ProfessionWorksites.Assignment assignment(ServerLevel level, VillagerEntityMCA villager) {
         long gameTime = level.getGameTime();
-        if (cachedAssignment != null && gameTime <= cachedAssignmentUntil) return cachedAssignment;
-        ProfessionWorksites.Assignment fresh = ProfessionWorksites.resolve(level, villager);
+        boolean deciding = state == ProducerState.PATH_TO_WORKSITE && stationAnchor == null;
+        if (cachedAssignment != null && gameTime <= cachedAssignmentUntil
+                && (!deciding || assignmentDecisionTick == gameTime)) return cachedAssignment;
+        ProfessionWorksites.Assignment fresh = ProfessionWorksites.resolveForWork(level, villager);
         cachedAssignment = fresh;
         cachedAssignmentUntil = gameTime + ASSIGNMENT_CACHE_TICKS;
+        assignmentDecisionTick = gameTime;
         return fresh;
     }
 

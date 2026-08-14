@@ -37,9 +37,11 @@ public final class OrdersService {
                                                     OrderContext context, List<Option> options,
                                                     List<OrdersSnapshotS2CPayload.Station> stations) {
         OrderList orders = site.orders();
+        List<OrdersSnapshotS2CPayload.Worker> workers = workerChoices(level, site);
+        OrdersSnapshotS2CPayload.DriverControl drivers = driverControl(level, site);
         List<Row> rows = new ArrayList<>(orders.size());
         for (Order order : orders.orders()) {
-            rows.add(row(order, context));
+            rows.add(row(level, site, order, context, options, workers));
         }
         return new OrdersSnapshotS2CPayload(
                 site.id(),
@@ -48,10 +50,62 @@ public final class OrdersService {
                 orders.listOnly(),
                 List.copyOf(rows),
                 List.copyOf(options),
-                List.copyOf(stations));
+                List.copyOf(stations),
+                workers,
+                drivers);
     }
 
-    private static Row row(Order order, OrderContext context) {
+    private static List<OrdersSnapshotS2CPayload.Worker> workerChoices(
+            ServerLevel level, Worksite site) {
+        List<OrdersSnapshotS2CPayload.Worker> out = new ArrayList<>();
+        java.util.LinkedHashMap<ResourceLocation, String> professions = new java.util.LinkedHashMap<>();
+        for (var def : com.aetherianartificer.townstead.work.site.WorksiteWork.professionsAt(
+                level, site, com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site))) {
+            professions.put(def.id(), def.displayName().getString());
+            out.add(new OrdersSnapshotS2CPayload.Worker(
+                    "profession:" + def.id(), def.displayName().getString(), "Profession"));
+        }
+        if (site.villageId() != Worksite.NO_VILLAGE) {
+            for (net.conczin.mca.server.world.data.Village village
+                    : net.conczin.mca.server.world.data.VillageManager.get(level)) {
+                if (village.getId() != site.villageId()) continue;
+                for (net.conczin.mca.entity.VillagerEntityMCA resident : village.getResidents(level)) {
+                    ResourceLocation profession = BuiltInRegistries.VILLAGER_PROFESSION
+                            .getKey(resident.getVillagerData().getProfession());
+                    profession = com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                            .canonicalId(profession);
+                    if (!professions.containsKey(profession)) continue;
+                    out.add(new OrdersSnapshotS2CPayload.Worker(
+                            "villager:" + resident.getUUID(), resident.getName().getString(),
+                            professions.get(profession)));
+                }
+                break;
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    private static OrdersSnapshotS2CPayload.DriverControl driverControl(
+            ServerLevel level, Worksite site) {
+        if (!com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                .supportsDrivers(level, site)) {
+            return OrdersSnapshotS2CPayload.DriverControl.none();
+        }
+        List<OrdersSnapshotS2CPayload.Driver> choices = new ArrayList<>();
+        for (var candidate : com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                .candidates(level, site)) {
+            choices.add(new OrdersSnapshotS2CPayload.Driver(
+                    candidate.uuid().toString(), candidate.name(), candidate.type()));
+        }
+        return new OrdersSnapshotS2CPayload.DriverControl(true,
+                com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                        .supportsWorkerFallback(level, site),
+                site.driver() == null ? "" : site.driver().toString(), choices);
+    }
+
+    private static Row row(ServerLevel level, Worksite site, Order order, OrderContext context,
+                           List<Option> options,
+                           List<OrdersSnapshotS2CPayload.Worker> workers) {
         int want = order.mode() == Order.Mode.PER_VILLAGER
                 ? order.target() * Math.max(0, context.villagerCount())
                 : order.target();
@@ -65,8 +119,27 @@ public final class OrdersService {
         String reason = "";
         if (status == OrdersSnapshotS2CPayload.Status.BLOCKED) {
             reason = "Nobody working here is allowed to take this.";
+        } else if (status == OrdersSnapshotS2CPayload.Status.WAITING && !order.isActivity()) {
+            Option option = optionFor(order.output(), options);
+            if (option == null) {
+                reason = "No installed station here can make this.";
+            } else if (!option.missing().isEmpty()) {
+                reason = StationCatalogs.describeMissing(option.missing());
+            } else if (!option.available() && !option.blocker().isBlank()) {
+                reason = option.blocker();
+            }
         }
 
+        Option option = optionFor(order.output(), options);
+        boolean operated = option != null && option.operated();
+        boolean workerFallback = operated
+                && com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                        .supportsWorkerFallback(level, site, option.stationIcon());
+        List<OrdersSnapshotS2CPayload.Driver> operators = operated
+                ? operatorChoices(level, site, option.stationIcon())
+                : List.of();
+        String worker = workerValue(order);
+        String operator = order.operator() == null ? "" : order.operator().toString();
         return new Row(order.output(), order.mode(), order.target(), order.scope(), order.paused(),
                 modeLabel(order), scopeLabel(order), whoLabel(order),
                 have, want, order.inProgress(), status, reason,
@@ -74,7 +147,59 @@ public final class OrdersService {
                 order.isActivity()
                         ? com.aetherianartificer.townstead.work.WorkActivities.labelOf(order.output())
                         : order.isTag() ? categoryLabel(order.output())
-                        : !order.workpieceName().isEmpty() ? "Copy " + order.workpieceName() : "");
+                        : !order.workpieceName().isEmpty() ? "Copy " + order.workpieceName() : "",
+                worker, order.operation(), operator,
+                workLabel(order, workers, operators), operated, workerFallback, operators);
+    }
+
+    private static String workerValue(Order order) {
+        if (order.villager() != null) return "villager:" + order.villager();
+        return order.profession() == null ? "" : "profession:" + order.profession();
+    }
+
+    private static String workLabel(Order order,
+                                    List<OrdersSnapshotS2CPayload.Worker> workers,
+                                    List<OrdersSnapshotS2CPayload.Driver> operators) {
+        String workerValue = workerValue(order);
+        String workerName = "Automatic";
+        for (var choice : workers) {
+            if (choice.value().equals(workerValue)) { workerName = choice.name(); break; }
+        }
+        return switch (order.operation()) {
+            case AUTOMATIC -> workerValue.isEmpty() ? "" : workerName;
+            case WORKER -> workerName + " · operates it themselves";
+            case ENTITY -> {
+                String operator = "Unavailable operator";
+                if (order.operator() != null) {
+                    for (var choice : operators) {
+                        if (choice.uuid().equals(order.operator().toString())) {
+                            operator = choice.name();
+                            break;
+                        }
+                    }
+                }
+                yield workerName + " · with " + operator;
+            }
+        };
+    }
+
+    private static List<OrdersSnapshotS2CPayload.Driver> operatorChoices(
+            ServerLevel level, Worksite site, ResourceLocation stationBlock) {
+        List<OrdersSnapshotS2CPayload.Driver> out = new ArrayList<>();
+        for (var candidate : com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                .candidates(level, site, stationBlock)) {
+            out.add(new OrdersSnapshotS2CPayload.Driver(
+                    candidate.uuid().toString(), candidate.name(), candidate.type()));
+        }
+        return List.copyOf(out);
+    }
+
+    private static @Nullable Option optionFor(ResourceLocation output, List<Option> options) {
+        if (output == null || options == null) return null;
+        for (Option option : options) {
+            if (option != null && output.equals(option.output())) return option;
+        }
+        return null;
     }
 
     /**
@@ -216,6 +341,9 @@ public final class OrdersService {
                 site.setName(cleaned);
                 yield true;
             }
+            case SET_DRIVER -> setDriver(level, site, edit.value());
+            case SET_WORKER -> setWorker(level, site, orders.at(edit.index()), edit.value());
+            case SET_OPERATOR -> setOperator(level, site, orders.at(edit.index()), edit.value());
         };
         if (changed) {
             register.setDirty();
@@ -228,6 +356,103 @@ public final class OrdersService {
 
     /** Beyond this a target is a typo, not an intention. */
     public static final int MAX_TARGET = 9999;
+
+    private static boolean setDriver(ServerLevel level, Worksite site, String raw) {
+        if (!com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                .supportsDrivers(level, site)) return false;
+        if (raw == null || raw.isBlank()) {
+            if (site.driver() == null) return false;
+            site.setDriver(null);
+            return true;
+        }
+        java.util.UUID wanted;
+        try {
+            wanted = java.util.UUID.fromString(raw);
+        } catch (IllegalArgumentException invalid) {
+            return false;
+        }
+        boolean offered = com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                .candidates(level, site).stream().anyMatch(candidate -> candidate.uuid().equals(wanted));
+        if (offered) {
+            for (Worksite other : WorksiteRegister.get(level.getServer()).all()) {
+                if (other != site && wanted.equals(other.driver())) {
+                    offered = false;
+                    break;
+                }
+            }
+        }
+        if (!offered || wanted.equals(site.driver())) return false;
+        site.setDriver(wanted);
+        return true;
+    }
+
+    private static boolean setWorker(ServerLevel level, Worksite site, @Nullable Order order,
+                                     @Nullable String raw) {
+        if (order == null) return false;
+        String value = raw == null ? "" : raw.trim();
+        if (value.isEmpty() || "automatic".equalsIgnoreCase(value)) {
+            if (order.profession() == null && order.villager() == null) return false;
+            order.setProfession(null);
+            order.setVillager(null);
+            return true;
+        }
+        boolean offered = workerChoices(level, site).stream()
+                .anyMatch(choice -> choice.value().equals(value));
+        if (!offered) return false;
+        if (value.startsWith("profession:")) {
+            ResourceLocation id = tryParse(value.substring("profession:".length()));
+            if (id == null || (id.equals(order.profession()) && order.villager() == null)) return false;
+            order.setVillager(null);
+            order.setProfession(id);
+            return true;
+        }
+        if (value.startsWith("villager:")) {
+            try {
+                java.util.UUID id = java.util.UUID.fromString(value.substring("villager:".length()));
+                if (id.equals(order.villager())) return false;
+                order.setProfession(null);
+                order.setVillager(id);
+                return true;
+            } catch (IllegalArgumentException invalid) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private static boolean setOperator(ServerLevel level, Worksite site, @Nullable Order order,
+                                       @Nullable String raw) {
+        if (order == null) return false;
+        Option option = optionFor(order.output(), WorksiteCatalogs.optionsFor(level, site));
+        if (option == null || !option.operated()) return false;
+        String value = raw == null ? "automatic" : raw.trim();
+        if (value.isEmpty() || "automatic".equalsIgnoreCase(value)) {
+            if (order.operation() == Order.Operation.AUTOMATIC) return false;
+            order.setOperation(Order.Operation.AUTOMATIC);
+            return true;
+        }
+        if ("worker".equalsIgnoreCase(value)) {
+            if (!com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                    .supportsWorkerFallback(level, site, option.stationIcon())
+                    || order.operation() == Order.Operation.WORKER) return false;
+            order.setOperation(Order.Operation.WORKER);
+            return true;
+        }
+        if (!value.startsWith("entity:")) return false;
+        java.util.UUID wanted;
+        try {
+            wanted = java.util.UUID.fromString(value.substring("entity:".length()));
+        } catch (IllegalArgumentException invalid) {
+            return false;
+        }
+        boolean offered = com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                .candidates(level, site, option.stationIcon()).stream()
+                .anyMatch(choice -> choice.uuid().equals(wanted));
+        if (!offered || (order.operation() == Order.Operation.ENTITY
+                && wanted.equals(order.operator()))) return false;
+        order.setOperator(wanted);
+        return true;
+    }
 
     /**
      * Appends a line. Several lines may name the same item, deliberately: "make 5 cakes" near the
@@ -317,6 +542,8 @@ public final class OrdersService {
         twin.setProfession(source.profession());
         twin.setMinRank(source.minRank());
         twin.setVillager(source.villager());
+        twin.setOperation(source.operation());
+        if (source.operator() != null) twin.setOperator(source.operator());
         // Not copied: produced and inProgress. A copy is a fresh instruction, not a duplicate of
         // work already done — and paused is left off so the twin starts doing something.
         orders.add(twin);

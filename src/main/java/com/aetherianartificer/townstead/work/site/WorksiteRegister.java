@@ -32,7 +32,7 @@ import java.util.Map;
 public class WorksiteRegister extends SavedData {
 
     public static final String FILE_ID = "townstead_worksites";
-    public static final int SCHEMA_VERSION = 2;   // 2 added the order list
+    public static final int SCHEMA_VERSION = 3;   // 3 added worksite driver assignment
 
     private static final String KEY_SCHEMA_VERSION = "schemaVersion";
     private static final String KEY_SITES = "worksites";
@@ -47,6 +47,7 @@ public class WorksiteRegister extends SavedData {
     private static final String KEY_CREATED = "created";
     private static final String KEY_LAST_SEEN = "lastSeen";
     private static final String KEY_ORDERS = "orders";
+    private static final String KEY_DRIVER = "driver";
     private static final String KEY_LIST_ONLY = "listOnly";
     private static final String KEY_ORDER_OUTPUT = "item";
     private static final String KEY_ORDER_MODE = "mode";
@@ -245,6 +246,7 @@ public class WorksiteRegister extends SavedData {
             // Absent on older saves, which reads as false: every pre-flag name re-derives, so a
             // stale "Kitchen" heals on load rather than surviving as accidental custom.
             data.sites.get(key).loadNameCustom(entry.getBoolean(KEY_NAME_CUSTOM));
+            if (entry.hasUUID(KEY_DRIVER)) data.sites.get(key).setDriver(entry.getUUID(KEY_DRIVER));
             loadOrders(entry, data.sites.get(key));
             highestLoadedId = Math.max(highestLoadedId, id);
         }
@@ -282,6 +284,7 @@ public class WorksiteRegister extends SavedData {
             entry.putInt(KEY_VILLAGE, site.villageId());
             entry.putLong(KEY_CREATED, site.createdGameTime());
             entry.putLong(KEY_LAST_SEEN, site.lastSeenGameTime());
+            if (site.driver() != null) entry.putUUID(KEY_DRIVER, site.driver());
             saveOrders(entry, site);
             list.add(entry);
         }
@@ -316,6 +319,10 @@ public class WorksiteRegister extends SavedData {
             }
             if (order.profession() != null) row.putString(KEY_ORDER_PROFESSION, order.profession().toString());
             if (order.villager() != null) row.putUUID(KEY_ORDER_VILLAGER, order.villager());
+            if (order.operation() != com.aetherianartificer.townstead.work.order.Order.Operation.AUTOMATIC) {
+                row.putString("operation", order.operation().name());
+            }
+            if (order.operator() != null) row.putUUID("operator", order.operator());
             // inProgress is deliberately NOT written: it means "a worker is mid-job right now", and
             // nobody is mid-job across a reload. Persisting it would leave a line permanently
             // claimed by a villager who no longer exists.
@@ -353,6 +360,11 @@ public class WorksiteRegister extends SavedData {
                 order.setProfession(parseRl(row.getString(KEY_ORDER_PROFESSION)));
             }
             if (row.hasUUID(KEY_ORDER_VILLAGER)) order.setVillager(row.getUUID(KEY_ORDER_VILLAGER));
+            if (row.contains("operation")) {
+                order.setOperation(com.aetherianartificer.townstead.work.order.Order.Operation
+                        .parse(row.getString("operation")));
+            }
+            if (row.hasUUID("operator")) order.setOperator(row.getUUID("operator"));
             if (row.contains("workpiece")) {
                 order.setWorkpiece(row.getCompound("workpiece"), row.getString("workpieceName"));
             }

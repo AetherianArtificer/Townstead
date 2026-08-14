@@ -570,6 +570,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.clearAll());
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) -> {
                 com.aetherianartificer.townstead.pheno.action.ActionScheduler.clear();
+                com.aetherianartificer.townstead.pheno.reservation.Reservations.clear(e.getServer());
                 com.aetherianartificer.townstead.pheno.field.CloudManager.clear();
         });
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
@@ -952,6 +953,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.memory.TownsteadMemoryLifecycle.clearAll());
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) -> {
                 com.aetherianartificer.townstead.pheno.action.ActionScheduler.clear();
+                com.aetherianartificer.townstead.pheno.reservation.Reservations.clear(e.getServer());
                 com.aetherianartificer.townstead.pheno.field.CloudManager.clear();
         });
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
@@ -1500,6 +1502,8 @@ public class Townstead {
     }
 
     private static void registerConditionTypes() {
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.ReservedConditionType());
         com.aetherianartificer.townstead.pheno.condition.types.StateConditionType[] states = {
                 new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
                         "pheno:on_fire", ctx -> ctx.entity().isOnFire()),
@@ -1518,7 +1522,20 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
                         "pheno:passenger", ctx -> !ctx.entity().getPassengers().isEmpty()),
                 new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
-                        "pheno:tamed", ctx -> ctx.entity() instanceof net.minecraft.world.entity.TamableAnimal t && t.isTame()),
+                        "pheno:tameable", ctx -> ctx.entity() instanceof net.minecraft.world.entity.animal.horse.AbstractHorse
+                                || ctx.entity() instanceof net.minecraft.world.entity.TamableAnimal
+                                || ctx.entity() instanceof net.minecraft.world.entity.OwnableEntity),
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:tamed", ctx -> {
+                            if (ctx.entity() instanceof net.minecraft.world.entity.animal.horse.AbstractHorse horse) {
+                                return horse.isTamed();
+                            }
+                            if (ctx.entity() instanceof net.minecraft.world.entity.TamableAnimal animal) {
+                                return animal.isTame();
+                            }
+                            return ctx.entity() instanceof net.minecraft.world.entity.OwnableEntity ownable
+                                    && ownable.getOwnerUUID() != null;
+                        }),
                 new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
                         "pheno:hostile", ctx -> ctx.entity() instanceof net.minecraft.world.entity.monster.Enemy),
                 new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
@@ -1808,6 +1825,10 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.selector.types.CommandSelectorType());
         com.aetherianartificer.townstead.pheno.selector.SelectorTypes.register(
                 new com.aetherianartificer.townstead.pheno.selector.types.RaySelectorType());
+        com.aetherianartificer.townstead.pheno.selector.SelectorTypes.register(
+                new com.aetherianartificer.townstead.pheno.selector.types.VillageSelectorType());
+        com.aetherianartificer.townstead.pheno.selector.SelectorTypes.register(
+                new com.aetherianartificer.townstead.pheno.selector.types.ReservationSelectorType());
         com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
                 new com.aetherianartificer.townstead.pheno.selector.types.RayBlockSelectorType());
         com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
@@ -1815,9 +1836,15 @@ public class Townstead {
         // Value sources (the object form of a number)
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.CountValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.IfValueType());
     }
 
     private static void registerActionTypes() {
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.ReserveActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.ReleaseActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.root.collection.ChangeCollectionActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(

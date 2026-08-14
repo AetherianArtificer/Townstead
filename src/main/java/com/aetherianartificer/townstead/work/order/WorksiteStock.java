@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.work.order;
 
 import com.aetherianartificer.townstead.work.site.Worksite;
+import com.aetherianartificer.townstead.work.site.ProfessionWorksites;
 import com.aetherianartificer.townstead.work.site.Worksites;
 
 import net.minecraft.core.BlockPos;
@@ -12,13 +13,17 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.Set;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
- * Counting what a worksite has on its shelves.
+ * Counting what a worksite has on its shelves and in its workers' pockets.
  *
- * <p>"In stock here" means inside the worksite's own extent, which is the same definition for a
- * smithy as for a kitchen — that is the whole reason the extent lives on the record. Counted on
- * demand rather than cached: this runs when a screen opens or a job is chosen, not on a tick.</p>
+ * <p>"In stock here" means inside the worksite's own extent, plus the inventories of villagers
+ * assigned to that worksite. A finished dish does not stop belonging to the kitchen during the
+ * walk from station to shelf, and a reusable tool does not become missing when the cook pockets
+ * it. Assignment, rather than proximity or current schedule activity, is the boundary.</p>
  */
 public final class WorksiteStock {
 
@@ -32,6 +37,13 @@ public final class WorksiteStock {
         Set<Long> extent = Worksites.extentOf(level, site);
         int[] total = {0};
         eachStack(level, extent, stack -> {
+            if (stack.isEmpty()) return;
+            if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                    && OrderStackFilters.counts(item, stack)) {
+                total[0] += stack.getCount();
+            }
+        });
+        eachAssociatedStack(level, site, stack -> {
             if (stack.isEmpty()) return;
             if (item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))
                     && OrderStackFilters.counts(item, stack)) {
@@ -58,6 +70,12 @@ public final class WorksiteStock {
             if (stack.isEmpty() || !stack.is(tag)) return;
             // A member the settings forbid producing must not satisfy the set either, or
             // stored sapient meat quietly fills a "keep 10 cooked meats" line nobody may touch.
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (!OrderTags.permitted(id) || !OrderStackFilters.counts(id, stack)) return;
+            total[0] += stack.getCount();
+        });
+        eachAssociatedStack(level, site, stack -> {
+            if (stack.isEmpty() || !stack.is(tag)) return;
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (!OrderTags.permitted(id) || !OrderStackFilters.counts(id, stack)) return;
             total[0] += stack.getCount();
@@ -99,6 +117,93 @@ public final class WorksiteStock {
             total += stack.getCount();
         }
         return total;
+    }
+
+    /**
+     * Visits the pockets of every loaded villager whose stable workplace resolves to this site.
+     * The short assignment cache prevents an order with many rows from re-solving the village's
+     * entire seating plan once per row. Inventory contents themselves are never cached.
+     */
+    static void eachAssociatedStack(ServerLevel level, Worksite site,
+                                    java.util.function.Consumer<ItemStack> visit) {
+        for (UUID id : associatedVillagerIds(level, site)) {
+            net.minecraft.world.entity.Entity entity = level.getEntity(id);
+            if (!(entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager)
+                    || !entity.isAlive()) continue;
+            var inventory = villager.getInventory();
+            for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+                visit.accept(inventory.getItem(slot));
+            }
+        }
+    }
+
+    /** Whether this loaded villager is part of the worksite inventory boundary. */
+    static boolean isAssociated(ServerLevel level, Worksite site,
+                                net.conczin.mca.entity.VillagerEntityMCA villager) {
+        return associatedVillagerIds(level, site).contains(villager.getUUID());
+    }
+
+    private static final long ASSOCIATION_CACHE_TICKS = 40L;
+    private record AssociatedCache(long expiresAt, List<UUID> villagers) {}
+    private static final Map<ServerLevel, Map<Long, AssociatedCache>> ASSOCIATED =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+    private static List<UUID> associatedVillagerIds(ServerLevel level, Worksite site) {
+        long now = level.getGameTime();
+        Map<Long, AssociatedCache> bySite;
+        synchronized (ASSOCIATED) {
+            bySite = ASSOCIATED.computeIfAbsent(level, ignored -> new java.util.HashMap<>());
+        }
+        AssociatedCache cached = bySite.get(site.id());
+        if (cached != null && now < cached.expiresAt()) return cached.villagers();
+
+        List<UUID> found = new java.util.ArrayList<>();
+        for (net.conczin.mca.entity.VillagerEntityMCA villager : candidates(level, site)) {
+            if (worksAt(level, villager, site)) found.add(villager.getUUID());
+        }
+        List<UUID> stable = List.copyOf(found);
+        bySite.put(site.id(), new AssociatedCache(now + ASSOCIATION_CACHE_TICKS, stable));
+        return stable;
+    }
+
+    /** Room sites need only inspect their own village roster; standalone posts use loaded entities. */
+    private static List<net.conczin.mca.entity.VillagerEntityMCA> candidates(
+            ServerLevel level, Worksite site) {
+        if (site.villageId() != Worksite.NO_VILLAGE) {
+            for (net.conczin.mca.server.world.data.Village village
+                    : net.conczin.mca.server.world.data.VillageManager.get(level)) {
+                if (village.getId() == site.villageId()) return village.getResidents(level);
+            }
+            return List.of();
+        }
+        List<net.conczin.mca.entity.VillagerEntityMCA> loaded = new java.util.ArrayList<>();
+        for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+            if (entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
+                loaded.add(villager);
+            }
+        }
+        return loaded;
+    }
+
+    /**
+     * Primary employment only, with JOB_SITE as the vanilla fallback. A worker may visit several
+     * buildings, but their pockets must not be counted in every order sheet simultaneously.
+     */
+    private static boolean worksAt(ServerLevel level,
+                                   net.conczin.mca.entity.VillagerEntityMCA villager,
+                                   Worksite expected) {
+        ProfessionWorksites.Assignment stationAssignment = ProfessionWorksites.resolve(level, villager);
+        if (stationAssignment != null && sameSite(stationAssignment.site(), expected)) return true;
+
+        var jobSite = villager.getBrain().getMemory(
+                net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE).orElse(null);
+        if (jobSite == null || !jobSite.dimension().equals(level.dimension())) return false;
+        Worksite resolved = Worksites.of(level, jobSite.pos());
+        return sameSite(resolved, expected);
+    }
+
+    private static boolean sameSite(Worksite candidate, Worksite expected) {
+        return candidate != null && candidate.key().equals(expected.key());
     }
 
     /**

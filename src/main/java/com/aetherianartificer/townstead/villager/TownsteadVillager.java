@@ -31,7 +31,7 @@ import java.util.UUID;
  * boundaries and in temporary adapters for older call sites.</p>
  */
 public final class TownsteadVillager {
-    public static final int SCHEMA_VERSION = 4;
+    public static final int SCHEMA_VERSION = 5;
 
     private final UUID villagerId;
     private boolean dirty;
@@ -41,6 +41,8 @@ public final class TownsteadVillager {
     private final ScheduleState schedule = new ScheduleState();
     private final Life life = new Life();
     private final ProfessionMemory professionMemory = new ProfessionMemory();
+    private final WorksiteAssignmentPolicy worksiteAssignments =
+            new WorksiteAssignmentPolicy(this::markDirty);
 
     public TownsteadVillager(UUID villagerId) {
         this.villagerId = villagerId;
@@ -64,6 +66,10 @@ public final class TownsteadVillager {
 
     public ProfessionMemory professionMemory() {
         return professionMemory;
+    }
+
+    public WorksiteAssignmentPolicy worksiteAssignments() {
+        return worksiteAssignments;
     }
 
     public boolean isDirty() {
@@ -95,6 +101,7 @@ public final class TownsteadVillager {
         tag.put("schedule", schedule.toTag());
         tag.put("life", life.toTag());
         tag.put("professionMemory", professionMemory.toTag());
+        tag.put("worksiteAssignments", worksiteAssignments.toTag());
         return tag;
     }
 
@@ -103,6 +110,7 @@ public final class TownsteadVillager {
         schedule.load(tag.getCompound("schedule"));
         life.load(tag.getCompound("life"));
         professionMemory.load(tag.getCompound("professionMemory"));
+        worksiteAssignments.load(tag.getCompound("worksiteAssignments"));
         lastSeenGameTime = tag.getLong("lastSeenGameTime");
         clearDirty();
     }

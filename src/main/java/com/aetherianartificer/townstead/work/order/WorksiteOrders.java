@@ -37,19 +37,20 @@ public final class WorksiteOrders {
      */
     public static OrderContext contextFor(ServerLevel level, Worksite site, VillagerEntityMCA villager) {
         return new OrderContext() {
-            // The worker's own pockets count. Between collecting an output and shelving it the
-            // item is in no container, and a count that misses it starts one batch too many —
-            // the twenty-first smoke on a keep-twenty line.
+            // Every worker assigned here counts, even off shift. The fallback preserves the
+            // acting worker's transient stock if their assignment changed during this task.
             @Override
             public int stockOf(ResourceLocation item, Order.CountScope scope) {
-                return WorksiteStock.count(level, site, item, scope)
-                        + WorksiteStock.carried(villager, item);
+                int total = WorksiteStock.count(level, site, item, scope);
+                return WorksiteStock.isAssociated(level, site, villager)
+                        ? total : total + WorksiteStock.carried(villager, item);
             }
 
             @Override
             public int stockOfTag(ResourceLocation tagId, Order.CountScope scope) {
-                return WorksiteStock.countTag(level, site, tagId, scope)
-                        + WorksiteStock.carriedTag(villager, tagId);
+                int total = WorksiteStock.countTag(level, site, tagId, scope);
+                return WorksiteStock.isAssociated(level, site, villager)
+                        ? total : total + WorksiteStock.carriedTag(villager, tagId);
             }
 
             @Override
@@ -60,6 +61,13 @@ public final class WorksiteOrders {
             @Override
             public boolean mayWork(Order order) {
                 if (order.villager() != null && !order.villager().equals(villager.getUUID())) return false;
+                if (order.profession() != null) {
+                    ResourceLocation actual = BuiltInRegistries.VILLAGER_PROFESSION
+                            .getKey(villager.getVillagerData().getProfession());
+                    actual = com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                            .canonicalId(actual);
+                    if (!order.profession().equals(actual)) return false;
+                }
                 return order.minRank() <= 0 || rankOf(villager) >= order.minRank();
             }
         };

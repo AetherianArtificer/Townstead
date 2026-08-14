@@ -2,7 +2,48 @@
   "schema": "townstead:workstation/v2",
   "mods": ["kaleidoscope_cookery"],
   "blocks": ["kaleidoscope_cookery:millstone"],
+  "anchor": {
+    "radius": [1, 0, 1],
+    "where": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:block", "block": "kaleidoscope_cookery:millstone" },
+        { "type": "pheno:block_state", "property": "part", "value": "center" }
+      ]
+    },
+    "limit": 1
+  },
   "capacity": { "positions": 1, "per_position": "stack" },
+  "reservation": {
+    "type": "pheno:reserve",
+    "on": [
+      {
+        "type": "pheno:village",
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "townstead:work_animals"
+            },
+            {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:not",
+                  "condition": { "type": "pheno:tameable" }
+                },
+                { "type": "pheno:tamed" }
+              ]
+            }
+          ]
+        },
+        "order": "nearest",
+        "limit": 1
+      },
+      "origin"
+    ]
+  },
   "requires": {
     "type": "pheno:and",
     "conditions": [

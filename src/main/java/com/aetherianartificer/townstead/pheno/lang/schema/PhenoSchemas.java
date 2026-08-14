@@ -128,6 +128,13 @@ public final class PhenoSchemas {
                         .doc("Edge-triggered { at|every, do, then } when the meter crosses a threshold upward.")).build());
 
         // --- Action wrappers (the context transitions and meta combinators) ---
+        NodeSchemas.register(NodeSchema.of("pheno:reserve", NodeDomain.ACTION)
+                .doc("Exclusively reserves each entity selected by on for this execution scope.")
+                .field(required("on", PhenoType.ANY))
+                .field(of("action", PhenoType.ACTION))
+                .primaryChild("action").build());
+        NodeSchemas.register(NodeSchema.of("pheno:release", NodeDomain.ACTION)
+                .doc("Releases every entity reserved by this execution scope early.").build());
         NodeSchemas.register(NodeSchema.of("pheno:actor_action", NodeDomain.ACTION)
                 .doc("Runs the inner action on the actor (self).")
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
@@ -242,6 +249,8 @@ public final class PhenoSchemas {
                 .field(required("block_action", PhenoType.BLOCK_ACTION)).primaryChild("block_action").build());
 
         // --- Consolidated condition ---
+        NodeSchemas.register(NodeSchema.of("pheno:reserved", NodeDomain.CONDITION)
+                .doc("Tests whether the current entity is held by any live Pheno reservation.").build());
         NodeSchemas.register(NodeSchema.of("pheno:environment", NodeDomain.CONDITION)
                 .doc("One block of weather/exposure/time/biome/dimension/effects (AND across, OR within).")
                 .field(of("weather", PhenoType.STRING).asList())

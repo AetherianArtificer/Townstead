@@ -145,6 +145,10 @@ public final class Worksites {
             // is the same one resolution itself would give.
             if (!room.key().equals(canonicalKeyAt(level, other.key().pos()))) continue;
             moved += room.orders().absorb(other.orders());
+            if (room.driver() == null && other.driver() != null) {
+                room.setDriver(other.driver());
+                moved++;
+            }
             strays.add(other.key());
         }
         if (strays.isEmpty()) return;

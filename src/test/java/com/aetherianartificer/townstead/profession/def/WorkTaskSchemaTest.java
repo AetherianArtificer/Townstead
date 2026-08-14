@@ -25,7 +25,7 @@ class WorkTaskSchemaTest {
     @Test
     void cookDeclaresItsWorkTasks() {
         ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook");
-        assertEquals(5, cook.workTasks().size());
+        assertEquals(6, cook.workTasks().size());
 
         WorkTaskDef cookTask = cook.workTasks().get(0);
         assertEquals(id("townstead_work:cook"), cookTask.type());
@@ -34,7 +34,12 @@ class WorkTaskSchemaTest {
         assertTrue(cookTask.recipes().isEmpty() && cookTask.recipesDenied().isEmpty(),
                 "the village cook may produce every recipe");
 
-        WorkTaskDef chopTask = cook.workTasks().get(1);
+        WorkTaskDef millTask = cook.workTasks().get(1);
+        assertTrue(millTask.allowsBlock(id("kaleidoscope_cookery:millstone")));
+        assertTrue(millTask.weight() < cookTask.weight(),
+                "a Mill order is serviced after the cook's primary cookware");
+
+        WorkTaskDef chopTask = cook.workTasks().get(2);
         assertEquals(id("townstead_work:chop"), chopTask.type());
         assertTrue(chopTask.allowsBlock(id("farmersdelight:cutting_board")));
         assertTrue(chopTask.allowsBlock(id("kaleidoscope_cookery:chopping_board")));
@@ -45,7 +50,7 @@ class WorkTaskSchemaTest {
 
         // The furnace family is scoped rather than open: a cook smelts food, plus the few
         // non-food things a kitchen plausibly wants, and never iron ore.
-        WorkTaskDef furnaceTask = cook.workTasks().get(2);
+        WorkTaskDef furnaceTask = cook.workTasks().get(3);
         assertEquals(id("townstead_work:cook"), furnaceTask.type());
         assertTrue(furnaceTask.allowsBlock(id("minecraft:smoker")));
         assertTrue(furnaceTask.allowsBlock(id("minecraft:blast_furnace")));
@@ -63,15 +68,37 @@ class WorkTaskSchemaTest {
         assertEquals(WorkTaskDef.Scope.WORKSITE, cookTask.scope(),
                 "cookware stays in the kitchen it belongs to");
 
-        WorkTaskDef farmAndCharmTask = cook.workTasks().get(3);
+        WorkTaskDef farmAndCharmTask = cook.workTasks().get(4);
         assertTrue(farmAndCharmTask.allowsBlock(id("farm_and_charm:crafting_bowl")),
                 "a recognized V2 station still needs profession task ownership");
         assertTrue(farmAndCharmTask.allowsBlock(id("farm_and_charm:mincer")));
 
-        WorkTaskDef potTask = cook.workTasks().get(4);
+        WorkTaskDef potTask = cook.workTasks().get(5);
         assertTrue(potTask.allowsBlock(id("caupona:stew_pot")),
                 "Caupona's pots need a task of their own or the recipe gate refuses them");
         assertFalse(potTask.allowsBlock(id("minecraft:furnace")));
+    }
+
+    @Test
+    void bakerMillingDoesNotIncludeTheFarmAndCharmMincer() {
+        JsonObject baker = resourceJson("/data/townstead/profession/baker/profession.json");
+        WorkTaskDef milling = WorkTaskDef.parse(
+                baker.getAsJsonArray("work_tasks").get(0).getAsJsonObject());
+
+        assertNotNull(milling);
+        assertTrue(milling.allowsBlock(id("kaleidoscope_cookery:millstone")));
+        assertFalse(milling.allowsBlock(id("farm_and_charm:mincer")),
+                "the mincer is a kitchen processor, not a milling workstation");
+
+        //? if >=1.21 {
+        JsonObject millTag = resourceJson("/data/townstead/tags/block/mill/workstations.json");
+        //?} else {
+        /*JsonObject millTag = resourceJson("/data/townstead/tags/blocks/mill/workstations.json");
+        *///?}
+        assertTrue(millTag.getAsJsonArray("values").asList().stream()
+                        .noneMatch(value -> value.getAsJsonObject().get("id").getAsString()
+                                .equals("farm_and_charm:mincer")),
+                "a mincer must not satisfy the Mill building's workstation requirement");
     }
 
     @Test
@@ -263,15 +290,19 @@ class WorkTaskSchemaTest {
     }
 
     private static ProfessionDef load(String resource, String idRaw) {
-        InputStream in = WorkTaskSchemaTest.class.getResourceAsStream(resource);
-        assertNotNull(in, "shipped resource missing: " + resource);
-        JsonObject json = JsonParser.parseReader(
-                new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+        JsonObject json = resourceJson(resource);
         Diagnostics diagnostics = new Diagnostics();
         diagnostics.forResource(id(idRaw));
         ProfessionDef def = ProfessionDataLoader.parseProfession(
                 id(idRaw), json, Map.of(), diagnostics, new LinkedHashMap<>());
         assertNotNull(def, resource + " must parse");
         return def;
+    }
+
+    private static JsonObject resourceJson(String resource) {
+        InputStream in = WorkTaskSchemaTest.class.getResourceAsStream(resource);
+        assertNotNull(in, "shipped resource missing: " + resource);
+        return JsonParser.parseReader(
+                new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
     }
 }

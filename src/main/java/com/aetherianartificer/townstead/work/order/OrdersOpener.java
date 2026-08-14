@@ -105,8 +105,9 @@ public final class OrdersOpener {
     }
 
     /**
-     * The world answers an order needs. Stock is counted over the worksite's own extent, which is
-     * exactly what "in stock here" should mean for a smithy as much as a kitchen.
+     * The world answers an order needs. Stock is counted over the worksite's own extent and the
+     * inventories of its assigned workers, so carrying goods between station and shelf does not
+     * make them disappear from the order sheet.
      */
     public static OrderContext context(ServerLevel level, Worksite site) {
         return new OrderContext() {
@@ -127,10 +128,21 @@ public final class OrdersOpener {
 
             @Override
             public boolean mayWork(Order order) {
-                // Screen-side context: nobody in particular is being asked, so a line is shown as
-                // workable unless it names one villager. The engine's own context does the real
-                // per-worker check when a job is picked up.
-                return order.villager() == null;
+                if (order.villager() == null && order.profession() == null
+                        && order.minRank() <= 0) return true;
+                if (site.villageId() == Worksite.NO_VILLAGE) return false;
+                for (net.conczin.mca.server.world.data.Village village
+                        : net.conczin.mca.server.world.data.VillageManager.get(level)) {
+                    if (village.getId() != site.villageId()) continue;
+                    for (net.conczin.mca.entity.VillagerEntityMCA resident
+                            : village.getResidents(level)) {
+                        if (WorksiteOrders.contextFor(level, site, resident).mayWork(order)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                return false;
             }
         };
     }

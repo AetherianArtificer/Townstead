@@ -65,7 +65,7 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             if (!isPresent(def, present)) continue;
             ResourceLocation icon = iconOf(def);
             String label = blockName(icon, def);
-            if (onHand == null) onHand = StationCatalogs.stockIn(level, extent);
+            if (onHand == null) onHand = StationCatalogs.stockIn(level, site, extent);
             // The claiming trades' own recipe filters decide what the family means HERE: the
             // crafting family is every recipe in the game, and an armorer's bench offers armor
             // because the armorer's declaration says so, not because the bench could make boats.
@@ -83,7 +83,7 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
                     out.add(com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload
                             .Option.commissioned(plain.output(), plain.stationLabel(),
                                     plain.stationIcon(), plain.available(), plain.blocker(),
-                                    plain.makes(), plain.needs(),
+                                    plain.makes(), plain.needs(), plain.missing(),
                                     "Copy " + StationCatalogs.itemNameOf(produce.copies())));
                     continue;
                 }

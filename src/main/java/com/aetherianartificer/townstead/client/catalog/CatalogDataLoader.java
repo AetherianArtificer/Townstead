@@ -118,11 +118,13 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         Map<String, Map<String, Integer>> blocksByType = new HashMap<>();
         Map<String, Integer> priorityByType = new HashMap<>();
         Map<String, BuildingSpawnPolicy> spawnPolicies = new HashMap<>();
+        Map<String, List<ResourceLocation>> workersByType = new HashMap<>();
         scanLegacyBuildingTypes(resourceManager, blocksByType, priorityByType);
         scanSpiritCompanions(resourceManager);
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
-        scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies);
+        scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies, workersByType);
         BuildingSpawnPolicies.replaceAll(spawnPolicies);
+        com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex.replaceAll(workersByType);
         // The icon-to-type index and node-item overrides are now both complete.
         // Clear any negative result cached while parallel reload listeners ran.
         BuildingIconResolver.invalidate();
@@ -399,7 +401,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
      */
     private static void scanExtendedBuildings(ResourceManager resourceManager,
             Map<String, Map<String, Integer>> blocksByType, Map<String, Integer> priorityByType,
-            Map<String, BuildingSpawnPolicy> spawnPolicies) {
+            Map<String, BuildingSpawnPolicy> spawnPolicies,
+            Map<String, List<ResourceLocation>> workersByType) {
         Map<ResourceLocation, Resource> resources = resourceManager.listResources("extended_buildings",
                 id -> id.getPath().endsWith(".json"));
         for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
@@ -431,6 +434,15 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 }
                 if (json.has("spawn") && json.get("spawn").isJsonObject()) {
                     spawnPolicies.put(buildingType, BuildingSpawnPolicy.parse(json.getAsJsonObject("spawn")));
+                }
+                if (json.has("workers") && json.get("workers").isJsonArray()) {
+                    List<ResourceLocation> workers = new java.util.ArrayList<>();
+                    for (JsonElement element : json.getAsJsonArray("workers")) {
+                        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) continue;
+                        ResourceLocation profession = ResourceLocation.tryParse(element.getAsString());
+                        if (profession != null && !workers.contains(profession)) workers.add(profession);
+                    }
+                    workersByType.put(buildingType, List.copyOf(workers));
                 }
                 if (json.has("enclosure") && json.get("enclosure").isJsonObject()) {
                     JsonObject enc = json.getAsJsonObject("enclosure");

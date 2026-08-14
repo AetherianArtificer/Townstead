@@ -47,7 +47,7 @@ public final class BaristaOrderCatalog implements WorksiteCatalogs.Catalog {
         Set<StationType> present = StationCatalogs.stationsIn(level, extent);
         if (present.isEmpty()) return List.of();
 
-        Map<ResourceLocation, Integer> onHand = StationCatalogs.stockIn(level, extent);
+        Map<ResourceLocation, Integer> onHand = StationCatalogs.stockIn(level, site, extent);
         Set<ResourceLocation> presentDefs = StationCatalogs.stationDefsIn(level, extent);
         Set<ResourceLocation> seen = new LinkedHashSet<>();
         List<Option> out = new ArrayList<>();

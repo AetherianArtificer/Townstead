@@ -67,13 +67,19 @@
         "#minecraft:campfires",
         "kaleidoscope_cookery:pot",
         "kaleidoscope_cookery:stockpot",
-        "kaleidoscope_cookery:millstone",
         "kaleidoscope_cookery:steamer",
         "pizzadelight:basin",
         "pizzadelight:raw_pizza",
         "pizzadelight:pizza"
       ],
       "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "kaleidoscope_cookery:millstone"
+      ],
+      "weight": 9
     },
     {
       "type": "townstead_work:chop",

@@ -2,6 +2,16 @@
   "schema": "townstead:workstation/v2",
   "mods": ["kaleidoscope_cookery"],
   "blocks": ["kaleidoscope_cookery:steamer"],
+  "shift_end": "finish",
+  "capacity": {
+    "positions": {
+      "type": "pheno:if",
+      "condition": { "type": "pheno:block_state", "property": "half", "value": "true" },
+      "then": 4,
+      "else": 8
+    },
+    "per_position": 1
+  },
   "requires": {
     "type": "pheno:block_chain",
     "direction": "down",
@@ -16,6 +26,22 @@
     }
   },
   "ready": { "type": "pheno:block_entity", "property": "cookingTime", "contains": -1 },
-  "behavior": { "type": "pheno:use_block", "item": "ingredient" },
+  "behavior": [
+    {
+      "type": "pheno:offset", "y": -1,
+      "block_action": {
+        "type": "pheno:use_block", "item": "supply",
+        "supply": "#kaleidoscope_cookery:lit_stove",
+        "condition": { "type": "pheno:block_state", "property": "lit", "value": "false" }
+      }
+    },
+    { "type": "pheno:use_block", "item": "ingredient" },
+    {
+      "type": "pheno:use_block", "item": "empty", "secondary_use": true,
+      "condition": {
+        "type": "pheno:block_state", "property": "has_lid", "value": "false"
+      }
+    }
+  ],
   "collect": { "type": "pheno:use_block", "item": "empty" }
 }

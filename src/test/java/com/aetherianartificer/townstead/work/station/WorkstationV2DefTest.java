@@ -20,10 +20,34 @@ class WorkstationV2DefTest {
 
     @BeforeAll
     static void registerTypedWorkstationExpressions() {
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.EntityTypeConditionType("pheno:in_tag"));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:tameable", ctx -> true));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:tamed", ctx -> true));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.LogicConditionType(
+                        "pheno:and",
+                        com.aetherianartificer.townstead.pheno.condition.types.LogicConditionType.Mode.AND));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.LogicConditionType(
+                        "pheno:or",
+                        com.aetherianartificer.townstead.pheno.condition.types.LogicConditionType.Mode.OR));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.LogicConditionType(
+                        "pheno:not",
+                        com.aetherianartificer.townstead.pheno.condition.types.LogicConditionType.Mode.NOT));
+        com.aetherianartificer.townstead.pheno.selector.SelectorTypes.register(
+                new com.aetherianartificer.townstead.pheno.selector.types.VillageSelectorType());
         com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
                 new com.aetherianartificer.townstead.pheno.selector.types.ConnectedBlockSelectorType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.CountValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.IfValueType());
     }
 
     @Test
@@ -80,6 +104,7 @@ class WorkstationV2DefTest {
         assertEquals(java.util.Set.of(id("farm_and_charm:stove")), def.blocks());
         assertTrue(def.containerSlots().isEmpty());
         assertNull(def.behavior());
+        assertEquals(ShiftEndPolicy.FINISH, def.shiftEnd());
         assertTrue(def.legacyView(java.util.Set.of(id("farm_and_charm:stove")))
                 .orderable().all(), "an exact block-owned recipe family needs no duplicate output tag");
     }
@@ -112,6 +137,63 @@ class WorkstationV2DefTest {
                  "collect":{"type":"pheno:use_block",
                     "condition":{"type":"pheno:not_a_real_condition"}}}
                 """));
+    }
+
+    @Test
+    void parsesShiftEndPolicyAndRejectsUnknownValues() {
+        WorkstationV2Def leave = parse("""
+                {"blocks":["example:oven"],"shift_end":"leave"}
+                """);
+        assertNotNull(leave);
+        assertEquals(ShiftEndPolicy.LEAVE, leave.shiftEnd());
+        assertEquals(ShiftEndPolicy.LEAVE, leave.legacyView(java.util.Set.of()).shiftEnd());
+        assertNull(parse("""
+                {"blocks":["example:oven"],"shift_end":"eventually"}
+                """));
+    }
+
+    @Test
+    void entityPoweredStationUsesScopedPhenoReservationAndPureRequirement() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:mill"],
+                 "reservation":{"type":"pheno:reserve","on":{
+                   "type":"pheno:village",
+                   "where":{"type":"pheno:in_tag","tag":"example:mill_bindable"},
+                   "order":"nearest","limit":1}},
+                 "requires":{"type":"pheno:block_entity","property":"entity","value":true}}
+                """);
+        assertNotNull(def);
+        assertTrue(def.hasReservation());
+        assertNotNull(def.reservation());
+        assertNull(parse("""
+                {"blocks":["example:mill"],"reservation":{
+                  "type":"pheno:reserve","on":{"type":"pheno:not_real"}}}
+                """));
+        assertNull(parse("""
+                {"blocks":["example:mill"],"requires":{"type":"pheno:entity_engagement",
+                  "on":{"type":"pheno:village"}}}
+                """));
+        assertNull(parse("""
+                {"blocks":["example:mill"],"driver":{"entities":"#example:old_shape"}}
+                """));
+    }
+
+    @Test
+    void entityPoweredStationCanPreferVillageParticipantThenFallBackToWorker() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:mill"],
+                 "anchor":{"radius":[1,0,1],"where":{
+                   "type":"pheno:block_state","property":"part","value":"center"}},
+                 "reservation":{"type":"pheno:reserve","on":[
+                   {"type":"pheno:village","where":{
+                     "type":"pheno:in_tag","tag":"example:work_animals"},
+                    "order":"nearest","limit":1},
+                   "origin"]}}
+                """);
+        assertNotNull(def);
+        assertNotNull(def.anchorSelector());
+        assertNotNull(def.reservation());
+        assertTrue(def.reservation().referencesOrigin());
     }
 
     @Test
@@ -213,6 +295,20 @@ class WorkstationV2DefTest {
     }
 
     @Test
+    void parsesConditionDrivenLaneCapacity() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:steamer"],
+                 "capacity":{"positions":{"type":"pheno:if",
+                   "condition":{"type":"pheno:block_state","property":"half","value":"true"},
+                   "then":4,"else":8},"per_position":1}}
+                """);
+        assertNotNull(def);
+        assertNotNull(def.capacityPositionsValue());
+        assertEquals(1, def.capacityPerPosition());
+        assertFalse(def.stackPerPosition());
+    }
+
+    @Test
     void parsesAuditedButcheryInventorySemantics() throws Exception {
         WorkstationV2Def grinder = resource("meat_grinder");
         assertEquals(List.of(0, 1, 3), grinder.ingredientSlots());
@@ -261,6 +357,61 @@ class WorkstationV2DefTest {
         assertEquals(List.of("#example:oils"), def.recipeSupplies());
         assertTrue(def.behaviorUses("supply"));
         assertTrue(def.collectUses("container"));
+    }
+
+    @Test
+    void parsesMixedCarrierAndSecondaryUseToolCollection() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:wok"],
+                 "collect":[
+                   {"type":"pheno:use_block","item":"container"},
+                   {"type":"pheno:use_block","item":"tool","tool":"#example:spatulas",
+                    "secondary_use":true}
+                 ]}
+                """);
+        assertNotNull(def);
+        assertTrue(def.collectUses("container"));
+        assertTrue(def.collectUses("tool"));
+        assertNull(parse("""
+                {"blocks":["example:wok"],
+                 "collect":{"type":"pheno:use_block","secondary_use":"yes"}}
+                """));
+    }
+
+    @Test
+    void nestedOffsetInteractionIsADataDrivenPreparationAction() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:pot"],
+                 "requires":{"type":"pheno:offset","y":-1,
+                   "condition":{"type":"pheno:block_state","property":"lit","value":"true"}},
+                 "behavior":[
+                   {"type":"pheno:offset","y":-1,
+                    "block_action":{"type":"pheno:use_block","item":"supply",
+                      "supply":"#example:igniters",
+                      "condition":{"type":"pheno:block_state","property":"lit","value":"false"}}},
+                   {"type":"pheno:use_block","item":"ingredient"}
+                 ]}
+                """);
+
+        assertNotNull(def);
+        assertTrue(def.behaviorUses("supply"));
+        assertTrue(def.behaviorUses("ingredient"));
+        assertTrue(def.hasPreparationAction());
+        JsonObject wrapper = def.behavior().getAsJsonArray().get(0).getAsJsonObject();
+        JsonObject interaction = WorkstationV2Def.interactionOf(wrapper);
+        assertNotNull(interaction);
+        assertEquals("#example:igniters", interaction.get("supply").getAsString());
+    }
+
+    @Test
+    void kaleidoscopeHeatStationsDeclareAutomaticIgnition() throws Exception {
+        for (String station : List.of("kaleidoscope_cookery_pot",
+                "kaleidoscope_cookery_stockpot", "kaleidoscope_cookery_steamer")) {
+            WorkstationV2Def def = resource(station);
+            assertTrue(def.hasPreparationAction(), station);
+            assertTrue(def.behaviorUses("supply"), station);
+            assertTrue(def.behavior().toString().contains("#kaleidoscope_cookery:lit_stove"), station);
+        }
     }
 
     @Test

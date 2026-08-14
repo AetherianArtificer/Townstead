@@ -92,6 +92,49 @@ class OrderListTest {
     }
 
     @Test
+    void promisedWorkIsNotACompletedOrder() {
+        Order order = new Order(PIE, Order.Mode.MAKE, 10);
+        Ctx ctx = new Ctx();
+        order.finish(9);
+        order.claim();
+
+        assertEquals(0, order.outstanding(ctx), "the final unit is reserved");
+        assertFalse(order.satisfied(ctx), "a reservation is not finished output");
+
+        order.finish(1);
+        assertTrue(order.satisfied(ctx));
+    }
+
+    @Test
+    void stockedOrderIsSatisfiedByRealStockButStandingWorkNeverIs() {
+        Ctx ctx = new Ctx();
+        Order stocked = new Order(BREAD, Order.Mode.KEEP_STOCKED, 3);
+        stocked.claim(3);
+        assertFalse(stocked.satisfied(ctx), "claimed stock has not reached storage yet");
+
+        ctx.stock.put(BREAD, 3);
+        assertTrue(stocked.satisfied(ctx));
+        assertFalse(new Order(BREAD, Order.Mode.STANDING, 0).satisfied(ctx));
+    }
+
+    @Test
+    void operationPolicyKeepsEntityIdentityOnlyForAnExplicitEntity() {
+        Order order = new Order(BREAD, Order.Mode.MAKE, 1);
+        java.util.UUID mule = java.util.UUID.randomUUID();
+
+        order.setOperator(mule);
+        assertEquals(Order.Operation.ENTITY, order.operation());
+        assertEquals(mule, order.operator());
+
+        order.setOperation(Order.Operation.WORKER);
+        assertEquals(Order.Operation.WORKER, order.operation());
+        assertNull(order.operator(), "a stale animal must not survive a switch to the worker");
+
+        order.setOperation(Order.Operation.AUTOMATIC);
+        assertEquals(Order.Operation.AUTOMATIC, order.operation());
+    }
+
+    @Test
     void batchClaimReservesAndReleasesItsWholeQuantity() {
         Order order = new Order(BREAD, Order.Mode.MAKE, 10);
         Ctx ctx = new Ctx();

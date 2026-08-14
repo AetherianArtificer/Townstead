@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.work.station;
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.aetherianartificer.townstead.work.recipe.StationType;
+import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -117,7 +118,7 @@ public final class ProtocolRecipes {
                 : level.getRecipeManager().getRecipes()) {
             ResourceLocation recipeId = recipe.getId();
         *///?}
-            ResourceLocation typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
+            ResourceLocation typeId = WorkRecipeRegistry.recipeTypeId(recipe.getType());
             if (!def.recipeType().equals(typeId)) continue;
             // Trim recipes compose their result from base and template at craft time; there is
             // no honest static line for "any armor, any pattern".

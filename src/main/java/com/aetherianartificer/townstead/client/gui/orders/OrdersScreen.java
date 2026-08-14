@@ -104,10 +104,13 @@ public class OrdersScreen extends Screen {
     private @Nullable Draft draft;
     /** The row whose details are open, or -1. */
     private int detailsFor = -1;
+    /** Details' focused worker/operator chooser. */
+    private boolean workPicker;
     /** How far the details window's item list — members or needs — is scrolled. */
     private int setScroll;
     /** Which scrollbar the mouse is riding, if any. Cleared on release. */
     private boolean dragDetailScroll;
+    private boolean dragAssignmentScroll;
     private boolean dragOrderScroll;
 
     private static final class Draft {
@@ -191,7 +194,16 @@ public class OrdersScreen extends Screen {
     private int ordersLeft() { return catalogueLeft() + catalogueWidth() + FRAME + SPACING + FRAME; }
     private int ordersWidth() { return this.width - ordersLeft() - SPACING - FRAME; }
     private boolean compactRows() { return ordersWidth() < 320; }
-    private int stripHeight() { return compactRows() ? COMPACT_STRIP_H : STRIP_H; }
+    private int stripHeight() { return compactHeader() ? COMPACT_STRIP_H : STRIP_H; }
+
+    /** The header only wraps when its own contents do not fit; row density is a separate choice. */
+    private boolean compactHeader() {
+        Rect[] probe = Controls.segmentLayout(this.font, 0, 0, LIST_LABELS);
+        int controls = probe[probe.length - 1].right();
+        int required = INSET * 2 + Controls.SCROLLBAR_W + this.font.width(data.worksiteName())
+                + this.font.width("WHEN DONE") + controls + 28;
+        return ordersWidth() < required;
+    }
     private int listTop() { return contentTop() + stripHeight(); }
     private int composerTop() { return contentBottom() - composerHeight(); }
     private int orderListBottom() { return draft == null ? contentBottom() : composerTop(); }
@@ -370,6 +382,9 @@ public class OrdersScreen extends Screen {
         drawOrders(g, mouseX, mouseY);
         if (draft != null) drawComposer(g, mouseX, mouseY);
         if (detailsFor >= 0) {
+            // Background rows have already reported their hover. A modal owns both hit testing and
+            // help text, so nothing underneath it may leak a tooltip into this frame.
+            tooltip = null;
             // Item sprites are 3D and drawn at z=150, so a flat panel painted afterwards still
             // ends up behind them — which is why the catalogue's icons punched through the modal.
             // Flush what has been batched, then lift the whole window above them.
@@ -380,7 +395,12 @@ public class OrdersScreen extends Screen {
             g.pose().popPose();
         }
         if (tooltip != null) {
-            g.renderTooltip(this.font, Component.literal(tooltip), mouseX, mouseY);
+            // Keep help compact at large GUI scales as well as physically inside the window.
+            // A 220px logical tooltip becomes an enormous banner at GUI scale 3; 176 leaves the
+            // order underneath readable and gives the renderer ample room to clamp either side.
+            int tooltipWidth = Math.max(112, Math.min(176, this.width - SPACING * 4));
+            g.renderTooltip(this.font, this.font.split(Component.literal(tooltip), tooltipWidth),
+                    mouseX, mouseY);
         }
     }
 
@@ -451,7 +471,7 @@ public class OrdersScreen extends Screen {
     private void drawOrdersStrip(GuiGraphics g, int mouseX, int mouseY) {
         int x = ordersLeft();
         int y = contentTop();
-        boolean compact = compactRows();
+        boolean compact = compactHeader();
         int textY = compact ? y + 5 : y + (STRIP_H - this.font.lineHeight) / 2;
 
         Rect[] listSeg = listSegments();
@@ -492,7 +512,7 @@ public class OrdersScreen extends Screen {
         // short of the frame by the scrollbar's lane.
         return Controls.segmentLayout(this.font,
                 ordersLeft() + ordersWidth() - INSET - Controls.SCROLLBAR_W - total,
-                compactRows() ? contentTop() + 20
+                compactHeader() ? contentTop() + 20
                         : contentTop() + (STRIP_H - Controls.SEG_H) / 2,
                 LIST_LABELS);
     }
@@ -527,7 +547,8 @@ public class OrdersScreen extends Screen {
     /** Draws one line and returns the height it used, which grows when it has to explain itself. */
     private int drawRow(GuiGraphics g, Row row, int index, int x, int rowY, int w,
                         int mouseX, int mouseY) {
-        boolean showReason = !row.reason().isEmpty();
+        String reason = displayedReason(row);
+        boolean showReason = !reason.isEmpty();
         boolean compact = compactRows();
         int height = rowBaseHeight() + (showReason ? REASON_H : 0);
         boolean satisfied = row.status() == OrdersSnapshotS2CPayload.Status.SATISFIED;
@@ -622,7 +643,7 @@ public class OrdersScreen extends Screen {
         tip(strike, mouseX, mouseY, "Strike this order out");
 
         if (showReason) {
-            g.drawString(this.font, trim(row.reason(), body.right() - 8 - c.main), c.main,
+            g.drawString(this.font, trim(reason, body.right() - 8 - c.main), c.main,
                     body.y() + (compact ? COMPACT_LINE3_Y : LINE2_Y)
                             + Controls.SEG_H + 3, Palette.LABEL_WARM, false);
         }
@@ -633,6 +654,34 @@ public class OrdersScreen extends Screen {
             g.fill(c.main, body.y() + 12, c.main + nameW, body.y() + 13, Controls.Chip.BLOCKED.ink);
         }
         return height;
+    }
+
+    /**
+     * A tagged requirement is a set of real choices, not a thing called "matching item". Use the
+     * same phase as the details icons so the queued row names the concrete item currently shown.
+     */
+    private String displayedReason(Row row) {
+        if (row.status() != OrdersSnapshotS2CPayload.Status.WAITING) return row.reason();
+        Option option = optionFor(row.output());
+        if (option == null || option.missing().isEmpty()) return row.reason();
+        long phase = net.minecraft.Util.getMillis() / 1200L;
+        StringBuilder out = new StringBuilder("Missing: ");
+        int shown = Math.min(2, option.missing().size());
+        for (int i = 0; i < shown; i++) {
+            if (i > 0) out.append(", ");
+            var need = option.missing().get(i);
+            if (need.count() > 1) out.append(need.count()).append(' ');
+            if (need.items().isEmpty()) {
+                out.append(need.label().isBlank() ? "item" : need.label());
+                continue;
+            }
+            int choice = (int) Math.floorMod(phase, need.items().size());
+            out.append(itemName(need.items().get(choice)));
+        }
+        if (option.missing().size() > shown) {
+            out.append(" +").append(option.missing().size() - shown).append(" more");
+        }
+        return out.toString();
     }
 
     private Rect rowBody(int x, int rowY, int w, int height) {
@@ -727,8 +776,11 @@ public class OrdersScreen extends Screen {
         if (compactRows()) {
             Rect[] stepper = compactRowStepper(c, body, row);
             int right = row.mode().hasTarget() ? stepper[0].x() - 5 : compactContentRight(c);
-            return new Rect(c.main, body.y() + COMPACT_LINE3_Y,
-                    Math.max(24, Math.min(COL_MODE, right - c.main)), Controls.SEG_H);
+            // The third line has no item icon. Reusing line one's post-icon indent threw away
+            // enough width to clip "Keep in stock" at large GUI scales.
+            int left = body.x() + INSET + COL_MOVE + COL_GAP;
+            return new Rect(left, body.y() + COMPACT_LINE3_Y,
+                    Math.max(24, Math.min(COL_MODE, right - left)), Controls.SEG_H);
         }
         int stepper = row.mode().hasTarget()
                 ? Controls.stepperWidth(this.font, String.valueOf(row.target())) + 5 : 0;
@@ -938,21 +990,34 @@ public class OrdersScreen extends Screen {
         FrameRenderer.drawWoodenFrame(g, win.x(), win.y(), win.w(), win.h(), FRAME);
         FrameRenderer.drawInnerPanel(g, win.x(), win.y(), win.w(), win.h());
 
-        // Its own title strip, inside the frame. The caption is centred on the window, clear of
-        // both the slot on its left and the Back pill on its right by the same margin.
+        // Its own title strip, inside the frame. Assignment is a dropdown in the order's header,
+        // not a third full-width form section competing with the recipe and quantity controls.
         Controls.drawSlot(g, win.x() + DETAIL_PAD, win.y() + 4);
         drawItem(g, iconFor(row), win.x() + DETAIL_PAD + 1, win.y() + 5);
-        String title = nameOf(row.activity() || row.tag(), row.label(), row.output());
-        int clear = DETAIL_PAD + Controls.SLOT + 6;
-        String shown = trim(title, win.w() - clear * 2);
-        g.drawString(this.font, shown, win.x() + (win.w() - this.font.width(shown)) / 2,
-                win.y() + (DETAIL_STRIP_H - this.font.lineHeight) / 2 + 1, Palette.CARD, false);
         Rect back = detailsBack();
+        Rect assignment = detailsAssignment(row);
+        String title = nameOf(row.activity() || row.tag(), row.label(), row.output());
+        int titleLeft = win.x() + DETAIL_PAD + Controls.SLOT + 5;
+        int titleRight = (workPicker ? back.x() : assignment.x()) - 4;
+        String shown = trim(title, Math.max(20, titleRight - titleLeft));
+        g.drawString(this.font, shown,
+                titleLeft + Math.max(0, (titleRight - titleLeft - this.font.width(shown)) / 2),
+                 win.y() + (DETAIL_STRIP_H - this.font.lineHeight) / 2 + 1, Palette.CARD, false);
+        if (!workPicker) {
+            String assignmentText = trim(assignmentSummary(row) + " ▾", assignment.w() - 10);
+            Controls.drawButton(g, this.font, assignment, assignmentText, false,
+                    assignment.contains(mouseX, mouseY), true);
+            tip(assignment, mouseX, mouseY, "Assignment");
+        }
         Controls.drawPill(g, this.font, back, "Back", true, back.contains(mouseX, mouseY),
                 Palette.LABEL_LIGHT);
         g.fill(win.x() + INSET, win.y() + DETAIL_STRIP_H - 1, win.right() - INSET,
                 win.y() + DETAIL_STRIP_H, FrameRenderer.FRAME_HIGHLIGHT);
 
+        if (workPicker) {
+            drawWorkPicker(g, row, mouseX, mouseY);
+            return;
+        }
         if (row.activity()) {
             drawJobDetails(g, row, win, detailsFieldsTop());
             return;
@@ -1031,19 +1096,31 @@ public class OrdersScreen extends Screen {
             return members.isEmpty() ? null : members;
         }
         Option option = optionFor(row.output());
-        return option == null || option.needs().isEmpty() ? null : needStacks(option);
+        List<OrdersSnapshotS2CPayload.Need> shown = shownNeeds(row, option);
+        return shown.isEmpty() ? null : needStacks(shown);
     }
 
     /** A recipe's needs as stacks, count and all, for the shared row renderer. */
-    private static List<ItemStack> needStacks(Option option) {
-        List<ItemStack> out = new ArrayList<>(option.needs().size());
-        for (var need : option.needs()) {
-            ItemStack stack = displayStack(need.item());
+    private static List<ItemStack> needStacks(List<OrdersSnapshotS2CPayload.Need> needs) {
+        List<ItemStack> out = new ArrayList<>(needs.size());
+        long phase = net.minecraft.Util.getMillis() / 1200L;
+        for (var need : needs) {
+            if (need.items().isEmpty()) continue;
+            int index = (int) Math.floorMod(phase, need.items().size());
+            ItemStack stack = displayStack(need.items().get(index));
             if (stack.isEmpty()) continue;
             stack.setCount(Math.max(1, need.count()));
             out.add(stack);
         }
         return out;
+    }
+
+    /** Waiting orders foreground only what is absent; every other state shows the full recipe. */
+    private static List<OrdersSnapshotS2CPayload.Need> shownNeeds(Row row, @Nullable Option option) {
+        if (option == null) return List.of();
+        return row.status() == OrdersSnapshotS2CPayload.Status.WAITING
+                && !option.missing().isEmpty()
+                ? option.missing() : option.needs();
     }
 
     /** The set's members as stacks, in tag order — what the counting side resolves too. */
@@ -1077,12 +1154,16 @@ public class OrdersScreen extends Screen {
         int y = top + 8;
         y = fact(g, x, y, box.w(), "Makes", String.valueOf(option.makes()));
         y = fact(g, x, y, box.w(), "Station", option.stationLabel());
-        g.drawString(this.font, "NEEDS", x + 6, y + 4, Palette.INK_DIM, false);
-        if (option.needs().isEmpty()) {
+        boolean showingMissing = row.status() == OrdersSnapshotS2CPayload.Status.WAITING
+                && !option.missing().isEmpty();
+        List<OrdersSnapshotS2CPayload.Need> shown = shownNeeds(row, option);
+        g.drawString(this.font, showingMissing ? "MISSING" : "NEEDS", x + 6, y + 4,
+                showingMissing ? Palette.LABEL_WARM : Palette.INK_DIM, false);
+        if (shown.isEmpty()) {
             g.drawString(this.font, "Nothing", x + 6, y + 15, Palette.LABEL_DIM, false);
             return;
         }
-        drawStackRows(g, needStacks(option), detailListArea(row));
+        drawStackRows(g, needStacks(shown), detailListArea(row));
     }
 
     /**
@@ -1144,9 +1225,134 @@ public class OrdersScreen extends Screen {
                 hasTarget ? row.scope().ordinal() : -1,
                 hasTarget ? Controls.segmentAt(scope, mouseX, mouseY) : -1);
 
-        // "Who may work it" is deliberately NOT shown: the field exists on the order and the
-        // engine honours it, but nothing can set it yet, and a box that always says "anyone"
-        // is furniture. It returns when assignment does.
+    }
+
+    private String assignmentSummary(Row row) {
+        return row.workLabel().isEmpty() ? "Automatic" : row.workLabel();
+    }
+
+    private Rect detailsAssignment(Row row) {
+        Rect win = detailsWindow();
+        Rect back = detailsBack();
+        int desired = this.font.width(assignmentSummary(row) + " ▾") + 12;
+        int width = Math.max(52, Math.min(112, desired));
+        return new Rect(back.x() - 4 - width,
+                win.y() + (DETAIL_STRIP_H - Controls.SEG_H) / 2, width, Controls.SEG_H);
+    }
+
+    /** Focused assignment picker; ordinary details retain only the one-line summary above. */
+    private void drawWorkPicker(GuiGraphics g, Row row, int mouseX, int mouseY) {
+        Rect win = detailsWindow();
+        int top = detailsFieldsTop();
+        int gap = 6;
+        int width = (win.w() - DETAIL_PAD * 2 - gap) / 2;
+        int left = win.x() + DETAIL_PAD;
+        int right = left + width + gap;
+        Rect workerBox = new Rect(left, top, width, win.bottom() - DETAIL_PAD - top);
+        Controls.drawBox(g, this.font, workerBox, "Worker");
+        int visible = assignmentVisibleRows();
+        int total = assignmentChoiceCount(row);
+        setScroll = Math.max(0, Math.min(setScroll, Math.max(0, total - visible)));
+        for (int shown = 0; shown < visible; shown++) {
+            int actual = setScroll + shown;
+            if (actual >= 1 + data.workers().size()) break;
+            if (actual == 0) {
+                drawWorkChoice(g, workerChoiceRect(shown), "Automatic", "Anyone suitable",
+                        row.worker().isEmpty(), mouseX, mouseY);
+            } else {
+                var choice = data.workers().get(actual - 1);
+                drawWorkChoice(g, workerChoiceRect(shown), choice.name(), choice.detail(),
+                        choice.value().equals(row.worker()), mouseX, mouseY);
+            }
+        }
+
+        Rect operatorBox = new Rect(right, top, width, win.bottom() - DETAIL_PAD - top);
+        Controls.drawBox(g, this.font, operatorBox, "Operated by");
+        if (!row.operated()) {
+            g.drawString(this.font, "This station needs no operator.", right + 6, top + 10,
+                    Palette.LABEL_DIM, false);
+            if (total > visible) {
+                Rect area = assignmentScrollArea();
+                Controls.drawScrollbar(g, area.x(), area.y(), area.h(), setScroll, visible, total);
+            }
+            return;
+        }
+        int operatorCount = operatorChoiceCount(row);
+        for (int shown = 0; shown < visible; shown++) {
+            int actual = setScroll + shown;
+            if (actual >= operatorCount) break;
+            if (actual == 0) {
+                drawWorkChoice(g, operatorChoiceRect(shown), "Automatic", "Station preference",
+                        row.operation() == Order.Operation.AUTOMATIC, mouseX, mouseY);
+            } else if (row.workerFallback() && actual == 1) {
+                drawWorkChoice(g, operatorChoiceRect(shown), "Assigned worker",
+                        "Operates it themselves", row.operation() == Order.Operation.WORKER,
+                        mouseX, mouseY);
+            } else {
+                int index = actual - 1 - (row.workerFallback() ? 1 : 0);
+                var choice = row.operators().get(index);
+                drawWorkChoice(g, operatorChoiceRect(shown), choice.name(), "Eligible animal",
+                        row.operation() == Order.Operation.ENTITY
+                                && choice.uuid().equals(row.operator()), mouseX, mouseY);
+            }
+        }
+        if (total > visible) {
+            Rect area = assignmentScrollArea();
+            Controls.drawScrollbar(g, area.x(), area.y(), area.h(), setScroll, visible, total);
+        }
+    }
+
+    private int operatorChoiceCount(Row row) {
+        return row.operated() ? 1 + (row.workerFallback() ? 1 : 0) + row.operators().size() : 0;
+    }
+
+    private int assignmentChoiceCount(Row row) {
+        return Math.max(1 + data.workers().size(), operatorChoiceCount(row));
+    }
+
+    private int assignmentVisibleRows() {
+        Rect win = detailsWindow();
+        return Math.max(1, (win.bottom() - DETAIL_PAD - (detailsFieldsTop() + 7)) / 17);
+    }
+
+    private Rect assignmentScrollArea() {
+        Rect win = detailsWindow();
+        return new Rect(win.right() - DETAIL_PAD - Controls.SCROLLBAR_W,
+                detailsFieldsTop() + 7, Controls.SCROLLBAR_W,
+                Math.max(1, win.bottom() - DETAIL_PAD - (detailsFieldsTop() + 7)));
+    }
+
+    private void drawWorkChoice(GuiGraphics g, Rect rect, String name, String detail,
+                                boolean selected, int mouseX, int mouseY) {
+        boolean hover = rect.contains(mouseX, mouseY);
+        g.fill(rect.x(), rect.y(), rect.right(), rect.bottom(),
+                selected ? Palette.TAB_IDLE : hover ? Palette.ROW : Palette.WELL);
+        if (selected || hover) Palette.drawOutline(g, rect.x(), rect.y(), rect.right(), rect.bottom(),
+                selected ? Palette.BRASS_DEEP : Palette.WELL_EDGE);
+        int mark = rect.x() + 5;
+        if (selected) g.fill(mark, rect.y() + 4, mark + 2, rect.bottom() - 4, Palette.BRASS);
+        int x = rect.x() + 11;
+        int detailW = detail.isEmpty() ? 0 : this.font.width(detail);
+        g.drawString(this.font, trim(name, Math.max(12, rect.w() - 17 - detailW)), x,
+                rect.y() + 4, selected ? Palette.CARD : Palette.LABEL_LIGHT, false);
+        if (!detail.isEmpty() && rect.w() > detailW + 45) {
+            g.drawString(this.font, detail, rect.right() - 5 - detailW, rect.y() + 4,
+                    Palette.LABEL_DIM, false);
+        }
+    }
+
+    private Rect workerChoiceRect(int index) {
+        Rect win = detailsWindow();
+        int width = (win.w() - DETAIL_PAD * 2 - 6) / 2;
+        return new Rect(win.x() + DETAIL_PAD + 3, detailsFieldsTop() + 7 + index * 17,
+                width - 6, 16);
+    }
+
+    private Rect operatorChoiceRect(int index) {
+        Rect win = detailsWindow();
+        int width = (win.w() - DETAIL_PAD * 2 - 6) / 2;
+        return new Rect(win.x() + DETAIL_PAD + width + 9, detailsFieldsTop() + 7 + index * 17,
+                width - 8 - Controls.SCROLLBAR_W, 16);
     }
 
     /** What sprite a line shows: itself for a thing, a member's for a set, a job's own icon. */
@@ -1194,6 +1400,16 @@ public class OrdersScreen extends Screen {
         // A job's window holds two lines and a name; giving it the recipe window's footprint left
         // a plain sentence adrift in a panel sized for controls it never shows.
         Row row = detailsRow();
+        if (workPicker) {
+            int choices = Math.max(1 + data.workers().size(),
+                    (row != null && row.operated() ? 1 : 0)
+                            + (row != null && row.workerFallback() ? 1 : 0)
+                            + (row == null ? 0 : row.operators().size()));
+            int w = Math.min(this.width - SPACING * 2 - FRAME * 2, 390);
+            int desiredH = DETAIL_STRIP_H + DETAIL_PAD + 4 + 14 + choices * 17 + DETAIL_PAD;
+            int h = Math.min(this.height - SPACING * 2 - FRAME * 2, Math.max(142, desiredH));
+            return new Rect((this.width - w) / 2, (this.height - h) / 2, w, h);
+        }
         if (row != null && row.activity()) {
             int w = Math.min(this.width - SPACING * 2 - FRAME * 2, 300);
             int h = DETAIL_STRIP_H + DETAIL_PAD + 4 + 44 + DETAIL_PAD;
@@ -1315,6 +1531,15 @@ public class OrdersScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double ddx, double ddy) {
+        if (dragAssignmentScroll && detailsFor >= 0 && workPicker) {
+            Row row = detailsRow();
+            if (row != null) {
+                Rect area = assignmentScrollArea();
+                setScroll = Controls.scrollbarDrag(area.y(), area.h(), my,
+                        assignmentVisibleRows(), assignmentChoiceCount(row));
+            }
+            return true;
+        }
         if (dragDetailScroll && detailsFor >= 0) {
             Row row = detailsRow();
             List<ItemStack> stacks = row == null ? null : detailStacks(row);
@@ -1336,6 +1561,7 @@ public class OrdersScreen extends Screen {
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
         dragDetailScroll = false;
+        dragAssignmentScroll = false;
         dragOrderScroll = false;
         return super.mouseReleased(mx, my, button);
     }
@@ -1375,6 +1601,7 @@ public class OrdersScreen extends Screen {
             }
             if (detailsLink(c, body, row).contains(mx, my)) {
                 detailsFor = i;
+                workPicker = false;
                 setScroll = 0;
                 return true;
             }
@@ -1464,8 +1691,23 @@ public class OrdersScreen extends Screen {
 
     private boolean clickDetails(double mx, double my, long site) {
         Row row = detailsRow();
-        if (row == null || detailsBack().contains(mx, my)) {
+        if (row == null) {
             detailsFor = -1;
+            workPicker = false;
+            return true;
+        }
+        if (detailsBack().contains(mx, my)) {
+            if (workPicker) {
+                workPicker = false;
+                setScroll = 0;
+            }
+            else detailsFor = -1;
+            return true;
+        }
+        if (workPicker) return clickWorkPicker(row, mx, my, site);
+        if (detailsAssignment(row).contains(mx, my)) {
+            workPicker = true;
+            setScroll = 0;
             return true;
         }
         if (row.activity()) return true;
@@ -1505,6 +1747,44 @@ public class OrdersScreen extends Screen {
         return true;
     }
 
+    private boolean clickWorkPicker(Row row, double mx, double my, long site) {
+        int visible = assignmentVisibleRows();
+        int total = assignmentChoiceCount(row);
+        if (total > visible) {
+            Rect area = assignmentScrollArea();
+            int picked = Controls.scrollbarPick(area.x(), area.y(), area.h(), mx, my,
+                    visible, total);
+            if (picked >= 0) {
+                setScroll = picked;
+                dragAssignmentScroll = true;
+                return true;
+            }
+        }
+
+        for (int shown = 0; shown < visible; shown++) {
+            int actual = setScroll + shown;
+            if (actual < 1 + data.workers().size() && workerChoiceRect(shown).contains(mx, my)) {
+                String value = actual == 0 ? "automatic" : data.workers().get(actual - 1).value();
+                send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.SET_WORKER,
+                        detailsFor, value));
+                return true;
+            }
+            if (!row.operated() || actual >= operatorChoiceCount(row)
+                    || !operatorChoiceRect(shown).contains(mx, my)) continue;
+            String value;
+            if (actual == 0) value = "automatic";
+            else if (row.workerFallback() && actual == 1) value = "worker";
+            else {
+                int index = actual - 1 - (row.workerFallback() ? 1 : 0);
+                value = "entity:" + row.operators().get(index).uuid();
+            }
+            send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.SET_OPERATOR,
+                    detailsFor, value));
+            return true;
+        }
+        return true;
+    }
+
     /**
      * How far a click on a stepper part moves the number, or 0 for the value plate.
      *
@@ -1533,7 +1813,11 @@ public class OrdersScreen extends Screen {
         if (key == 256) {
             // Escape unwinds one layer at a time: the modal, then the draft, then the screen.
             if (detailsFor >= 0) {
-                detailsFor = -1;
+                if (workPicker) {
+                    workPicker = false;
+                    setScroll = 0;
+                }
+                else detailsFor = -1;
                 return true;
             }
             if (draft != null) {
@@ -1555,7 +1839,10 @@ public class OrdersScreen extends Screen {
         // a set's members or a recipe's needs — and nothing leaks through to the order list.
         if (detailsFor >= 0) {
             Row row = detailsRow();
-            if (row != null && detailStacks(row) != null) {
+            if (row != null && workPicker) {
+                int max = Math.max(0, assignmentChoiceCount(row) - assignmentVisibleRows());
+                setScroll = Math.max(0, Math.min(max, setScroll + (dy > 0 ? -1 : 1)));
+            } else if (row != null && detailStacks(row) != null) {
                 setScroll = Math.max(0, setScroll + (dy > 0 ? -1 : 1));
             }
             return true;

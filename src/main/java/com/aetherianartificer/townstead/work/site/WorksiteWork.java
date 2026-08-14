@@ -44,6 +44,12 @@ public final class WorksiteWork {
         return types;
     }
 
+    /** Careers the building declares as possible workers, in data-defined order. */
+    public static java.util.List<ProfessionDef> professionsAt(
+            ServerLevel level, Worksite site, Set<Long> extent) {
+        return java.util.List.copyOf(claimants(level, site, extent));
+    }
+
     /**
      * The claiming trades' declarations of one task type, filters and all. This is how the
      * catalogue narrows a recipe family to what the trades here may actually make: the crafting
@@ -70,6 +76,18 @@ public final class WorksiteWork {
      */
     private static java.util.List<ProfessionDef> claimants(ServerLevel level, Worksite site, Set<Long> extent) {
         String buildingType = buildingTypeOf(level, site);
+        // An explicit building workforce owns the answer. This is what lets a Mill advertise
+        // itself to both Bakers and Cooks without either profession hardcoding every mill added
+        // by every content pack. Their task declarations still decide which of its stations and
+        // recipes each worker can actually use.
+        if (BuildingWorkforceIndex.defines(buildingType)) {
+            java.util.List<ProfessionDef> declared = new java.util.ArrayList<>();
+            for (ResourceLocation profession : BuildingWorkforceIndex.professionsFor(buildingType)) {
+                ProfessionDef def = ProfessionDefs.byId(profession);
+                if (def != null && !declared.contains(def)) declared.add(def);
+            }
+            return declared;
+        }
         java.util.List<ProfessionDef> owners = new java.util.ArrayList<>();
         for (ProfessionDef def : ProfessionDefs.all().values()) {
             if (claimsByType(def, buildingType)) owners.add(def);

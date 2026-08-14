@@ -80,6 +80,17 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         public static CollectResult waiting(boolean alreadyCollected) { return new CollectResult(alreadyCollected, true); }
     }
 
+    public enum PreparationStatus { READY, WAITING, BLOCKED }
+
+    /** A station prerequisite which may need real navigation before ingredients are gathered. */
+    public record PreparationResult(PreparationStatus status, @Nullable String detail) {
+        public static PreparationResult ready() { return new PreparationResult(PreparationStatus.READY, null); }
+        public static PreparationResult waiting() { return new PreparationResult(PreparationStatus.WAITING, null); }
+        public static PreparationResult blocked(String detail) {
+            return new PreparationResult(PreparationStatus.BLOCKED, detail);
+        }
+    }
+
     public record ProducerStationSelection(
             BlockPos stationPos,
             BlockPos standPos,
@@ -101,6 +112,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected @Nullable BlockPos currentWorksiteTarget;
     protected String currentWorksiteTargetKind = "stand";
     protected ProducerBlockedReason blocked = ProducerBlockedReason.NONE;
+    /** A scheduler/activity pause must not erase a batch already handed to a physical station. */
+    private boolean resumeCommittedCycle;
 
     protected final Map<ResourceLocation, Integer> stagedInputs = new HashMap<>();
     protected final Map<ResourceLocation, Long> recipeCooldownUntil = new HashMap<>();
@@ -204,6 +217,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     protected void onProduceTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {}
 
+    /** Prepares a physical station before gathering; entity-powered stations fetch a driver here. */
+    protected PreparationResult prepareStation(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        return PreparationResult.ready();
+    }
+
     /** A committed input set vanished without producing an output and must be reloaded. */
     protected boolean isProductionInterrupted(ServerLevel level, VillagerEntityMCA villager,
                                               long gameTime) { return false; }
@@ -217,6 +236,21 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected void onSessionRefresh(ServerLevel level, VillagerEntityMCA villager, long gameTime) {}
 
     protected void onSessionRelease(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos, long gameTime) {}
+
+    /** A counted order reached its real target after this station's output was stored. */
+    protected void onOrderCompleted(ServerLevel level, VillagerEntityMCA villager,
+                                    @Nullable BlockPos pos, long gameTime) {}
+
+    /** No actionable station/recipe remains at this worksite. */
+    protected void onNoWork(ServerLevel level, VillagerEntityMCA villager, long gameTime) {}
+
+    /**
+     * A physical station cycle was abandoned before delivery.  This is distinct from releasing
+     * the station's concurrency claim: an entity-operated machine may also be holding a worker or
+     * animal in the world, and its concrete task must disengage that participant here.
+     */
+    protected void onStationAbandoned(ServerLevel level, VillagerEntityMCA villager,
+                                      @Nullable BlockPos pos, long gameTime) {}
 
     /**
      * Whether a committed station cycle can survive a scheduler-level Behavior rollover.
@@ -303,7 +337,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (!gate(level, villager, !brain.isPanicking() && villager.getLastHurtByMob() == null,
                 "panicking or recently hurt")) return false;
-        if (!gate(level, villager, currentActivity(villager) == Activity.WORK,
+        boolean committed = hasResumableStationSession(level, villager, stationAnchor, level.getGameTime());
+        if (!gate(level, villager, currentActivity(villager) == Activity.WORK || committed,
                 "off shift — schedule is not WORK")) return false;
         lastGateReported = null;
         return true;
@@ -312,6 +347,15 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (!isEligibleVillager(level, villager)) return;
+        if (resumeCommittedCycle
+                && hasResumableStationSession(level, villager, stationAnchor, gameTime)) {
+            resumeCommittedCycle = false;
+            blocked = ProducerBlockedReason.NONE;
+            claimStation(level, villager, gameTime);
+            transition(ProducerState.RECONCILE_STATION, gameTime);
+            return;
+        }
+        resumeCommittedCycle = false;
         blocked = ProducerBlockedReason.NONE;
         state = ProducerState.PATH_TO_WORKSITE;
         stateEnteredTick = gameTime;
@@ -327,7 +371,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         if (!isEligibleVillager(level, villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
-        return currentActivity(villager) == Activity.WORK;
+        return currentActivity(villager) == Activity.WORK
+                || hasResumableStationSession(level, villager, stationAnchor, gameTime);
     }
 
     @Override
@@ -335,17 +380,27 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         // Behavior's duration is a scheduler lease, not a production lifecycle. If that lease
         // rolls over while this is still the villager's enabled, eligible WORK activity, retain
         // the committed station cycle. The physical claim is still released below, so the next
-        // behavior must reacquire the station normally. Completion, abandonment, job loss,
-        // disablement and a real shift boundary all continue to release the cycle explicitly.
-        boolean resumeCommittedCycle = isTaskEnabled()
+        // behavior must reacquire the station normally. A shift boundary preserves only an
+        // already-committed physical cycle; completion, abandonment, job loss and disablement
+        // release it explicitly.
+        VillagerBrain<?> brain = villager.getVillagerBrain();
+        boolean resumeCommitted = isTaskEnabled()
                 && isEligibleVillager(level, villager)
-                && currentActivity(villager) == Activity.WORK
+                && !brain.isPanicking()
+                && villager.getLastHurtByMob() == null
                 && hasResumableStationSession(level, villager, stationAnchor, gameTime);
-        onStop(level, villager, gameTime);
         releaseStationClaim(level, villager, stationAnchor);
-        if (!resumeCommittedCycle) {
-            onSessionRelease(level, villager, stationAnchor, gameTime);
+        if (resumeCommitted) {
+            // The same Behavior instance will be restarted by WORK. Keep its recipe, station,
+            // order claim and subclass protocol state intact; reconciliation reads the machine's
+            // real state before doing anything else.
+            resumeCommittedCycle = true;
+            return;
         }
+        resumeCommittedCycle = false;
+        onStop(level, villager, gameTime);
+        onSessionRelease(level, villager, stationAnchor, gameTime);
+        releaseOrderClaim();
         String reactionStopReason = blocked != ProducerBlockedReason.NONE ? "give_up" : null;
         clearTransientState();
         state = ProducerState.PATH_TO_WORKSITE;
@@ -378,6 +433,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                 && state != ProducerState.COLLECT_WAIT) {
             debugChat(level, villager, "STATE:timeout in " + state.name() + ", resetting");
             transitionToNavigationState(level, villager, gameTime);
+            onStationAbandoned(level, villager, stationAnchor, gameTime);
             releaseStationClaim(level, villager, stationAnchor);
             onSessionRelease(level, villager, stationAnchor, gameTime);
             releaseOrderClaim();
@@ -407,6 +463,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     // ── State: PATH_TO_WORKSITE ──
 
     private void tickPathToWorksite(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor != null) {
+            onStationAbandoned(level, villager, stationAnchor, gameTime);
+        }
         releaseStationClaim(level, villager, stationAnchor);
         onSessionRelease(level, villager, stationAnchor, gameTime);
         stationAnchor = null;
@@ -469,6 +528,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
         ProducerStationSelection selection = selectStation(level, villager, gameTime);
         if (selection == null) {
+            onNoWork(level, villager, gameTime);
             debugChat(level, villager, "ACQUIRE:no usable station/recipe pair, resetting");
             recipeAttempts = 0;
             idleUntilTick = gameTime + IDLE_BACKOFF;
@@ -581,14 +641,19 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     }
 
     /** Credits the ordered line for what was just stored. */
-    private void creditOrderClaim(int count) {
+    private boolean creditOrderClaim(ServerLevel level, VillagerEntityMCA villager, int count) {
+        boolean completed = false;
         if (claimedLine != null) {
+            Order credited = claimedLine;
             claimedLine.finish(claimedLineAmount, count);
+            OrderContext context = orderContext(level, villager);
+            completed = context != null && credited.satisfied(context);
             claimedLine = null;
             claimedLineAmount = 0;
             activeBatchOperations = 1;
             markOrdersChanged();
         }
+        return completed;
     }
 
     /**
@@ -682,6 +747,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
         ProducerRecipe recipe = chooseRecipe(level, villager, gameTime);
         if (recipe == null) {
+            onNoWork(level, villager, gameTime);
             OrderList orders = lastWorksite == null ? null : lastWorksite.orders();
             if (orders != null && orders.listOnly()) {
                 // Stood down with nothing workable on the list: rest on their feet rather than
@@ -707,11 +773,30 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     // ── State: GATHER ──
 
     private void tickGather(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!ensureNearStation(level, villager, gameTime)) return;
         if (activeRecipe == null) {
             transition(ProducerState.SELECT_RECIPE, gameTime);
             return;
         }
+
+        PreparationResult preparation = prepareStation(level, villager, gameTime);
+        if (preparation.status() == PreparationStatus.WAITING) {
+            // Entity travel is governed by observed movement and station state, not the short
+            // timeout used for pulling a few items from storage.
+            stateEnteredTick = gameTime;
+            return;
+        }
+        if (preparation.status() == PreparationStatus.BLOCKED) {
+            debugChat(level, villager, "PREPARE:blocked"
+                    + (preparation.detail() == null ? "" : " (" + preparation.detail() + ")"));
+            releaseOrderClaim();
+            rollbackGather(level, villager, gameTime);
+            setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_DRIVER,
+                    preparation.detail());
+            idleUntilTick = gameTime + IDLE_BACKOFF;
+            abandonCurrentStation(level, villager, gameTime, false);
+            return;
+        }
+        if (!ensureNearStation(level, villager, gameTime)) return;
 
         GatherResult result = gatherInputs(level, villager, gameTime);
         if (!result.success()) {
@@ -719,6 +804,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                     + (result.detail() == null ? "" : " (" + result.detail() + ")"));
             releaseOrderClaim();
             rollbackGather(level, villager, gameTime);
+            onStationAbandoned(level, villager, stationAnchor, gameTime);
             setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_INGREDIENTS, result.detail());
             recipeCooldownUntil.put(activeRecipe.output(), gameTime + RECIPE_REPEAT_COOLDOWN_TICKS);
             activeRecipe = null;
@@ -764,6 +850,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             debugChat(level, villager, "PRODUCE:inputs left station without output; reloading recipe");
             onProductionInterrupted(level, villager, gameTime);
             releaseOrderClaim();
+            onStationAbandoned(level, villager, stationAnchor, gameTime);
             onSessionRelease(level, villager, stationAnchor, gameTime);
             releaseStationClaim(level, villager, stationAnchor);
             stationAnchor = null;
@@ -828,7 +915,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     private void finishCollect(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         storeOutputs(level, villager, gameTime);
-        creditOrderClaim(activeRecipe == null ? 1
+        boolean completedOrder = creditOrderClaim(level, villager, activeRecipe == null ? 1
                 : Math.max(1, activeRecipe.outputCount()) * activeBatchOperations());
         pendingOutput = ItemStack.EMPTY;
         awardProductionXp(level, villager, gameTime);
@@ -837,6 +924,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         activeRecipe = null;
         stagedInputs.clear();
         onSessionRelease(level, villager, stationAnchor, gameTime);
+        if (completedOrder) {
+            onOrderCompleted(level, villager, stationAnchor, gameTime);
+        }
 
         // Reconsider the whole ordered station set after every delivery. Restricting selection to
         // the station already under the worker made a lower coffee line win repeatedly at a pot
@@ -846,7 +936,18 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         releaseStationClaim(level, villager, stationAnchor);
         stationAnchor = null;
         standPos = null;
-        transition(ProducerState.PATH_TO_STATION, gameTime);
+        // Re-resolve the worksite after every delivery. Usually this is the same room and costs
+        // one cheap arrival check; for multi-worksite professions it is the point where a worker
+        // may return to their primary site or accept another building's pending order.
+        transition(ProducerState.PATH_TO_WORKSITE, gameTime);
+
+        // A schedule-independent coordinator may have kept WORK active solely to finish this
+        // batch. Hand control back immediately; do not select an after-hours recipe before
+        // vanilla's next periodic schedule refresh.
+        Activity scheduled = currentActivity(villager);
+        if (scheduled != Activity.WORK) {
+            villager.getBrain().setActiveActivityIfPossible(scheduled);
+        }
     }
 
     // ── Navigation helpers ──
@@ -901,6 +1002,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         if (markUsed && stationAnchor != null) {
             abandonedUntilByStation.put(stationAnchor.asLong(), gameTime + ABANDONED_STATION_COOLDOWN_TICKS);
         }
+        onStationAbandoned(level, villager, stationAnchor, gameTime);
         releaseStationClaim(level, villager, stationAnchor);
         onSessionRelease(level, villager, stationAnchor, gameTime);
         releaseOrderClaim();
@@ -926,6 +1028,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     }
 
     private void clearTransientState() {
+        resumeCommittedCycle = false;
         stationAnchor = null;
         standPos = null;
         activeRecipe = null;

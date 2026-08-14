@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.pheno.action.block;
 import com.aetherianartificer.townstead.pheno.selector.BlockSelector;
 import com.aetherianartificer.townstead.pheno.selector.BlockSelectors;
 import com.aetherianartificer.townstead.pheno.selector.SelectorContext;
+import com.aetherianartificer.townstead.pheno.condition.block.BlockCondition;
+import com.aetherianartificer.townstead.pheno.condition.block.BlockConditions;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.core.BlockPos;
@@ -40,6 +42,16 @@ public final class BlockActions {
         BlockAction inner = BlockActionTypes.get(GsonHelper.getAsString(json, "type", ""))
                 .map(t -> t.parse(json)).orElse(null);
         if (inner == null) return null;
+        // Common action guard. Because meta actions parse their child through this same method,
+        // a condition on a use_block nested inside offset is evaluated at the offset block.
+        if (json.has("condition")) {
+            BlockCondition condition = BlockConditions.parse(json.get("condition"));
+            if (condition == null) return null;
+            BlockAction core = inner;
+            inner = ctx -> {
+                if (condition.test(ctx.level(), ctx.pos())) core.run(ctx);
+            };
+        }
         if (!json.has("on")) return inner;
         BlockSelector selector = BlockSelectors.parse(json.get("on"));
         if (selector == null) return null;

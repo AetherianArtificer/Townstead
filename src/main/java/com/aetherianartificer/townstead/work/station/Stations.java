@@ -54,9 +54,14 @@ public final class Stations {
         BlockState state = level.getBlockState(pos);
         // An open-topped station with something sitting on it is not a station right now.
         if (coverBlocksWork(level, pos, state)) return null;
-        // Neither is one standing on the wrong thing: a cooking pot with no fire under it will
-        // never finish anything put in it.
-        if (!supportSatisfied(level, pos, state)) return null;
+        // A V2 station may declare an exceptional preparation interaction which changes a
+        // transient requirement (lighting the stove below, opening a machine). Keep that physical
+        // station schedulable so its data-driven adapter can perform the preparation. Stations
+        // with no such action remain unavailable when their requirements fail.
+        if (!supportSatisfied(level, pos, state)) {
+            WorkstationV2Def v2 = Workstations.v2ByState(state);
+            if (v2 == null || (!v2.hasPreparationAction() && !v2.hasReservation())) return null;
+        }
         // An empty placement anchor (free cell above a declared place-surface) is a station a
         // villager can create; the block-state overload cannot see it, only this one can.
         if (state.isAir() && StationProtocols.surfaceDefBelow(level, pos) != null) {

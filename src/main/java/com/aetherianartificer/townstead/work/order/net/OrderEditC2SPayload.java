@@ -43,6 +43,12 @@ public record OrderEditC2SPayload(long worksiteId, Action action, int index, int
         SET_LIST_ONLY,
         /** {@code value} is the new worksite name. */
         RENAME,
+        /** {@code value} is an offered entity UUID, or blank for automatic driver selection. */
+        SET_DRIVER,
+        /** Per-order worker: blank, {@code profession:<id>}, or {@code villager:<uuid>}. */
+        SET_WORKER,
+        /** Per-order operator: {@code automatic}, {@code worker}, or {@code entity:<uuid>}. */
+        SET_OPERATOR,
         /**
          * A commission: {@code value} names the output, {@code index} the player inventory slot
          * whose REAL stack the server escrows as the workpiece, {@code amount} the copy count.

@@ -50,7 +50,7 @@ public final class AreaOfEffectActionType implements ActionType {
                 if (target == self && !includeSelf) continue;
                 // The actor is always the first argument, so "hostile" reads as "hostile to me".
                 if (filter != null && !filter.test(self, target)) continue;
-                inner.run(new ActionContext(target, self));
+                inner.run(ctx.retarget(target, self));
             }
         };
     }

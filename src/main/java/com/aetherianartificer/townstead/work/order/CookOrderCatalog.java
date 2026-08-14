@@ -55,7 +55,7 @@ public final class CookOrderCatalog implements WorksiteCatalogs.Catalog {
         Set<StationType> present = StationCatalogs.stationsIn(level, extent);
         if (present.isEmpty()) return List.of();
 
-        Map<ResourceLocation, Integer> onHand = StationCatalogs.stockIn(level, extent);
+        Map<ResourceLocation, Integer> onHand = StationCatalogs.stockIn(level, site, extent);
         // Roles alone would have one crafting bowl advertising the roaster's menu too: every
         // declared machine shares the passive_station role. A recipe that names its own station
         // is offered only where that station stands.

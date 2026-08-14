@@ -10,6 +10,7 @@ import com.aetherianartificer.townstead.work.station.BlockInventories;
 import com.aetherianartificer.townstead.work.station.StationInventoryOps;
 import com.aetherianartificer.townstead.work.station.StationContents;
 import com.aetherianartificer.townstead.work.station.StationCapacities;
+import com.aetherianartificer.townstead.work.station.WorkstationV2Def;
 
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
@@ -324,7 +325,7 @@ public final class WorkIngredients {
         }
 
         if (recipe.requiresTool() && !recipeToolAvailable(level, villager, recipe, kitchenBounds)) {
-            missing.merge("Knife", 1, Integer::sum);
+            missing.merge(WorkRecipeRegistry.recipeToolName(recipe), 1, Integer::sum);
         }
 
         if (recipe.containerItemId() != null && recipe.containerCount() > 0) {
@@ -445,18 +446,31 @@ public final class WorkIngredients {
     public static int craftableCopies(ServerLevel level, VillagerEntityMCA villager,
                                       DiscoveredRecipe recipe, Set<Long> kitchenBounds,
                                       int physicalLimit) {
+        return craftableCopies(level, villager, recipe, kitchenBounds, physicalLimit,
+                recipe.inputs());
+    }
+
+    /**
+     * How many copies fit when only {@code scalableInputs} repeat per physical position.
+     * Workstation supplies are cycle setup (an igniter, lid, crank, etc.), not ingredients
+     * consumed once per Mantou in a multi-position steamer.
+     */
+    public static int craftableCopies(ServerLevel level, VillagerEntityMCA villager,
+                                      DiscoveredRecipe recipe, Set<Long> kitchenBounds,
+                                      int physicalLimit, List<RecipeIngredient> scalableInputs) {
         int limit = Math.max(1, physicalLimit);
         Set<ResourceLocation> tracked = new HashSet<>();
         if (recipe.containerItemId() != null) tracked.add(recipe.containerItemId());
-        for (RecipeIngredient ingredient : recipe.inputs()) tracked.addAll(ingredient.itemIds());
+        for (RecipeIngredient ingredient : scalableInputs) tracked.addAll(ingredient.itemIds());
         Map<ResourceLocation, Integer> supply = buildSupplySnapshot(
                 level, villager, tracked, kitchenBounds);
         int copies = 0;
-        while (copies < limit && consumeVirtualCopy(recipe, supply)) copies++;
+        while (copies < limit && consumeVirtualCopy(recipe, scalableInputs, supply)) copies++;
         return Math.max(1, copies);
     }
 
     private static boolean consumeVirtualCopy(DiscoveredRecipe recipe,
+                                              List<RecipeIngredient> inputs,
                                               Map<ResourceLocation, Integer> supply) {
         Map<ResourceLocation, Integer> claimed = new HashMap<>();
         if (recipe.containerItemId() != null && recipe.containerCount() > 0) {
@@ -464,7 +478,7 @@ public final class WorkIngredients {
             if (available < recipe.containerCount()) return false;
             claimed.put(recipe.containerItemId(), recipe.containerCount());
         }
-        for (RecipeIngredient ingredient : recipe.inputs()) {
+        for (RecipeIngredient ingredient : inputs) {
             int remaining = Math.max(1, ingredient.count());
             for (ResourceLocation id : ingredient.itemIds()) {
                 int available = supply.getOrDefault(id, 0) - claimed.getOrDefault(id, 0);
@@ -523,6 +537,11 @@ public final class WorkIngredients {
         batchOperations = Math.max(1, batchOperations);
         BlockPos center = stationAnchor != null ? stationAnchor : villager.blockPosition();
         List<String> diagnostics = new ArrayList<>();
+        WorkstationV2Def v2 = stationAnchor == null ? null
+                : com.aetherianartificer.townstead.work.station.Workstations
+                        .v2ByState(level.getBlockState(stationAnchor));
+        int scalableInputCount = v2 == null ? recipe.inputs().size()
+                : v2.ordinaryInputs(recipe.inputs()).size();
 
         // Purification path
         if (recipe.purification()) {
@@ -542,10 +561,10 @@ public final class WorkIngredients {
             return PullResult.failure("a heated skillet or campfire with space");
         }
 
-        // Knife
+        // Reusable recipe tool (knife, kitchen shovel, whisk, or any data-declared utensil).
         if (recipe.requiresTool() && !villagerHasRecipeTool(villager, recipe)) {
             if (!pullSingleTool(level, villager, stack -> WorkRecipeRegistry.recipeToolMatches(recipe, stack), center, kitchenBounds)) {
-                return PullResult.failure("Knife");
+                return PullResult.failure(WorkRecipeRegistry.recipeToolName(recipe));
             }
         }
 
@@ -570,13 +589,15 @@ public final class WorkIngredients {
         // them one entry at a time into four slots.
         SimpleContainer inv = villager.getInventory();
         Map<RecipeIngredient, Integer> totalNeededByIngredient = new LinkedHashMap<>();
-        for (RecipeIngredient ingredient : recipe.inputs()) {
+        for (int inputIndex = 0; inputIndex < recipe.inputs().size(); inputIndex++) {
+            RecipeIngredient ingredient = recipe.inputs().get(inputIndex);
+            int required = requiredIngredientCount(
+                    ingredient, inputIndex, scalableInputCount, batchOperations);
             ResourceLocation supplyLine = supplyLineOf(ingredient);
             if (supplyLine != null) {
                 Predicate<ItemStack> matcher = SupplyLines.matcher(level, supplyLine);
                 Predicate<ItemStack> preferred = stack -> matcher.test(stack)
                         && SupplyLines.preference(level, supplyLine, stack) > 0;
-                int required = ingredient.count() * batchOperations;
                 int available = countMatching(inv, preferred);
                 while (available < required
                         && pullSingleTool(level, villager, preferred, center, kitchenBounds)) {
@@ -594,8 +615,7 @@ public final class WorkIngredients {
                 // the correct protocol slot (for example the stove's side-facing fuel slot).
                 continue;
             }
-            totalNeededByIngredient.merge(ingredient,
-                    ingredient.count() * batchOperations, Integer::sum);
+            totalNeededByIngredient.merge(ingredient, required, Integer::sum);
         }
         for (Map.Entry<RecipeIngredient, Integer> entry : totalNeededByIngredient.entrySet()) {
             RecipeIngredient ingredient = entry.getKey();
@@ -717,6 +737,14 @@ public final class WorkIngredients {
             }
         }
         return PullResult.successResult();
+    }
+
+    /** Ordinary recipe inputs repeat per operation; appended station setup supplies do not. */
+    static int requiredIngredientCount(RecipeIngredient ingredient, int inputIndex,
+                                       int scalableInputCount, int batchOperations) {
+        int operations = inputIndex < Math.max(0, scalableInputCount)
+                ? Math.max(1, batchOperations) : 1;
+        return Math.max(1, ingredient.count()) * operations;
     }
 
     private static @Nullable ResourceLocation supplyLineOf(RecipeIngredient ingredient) {

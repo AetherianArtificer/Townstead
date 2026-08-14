@@ -10,7 +10,9 @@
   "mods": {
     "any": [
       "bakery",
+      "farm_and_charm",
       "farmersdelight",
+      "kaleidoscope_cookery",
       "rusticdelight"
     ]
   },
@@ -46,6 +48,13 @@
     }
   ],
   "work_tasks": [
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "kaleidoscope_cookery:millstone"
+      ],
+      "weight": 10
+    },
     {
       "type": "townstead_work:cook",
       "workstations": [
@@ -116,7 +125,7 @@
       "id": "patissier",
       "color": "#D98CA8",
       "name": {
-        "text": "Pâtissier"
+        "text": "PÃ¢tissier"
       },
       "gateway": "fine_crumb",
       "skills": [
@@ -158,7 +167,7 @@
     {
       "id": "patissier",
       "name": {
-        "text": "Pâtissier"
+        "text": "PÃ¢tissier"
       },
       "skills": [
         "fine_crumb",

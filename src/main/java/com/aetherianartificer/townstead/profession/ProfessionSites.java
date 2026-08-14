@@ -131,6 +131,20 @@ public final class ProfessionSites {
     }
 
     /**
+     * The site this worker should actively service. Building-authored secondary assignments with
+     * pending orders take precedence; the older seat resolver remains the fallback for standalone
+     * job posts that are not MCA buildings.
+     */
+    public static Optional<Site> serviceSite(ServerLevel level, VillagerEntityMCA villager,
+                                             @Nullable ProfessionDef fallbackDef) {
+        com.aetherianartificer.townstead.work.site.ProfessionWorksites.Assignment assignment =
+                com.aetherianartificer.townstead.work.site.ProfessionWorksites
+                        .resolveForWork(level, villager);
+        if (assignment != null) return Optional.of(new Site(assignment.building(), null, -1));
+        return assignedSite(level, villager, fallbackDef);
+    }
+
+    /**
      * The walkable extent of the site this villager works — the room discovered from the world,
      * not MCA's furniture-only geometry, since standing, arrival and "in stock here" all read it.
      * A standalone post anchors the same flood fill on its own block.

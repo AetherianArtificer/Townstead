@@ -33,6 +33,21 @@ class WorkstationDefTest {
         assertEquals(7, def.containerSlot(), "pot layout defaults to Farmer's Delight's");
         assertEquals(6, def.ingredientSlots());
         assertNull(def.recipeType(), "no recipe type means the built-in recipe families");
+        assertEquals(ShiftEndPolicy.FINISH, def.shiftEnd());
+    }
+
+    @Test
+    void legacyDefinitionsShareTheShiftEndPolicy() {
+        WorkstationDef leave = parse("""
+                {"block":"examplemod:oven","type":"furnace_station",
+                 "recipe_type":"examplemod:baking","shift_end":"leave"}
+                """);
+        assertNotNull(leave);
+        assertEquals(ShiftEndPolicy.LEAVE, leave.shiftEnd());
+        assertNull(parse("""
+                {"block":"examplemod:oven","type":"furnace_station",
+                 "recipe_type":"examplemod:baking","shift_end":"pause"}
+                """));
     }
 
     @Test

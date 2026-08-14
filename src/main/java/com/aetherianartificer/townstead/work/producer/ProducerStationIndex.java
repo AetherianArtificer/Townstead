@@ -239,8 +239,8 @@ public final class ProducerStationIndex {
                 viable.add(candidate);
             }
             if (viable.isEmpty()) {
-                logNoRecipe(role, level, villager, slot, worksiteBounds, recipeCooldownUntil,
-                        stationTypeCandidates.size(), taskTypes);
+                logNoRecipe(level, villager, slot, worksiteBounds, stationTypeCandidates,
+                        outputPriority);
                 continue;
             }
 
@@ -348,23 +348,24 @@ public final class ProducerStationIndex {
     }
 
     private static void logNoRecipe(
-            ProducerRole role,
             ServerLevel level,
             VillagerEntityMCA villager,
             StationSlot slot,
             Set<Long> worksiteBounds,
-            Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
-            int candidateCount,
-            net.minecraft.resources.ResourceLocation... taskTypes
+            List<ScoredRecipe> candidates,
+            java.util.function.ToIntFunction<net.minecraft.resources.ResourceLocation> outputPriority
     ) {
         if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
-        // Name the first recipe that failed and why. "Nothing is makeable" is not an answer a
-        // player can act on; "needs a bowl" is.
+        // Explain the highest-priority ordered recipe, not an arbitrary high-scoring recipe from
+        // the station's entire book. "Sticky rice needs..." does not help someone who ordered
+        // candied potatoes.
         String detail = "";
-        for (ScoredRecipe candidate : RecipeSelector.candidateRecipes(
-                level, villager, slot.type(), worksiteBounds, recipeCooldownUntil,
-                ProducerWorkSupport.excludeBeverages(role, level, villager),
-                ProducerWorkSupport.beveragesOnly(role), taskTypes)) {
+        int bestOrder = Integer.MAX_VALUE;
+        for (ScoredRecipe candidate : candidates) {
+            bestOrder = Math.min(bestOrder, outputPriority.applyAsInt(candidate.recipe().output()));
+        }
+        for (ScoredRecipe candidate : candidates) {
+            if (outputPriority.applyAsInt(candidate.recipe().output()) != bestOrder) continue;
             if (!ProductionStations.supportsRecipe(level, slot.pos(), candidate.recipe())) {
                 detail = " first-rejected=" + candidate.recipe().output() + " -> station does not support recipe";
                 break;
@@ -376,7 +377,7 @@ public final class ProducerStationIndex {
         }
         say(villager, "NO-RECIPE:" + slot.blockId().getPath() + " @ "
                 + slot.pos().getX() + "," + slot.pos().getY() + "," + slot.pos().getZ()
-                + " candidates=" + candidateCount + detail);
+                + " candidates=" + candidates.size() + detail);
     }
 
     private static String formatPos(BlockPos pos) {

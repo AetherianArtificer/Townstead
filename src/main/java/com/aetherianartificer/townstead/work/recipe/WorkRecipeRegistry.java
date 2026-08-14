@@ -75,6 +75,10 @@ public final class WorkRecipeRegistry {
     private static Map<StationType, List<DiscoveredRecipe>> cachedStationRecipes = Map.of();
     private static Map<StationType, List<DiscoveredRecipe>> cachedFoodStationRecipes = Map.of();
     private static Map<StationType, List<DiscoveredRecipe>> cachedBeverageStationRecipes = Map.of();
+    private static int cachedToolGeneration = -1;
+    private static final Map<ResourceLocation, List<ResourceLocation>> CACHED_RECIPE_TOOLS = new HashMap<>();
+    private static int cachedIngredientTagGeneration = -1;
+    private static Map<List<ResourceLocation>, ResourceLocation> CACHED_INGREDIENT_TAGS = Map.of();
 
     /** The current reload generation; derived caches store it to detect a rediscovery. */
     public static int generation() {
@@ -360,6 +364,13 @@ public final class WorkRecipeRegistry {
                                              StationType role, WorkstationV2Def def,
                                              Set<ResourceLocation> existingIds,
                                              List<DiscoveredRecipe> out) {
+        int holdersSeen = 0;
+        int accepted = 0;
+        int duplicates = 0;
+        int emptyResults = 0;
+        int invalidOutputs = 0;
+        int emptyInputs = 0;
+        int failures = 0;
         //? if >=1.21 {
         for (RecipeHolder<?> holder : getRecipesForType(level, typeId)) {
             Recipe<?> recipe = holder.value();
@@ -368,34 +379,66 @@ public final class WorkRecipeRegistry {
         /*for (Recipe<?> recipe : getRecipesForType(level, typeId)) {
             ResourceLocation recipeId = recipe.getId();
         *///?}
-            if (!existingIds.add(recipeId)) continue;
-            ItemStack result = safeGetResult(level, recipe);
-            if (result.isEmpty()) continue;
-            ResourceLocation outputId = BuiltInRegistries.ITEM.getKey(result.getItem());
-            if (outputId == null) continue;
-            outputId = def.correctedOutput(recipeId, outputId);
-            if (!BuiltInRegistries.ITEM.containsKey(outputId)) continue;
-            List<RecipeIngredient> inputs = extractIngredients(recipe);
-            if (inputs.isEmpty()) continue;
-            inputs = def.executableInputs(inputs);
-            inputs = def.withSupplies(inputs);
-            if (inputs.isEmpty()) continue;
-            ResourceLocation container = containerOf(recipe);
-            int cookTime = safeCookTime(recipe, 200);
-            boolean tool = def.behaviorUses("tool");
-            boolean beverage = outputId.getPath().contains("coffee") || outputId.getPath().contains("tea");
-            out.add(new DiscoveredRecipe(recipeId, role,
-                    autoTier(role, inputs.size(), cookTime), outputId,
-                    Math.max(1, result.getCount()), cookTime, tool,
-                    container, container == null ? 0 : Math.max(1, result.getCount()),
-                    inputs, false, beverage,
-                    //? if >=1.21 {
-                    holder
-                    //?} else {
-                    /*recipe
-                    *///?}
-            ));
+            holdersSeen++;
+            try {
+                if (!existingIds.add(recipeId)) {
+                    duplicates++;
+                    continue;
+                }
+                ItemStack result = safeGetResult(level, recipe);
+                if (result.isEmpty()) {
+                    emptyResults++;
+                    continue;
+                }
+                ResourceLocation outputId = BuiltInRegistries.ITEM.getKey(result.getItem());
+                if (outputId == null) {
+                    invalidOutputs++;
+                    continue;
+                }
+                outputId = def.correctedOutput(recipeId, outputId);
+                if (!BuiltInRegistries.ITEM.containsKey(outputId)) {
+                    invalidOutputs++;
+                    continue;
+                }
+                List<RecipeIngredient> inputs = extractIngredients(recipe);
+                if (inputs.isEmpty()) {
+                    emptyInputs++;
+                    continue;
+                }
+                inputs = def.executableInputs(inputs);
+                inputs = def.withSupplies(inputs);
+                if (inputs.isEmpty()) {
+                    emptyInputs++;
+                    continue;
+                }
+                ResourceLocation container = containerOf(recipe);
+                int cookTime = safeCookTime(recipe, 200);
+                boolean tool = def.behaviorUses("tool");
+                boolean beverage = outputId.getPath().contains("coffee") || outputId.getPath().contains("tea");
+                out.add(new DiscoveredRecipe(recipeId, role,
+                        autoTier(role, inputs.size(), cookTime), outputId,
+                        Math.max(1, result.getCount()), cookTime, tool,
+                        container, container == null ? 0 : Math.max(1, result.getCount()),
+                        inputs, false, beverage,
+                        //? if >=1.21 {
+                        holder
+                        //?} else {
+                        /*recipe
+                        *///?}
+                ));
+                accepted++;
+            } catch (Throwable failure) {
+                failures++;
+                if (failures <= 3) {
+                    Townstead.LOGGER.warn("Recipe {} from attached type {} could not be discovered",
+                            recipeId, typeId, failure);
+                }
+            }
         }
+        Townstead.LOGGER.info("Attached recipe type {} for {}: holders={}, accepted={}, duplicates={}, "
+                        + "emptyResults={}, invalidOutputs={}, emptyInputs={}, failures={}",
+                typeId, def.id(), holdersSeen, accepted, duplicates, emptyResults, invalidOutputs,
+                emptyInputs, failures);
     }
 
     /**
@@ -486,8 +529,24 @@ public final class WorkRecipeRegistry {
         //?} else {
         /*RecipeType<?> type = recipe.source().getType();
         *///?}
-        ResourceLocation id = BuiltInRegistries.RECIPE_TYPE.getKey(type);
-        return id;
+        return recipeTypeId(type);
+    }
+
+    /**
+     * Public identity of a recipe type, including types created with {@link RecipeType#simple}
+     * but never inserted into the recipe-type registry. Several mods return those objects from
+     * their recipes; their stable {@code toString()} is the ID supplied to {@code simple}.
+     */
+    public static @Nullable ResourceLocation recipeTypeId(RecipeType<?> type) {
+        if (type == null) return null;
+        // RECIPE_TYPE is a DefaultedMappedRegistry. getKey(unregisteredValue) misleadingly
+        // returns minecraft:crafting, so it cannot distinguish an unregistered simple type from
+        // the real crafting type. getResourceKey performs the exact membership lookup we need.
+        ResourceLocation registered = BuiltInRegistries.RECIPE_TYPE.getResourceKey(type)
+                .map(key -> key.location())
+                .orElse(null);
+        if (registered != null) return registered;
+        return ResourceLocation.tryParse(type.toString());
     }
 
     /**
@@ -648,37 +707,42 @@ public final class WorkRecipeRegistry {
     // ── Recipe type lookup ──
 
     /**
-     * Looks up a {@link RecipeType} by its registry ID and returns all recipes
-     * registered under that type. This works for any mod that registers recipes
-     * under the FD recipe types (e.g. addon mods adding cooking pot recipes).
+     * Returns every recipe with the requested public type ID. Registered types use Minecraft's
+     * indexed lookup; unregistered {@link RecipeType#simple} types use a full recipe scan.
      */
     //? if >=1.21 {
     @SuppressWarnings("unchecked")
     public static List<RecipeHolder<?>> getRecipesForType(ServerLevel level, ResourceLocation typeId) {
         RecipeType<?> type = BuiltInRegistries.RECIPE_TYPE.get(typeId);
-        if (type == null) return List.of();
-        ResourceLocation resolved = BuiltInRegistries.RECIPE_TYPE.getKey(type);
-        if (!typeId.equals(resolved)) return List.of();
-        try {
-            return (List<RecipeHolder<?>>) (List<?>) level.getRecipeManager()
-                    .getAllRecipesFor((RecipeType) type);
-        } catch (Throwable e) {
-            return List.of();
+        ResourceLocation resolved = type == null ? null : BuiltInRegistries.RECIPE_TYPE.getKey(type);
+        if (type != null && typeId.equals(resolved)) {
+            try {
+                return (List<RecipeHolder<?>>) (List<?>) level.getRecipeManager()
+                        .getAllRecipesFor((RecipeType) type);
+            } catch (Throwable ignored) {}
         }
+        List<RecipeHolder<?>> matches = new ArrayList<>();
+        for (RecipeHolder<?> holder : level.getRecipeManager().getRecipes()) {
+            if (typeId.equals(recipeTypeId(holder.value().getType()))) matches.add(holder);
+        }
+        return List.copyOf(matches);
     }
     //?} else {
     /*@SuppressWarnings("unchecked")
     public static List<Recipe<?>> getRecipesForType(ServerLevel level, ResourceLocation typeId) {
         RecipeType<?> type = BuiltInRegistries.RECIPE_TYPE.get(typeId);
-        if (type == null) return List.of();
-        ResourceLocation resolved = BuiltInRegistries.RECIPE_TYPE.getKey(type);
-        if (!typeId.equals(resolved)) return List.of();
-        try {
-            return (List<Recipe<?>>) (List<?>) level.getRecipeManager()
-                    .getAllRecipesFor((RecipeType) type);
-        } catch (Throwable e) {
-            return List.of();
+        ResourceLocation resolved = type == null ? null : BuiltInRegistries.RECIPE_TYPE.getKey(type);
+        if (type != null && typeId.equals(resolved)) {
+            try {
+                return (List<Recipe<?>>) (List<?>) level.getRecipeManager()
+                        .getAllRecipesFor((RecipeType) type);
+            } catch (Throwable ignored) {}
         }
+        List<Recipe<?>> matches = new ArrayList<>();
+        for (Recipe<?> recipe : level.getRecipeManager().getRecipes()) {
+            if (typeId.equals(recipeTypeId(recipe.getType()))) matches.add(recipe);
+        }
+        return List.copyOf(matches);
     }
     *///?}
 
@@ -736,6 +800,89 @@ public final class WorkRecipeRegistry {
         return com.aetherianartificer.townstead.compat.farming.FarmerHarvestToolCompatRegistry.isCompatibleTool(stack);
     }
 
+    /**
+     * Registered items which satisfy this recipe's reusable tool contract.
+     *
+     * <p>The workstation definition owns that contract (normally as an item tag). Turning it
+     * into concrete ids here gives catalogues and diagnostics the same answer execution uses,
+     * without teaching either one what a knife, shovel, whisk, or future modded utensil is.</p>
+     */
+    public static synchronized List<ResourceLocation> recipeToolIds(DiscoveredRecipe recipe) {
+        if (recipe == null || !recipe.requiresTool()) return List.of();
+        int currentGeneration = generation();
+        if (cachedToolGeneration != currentGeneration) {
+            CACHED_RECIPE_TOOLS.clear();
+            cachedToolGeneration = currentGeneration;
+        }
+        List<ResourceLocation> cached = CACHED_RECIPE_TOOLS.get(recipe.id());
+        if (cached != null) return cached;
+
+        LinkedHashSet<ResourceLocation> matches = new LinkedHashSet<>();
+        boolean declared = false;
+        for (WorkstationDef workstation : defsFor(recipe)) {
+            WorkstationV2Def v2 = Workstations.v2ByBlockId(
+                    workstation.blocks().stream().findFirst().orElse(null));
+            if (v2 == null || !v2.hasDeclaredTool()) continue;
+            declared = true;
+            for (ResourceLocation id : BuiltInRegistries.ITEM.keySet()) {
+                Item item = BuiltInRegistries.ITEM.get(id);
+                if (item != Items.AIR && v2.toolMatches(new ItemStack(item))) matches.add(id);
+            }
+        }
+        if (declared) {
+            List<ResourceLocation> resolved = List.copyOf(matches);
+            CACHED_RECIPE_TOOLS.put(recipe.id(), resolved);
+            return resolved;
+        }
+
+        Object source = recipe.source();
+        //? if >=1.21 {
+        if (source instanceof RecipeHolder<?> holder) source = holder.value();
+        //?}
+        if (source instanceof Recipe<?> mcRecipe) {
+            try {
+                Method method = mcRecipe.getClass().getMethod("getTool");
+                Object value = method.invoke(mcRecipe);
+                if (value instanceof net.minecraft.world.item.crafting.Ingredient ingredient) {
+                    matches.addAll(itemIdsFromIngredient(ingredient));
+                }
+            } catch (Throwable ignored) {}
+        }
+        List<ResourceLocation> resolved = List.copyOf(matches);
+        CACHED_RECIPE_TOOLS.put(recipe.id(), resolved);
+        return resolved;
+    }
+
+    /** Human-readable name of the actual declared tool, with a neutral fallback. */
+    public static String recipeToolName(DiscoveredRecipe recipe) {
+        List<ResourceLocation> ids = recipeToolIds(recipe);
+        if (ids.isEmpty()) return "Tool";
+        Item item = BuiltInRegistries.ITEM.get(ids.get(0));
+        return item == Items.AIR ? "Tool" : new ItemStack(item).getHoverName().getString();
+    }
+
+    /** Neutral authored requirement name for UI prose; concrete alternatives remain separate. */
+    public static String recipeToolRequirementName(DiscoveredRecipe recipe) {
+        if (recipe == null) return "Tool";
+        for (WorkstationDef workstation : defsFor(recipe)) {
+            WorkstationV2Def v2 = Workstations.v2ByBlockId(
+                    workstation.blocks().stream().findFirst().orElse(null));
+            if (v2 == null) continue;
+            for (String selector : v2.declaredToolSelectors()) {
+                if (!selector.startsWith("#")) {
+                    ResourceLocation id = ResourceLocation.tryParse(selector);
+                    if (id != null && BuiltInRegistries.ITEM.containsKey(id)) {
+                        return new ItemStack(BuiltInRegistries.ITEM.get(id)).getHoverName().getString();
+                    }
+                    continue;
+                }
+                ResourceLocation tag = ResourceLocation.tryParse(selector.substring(1));
+                if (tag != null) return RequirementLabels.tagName(tag);
+            }
+        }
+        return "Tool";
+    }
+
     public static List<RecipeIngredient> extractIngredients(Recipe<?> recipe) {
         List<RecipeIngredient> result = new ArrayList<>();
         for (net.minecraft.world.item.crafting.Ingredient mcIng : recipe.getIngredients()) {
@@ -743,7 +890,7 @@ public final class WorkRecipeRegistry {
             List<ResourceLocation> ids = itemIdsFromIngredient(mcIng);
             if (ids.isEmpty()) continue;
             int count = reflectIngredientCount(mcIng);
-            result.add(new RecipeIngredient(ids, count));
+            result.add(new RecipeIngredient(ids, count, ingredientTag(mcIng, ids)));
         }
         if (!result.isEmpty()) return result;
 
@@ -758,12 +905,99 @@ public final class WorkRecipeRegistry {
                 List<ResourceLocation> ids = itemIdsFromIngredient(ingredient);
                 if (ids.isEmpty()) continue;
                 int count = semanticIngredientCount(recipe, reflectIngredientCount(ingredient));
-                result.add(new RecipeIngredient(ids, count));
+                result.add(new RecipeIngredient(ids, count, ingredientTag(ingredient, ids)));
                 break;
             } catch (Throwable ignored) {}
         }
         return result;
     }
+
+    static @Nullable ResourceLocation ingredientTag(
+            net.minecraft.world.item.crafting.Ingredient ingredient,
+            List<ResourceLocation> resolvedItems) {
+        if (ingredient == null || ingredient.isEmpty()) return null;
+        ResourceLocation authored = authoredIngredientTag(ingredient);
+        if (authored != null) return authored;
+
+        // Some recipe serializers (including the runtime form used by Kaleidoscope Cookery)
+        // flatten a tag ingredient to its concrete item alternatives. Recovering an exact live
+        // tag match retains the authored meaning without knowing the recipe class or its mod.
+        // The reverse index is rebuilt only after a datapack reload, alongside recipe discovery.
+        return ingredientTagIndex().get(canonicalItemSet(resolvedItems));
+    }
+
+    private static @Nullable ResourceLocation authoredIngredientTag(
+            net.minecraft.world.item.crafting.Ingredient ingredient) {
+        //? if >=1.21 {
+        try {
+            ResourceLocation found = null;
+            for (net.minecraft.world.item.crafting.Ingredient.Value value : ingredient.getValues()) {
+                if (!(value instanceof net.minecraft.world.item.crafting.Ingredient.TagValue tagValue)) {
+                    return null;
+                }
+                ResourceLocation current = tagValue.tag().location();
+                if (found != null && !found.equals(current)) return null;
+                found = current;
+            }
+            return found;
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+        //?} else {
+        /*try {
+            return tagFromIngredientJson(ingredient.toJson());
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+        *///?}
+    }
+
+    private static synchronized Map<List<ResourceLocation>, ResourceLocation> ingredientTagIndex() {
+        int currentGeneration = generation();
+        if (cachedIngredientTagGeneration == currentGeneration) return CACHED_INGREDIENT_TAGS;
+
+        Map<List<ResourceLocation>, ResourceLocation> tags = new HashMap<>();
+        BuiltInRegistries.ITEM.getTagNames().forEach(tag -> {
+            List<ResourceLocation> members = BuiltInRegistries.ITEM.getTag(tag)
+                    .map(set -> {
+                        List<ResourceLocation> ids = new ArrayList<>();
+                        set.forEach(holder -> holder.unwrapKey()
+                                .ifPresent(key -> ids.add(key.location())));
+                        return canonicalItemSet(ids);
+                    })
+                    .orElse(List.of());
+            if (members.isEmpty()) return;
+            tags.merge(members, tag.location(), RequirementLabels::preferredTagAlias);
+        });
+        CACHED_INGREDIENT_TAGS = Map.copyOf(tags);
+        cachedIngredientTagGeneration = currentGeneration;
+        return CACHED_INGREDIENT_TAGS;
+    }
+
+    private static List<ResourceLocation> canonicalItemSet(List<ResourceLocation> items) {
+        if (items == null || items.isEmpty()) return List.of();
+        return items.stream().filter(Objects::nonNull).distinct()
+                .sorted(Comparator.comparing(ResourceLocation::toString)).toList();
+    }
+
+    //? if <1.21 {
+    /*private static @Nullable ResourceLocation tagFromIngredientJson(com.google.gson.JsonElement json) {
+        if (json == null || json.isJsonNull()) return null;
+        if (json.isJsonObject()) {
+            com.google.gson.JsonObject object = json.getAsJsonObject();
+            return object.has("tag") && object.get("tag").isJsonPrimitive()
+                    ? ResourceLocation.tryParse(object.get("tag").getAsString()) : null;
+        }
+        if (!json.isJsonArray() || json.getAsJsonArray().isEmpty()) return null;
+        ResourceLocation found = null;
+        for (com.google.gson.JsonElement entry : json.getAsJsonArray()) {
+            ResourceLocation current = tagFromIngredientJson(entry);
+            if (current == null || (found != null && !found.equals(current))) return null;
+            found = current;
+        }
+        return found;
+    }
+    *///?}
 
     private static int semanticIngredientCount(Recipe<?> recipe, int fallback) {
         for (String name : List.of("ingredientCount", "getIngredientCount")) {

@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.work.site;
 import com.aetherianartificer.townstead.profession.ProfessionCapacity;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
+import com.aetherianartificer.townstead.compat.mca.McaBuildings;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
@@ -68,6 +70,85 @@ public final class ProfessionWorksites {
         Worksite site = Worksites.of(level, building);
         if (site == null) return null;
         return new Assignment(building, site, referenceOf(building, villager));
+    }
+
+    /**
+     * Every secondary building this villager may service. The building opts professions in via
+     * its {@code extended_buildings} {@code workers} list; the villager's assignment policy then
+     * either accepts all of those (automatic) or filters them through the player's manual list.
+     */
+    public static List<Assignment> additional(ServerLevel level, VillagerEntityMCA villager) {
+        return additional(level, villager, resolve(level, villager));
+    }
+
+    private static List<Assignment> additional(ServerLevel level, VillagerEntityMCA villager,
+                                               @Nullable Assignment primary) {
+        ProfessionDef def = defOf(villager);
+        if (def == null) return List.of();
+        Village village = ProfessionCapacity.resolveVillage(villager).orElse(null);
+        if (village == null) return List.of();
+
+        var policy = TownsteadVillagers.get(villager).worksiteAssignments();
+        List<Building> buildings = new ArrayList<>();
+        for (Building building : McaBuildings.all(village)) {
+            if (BuildingWorkforceIndex.accepts(building.getType(), def.id())) buildings.add(building);
+        }
+        buildings.sort(Comparator
+                .comparingInt((Building b) -> center(b).getY())
+                .thenComparingInt(b -> center(b).getZ())
+                .thenComparingInt(b -> center(b).getX())
+                .thenComparing(Building::getType));
+
+        List<Assignment> out = new ArrayList<>();
+        for (Building building : buildings) {
+            Worksite site = Worksites.of(level, building);
+            if (site == null) continue;
+            if (primary != null && primary.site().key().equals(site.key())) continue;
+            if (!policy.permitsAdditional(site.id())) continue;
+            out.add(new Assignment(building, site, referenceOf(building, villager)));
+        }
+        return List.copyOf(out);
+    }
+
+    /** Primary employment first, followed by the compatible secondary sites. */
+    public static List<Assignment> all(ServerLevel level, VillagerEntityMCA villager) {
+        List<Assignment> out = new ArrayList<>();
+        Assignment primary = resolve(level, villager);
+        if (primary != null) out.add(primary);
+        out.addAll(additional(level, villager, primary));
+        return List.copyOf(out);
+    }
+
+    /**
+     * The site a producer should service next. Pending secondary order sheets beat an idle primary
+     * site; ties use distance and stable worksite id. With no requested secondary work the worker
+     * remains at their primary employment site, so automatic assignment does not cause wandering.
+     */
+    @Nullable
+    public static Assignment resolveForWork(ServerLevel level, VillagerEntityMCA villager) {
+        Assignment primary = resolve(level, villager);
+        List<Assignment> requested = new ArrayList<>();
+        for (Assignment assignment : additional(level, villager, primary)) {
+            if (hasPendingOrders(level, villager, assignment.site())) requested.add(assignment);
+        }
+        if (requested.isEmpty()) return primary;
+        requested.sort(Comparator
+                .comparingDouble((Assignment a) -> villager.distanceToSqr(
+                        a.reference().getX() + 0.5, a.reference().getY() + 0.5,
+                        a.reference().getZ() + 0.5))
+                .thenComparingLong(a -> a.site().id()));
+        return requested.get(0);
+    }
+
+    private static boolean hasPendingOrders(ServerLevel level, VillagerEntityMCA villager,
+                                            Worksite site) {
+        if (site.orders().isEmpty()) return false;
+        var context = com.aetherianartificer.townstead.work.order.WorksiteOrders
+                .contextFor(level, site, villager);
+        for (var order : site.orders().orders()) {
+            if (!order.isActivity() && context.mayWork(order) && order.wantsWork(context)) return true;
+        }
+        return false;
     }
 
     /** The def's building-type prefixes in declaration order — most specific claim first. */

@@ -2,6 +2,7 @@
   "schema": "townstead:workstation/v1",
   "type": "furnace_station",
   "work_task": "townstead_work:smelt",
+  "shift_end": "leave",
   "blocks": ["#townstead:furnace_stations"],
   "recipe_type": "minecraft:smelting"
 }

@@ -103,7 +103,8 @@ public record WorkstationDef(
          * on a recipe that can never finish, with nothing on screen saying why.</p>
          */
         Set<ResourceLocation> supportBelow,
-        List<ResourceLocation> supportBelowTags) {
+        List<ResourceLocation> supportBelowTags,
+        ShiftEndPolicy shiftEnd) {
 
     /**
      * Which of this station's outputs a trade may be ordered for. The trade's output tag stays
@@ -150,7 +151,8 @@ public record WorkstationDef(
         this(id, blocks, blockTags, role, containerSlot, ingredientSlots, stands, recipeType,
                 recipeTier, cookTimeTicks, beverage,
                 null, Set.of(), List.of(), null, null, List.of(), List.of(), FurnaceSlots.VANILLA,
-                false, null, false, null, Orderable.TAGGED, false, Set.of(), List.of());
+                false, null, false, null, Orderable.TAGGED, false, Set.of(), List.of(),
+                ShiftEndPolicy.FINISH);
     }
 
     static @Nullable WorkstationDef parse(ResourceLocation id, JsonObject obj) {
@@ -285,6 +287,14 @@ public record WorkstationDef(
                 ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "work_task", "")) : null;
         if (obj.has("work_task") && workTask == null) return null;
 
+        ShiftEndPolicy shiftEnd = ShiftEndPolicy.FINISH;
+        if (obj.has("shift_end")) {
+            JsonElement value = obj.get("shift_end");
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) return null;
+            shiftEnd = ShiftEndPolicy.parse(value.getAsString());
+            if (shiftEnd == null) return null;
+        }
+
         Orderable orderable = parseOrderable(obj.get("orderable"));
         if (orderable == null) return null;
 
@@ -320,7 +330,7 @@ public record WorkstationDef(
                 workTask,
                 orderable,
                 GsonHelper.getAsBoolean(obj, "fuel", false),
-                Set.copyOf(supportBelow), List.copyOf(supportBelowTags));
+                Set.copyOf(supportBelow), List.copyOf(supportBelowTags), shiftEnd);
     }
 
     /**

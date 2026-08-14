@@ -97,6 +97,20 @@ public final class Order {
         }
     }
 
+    /** Who physically drives an entity-operated station while its worker manages the order. */
+    public enum Operation {
+        AUTOMATIC, WORKER, ENTITY;
+
+        public static Operation parse(@Nullable String raw) {
+            if (raw != null) {
+                for (Operation value : values()) {
+                    if (value.name().equalsIgnoreCase(raw)) return value;
+                }
+            }
+            return AUTOMATIC;
+        }
+    }
+
     private final ResourceLocation output;
     private Mode mode;
     private int target;
@@ -107,6 +121,8 @@ public final class Order {
     @Nullable private ResourceLocation profession;
     private int minRank;
     @Nullable private UUID villager;
+    private Operation operation = Operation.AUTOMATIC;
+    @Nullable private UUID operator;
 
     /** Completions credited to this line. Only {@link Mode#MAKE} reads it. */
     private int produced;
@@ -195,6 +211,20 @@ public final class Order {
 
     public void setVillager(@Nullable UUID value) { this.villager = value; }
 
+    public Operation operation() { return operation; }
+
+    public void setOperation(Operation value) {
+        operation = value == null ? Operation.AUTOMATIC : value;
+        if (operation != Operation.ENTITY) operator = null;
+    }
+
+    @Nullable public UUID operator() { return operator; }
+
+    public void setOperator(@Nullable UUID value) {
+        operator = value;
+        operation = value == null ? Operation.AUTOMATIC : Operation.ENTITY;
+    }
+
     @Nullable public net.minecraft.nbt.CompoundTag workpiece() { return workpiece; }
 
     public String workpieceName() { return workpieceName; }
@@ -243,6 +273,23 @@ public final class Order {
     public void abandon() { abandon(1); }
 
     // ── Progress ──
+
+    /**
+     * Whether the requested level has actually been reached, without treating somebody else's
+     * promised work as finished output.  This is the lifecycle boundary for a station participant:
+     * a claim can make {@link #outstanding(OrderContext)} zero while another batch is still in
+     * flight, but an animal or worker should leave only once the real count reaches the target.
+     */
+    public boolean satisfied(OrderContext context) {
+        if (mode == Mode.STANDING) return false;
+        int want = mode == Mode.PER_VILLAGER
+                ? target * Math.max(0, context.villagerCount())
+                : target;
+        int have = mode.countsProduction() ? produced
+                : kind == Kind.TAG ? context.stockOfTag(output, scope)
+                : context.stockOf(output, scope);
+        return have >= want;
+    }
 
     /**
      * How many more are wanted, counting work already under way so several workers do not all

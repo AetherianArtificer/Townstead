@@ -35,6 +35,7 @@ public final class UseBlockBlockActionType implements BlockActionType {
     @Override
     public BlockAction parse(JsonObject json) {
         String role = json.has("item") ? json.get("item").getAsString() : "empty";
+        boolean secondaryUse = json.has("secondary_use") && json.get("secondary_use").getAsBoolean();
         return context -> {
             ItemStack supplied = context.itemRole(role).copy();
             ServerPlayer actor;
@@ -46,7 +47,7 @@ public final class UseBlockBlockActionType implements BlockActionType {
                 // returned products of this one.
                 actor.getInventory().clearContent();
                 actor.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
-                actor.setShiftKeyDown(false);
+                actor.setShiftKeyDown(secondaryUse);
                 actor.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
                 if (context.cause() != null) {
                     actor.setPos(context.cause().getX(), context.cause().getY(), context.cause().getZ());
@@ -59,18 +60,21 @@ public final class UseBlockBlockActionType implements BlockActionType {
                  * contract. ServerPlayerGameMode wraps this same dispatch in advancement and
                  * player-session bookkeeping; a transactional machine actor must not run those
                  * player-only effects. The fallback order below mirrors vanilla useItemOn. */
-                ItemInteractionResult blockResult = context.level().getBlockState(context.pos())
-                        .useItemOn(actor.getMainHandItem(), context.level(), actor,
-                                InteractionHand.MAIN_HAND, hit);
-                InteractionResult result = blockResult.result();
-                if (!blockResult.consumesAction()
-                        && blockResult == ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
-                    result = context.level().getBlockState(context.pos())
-                            .useWithoutItem(context.level(), actor, hit);
-                }
-                if (!result.consumesAction() && !actor.getMainHandItem().isEmpty()) {
-                    result = actor.getMainHandItem().useOn(
-                            new UseOnContext(actor, InteractionHand.MAIN_HAND, hit));
+                UseOnContext useContext = new UseOnContext(actor, InteractionHand.MAIN_HAND, hit);
+                InteractionResult result = actor.getMainHandItem().onItemUseFirst(useContext);
+                if (result == InteractionResult.PASS) {
+                    ItemInteractionResult blockResult = context.level().getBlockState(context.pos())
+                            .useItemOn(actor.getMainHandItem(), context.level(), actor,
+                                    InteractionHand.MAIN_HAND, hit);
+                    result = blockResult.result();
+                    if (!blockResult.consumesAction()
+                            && blockResult == ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
+                        result = context.level().getBlockState(context.pos())
+                                .useWithoutItem(context.level(), actor, hit);
+                    }
+                    if (!result.consumesAction() && !actor.getMainHandItem().isEmpty()) {
+                        result = actor.getMainHandItem().useOn(useContext);
+                    }
                 }
                 //?} else {
                 /*InteractionResult result = actor.gameMode.useItemOn(actor, context.level(),
@@ -89,6 +93,7 @@ public final class UseBlockBlockActionType implements BlockActionType {
                 context.setItemRole(role, supplied);
                 context.fail();
             } finally {
+                actor.setShiftKeyDown(false);
                 actor.getInventory().clearContent();
                 actor.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
                 actor.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);

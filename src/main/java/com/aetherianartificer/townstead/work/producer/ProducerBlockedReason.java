@@ -8,6 +8,7 @@ public enum ProducerBlockedReason {
     NO_STORAGE,
     UNREACHABLE,
     NO_FUEL,
+    NO_DRIVER,
     OUTPUT_BLOCKED,
     UNSUPPORTED_RECIPE,
     /** Told to work the list only, and the list has nothing workable. Rest, not a fault. */

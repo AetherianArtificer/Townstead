@@ -1,0 +1,13 @@
+{
+  "color": "ffb89157",
+  "visible": true,
+  "priority": 2,
+  "icon": true,
+  "iconU": 240,
+  "iconV": 200,
+  "noBeds": true,
+  "blocks": {
+    "#townstead:mill/workstations": 1,
+    "#townstead:mill/storage": 1
+  }
+}

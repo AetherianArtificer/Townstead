@@ -118,6 +118,19 @@ class WorksiteRegisterTest {
     }
 
     @Test
+    void driverAssignmentBelongsToThePlaceAndCanReturnToAutomatic() {
+        WorksiteRegister register = new WorksiteRegister();
+        Worksite site = register.register(new WorksiteKey(ROOM, OVERWORLD, 47), "Mill", 1, 0L);
+        java.util.UUID mule = java.util.UUID.randomUUID();
+
+        site.setDriver(mule);
+        assertEquals(mule, register.byId(site.id()).driver());
+
+        site.setDriver(null);
+        assertNull(site.driver(), "null is the explicit automatic-nearest policy");
+    }
+
+    @Test
     void theCounterResumesAboveEverythingAlreadyHandedOut() {
         assertEquals(6L, WorksiteRegister.counterAfterLoad(6L, 5L),
                 "a healthy save resumes where it left off");

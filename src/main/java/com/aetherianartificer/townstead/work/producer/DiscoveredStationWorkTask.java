@@ -119,12 +119,17 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private boolean sweptProducedOutput;
     /** The station consumed/ejected its inputs without exposing the selected recipe's output. */
     private boolean interruptedProduction;
+    /** Entity-powered stations share this lifecycle; their mod contributes only the JSON tag. */
+    private final com.aetherianartificer.townstead.work.station.StationDriverCoordinator drivers =
+            new com.aetherianartificer.townstead.work.station.StationDriverCoordinator();
 
     // Kitchen bounds cache
     private Set<Long> cachedWorksiteWorkArea = Set.of();
     private @Nullable BlockPos cachedWorksiteWorkAnchor = null;
     private long cachedWorksiteWorkUntil = 0L;
     private WorkBuildingNav.Snapshot cachedWorksiteSnapshotNav = WorkBuildingNav.Snapshot.EMPTY;
+    private @Nullable com.aetherianartificer.townstead.profession.ProfessionSites.Site cachedServiceSite;
+    private long serviceSiteDecisionTick = Long.MIN_VALUE;
     /** Wider-scope station searches, kept apart from the worksite snapshot and on the same TTL. */
     private final java.util.EnumMap<com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope, ScopedSnapshot>
             scopedSnapshots = new java.util.EnumMap<>(com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope.class);
@@ -145,7 +150,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 villager, taskTypes)) return false;
         if (com.aetherianartificer.townstead.work.WorkActivities.hasHigherPriorityWork(
                 level, villager, spec.taskType())) return false;
-        return com.aetherianartificer.townstead.profession.ProfessionSites.assignedSite(level, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(spec.taskType())).isPresent();
+        return com.aetherianartificer.townstead.profession.ProfessionSites.serviceSite(level, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(spec.taskType())).isPresent();
     }
 
     // ── Worksite ──
@@ -353,8 +358,12 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         int physical = com.aetherianartificer.townstead.work.station.StationProtocols
                 .batchCapacity(level, stationAnchor, recipe);
         if (physical <= 1) return 1;
+        var v2 = com.aetherianartificer.townstead.work.station.Workstations
+                .v2ByState(level.getBlockState(stationAnchor));
+        List<com.aetherianartificer.townstead.work.recipe.RecipeIngredient> scalableInputs =
+                v2 == null ? recipe.inputs() : v2.ordinaryInputs(recipe.inputs());
         return WorkIngredients.craftableCopies(level, villager, recipe,
-                activeWorksiteBounds(level, villager), physical);
+                activeWorksiteBounds(level, villager), physical, scalableInputs);
     }
 
     @Override
@@ -598,7 +607,25 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     // ── Hooks ──
 
     @Override
+    protected PreparationResult prepareStation(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor == null) return PreparationResult.blocked("The station is no longer here.");
+        var def = com.aetherianartificer.townstead.work.station.Workstations
+                .v2ByState(level.getBlockState(stationAnchor));
+        if (def == null) {
+            drivers.release(level);
+            return PreparationResult.ready();
+        }
+        Worksite site = activeWorksite();
+        if (def.hasReservation() && site == null) {
+            return PreparationResult.blocked("This station is not attached to a worksite.");
+        }
+        return drivers.prepare(level, villager, site, stationAnchor, def, claimedOrder());
+    }
+
+    @Override
     protected void onProduceTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        drivers.maintainWorkerEngagement(villager);
         if (stationAnchor != null && activeRecipe != null
                 && gameTime % WORK_ACTION_INTERVAL_TICKS == 0) {
             var v2 = com.aetherianartificer.townstead.work.station.Workstations
@@ -670,6 +697,53 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     }
 
     @Override
+    protected void onOrderCompleted(ServerLevel level, VillagerEntityMCA villager,
+                                    @Nullable BlockPos pos, long gameTime) {
+        // The participant belongs to the order, not permanently to the machine. Keep them engaged
+        // across that order's batches, then free them as soon as the stored/produced count really
+        // reaches its target. The coordinator handles workers and animals through the same public
+        // reservation lifecycle.
+        releaseStationDriver(level, villager, pos);
+    }
+
+    @Override
+    protected void onNoWork(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        releaseStationDriver(level, villager, stationAnchor);
+    }
+
+    @Override
+    protected void onStationAbandoned(ServerLevel level, VillagerEntityMCA villager,
+                                      @Nullable BlockPos pos, long gameTime) {
+        releaseStationDriver(level, villager, pos);
+    }
+
+    /** Releases both a task-owned participant and a persisted binding recovered after reload. */
+    private void releaseStationDriver(ServerLevel level, VillagerEntityMCA villager,
+                                      @Nullable BlockPos pos) {
+        Worksite site = activeWorksite();
+        if (pos != null) {
+            var def = com.aetherianartificer.townstead.work.station.Workstations
+                    .v2ByState(level.getBlockState(pos));
+            drivers.releaseObserved(level, villager, site, pos, def);
+            return;
+        }
+        // A fresh task has no stationAnchor, but the machine can retain its binding across a world
+        // save. If this worksite has no usable work, inspect only its authored driven stations and
+        // release any participant physically observed there.
+        if (site != null) {
+            for (long packed : com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site)) {
+                BlockPos candidate = BlockPos.of(packed);
+                var def = com.aetherianartificer.townstead.work.station.Workstations
+                        .v2ByState(level.getBlockState(candidate));
+                if (def == null || !def.hasReservation() || !def.isOperational(level, candidate)) continue;
+                drivers.releaseObserved(level, villager, site, candidate, def);
+            }
+        } else {
+            drivers.release(level);
+        }
+    }
+
+    @Override
     protected boolean isProductionInterrupted(ServerLevel level, VillagerEntityMCA villager,
                                               long gameTime) {
         return interruptedProduction;
@@ -711,7 +785,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
             ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos pos, long gameTime) {
         if (pos == null) return false;
         ProducerStationSessions.SessionSnapshot session = ProducerStationSessions.snapshot(level, pos);
-        return session != null && session.isOwner(villager.getUUID());
+        return session != null && session.isOwner(villager.getUUID())
+                && session.mayResume(currentActivity(villager) == net.minecraft.world.entity.schedule.Activity.WORK);
     }
 
     @Override
@@ -734,6 +809,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
 
     @Override
     protected void onStop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        releaseStationDriver(level, villager, stationAnchor);
         resetBoardSession(villager);
         stationType = null;
         lastAppraisal = null;
@@ -743,11 +819,14 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         cachedWorksiteWorkAnchor = null;
         cachedWorksiteWorkUntil = 0L;
         cachedWorksiteSnapshotNav = WorkBuildingNav.Snapshot.EMPTY;
+        cachedServiceSite = null;
+        serviceSiteDecisionTick = Long.MIN_VALUE;
         scopedSnapshots.clear();
     }
 
     @Override
     protected void onClearAll(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        releaseStationDriver(level, villager, stationAnchor);
         resetBoardSession(villager);
         stationType = null;
         lastAppraisal = null;
@@ -757,6 +836,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         cachedWorksiteWorkAnchor = null;
         cachedWorksiteWorkUntil = 0L;
         cachedWorksiteSnapshotNav = WorkBuildingNav.Snapshot.EMPTY;
+        cachedServiceSite = null;
+        serviceSiteDecisionTick = Long.MIN_VALUE;
         scopedSnapshots.clear();
     }
 
@@ -849,7 +930,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         ConsumableTargetClaims.Snapshot claimSnapshot = ConsumableTargetClaims.snapshot();
         WorkBuildingNav.Snapshot worksiteSnapshotLocal = activeWorksiteSnapshot(level, villager);
-        String assignedSiteDesc = com.aetherianartificer.townstead.profession.ProfessionSites.assignedSite(level, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(spec.taskType()))
+        String assignedSiteDesc = com.aetherianartificer.townstead.profession.ProfessionSites.serviceSite(level, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(spec.taskType()))
                 .map(site -> site.building() != null
                         ? townstead$describeAssignedBuilding(level, site.building())
                         : "post@" + site.post().getX() + "," + site.post().getY() + "," + site.post().getZ())
@@ -887,7 +968,17 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
      */
     private @Nullable com.aetherianartificer.townstead.profession.ProfessionSites.Site resolveAssignedSite(
             ServerLevel level, VillagerEntityMCA villager) {
-        return com.aetherianartificer.townstead.profession.ProfessionSites.assignedSite(level, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(spec.taskType())).orElse(null);
+        long now = level.getGameTime();
+        boolean deciding = state == ProducerState.PATH_TO_WORKSITE && stationAnchor == null;
+        if (cachedServiceSite == null || (deciding && serviceSiteDecisionTick != now)) {
+            cachedServiceSite = com.aetherianartificer.townstead.profession.ProfessionSites
+                    .serviceSite(level, villager,
+                            com.aetherianartificer.townstead.profession.ProfessionSites
+                                    .defForTask(spec.taskType()))
+                    .orElse(null);
+            serviceSiteDecisionTick = now;
+        }
+        return cachedServiceSite;
     }
 
     /** Reference block and bounds from one resolution. The form every work step should use. */

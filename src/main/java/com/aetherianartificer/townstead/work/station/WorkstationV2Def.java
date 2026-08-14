@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.work.station;
 
 import com.aetherianartificer.townstead.pheno.condition.block.BlockCondition;
 import com.aetherianartificer.townstead.pheno.condition.block.BlockConditions;
+import com.aetherianartificer.townstead.pheno.reservation.ReservationSpec;
 import com.aetherianartificer.townstead.pheno.selector.BlockSelector;
 import com.aetherianartificer.townstead.pheno.selector.BlockSelectors;
 import com.aetherianartificer.townstead.pheno.value.Value;
@@ -50,12 +51,18 @@ public record WorkstationV2Def(
         @Nullable BlockCondition ready,
         @Nullable JsonElement behavior,
         @Nullable JsonElement collect,
+        @Nullable JsonElement anchor,
+        @Nullable BlockSelector anchorSelector,
         @Nullable JsonElement structure,
         @Nullable BlockSelector structureSelector,
         @Nullable JsonElement capacity,
         @Nullable Value capacityValue,
         int capacityPositions,
-        boolean stackPerPosition) {
+        @Nullable Value capacityPositionsValue,
+        int capacityPerPosition,
+        boolean stackPerPosition,
+        @Nullable ReservationSpec reservation,
+        ShiftEndPolicy shiftEnd) {
 
     public static final String SCHEMA = "townstead:workstation/v2";
 
@@ -160,6 +167,16 @@ public record WorkstationV2Def(
         JsonElement requiresJson = copy(json.get("requires"));
         BlockCondition requires = requiresJson == null ? null : BlockConditions.parse(requiresJson);
         if (requiresJson != null && requires == null) return null;
+        ReservationSpec reservation = null;
+        if (json.has("reservation")) {
+            if (!json.get("reservation").isJsonObject()) return null;
+            JsonObject reservationJson = json.getAsJsonObject("reservation");
+            if (!"pheno:reserve".equals(
+                    net.minecraft.util.GsonHelper.getAsString(reservationJson, "type", ""))) return null;
+            reservation = com.aetherianartificer.townstead.pheno.action.types.ReserveActionType
+                    .spec(reservationJson);
+            if (reservation == null) return null;
+        }
         JsonElement readyJson = copy(json.get("ready"));
         BlockCondition ready = readyJson == null ? null : BlockConditions.parse(readyJson);
         if (readyJson != null && ready == null) return null;
@@ -167,23 +184,32 @@ public record WorkstationV2Def(
         if (behavior != null && !validBehavior(behavior)) return null;
         JsonElement collect = copy(json.get("collect"));
         if (collect != null && !validBehavior(collect)) return null;
+        JsonElement anchor = copy(json.get("anchor"));
+        BlockSelector anchorSelector = anchor == null ? null : BlockSelectors.parse(anchor);
+        if (anchor != null && anchorSelector == null) return null;
         JsonElement structure = copy(json.get("structure"));
         BlockSelector structureSelector = structure == null ? null : BlockSelectors.parse(structure);
         if (structure != null && structureSelector == null) return null;
         JsonElement capacity = copy(json.get("capacity"));
         Value capacityValue = null;
         int capacityPositions = 1;
+        Value capacityPositionsValue = null;
+        int capacityPerPosition = 1;
         boolean stackPerPosition = false;
         if (capacity != null) {
             if (capacity.isJsonObject() && capacity.getAsJsonObject().has("positions")) {
                 JsonObject lane = capacity.getAsJsonObject();
-                if (lane.has("type") || !lane.get("positions").isJsonPrimitive()
-                        || !lane.get("positions").getAsJsonPrimitive().isNumber()) return null;
-                double positions = lane.get("positions").getAsDouble();
-                capacityPositions = (int) positions;
-                if (capacityPositions <= 0 || !lane.has("per_position")
-                        || positions != capacityPositions
+                if (lane.has("type") || !lane.has("per_position")
                         || !lane.get("per_position").isJsonPrimitive()) return null;
+                JsonElement positionsElement = lane.get("positions");
+                capacityPositionsValue = Values.parse(positionsElement);
+                if (capacityPositionsValue == null) return null;
+                if (positionsElement.isJsonPrimitive()) {
+                    if (!positionsElement.getAsJsonPrimitive().isNumber()) return null;
+                    double positions = positionsElement.getAsDouble();
+                    capacityPositions = (int) positions;
+                    if (capacityPositions <= 0 || positions != capacityPositions) return null;
+                }
                 JsonElement perPosition = lane.get("per_position");
                 if (perPosition.getAsJsonPrimitive().isString()) {
                     if (!"stack".equals(perPosition.getAsString())) return null;
@@ -192,6 +218,7 @@ public record WorkstationV2Def(
                 else {
                     double amount = perPosition.getAsDouble();
                     if (amount <= 0 || amount != (int) amount) return null;
+                    capacityPerPosition = (int) amount;
                 }
             } else {
                 capacityValue = Values.parse(capacity);
@@ -199,12 +226,26 @@ public record WorkstationV2Def(
             }
         }
 
+        // V2 deliberately has no station-family-specific driver field. A host may keep a generic
+        // Pheno reservation alive while its task runs; operational requirements remain pure.
+        if (json.has("driver")) return null;
+
+        ShiftEndPolicy shiftEnd = ShiftEndPolicy.FINISH;
+        if (json.has("shift_end")) {
+            JsonElement value = json.get("shift_end");
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) return null;
+            shiftEnd = ShiftEndPolicy.parse(value.getAsString());
+            if (shiftEnd == null) return null;
+        }
+
         return new WorkstationV2Def(id, Set.copyOf(blocks), List.copyOf(containers),
                 List.copyOf(ingredients), List.copyOf(catalysts), List.copyOf(outputs),
                 List.copyOf(returns), List.copyOf(previews), List.copyOf(layout),
                 List.copyOf(corrections), List.copyOf(supplies),
-                requiresJson, requires, readyJson, ready, behavior, collect, structure, structureSelector,
-                capacity, capacityValue, capacityPositions, stackPerPosition);
+                requiresJson, requires, readyJson, ready, behavior, collect,
+                anchor, anchorSelector, structure, structureSelector,
+                capacity, capacityValue, capacityPositions, capacityPositionsValue,
+                capacityPerPosition, stackPerPosition, reservation, shiftEnd);
     }
 
     private static boolean parseSlots(JsonObject slots, String key, List<Integer> out) {
@@ -237,6 +278,14 @@ public record WorkstationV2Def(
         return !ingredientSlots.isEmpty() || !catalystSlots.isEmpty();
     }
 
+    /** Resolves a lane count against the station block; fixed counts retain their cheap accessor. */
+    public int capacityPositions(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) {
+        if (capacityPositionsValue == null) return capacityPositions;
+        double value = capacityPositionsValue.get(
+                com.aetherianartificer.townstead.pheno.selector.SelectorContext.ofBlock(level, pos, null));
+        return Math.max(0, (int) Math.floor(value));
+    }
+
     public ResourceLocation correctedOutput(ResourceLocation recipe, ResourceLocation fallback) {
         for (RecipeCorrection correction : recipeCorrections) {
             if (!correction.recipe().equals(recipe)) continue;
@@ -263,6 +312,11 @@ public record WorkstationV2Def(
         return requires == null || requires.test(level, pos);
     }
 
+    /** Whether this station's work session owns a generic Pheno entity reservation. */
+    public boolean hasReservation() {
+        return reservation != null;
+    }
+
     /** A public, event-driven completion predicate for machines without extractable output slots. */
     public boolean isReady(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) {
         return ready != null && ready.test(level, pos);
@@ -271,11 +325,13 @@ public record WorkstationV2Def(
     /** Resolves fixed station supplies through the live item registry, including datapack tags. */
     public List<RecipeIngredient> resolvedSupplies() {
         List<RecipeIngredient> resolved = new ArrayList<>();
-        for (String selector : recipeSupplies) {
+        for (String selector : supplySelectors()) {
             LinkedHashSet<ResourceLocation> ids = new LinkedHashSet<>();
+            ResourceLocation sourceTag = null;
             if (selector.startsWith("#")) {
                 ResourceLocation tagId = ResourceLocation.tryParse(selector.substring(1));
                 if (tagId != null) {
+                    sourceTag = tagId;
                     BuiltInRegistries.ITEM.getTag(TagKey.create(Registries.ITEM, tagId)).ifPresent(set ->
                             set.forEach(holder -> holder.unwrapKey().ifPresent(key -> ids.add(key.location()))));
                 }
@@ -283,7 +339,8 @@ public record WorkstationV2Def(
                 ResourceLocation id = ResourceLocation.tryParse(selector);
                 if (id != null && BuiltInRegistries.ITEM.containsKey(id)) ids.add(id);
             }
-            if (!ids.isEmpty()) resolved.add(new RecipeIngredient(List.copyOf(ids), 1));
+            if (!ids.isEmpty()) resolved.add(
+                    new RecipeIngredient(List.copyOf(ids), 1, sourceTag));
         }
         return List.copyOf(resolved);
     }
@@ -298,9 +355,33 @@ public record WorkstationV2Def(
     }
 
     public List<RecipeIngredient> ordinaryInputs(List<RecipeIngredient> plannedInputs) {
-        int supplyCount = Math.min(recipeSupplies.size(), plannedInputs.size());
+        int supplyCount = Math.min(resolvedSupplies().size(), plannedInputs.size());
         return supplyCount == 0 ? plannedInputs
                 : plannedInputs.subList(0, plannedInputs.size() - supplyCount);
+    }
+
+    /**
+     * Fixed supplies are inferred from the interaction that uses them. The explicit list remains
+     * a compatibility input, but an author does not have to name an ignition tool twice merely so
+     * planning can gather it before running the Pheno action.
+     */
+    private List<String> supplySelectors() {
+        LinkedHashSet<String> selectors = new LinkedHashSet<>(recipeSupplies);
+        for (JsonElement action : actions(behavior)) {
+            JsonObject interaction = interactionOf(action);
+            if (interaction == null || !uses(interaction, "supply") || !interaction.has("supply")) continue;
+            selectors.add(interaction.get("supply").getAsString());
+        }
+        return List.copyOf(selectors);
+    }
+
+    /** Whether the behavior can change transient requirements before ingredients are staged. */
+    public boolean hasPreparationAction() {
+        for (JsonElement action : actions(behavior)) {
+            if (uses(action, "ingredient")) return false;
+            if (uses(action, "supply") || uses(action, "empty")) return true;
+        }
+        return false;
     }
 
     /**
@@ -328,7 +409,7 @@ public record WorkstationV2Def(
                 // already the author's statement that the block performs the recipe; requiring a
                 // second, manually maintained output-item tag would make the order catalogue a
                 // different (and inevitably stale) source of truth from the work engine.
-                WorkstationDef.Orderable.ALL, false, Set.of(), List.of());
+                WorkstationDef.Orderable.ALL, false, Set.of(), List.of(), shiftEnd);
     }
 
     public boolean behaviorUses(String role) {
@@ -355,6 +436,18 @@ public record WorkstationV2Def(
             if (uses(object, "tool") && object.has("tool")) return true;
         }
         return false;
+    }
+
+    /** Public item/tag selectors attached to exceptional tool interactions, in authored order. */
+    public List<String> declaredToolSelectors() {
+        LinkedHashSet<String> selectors = new LinkedHashSet<>();
+        for (JsonElement action : actions(behavior)) {
+            JsonObject interaction = interactionOf(action);
+            if (interaction != null && uses(interaction, "tool") && interaction.has("tool")) {
+                selectors.add(interaction.get("tool").getAsString());
+            }
+        }
+        return List.copyOf(selectors);
     }
 
     /** Matches an action's exact item or item tag without knowing which mod declared it. */
@@ -410,8 +503,11 @@ public record WorkstationV2Def(
     private static boolean uses(JsonElement action, String role) {
         if (!action.isJsonObject()) return false;
         JsonObject object = action.getAsJsonObject();
-        return "pheno:use_block".equals(object.has("type") ? object.get("type").getAsString() : "")
-                && role.equals(object.has("item") ? object.get("item").getAsString() : "empty");
+        if ("pheno:use_block".equals(
+                object.has("type") ? object.get("type").getAsString() : "")) {
+            return role.equals(object.has("item") ? object.get("item").getAsString() : "empty");
+        }
+        return object.has("block_action") && uses(object.get("block_action"), role);
     }
 
     private static boolean validBehavior(JsonElement behavior) {
@@ -427,10 +523,16 @@ public record WorkstationV2Def(
         if (!action.isJsonObject()) return false;
         JsonObject object = action.getAsJsonObject();
         if (!object.has("type") || !object.get("type").isJsonPrimitive()) return false;
-        if (!"pheno:use_block".equals(object.get("type").getAsString())) return false;
         if (object.has("condition") && BlockConditions.parse(object.get("condition")) == null) {
             return false;
         }
+        if ("pheno:offset".equals(object.get("type").getAsString())) {
+            return object.has("block_action") && validAction(object.get("block_action"));
+        }
+        if (!"pheno:use_block".equals(object.get("type").getAsString())) return false;
+        if (object.has("secondary_use")
+                && (!object.get("secondary_use").isJsonPrimitive()
+                || !object.getAsJsonPrimitive("secondary_use").isBoolean())) return false;
         if (object.has("tool")) {
             if (!object.get("tool").isJsonPrimitive()
                     || !object.getAsJsonPrimitive("tool").isString()) return false;
@@ -451,6 +553,15 @@ public record WorkstationV2Def(
                     ? selector.substring(1) : selector) != null;
         }
         return true;
+    }
+
+    /** The transactional interaction nested inside an optional Pheno block-action transform. */
+    static @Nullable JsonObject interactionOf(JsonElement action) {
+        if (action == null || !action.isJsonObject()) return null;
+        JsonObject object = action.getAsJsonObject();
+        if ("pheno:use_block".equals(
+                object.has("type") ? object.get("type").getAsString() : "")) return object;
+        return object.has("block_action") ? interactionOf(object.get("block_action")) : null;
     }
 
     private static @Nullable JsonElement copy(@Nullable JsonElement element) {

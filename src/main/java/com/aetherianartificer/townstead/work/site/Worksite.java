@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.work.site;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * A registered place where work happens: Townstead's own record of a kitchen, a smithy, a butchery
@@ -145,6 +146,28 @@ public final class Worksite {
     /** Anything an open orders screen would draw differently has happened. */
     public void bumpOrdersRevision() {
         ordersRevision++;
+    }
+
+    // ── Driver assignment ──
+    //
+    // Some places own a piece of work equipment which is powered by an entity rather than by a
+    // worker interaction.  The workstation definition says which entities are eligible; the
+    // player's choice belongs here, beside the orders for this place.  Null deliberately means
+    // automatic selection, so existing worlds immediately acquire sensible behaviour without a
+    // migration screen.
+
+    @Nullable
+    private UUID driver;
+
+    /** The particular animal chosen for this worksite, or null for automatic selection. */
+    @Nullable
+    public UUID driver() {
+        return driver;
+    }
+
+    /** Selects one animal; null restores automatic selection. */
+    public void setDriver(@Nullable UUID value) {
+        driver = value;
     }
 
     // ── Extent ──

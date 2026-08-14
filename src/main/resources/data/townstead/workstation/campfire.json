@@ -4,5 +4,6 @@
   ],
   "type": "fire_station",
   "adapter": "townstead:campfire",
+  "shift_end": "leave",
   "open_top": true
 }

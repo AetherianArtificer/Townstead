@@ -138,6 +138,8 @@ public abstract class VillagerHungerMixin extends Villager {
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();
+        coreBehaviors.add(Pair.of(64,
+                new com.aetherianartificer.townstead.work.producer.FinishCommittedProductionTask()));
         coreBehaviors.add(Pair.of(65, new SeekBedWhenFatiguedTask()));
         // One unified refuel behavior handles both hunger and thirst (eat/drink to satiety).
         coreBehaviors.add(Pair.of(99, new RefuelTask()));

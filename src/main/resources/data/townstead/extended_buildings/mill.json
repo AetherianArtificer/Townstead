@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "workers": [
+    "townstead:cook",
+    "townstead:baker"
+  ],
+  "catalog": {
+    "node_item": "minecraft:wheat"
+  },
+  "spirit": {
+    "industrious": 5,
+    "pastoral": 3
+  }
+}

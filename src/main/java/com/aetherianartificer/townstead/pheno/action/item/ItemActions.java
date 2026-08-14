@@ -45,7 +45,7 @@ public final class ItemActions {
         return ctx -> {
             if (ctx.holder() == null) return;
             for (ItemStack stack : selector.select(ctx.holder())) {
-                core.run(new ItemActionContext(stack, ctx.holder()));
+                core.run(new ItemActionContext(stack, ctx.holder(), ctx.actionContext()));
             }
         };
     }

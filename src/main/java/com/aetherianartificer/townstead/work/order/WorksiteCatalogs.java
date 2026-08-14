@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.work.order;
 
+import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Option;
 import com.aetherianartificer.townstead.work.site.Worksite;
 
@@ -47,6 +48,9 @@ public final class WorksiteCatalogs {
     }
 
     private static final List<Catalog> CATALOGS = new CopyOnWriteArrayList<>();
+    /** Last emitted Order Sheet shape per worksite; watcher refreshes should not repeat diagnostics. */
+    private static final java.util.Map<Long, String> LAST_DIAGNOSTIC =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     private WorksiteCatalogs() {}
 
@@ -64,26 +68,61 @@ public final class WorksiteCatalogs {
         Set<net.minecraft.resources.ResourceLocation> worked =
                 com.aetherianartificer.townstead.work.site.WorksiteWork.typesAt(level, site,
                         com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site));
+        boolean hasDrivers = com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                .supportsDrivers(level, site);
+        boolean driverAvailable = !hasDrivers
+                || com.aetherianartificer.townstead.work.site.WorksiteDrivers
+                        .assignmentAvailable(level, site);
 
         Set<net.minecraft.resources.ResourceLocation> seen = new LinkedHashSet<>();
         List<Option> out = new ArrayList<>();
+        StringBuilder diagnostic = new StringBuilder("worked=").append(worked);
         for (Catalog catalog : CATALOGS) {
             net.minecraft.resources.ResourceLocation type = catalog.taskType();
-            if (type != null && !worked.contains(type)) continue;
+            if (type != null && !worked.contains(type)) {
+                diagnostic.append(", ").append(catalog.getClass().getSimpleName())
+                        .append("=skipped(").append(type).append(')');
+                continue;
+            }
             try {
-                for (Option option : catalog.optionsFor(level, site)) {
+                List<Option> offered = catalog.optionsFor(level, site);
+                diagnostic.append(", ").append(catalog.getClass().getSimpleName())
+                        .append('=').append(offered.size());
+                for (Option option : offered) {
                     if (option == null || !seen.add(option.output())) continue;
                     // Gated here, once, so no catalogue has to remember: what counts as cannibal
                     // fare is a tag, and whether it is served is a setting.
                     if (!option.activity() && !OrderTags.permitted(option.output())) continue;
-                    out.add(option);
+                    out.add(withDriverAvailability(site, option, driverAvailable));
                 }
-            } catch (Throwable ignored) {
+            } catch (Throwable failure) {
                 // One engine's catalogue failing must not close the screen for the others.
+                Townstead.LOGGER.error("Order Sheet provider {} failed for worksite {}",
+                        catalog.getClass().getSimpleName(), site.id(), failure);
             }
         }
         addCategories(out);
+        diagnostic.append(", final=").append(out.size());
+        String summary = diagnostic.toString();
+        if (!summary.equals(LAST_DIAGNOSTIC.put(site.id(), summary))) {
+            Townstead.LOGGER.info("Order Sheet option summary for worksite {}: {}", site.id(), summary);
+        }
         return List.copyOf(out);
+    }
+
+    private static Option withDriverAvailability(Worksite site, Option option,
+                                                 boolean driverAvailable) {
+        if (option.activity() || option.tag()) return option;
+        var def = com.aetherianartificer.townstead.work.station.Workstations
+                .v2ByBlockId(option.stationIcon());
+        if (def == null || !def.hasReservation() || driverAvailable) return option;
+        String blocker = site.driver() == null
+                ? "No matching assignment is currently available."
+                : "The assigned entity is unavailable or no longer matches this station.";
+        return new Option(option.output(), option.stationLabel(), option.stationIcon(),
+                false, blocker, option.makes(), option.needs(), option.missing(),
+                option.activity(), option.tag(), option.label(), option.commission(),
+                option.operated());
     }
 
     /**
@@ -124,7 +163,8 @@ public final class WorksiteCatalogs {
             // absorbing it would delete a set the player deliberately declared.
             if (byCoverage.putIfAbsent(covered, tagId) != null) continue;
             categories.add(Option.category(tagId, OrdersService.categoryLabel(tagId), first.output(),
-                    available, available ? "" : first.blocker()));
+                    available, available ? "" : first.blocker(),
+                    available ? List.of() : first.missing()));
         }
         out.addAll(categories);
     }
@@ -141,8 +181,10 @@ public final class WorksiteCatalogs {
                 for (var station : catalog.stationsFor(level, site)) {
                     if (station != null && seen.add(station.label())) out.add(station);
                 }
-            } catch (Throwable ignored) {
+            } catch (Throwable failure) {
                 // Same bargain as the options: one engine failing must not close the screen.
+                Townstead.LOGGER.error("Station catalogue {} failed for worksite {}",
+                        catalog.getClass().getSimpleName(), site.id(), failure);
             }
         }
         return List.copyOf(out);
