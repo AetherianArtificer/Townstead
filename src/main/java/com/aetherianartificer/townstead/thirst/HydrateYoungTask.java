@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.thirst;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
+import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
@@ -16,7 +17,6 @@ import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.AgeState;
-import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
@@ -292,11 +292,7 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
     private boolean mayCareFor(VillagerEntityMCA caregiver, VillagerEntityMCA child) {
         if (isParentOf(caregiver, child)) return true;
         if (!TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS.get()) return false;
-        //? if neoforge {
-        if (caregiver.getVillagerBrain().getPersonality() == Personality.CRABBY) return false;
-        //?} else {
-        /*if (caregiver.getVillagerBrain().getPersonality() == Personality.GRUMPY) return false;
-        *///?}
+        if (McaPersonalityCompat.isCrabby(caregiver.getVillagerBrain().getPersonality())) return false;
         return !parentsNearby(child);
     }
 

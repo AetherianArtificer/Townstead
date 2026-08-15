@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.mixin;
 
-//? if neoforge {
 import com.aetherianartificer.townstead.compat.BuildingIconSwap;
 import net.conczin.mca.client.gui.BlueprintScreen;
 import net.minecraft.client.gui.GuiGraphics;
@@ -32,6 +31,3 @@ public abstract class BlueprintScreenLegacyIconMixin {
         }
     }
 }
-//?} else {
-/*public abstract class BlueprintScreenLegacyIconMixin {}
-*///?}

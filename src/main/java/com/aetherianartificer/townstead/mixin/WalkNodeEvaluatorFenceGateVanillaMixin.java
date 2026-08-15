@@ -3,7 +3,7 @@ package com.aetherianartificer.townstead.mixin;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 import org.spongepowered.asm.mixin.Mixin;
 //? if forge {
-/*import forge.net.mca.entity.VillagerEntityMCA;
+/*import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.FenceGateBlock;

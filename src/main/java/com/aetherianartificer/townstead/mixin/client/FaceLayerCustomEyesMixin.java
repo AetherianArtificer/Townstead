@@ -19,30 +19,23 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * {@code renderFinal} runs, so the swap needs no second model or layer. Pass-through for everyone
  * else, so ordinary villagers keep MCA's face entirely.
  *
- * <p>The target class differs by branch: 1.21.1's {@code FaceLayer} overrides {@code renderFinal}
- * (and never calls super), while 7.6.15's inherits it, where an injector on the subclass would have
- * no target at all — so that branch hooks {@code VillagerLayer} and filters to face layers.
- * {@code renderFinal} is MCA's own method either way, hence {@code remap=false}. The model field
- * lives on the superclass, reached by cast rather than a {@code @Shadow} that wouldn't traverse the
- * hierarchy.</p>
+ * <p>Which class declares {@code renderFinal} moves between MCA builds: MCA 7.6.27+ and 1.21.1
+ * override it on {@code FaceLayer}, while 7.6.15 inherits it from {@code VillagerLayer}. Both are
+ * targeted at {@code require = 0} so only the declaring one binds, and {@code FaceLayer}'s override
+ * never reaches {@code VillagerLayer.renderFinal}, so the two can never both fire. The face-layer
+ * filter keeps the {@code VillagerLayer} case scoped. {@code renderFinal} is MCA's own method
+ * either way, hence {@code remap=false}. The model field lives on the superclass, reached by cast
+ * rather than a {@code @Shadow} that wouldn't traverse the hierarchy.</p>
  */
-//? if neoforge {
-@Mixin(FaceLayer.class)
-//?} else {
-/*@Mixin(VillagerLayer.class)
-*///?}
+@Mixin({FaceLayer.class, VillagerLayer.class})
 public abstract class FaceLayerCustomEyesMixin<T extends LivingEntity, M extends HumanoidModel<T>> {
 
-    @Inject(method = "renderFinal", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    @Inject(method = "renderFinal", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     private void townstead$customEyes(PoseStack transform, MultiBufferSource provider, int light, T villager,
                                       float tickDelta, boolean visible, boolean glowing, CallbackInfo ci) {
         @SuppressWarnings("unchecked")
         VillagerLayer<T, M> self = (VillagerLayer<T, M>) (Object) this;
-        //? if neoforge {
-        // The face layer IS the target on this branch.
-        //?} else {
-        /*if (!(self instanceof FaceLayer)) return;
-        *///?}
+        if (!(self instanceof FaceLayer)) return;
         if (HumanoidEyes.render(self.model, transform, provider, light, villager, visible, glowing)) {
             ci.cancel();
         }

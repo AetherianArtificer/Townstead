@@ -1,9 +1,9 @@
 package com.aetherianartificer.townstead.mixin;
 
+import com.aetherianartificer.townstead.compat.mca.McaRegistryCompat;
 import com.aetherianartificer.townstead.root.gene.types.CustomSoundGeneType.Slot;
 import com.aetherianartificer.townstead.root.sound.CustomSounds;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.conczin.mca.registry.SoundsMCA;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -83,12 +83,7 @@ public abstract class VillagerSoundMixin {
         if (CustomSounds.handleCustom((LivingEntity) (Object) this, slot)) cir.setReturnValue(townstead$silent());
     }
 
-    /** MCA's silent sound, returned to mute MCA's own follow-up play (Forge wraps it in a supplier). */
     private static SoundEvent townstead$silent() {
-        //? if neoforge {
-        return SoundsMCA.SILENT;
-        //?} else {
-        /*return SoundsMCA.SILENT.get();
-        *///?}
+        return McaRegistryCompat.silent();
     }
 }

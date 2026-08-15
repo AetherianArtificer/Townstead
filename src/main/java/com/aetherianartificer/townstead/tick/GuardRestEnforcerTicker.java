@@ -2,10 +2,10 @@ package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.compat.mca.McaRegistryCompat;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.conczin.mca.registry.ProfessionsMCA;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.VillagerProfession;
@@ -26,12 +26,7 @@ public final class GuardRestEnforcerTicker {
         if (villager.level().isClientSide) return;
 
         VillagerProfession prof = villager.getVillagerData().getProfession();
-        //? if neoforge {
-        boolean isGuard = prof == ProfessionsMCA.GUARD || prof == ProfessionsMCA.ARCHER;
-        //?} else {
-        /*boolean isGuard = prof == ProfessionsMCA.GUARD.get() || prof == ProfessionsMCA.ARCHER.get();
-        *///?}
-        if (!isGuard) return;
+        if (!McaRegistryCompat.isGuardOrArcher(prof)) return;
 
         Brain<?> brain = villager.getBrain();
         long dayTime = villager.level().getDayTime() % 24000L;

@@ -21,7 +21,7 @@ import java.util.Optional;
 //? if neoforge {
 import net.conczin.mca.block.TombstoneBlock;
 //?} else {
-/*import forge.net.mca.block.TombstoneBlock;
+/*import net.conczin.mca.block.TombstoneBlock;
 *///?}
 
 /**

@@ -9,37 +9,48 @@ import java.util.Set;
 /**
  * Applies the building-icon-swap mixins that match the running MCA generation.
  *
- * <p>MCA's floor-system rebuild removed {@code BlueprintScreen.drawBuildingIcon}
- * and moved icon drawing into {@code WidgetUtils}/{@code BlueprintMapRenderer}.
- * Townstead compiles against that newer API but still runs on the older 7.7.x
- * builds, so the three icon mixins are mutually exclusive:
+ * <p>MCA moved icon drawing in stages. The 1.20.1 backport is a hybrid: it still
+ * has {@code BlueprintScreen.drawBuildingIcon}, but that method already delegates
+ * to {@code WidgetUtils}. The later floor-system build additionally introduces
+ * {@code BlueprintMapRenderer}. Each choke point therefore needs its own marker.
  *
  * <ul>
- *   <li>new API → {@code WidgetUtilsBuildingIconMixin} + {@code BlueprintMapRendererIconMixin}</li>
- *   <li>legacy API → {@code BlueprintScreenLegacyIconMixin}</li>
+ *   <li>{@code WidgetUtils} present → {@code WidgetUtilsBuildingIconMixin}</li>
+ *   <li>{@code BlueprintMapRenderer} present → {@code BlueprintMapRendererIconMixin}</li>
+ *   <li>no {@code WidgetUtils} → {@code BlueprintScreenLegacyIconMixin}</li>
  * </ul>
  *
- * <p>Gating by presence of {@code BlueprintMapRenderer} (new-only) also keeps the
- * legacy mixin from resolving a method that no longer exists (the crash that
- * motivated this split) and keeps the new mixins from resolving a class that does
- * not exist on old MCA. Detection uses a classpath resource lookup so no MCA
+ * <p>Detection uses classpath resource lookups so no MCA
  * class is loaded — and therefore frozen — before its own transformers run.
  */
 public class TownsteadMixinPlugin implements IMixinConfigPlugin {
     private static final String NEW_API_MARKER = "net/conczin/mca/client/gui/BlueprintMapRenderer.class";
+    private static final String WIDGET_UTILS_MARKER = "net/conczin/mca/client/gui/widget/WidgetUtils.class";
     private static final String FLOOR_V2_MARKER = "net/conczin/mca/server/world/data/ExternalBuilding.class";
-    private static final String MCA_76_FORGE_PLAYER_MIXIN =
+    private static final String FORGE_LOADER_MARKER = "net/minecraftforge/fml/ModList.class";
+    private static final String MCA_FORGE_PLAYER_MIXIN =
+            "net/conczin/mca/mixin/client/MixinPlayerEntityRenderer.class";
+    private static final String MCA_LEGACY_FORGE_PLAYER_MIXIN =
             "forge/net/mca/mixin/client/MixinPlayerEntityRenderer.class";
 
     private Boolean newApi;
+    private Boolean widgetUtils;
     private Boolean floorV2;
-    private Boolean mca76Forge;
+    private Boolean forgeLoader;
+    private Boolean mcaForge;
 
     private boolean isNewApi() {
         if (newApi == null) {
             newApi = TownsteadMixinPlugin.class.getClassLoader().getResource(NEW_API_MARKER) != null;
         }
         return newApi;
+    }
+
+    private boolean hasWidgetUtils() {
+        if (widgetUtils == null) {
+            widgetUtils = TownsteadMixinPlugin.class.getClassLoader().getResource(WIDGET_UTILS_MARKER) != null;
+        }
+        return widgetUtils;
     }
 
     private boolean isFloorV2() {
@@ -49,25 +60,42 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         return floorV2;
     }
 
-    private boolean isMca76Forge() {
-        if (mca76Forge == null) {
-            mca76Forge = TownsteadMixinPlugin.class.getClassLoader()
-                    .getResource(MCA_76_FORGE_PLAYER_MIXIN) != null;
+    private boolean isForgeLoader() {
+        if (forgeLoader == null) {
+            forgeLoader = TownsteadMixinPlugin.class.getClassLoader().getResource(FORGE_LOADER_MARKER) != null;
         }
-        return mca76Forge;
+        return forgeLoader;
+    }
+
+    private boolean isMcaForge() {
+        if (mcaForge == null) {
+            ClassLoader loader = TownsteadMixinPlugin.class.getClassLoader();
+            mcaForge = loader.getResource(FORGE_LOADER_MARKER) != null
+                    && (loader.getResource(MCA_FORGE_PLAYER_MIXIN) != null
+                    || loader.getResource(MCA_LEGACY_FORGE_PLAYER_MIXIN) != null);
+        }
+        return mcaForge;
     }
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         if (mixinClassName.endsWith("McaPlayerArmOverlayMixin")) {
-            return isMca76Forge();
+            return isMcaForge();
         }
-        if (mixinClassName.endsWith("WidgetUtilsBuildingIconMixin")
-                || mixinClassName.endsWith("BlueprintMapRendererIconMixin")) {
+        // MCA 1.20.1 uses vanilla ImageButton for catalog entries, whose fields
+        // are SRG-named at runtime. Keep this catalog-only enhancement off Forge;
+        // map icons are handled independently by WidgetUtilsBuildingIconMixin.
+        if (mixinClassName.endsWith("LegacyImageButtonMixin")) {
+            return !isForgeLoader();
+        }
+        if (mixinClassName.endsWith("WidgetUtilsBuildingIconMixin")) {
+            return hasWidgetUtils();
+        }
+        if (mixinClassName.endsWith("BlueprintMapRendererIconMixin")) {
             return isNewApi();
         }
         if (mixinClassName.endsWith("BlueprintScreenLegacyIconMixin")) {
-            return !isNewApi();
+            return !hasWidgetUtils();
         }
         // Legacy MCA only. On the floor-system build the payload bloat is already
         // prevented at the source (BuildingTypeSyntheticBlockMixin stops houses

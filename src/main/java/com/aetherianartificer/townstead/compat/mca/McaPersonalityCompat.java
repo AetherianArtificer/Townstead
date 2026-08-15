@@ -76,6 +76,20 @@ public final class McaPersonalityCompat {
         return enumResult instanceof Personality personality ? Optional.of(personality) : Optional.empty();
     }
 
+    /** First of {@code references} this MCA build knows, for constants that were re-cut between lines. */
+    public static Optional<Personality> resolveAny(String... references) {
+        for (String reference : references) {
+            Optional<Personality> found = resolve(reference);
+            if (found.isPresent()) return found;
+        }
+        return Optional.empty();
+    }
+
+    /** MCA's irritable personality: {@code crabby} on current MCA, {@code grumpy} on legacy 1.20.1. */
+    public static boolean isCrabby(@Nullable Personality personality) {
+        return personality != null && personality == Crabby.VALUE;
+    }
+
     /** All personalities known to MCA. On old MCA this is simply the enum constants. */
     public static List<Personality> all() {
         Object registryResult = invoke(ALL, null);
@@ -122,6 +136,10 @@ public final class McaPersonalityCompat {
     private static @Nullable String idWithoutLegacyFallback(Personality personality) {
         Object value = invoke(GET_ID, personality);
         return value instanceof ResourceLocation id ? id.toString() : null;
+    }
+
+    private static final class Crabby {
+        private static final Personality VALUE = resolveAny("crabby", "grumpy").orElse(null);
     }
 
     private static @Nullable Method method(String name, Class<?>... parameterTypes) {
