@@ -52,8 +52,9 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                       boolean activity, boolean tag, String label,
                       String worker, Order.Operation operation, String operator,
                       String workLabel, boolean operated, boolean workerFallback,
-                      List<Driver> operators) {
+                      List<Worker> workers, List<Driver> operators) {
         public Row {
+            workers = workers == null ? List.of() : List.copyOf(workers);
             operators = operators == null ? List.of() : List.copyOf(operators);
         }
     }
@@ -187,6 +188,12 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             buf.writeUtf(row.workLabel());
             buf.writeBoolean(row.operated());
             buf.writeBoolean(row.workerFallback());
+            buf.writeVarInt(row.workers().size());
+            for (Worker worker : row.workers()) {
+                buf.writeUtf(worker.value());
+                buf.writeUtf(worker.name());
+                buf.writeUtf(worker.detail());
+            }
             buf.writeVarInt(row.operators().size());
             for (Driver operator : row.operators()) {
                 buf.writeUtf(operator.uuid());
@@ -276,6 +283,11 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             String workLabel = buf.readUtf();
             boolean operated = buf.readBoolean();
             boolean workerFallback = buf.readBoolean();
+            int workerCount = buf.readVarInt();
+            List<Worker> rowWorkers = new ArrayList<>(workerCount);
+            for (int n = 0; n < workerCount; n++) {
+                rowWorkers.add(new Worker(buf.readUtf(), buf.readUtf(), buf.readUtf()));
+            }
             int operatorCount = buf.readVarInt();
             List<Driver> operators = new ArrayList<>(operatorCount);
             for (int n = 0; n < operatorCount; n++) {
@@ -284,7 +296,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             rows.add(new Row(output, mode, target, scope, paused,
                     modeLabel, scopeLabel, whoLabel, have, want, inProgress, status, reason,
                     activity, tag, label, worker, operation, operator, workLabel,
-                    operated, workerFallback, operators));
+                    operated, workerFallback, rowWorkers, operators));
         }
         int optionCount = buf.readVarInt();
         List<Option> options = new ArrayList<>(optionCount);

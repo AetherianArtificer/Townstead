@@ -7,15 +7,6 @@
   "description": {
     "text": "A cook devoted to the oven, from daily bread to fine pastry."
   },
-  "mods": {
-    "any": [
-      "bakery",
-      "farm_and_charm",
-      "farmersdelight",
-      "kaleidoscope_cookery",
-      "rusticdelight"
-    ]
-  },
   "hidden": true,
   "requirements": {
     "type": "pheno:and",
@@ -44,10 +35,55 @@
   "poi": [
     {
       "type": "townstead:building",
-      "type_prefix": "compat/farmersdelight/kitchen_l"
+      "type_prefix": "bakery"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/bakery/bread_stand_l",
+      "slots_per_tier": [
+        1
+      ]
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/bakery/bake_sale_l",
+      "slots_per_tier": [
+        1,
+        2
+      ]
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/bakery/bakery_l",
+      "slots_per_tier": [
+        1,
+        2,
+        3
+      ]
     }
   ],
   "work_tasks": [
+    {
+      "type": "townstead_work:craft",
+      "workstations": [
+        "minecraft:crafting_table"
+      ],
+      "recipes": [
+        "#townstead:orders/baker_goods"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "minecraft:furnace",
+        "minecraft:smoker"
+      ],
+      "recipes": [
+        "#townstead:orders/baker_goods"
+      ],
+      "weight": 8
+    },
     {
       "type": "townstead_work:cook",
       "workstations": [
@@ -58,39 +94,16 @@
     {
       "type": "townstead_work:cook",
       "workstations": [
-        "bakery:crafting_bowl",
         "bakery:baker_station",
-        "bakery:small_cooking_pot"
-      ],
-      "weight": 10
-    },
-    {
-      "type": "townstead_work:cook",
-      "workstations": [
-        "bakery:brick_stove",
-        "bakery:cobblestone_stove",
-        "bakery:deepslate_stove",
-        "bakery:end_stove",
-        "bakery:granite_stove",
-        "bakery:mud_stove",
-        "bakery:quartz_stove",
-        "bakery:red_nether_bricks_stove",
-        "bakery:sandstone_stove",
-        "bakery:stone_bricks_stove"
-      ],
-      "weight": 8
-    },
-    {
-      "type": "townstead_work:cook",
-      "workstations": [
-        "minecraft:furnace",
-        "minecraft:smoker"
+        "bakery:small_cooking_pot",
+        "farm_and_charm:crafting_bowl",
+        "farm_and_charm:cooking_pot",
+        "farm_and_charm:stove"
       ],
       "recipes": [
-        "edible"
+        "#townstead:orders/baker_goods"
       ],
-      "scope": "village",
-      "weight": 4
+      "weight": 10
     }
   ],
   "skills": [
@@ -117,8 +130,11 @@
         "steam_bake"
       ],
       "worksites": [
-        "bakery:crafting_bowl",
-        "bakery:brick_stove"
+        "minecraft:crafting_table",
+        "minecraft:furnace",
+        "minecraft:smoker",
+        "farm_and_charm:crafting_bowl",
+        "farm_and_charm:stove"
       ]
     },
     {

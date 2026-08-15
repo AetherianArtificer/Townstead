@@ -96,6 +96,16 @@ class WorkstationDefTest {
     }
 
     @Test
+    void craftingSurfaceHasNoInventedRecipeDuration() {
+        WorkstationDef crafting = parse("""
+                {"block": "minecraft:crafting_table", "type": "craft_surface",
+                 "recipe_type": "minecraft:crafting"}""");
+        assertNotNull(crafting);
+        assertEquals(1, crafting.cookTimeTicks(),
+                "crafting is immediate; work animation pacing is not recipe data");
+    }
+
+    @Test
     void orderableSpeaksAtTheStationAltitude() {
         WorkstationDef def = parse("""
                 {"block": "examplemod:oven", "type": "passive_station",

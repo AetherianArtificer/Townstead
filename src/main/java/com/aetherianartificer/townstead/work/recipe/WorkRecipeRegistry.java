@@ -242,7 +242,7 @@ public final class WorkRecipeRegistry {
             List<RecipeIngredient> inputs = extractIngredients(recipe);
             if (inputs.isEmpty()) continue;
 
-            int cookTime = safeCookTime(recipe, 100);
+            int cookTime = cookingTimeTicks(recipe, 100);
             boolean beverage = outputId.getPath().contains("coffee");
             int tier = autoTier(StationType.FIRE_STATION, inputs.size(), cookTime);
 
@@ -334,7 +334,7 @@ public final class WorkRecipeRegistry {
                 // A custom recipe type may need a vessel (Farm & Charm's pot, Bakery's jar).
                 // Without this the villager brings ingredients and never the container.
                 ResourceLocation container = containerOf(recipe);
-                int cookTime = safeCookTime(recipe, def.cookTimeTicks());
+                int cookTime = cookingTimeTicks(recipe, def.cookTimeTicks());
                 int tier = def.recipeTier() > 0 ? def.recipeTier()
                         : autoTier(def.role(), inputs.size(), cookTime);
                 out.add(new DiscoveredRecipe(
@@ -364,6 +364,24 @@ public final class WorkRecipeRegistry {
                                              StationType role, WorkstationV2Def def,
                                              Set<ResourceLocation> existingIds,
                                              List<DiscoveredRecipe> out) {
+        // Some public recipe families describe a state-transition graph rather than returning an
+        // ItemStack from Recipe#getResultItem. Discover the graph as a family: one terminal path
+        // is one orderable recipe. This runs before the ordinary reader, and self-selects only
+        // when every necessary transition shape is present.
+        List<DiscoveredRecipe> interactionGraph = InteractionRecipeGraphs.discover(
+                level, typeId, role, def);
+        if (!interactionGraph.isEmpty()) {
+            int accepted = 0;
+            for (DiscoveredRecipe recipe : interactionGraph) {
+                if (!existingIds.add(recipe.id())) continue;
+                out.add(recipe);
+                accepted++;
+            }
+            Townstead.LOGGER.info("Attached interaction recipe graph {} for {}: paths={}",
+                    typeId, def.id(), accepted);
+            return;
+        }
+
         int holdersSeen = 0;
         int accepted = 0;
         int duplicates = 0;
@@ -412,7 +430,7 @@ public final class WorkRecipeRegistry {
                     continue;
                 }
                 ResourceLocation container = containerOf(recipe);
-                int cookTime = safeCookTime(recipe, 200);
+                int cookTime = cookingTimeTicks(recipe, 200);
                 boolean tool = def.behaviorUses("tool");
                 boolean beverage = outputId.getPath().contains("coffee") || outputId.getPath().contains("tea");
                 out.add(new DiscoveredRecipe(recipeId, role,
@@ -761,7 +779,8 @@ public final class WorkRecipeRegistry {
         return ItemStack.EMPTY;
     }
 
-    private static int safeCookTime(Recipe<?> recipe, int fallback) {
+    /** Reads the duration published by a recipe implementation. */
+    public static int cookingTimeTicks(Recipe<?> recipe, int fallback) {
         String[] methods = {"getCookingTime", "getCookTime", "getCookTimeInTicks", "time",
                 "getTime", "cookTick", "getCookTick"};
         for (String name : methods) {

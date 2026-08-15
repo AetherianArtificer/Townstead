@@ -368,6 +368,14 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.client.catalog.CatalogSyncS2CPayload::write,
                 com.aetherianartificer.townstead.client.catalog.CatalogSyncS2CPayload::read,
                 TownsteadNetwork::handleCatalogSync);
+        registerC2S(com.aetherianartificer.townstead.building.pin.BuildingPinSetC2SPayload.class,
+                com.aetherianartificer.townstead.building.pin.BuildingPinSetC2SPayload::write,
+                com.aetherianartificer.townstead.building.pin.BuildingPinSetC2SPayload::read,
+                TownsteadNetwork::handleBuildingPinSet);
+        registerS2C(com.aetherianartificer.townstead.building.pin.BuildingPinProgressS2CPayload.class,
+                com.aetherianartificer.townstead.building.pin.BuildingPinProgressS2CPayload::write,
+                com.aetherianartificer.townstead.building.pin.BuildingPinProgressS2CPayload::read,
+                TownsteadNetwork::handleBuildingPinProgress);
     }
 
     private static void handleHeritageRequest(
@@ -528,6 +536,16 @@ public final class TownsteadNetwork {
 
     private static void handleCatalogSync(com.aetherianartificer.townstead.client.catalog.CatalogSyncS2CPayload payload) {
         com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.applySynced(payload);
+    }
+
+    private static void handleBuildingPinSet(
+            com.aetherianartificer.townstead.building.pin.BuildingPinSetC2SPayload payload, ServerPlayer sp) {
+        com.aetherianartificer.townstead.building.pin.BuildingPinService.set(sp, payload.buildingType());
+    }
+
+    private static void handleBuildingPinProgress(
+            com.aetherianartificer.townstead.building.pin.BuildingPinProgressS2CPayload payload) {
+        com.aetherianartificer.townstead.client.building.BuildingPinClientStore.setFrom(payload);
     }
 
     private static void handleCalendarSync(com.aetherianartificer.townstead.calendar.CalendarSyncPayload payload) {

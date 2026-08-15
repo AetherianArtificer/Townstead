@@ -451,6 +451,36 @@ class WorkstationV2DefTest {
                 "the Farm & Charm stove exposes its real fuel slot only horizontally");
     }
 
+    @Test
+    void bakeryStationsUseCurrentBlocksAndDiscoverInteractionRecipes() throws Exception {
+        WorkstationV2Def pot = resource("bakery_pot");
+        assertEquals(java.util.List.of(6), pot.containerSlots());
+        assertTrue(pot.outputSlots().isEmpty(),
+                "the public downward extraction face owns the output slot; data need not repeat it");
+        assertNotNull(pot.requires(), "the small pot must refuse to cook without its real heat tag");
+
+        WorkstationV2Def station = resource("bakery_station");
+        assertTrue(station.legacyView(java.util.Set.of()).produces().isEmpty(),
+                "V2 must not duplicate another mod's recipes or invent their processing time");
+        assertTrue(station.behavior().isJsonArray());
+        assertTrue(station.behaviorUses("supply"),
+                "the station's code-only dough seed is an interaction supply, not a copied recipe");
+        assertTrue(station.behaviorUses("ingredient"));
+        assertNotNull(station.ready(), "finished world blocks need an event/state completion predicate");
+        assertNotNull(station.collect(), "finished cakes and four-item batches must be physically collected");
+
+        try (var stream = getClass().getResourceAsStream(
+                "/data/bakery/tags/recipe_type/baker_station.json")) {
+            assertNotNull(stream);
+            var attachment = JsonParser.parseReader(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+            assertEquals("bakery:blank_cake_interaction",
+                    attachment.getAsJsonArray("values").get(0).getAsJsonObject()
+                            .get("id").getAsString(),
+                    "every current and addon interaction recipe is owned by the station");
+        }
+    }
+
     private WorkstationV2Def resource(String name) throws Exception {
         String path = "/data/townstead/workstation/" + name + ".json";
         try (var stream = getClass().getResourceAsStream(path)) {

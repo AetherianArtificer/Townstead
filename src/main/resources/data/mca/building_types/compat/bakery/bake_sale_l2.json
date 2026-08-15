@@ -1,0 +1,19 @@
+{
+  "color": "ffe9ae69",
+  "visible": true,
+  "priority": 3,
+  "icon": true,
+  "iconU": 241,
+  "iconV": 184,
+  "noBeds": true,
+  "blocks": {
+    "bakery:tray": 1,
+    "bakery:iron_table": 2,
+    "#townstead:compat/bakery/jams": 1,
+    "bakery:breadbox": 2,
+    "bakery:brick_counter": 5,
+    "#townstead:kitchen/storage": 3,
+    "#townstead:furnace_stations": 2,
+    "minecraft:crafting_table": 1
+  }
+}

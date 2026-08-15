@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.dock;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.compat.mca.McaBuildingNbt;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.spirit.SpiritReconciler;
 import com.aetherianartificer.townstead.village.TownsteadVillageSavedData;
@@ -227,6 +228,7 @@ public final class DockBuildingSync {
         v.putBoolean("isTypeForced", true);
         v.putString("type", type);
         v.putBoolean("strictScan", false);
+        McaBuildingNbt.putDetachedDefaults(v);
         v.put("blocks2", compactBlocksNbt(surfaceBlocks));
         return v;
     }
@@ -262,11 +264,7 @@ public final class DockBuildingSync {
             int emitted = 0;
             for (BlockPos pos : entry.getValue()) {
                 if (emitted++ >= 8) break;
-                CompoundTag posTag = new CompoundTag();
-                posTag.putInt("x", pos.getX());
-                posTag.putInt("y", pos.getY());
-                posTag.putInt("z", pos.getZ());
-                list.add(posTag);
+                list.add(McaBuildingNbt.blockPos(pos));
             }
             blocks2.put(entry.getKey(), list);
         }

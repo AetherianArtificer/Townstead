@@ -63,7 +63,8 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                             DiscoveredRecipe recipe) {
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
         ResourceLocation type = WorkRecipeRegistry.recipeTypeId(recipe);
-        return type != null && WorkstationRecipeTypes.forBlock(block).contains(type);
+        if (type != null && WorkstationRecipeTypes.forBlock(block).contains(type)) return true;
+        return false;
     }
 
     @Override
@@ -448,6 +449,8 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                                                  BlockPos anchor, WorkstationV2Def def,
                                                  DiscoveredRecipe recipe, int copies) {
         boolean insertedIngredient = false;
+        List<RecipeIngredient> ingredients = def.ordinaryInputs(recipe.inputs());
+        int ingredientIndex = 0;
         for (JsonObject action : actions(def.behavior())) {
             String role = role(action);
             if ("supply".equals(role)) {
@@ -455,13 +458,20 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                 continue;
             }
             if ("ingredient".equals(role)) {
-                if (action.has("all") && action.get("all").getAsBoolean()) {
-                    for (RecipeIngredient ingredient : def.ordinaryInputs(recipe.inputs())) {
+                JsonObject interaction = WorkstationV2Def.interactionOf(action);
+                boolean allRemaining = interaction != null && interaction.has("all")
+                        && interaction.get("all").getAsBoolean();
+                if (allRemaining) {
+                    for (; ingredientIndex < ingredients.size(); ingredientIndex++) {
+                        RecipeIngredient ingredient = ingredients.get(ingredientIndex);
                         if (!interactIngredient(level, villager, anchor, ingredient, def,
                                 false, copies)) return false;
                     }
-                } else if (!interactIngredient(level, villager, anchor, recipe, def,
-                        stackBatch(def), copies)) return false;
+                } else {
+                    if (ingredientIndex >= ingredients.size()
+                            || !interactIngredient(level, villager, anchor,
+                            ingredients.get(ingredientIndex++), def, stackBatch(def), copies)) return false;
+                }
                 insertedIngredient = true;
                 continue;
             }
@@ -1013,7 +1023,6 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
         return OUTPUTS_BY_BLOCK.computeIfAbsent(block, ignored -> {
             Set<ResourceLocation> types = WorkstationRecipeTypes.forBlock(block);
-            if (types.isEmpty()) return Set.of();
             LinkedHashSet<ResourceLocation> outputs = new LinkedHashSet<>();
             for (DiscoveredRecipe candidate : WorkRecipeRegistry.getRecipes(level)) {
                 ResourceLocation type = WorkRecipeRegistry.recipeTypeId(candidate);
@@ -1049,7 +1058,6 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
         return INPUTS_BY_BLOCK.computeIfAbsent(block, ignored -> {
             Set<ResourceLocation> types = WorkstationRecipeTypes.forBlock(block);
-            if (types.isEmpty()) return Set.of();
             LinkedHashSet<ResourceLocation> inputs = new LinkedHashSet<>();
             for (DiscoveredRecipe candidate : WorkRecipeRegistry.getRecipes(level)) {
                 ResourceLocation type = WorkRecipeRegistry.recipeTypeId(candidate);

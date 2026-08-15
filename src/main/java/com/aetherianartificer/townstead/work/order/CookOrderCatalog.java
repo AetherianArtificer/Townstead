@@ -8,7 +8,10 @@ import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.StationType;
 import com.aetherianartificer.townstead.work.site.Worksite;
+import com.aetherianartificer.townstead.work.site.WorksiteWork;
 import com.aetherianartificer.townstead.work.site.Worksites;
+import com.aetherianartificer.townstead.work.station.WorkstationDef;
+import com.aetherianartificer.townstead.work.station.Workstations;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -60,15 +63,25 @@ public final class CookOrderCatalog implements WorksiteCatalogs.Catalog {
         // declared machine shares the passive_station role. A recipe that names its own station
         // is offered only where that station stands.
         Set<ResourceLocation> presentDefs = StationCatalogs.stationDefsIn(level, extent);
+        List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declarations =
+                WorksiteWork.declaredTasksAt(level, site, extent,
+                        com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK);
+        if (declarations.isEmpty()) return List.of();
         Set<ResourceLocation> seen = new LinkedHashSet<>();
         List<Option> out = new ArrayList<>();
         for (StationType type : present) {
             for (DiscoveredRecipe recipe : WorkRecipeRegistry.getFoodRecipesForStation(level, type)) {
-                List<com.aetherianartificer.townstead.work.station.WorkstationDef> declared =
-                        WorkRecipeRegistry.defsFor(recipe);
-                com.aetherianartificer.townstead.work.station.WorkstationDef station = declared.stream()
-                        .filter(def -> presentDefs.contains(def.id())).findFirst().orElse(null);
-                if (!declared.isEmpty() && station == null) continue;
+                List<WorkstationDef> recipeDefs = WorkRecipeRegistry.defsFor(recipe);
+                List<WorkstationDef> stations = matchingStations(type, recipe, recipeDefs, presentDefs);
+                if (stations.isEmpty()) continue;
+                WorkstationDef station = stations.stream()
+                        .filter(def -> allowedByAny(declarations, def, recipe))
+                        .findFirst().orElse(null);
+                // A physical station being capable of a recipe is not permission for this
+                // building's profession to offer it. The Baker's furnace task, for example,
+                // admits baker_goods; without this declaration gate the global cook catalogue
+                // leaked cooked fish into a Bread Stand.
+                if (station == null) continue;
                 // Stated, not inferred. The registry's "food" only means "not a beverage", so a
                 // furnace's smelting lands in it, and no property of the recipe distinguishes a
                 // baked potato from an iron ingot. What a cook may be asked for is a tag, which
@@ -84,6 +97,58 @@ public final class CookOrderCatalog implements WorksiteCatalogs.Catalog {
             }
         }
         return out;
+    }
+
+    /** Exact recipe owners first; vanilla role-owned families resolve through the present defs. */
+    private static List<WorkstationDef> matchingStations(
+            StationType type, DiscoveredRecipe recipe, List<WorkstationDef> recipeDefs,
+            Set<ResourceLocation> presentDefs) {
+        List<WorkstationDef> out = new ArrayList<>();
+        for (WorkstationDef def : recipeDefs) {
+            if (presentDefs.contains(def.id())) out.add(def);
+        }
+        if (!recipeDefs.isEmpty()) return List.copyOf(out);
+
+        ResourceLocation recipeType = WorkRecipeRegistry.recipeTypeId(recipe);
+        for (ResourceLocation id : presentDefs) {
+            WorkstationDef def = Workstations.byId(id);
+            if (def == null || def.role() != type) continue;
+            // A declared family is exact. Adapter-owned roles such as campfires name no family
+            // and remain eligible for the registry recipes already assigned to their role.
+            if (def.recipeType() != null && !def.recipeType().equals(recipeType)) continue;
+            out.add(def);
+        }
+        return List.copyOf(out);
+    }
+
+    /** A claiming cook declaration must cover this exact station and admit this exact recipe. */
+    static boolean allowedByAny(
+            List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declarations,
+            WorkstationDef station, DiscoveredRecipe recipe) {
+        for (var task : declarations) {
+            if (!taskDrives(task, station)) continue;
+            if (task.allowsRecipe(recipe.id(), recipe.output(), recipe.inputs())) return true;
+        }
+        return false;
+    }
+
+    private static boolean taskDrives(
+            com.aetherianartificer.townstead.profession.def.WorkTaskDef task,
+            WorkstationDef station) {
+        if (task.anyWorkstation()) return true;
+        for (ResourceLocation block : station.blocks()) {
+            if (task.allowsBlock(block)) return true;
+        }
+        for (ResourceLocation tagId : station.blockTags()) {
+            var tag = net.minecraft.tags.TagKey.create(
+                    net.minecraft.core.registries.Registries.BLOCK, tagId);
+            for (var holder : net.minecraft.core.registries.BuiltInRegistries.BLOCK.getTagOrEmpty(tag)) {
+                ResourceLocation block = net.minecraft.core.registries.BuiltInRegistries.BLOCK
+                        .getKey(holder.value());
+                if (task.allowsBlock(block)) return true;
+            }
+        }
+        return false;
     }
 
     @Override

@@ -4,9 +4,13 @@ import com.aetherianartificer.townstead.Townstead;
 import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 
 import java.util.Locale;
@@ -43,6 +47,50 @@ public final class RequirementNameResolver {
         String result = resolve(id);
         CACHE.put(id, result);
         return result;
+    }
+
+    /**
+     * Concrete icon for a requirement. Direct block/item ids stay fixed; a tag cycles through
+     * the installed members it actually accepts. Shared by the catalog and the pinned checklist
+     * so those two views never explain the same requirement differently.
+     */
+    public static ItemStack displayStack(ResourceLocation id, long ticker, int salt) {
+        if (BuiltInRegistries.BLOCK.containsKey(id)) {
+            Item item = BuiltInRegistries.BLOCK.get(id).asItem();
+            return item == null || item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item);
+        }
+        if (BuiltInRegistries.ITEM.containsKey(id)) {
+            Item item = BuiltInRegistries.ITEM.get(id);
+            return item == null || item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item);
+        }
+
+        java.util.List<Item> candidates = new java.util.ArrayList<>();
+        TagKey<Block> blockTag = TagKey.create(Registries.BLOCK, id);
+        for (Block block : BuiltInRegistries.BLOCK) {
+            Item item = block.asItem();
+            if (block.defaultBlockState().is(blockTag) && item != null && item != Items.AIR) {
+                candidates.add(item);
+            }
+        }
+        if (candidates.isEmpty()) {
+            TagKey<Item> itemTag = TagKey.create(Registries.ITEM, id);
+            for (Item item : BuiltInRegistries.ITEM) {
+                if (item != Items.AIR && item.builtInRegistryHolder().is(itemTag)) candidates.add(item);
+            }
+        }
+        if (candidates.isEmpty()) return ItemStack.EMPTY;
+        int index = (int) Math.floorMod((ticker / 20L) + salt, candidates.size());
+        return new ItemStack(candidates.get(index));
+    }
+
+    /** The concrete member's name for a tag, or the ordinary resolved name for a direct id. */
+    public static String displayName(ResourceLocation id, ItemStack shown) {
+        if (!shown.isEmpty()
+                && !BuiltInRegistries.BLOCK.containsKey(id)
+                && !BuiltInRegistries.ITEM.containsKey(id)) {
+            return shown.getHoverName().getString();
+        }
+        return displayName(id);
     }
 
     /**

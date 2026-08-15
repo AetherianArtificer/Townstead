@@ -41,7 +41,7 @@ public final class OrdersService {
         OrdersSnapshotS2CPayload.DriverControl drivers = driverControl(level, site);
         List<Row> rows = new ArrayList<>(orders.size());
         for (Order order : orders.orders()) {
-            rows.add(row(level, site, order, context, options, workers));
+            rows.add(row(level, site, order, context, options));
         }
         return new OrdersSnapshotS2CPayload(
                 site.id(),
@@ -57,10 +57,20 @@ public final class OrdersService {
 
     private static List<OrdersSnapshotS2CPayload.Worker> workerChoices(
             ServerLevel level, Worksite site) {
+        return workerChoices(level, site, null, List.of());
+    }
+
+    /**
+     * Workers capable of this line, rather than everybody attached to the building. A Kitchen can
+     * host both Cooks and Bakers without offering a Baker for a pot's cooked-meat order.
+     */
+    private static List<OrdersSnapshotS2CPayload.Worker> workerChoices(
+            ServerLevel level, Worksite site, @Nullable Order order, List<Option> options) {
         List<OrdersSnapshotS2CPayload.Worker> out = new ArrayList<>();
         java.util.LinkedHashMap<ResourceLocation, String> professions = new java.util.LinkedHashMap<>();
         for (var def : com.aetherianartificer.townstead.work.site.WorksiteWork.professionsAt(
                 level, site, com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site))) {
+            if (order != null && !professionCanFulfil(def, order, options)) continue;
             professions.put(def.id(), def.displayName().getString());
             out.add(new OrdersSnapshotS2CPayload.Worker(
                     "profession:" + def.id(), def.displayName().getString(), "Profession"));
@@ -85,6 +95,26 @@ public final class OrdersService {
         return List.copyOf(out);
     }
 
+    /** Assignment uses the same data-authored station and output filters as production. */
+    static boolean professionCanFulfil(
+            com.aetherianartificer.townstead.profession.def.ProfessionDef profession,
+            Order order, List<Option> options) {
+        if (profession == null || order == null) return false;
+        if (order.isActivity()) return true;
+        for (Option option : options) {
+            if (option == null || option.activity() || option.tag()) continue;
+            boolean requested = order.isTag()
+                    ? OrderTags.contains(order.output(), option.output())
+                    : order.output().equals(option.output());
+            if (!requested) continue;
+            for (var task : profession.workTasks()) {
+                if (!task.allowsBlock(option.stationIcon())) continue;
+                if (task.allowsRecipe(null, option.output())) return true;
+            }
+        }
+        return false;
+    }
+
     private static OrdersSnapshotS2CPayload.DriverControl driverControl(
             ServerLevel level, Worksite site) {
         if (!com.aetherianartificer.townstead.work.site.WorksiteDrivers
@@ -104,8 +134,7 @@ public final class OrdersService {
     }
 
     private static Row row(ServerLevel level, Worksite site, Order order, OrderContext context,
-                           List<Option> options,
-                           List<OrdersSnapshotS2CPayload.Worker> workers) {
+                           List<Option> options) {
         int want = order.mode() == Order.Mode.PER_VILLAGER
                 ? order.target() * Math.max(0, context.villagerCount())
                 : order.target();
@@ -138,6 +167,7 @@ public final class OrdersService {
         List<OrdersSnapshotS2CPayload.Driver> operators = operated
                 ? operatorChoices(level, site, option.stationIcon())
                 : List.of();
+        List<OrdersSnapshotS2CPayload.Worker> workers = workerChoices(level, site, order, options);
         String worker = workerValue(order);
         String operator = order.operator() == null ? "" : order.operator().toString();
         return new Row(order.output(), order.mode(), order.target(), order.scope(), order.paused(),
@@ -149,7 +179,7 @@ public final class OrdersService {
                         : order.isTag() ? categoryLabel(order.output())
                         : !order.workpieceName().isEmpty() ? "Copy " + order.workpieceName() : "",
                 worker, order.operation(), operator,
-                workLabel(order, workers, operators), operated, workerFallback, operators);
+                workLabel(order, workers, operators), operated, workerFallback, workers, operators);
     }
 
     private static String workerValue(Order order) {
@@ -396,7 +426,8 @@ public final class OrdersService {
             order.setVillager(null);
             return true;
         }
-        boolean offered = workerChoices(level, site).stream()
+        List<Option> options = WorksiteCatalogs.optionsFor(level, site);
+        boolean offered = workerChoices(level, site, order, options).stream()
                 .anyMatch(choice -> choice.value().equals(value));
         if (!offered) return false;
         if (value.startsWith("profession:")) {

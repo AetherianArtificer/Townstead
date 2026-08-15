@@ -143,12 +143,25 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
         boolean v2 = def.blocks().stream().anyMatch(block -> Workstations.v2ByBlockId(block) != null);
         if (!v2) return List.of();
         for (ResourceLocation type : worked) {
-            if (!com.aetherianartificer.townstead.profession.def.WorkTaskTypes.isStationDriven(type)) continue;
+            if (!cataloguesStationRecipes(type)) continue;
             for (var task : WorksiteWork.declaredTasksAt(level, site, extent, type)) {
                 if (taskDrivesDef(task, def)) out.add(task);
             }
         }
         return List.copyOf(out);
+    }
+
+    /**
+     * V2 protocol stations are catalogued from their attached recipe families regardless of
+     * which execution engine drives the work. Cook/chop/brew use the producer state machine;
+     * the other station-driven types use {@code StationWorkTask}. Treating only the latter as
+     * cataloguable made a Bakery station fully usable by a Baker while invisible to its sheet.
+     */
+    private static boolean cataloguesStationRecipes(ResourceLocation type) {
+        return com.aetherianartificer.townstead.profession.def.WorkTaskTypes.isStationDriven(type)
+                || com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK.equals(type)
+                || com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP.equals(type)
+                || com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW.equals(type);
     }
 
     private static List<DiscoveredRecipe> v2Recipes(ServerLevel level, WorkstationDef def) {

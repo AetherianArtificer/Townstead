@@ -79,6 +79,8 @@ public class OrdersScreen extends Screen {
     private static final int BAND_Y = 12;
     private static final int REASON_H = 11;
     private static final int COMPOSER_H = 64;
+    /** Header actions share one footprint so Assignment and Back read as a matched pair. */
+    private static final int DETAIL_ACTION_W = 76;
 
     private static final String[] MODE_LABELS = {"Make", "Keep in stock", "Per villager", "Standing"};
     private static final String[] SCOPE_LABELS = {"Here", "The village"};
@@ -399,8 +401,12 @@ public class OrdersScreen extends Screen {
             // A 220px logical tooltip becomes an enormous banner at GUI scale 3; 176 leaves the
             // order underneath readable and gives the renderer ample room to clamp either side.
             int tooltipWidth = Math.max(112, Math.min(176, this.width - SPACING * 4));
+            g.flush();
+            g.pose().pushPose();
+            g.pose().translate(0, 0, 800);
             g.renderTooltip(this.font, this.font.split(Component.literal(tooltip), tooltipWidth),
                     mouseX, mouseY);
+            g.pose().popPose();
         }
     }
 
@@ -1005,8 +1011,8 @@ public class OrdersScreen extends Screen {
                  win.y() + (DETAIL_STRIP_H - this.font.lineHeight) / 2 + 1, Palette.CARD, false);
         if (!workPicker) {
             String assignmentText = trim(assignmentSummary(row) + " ▾", assignment.w() - 10);
-            Controls.drawButton(g, this.font, assignment, assignmentText, false,
-                    assignment.contains(mouseX, mouseY), true);
+            Controls.drawPill(g, this.font, assignment, assignmentText, true,
+                    assignment.contains(mouseX, mouseY), Palette.LABEL_LIGHT);
             tip(assignment, mouseX, mouseY, "Assignment");
         }
         Controls.drawPill(g, this.font, back, "Back", true, back.contains(mouseX, mouseY),
@@ -1234,10 +1240,9 @@ public class OrdersScreen extends Screen {
     private Rect detailsAssignment(Row row) {
         Rect win = detailsWindow();
         Rect back = detailsBack();
-        int desired = this.font.width(assignmentSummary(row) + " ▾") + 12;
-        int width = Math.max(52, Math.min(112, desired));
-        return new Rect(back.x() - 4 - width,
-                win.y() + (DETAIL_STRIP_H - Controls.SEG_H) / 2, width, Controls.SEG_H);
+        return new Rect(back.x() - 4 - DETAIL_ACTION_W,
+                win.y() + (DETAIL_STRIP_H - Controls.PILL_H) / 2,
+                DETAIL_ACTION_W, Controls.PILL_H);
     }
 
     /** Focused assignment picker; ordinary details retain only the one-line summary above. */
@@ -1255,12 +1260,12 @@ public class OrdersScreen extends Screen {
         setScroll = Math.max(0, Math.min(setScroll, Math.max(0, total - visible)));
         for (int shown = 0; shown < visible; shown++) {
             int actual = setScroll + shown;
-            if (actual >= 1 + data.workers().size()) break;
+            if (actual >= 1 + row.workers().size()) break;
             if (actual == 0) {
                 drawWorkChoice(g, workerChoiceRect(shown), "Automatic", "Anyone suitable",
                         row.worker().isEmpty(), mouseX, mouseY);
             } else {
-                var choice = data.workers().get(actual - 1);
+                var choice = row.workers().get(actual - 1);
                 drawWorkChoice(g, workerChoiceRect(shown), choice.name(), choice.detail(),
                         choice.value().equals(row.worker()), mouseX, mouseY);
             }
@@ -1307,7 +1312,7 @@ public class OrdersScreen extends Screen {
     }
 
     private int assignmentChoiceCount(Row row) {
-        return Math.max(1 + data.workers().size(), operatorChoiceCount(row));
+        return Math.max(1 + row.workers().size(), operatorChoiceCount(row));
     }
 
     private int assignmentVisibleRows() {
@@ -1401,7 +1406,7 @@ public class OrdersScreen extends Screen {
         // a plain sentence adrift in a panel sized for controls it never shows.
         Row row = detailsRow();
         if (workPicker) {
-            int choices = Math.max(1 + data.workers().size(),
+            int choices = Math.max(1 + (row == null ? 0 : row.workers().size()),
                     (row != null && row.operated() ? 1 : 0)
                             + (row != null && row.workerFallback() ? 1 : 0)
                             + (row == null ? 0 : row.operators().size()));
@@ -1437,9 +1442,9 @@ public class OrdersScreen extends Screen {
 
     private Rect detailsBack() {
         Rect win = detailsWindow();
-        Rect probe = Controls.pillLayout(this.font, 0, 0, "Back");
-        return new Rect(win.right() - INSET - 2 - probe.w(),
-                win.y() + (DETAIL_STRIP_H - Controls.PILL_H) / 2, probe.w(), Controls.PILL_H);
+        return new Rect(win.right() - INSET - 2 - DETAIL_ACTION_W,
+                win.y() + (DETAIL_STRIP_H - Controls.PILL_H) / 2,
+                DETAIL_ACTION_W, Controls.PILL_H);
     }
 
     private int detailsFieldsTop() {
@@ -1763,8 +1768,8 @@ public class OrdersScreen extends Screen {
 
         for (int shown = 0; shown < visible; shown++) {
             int actual = setScroll + shown;
-            if (actual < 1 + data.workers().size() && workerChoiceRect(shown).contains(mx, my)) {
-                String value = actual == 0 ? "automatic" : data.workers().get(actual - 1).value();
+            if (actual < 1 + row.workers().size() && workerChoiceRect(shown).contains(mx, my)) {
+                String value = actual == 0 ? "automatic" : row.workers().get(actual - 1).value();
                 send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.SET_WORKER,
                         detailsFor, value));
                 return true;

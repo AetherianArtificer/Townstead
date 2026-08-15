@@ -1,8 +1,18 @@
 {
-  "schema": "townstead:workstation/v1",
-  "mods": "bakery",
-  "type": "passive_station",
+  "schema": "townstead:workstation/v2",
+  "mods": ["bakery", "farm_and_charm"],
   "blocks": ["bakery:small_cooking_pot"],
-  "recipe_type": "bakery:pot_cooking",
-  "recipe_tier": 2
+  "inventory": {
+    "slots": {
+      "containers": [6]
+    }
+  },
+  "requires": {
+    "type": "pheno:offset",
+    "y": -1,
+    "condition": {
+      "type": "pheno:in_tag",
+      "tag": "farm_and_charm:allows_cooking"
+    }
+  }
 }

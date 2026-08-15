@@ -162,13 +162,18 @@ public final class ProtocolRecipes {
                 inputs.add(new RecipeIngredient(List.of(
                         com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL), 1));
             }
+            // Processors publish their own duration. Crafting has no recipe clock: it is one
+            // immediate transaction, with villager animation pacing kept in the work task.
+            int processingTime = def.role() == StationType.CRAFT_SURFACE
+                    ? 1
+                    : WorkRecipeRegistry.cookingTimeTicks(recipe, def.cookTimeTicks());
             out.add(new DiscoveredRecipe(
                     recipeId,
                     def.role(),
                     def.recipeTier() > 0 ? def.recipeTier() : 1,
                     BuiltInRegistries.ITEM.getKey(result.getItem()),
                     Math.max(1, result.getCount()),
-                    Math.max(1, def.cookTimeTicks()),
+                    processingTime,
                     false,
                     null,
                     0,

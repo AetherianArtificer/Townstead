@@ -5,12 +5,14 @@ package com.aetherianartificer.townstead.mixin;
 *///?}
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.client.gui.common.Controls;
 import com.aetherianartificer.townstead.client.gui.shift.ShiftManagerScreen;
 import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.aetherianartificer.townstead.mixin.accessor.BlueprintScreenAccessor;
 import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
 import com.aetherianartificer.townstead.profession.ProfessionSetPayload;
+import com.aetherianartificer.townstead.recognition.OptionalBuildingRecognition;
 import com.aetherianartificer.townstead.village.VillageResidentClientStore;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import net.conczin.mca.MCA;
@@ -21,6 +23,9 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerLike;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.conczin.mca.server.world.data.Building;
+//? if >=1.21 {
+import net.conczin.mca.server.world.data.RoomScanPlan;
+//?}
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.util.compat.ButtonWidget;
 import net.minecraft.client.gui.GuiGraphics;
@@ -28,19 +33,17 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.tags.TagKey;
 //? if neoforge {
 import net.neoforged.neoforge.network.PacketDistributor;
 //?}
 import org.lwjgl.glfw.GLFW;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -71,6 +74,11 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Shadow(remap = false)
     private Village village;
+
+    //? if >=1.21 {
+    @Shadow(remap = false)
+    private ButtonWidget removeBuildingButton;
+    //?}
 
     @Shadow(remap = false)
     private void setPage(String page) {
@@ -141,6 +149,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private Button townstead$catalogBackButton;
     @Unique
+    private Controls.Rect townstead$catalogPinRect;
+    @Unique
     private Button townstead$catalogZoomInButton;
     @Unique
     private Button townstead$catalogZoomOutButton;
@@ -206,8 +216,6 @@ public abstract class BlueprintScreenMixin extends Screen {
      */
     @Unique
     private static final Map<String, String> TOWNSTEAD$BUILDING_NAME_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
-    @Unique
-    private static final Map<String, String> TOWNSTEAD$SORT_KEY_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
     @Unique
     private static final Map<String, String> TOWNSTEAD$COMPAT_GROUP_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
     /**
@@ -288,6 +296,24 @@ public abstract class BlueprintScreenMixin extends Screen {
         super(Component.empty());
     }
 
+    //? if >=1.21 {
+    /**
+     * MCA only exposes this control when its enclosed-room scan can update/add a room. External
+     * buildings have no room scan by design, so surface MCA's own button when Townstead can resolve
+     * a nearby datapack-declared open-air building instead.
+     */
+    @Inject(method = "updateStructureScanControl", remap = false, at = @At("TAIL"))
+    private void townstead$showRemoveForOpenAirBuilding(RoomScanPlan plan, CallbackInfo ci) {
+        if (removeBuildingButton == null || village == null || minecraft == null || minecraft.player == null) {
+            return;
+        }
+        if (OptionalBuildingRecognition.findNearby(village, minecraft.player.blockPosition()).isPresent()) {
+            removeBuildingButton.visible = true;
+            removeBuildingButton.active = true;
+        }
+    }
+    //?}
+
     @Inject(method = "setPage", remap = false, at = @At("HEAD"), cancellable = true)
     private void townstead$redirectCatalogPage(String pageName, CallbackInfo ci) {
         if (!"catalog".equals(pageName) || townstead$redirectingCatalog)
@@ -353,6 +379,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$catalogDragging = false;
             townstead$catalogDragArmed = false;
             townstead$catalogBackButton = null;
+            townstead$catalogPinRect = null;
             townstead$catalogZoomInButton = null;
             townstead$catalogZoomOutButton = null;
             townstead$catalogNeedsPrevButton = null;
@@ -454,8 +481,10 @@ public abstract class BlueprintScreenMixin extends Screen {
                 0xFFFFFF);
 
         BuildingType selected = townstead$getSelectedCatalogEntry();
-        if (selected == null)
+        if (selected == null) {
+            townstead$catalogPinRect = null;
             return;
+        }
         int detailsMidY = detailsY + ((detailsBottom - detailsY) / 2);
         context.fill(detailsX + 1, detailsMidY, detailsRight - 1, detailsMidY + 1, 0x446E86A5);
 
@@ -545,6 +574,9 @@ public abstract class BlueprintScreenMixin extends Screen {
                 context.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
             }
         }
+        // The action belongs to this upper building-information section. Keep long descriptions
+        // from painting beneath its full-width button at the bottom of the section.
+        context.enableScissor(detailsX + 2, detailsY + 2, detailsRight - 2, detailsMidY - 19);
         context.pose().pushPose();
         context.pose().scale(0.85f, 0.85f, 1.0f);
         int scaledDescX = (int) Math.floor(detailsTextX / 0.85f);
@@ -552,6 +584,8 @@ public abstract class BlueprintScreenMixin extends Screen {
         int scaledDescW = (int) Math.floor((CATALOG_DETAILS_W - 8) / 0.85f);
         context.drawWordWrap(this.font, detail.descComponent(), scaledDescX, scaledDescY, scaledDescW, 0xA8A8A8);
         context.pose().popPose();
+        context.disableScissor();
+        townstead$drawCatalogPinControl(context, selected, detailsRight, detailsMidY, mouseX, mouseY);
 
         int needsHeaderY = detailsMidY + 6;
         context.drawString(this.font, Component.literal("Needs"), detailsTextX, needsHeaderY, 0xD0D0D0);
@@ -760,6 +794,11 @@ public abstract class BlueprintScreenMixin extends Screen {
         int detailsRight = insideX + ADV_INSIDE_W;
         int detailsBottom = insideY + ADV_INSIDE_H;
         if (mouseX >= detailsX && mouseX <= detailsRight && mouseY >= detailsY && mouseY <= detailsBottom) {
+            if (townstead$catalogPinRect != null && townstead$catalogPinRect.contains(mouseX, mouseY)) {
+                townstead$toggleSelectedCatalogPin();
+                cir.setReturnValue(true);
+                cir.cancel();
+            }
             return;
         }
         int insideRight = insideX + (ADV_INSIDE_W - CATALOG_DETAILS_W - 2);
@@ -891,6 +930,9 @@ public abstract class BlueprintScreenMixin extends Screen {
     private void townstead$addCatalogControls() {
         int windowX = townstead$catalogWindowX();
         int windowY = townstead$catalogWindowY();
+        int detailsX = windowX + ADV_INSIDE_X + (ADV_INSIDE_W - CATALOG_DETAILS_W - 2) + 2;
+        int detailsY = windowY + ADV_INSIDE_Y;
+        int detailsMidY = detailsY + (ADV_INSIDE_H / 2);
         townstead$catalogBackButton = addRenderableWidget(new ButtonWidget(
                 windowX + 2,
                 windowY + 2,
@@ -918,9 +960,6 @@ public abstract class BlueprintScreenMixin extends Screen {
                         windowX + ADV_INSIDE_X + ((ADV_INSIDE_W - CATALOG_DETAILS_W - 2) / 2.0),
                         windowY + ADV_INSIDE_Y + (ADV_INSIDE_H / 2.0), windowX + ADV_INSIDE_X,
                         windowY + ADV_INSIDE_Y)));
-        int detailsX = windowX + ADV_INSIDE_X + (ADV_INSIDE_W - CATALOG_DETAILS_W - 2) + 2;
-        int detailsY = windowY + ADV_INSIDE_Y;
-        int detailsMidY = detailsY + (ADV_INSIDE_H / 2);
         int needsHeaderY = detailsMidY + 6;
         int buttonY = needsHeaderY - 1;
         int rightEdge = detailsX + CATALOG_DETAILS_W - 5;
@@ -1017,12 +1056,21 @@ public abstract class BlueprintScreenMixin extends Screen {
                 townstead$builtTypes.add(building.getType());
             }
         }
-        all = all.stream()
+        List<BuildingType> available = all.stream()
                 .filter(BuildingType::visible)
                 .filter(bt -> ModCompat.isCompatAvailable(bt.name()))
                 .filter(bt -> !com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
                         .overrideFor(bt.name()).hide())
-                .sorted(Comparator.comparing(this::townstead$catalogSortKey))
+                .collect(Collectors.toList());
+        Set<String> superseded = com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
+                .activeSupersededBuildingTypes(
+                        available.stream().map(BuildingType::name).collect(Collectors.toList()));
+        all = available.stream()
+                .filter(bt -> !superseded.contains(bt.name()))
+                .sorted(Comparator
+                        .comparing((BuildingType type) -> townstead$compatGroupLabel(type.name()))
+                        .thenComparing(type -> !townstead$builtTypes.contains(type.name()))
+                        .thenComparing(type -> townstead$displayBuildingName(type.name())))
                 .collect(Collectors.toList());
         com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.prewarmAsync(
                 all.stream().map(BuildingType::name).collect(Collectors.toList()));
@@ -1067,12 +1115,8 @@ public abstract class BlueprintScreenMixin extends Screen {
                 }
                 int nodeX;
                 int nodeY;
-                if (tierPrefix != null) {
-                    int tier = 1;
-                    try {
-                        tier = Integer.parseInt(name.substring(tierPrefix.length()));
-                    } catch (NumberFormatException ignored) {
-                    }
+                int tier = townstead$tierNumber(name, tierPrefix);
+                if (tierPrefix != null && tier > 0) {
                     nodeX = 24 + (tier - 1) * 56;
                     nodeY = y + 8;
                 } else {
@@ -1116,6 +1160,39 @@ public abstract class BlueprintScreenMixin extends Screen {
                 townstead$catalogConnections.add(new int[]{
                         from.worldX() + 26, from.worldY() + 13,
                         to.worldX(),         to.worldY() + 13});
+            }
+        }
+        // A data-authored tier group may deliberately give each stage its own useful name
+        // (bread_stand_l1 -> bake_sale_l2 -> bakery_l3) instead of repeating one id stem.
+        // Connect those nodes by their terminal tier suffix. The prefix loop above remains the
+        // fast path for conventional families such as kitchen_l1..5.
+        for (com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef group
+                : com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.groups()) {
+            if (!"tiered".equals(group.layout())) continue;
+            java.util.SortedMap<Integer, NodeData> byTier = new java.util.TreeMap<>();
+            boolean usesDistinctStems = false;
+            for (NodeData node : townstead$catalogNodes) {
+                Optional<com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef> match =
+                        com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
+                                .matchGroup(node.type().name());
+                if (match.isEmpty() || !group.id().equals(match.get().id())) continue;
+                int tier = townstead$tierNumber(node.type().name(), group.tierPrefix());
+                if (tier <= 0) continue;
+                byTier.putIfAbsent(tier, node);
+                usesDistinctStems |= !group.tierPrefix().equals(
+                        townstead$autoTierPrefix(node.type().name()));
+            }
+            if (!usesDistinctStems) continue;
+            Map.Entry<Integer, NodeData> previous = null;
+            for (Map.Entry<Integer, NodeData> current : byTier.entrySet()) {
+                if (previous != null && current.getKey() == previous.getKey() + 1) {
+                    NodeData from = previous.getValue();
+                    NodeData to = current.getValue();
+                    townstead$catalogConnections.add(new int[]{
+                            from.worldX() + 26, from.worldY() + 13,
+                            to.worldX(),         to.worldY() + 13});
+                }
+                previous = current;
             }
         }
     }
@@ -1235,7 +1312,52 @@ public abstract class BlueprintScreenMixin extends Screen {
             context.fill(screenX, screenY, screenX + nodeW, screenY + nodeH, fill);
 
             townstead$drawNodeIcon(context, node, screenX, screenY, nodeW, nodeH);
+            if (com.aetherianartificer.townstead.client.building.BuildingPinClientStore
+                    .isPinned(node.type().name())) {
+                int marker = Math.max(3, Math.min(5, nodeW / 5));
+                context.fill(screenX + nodeW - marker, screenY, screenX + nodeW, screenY + marker, 0xFFFFD36A);
+            }
         }
+    }
+
+    /** A standard Townstead control: one shared rect drives both drawing and hit-testing. */
+    @Unique
+    private void townstead$drawCatalogPinControl(
+            GuiGraphics context,
+            BuildingType selected,
+            int detailsRight,
+            int detailsMidY,
+            int mouseX,
+            int mouseY) {
+        boolean pinned = com.aetherianartificer.townstead.client.building.BuildingPinClientStore
+                .isPinned(selected.name());
+        String label = Component.translatable(
+                pinned ? "townstead.catalog.unpin" : "townstead.catalog.pin").getString();
+        int width = Math.max(34, this.font.width(label) + 12);
+        townstead$catalogPinRect = new Controls.Rect(
+                detailsRight - width - 4,
+                detailsMidY - Controls.SEG_H - 3,
+                width,
+                Controls.SEG_H);
+        Controls.drawButton(context, this.font, townstead$catalogPinRect, label, pinned,
+                townstead$catalogPinRect.contains(mouseX, mouseY), true);
+    }
+
+    @Unique
+    private void townstead$toggleSelectedCatalogPin() {
+        BuildingType selected = townstead$getSelectedCatalogEntry();
+        if (selected == null) return;
+        boolean pinned = com.aetherianartificer.townstead.client.building.BuildingPinClientStore
+                .isPinned(selected.name());
+        String next = pinned ? "" : selected.name();
+        com.aetherianartificer.townstead.client.building.BuildingPinClientStore.optimistic(next);
+        com.aetherianartificer.townstead.building.pin.BuildingPinSetC2SPayload payload =
+                new com.aetherianartificer.townstead.building.pin.BuildingPinSetC2SPayload(next);
+        //? if neoforge {
+        PacketDistributor.sendToServer(payload);
+        //?} else if forge {
+        /*TownsteadNetwork.sendToServer(payload);
+        *///?}
     }
 
     @Unique
@@ -1369,16 +1491,6 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     @Unique
-    private String townstead$catalogSortKey(BuildingType type) {
-        String name = type.name();
-        String cached = TOWNSTEAD$SORT_KEY_CACHE.get(name);
-        if (cached != null) return cached;
-        String key = townstead$compatGroupLabel(name) + "|" + townstead$displayBuildingName(name);
-        TOWNSTEAD$SORT_KEY_CACHE.put(name, key);
-        return key;
-    }
-
-    @Unique
     private String townstead$compatGroupLabel(String name) {
         String cached = TOWNSTEAD$COMPAT_GROUP_CACHE.get(name);
         if (cached != null) return cached;
@@ -1448,6 +1560,30 @@ public abstract class BlueprintScreenMixin extends Screen {
         return result;
     }
 
+    /**
+     * Resolve a catalog tier from an exact family prefix when possible, then from the universal
+     * terminal {@code _lN} convention. The second form lets a tiered data group use distinct,
+     * player-meaningful stage names without collapsing every node onto tier one.
+     */
+    @Unique
+    private static int townstead$tierNumber(String name, @Nullable String preferredPrefix) {
+        if (name == null) return 0;
+        if (preferredPrefix != null && !preferredPrefix.isEmpty() && name.startsWith(preferredPrefix)) {
+            try {
+                return Integer.parseInt(name.substring(preferredPrefix.length()));
+            } catch (NumberFormatException ignored) {
+                // The group prefix may be broader than the individual stage names.
+            }
+        }
+        int idx = name.lastIndexOf("_l");
+        if (idx <= 0 || idx >= name.length() - 2) return 0;
+        try {
+            return Integer.parseInt(name.substring(idx + 2));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
     @Unique
     private String townstead$modLine(String buildingTypeId) {
         String group = com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
@@ -1473,15 +1609,7 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private String townstead$tierLine(String buildingTypeId) {
-        int tier = -1;
-        if (buildingTypeId.matches(".*_l\\d+$")) {
-            int idx = buildingTypeId.lastIndexOf("_l");
-            try {
-                tier = Integer.parseInt(buildingTypeId.substring(idx + 2));
-            } catch (NumberFormatException ignored) {
-                tier = -1;
-            }
-        }
+        int tier = townstead$tierNumber(buildingTypeId, null);
         if (tier <= 0)
             return null;
         return "Tier " + townstead$roman(tier);
@@ -1542,46 +1670,14 @@ public abstract class BlueprintScreenMixin extends Screen {
      */
     @Unique
     private String townstead$requirementRowName(RequirementRow row, ItemStack shown) {
-        if (shown.isEmpty()) return row.name();
-        if (BuiltInRegistries.BLOCK.containsKey(row.id()) || BuiltInRegistries.ITEM.containsKey(row.id())) {
-            return row.name();
-        }
-        return shown.getHoverName().getString();
+        return com.aetherianartificer.townstead.client.catalog.RequirementNameResolver
+                .displayName(row.id(), shown);
     }
 
     @Unique
     private ItemStack townstead$resolveRequirementIcon(ResourceLocation id, long ticker, int salt) {
-        if (BuiltInRegistries.BLOCK.containsKey(id)) {
-            Item item = BuiltInRegistries.BLOCK.get(id).asItem();
-            return item == null ? ItemStack.EMPTY : new ItemStack(item);
-        }
-        if (BuiltInRegistries.ITEM.containsKey(id)) {
-            Item item = BuiltInRegistries.ITEM.get(id);
-            return item == null ? ItemStack.EMPTY : new ItemStack(item);
-        }
-
-        List<Item> candidates = new ArrayList<>();
-        TagKey<Block> blockTag = TagKey.create(Registries.BLOCK, id);
-        for (Block block : BuiltInRegistries.BLOCK) {
-            if (!block.defaultBlockState().is(blockTag))
-                continue;
-            Item item = block.asItem();
-            if (item == null || item == ItemStack.EMPTY.getItem())
-                continue;
-            candidates.add(item);
-        }
-        if (candidates.isEmpty()) {
-            TagKey<Item> itemTag = TagKey.create(Registries.ITEM, id);
-            for (Item item : BuiltInRegistries.ITEM) {
-                if (item.builtInRegistryHolder().is(itemTag)) {
-                    candidates.add(item);
-                }
-            }
-        }
-        if (candidates.isEmpty())
-            return ItemStack.EMPTY;
-        int idx = (int) Math.floorMod((ticker / 20L) + salt, candidates.size());
-        return new ItemStack(candidates.get(idx));
+        return com.aetherianartificer.townstead.client.catalog.RequirementNameResolver
+                .displayStack(id, ticker, salt);
     }
 
     @Unique

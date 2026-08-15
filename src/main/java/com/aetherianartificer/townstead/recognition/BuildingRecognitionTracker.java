@@ -140,6 +140,7 @@ public final class BuildingRecognitionTracker {
                 .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
         RecognitionEffects.announce(level, centerOf(building), message, ANNOUNCE_RADIUS);
         LOG.info("[Recognition] established '{}' in village {}", typeName, village.getId());
+        com.aetherianartificer.townstead.building.pin.BuildingPinService.onRecognized(level, village, building);
     }
 
     private static void fireUpgraded(ServerLevel level, Village village, int buildingId,
@@ -156,6 +157,7 @@ public final class BuildingRecognitionTracker {
                 .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD);
         RecognitionEffects.announce(level, centerOf(building), message, ANNOUNCE_RADIUS);
         LOG.info("[Recognition] upgraded '{}' -> '{}' in village {}", prevType, newType, village.getId());
+        com.aetherianartificer.townstead.building.pin.BuildingPinService.onRecognized(level, village, building);
     }
 
     /**

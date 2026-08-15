@@ -314,13 +314,17 @@ public record WorkstationDef(
             if (supportBelow.isEmpty() && supportBelowTags.isEmpty()) return null;
         }
 
+        int cookTimeTicks = obj.has("cook_time")
+                ? GsonHelper.getAsInt(obj, "cook_time")
+                : role == StationType.CRAFT_SURFACE ? 1 : 200;
+
         return new WorkstationDef(id, Set.copyOf(blocks), List.copyOf(tags), role,
                 GsonHelper.getAsInt(obj, "container_slot", 7),
                 GsonHelper.getAsInt(obj, "ingredient_slots", 6),
                 List.copyOf(stands),
                 recipeType,
                 GsonHelper.getAsInt(obj, "recipe_tier", 0),
-                GsonHelper.getAsInt(obj, "cook_time", 200),
+                cookTimeTicks,
                 GsonHelper.getAsBoolean(obj, "beverage", false),
                 adapter,
                 Set.copyOf(surfaceBlocks), List.copyOf(surfaceTags),

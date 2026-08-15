@@ -13,6 +13,8 @@ import com.aetherianartificer.townstead.enclosure.EnclosureSuppression;
 import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import com.aetherianartificer.townstead.compat.mca.McaFloorCompat;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
+import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
+import com.aetherianartificer.townstead.recognition.OptionalBuildingRecognition;
 import com.aetherianartificer.townstead.spirit.SpiritReconciler;
 import com.aetherianartificer.townstead.upgrade.BuildingTierReconciler;
 import net.conczin.mca.network.c2s.ReportBuildingMessage;
@@ -45,7 +47,7 @@ public abstract class ReportBuildingMessageMixin {
     // structure), and ADD_FLOOR/ADD_BASEMENT were added. Referencing the
     // constants directly throws NoSuchFieldError on whichever generation
     // dropped one, so match on the name instead and stay generation-agnostic.
-    private static final String TOWNSTEAD$REMOVE = "REMOVE";
+    private static final Set<String> TOWNSTEAD$REMOVE_ACTIONS = Set.of("REMOVE", "REMOVE_ROOM");
     private static final String TOWNSTEAD$AUTO_SCAN = "AUTO_SCAN";
 
     /** Actions where the player may be standing on an open-air dock or in a pen. */
@@ -59,7 +61,7 @@ public abstract class ReportBuildingMessageMixin {
      */
     private static final Set<String> TOWNSTEAD$RECONCILE_ACTIONS =
             Set.of("ADD", "ADD_BUILDING", "ADD_ROOM", "ADD_FLOOR", "ADD_BASEMENT",
-                    "REMOVE", "FULL_SCAN", "AUTO_SCAN");
+                    "REMOVE", "REMOVE_ROOM", "FULL_SCAN", "AUTO_SCAN");
 
     //? if <1.21 {
     /*@Shadow(remap = false)
@@ -82,7 +84,7 @@ public abstract class ReportBuildingMessageMixin {
         ServerLevel level = player.serverLevel();
         BlockPos pos = player.blockPosition();
 
-        if (TOWNSTEAD$REMOVE.equals(actName)) {
+        if (TOWNSTEAD$REMOVE_ACTIONS.contains(actName)) {
             VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
                 Building dock = townstead$findDockAt(v, pos);
                 if (dock != null) {
@@ -92,10 +94,55 @@ public abstract class ReportBuildingMessageMixin {
                 Building enclosure = townstead$findEnclosureAt(v, pos);
                 if (enclosure != null) EnclosureSuppression.suppress(level, v, enclosure);
             });
+            Optional<OptionalBuildingRecognition.Removed> removed =
+                    OptionalBuildingRecognition.remove(level, pos);
+            TOWNSTEAD$LOG.info("Optional building removal action={} pos={} result={}",
+                    actName, pos, removed.map(value -> Integer.toString(value.buildingId())).orElse("none"));
+            if (removed.isPresent()) {
+                Village village = removed.get().village();
+                BuildingTierReconciler.reconcileVillage(village, level);
+                DockLocationIndex.rebuildVillage(level, village);
+                BuildingRecognitionTracker.reconcile(level, village);
+                SpiritReconciler.reconcileVillage(level, village);
+                player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "blueprint.buildingRemoved"), true);
+                McaFloorCompat.pushVillageResponse(player);
+                ci.cancel();
+            }
             return;
         }
 
         if (TOWNSTEAD$SYNTHETIC_SCAN_ACTIONS.contains(actName)) {
+            Optional<OptionalBuildingRecognition.Candidate> optionalCandidate =
+                    OptionalBuildingRecognition.find(level, pos);
+            if (optionalCandidate.isPresent()) {
+                OptionalBuildingRecognition.Candidate candidate = optionalCandidate.get();
+                BuildingEnclosurePolicies.Mode mode = BuildingEnclosurePolicies.modeOf(candidate.typeName());
+                VillageManager manager = VillageManager.get(level);
+                boolean roomWillHandle = mode.allowsRoom()
+                        && OptionalBuildingRecognition.roomCanHandle(manager, pos, actName);
+                if (!roomWillHandle) {
+                    OptionalBuildingRecognition.Registration registration =
+                            OptionalBuildingRecognition.register(level, candidate);
+                    if (registration != OptionalBuildingRecognition.Registration.FAILED) {
+                        manager.findNearestVillage(player).ifPresent(v -> {
+                            BuildingTierReconciler.reconcileVillage(v, level);
+                            DockLocationIndex.rebuildVillage(level, v);
+                            BuildingRecognitionTracker.reconcile(level, v);
+                            SpiritReconciler.reconcileVillage(level, v);
+                        });
+                        if (!TOWNSTEAD$AUTO_SCAN.equals(actName)) {
+                            String message = registration == OptionalBuildingRecognition.Registration.CREATED
+                                    ? "blueprint.buildingAdded" : "blueprint.scan.identical";
+                            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(message), true);
+                            McaFloorCompat.pushVillageResponse(player);
+                            ci.cancel();
+                        }
+                        return;
+                    }
+                }
+            }
+
             // MCA's flood-fill validation fails on open-air structures and
             // shows "Building too small" before our TAIL hook runs. For
             // direct Add/Add Room clicks, if the player is on a dock or
@@ -216,7 +263,7 @@ public abstract class ReportBuildingMessageMixin {
                     // adds/upgrades. REMOVE is excluded so user dismissal
                     // sticks — the suppression HEAD hook records the bounds,
                     // and DockBuildingSync checks it before re-syncing.
-                    if (!TOWNSTEAD$REMOVE.equals(actName)) {
+                    if (!TOWNSTEAD$REMOVE_ACTIONS.contains(actName)) {
                         townstead$detectAndSyncDockFromReport(level, player, v);
                     }
                     DockLocationIndex.rebuildVillage(level, v);

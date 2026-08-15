@@ -1,11 +1,14 @@
 {
   "schema": "townstead:extended_building/v1",
+  "mods": [
+    "kaleidoscope_cookery"
+  ],
   "workers": [
     "townstead:cook",
     "townstead:baker"
   ],
   "catalog": {
-    "node_item": "minecraft:wheat"
+    "node_item": "kaleidoscope_cookery:millstone"
   },
   "spirit": {
     "industrious": 5,

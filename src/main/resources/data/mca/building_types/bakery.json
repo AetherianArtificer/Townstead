@@ -1,0 +1,10 @@
+{
+  "color": "ffcfb487",
+  "visible": true,
+  "priority": 2,
+  "noBeds": true,
+  "blocks": {
+    "minecraft:crafting_table": 1,
+    "#townstead:bakery/ovens": 1
+  }
+}

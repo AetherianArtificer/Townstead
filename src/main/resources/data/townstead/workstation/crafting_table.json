@@ -3,6 +3,5 @@
   "type": "craft_surface",
   "work_task": "townstead_work:craft",
   "blocks": ["minecraft:crafting_table"],
-  "recipe_type": "minecraft:crafting",
-  "cook_time": 80
+  "recipe_type": "minecraft:crafting"
 }

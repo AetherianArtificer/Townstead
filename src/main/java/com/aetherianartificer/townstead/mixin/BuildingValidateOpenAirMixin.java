@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.compat.mca.SyntheticBuildingTypes;
+import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -38,7 +39,9 @@ public abstract class BuildingValidateOpenAirMixin {
     private void townstead$openAirValidate(Level world, Set<BlockPos> blocked,
                                            CallbackInfoReturnable<Building.validationResult> cir) {
         Building self = (Building) (Object) this;
-        if (!SyntheticBuildingTypes.isSynthetic(self.getType())) return;
+        boolean optionalOutdoorForm = BuildingEnclosurePolicies.allowsOpenAir(self.getType())
+                && !self.isStrictScan();
+        if (!SyntheticBuildingTypes.isSynthetic(self.getType()) && !optionalOutdoorForm) return;
         // Inlined equivalent of MCA's Building.validateBlocks (prune stored
         // positions whose world block no longer matches). Not called directly
         // because not every MCA build exposes it on Building; this mixin only

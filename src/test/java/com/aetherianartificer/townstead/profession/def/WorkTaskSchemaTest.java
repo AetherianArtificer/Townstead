@@ -80,13 +80,76 @@ class WorkTaskSchemaTest {
     }
 
     @Test
-    void bakerMillingDoesNotIncludeTheFarmAndCharmMincer() {
+    void bakerHasAVanillaBaselineAndKeepsMillingSeparateFromTheMincer() {
         JsonObject baker = resourceJson("/data/townstead/profession/baker/profession.json");
-        WorkTaskDef milling = WorkTaskDef.parse(
-                baker.getAsJsonArray("work_tasks").get(0).getAsJsonObject());
+        var tasks = baker.getAsJsonArray("work_tasks").asList().stream()
+                .map(entry -> WorkTaskDef.parse(entry.getAsJsonObject()))
+                .toList();
+        assertTrue(tasks.stream().allMatch(java.util.Objects::nonNull),
+                "every shipped Baker task must parse");
 
-        assertNotNull(milling);
-        assertTrue(milling.allowsBlock(id("kaleidoscope_cookery:millstone")));
+        assertFalse(baker.has("mods"), "the Baker must exist in a vanilla-only installation");
+        assertTrue(baker.getAsJsonArray("poi").asList().stream().anyMatch(entry -> {
+                    JsonObject site = entry.getAsJsonObject();
+                    return "townstead:building".equals(site.get("type").getAsString())
+                            && "bakery".equals(site.get("type_prefix").getAsString());
+                }),
+                "the Baker works from a Bakery, not a loose crafting table or a Kitchen");
+
+        JsonObject bakeryBuilding = resourceJson("/data/mca/building_types/bakery.json");
+        assertTrue(bakeryBuilding.get("visible").getAsBoolean());
+        assertEquals(1, bakeryBuilding.getAsJsonObject("blocks")
+                .get("minecraft:crafting_table").getAsInt());
+        assertEquals(1, bakeryBuilding.getAsJsonObject("blocks")
+                .get("#townstead:bakery/ovens").getAsInt());
+        JsonObject bakeryExtension = resourceJson(
+                "/data/townstead/extended_buildings/bakery.json");
+        assertTrue(bakeryExtension.getAsJsonArray("workers").asList().stream()
+                .anyMatch(value -> "townstead:baker".equals(value.getAsString())));
+
+        WorkTaskDef baking = tasks.stream()
+                .filter(task -> task.type().equals(WorkTaskTypes.CRAFT))
+                .findFirst().orElseThrow();
+        assertTrue(baking.allowsBlock(id("minecraft:crafting_table")));
+        assertTrue(baking.recipes().tags().contains(id("townstead:orders/baker_goods")),
+                "the Baker may craft baked goods, not every crafting-table recipe");
+
+        WorkTaskDef oven = tasks.stream()
+                .filter(task -> task.allowsBlock(id("minecraft:furnace")))
+                .findFirst().orElseThrow();
+        assertTrue(oven.allowsBlock(id("minecraft:smoker")));
+        assertTrue(oven.recipes().tags().contains(id("townstead:orders/baker_goods")),
+                "the oven policy must admit newly tagged baking recipes without naming their ids");
+        assertEquals(WorkTaskDef.Scope.WORKSITE, oven.scope(),
+                "the Baker's oven work belongs to the Bakery, not any furnace in the village");
+        assertFalse(oven.recipes().isEmpty(),
+                "a vanilla oven must not turn the Baker into a general-purpose cook or smelter");
+
+        //? if >=1.21 {
+        JsonObject bakerGoods = resourceJson(
+                "/data/townstead/tags/item/orders/baker_goods.json");
+        //?} else {
+        /*JsonObject bakerGoods = resourceJson(
+                "/data/townstead/tags/items/orders/baker_goods.json");
+        *///?}
+        assertFalse(bakerGoods.getAsJsonArray("values").asList().stream()
+                        .anyMatch(value -> value.isJsonPrimitive()
+                                && "minecraft:baked_potato".equals(value.getAsString())),
+                "being cooked in a furnace does not make a potato bakery work");
+        assertTrue(bakerGoods.getAsJsonArray("values").asList().stream()
+                        .filter(com.google.gson.JsonElement::isJsonPrimitive)
+                        .allMatch(value -> value.getAsString().startsWith("minecraft:")),
+                "mod expansions should arrive through semantic tags, not copied product ids");
+        assertTrue(bakerGoods.getAsJsonArray("values").asList().stream()
+                        .filter(com.google.gson.JsonElement::isJsonObject)
+                        .map(com.google.gson.JsonElement::getAsJsonObject)
+                        .anyMatch(value -> "#c:bread".equals(value.get("id").getAsString())),
+                "common tags are the automatic expansion seam for shared stations");
+
+        WorkTaskDef milling = tasks.stream()
+                .filter(task -> task.allowsBlock(id("kaleidoscope_cookery:millstone")))
+                .findFirst().orElseThrow();
+
         assertFalse(milling.allowsBlock(id("farm_and_charm:mincer")),
                 "the mincer is a kitchen processor, not a milling workstation");
 
@@ -99,6 +162,61 @@ class WorkTaskSchemaTest {
                         .noneMatch(value -> value.getAsJsonObject().get("id").getAsString()
                                 .equals("farm_and_charm:mincer")),
                 "a mincer must not satisfy the Mill building's workstation requirement");
+    }
+
+    @Test
+    void bakeryCompatBuildingsKeepTheirSubmittedTierAndWorkforceContracts() {
+        JsonObject baker = resourceJson("/data/townstead/profession/baker/profession.json");
+        var sites = baker.getAsJsonArray("poi").asList().stream()
+                .map(element -> JobSiteProviders.parse(element.getAsJsonObject()))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        assertTrue(sites.stream().anyMatch(site ->
+                        site instanceof JobSiteProvider.Building building
+                                && building.slotsFor("compat/bakery/bread_stand_l1") == 1),
+                "the Bread Stand seats one Baker");
+        assertTrue(sites.stream().anyMatch(site ->
+                        site instanceof JobSiteProvider.Building building
+                                && building.slotsFor("compat/bakery/bake_sale_l2") == 2),
+                "the Bake Sale seats two Bakers");
+        assertTrue(sites.stream().anyMatch(site ->
+                        site instanceof JobSiteProvider.Building building
+                                && building.slotsFor("compat/bakery/bakery_l3") == 3),
+                "the full Bakery seats three Bakers");
+
+        JsonObject stand = resourceJson(
+                "/townstead_compat/building_types/compat/bakery/bread_stand_l1.json")
+                .getAsJsonObject("blocks");
+        assertEquals(1, stand.get("bakery:tray").getAsInt());
+        assertEquals(1, stand.get("#townstead:kitchen/storage").getAsInt());
+        assertEquals(1, stand.get("#townstead:furnace_stations").getAsInt());
+
+        JsonObject sale = resourceJson(
+                "/townstead_compat/building_types/compat/bakery/bake_sale_l2.json")
+                .getAsJsonObject("blocks");
+        assertEquals(1, sale.get("#townstead:compat/bakery/jams").getAsInt(),
+                "any Bakery jam satisfies the submitted Any Jam requirement");
+        assertFalse(sale.has("bakery:jar"),
+                "Any Jam is the jar state, not an extra empty jar requirement");
+        assertEquals(3, sale.get("#townstead:kitchen/storage").getAsInt());
+        assertEquals(2, sale.get("#townstead:furnace_stations").getAsInt());
+
+        JsonObject full = resourceJson(
+                "/townstead_compat/building_types/compat/bakery/bakery_l3.json")
+                .getAsJsonObject("blocks");
+        assertEquals(1, full.get("#townstead:compat/bakery/jams").getAsInt());
+        assertFalse(full.has("bakery:jar"));
+        assertEquals(2, full.get("bakery:baker_station").getAsInt());
+        assertEquals(2, full.get("farm_and_charm:crafting_bowl").getAsInt());
+        assertEquals(1, full.get("bakery:small_cooking_pot").getAsInt());
+
+        for (String type : new String[]{"bread_stand_l1", "bake_sale_l2", "bakery_l3"}) {
+            JsonObject extension = resourceJson(
+                    "/data/townstead/extended_buildings/compat/bakery/" + type + ".json");
+            assertTrue(extension.getAsJsonArray("workers").asList().stream()
+                            .anyMatch(value -> "townstead:baker".equals(value.getAsString())),
+                    type + " explicitly accepts Bakers");
+        }
     }
 
     @Test

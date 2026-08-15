@@ -1,0 +1,19 @@
+{
+  "color": "fff0c880",
+  "visible": true,
+  "priority": 2,
+  "margin": 8,
+  "mergeRange": 6,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 184,
+  "noBeds": true,
+  "blocks": {
+    "bakery:tray": 1,
+    "bakery:iron_table": 1,
+    "bakery:jar": 1,
+    "#townstead:kitchen/storage": 1,
+    "#townstead:furnace_stations": 1,
+    "minecraft:crafting_table": 1
+  }
+}

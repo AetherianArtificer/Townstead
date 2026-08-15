@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.village;
 
 import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
+import com.aetherianartificer.townstead.compat.mca.McaBuildingNbt;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -126,6 +127,7 @@ public final class TownsteadVillageMigration {
         tag.putBoolean("isTypeForced", true);
         tag.putString("type", building.getType());
         tag.putBoolean("strictScan", false);
+        McaBuildingNbt.putDetachedDefaults(tag);
         tag.put("blocks2", compactBlocksNbt(blocks));
         return tag;
     }
@@ -137,11 +139,7 @@ public final class TownsteadVillageMigration {
             int emitted = 0;
             for (BlockPos pos : entry.getValue()) {
                 if (emitted++ >= MCA_SENTINEL_POSITIONS_PER_BLOCK) break;
-                CompoundTag posTag = new CompoundTag();
-                posTag.putInt("x", pos.getX());
-                posTag.putInt("y", pos.getY());
-                posTag.putInt("z", pos.getZ());
-                list.add(posTag);
+                list.add(McaBuildingNbt.blockPos(pos));
             }
             blocks2.put(entry.getKey(), list);
         }

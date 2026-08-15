@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:catalog_group/v1",
+  "label": "Bakeries",
+  "match_prefix": "compat/bakery/",
+  "layout": "tiered",
+  "priority": 10,
+  "supersedes": [
+    "bakery"
+  ]
+}
