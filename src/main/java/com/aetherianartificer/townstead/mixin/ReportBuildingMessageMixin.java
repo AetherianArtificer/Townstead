@@ -12,6 +12,7 @@ import com.aetherianartificer.townstead.enclosure.EnclosureScanner;
 import com.aetherianartificer.townstead.enclosure.EnclosureSuppression;
 import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import com.aetherianartificer.townstead.compat.mca.McaFloorCompat;
+import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
 import com.aetherianartificer.townstead.recognition.OptionalBuildingRecognition;
@@ -31,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 //? if <1.21 {
 /*import org.spongepowered.asm.mixin.Shadow;
 *///?}
@@ -83,6 +85,16 @@ public abstract class ReportBuildingMessageMixin {
         String actName = act.name();
         ServerLevel level = player.serverLevel();
         BlockPos pos = player.blockPosition();
+
+        if ("FORCE_TYPE".equals(actName)) {
+            String requestedType = townstead$reportData();
+            if (CatalogDataLoader.isActiveSupersededBuildingType(requestedType)) {
+                player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "blueprint.scan.invalid_type"), true);
+                ci.cancel();
+                return;
+            }
+        }
 
         if (TOWNSTEAD$REMOVE_ACTIONS.contains(actName)) {
             VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
@@ -235,6 +247,25 @@ public abstract class ReportBuildingMessageMixin {
             if (b.containsPos(pos)) return b;
         }
         return null;
+    }
+
+    @Unique
+    private String townstead$reportData() {
+        try {
+            Object value = getClass().getMethod("data").invoke(this);
+            return value instanceof String text ? text : null;
+        } catch (NoSuchMethodException ignored) {
+            // Plain-class MCA packet shape: fall through to its private field.
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+        try {
+            var field = getClass().getDeclaredField("data");
+            field.setAccessible(true);
+            return field.get(this) instanceof String text ? text : null;
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
     }
 
     //? if >=1.21 {

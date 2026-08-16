@@ -139,12 +139,41 @@ class WorkTaskSchemaTest {
         assertTrue(bakerGoods.getAsJsonArray("values").asList().stream()
                         .filter(com.google.gson.JsonElement::isJsonPrimitive)
                         .allMatch(value -> value.getAsString().startsWith("minecraft:")),
-                "mod expansions should arrive through semantic tags, not copied product ids");
+                "the root policy should stay semantic; provider details belong in child tags");
         assertTrue(bakerGoods.getAsJsonArray("values").asList().stream()
                         .filter(com.google.gson.JsonElement::isJsonObject)
                         .map(com.google.gson.JsonElement::getAsJsonObject)
                         .anyMatch(value -> "#c:bread".equals(value.get("id").getAsString())),
                 "common tags are the automatic expansion seam for shared stations");
+        assertTrue(bakerGoods.getAsJsonArray("values").asList().stream()
+                        .filter(com.google.gson.JsonElement::isJsonObject)
+                        .map(com.google.gson.JsonElement::getAsJsonObject)
+                        .anyMatch(value -> "#townstead:compat/baker_goods/farm_and_charm"
+                                .equals(value.get("id").getAsString())),
+                "Farm & Charm's untagged baking products belong in a data-only provider seam");
+        assertTrue(bakerGoods.getAsJsonArray("values").asList().stream()
+                        .filter(com.google.gson.JsonElement::isJsonObject)
+                        .map(com.google.gson.JsonElement::getAsJsonObject)
+                        .anyMatch(value -> "#townstead:compat/baker_goods/bakery"
+                                .equals(value.get("id").getAsString())),
+                "Bakery's provider supplement must compose into the Baker policy");
+
+        JsonObject farmAndCharmGoods = resourceJson(
+                "/data/townstead/tags/item/compat/baker_goods/farm_and_charm.json");
+        assertTrue(farmAndCharmGoods.getAsJsonArray("values").asList().stream()
+                        .filter(com.google.gson.JsonElement::isJsonObject)
+                        .map(com.google.gson.JsonElement::getAsJsonObject)
+                        .anyMatch(value -> "farm_and_charm:grandmothers_strawberry_cake"
+                                .equals(value.get("id").getAsString())
+                                && !value.get("required").getAsBoolean()),
+                "Farm & Charm's cake is not in a useful upstream cake tag, so compat supplies it");
+        JsonObject bakeryGoods = resourceJson(
+                "/data/townstead/tags/item/compat/baker_goods/bakery.json");
+        assertTrue(bakeryGoods.getAsJsonArray("values").asList().stream()
+                        .filter(com.google.gson.JsonElement::isJsonObject)
+                        .map(com.google.gson.JsonElement::getAsJsonObject)
+                        .anyMatch(value -> "#bakery:jam".equals(value.get("id").getAsString())),
+                "Bakery's own semantic tags should be reused before listing its gaps");
 
         WorkTaskDef milling = tasks.stream()
                 .filter(task -> task.allowsBlock(id("kaleidoscope_cookery:millstone")))
@@ -190,6 +219,10 @@ class WorkTaskSchemaTest {
         assertEquals(1, stand.get("bakery:tray").getAsInt());
         assertEquals(1, stand.get("#townstead:kitchen/storage").getAsInt());
         assertEquals(1, stand.get("#townstead:furnace_stations").getAsInt());
+        assertEquals(1, stand.get("farm_and_charm:stove").getAsInt(),
+                "the Bread Stand must expose Bakery's core stove recipes");
+        assertEquals(1, stand.get("bakery:small_cooking_pot").getAsInt(),
+                "the Bread Stand must be able to make the preserves used by Bakery recipes");
 
         JsonObject sale = resourceJson(
                 "/townstead_compat/building_types/compat/bakery/bake_sale_l2.json")
@@ -198,17 +231,38 @@ class WorkTaskSchemaTest {
                 "any Bakery jam satisfies the submitted Any Jam requirement");
         assertFalse(sale.has("bakery:jar"),
                 "Any Jam is the jar state, not an extra empty jar requirement");
-        assertEquals(3, sale.get("#townstead:kitchen/storage").getAsInt());
+        assertEquals(2, sale.get("#townstead:kitchen/storage").getAsInt());
         assertEquals(2, sale.get("#townstead:furnace_stations").getAsInt());
+        assertEquals(1, sale.get("farm_and_charm:stove").getAsInt(),
+                "every Bakery tier needs the stove that owns its core baking recipes");
+        assertEquals(1, sale.get("farm_and_charm:crafting_bowl").getAsInt(),
+                "the Bake Sale must be able to prepare dough for its advanced recipes");
+        assertEquals(1, sale.get("bakery:baker_station").getAsInt(),
+                "the Bake Sale is where decorated cakes and cupcakes first unlock");
+        assertEquals(1, sale.get("bakery:small_cooking_pot").getAsInt(),
+                "the Bake Sale must make its own jam, chocolate spread, and yeast");
 
         JsonObject full = resourceJson(
                 "/townstead_compat/building_types/compat/bakery/bakery_l3.json")
                 .getAsJsonObject("blocks");
-        assertEquals(1, full.get("#townstead:compat/bakery/jams").getAsInt());
+        assertEquals(1, full.get("bakery:iron_table").getAsInt());
+        assertEquals(3, full.get("#townstead:compat/bakery/jams").getAsInt());
+        assertEquals(2, full.get("bakery:chocolate_jam").getAsInt());
         assertFalse(full.has("bakery:jar"));
         assertEquals(2, full.get("bakery:baker_station").getAsInt());
         assertEquals(2, full.get("farm_and_charm:crafting_bowl").getAsInt());
         assertEquals(1, full.get("bakery:small_cooking_pot").getAsInt());
+
+        var fruitJams = resourceJson("/data/townstead/tags/block/compat/bakery/jams.json")
+                .getAsJsonArray("values").asList().stream()
+                .map(value -> value.getAsJsonObject().get("id").getAsString())
+                .toList();
+        assertEquals(java.util.List.of(
+                "bakery:strawberry_jam",
+                "bakery:sweetberry_jam",
+                "bakery:glowberry_jam",
+                "bakery:apple_jam"), fruitJams,
+                "Chocolate Spread is a distinct requirement, not a fruit-jam alternative");
 
         for (String type : new String[]{"bread_stand_l1", "bake_sale_l2", "bakery_l3"}) {
             JsonObject extension = resourceJson(

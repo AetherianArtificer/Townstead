@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "BabyItemInheritanceMixin",
+    "BuildingMatchingMixin",
     "BuildingTypeSyntheticBlockMixin",
     "BuildingValidateOpenAirMixin",
     "ConfirmBuildingPolymorphMessageMixin",
@@ -45,6 +46,7 @@
     "MessengerVoiceMixin",
     "VillagerHungerMixin",
     "VillageOptionalBuildingMixin",
+    "VillageManagerBuildingMatchingMixin",
     "VillagerServerTickMixin",
     "LivingEntityPowerCacheMixin",
     "WalkNodeEvaluatorFenceGateMixin",
@@ -81,6 +83,7 @@
     "compat.stardewhud.StardewHudSeasonMixin",
     "compat.travelerstitles.TitleRendererSubtitleClearMixin",
     "compat.timekeeper.TimekeeperReturnTimeMixin",
+    "BuildingPolymorphScreenMixin",
     "BlueprintScreenMixin",
     "BlueprintScreenLegacyIconMixin",
     "WidgetUtilsBuildingIconMixin",

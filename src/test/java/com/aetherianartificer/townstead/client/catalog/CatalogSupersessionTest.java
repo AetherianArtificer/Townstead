@@ -34,4 +34,34 @@ class CatalogSupersessionTest {
 
         assertEquals(Set.of(), hidden);
     }
+
+    @Test
+    void polymorphCandidatesHideSupersededFallbackAndPreserveOrder() {
+        List<String> visible = CatalogDataLoader.withoutActiveSupersededBuildingTypes(
+                List.of("bakery", "compat/bakery/bread_stand_l1", "house"),
+                List.of("bakery", "compat/bakery/bread_stand_l1", "house"),
+                List.of(BAKERIES));
+
+        assertEquals(List.of("compat/bakery/bread_stand_l1", "house"), visible);
+    }
+
+    @Test
+    void polymorphCandidatesKeepFallbackWhenProviderIsUnavailable() {
+        List<String> visible = CatalogDataLoader.withoutActiveSupersededBuildingTypes(
+                List.of("bakery", "house"),
+                List.of("bakery", "house"),
+                List.of(BAKERIES));
+
+        assertEquals(List.of("bakery", "house"), visible);
+    }
+
+    @Test
+    void recognitionRejectsSupersededFallbackEvenWhenItWasTheOnlyMatch() {
+        List<String> recognized = CatalogDataLoader.withoutActiveSupersededBuildingTypesStrict(
+                List.of("bakery"),
+                List.of("bakery", "compat/bakery/bread_stand_l1"),
+                List.of(BAKERIES));
+
+        assertEquals(List.of(), recognized);
+    }
 }

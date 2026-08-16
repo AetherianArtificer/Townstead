@@ -14,6 +14,8 @@
     "bakery:jar": 1,
     "#townstead:kitchen/storage": 1,
     "#townstead:furnace_stations": 1,
+    "farm_and_charm:stove": 1,
+    "bakery:small_cooking_pot": 1,
     "minecraft:crafting_table": 1
   }
 }

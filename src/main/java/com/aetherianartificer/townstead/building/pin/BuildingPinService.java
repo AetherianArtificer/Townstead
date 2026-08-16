@@ -1,9 +1,14 @@
 package com.aetherianartificer.townstead.building.pin;
 
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
+import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
+import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.server.world.data.Building;
+//? if neoforge {
+import net.conczin.mca.server.world.data.BuildingFloorRegion;
+//?}
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -27,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.lang.reflect.Method;
 
 /**
  * Server-side owner of catalog building pins.
@@ -40,6 +46,8 @@ public final class BuildingPinService {
     private static final String TAG_TYPE = "TownsteadBuildingPin";
     private static final String TAG_DIMENSION = "TownsteadBuildingPinDimension";
     private static final String TAG_VILLAGE = "TownsteadBuildingPinVillage";
+    private static final Method ANALYZE_BUILDING = findAnalyzeBuildingMethod();
+    private static final Method SCAN_BUILDING = findScanBuildingMethod();
 
     private BuildingPinService() {}
 
@@ -52,6 +60,10 @@ public final class BuildingPinService {
             return;
         }
         if (typeName.length() > 256 || !BuildingTypes.getInstance().getBuildingTypes().containsKey(typeName)) {
+            sync(player);
+            return;
+        }
+        if (CatalogDataLoader.isActiveSupersededBuildingType(typeName)) {
             sync(player);
             return;
         }
@@ -156,18 +168,10 @@ public final class BuildingPinService {
     }
 
     private static Building currentBuilding(Village village, net.minecraft.core.BlockPos pos) {
-        Building nearby = null;
-        int nearbyDistance = Integer.MAX_VALUE;
         for (Building building : McaBuildings.all(village)) {
             if (building.containsPos(pos)) return building;
-            if (!containsWithMargin(building, pos, 2, 2)) continue;
-            int distance = building.getCenter().distManhattan(pos);
-            if (distance < nearbyDistance) {
-                nearby = building;
-                nearbyDistance = distance;
-            }
         }
-        return nearby;
+        return null;
     }
 
     private static boolean matchesRequirements(BuildingType type, Building building) {
@@ -176,22 +180,6 @@ public final class BuildingPinService {
             if (groups.getOrDefault(requirement.getKey(), List.of()).size() < requirement.getValue()) return false;
         }
         return true;
-    }
-
-    /** Cross-MCA-version equivalent of the newer Building.containsPositionWithMargin helper. */
-    private static boolean containsWithMargin(Building building, net.minecraft.core.BlockPos pos,
-                                              int horizontal, int vertical) {
-        net.minecraft.core.BlockPos a = building.getPos0();
-        net.minecraft.core.BlockPos b = building.getPos1();
-        int minX = Math.min(a.getX(), b.getX()) - horizontal;
-        int maxX = Math.max(a.getX(), b.getX()) + horizontal;
-        int minY = Math.min(a.getY(), b.getY()) - vertical;
-        int maxY = Math.max(a.getY(), b.getY()) + vertical;
-        int minZ = Math.min(a.getZ(), b.getZ()) - horizontal;
-        int maxZ = Math.max(a.getZ(), b.getZ()) + horizontal;
-        return pos.getX() >= minX && pos.getX() <= maxX
-                && pos.getY() >= minY && pos.getY() <= maxY
-                && pos.getZ() >= minZ && pos.getZ() <= maxZ;
     }
 
     private static Map<ResourceLocation, Integer> inventoryGroups(ServerPlayer player, BuildingType type) {
@@ -209,11 +197,21 @@ public final class BuildingPinService {
 
     private static Map<ResourceLocation, Integer> placedGroups(ServerPlayer player, BuildingType type,
                                                                Building current) {
-        Map<ResourceLocation, Integer> result = new HashMap<>();
         if (current != null) {
-            type.getGroups(current.getBlocks()).forEach((group, positions) -> result.put(group, positions.size()));
-            return result;
+            return liveBuildingGroups(player.serverLevel(), type, current);
         }
+
+        // Before a room is committed, ask MCA to flood-fill the same candidate footprint its
+        // Add Room action will use. This keeps a neighbouring building's stations out of the
+        // checklist while still updating live as blocks are placed inside the new room.
+        Building preview = previewRoom(player.serverLevel(), player.blockPosition());
+        if (preview != null) {
+            return liveBuildingGroups(player.serverLevel(), type, preview);
+        }
+
+        // Enclosed buildings must never fall back to a proximity estimate. The old 10-block
+        // radius made a stove in an adjacent kitchen count toward a not-yet-recognized Bakery.
+        if (!BuildingEnclosurePolicies.allowsOpenAir(type.name())) return Map.of();
 
         // Open-air grouped sites do not have an MCA room boundary while they are being assembled.
         // A small, non-chunk-loading fallback keeps their checklist useful until recognition gives
@@ -221,19 +219,102 @@ public final class BuildingPinService {
         ServerLevel level = player.serverLevel();
         net.minecraft.core.BlockPos origin = player.blockPosition();
         net.minecraft.core.BlockPos.MutableBlockPos cursor = new net.minecraft.core.BlockPos.MutableBlockPos();
-        Map<ResourceLocation, ResourceLocation> blockToGroup = type.getBlockToGroup();
+        Map<ResourceLocation, Integer> result = new HashMap<>();
         for (int y = origin.getY() - 5; y <= origin.getY() + 5; y++) {
             for (int x = origin.getX() - 10; x <= origin.getX() + 10; x++) {
                 for (int z = origin.getZ() - 10; z <= origin.getZ() + 10; z++) {
                     cursor.set(x, y, z);
                     if (!level.hasChunkAt(cursor)) continue;
-                    ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(cursor).getBlock());
-                    ResourceLocation group = blockToGroup.get(block);
-                    if (group != null) result.merge(group, 1, Integer::sum);
+                    countLiveBlock(level, cursor, type, result);
                 }
             }
         }
         return result;
+    }
+
+    private static Building previewRoom(ServerLevel level, net.minecraft.core.BlockPos origin) {
+        if (ANALYZE_BUILDING == null || SCAN_BUILDING == null) return null;
+        try {
+            Object scan = ANALYZE_BUILDING.invoke(VillageManager.get(level), origin, true);
+            Object building = SCAN_BUILDING.invoke(scan);
+            return building instanceof Building candidate ? candidate : null;
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static Method findAnalyzeBuildingMethod() {
+        try {
+            return VillageManager.class.getMethod(
+                    "analyzeBuilding", net.minecraft.core.BlockPos.class, boolean.class);
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+    }
+
+    private static Method findScanBuildingMethod() {
+        if (ANALYZE_BUILDING == null) return null;
+        try {
+            return ANALYZE_BUILDING.getReturnType().getMethod("building");
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Counts the world's current block states inside MCA's recognized room footprint.
+     * {@link Building#getBlocks()} is the snapshot from the last recognition scan and therefore
+     * cannot drive a live construction checklist.
+     */
+    private static Map<ResourceLocation, Integer> liveBuildingGroups(ServerLevel level, BuildingType type,
+                                                                     Building building) {
+        Map<ResourceLocation, Integer> result = new HashMap<>();
+        //? if neoforge {
+        net.minecraft.core.BlockPos a = building.getRawPos0();
+        net.minecraft.core.BlockPos b = building.getRawPos1();
+        //?} else if forge {
+        /*net.minecraft.core.BlockPos a = building.getPos0();
+        net.minecraft.core.BlockPos b = building.getPos1();
+        *///?}
+        int minX = Math.min(a.getX(), b.getX());
+        int maxX = Math.max(a.getX(), b.getX());
+        int minY = Math.min(a.getY(), b.getY()) - 1;
+        int maxY = Math.max(a.getY(), b.getY());
+        int minZ = Math.min(a.getZ(), b.getZ());
+        int maxZ = Math.max(a.getZ(), b.getZ());
+        //? if neoforge {
+        List<BuildingFloorRegion> footprint = building.getFloorRegions();
+        //?}
+        net.minecraft.core.BlockPos.MutableBlockPos cursor = new net.minecraft.core.BlockPos.MutableBlockPos();
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                //? if neoforge {
+                boolean insideFootprint = footprint.isEmpty();
+                for (BuildingFloorRegion region : footprint) {
+                    if (region.containsHorizontally(x, z)) {
+                        insideFootprint = true;
+                        break;
+                    }
+                }
+                if (!insideFootprint) continue;
+                //?}
+                for (int y = minY; y <= maxY; y++) {
+                    cursor.set(x, y, z);
+                    if (!level.hasChunkAt(cursor)) continue;
+                    countLiveBlock(level, cursor, type, result);
+                }
+            }
+        }
+        return result;
+    }
+
+    private static void countLiveBlock(ServerLevel level, net.minecraft.core.BlockPos pos, BuildingType type,
+                                       Map<ResourceLocation, Integer> result) {
+        var state = level.getBlockState(pos);
+        if (!type.matchesBlock(state)) return;
+        ResourceLocation block = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        ResourceLocation group = type.getBlockToGroup().get(block);
+        if (group != null) result.merge(group, 1, Integer::sum);
     }
 
     private static void save(ServerPlayer player, Pin pin) {
@@ -246,7 +327,8 @@ public final class BuildingPinService {
     private static Pin load(ServerPlayer player) {
         CompoundTag data = player.getPersistentData();
         String type = data.getString(TAG_TYPE);
-        if (type.isBlank() || !BuildingTypes.getInstance().getBuildingTypes().containsKey(type)) {
+        if (type.isBlank() || !BuildingTypes.getInstance().getBuildingTypes().containsKey(type)
+                || CatalogDataLoader.isActiveSupersededBuildingType(type)) {
             clearSaved(player);
             return null;
         }

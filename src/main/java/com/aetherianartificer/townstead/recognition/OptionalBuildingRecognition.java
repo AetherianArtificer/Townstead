@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.recognition;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.mca.McaBuildingNbt;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
+import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import com.aetherianartificer.townstead.village.TownsteadVillageSavedData;
 import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
@@ -80,6 +81,7 @@ public final class OptionalBuildingRecognition {
         for (Map.Entry<String, BuildingEnclosurePolicies.Mode> policy
                 : BuildingEnclosurePolicies.snapshot().entrySet()) {
             if (!policy.getValue().allowsOpenAir()) continue;
+            if (CatalogDataLoader.isActiveSupersededBuildingType(policy.getKey())) continue;
             BuildingType type = BuildingTypes.getInstance().getBuildingTypes().get(policy.getKey());
             if (type == null) continue;
             Candidate candidate = collect(level, origin, policy.getKey(), type);
@@ -192,6 +194,7 @@ public final class OptionalBuildingRecognition {
         double nearestDistance = Double.MAX_VALUE;
         for (Building building : McaBuildings.all(village)) {
             if (!BuildingEnclosurePolicies.modeOf(building.getType()).allowsOpenAir()) continue;
+            if (CatalogDataLoader.isActiveSupersededBuildingType(building.getType())) continue;
             BuildingType type = BuildingTypes.getInstance().getBuildingTypes().get(building.getType());
             int reach = type == null ? 2 : Math.max(1, type.getMargin());
             double distance = distanceToBoundsSqr(building, origin);

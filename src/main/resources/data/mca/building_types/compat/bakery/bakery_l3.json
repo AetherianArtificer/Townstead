@@ -7,8 +7,9 @@
   "iconV": 204,
   "noBeds": true,
   "blocks": {
-    "bakery:iron_table": 4,
-    "#townstead:compat/bakery/jams": 1,
+    "bakery:iron_table": 1,
+    "#townstead:compat/bakery/jams": 3,
+    "bakery:chocolate_jam": 2,
     "bakery:breadbox": 2,
     "bakery:brick_counter": 5,
     "bakery:wall_cabinet": 3,

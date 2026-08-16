@@ -250,6 +250,9 @@ public final class OrdersService {
         if (path.startsWith(OrderTags.CATEGORY_PREFIX)) {
             path = path.substring(OrderTags.CATEGORY_PREFIX.length());
         }
+        // The tag names who owns the policy; the player-facing category names what it contains.
+        // Keep the stable datapack id so existing orders and extensions continue to resolve.
+        if (path.equals("baker_goods")) return "Baked Goods";
         String words = path.replace('_', ' ').replace('/', ' ');
         return words.isEmpty() ? path
                 : Character.toUpperCase(words.charAt(0)) + words.substring(1);

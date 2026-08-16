@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.village;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
@@ -122,6 +123,9 @@ public final class VillageSanitizer {
     }
 
     private static String staleReason(TownsteadVillageSavedData.VillageRecord record, int buildingId, String type) {
+        if (CatalogDataLoader.isActiveSupersededBuildingType(type)) {
+            return "superseded by an installed building provider";
+        }
         if (!ModCompat.isCompatAvailable(type)) {
             return "compat mod '" + ModCompat.extractCompatModId(type) + "' is not loaded";
         }

@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#farm_and_charm:bread", "required": false },
+    { "id": "farm_and_charm:butter", "required": false },
+    { "id": "farm_and_charm:dough", "required": false },
+    { "id": "farm_and_charm:flour", "required": false },
+    { "id": "farm_and_charm:yeast", "required": false },
+    { "id": "farm_and_charm:oat_pancake", "required": false },
+    { "id": "farm_and_charm:grandmothers_strawberry_cake", "required": false }
+  ]
+}

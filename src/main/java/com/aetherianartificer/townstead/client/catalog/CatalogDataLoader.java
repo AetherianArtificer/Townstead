@@ -21,6 +21,8 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.conczin.mca.resources.BuildingTypes;
+import net.conczin.mca.resources.data.BuildingType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -608,6 +610,70 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
      */
     public static Set<String> activeSupersededBuildingTypes(Collection<String> availableBuildingTypes) {
         return activeSupersededBuildingTypes(availableBuildingTypes, GROUPS);
+    }
+
+    /** True when an installed provider currently replaces this fallback building type. */
+    public static boolean isActiveSupersededBuildingType(String buildingType) {
+        return buildingType != null && activeSupersededBuildingTypes(availableBuildingTypeNames())
+                .contains(buildingType);
+    }
+
+    /**
+     * Removes building types superseded by an installed provider while preserving MCA's
+     * original candidate order. This is shared by MCA surfaces outside Townstead's catalog,
+     * such as the building-polymorph chooser.
+     */
+    public static List<String> withoutActiveSupersededBuildingTypes(Collection<String> candidates) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        List<String> available = availableBuildingTypeNames();
+        return withoutActiveSupersededBuildingTypes(candidates, available, GROUPS);
+    }
+
+    /**
+     * Authoritative recognition filter. Unlike the polymorph-screen helper, this deliberately
+     * permits an empty result: if only a superseded fallback matches the room, MCA must reject
+     * the room instead of silently creating the obsolete building type.
+     */
+    public static List<String> withoutActiveSupersededBuildingTypesForRecognition(
+            Collection<String> candidates) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        return withoutActiveSupersededBuildingTypesStrict(candidates, availableBuildingTypeNames(), GROUPS);
+    }
+
+    private static List<String> availableBuildingTypeNames() {
+        return BuildingTypes.getInstance().getBuildingTypes().values().stream()
+                .filter(BuildingType::visible)
+                .filter(type -> ModCompat.isCompatAvailable(type.name()))
+                .filter(type -> !overrideFor(type.name()).hide())
+                .map(BuildingType::name)
+                .toList();
+    }
+
+    static List<String> withoutActiveSupersededBuildingTypes(
+            Collection<String> candidates,
+            Collection<String> availableBuildingTypes,
+            Collection<GroupDef> groups) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        Set<String> superseded = activeSupersededBuildingTypes(availableBuildingTypes, groups);
+        if (superseded.isEmpty()) return List.copyOf(candidates);
+        List<String> filtered = candidates.stream()
+                .filter(type -> !superseded.contains(type))
+                .toList();
+        // Never turn MCA's chooser into an unusable empty screen if a malformed data pack
+        // declares every matching type superseded.
+        return filtered.isEmpty() ? List.copyOf(candidates) : filtered;
+    }
+
+    static List<String> withoutActiveSupersededBuildingTypesStrict(
+            Collection<String> candidates,
+            Collection<String> availableBuildingTypes,
+            Collection<GroupDef> groups) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        Set<String> superseded = activeSupersededBuildingTypes(availableBuildingTypes, groups);
+        if (superseded.isEmpty()) return List.copyOf(candidates);
+        return candidates.stream()
+                .filter(type -> !superseded.contains(type))
+                .toList();
     }
 
     static Set<String> activeSupersededBuildingTypes(

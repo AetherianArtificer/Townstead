@@ -12,6 +12,12 @@ class OrdersServiceTest {
     private static final ResourceLocation COFFEE = ResourceLocation.tryParse("rusticdelight:coffee");
 
     @Test
+    void bakerCategoryUsesTheProductNameWithoutChangingItsStableTagId() {
+        assertEquals("Baked Goods", OrdersService.categoryLabel(
+                ResourceLocation.tryParse("townstead:orders/baker_goods")));
+    }
+
+    @Test
     void fullyClaimedOrderRemainsWorkingUntilItsOutputIsDelivered() {
         Order order = new Order(COFFEE, Order.Mode.MAKE, 10);
         OrderContext context = new EmptyContext();

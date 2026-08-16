@@ -16,10 +16,6 @@
     {
       "id": "bakery:apple_jam",
       "required": false
-    },
-    {
-      "id": "bakery:chocolate_jam",
-      "required": false
     }
   ]
 }
