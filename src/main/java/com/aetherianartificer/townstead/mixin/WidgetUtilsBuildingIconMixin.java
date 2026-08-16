@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.mixin;
 
-//? if neoforge {
 import com.aetherianartificer.townstead.compat.BuildingIconSwap;
 import net.conczin.mca.client.gui.widget.WidgetUtils;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,12 +10,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * New floor-system MCA choke point for grouped (POI) building icons. MCA moved
- * icon drawing out of {@code BlueprintScreen.drawBuildingIcon} into this static
- * helper; we swap in a {@code townsteadNodeItem} here when the icon's
+ * MCA building-icon choke point used by both the 1.20.1 hybrid backport and the
+ * newer floor-system builds. MCA delegates icon drawing to this static helper;
+ * we swap in a Townstead node item when the icon's
  * {@code (u, v)} slot maps to one.
  *
- * <p>Applied only when the runtime MCA exposes the new API. See
+ * <p>Applied only when the runtime MCA exposes {@code WidgetUtils}. See
  * {@code TownsteadMixinPlugin} and the legacy counterpart
  * {@code BlueprintScreenLegacyIconMixin}.
  */
@@ -30,6 +29,3 @@ public class WidgetUtilsBuildingIconMixin {
         }
     }
 }
-//?} else {
-/*public abstract class WidgetUtilsBuildingIconMixin {}
-*///?}

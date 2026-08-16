@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
+import com.aetherianartificer.townstead.compat.mca.McaRegistryCompat;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
@@ -14,7 +15,6 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
-import net.conczin.mca.registry.ProfessionsMCA;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -172,13 +172,8 @@ public final class HungerVillagerTicker {
 
     private static boolean isGuardPatrolling(VillagerEntityMCA self) {
         var profession = self.getVillagerData().getProfession();
-        //? if neoforge {
-        return (profession == ProfessionsMCA.GUARD || profession == ProfessionsMCA.ARCHER)
+        return McaRegistryCompat.isGuardOrArcher(profession)
                 && currentScheduleActivity(self) == Activity.WORK;
-        //?} else {
-        /*return (profession == ProfessionsMCA.GUARD.get() || profession == ProfessionsMCA.ARCHER.get())
-                && currentScheduleActivity(self) == Activity.WORK;
-        *///?}
     }
 
     private static boolean isResting(VillagerEntityMCA self) {

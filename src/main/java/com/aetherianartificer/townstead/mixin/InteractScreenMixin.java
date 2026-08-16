@@ -344,7 +344,7 @@ public abstract class InteractScreenMixin extends Screen {
     //?} else {
     /*@ModifyArg(method = "drawTextPopups", remap = false,
             at = @At(value = "INVOKE", remap = false,
-                    target = "Lforge/net/mca/client/gui/InteractScreen;hoveringOverText(III)Z"),
+                    target = "Lnet/conczin/mca/client/gui/InteractScreen;hoveringOverText(III)Z"),
             index = 1)
     *///?}
     private int townstead$shiftTraitsHoverY(int y) {

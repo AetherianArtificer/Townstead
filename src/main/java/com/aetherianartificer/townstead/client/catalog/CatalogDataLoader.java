@@ -86,7 +86,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         THEME = Theme.DEFAULT;
         BuildingSpiritIndex.clear();
         EnclosureTypeIndex.clear();
-        BuildingIconResolver.invalidate();
+        BuildingIconResolver.beginBuildingTypeReload();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation location = entry.getKey();
@@ -122,6 +122,9 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
         scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies);
         BuildingSpawnPolicies.replaceAll(spawnPolicies);
+        // The icon-to-type index and node-item overrides are now both complete.
+        // Clear any negative result cached while parallel reload listeners ran.
+        BuildingIconResolver.invalidate();
         DATA_THEME = THEME;
         CLIENT_THEME_RESOURCE_MANAGER = null;
 
@@ -243,6 +246,12 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
                 JsonObject json = GSON.fromJson(reader, JsonObject.class);
                 if (json == null) continue;
+                int iconU = GsonHelper.getAsInt(json, "iconU", 0);
+                int iconV = GsonHelper.getAsInt(json, "iconV", 0);
+                if (GsonHelper.getAsBoolean(json, "icon", false) || iconU != 0 || iconV != 0) {
+                    // MCA exposes atlas coordinates after applying these scale factors.
+                    BuildingIconResolver.registerBuildingTypeIcon(buildingType, iconU * 20, iconV * 60);
+                }
                 // Cache every type's blocks + priority so an extended_buildings enclosure block can
                 // derive its perimeter/interior from the MCA building definition without re-reading.
                 blocksByType.put(buildingType, readBlocks(json, location));

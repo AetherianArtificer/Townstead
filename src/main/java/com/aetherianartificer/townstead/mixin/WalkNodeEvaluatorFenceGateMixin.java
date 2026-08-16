@@ -15,17 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 //?} else {
-/*import forge.net.mca.entity.ai.pathfinder.ExtendedPathNodeType;
-import forge.net.mca.entity.ai.pathfinder.VillagerLandPathNodeMaker;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.block.FenceGateBlock;
-import net.minecraft.world.level.block.state.BlockState;
-import org.spongepowered.asm.mixin.Pseudo;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-*///?}
+//?}
 
 /**
  * Make MCA villagers treat closed fence gates the same way they treat
@@ -43,22 +33,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * @Shadow} only walks the target class itself and would fail to locate
  * the field, refusing the whole apply step.
  *
- * <p>On 1.20.1 Forge, MCA &le;7.6.26 villagers do not use vanilla {@link
- * WalkNodeEvaluator}; they install their own {@code
- * VillagerLandPathNodeMaker}. The Forge branch targets that evaluator
- * directly and returns MCA's {@code WALKABLE_DOOR} extended type for
- * closed fence gates, preserving the same door-opening flow without
- * relying on fragile inherited-field shadowing. MCA 7.6.27+ deleted that
- * class in favor of a vanilla-based evaluator; Pseudo lets the Forge
- * branch skip silently there (the config is required, so a missing hard
- * target would otherwise be fatal at startup) and
- * {@link WalkNodeEvaluatorFenceGateVanillaMixin} covers the rebadge.
+ * <p>On the current 1.20.1 backport, the equivalent SRG-named hook lives in
+ * {@link WalkNodeEvaluatorFenceGateVanillaMixin}. This class stays as an empty
+ * mixin on that branch so the shared mixin list remains stable.
  */
 //? if >=1.21 {
 @Mixin(WalkNodeEvaluator.class)
 //?} else {
-/*@Pseudo
-@Mixin(VillagerLandPathNodeMaker.class)
+/*@Mixin(WalkNodeEvaluator.class)
 *///?}
 public abstract class WalkNodeEvaluatorFenceGateMixin extends NodeEvaluator {
     //? if >=1.21 {
@@ -83,39 +65,4 @@ public abstract class WalkNodeEvaluatorFenceGateMixin extends NodeEvaluator {
         }
     }
     //?}
-    //? if forge {
-    /*@Inject(method = "getCommonNodeType", remap = false, at = @At("RETURN"), cancellable = true)
-    private static void townstead$rebadgeMcaFenceGateForVillagers(
-            BlockGetter level, BlockPos pos,
-            CallbackInfoReturnable<ExtendedPathNodeType> cir) {
-        ExtendedPathNodeType type = cir.getReturnValue();
-        if (type != ExtendedPathNodeType.FENCE && type != ExtendedPathNodeType.BLOCKED) return;
-        try {
-            BlockState state = level.getBlockState(pos);
-            if (state.getBlock() instanceof FenceGateBlock && !state.getValue(FenceGateBlock.OPEN)) {
-                cir.setReturnValue(ExtendedPathNodeType.DOOR_WOOD_CLOSED);
-            }
-        } catch (Throwable ignored) {
-        }
-    }
-
-    @Inject(method = "adjustNodeType", remap = false, at = @At("RETURN"), cancellable = true)
-    private void townstead$makeMcaFenceGateWalkableDoor(
-            BlockGetter level, boolean canOpenDoors, boolean canEnterOpenDoors, BlockPos pos,
-            ExtendedPathNodeType nodeType, CallbackInfoReturnable<ExtendedPathNodeType> cir) {
-        ExtendedPathNodeType type = cir.getReturnValue();
-        if (type != ExtendedPathNodeType.FENCE
-                && type != ExtendedPathNodeType.BLOCKED
-                && type != ExtendedPathNodeType.DOOR_WOOD_CLOSED) {
-            return;
-        }
-        try {
-            BlockState state = level.getBlockState(pos);
-            if (state.getBlock() instanceof FenceGateBlock && !state.getValue(FenceGateBlock.OPEN)) {
-                cir.setReturnValue(ExtendedPathNodeType.WALKABLE_DOOR);
-            }
-        } catch (Throwable ignored) {
-        }
-    }
-    *///?}
 }

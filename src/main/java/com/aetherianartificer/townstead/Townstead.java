@@ -79,7 +79,11 @@ import com.aetherianartificer.townstead.thirst.ThirstSetPayload;
 import com.aetherianartificer.townstead.thirst.ThirstSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.interaction.gifts.GiftPredicate;
+//? if neoforge {
 import net.conczin.mca.registry.ProfessionsMCA;
+//?} else {
+/*import net.conczin.mca.ProfessionsMCA;
+*///?}
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;

@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.mixin;
 
-//? if neoforge {
 import com.aetherianartificer.townstead.compat.BuildingIconSwap;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
@@ -30,6 +29,3 @@ public class BlueprintMapRendererIconMixin {
         }
     }
 }
-//?} else {
-/*public abstract class BlueprintMapRendererIconMixin {}
-*///?}
