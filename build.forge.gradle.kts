@@ -3,14 +3,26 @@ plugins {
     id("net.minecraftforge.gradle") version "[6.0,6.2)"
 }
 
+val legacyMcaNamespace = project.name.endsWith("-legacy")
+
 stonecutter {
     const("neoforge", false)
     const("forge", true)
+    if (legacyMcaNamespace) {
+        replacements {
+            // The released Forge MCA line uses forge.net.mca, while the 1.20.1
+            // backport-improvements line migrated those same classes to
+            // net.conczin.mca. Compile a distinct artifact for each namespace.
+            string(true) { replace("net.conczin.mca.registry", "forge.net.mca") }
+            string(true) { replace("net.conczin.mca", "forge.net.mca") }
+            string(true) { replace("net/conczin/mca", "forge/net/mca") }
+        }
+    }
 }
 
 version = "${property("mod_version")}+${stonecutter.current.version}"
 group = property("mod_group") as String
-base.archivesName.set("townstead")
+base.archivesName.set(if (legacyMcaNamespace) "townstead-mca-legacy" else "townstead-mca-modern")
 
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 
@@ -51,7 +63,13 @@ jarJar.enable()
 
 dependencies {
     "minecraft"("net.minecraftforge:forge:1.20.1-47.3.0")
-    compileOnly(files("${rootProject.projectDir}/libs/mca-forge-7.7.0-beta.2+1.20.1.jar"))
+    compileOnly(files(
+        if (legacyMcaNamespace) {
+            "${rootProject.projectDir}/libs/mca-forge-legacy-7.7.0-beta.2+1.20.1-universal.jar"
+        } else {
+            "${rootProject.projectDir}/libs/mca-forge-7.7.0-beta.2+1.20.1.jar"
+        }
+    ))
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("mixin_extras_version")}")!!)
     implementation(jarJar("io.github.llamalad7:mixinextras-forge:${property("mixin_extras_version")}")) {
         jarJar.ranged(this, "[0.5.4,0.6)")
@@ -67,7 +85,10 @@ dependencies {
     testImplementation(files(sourceSets.main.get().compileClasspath))
 }
 
-layout.buildDirectory.set(file("${rootProject.projectDir}/.cache/townstead-build-1.20.1-forge"))
+layout.buildDirectory.set(file(
+    "${rootProject.projectDir}/.cache/townstead-build-1.20.1-forge" +
+        if (legacyMcaNamespace) "-legacy" else "-modern"
+))
 
 tasks.withType<ProcessResources> {
     val replaceProperties = mapOf("version" to project.version)
@@ -134,7 +155,10 @@ tasks.named<Jar>("jar") {
     // unclassified jarJar artifact configured below.
     archiveClassifier.set("slim")
     manifest {
-        attributes("MixinConfigs" to "townstead.mixins.json")
+        attributes(
+            "MixinConfigs" to "townstead.mixins.json",
+            "Townstead-MCA-Namespace" to if (legacyMcaNamespace) "forge.net.mca" else "net.conczin.mca"
+        )
     }
     finalizedBy("reobfJar")
 }
@@ -142,7 +166,10 @@ tasks.named<Jar>("jar") {
 tasks.named<Jar>("jarJar") {
     archiveClassifier.set("")
     manifest {
-        attributes("MixinConfigs" to "townstead.mixins.json")
+        attributes(
+            "MixinConfigs" to "townstead.mixins.json",
+            "Townstead-MCA-Namespace" to if (legacyMcaNamespace) "forge.net.mca" else "net.conczin.mca"
+        )
     }
     finalizedBy("reobfJarJar")
 }
