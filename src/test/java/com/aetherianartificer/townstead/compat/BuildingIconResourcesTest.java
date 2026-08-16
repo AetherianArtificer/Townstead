@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.compat;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,7 +34,17 @@ class BuildingIconResourcesTest {
 
                 String type = extendedRoot.relativize(extended).toString().replace('\\', '/');
                 type = type.substring(0, type.length() - ".json".length());
-                assertFalse(catalog.get("node_item").getAsString().isBlank(), type + " has an empty node_item");
+                JsonElement nodeItem = catalog.get("node_item");
+                List<JsonElement> candidates = nodeItem.isJsonArray()
+                        ? nodeItem.getAsJsonArray().asList()
+                        : List.of(nodeItem);
+                assertFalse(candidates.isEmpty(), type + " has an empty node_item list");
+                for (JsonElement candidate : candidates) {
+                    assertTrue(candidate.isJsonPrimitive()
+                                    && candidate.getAsJsonPrimitive().isString()
+                                    && !candidate.getAsString().isBlank(),
+                            type + " has an invalid node_item candidate");
+                }
 
                 Path buildingFile = buildingTypeResource(type);
                 JsonObject building = read(buildingFile);

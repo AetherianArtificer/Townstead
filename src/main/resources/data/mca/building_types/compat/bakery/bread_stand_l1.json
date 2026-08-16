@@ -6,7 +6,7 @@
   "mergeRange": 6,
   "icon": false,
   "iconU": 240,
-  "iconV": 184,
+  "iconV": 204,
   "noBeds": true,
   "blocks": {
     "bakery:tray": 1,

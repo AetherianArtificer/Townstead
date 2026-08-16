@@ -4,7 +4,7 @@
   "priority": 4,
   "icon": true,
   "iconU": 242,
-  "iconV": 184,
+  "iconV": 204,
   "noBeds": true,
   "blocks": {
     "bakery:iron_table": 4,
