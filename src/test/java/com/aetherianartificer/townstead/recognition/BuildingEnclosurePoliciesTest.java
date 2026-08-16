@@ -62,7 +62,7 @@ class BuildingEnclosurePoliciesTest {
         assertFalse(mca.has("grouped"),
                 "grouped would make Bread Stand outdoor-only instead of optional");
         assertFalse(mca.get("icon").getAsBoolean(),
-                "the open-air form should render its footprint instead of MCA's point-only external marker");
+                "the outdoor form should retain its real footprint; Townstead overlays its item icon");
     }
 
     private static JsonObject resource(String path) throws Exception {
