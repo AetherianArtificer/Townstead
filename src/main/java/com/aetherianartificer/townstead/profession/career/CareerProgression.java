@@ -91,6 +91,19 @@ public final class CareerProgression {
     /** Rank-up is the loop's payoff: name the new rank and any skill points it brought. */
     private static void notifyTierUps(LivingEntity worker,
                                       Map<ResourceLocation, ProfessionProgress.GainResult> gains) {
+        // Reaching a rank is a moment in the work engine, so the chronicle hears about it
+        // whether or not anyone is here to be told: villagers rank up too.
+        for (Map.Entry<ResourceLocation, ProfessionProgress.GainResult> entry : gains.entrySet()) {
+            ProfessionProgress.GainResult gain = entry.getValue();
+            if (!gain.tierUp()) continue;
+            ProfessionDef def = ProfessionDefs.byId(entry.getKey());
+            if (def == null) continue;
+            com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(worker,
+                    com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.MASTERED,
+                    entry.getKey(), null, gain.tierAfter(),
+                    Map.of("career", def.displayName().getString(),
+                            "rank", def.levelName(gain.tierAfter()).getString()));
+        }
         if (!(worker instanceof Player player)) return;
         boolean any = false;
         for (Map.Entry<ResourceLocation, ProfessionProgress.GainResult> entry : gains.entrySet()) {
@@ -127,6 +140,9 @@ public final class CareerProgression {
         com.aetherianartificer.townstead.profession.def.ComboSkills.invalidate(worker);
         for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.computeUnlocked(worker)) {
             if (before.contains(combo.id())) continue;
+            com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(worker,
+                    com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.LEARNED_CRAFT,
+                    combo.id(), null, 1f, Map.of("craft", combo.displayName().getString()));
             if (worker instanceof Player player) {
                 player.displayClientMessage(Component.translatable(
                         "townstead.career.combo_unlocked", combo.displayName()), false);

@@ -96,6 +96,28 @@ dependencies {
     testImplementation(files(sourceSets.main.get().compileClasspath))
 }
 
+// Offline Chronicles harness; see the neoforge script for why it is not in src/test.
+val sim by sourceSets.creating {
+    java.setSrcDirs(listOf(rootProject.file("src/sim/java")))
+    resources.setSrcDirs(emptyList<File>())
+}
+
+dependencies {
+    "simImplementation"(files(sourceSets.main.get().compileClasspath))
+    "simImplementation"(sourceSets.main.get().output)
+}
+
+// Only the active version registers it; see the neoforge script.
+if (stonecutter.current.isActive) {
+    tasks.register<JavaExec>("chronicleSim") {
+        group = "verification"
+        description = "Fabricate chronicles offline and print them (no Minecraft launch)."
+        mainClass.set("com.aetherianartificer.townstead.chronicle.sim.ChronicleSimMain")
+        classpath = sim.runtimeClasspath
+        workingDir = rootProject.projectDir
+    }
+}
+
 layout.buildDirectory.set(file(
     "${rootProject.projectDir}/.cache/townstead-build-1.20.1-forge" +
         if (legacyMcaNamespace) "-legacy" else "-modern"

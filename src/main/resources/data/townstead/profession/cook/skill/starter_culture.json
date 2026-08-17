@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Starter Culture"
+    "text": "[PLACEHOLDER] COOK SKILL 08"
   },
-  "icon": "minecraft:wheat_seeds",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "A jar of dough kept alive on the shelf. It makes everything else easier."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/starter_culture."
   },
   "tier": 1,
   "cost": 1,

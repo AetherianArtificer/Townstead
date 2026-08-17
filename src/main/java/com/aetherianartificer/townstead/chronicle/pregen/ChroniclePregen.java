@@ -1,29 +1,19 @@
 package com.aetherianartificer.townstead.chronicle.pregen;
 
-import com.aetherianartificer.townstead.calendar.CalendarProfile;
-import com.aetherianartificer.townstead.calendar.TownsteadCalendar;
 import com.aetherianartificer.townstead.calendar.WorldCalendarSavedData.VillageKey;
-import com.aetherianartificer.townstead.chronicle.Chronicles;
-import com.aetherianartificer.townstead.chronicle.arc.ArcManager;
-import com.aetherianartificer.townstead.chronicle.concept.ConceptLedger;
-import com.aetherianartificer.townstead.chronicle.knowledge.AccountLedger;
-import com.aetherianartificer.townstead.chronicle.knowledge.DistortionOverlay;
-import com.aetherianartificer.townstead.chronicle.knowledge.SpreadChannel;
-import com.aetherianartificer.townstead.chronicle.model.Arc;
 import com.aetherianartificer.townstead.chronicle.model.ChronicleEvent;
 import com.aetherianartificer.townstead.chronicle.model.ChronicleRef;
 import com.aetherianartificer.townstead.chronicle.model.Participation;
 import com.aetherianartificer.townstead.chronicle.model.VillageHistory;
-import com.aetherianartificer.townstead.chronicle.store.ChronicleSavedData;
-import com.aetherianartificer.townstead.chronicle.template.ChronicleEventRegistry;
 import com.aetherianartificer.townstead.chronicle.template.ChronicleEventTemplate;
+import com.aetherianartificer.townstead.chronicle.world.ChronicleSubject;
+import com.aetherianartificer.townstead.chronicle.world.ChronicleWorld;
+import com.aetherianartificer.townstead.chronicle.world.ServerChronicleWorld;
 import com.aetherianartificer.townstead.reaction.WeightedPicker;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.conczin.mca.entity.ai.relationship.Gender;
-import net.conczin.mca.resources.Names;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -41,6 +31,9 @@ import java.util.UUID;
  * a re-roll reproduces the same past. Impacts never execute — elders get
  * seeded memories/accounts instead. This is seeded mythology: distorted old
  * accounts that outlive their events are the myths of the culture layer.
+ *
+ * <p>Generation runs against {@link ChronicleWorld}, so the offline harness in
+ * {@code src/sim} drives this same code with fabricated values.</p>
  */
 public final class ChroniclePregen {
 
@@ -48,47 +41,54 @@ public final class ChroniclePregen {
     private static final long SEED_MIX = 0x5EEDC0DEL;
     private static final int RESIDENT_BIND_WINDOW_YEARS = 25;
     private static final int MAX_ANCESTORS = 8;
+    private static final int REUSE_ATTEMPTS = 4;
+    /** Elders remember the recent past well, but they were not always there. */
+    private static final float ELDER_FIDELITY = 0.9f;
 
     private ChroniclePregen() {}
 
     public static void generate(MinecraftServer server, VillageKey key, long birthDay,
                                 boolean playerFounded, List<VillagerEntityMCA> residents) {
-        ChronicleSavedData data = ChronicleSavedData.get(server);
-        VillageHistory existing = data.historyIfPresent(key);
-        if (existing != null && !existing.entries().isEmpty()) return;
+        generate(new ServerChronicleWorld(server), key, birthDay, playerFounded,
+                ServerChronicleWorld.subjects(residents));
+    }
 
-        long today = TownsteadCalendar.worldDay(server);
-        CalendarProfile profile = TownsteadCalendar.activeProfile(server);
-        int dpy = profile != null && profile.daysPerYear() > 0 ? profile.daysPerYear() : 360;
+    public static void generate(ChronicleWorld world, VillageKey key, long birthDay,
+                                boolean playerFounded, List<ChronicleSubject> residents) {
+        if (world.hasHistory(key)) return;
+
+        long today = world.today();
+        int dpy = world.daysPerYear();
         RandomSource rng = RandomSource.create(
                 (long) key.villageId() ^ key.dimension().toString().hashCode() * 0x9E3779B97F4A7C15L ^ SEED_MIX);
 
-        ConceptLedger concepts = ConceptLedger.get(server);
         List<ChronicleRef> ancestors = new ArrayList<>();
-        ChronicleRef founder = newAncestor(concepts, key, birthDay, rng);
-        ancestors.add(founder);
+        ChronicleRef founder = freshAncestor(ancestors, world, key, birthDay, rng);
 
-        Arc arc = ArcManager.open(server, "prehistory", key.villageId(), birthDay, Map.of());
+        long arcId = world.openArc("prehistory", key.villageId(), birthDay, Map.of());
 
-        ChronicleEventTemplate foundingTemplate = ChronicleEventRegistry.byId(
-                rl("townstead", "village_founded"));
+        ChronicleEventTemplate foundingTemplate = world.template(rl("townstead", "village_founded"));
         if (foundingTemplate != null) {
-            recordPregenEvent(server, data, key, foundingTemplate, birthDay, arc.arcId(),
+            // A founding is a founding: no magnitude spread on the one event that defines the place.
+            recordPregenEvent(world, key, foundingTemplate, birthDay, arcId, 1.0f,
                     List.of(new Participation(foundingTemplate.primaryRole().id(), founder)),
                     Map.of(foundingTemplate.primaryRole().id(), founder.displayName()));
         }
 
         if (playerFounded) {
-            ArcManager.close(server, arc.arcId(), birthDay);
+            world.closeArc(arcId, birthDay);
             return;
         }
 
         List<ChronicleEventTemplate> pool = new ArrayList<>();
-        for (ChronicleEventTemplate template : ChronicleEventRegistry.all().values()) {
-            if (template.contexts().contains(ChronicleEventTemplate.Context.PREGEN)
-                    && (foundingTemplate == null || !template.id().equals(foundingTemplate.id()))) {
-                pool.add(template);
-            }
+        Map<ResourceLocation, Map<String, List<ResourceLocation>>> paramPools = new HashMap<>();
+        for (ChronicleEventTemplate template : world.templates().values()) {
+            if (!template.contexts().contains(ChronicleEventTemplate.Context.PREGEN)) continue;
+            if (foundingTemplate != null && template.id().equals(foundingTemplate.id())) continue;
+            Map<String, List<ResourceLocation>> resolved = PregenParams.resolve(template, world);
+            if (resolved == null) continue;
+            paramPools.put(template.id(), resolved);
+            pool.add(template);
         }
 
         List<ChronicleEvent> recent = new ArrayList<>();
@@ -107,122 +107,80 @@ public final class ChroniclePregen {
             boolean bindable = today - day <= (long) RESIDENT_BIND_WINDOW_YEARS * dpy;
             for (ChronicleEventTemplate.RoleSpec role : template.roles()) {
                 ChronicleRef ref = bindable
-                        ? bindResident(residents, participations, role)
+                        ? PregenPeople.bindResident(residents, participations, role, rng)
                         : null;
-                if (ref == null) ref = pickAncestor(ancestors, concepts, key, birthDay, rng);
+                if (ref == null) {
+                    ref = pickAncestor(ancestors, participations, world, key, birthDay, rng);
+                }
                 participations.add(new Participation(role.id(), ref));
                 params.put(role.id(), ref.displayName());
             }
+            PregenParams.fill(world, params, paramPools.get(template.id()), rng);
 
-            ChronicleEvent event = recordPregenEvent(server, data, key, template, day,
-                    arc.arcId(), participations, params);
+            ChronicleEvent event = recordPregenEvent(world, key, template, day, arcId,
+                    PregenMagnitude.draw(rng, template), participations, params);
             if (bindable) recent.add(event);
             count++;
         }
-        ArcManager.close(server, arc.arcId(), today - 1);
+        world.closeArc(arcId, today - 1);
 
-        seedElderMemories(server, residents, recent, rng);
+        seedElderMemories(world, residents, recent, rng);
     }
 
-    private static ChronicleEvent recordPregenEvent(MinecraftServer server, ChronicleSavedData data,
-                                                    VillageKey key, ChronicleEventTemplate template,
-                                                    long day, long arcId,
+    private static ChronicleEvent recordPregenEvent(ChronicleWorld world, VillageKey key,
+                                                    ChronicleEventTemplate template,
+                                                    long day, long arcId, float magnitude,
                                                     List<Participation> participations,
                                                     Map<String, String> params) {
         ChronicleEvent draft = new ChronicleEvent(
                 0L, template.id(), day, 0L, key.dimension(), 0L, key.villageId(),
-                template.category(), 1.0f, template.reach(), ChronicleEvent.NONE, arcId,
+                template.category(), magnitude, template.reach(), ChronicleEvent.NONE, arcId,
                 true, participations, params);
-        long eventId = Chronicles.record(server, draft);
-        Chronicles.recordDigestEntry(server, key, new VillageHistory.Entry(
+        long eventId = world.record(draft);
+        world.recordDigestEntry(key, new VillageHistory.Entry(
                 day, eventId, template.id().toString(),
                 template.display().headlineLiteral(), template.display().headlineLangKey(), params));
         return draft.withId(eventId);
     }
 
-    private static @Nullable ChronicleRef bindResident(List<VillagerEntityMCA> residents,
-                                                       List<Participation> alreadyBound,
-                                                       ChronicleEventTemplate.RoleSpec role) {
-        if (role.kind() != ChronicleRef.Kind.VILLAGER) return null;
-        ChronicleEventTemplate.PregenFilter filter = role.pregen();
-        outer:
-        for (VillagerEntityMCA resident : residents) {
-            if (resident.isBaby()) continue;
-            if (filter != null && filter.age() != null && "baby".equals(filter.age())) continue;
-            for (Participation bound : alreadyBound) {
-                if (resident.getUUID().equals(bound.ref().uuid())) continue outer;
-            }
-            if (filter != null && filter.profession() != null
-                    && !filter.profession().equals(professionId(resident))) {
-                continue;
-            }
-            return ChronicleRef.villager(resident.getUUID(), resident.getName().getString());
-        }
-        return null;
-    }
-
-    private static String professionId(VillagerEntityMCA villager) {
-        try {
-            var key = net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION
-                    .getKey(villager.getVillagerData().getProfession());
-            return key == null ? "" : key.toString();
-        } catch (Throwable t) {
-            return "";
-        }
-    }
-
-    private static ChronicleRef pickAncestor(List<ChronicleRef> ancestors, ConceptLedger concepts,
+    private static ChronicleRef pickAncestor(List<ChronicleRef> ancestors,
+                                             List<Participation> alreadyBound, ChronicleWorld world,
                                              VillageKey key, long birthDay, RandomSource rng) {
         if (ancestors.size() < MAX_ANCESTORS && rng.nextFloat() < 0.4f) {
-            ChronicleRef fresh = newAncestor(concepts, key, birthDay, rng);
-            ancestors.add(fresh);
-            return fresh;
+            return freshAncestor(ancestors, world, key, birthDay, rng);
         }
-        return ancestors.get(rng.nextInt(ancestors.size()));
+        // Nobody may hold two roles in one event: a wedding needs two people.
+        for (int attempt = 0; attempt < REUSE_ATTEMPTS; attempt++) {
+            ChronicleRef candidate = ancestors.get(rng.nextInt(ancestors.size()));
+            if (!PregenPeople.isBound(alreadyBound, candidate)) return candidate;
+        }
+        return freshAncestor(ancestors, world, key, birthDay, rng);
     }
 
-    private static ChronicleRef newAncestor(ConceptLedger concepts, VillageKey key,
-                                            long foundingDay, RandomSource rng) {
-        UUID id = new UUID(rng.nextLong(), rng.nextLong());
-        String name;
-        try {
-            name = Names.pickCitizenName(rng.nextBoolean() ? Gender.FEMALE : Gender.MALE);
-        } catch (Throwable t) {
-            name = "Elder " + Integer.toHexString(id.hashCode() & 0xFFFF);
-        }
-        String conceptId = "ancestor:" + id;
-        concepts.put(new ConceptLedger.ConceptEntry(conceptId, "ancestor", name, "", foundingDay, key));
-        return ChronicleRef.concept(conceptId, name);
+    private static ChronicleRef freshAncestor(List<ChronicleRef> ancestors, ChronicleWorld world,
+                                              VillageKey key, long birthDay, RandomSource rng) {
+        ChronicleRef fresh = PregenPeople.fabricate(
+                world, key, PregenPeople.KIND_ANCESTOR, birthDay, rng);
+        ancestors.add(fresh);
+        return fresh;
     }
 
     /** Long-time residents remember the recent slice of the fabricated past. */
-    private static void seedElderMemories(MinecraftServer server,
-                                          List<VillagerEntityMCA> residents,
+    private static void seedElderMemories(ChronicleWorld world,
+                                          List<ChronicleSubject> residents,
                                           List<ChronicleEvent> recentEvents,
                                           RandomSource rng) {
         if (recentEvents.isEmpty()) return;
-        ChronicleSavedData data = ChronicleSavedData.get(server);
         int seeded = 0;
-        for (VillagerEntityMCA resident : residents) {
-            if (resident.isBaby() || seeded >= 3) break;
+        for (ChronicleSubject resident : residents) {
+            if (resident.baby() || seeded >= 3) break;
             int memoriesToSeed = 1 + rng.nextInt(2);
             for (int i = 0; i < memoriesToSeed && i < recentEvents.size(); i++) {
                 ChronicleEvent event = recentEvents.get(rng.nextInt(recentEvents.size()));
-                ChronicleEventTemplate template = ChronicleEventRegistry.byId(event.templateId());
+                ChronicleEventTemplate template = world.template(event.templateId());
                 if (template == null) continue;
-                AccountLedger.learn(server, template, event, resident.getUUID(), false,
-                        null, SpreadChannel.WITNESS, ChronicleEvent.NONE, 0.9f,
-                        DistortionOverlay.NONE, event.worldDay());
-                float valence = 0.3f;
-                float strength = 1.0f;
-                ChronicleEventTemplate.Impact impact = template.impacts().get("on_learn");
-                if (impact != null && impact.memory() != null) {
-                    valence = impact.memory().valence();
-                    strength = Math.max(0.5f, impact.memory().strength());
-                }
-                UUID other = firstVillagerParticipant(event, resident.getUUID());
-                data.addOrReinforceMemory(resident.getUUID(), event.templateId().toString(),
-                        other, event.worldDay(), strength, valence, event.params());
+                PregenMemories.remember(world, template, event, resident.uuid(), null,
+                        ELDER_FIDELITY, event.worldDay());
             }
             seeded++;
         }

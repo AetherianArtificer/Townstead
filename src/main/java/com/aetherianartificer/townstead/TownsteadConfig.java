@@ -100,6 +100,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ModConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
@@ -184,6 +185,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
@@ -510,6 +512,15 @@ public final class TownsteadConfig {
                 .comment("Block tags (e.g. modid:tag_name) treated as protected storage.")
                 .defineListAllowEmpty("protectedStorageTags", List.of("townstead:protected_food_storage"),
                         TownsteadConfig::isValidResourceLocationString);
+        b.pop();
+
+        // ── MCA building compatibility ──
+        b.translation("townstead.configuration.mca_buildings").push("mca_buildings");
+        ENABLE_MCA_BUILDING_DISCOVERY = b
+                .translation("townstead.configuration.mca_buildings.enableDiscoveryBridge")
+                .comment("Ask MCA to rescan a room after Townstead building-signature blocks change.",
+                         "This fixes automatic discovery for modded appliances that are not vanilla POIs.")
+                .define("enableDiscoveryBridge", true);
         b.pop();
 
         // ── Chef's Delight ──

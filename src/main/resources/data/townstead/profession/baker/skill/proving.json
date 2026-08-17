@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Proving"
+    "text": "[PLACEHOLDER] BAKER SKILL 04"
   },
-  "icon": "minecraft:wheat",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Give dough the time it wants. Slower work, better bread."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/proving."
   },
   "tier": 1,
   "cost": 1,

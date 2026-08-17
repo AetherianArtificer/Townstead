@@ -30,6 +30,11 @@ public record ChronicleRef(Kind kind, @Nullable UUID uuid, int intA, int intB,
             Kind[] values = values();
             return ordinal >= 0 && ordinal < values.length ? values[ordinal] : CONCEPT;
         }
+
+        /** People, whoever is playing them: a role written for a villager fits a player. */
+        public boolean isPerson() {
+            return this == VILLAGER || this == PLAYER;
+        }
     }
 
     public ChronicleRef {

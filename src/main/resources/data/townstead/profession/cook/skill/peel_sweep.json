@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Peel Sweep"
+    "text": "[PLACEHOLDER] COOK SKILL 03"
   },
-  "icon": "minecraft:iron_shovel",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "A full swing of the peel, which is longer than anyone expects."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/peel_sweep."
   },
   "tier": 5,
   "cost": 1,

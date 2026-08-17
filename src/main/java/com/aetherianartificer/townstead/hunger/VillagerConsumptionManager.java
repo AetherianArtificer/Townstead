@@ -5,6 +5,8 @@ import com.aetherianartificer.townstead.compat.mca.McaSicknessAdapter;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.needs.Consumables;
+import com.aetherianartificer.townstead.needs.NeedEffectProjection;
 import com.aetherianartificer.townstead.root.needs.NeedSuppression;
 import com.aetherianartificer.townstead.storage.EmptyContainerDropoff;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
@@ -92,7 +94,7 @@ public final class VillagerConsumptionManager {
         /*if (stack.getFoodProperties(null) != null) return true;
         *///?}
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
-        return bridge != null && bridge.itemRestoresThirst(stack);
+        return Consumables.hasEffects(stack) || bridge != null && bridge.itemRestoresThirst(stack);
     }
 
     /**
@@ -134,8 +136,16 @@ public final class VillagerConsumptionManager {
     public static boolean applyConsumption(VillagerEntityMCA holder, VillagerEntityMCA recipient,
                                            ItemStack stack, TownsteadVillager.Needs recipientNeeds, BlockPos source) {
         returnRemainder(holder, stack, source);
+        int beforeThirst = recipientNeeds.thirst();
+        int beforeQuenched = recipientNeeds.quenched();
+        int beforeFatigue = recipientNeeds.fatigue();
+        NeedEffectProjection configured = Consumables.projection(stack);
+        Consumables.apply(recipient, stack);
+        if (!configured.energizes()) FatigueData.applyCoffeeEffect(recipient, stack);
         boolean changed = applyFoodBenefits(recipient, stack, recipientNeeds);
         changed |= applyThirstBenefits(recipient, stack, recipientNeeds);
+        changed |= recipientNeeds.thirst() != beforeThirst || recipientNeeds.quenched() != beforeQuenched
+                || recipientNeeds.fatigue() != beforeFatigue;
         return changed;
     }
 
@@ -162,6 +172,9 @@ public final class VillagerConsumptionManager {
         float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(villager);
         needs.applyFood(food, foodScale);
         needs.setLastAteTime(villager.level().getGameTime());
+        NeedEffectProjection configured = Consumables.projection(stack);
+        Consumables.apply(villager, stack);
+        if (!configured.energizes()) FatigueData.applyCoffeeEffect(villager, stack);
         recordSapientMeal(villager, stack);
     }
 
@@ -198,13 +211,15 @@ public final class VillagerConsumptionManager {
         if (stack.is(Items.CHORUS_FRUIT) && TownsteadConfig.ENABLE_CHORUS_FRUIT_TELEPORT.get()) {
             chorusTeleport(recipient);
         }
-        FatigueData.applyCoffeeEffect(recipient, stack);
         return needs.hunger() != before;
     }
 
     /** Applies thirst/quenched (with water purity sickness/poison) for thirst-restoring items. */
     private static boolean applyThirstBenefits(VillagerEntityMCA recipient, ItemStack stack, TownsteadVillager.Needs needs) {
         if (!TownsteadConfig.isVillagerThirstEnabled()) return false;
+        // pheno:hydrate already ran through the consumable definition above. The configured
+        // bridge exposes it to selection/scoring, but must not apply the same benefit twice.
+        if (Consumables.suppliesHydration(stack)) return false;
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
         if (bridge == null || !bridge.itemRestoresThirst(stack)) return false;
 

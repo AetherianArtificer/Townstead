@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Stone Wisdom"
+    "text": "[PLACEHOLDER] COOK SKILL 12"
   },
-  "icon": "minecraft:smooth_stone",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "You know what the oven is doing from the sound of it."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/stone_wisdom."
   },
   "tier": 5,
   "cost": 1,

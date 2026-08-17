@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Steady Hand"
+    "text": "[PLACEHOLDER] SCRIBE SKILL 02"
   },
-  "icon": "minecraft:feather",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Earn 1 additional Scribe XP whenever record work is completed."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for scribe/steady_hand."
   },
   "tier": 2,
   "cost": 1,

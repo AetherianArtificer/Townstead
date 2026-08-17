@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Long Ledger"
+    "text": "[PLACEHOLDER] SCRIBE SKILL 01"
   },
-  "icon": "minecraft:lantern",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Earn additional Scribe XP that scales with the size of the work."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for scribe/long_ledger."
   },
   "tier": 3,
   "cost": 2,

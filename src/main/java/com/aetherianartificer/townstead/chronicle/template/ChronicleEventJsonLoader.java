@@ -45,7 +45,13 @@ public final class ChronicleEventJsonLoader extends SimpleJsonResourceReloadList
             try {
                 var obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
                 TownsteadSchema.validate(obj, "townstead:chronicle_event/v1");
-                parsed.put(file, ChronicleEventTemplate.parse(file, obj, lang));
+                ChronicleEventTemplate template = ChronicleEventTemplate.parse(file, obj, lang);
+                parsed.put(file, template);
+                for (String param : template.unfillablePregenParams()) {
+                    diagnostics.add(Diagnostic.warning(file, "$.display.params",
+                            "pre-history cannot fill display param '" + param + "'",
+                            "no pregen role carries it, so the fabricated headline renders blank"));
+                }
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse chronicle_event {}: {}", file, ex.getMessage());
                 diagnostics.add(Diagnostic.error(file, "$", ex.getMessage() == null

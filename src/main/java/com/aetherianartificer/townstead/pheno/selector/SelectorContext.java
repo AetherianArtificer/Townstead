@@ -26,6 +26,7 @@ public final class SelectorContext {
     private final LivingEntity origin;
     private final Level level;
     private final Vec3 pos;
+    private final @Nullable com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject;
     private final Map<String, List<BlockPos>> blockRoles;
     private final @Nullable Predicate<BlockPos> defaultBlockMembership;
     private final @Nullable Integer villageId;
@@ -51,6 +52,31 @@ public final class SelectorContext {
         this.defaultBlockMembership = defaultBlockMembership;
         this.villageId = villageId;
         this.reservations = reservations;
+        this.subject = null;
+    }
+
+    /**
+     * A frame with no world in it: someone described by facts rather than
+     * standing somewhere. Spatial sources have nothing to anchor on here, so only
+     * values and selectors that declare they can work from a subject may use it
+     * (the same discipline conditions follow).
+     */
+    private SelectorContext(com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject) {
+        this.self = null;
+        this.other = null;
+        this.origin = null;
+        this.level = null;
+        this.pos = Vec3.ZERO;
+        this.blockRoles = Map.of();
+        this.defaultBlockMembership = null;
+        this.villageId = null;
+        this.reservations = null;
+        this.subject = subject;
+    }
+
+    /** Non-null exactly when this frame describes someone not in the world. */
+    public @Nullable com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject() {
+        return subject;
     }
 
     public static SelectorContext of(ActionContext ctx) {
@@ -59,6 +85,7 @@ public final class SelectorContext {
     }
 
     public static SelectorContext of(ConditionContext ctx) {
+        if (ctx.subject() != null) return new SelectorContext(ctx.subject());
         return new SelectorContext(ctx.entity(), null, ctx.entity(), ctx.level(), ctx.entity().position());
     }
 

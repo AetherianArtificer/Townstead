@@ -3,6 +3,11 @@
   "values": [
     { "id": "#bakery:bread", "required": false },
     { "id": "#bakery:jam", "required": false },
+    { "id": "bakery:apple_jam", "required": false },
+    { "id": "bakery:chocolate_jam", "required": false },
+    { "id": "bakery:glowberry_jam", "required": false },
+    { "id": "bakery:strawberry_jam", "required": false },
+    { "id": "bakery:sweetberry_jam", "required": false },
     { "id": "bakery:cake_dough", "required": false },
     { "id": "bakery:sweet_dough", "required": false },
     { "id": "bakery:croissant", "required": false },

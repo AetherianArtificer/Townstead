@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Seasoned Hands"
+    "text": "[PLACEHOLDER] COOK SKILL 07"
   },
-  "icon": "minecraft:bowl",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Earn 1 additional Cook XP whenever a dish is completed."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/seasoned_hands."
   },
   "tier": 1,
   "cost": 1,

@@ -6,6 +6,8 @@ import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.FishermanLineRenderer;
 import com.aetherianartificer.townstead.hunger.FishingRodCastPredicates;
+import com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore;
+import com.aetherianartificer.townstead.needs.NeedEffectProjection;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
 import com.aetherianartificer.townstead.fatigue.EnergyTooltipComponent;
@@ -156,6 +158,7 @@ public final class TownsteadClient {
         clearClientStore("com.aetherianartificer.townstead.profession.ProfessionClientStore");
         clearClientStore("com.aetherianartificer.townstead.village.VillageResidentClientStore");
         clearClientStore("com.aetherianartificer.townstead.calendar.CalendarStampClientStore");
+        clearClientStore("com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.species.InvisFade");
     }
 
@@ -216,9 +219,14 @@ public final class TownsteadClient {
     //? if neoforge {
 
     private static void onGatherTooltipComponents(RenderTooltipEvent.GatherComponents event) {
-        if (FatigueData.isEnergyRestoring(event.getItemStack())) {
+        NeedEffectProjection configured = ConsumableEffectsClientStore.projection(event.getItemStack());
+        int energy = configured.energy();
+        if (energy <= 0 && event.getItemStack().is(FatigueData.ENERGY_RESTORING_TAG)) {
+            energy = FatigueData.ENERGY_RESTORE_AMOUNT;
+        }
+        if (energy > 0) {
             event.getTooltipElements().add(Either.right(
-                    new EnergyTooltipComponent(FatigueData.ENERGY_RESTORE_AMOUNT)));
+                    new EnergyTooltipComponent(energy)));
         }
     }
     //?}

@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Steam Bake"
+    "text": "[PLACEHOLDER] BAKER SKILL 07"
   },
-  "icon": "minecraft:bucket",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "A splash of water in a hot oven, for crust that crackles."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/steam_bake."
   },
   "tier": 3,
   "cost": 1,

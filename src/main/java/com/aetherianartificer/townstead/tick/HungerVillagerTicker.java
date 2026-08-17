@@ -132,6 +132,10 @@ public final class HungerVillagerTicker {
         boolean starving = needs.hunger() <= 0;
         if (starving && !state.wasStarving) {
             com.aetherianartificer.townstead.hunger.CannibalismPolicy.onStarvation(level, self);
+            // The moment hunger becomes starvation, not every tick of it.
+            com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.survival(self,
+                    com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.STARVING,
+                    java.util.Map.of());
         }
         state.wasStarving = starving;
 

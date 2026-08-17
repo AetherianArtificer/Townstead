@@ -3,25 +3,82 @@
   "category": "social.conflict",
   "weight": 8,
   "rarity": "common",
-  "contexts": ["live", "pregen"],
-  "trigger": { "type": "social", "key": "townstead:argument" },
+  "contexts": [
+    "live",
+    "pregen"
+  ],
+  "trigger": {
+    "type": "social",
+    "key": "townstead:argument"
+  },
   "cooldown_days": 1,
   "reach": "village",
-  "news_value": 2.5,
+  "news_value": 2.0,
   "roles": [
-    { "id": "instigator", "kind": "villager", "pregen": { "age": "adult" } },
-    { "id": "target", "kind": "villager", "pregen": { "age": "adult" } }
+    {
+      "id": "instigator",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      }
+    },
+    {
+      "id": "target",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      }
+    }
   ],
-  "witnesses": { "radius": 12.0, "max": 6 },
+  "witnesses": {
+    "radius": 12.0,
+    "max": 6
+  },
   "display": {
-    "headline": { "translate": "chronicle.townstead.public_argument" },
-    "params": ["instigator", "target"]
+    "headline": {
+      "translate": "chronicle.townstead.public_argument"
+    },
+    "params": [
+      "instigator",
+      "target"
+    ]
   },
   "impact": {
-    "instigator": { "mood": -2.0, "memory": { "valence": -0.5, "strength": 0.8 } },
-    "target": { "mood": -2.0, "memory": { "valence": -0.6, "strength": 0.8 } },
-    "witness": { "mood": -0.5, "memory": { "valence": -0.3, "strength": 0.4 } },
-    "on_learn": { "sentiment": { "toward": "instigator", "delta": -1.0 } }
+    "instigator": {
+      "mood": -2.0,
+      "memory": {
+        "valence": -0.5,
+        "strength": 0.8
+      }
+    },
+    "target": {
+      "mood": -2.0,
+      "memory": {
+        "valence": -0.6,
+        "strength": 0.8
+      }
+    },
+    "witness": {
+      "mood": -0.5,
+      "memory": {
+        "valence": -0.3,
+        "strength": 0.4
+      }
+    },
+    "on_learn": {
+      "sentiment": {
+        "toward": "instigator",
+        "delta": -1.0
+      }
+    }
   },
-  "distortion": { "magnitude_drift": 1.25, "valence_drift": 0.25, "substitutable": ["instigator"] }
+  "distortion": {
+    "magnitude_drift": 1.25,
+    "valence_drift": 0.25,
+    "substitutable": [
+      "instigator"
+    ]
+  }
 }

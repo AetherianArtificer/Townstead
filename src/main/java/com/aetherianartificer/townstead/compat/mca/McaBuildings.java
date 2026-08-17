@@ -4,6 +4,8 @@ import com.aetherianartificer.townstead.Townstead;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Constructor;
@@ -14,8 +16,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * MCA's floor-system v2 splits grouped village sites (kitchens, cafes, graveyards, Townstead's
- * synthetic landings and pens) out of {@code Village.getBuildings()} into a separate
+ * MCA's floor-system v2 splits grouped/external village sites (graveyards and Townstead's
+ * synthetic landings and pens, but not ordinary kitchen Rooms) out of {@code Village.getBuildings()} into a separate
  * external-buildings map, so every direct {@code getBuildings()} consumer silently loses them.
  * This seam presents the pre-v2 unified view on every MCA version. Capability is probed from the
  * installed MCA (never the Minecraft version): when 1.20.1's MCA gains v2 later, this path
@@ -76,6 +78,33 @@ public final class McaBuildings {
         if (room != null) return room;
         Map<Integer, Building> external = externalMap(village);
         return external == null ? null : external.get(id);
+    }
+
+    /**
+     * Containment for external sites. MCA-native sites retain MCA's center/margin semantics;
+     * Townstead-owned synthetics use the exact geometry stored in Townstead's overlay.
+     */
+    public static boolean contains(
+            ServerLevel level, Village village, Building building, BlockPos pos) {
+        if (level == null || village == null || building == null || pos == null) return false;
+        var record = com.aetherianartificer.townstead.village.TownsteadVillageSavedData
+                .get(level.getServer()).getRecord(level, village.getId());
+        var overlay = record == null ? null : record.buildings().get(building.getId());
+        if (overlay == null || overlay.bounds().length != 6) {
+            if (com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies
+                    .modeOf(building.getType()).allowsOpenAir()) {
+                BlockPos min = building.getPos0();
+                BlockPos max = building.getPos1();
+                return pos.getX() >= min.getX() && pos.getX() <= max.getX()
+                        && pos.getY() >= min.getY() - 1 && pos.getY() <= max.getY() + 2
+                        && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
+            }
+            return building.containsPos(pos);
+        }
+
+        // Docks can be L-shaped. Their complete surface columns are persisted, so the pure
+        // geometry policy does not turn the bounding rectangle's water/gaps into part of a dock.
+        return SyntheticBuildingGeometry.contains(overlay, pos);
     }
 
     /**

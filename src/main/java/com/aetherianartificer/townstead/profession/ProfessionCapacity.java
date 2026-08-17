@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
+import com.aetherianartificer.townstead.compat.mca.McaBuildingCompat;
 import com.aetherianartificer.townstead.profession.def.JobSiteProvider;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
@@ -103,8 +104,9 @@ public final class ProfessionCapacity {
         }
         if (prefixes.isEmpty()) return List.of();
         List<Building> counted = new ArrayList<>();
+        java.util.Map<Integer, String> effectiveTypes = McaBuildingCompat.effectiveTypes(village);
         for (Building building : McaBuildings.all(village)) {
-            String type = building.getType();
+            String type = effectiveTypes.get(building.getId());
             if (type != null && prefixes.stream().anyMatch(type::startsWith)) counted.add(building);
         }
         return counted;
@@ -131,7 +133,7 @@ public final class ProfessionCapacity {
                 // Filtered here rather than at the call site so the answer rides the posts
                 // cache: containment is a walk of every building, and the sites list is
                 // rebuilt on ticks where a villager is only walking to work.
-                if (insideAnyBuilding(village, immutable)) continue;
+                if (insideAnyBuilding(level, village, immutable)) continue;
                 posts.add(immutable);
             }
         }
@@ -144,11 +146,8 @@ public final class ProfessionCapacity {
      * Whether this position stands inside one of the village's buildings — the one question that
      * separates a workplace from someone's kitchen furniture.
      */
-    static boolean insideAnyBuilding(Village village, BlockPos pos) {
-        for (Building building : McaBuildings.all(village)) {
-            if (building.containsPos(pos)) return true;
-        }
-        return false;
+    static boolean insideAnyBuilding(ServerLevel level, Village village, BlockPos pos) {
+        return McaBuildingCompat.buildingAt(level, village, pos) != null;
     }
 
     private static VillagerProfession professionById(ResourceLocation id) {

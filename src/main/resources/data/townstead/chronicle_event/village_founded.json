@@ -4,14 +4,26 @@
   "weight": 10,
   "rarity": "legendary",
   "keep": true,
-  "contexts": ["pregen"],
+  "contexts": [
+    "pregen"
+  ],
   "reach": "world",
-  "news_value": 5.0,
+  "news_value": 10.0,
   "roles": [
-    { "id": "founder", "kind": "concept" }
+    {
+      "id": "founder",
+      "kind": "concept"
+    }
   ],
   "display": {
-    "headline": { "translate": "chronicle.townstead.village_founded" },
-    "params": ["founder"]
+    "headline": {
+      "translate": "chronicle.townstead.village_founded"
+    },
+    "params": [
+      "founder"
+    ]
+  },
+  "pregen": {
+    "magnitude": 1.0
   }
 }

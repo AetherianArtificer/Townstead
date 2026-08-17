@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Pizza Craft"
+    "text": "[PLACEHOLDER] COOK SKILL 05"
   },
-  "icon": "pizzadelight:pizza_slice",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Cut and hand round a slice mid-shift. Nobody works hungry."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/pizza_craft."
   },
   "tier": 1,
   "cost": 1,

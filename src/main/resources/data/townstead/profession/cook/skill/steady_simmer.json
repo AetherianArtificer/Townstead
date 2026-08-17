@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Steady Simmer"
+    "text": "[PLACEHOLDER] COOK SKILL 09"
   },
-  "icon": "minecraft:campfire",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Earn additional Cook XP that scales with the size of the dish."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/steady_simmer."
   },
   "tier": 2,
   "cost": 1,

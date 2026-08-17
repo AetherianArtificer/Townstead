@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
+import com.aetherianartificer.townstead.compat.mca.BuildingCandidatePolicy;
 import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.server.world.data.Building;
 import org.spongepowered.asm.mixin.Mixin;
@@ -40,5 +41,19 @@ public abstract class BuildingMatchingMixin {
         cir.setReturnValue(original.stream()
                 .filter(type -> permitted.contains(type.name()))
                 .toList());
+    }
+
+    /**
+     * MCA's scan, add-room, and registered-update paths all consume this list. Keep MCA's own
+     * matching result and only normalize Townstead's cumulative tier families afterwards.
+     */
+    @Inject(method = "getVisibleMatchingTypes", at = @At("RETURN"), cancellable = true,
+            remap = false, require = 0)
+    private void townstead$normalizeVisibleRecognitionCandidates(
+            CallbackInfoReturnable<List<BuildingType>> cir) {
+        List<BuildingType> original = cir.getReturnValue();
+        if (original == null || original.isEmpty()) return;
+        List<BuildingType> normalized = BuildingCandidatePolicy.normalizeForRecognition(original);
+        if (!normalized.equals(original)) cir.setReturnValue(normalized);
     }
 }

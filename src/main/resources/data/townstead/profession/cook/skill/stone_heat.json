@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Stone Heat"
+    "text": "[PLACEHOLDER] COOK SKILL 10"
   },
-  "icon": "minecraft:magma_block",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Take on the oven floor's heat. Fire stops mattering for a while, and the air around you scorches whatever comes close."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/stone_heat."
   },
   "tier": 4,
   "cost": 1,

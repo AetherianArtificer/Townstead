@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.building;
 
 import com.aetherianartificer.townstead.building.pin.BuildingPinProgressS2CPayload;
+import com.aetherianartificer.townstead.building.pin.BuildingPinProgressPolicy;
 import com.aetherianartificer.townstead.client.catalog.RequirementNameResolver;
 import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import net.minecraft.client.Minecraft;
@@ -29,11 +30,12 @@ public final class BuildingPinHud {
         int y = 8;
         int titleHeight = 18;
         int dividerHeight = 1;
-        int listGap = 1;
+        int columnHeaderHeight = 10;
         int rowHeight = 12;
         int bottomPadding = 2;
-        int listTop = titleHeight + dividerHeight + listGap;
-        int maxRows = Math.max(1, Math.min(pin.rows().size(), (screenH - 58) / rowHeight));
+        int listTop = titleHeight + dividerHeight + columnHeaderHeight;
+        int maxRows = Math.max(1,
+                Math.min(pin.rows().size(), (screenH - 58 - columnHeaderHeight) / rowHeight));
         int pageCount = Math.max(1, (int) Math.ceil(pin.rows().size() / (double) maxRows));
         long pageClock = minecraft.level.getGameTime() / 80L;
         int page = pageCount <= 1 ? 0 : (int) Math.floorMod(pageClock, pageCount);
@@ -56,6 +58,19 @@ public final class BuildingPinHud {
             graphics.drawString(font, pageLabel, x + width - 5 - font.width(pageLabel), y + 5, 0xFF9E8E70, false);
         }
 
+        String roomHeader = Component.translatable("townstead.building_pin.room_header").getString();
+        String heldHeader = Component.translatable("townstead.building_pin.held_header").getString();
+        int heldColumnWidth = font.width(heldHeader);
+        for (int i = start; i < end; i++) {
+            heldColumnWidth = Math.max(heldColumnWidth,
+                    font.width(Integer.toString(Math.max(0, pin.rows().get(i).inventory()))));
+        }
+        int heldRight = x + width - 5;
+        int roomRight = heldRight - heldColumnWidth - 7;
+        int headerY = y + titleHeight + dividerHeight + 1;
+        graphics.drawString(font, roomHeader, roomRight - font.width(roomHeader), headerY, 0xFF9E8E70, false);
+        graphics.drawString(font, heldHeader, heldRight - font.width(heldHeader), headerY, 0xFF9E8E70, false);
+
         long ticker = minecraft.level.getGameTime();
         for (int i = start; i < end; i++) {
             BuildingPinProgressS2CPayload.Row row = pin.rows().get(i);
@@ -67,15 +82,15 @@ public final class BuildingPinHud {
                 graphics.renderItem(icon, Math.round((x + 4) / 0.625f), Math.round((rowTop + 1) / 0.625f));
                 graphics.pose().popPose();
             }
-            int have = row.placed() + row.inventory();
-            String counts = have + "/" + row.required();
-            int countsWidth = font.width(counts);
-            int countsX = x + width - 5 - countsWidth;
+            int have = BuildingPinProgressPolicy.countedBlocks(row.placed(), row.inventory());
+            String room = have + "/" + row.required();
+            String held = Integer.toString(Math.max(0, row.inventory()));
             String name = RequirementNameResolver.displayName(row.requirement(), icon);
-            name = font.plainSubstrByWidth(name, Math.max(20, countsX - (x + 17) - 5));
+            name = font.plainSubstrByWidth(name, Math.max(20, roomRight - (x + 17) - 5));
             int color = have >= row.required() ? 0xFF7FCE70 : 0xFFD8D0C2;
             graphics.drawString(font, name, x + 17, rowTop + 2, color, false);
-            graphics.drawString(font, counts, countsX, rowTop + 2, color, false);
+            graphics.drawString(font, room, roomRight - font.width(room), rowTop + 2, color, false);
+            graphics.drawString(font, held, heldRight - font.width(held), rowTop + 2, 0xFFB9A578, false);
         }
 
     }

@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Fine Crumb"
+    "text": "[PLACEHOLDER] BAKER SKILL 02"
   },
-  "icon": "minecraft:cake",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Beat the batter smooth so the cake rises even."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/fine_crumb."
   },
   "tier": 1,
   "cost": 1,

@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:competence/v1",
+  "profession": "minecraft:butcher",
+  "per_year": {
+    "townstead:butchered": 90,
+    "townstead:slaughtered": 45,
+    "townstead:cleaned": 60
+  }
+}

@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Peel Vault"
+    "text": "[PLACEHOLDER] COOK SKILL 04"
   },
-  "icon": "pizzadelight:iron_pizza_peel",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Plant the peel and go over the counter. Launches you forward and up."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/peel_vault."
   },
   "tier": 3,
   "cost": 1,

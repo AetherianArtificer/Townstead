@@ -167,6 +167,15 @@ public final class PhenoSchemas {
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
 
         // --- Leaf actions with normalizable units ---
+        NodeSchemas.register(NodeSchema.of("pheno:hydrate", NodeDomain.ACTION)
+                .doc("Restores a Townstead villager's active thirst and slower hydration reserve.")
+                .field(of("immediate", PhenoType.ANY).doc("Active thirst restored; number or Pheno value."))
+                .field(of("lasting", PhenoType.ANY).doc("Hydration reserve restored; number or Pheno value."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:energize", NodeDomain.ACTION)
+                .doc("Reduces a Townstead villager's fatigue.")
+                .field(of("amount", PhenoType.ANY).doc("Fatigue removed; number or Pheno value."))
+                .build());
         NodeSchemas.register(NodeSchema.of("pheno:apply_effect", NodeDomain.ACTION)
                 .doc("Applies a status effect.")
                 .field(required("effect", PhenoType.ID))

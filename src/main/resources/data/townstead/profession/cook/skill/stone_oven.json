@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Stone Oven"
+    "text": "[PLACEHOLDER] COOK SKILL 11"
   },
-  "icon": "minecraft:bricks",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "A proper oven floor holds its heat between bakes. Earn 2 additional Cook XP whenever a dish is completed."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/stone_oven."
   },
   "tier": 3,
   "cost": 1,

@@ -3,20 +3,46 @@
   "category": "taboo.cannibalism",
   "weight": 10,
   "rarity": "legendary",
-  "contexts": ["live"],
-  "trigger": { "type": "taboo", "key": "townstead:became_cannibal" },
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "taboo",
+    "key": "townstead:became_cannibal"
+  },
   "cooldown_days": 0,
   "reach": "witnesses",
-  "news_value": 4.0,
+  "news_value": 8.0,
   "roles": [
-    { "id": "survivor", "kind": "villager" }
+    {
+      "id": "survivor",
+      "kind": "villager"
+    }
   ],
-  "witnesses": { "radius": 10.0, "max": 4 },
+  "witnesses": {
+    "radius": 10.0,
+    "max": 4
+  },
   "display": {
-    "headline": { "translate": "chronicle.townstead.became_cannibal" },
-    "params": ["survivor"]
+    "headline": {
+      "translate": "chronicle.townstead.became_cannibal"
+    },
+    "params": [
+      "survivor"
+    ]
   },
   "impact": {
-    "survivor": { "memory": { "valence": -0.8, "strength": 1.0 } }
+    "survivor": {
+      "memory": {
+        "valence": -0.8,
+        "strength": 1.0
+      }
+    }
+  },
+  "pregen": {
+    "magnitude": [
+      0.9,
+      1.1
+    ]
   }
 }

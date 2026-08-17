@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Kitchen Rhythm"
+    "text": "[PLACEHOLDER] COOK SKILL 02"
   },
-  "icon": "minecraft:clock",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "A practiced hand at the oven. Earn 1 additional Cook XP whenever a dish is completed."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/kitchen_rhythm."
   },
   "tier": 2,
   "cost": 1,

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.building.pin;
 
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
+import com.aetherianartificer.townstead.compat.mca.BuildingBlockQuantity;
 import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import net.conczin.mca.resources.BuildingTypes;
@@ -140,7 +141,8 @@ public final class BuildingPinService {
             pin.villageId = village.getId();
             save(player, pin);
         }
-        Building current = village == null ? null : currentBuilding(village, player.blockPosition());
+        Building current = village == null ? null
+                : currentBuilding(player.serverLevel(), village, player.blockPosition());
         Map<ResourceLocation, Integer> inventory = inventoryGroups(player, type);
         Map<ResourceLocation, Integer> placed = placedGroups(player, type, current);
 
@@ -167,11 +169,9 @@ public final class BuildingPinService {
         return nearest;
     }
 
-    private static Building currentBuilding(Village village, net.minecraft.core.BlockPos pos) {
-        for (Building building : McaBuildings.all(village)) {
-            if (building.containsPos(pos)) return building;
-        }
-        return null;
+    private static Building currentBuilding(ServerLevel level, Village village, net.minecraft.core.BlockPos pos) {
+        return com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
+                .buildingAt(level, village, pos);
     }
 
     private static boolean matchesRequirements(BuildingType type, Building building) {
@@ -314,7 +314,7 @@ public final class BuildingPinService {
         if (!type.matchesBlock(state)) return;
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         ResourceLocation group = type.getBlockToGroup().get(block);
-        if (group != null) result.merge(group, 1, Integer::sum);
+        if (group != null) result.merge(group, BuildingBlockQuantity.units(state), Integer::sum);
     }
 
     private static void save(ServerPlayer player, Pin pin) {

@@ -155,21 +155,50 @@ public final class Heredity {
         if (genotype == null || genotype.isEmpty()) return false;
         boolean changed = false;
         for (ResourceLocation key : genotype.loci()) {
-            Gene gene = GeneRegistry.byId(key);
-            if (gene == null || gene.locus() == null) continue;
-            ResourceLocation target = LegacyNamespace.canonical(gene.locus());
-            if (target.equals(key)) continue;
             Allele[] stale = genotype.at(key);
+            Allele a = canonicalAllele(stale[0]);
+            Allele b = canonicalAllele(stale[1]);
+            Gene gene = GeneRegistry.byId(key);
+            if (gene == null) {
+                // Shared loci are not themselves gene ids. Their alleles still need their old
+                // flat ids rewritten after the source files move into organizational folders.
+                if (a != stale[0] || b != stale[1]) {
+                    genotype.set(key, a, b);
+                    changed = true;
+                }
+                continue;
+            }
+            // Private loci used to be keyed by the flat id. If the backing file moves into an
+            // organizational folder, relocate that saved pair to the canonical nested id too.
+            ResourceLocation target = gene.locus() != null
+                    ? LegacyNamespace.canonical(gene.locus()) : gene.id();
+            if (target.equals(key)) {
+                if (a != stale[0] || b != stale[1]) {
+                    genotype.set(key, a, b);
+                    changed = true;
+                }
+                continue;
+            }
             genotype.remove(key);
             Allele[] existing = genotype.at(target);
             if (existing == null) {
-                genotype.set(target, stale[0], stale[1]);
+                genotype.set(target, a, b);
             } else {
-                genotype.set(target, firstNonWild(existing), firstNonWild(stale));
+                Allele existingA = canonicalAllele(existing[0]);
+                Allele existingB = canonicalAllele(existing[1]);
+                genotype.set(target, firstNonWild(new Allele[]{existingA, existingB}),
+                        firstNonWild(new Allele[]{a, b}));
             }
             changed = true;
         }
         return changed;
+    }
+
+    private static Allele canonicalAllele(Allele allele) {
+        if (allele == null || allele.isWild()) return allele;
+        ResourceLocation canonical = GeneRegistry.canonicalId(allele.geneId());
+        return canonical == null || canonical.equals(allele.geneId())
+                ? allele : Allele.of(canonical, allele.variantId());
     }
 
     private static Allele firstNonWild(Allele[] pair) {

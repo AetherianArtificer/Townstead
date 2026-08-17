@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.recognition;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.mca.McaBuildingNbt;
+import com.aetherianartificer.townstead.compat.mca.McaBuildingCompat;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import com.aetherianartificer.townstead.village.TownsteadVillageSavedData;
@@ -127,7 +128,7 @@ public final class OptionalBuildingRecognition {
         if (level == null || candidate == null || candidate.positions().isEmpty()) return Registration.FAILED;
         Existing existing = findExisting(level, candidate);
         if (existing != null) {
-            replaceCanonical(existing, candidate);
+            replaceCanonical(level, existing, candidate);
             return Registration.EXISTING;
         }
 
@@ -141,7 +142,7 @@ public final class OptionalBuildingRecognition {
                 PROCESS_EXTERNAL.invoke(manager, registrationAnchor(candidate), candidate.type());
                 existing = findExisting(level, candidate);
                 if (existing != null) {
-                    replaceCanonical(existing, candidate);
+                    replaceCanonical(level, existing, candidate);
                     return Registration.CREATED;
                 }
             } catch (ReflectiveOperationException ex) {
@@ -161,6 +162,7 @@ public final class OptionalBuildingRecognition {
         Village host = village.get();
         int id = syntheticId(host, candidate);
         McaBuildings.putSynthetic(host, id, toNbt(id, candidate));
+        storeOverlay(level, host, id, candidate);
         host.calculateDimensions();
         host.markDirty();
         return Registration.CREATED;
@@ -180,7 +182,7 @@ public final class OptionalBuildingRecognition {
         if (village.isEmpty()) return Optional.empty();
         for (Building building : McaBuildings.all(village.get())) {
             if (BuildingEnclosurePolicies.modeOf(building.getType()).allowsOpenAir()) continue;
-            if (building.containsPos(origin)) return Optional.empty();
+            if (McaBuildingCompat.contains(level, village.get(), building, origin)) return Optional.empty();
         }
         Optional<Building> nearest = findNearby(village.get(), origin);
         if (nearest.isEmpty()) return Optional.empty();
@@ -311,15 +313,33 @@ public final class OptionalBuildingRecognition {
      * tag member and reduces geometry to the average POI point. Replace it atomically with the
      * exact candidate so map placement, containment, and later validation all share one footprint.
      */
-    private static void replaceCanonical(Existing existing, Candidate candidate) {
+    private static void replaceCanonical(ServerLevel level, Existing existing, Candidate candidate) {
         int id = existing.building().getId();
         Building replacement = McaBuildings.putSynthetic(existing.village(), id, toNbt(id, candidate));
         if (replacement == null) return;
+        storeOverlay(level, existing.village(), id, candidate);
         //? if >=1.21 {
         replacement.setInheritanceEnabled(existing.building().isInheritanceEnabled());
         //?}
         existing.village().calculateDimensions();
         existing.village().markDirty();
+    }
+
+    private static void storeOverlay(
+            ServerLevel level, Village village, int id, Candidate candidate) {
+        Map<String, long[]> packed = new LinkedHashMap<>();
+        candidate.blocks().forEach((blockId, positions) -> {
+            long[] values = new long[positions.size()];
+            for (int i = 0; i < positions.size(); i++) values[i] = positions.get(i).asLong();
+            packed.put(blockId.toString(), values);
+        });
+        TownsteadVillageSavedData.get(level.getServer()).putBuilding(
+                level, village.getId(), id,
+                new TownsteadVillageSavedData.BuildingOverlay(
+                        "optional", candidate.typeName(),
+                        new int[] {candidate.min().getX(), candidate.min().getY(), candidate.min().getZ(),
+                                candidate.max().getX(), candidate.max().getY(), candidate.max().getZ()},
+                        packed));
     }
 
     /** MCA 7.6 and floor-system MCA expose the same group maps, but not the same matcher method. */

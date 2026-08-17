@@ -18,7 +18,9 @@ public final class NewsScore {
     public static float score(ChronicleEventTemplate template, float magnitude,
                               long eventDay, int eventVillageId,
                               long today, int audienceVillageId) {
-        float base = template.newsValue() * template.rarity().newsMultiplier;
+        // Rarity is frequency, not importance: it decides how often a template is
+        // picked, never how big a deal it is once it happens.
+        float base = template.newsValue();
         float mag = Math.max(0.2f, magnitude);
         float proximity = (eventVillageId >= 0 && eventVillageId == audienceVillageId)
                 ? 1f : FOREIGN_VILLAGE_FACTOR;

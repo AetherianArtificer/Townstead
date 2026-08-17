@@ -31,11 +31,16 @@ public final class ChronicleCountConditionType implements ConditionType {
         String counterKey = GsonHelper.getAsString(json, "key");
         int atLeast = GsonHelper.getAsInt(json, "at_least", 1);
         int atMost = GsonHelper.getAsInt(json, "at_most", Integer.MAX_VALUE);
-        return ctx -> test(ctx, counterKey, atLeast, atMost);
+        return Condition.subjectAware(ctx -> test(ctx, counterKey, atLeast, atMost));
     }
 
     private static boolean test(ConditionContext ctx, String key, int atLeast, int atMost) {
-        if (ctx.level().isClientSide) return false;
+        com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject = ctx.subject();
+        if (subject != null) {
+            int fabricated = subject.counter(key);
+            return fabricated >= atLeast && fabricated <= atMost;
+        }
+        if (ctx.level() == null || ctx.level().isClientSide) return false;
         MinecraftServer server = ctx.level().getServer();
         if (server == null) return false;
         int count = Chronicles.count(server, ctx.entity().getUUID(), key);

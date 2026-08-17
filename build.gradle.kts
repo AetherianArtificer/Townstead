@@ -63,6 +63,36 @@ dependencies {
     testImplementation(files(sourceSets.main.get().compileClasspath))
 }
 
+// Offline Chronicles harness. Its own source set, kept off the test source set because
+// that one shadows CompoundTag/BlockPos with stubs; the harness needs the real classes.
+val sim by sourceSets.creating {
+    java.setSrcDirs(listOf(rootProject.file("src/sim/java")))
+    resources.setSrcDirs(emptyList<File>())
+}
+
+dependencies {
+    "simImplementation"(files(sourceSets.main.get().compileClasspath))
+    "simImplementation"(sourceSets.main.get().output)
+    // Minecraft's own assets carry en_us.json, so the harness can print real item
+    // names instead of guessing from ids. Absent on a clean checkout until moddev
+    // has run, and the harness says so when it falls back.
+    "simRuntimeOnly"(fileTree(layout.buildDirectory.dir("moddev/artifacts")) {
+        include("*client-extra*.jar")
+    })
+}
+
+// Only the active version registers it, so an unqualified `gradlew chronicleSim` runs
+// once instead of once per Stonecutter version.
+if (stonecutter.current.isActive) {
+    tasks.register<JavaExec>("chronicleSim") {
+        group = "verification"
+        description = "Fabricate chronicles offline and print them (no Minecraft launch)."
+        mainClass.set("com.aetherianartificer.townstead.chronicle.sim.ChronicleSimMain")
+        classpath = sim.runtimeClasspath
+        workingDir = rootProject.projectDir
+    }
+}
+
 layout.buildDirectory.set(file("${rootProject.projectDir}/.cache/townstead-build-1.21.1-neoforge"))
 
 tasks.withType<ProcessResources> {

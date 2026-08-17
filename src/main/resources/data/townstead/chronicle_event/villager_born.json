@@ -4,19 +4,51 @@
   "weight": 10,
   "rarity": "uncommon",
   "keep": true,
-  "contexts": ["live", "pregen"],
-  "trigger": { "type": "lifecycle", "key": "townstead:birth" },
-  "reach": "village",
-  "news_value": 2.5,
-  "roles": [
-    { "id": "baby", "kind": "villager", "pregen": { "age": "baby" } }
+  "contexts": [
+    "live",
+    "pregen"
   ],
-  "witnesses": { "radius": 16.0, "max": 8 },
+  "trigger": {
+    "type": "lifecycle",
+    "key": "townstead:birth"
+  },
+  "reach": "village",
+  "news_value": 4.0,
+  "roles": [
+    {
+      "id": "baby",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "baby"
+      }
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
   "display": {
-    "headline": { "translate": "chronicle.townstead.villager_born" },
-    "params": ["baby"]
+    "headline": {
+      "translate": "chronicle.townstead.villager_born"
+    },
+    "params": [
+      "baby"
+    ]
   },
   "impact": {
-    "on_learn": { "mood": 1.5, "memory": { "valence": 0.6, "strength": 0.8 } }
+    "on_learn": {
+      "mood": 1.5,
+      "memory": {
+        "valence": 0.6,
+        "strength": 0.8
+      }
+    }
+  },
+  "pregen": {
+    "magnitude": [
+      0.9,
+      1.1
+    ]
   }
 }

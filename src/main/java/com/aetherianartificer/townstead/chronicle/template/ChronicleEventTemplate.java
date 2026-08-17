@@ -47,19 +47,31 @@ public record ChronicleEventTemplate(
         Map<String, Impact> impacts,
         DistortionSpec distortion,
         Map<String, Action> effects,
-        List<CounterGrant> counters) {
+        List<CounterGrant> counters,
+        Map<String, PregenParamSource> pregenParams,
+        int maxPerLife,
+        @Nullable PregenBond pregenBond,
+        float magnitudeMin,
+        float magnitudeMax) {
+
+    public ChronicleEventTemplate {
+        pregenParams = pregenParams == null ? Map.of() : pregenParams;
+    }
 
     public enum Context { LIVE, PREGEN, EXPEDITION }
 
+    /**
+     * How often a template is picked, and only that. Importance is
+     * {@code news_value} alone, so making something rarer does not quietly make
+     * it a bigger deal.
+     */
     public enum Rarity {
-        COMMON(1.0f, 1.0f), UNCOMMON(0.6f, 1.5f), RARE(0.25f, 2.5f), LEGENDARY(0.05f, 5.0f);
+        COMMON(1.0f), UNCOMMON(0.6f), RARE(0.25f), LEGENDARY(0.05f);
 
         public final float weightMultiplier;
-        public final float newsMultiplier;
 
-        Rarity(float weightMultiplier, float newsMultiplier) {
+        Rarity(float weightMultiplier) {
             this.weightMultiplier = weightMultiplier;
-            this.newsMultiplier = newsMultiplier;
         }
     }
 
@@ -72,13 +84,35 @@ public record ChronicleEventTemplate(
     }
 
     /**
-     * A named role. {@code when} gates live emission (entity-backed); the
-     * declarative {@code pregen} filter binds entity-less pre-history roles.
+     * A named role. {@code when} is a pheno condition and gates both live
+     * emission and pre-history binding: pre-history evaluates it against a
+     * {@link com.aetherianartificer.townstead.pheno.condition.PhenoSubject}, so
+     * a gate only works there if every part of it reports
+     * {@link Condition#supportsSubject()}.
+     *
+     * <p>{@code fatal} marks a role the participant does not walk away from, so
+     * a living subject's own history never binds it. That is a property of the
+     * role rather than a test, which is why it is not a condition.</p>
      */
     public record RoleSpec(String id, ChronicleRef.Kind kind, @Nullable Condition when,
-                           @Nullable PregenFilter pregen) {}
+                           boolean fatal, @Nullable String fromBond,
+                           @Nullable String involvement) {}
 
-    public record PregenFilter(@Nullable String profession, @Nullable String age, @Nullable String gender) {}
+    /**
+     * A tie a fabricated event forms or ends: {@code kind} with whoever holds
+     * {@code withRole}. {@code ends} marks the second case — a death, a parting —
+     * which is what lets a life hold "was married once, is not now" rather than
+     * only "married" and "never married".
+     */
+    public record PregenBond(String kind, String withRole, boolean ends) {}
+
+    /**
+     * Where pre-history sources a display param that live emission takes from a
+     * real object ({@code ChronicleTaps.work} passes the item name). A tag, not
+     * a list of ids: packs decide what a feast can consist of, and the text
+     * comes from the item, so nothing needs translating here.
+     */
+    public record PregenParamSource(ResourceLocation itemTag) {}
 
     public record WitnessSpec(double radius, int max) {
         public static final WitnessSpec NONE = new WitnessSpec(0.0, 0);
@@ -113,6 +147,43 @@ public record ChronicleEventTemplate(
 
     public float pickWeight() {
         return weight * rarity.weightMultiplier;
+    }
+
+    /** The server-resolved headline with this event's params filled in. */
+    public String headline(Map<String, String> params) {
+        List<String> names = display.paramNames();
+        if (names.isEmpty()) return display.headlineLiteral();
+        Object[] values = new Object[names.size()];
+        for (int i = 0; i < names.size(); i++) {
+            values[i] = params.getOrDefault(names.get(i), "");
+        }
+        try {
+            return String.format(Locale.ROOT, display.headlineLiteral(), values);
+        } catch (Exception ex) {
+            return display.headlineLiteral();
+        }
+    }
+
+    /**
+     * Display params pre-history cannot fill, because no role carries them.
+     * Live emission fills these from the tap ({@code ChronicleTaps.work} passes
+     * the item name), so an entry here only misrenders in a fabricated past.
+     */
+    public List<String> unfillablePregenParams() {
+        if (!contexts.contains(Context.PREGEN)) return List.of();
+        List<String> unfillable = new ArrayList<>();
+        for (String param : display.paramNames()) {
+            if (pregenParams.containsKey(param)) continue;
+            boolean isRole = false;
+            for (RoleSpec role : roles) {
+                if (role.id().equals(param)) {
+                    isRole = true;
+                    break;
+                }
+            }
+            if (!isRole) unfillable.add(param);
+        }
+        return unfillable;
     }
 
     // ---- parsing ----
@@ -154,15 +225,22 @@ public record ChronicleEventTemplate(
                         GsonHelper.getAsString(r, "kind", "villager"), ChronicleRef.Kind.class,
                         ChronicleRef.Kind.VILLAGER);
                 Condition when = r.has("when") ? Conditions.parse(r.get("when")) : null;
-                PregenFilter pregen = null;
+                boolean fatal = false;
+                String fromBond = null;
                 if (r.has("pregen")) {
-                    JsonObject p = GsonHelper.getAsJsonObject(r, "pregen");
-                    pregen = new PregenFilter(
-                            p.has("profession") ? GsonHelper.getAsString(p, "profession") : null,
-                            p.has("age") ? GsonHelper.getAsString(p, "age") : null,
-                            p.has("gender") ? GsonHelper.getAsString(p, "gender") : null);
+                    JsonObject rolePregen = GsonHelper.getAsJsonObject(r, "pregen");
+                    fatal = GsonHelper.getAsBoolean(rolePregen, "fatal", false);
+                    // Bind whoever the subject already holds this bond with, so a
+                    // story about a spouse is about the spouse they actually have.
+                    String bond = GsonHelper.getAsString(rolePregen, "from_bond", "");
+                    fromBond = bond.isEmpty() ? null : bond;
                 }
-                roles.add(new RoleSpec(roleId, kind, when, pregen));
+                // What this role's part in the event actually is. A role that only
+                // saw it happen must not carry a protagonist's weight, or standing
+                // near a noise outranks getting married.
+                String involvement = r.has("involvement")
+                        ? GsonHelper.getAsString(r, "involvement") : null;
+                roles.add(new RoleSpec(roleId, kind, when, fatal, fromBond, involvement));
             }
         }
         if (roles.isEmpty()) {
@@ -203,7 +281,67 @@ public record ChronicleEventTemplate(
 
         return new ChronicleEventTemplate(id, category, weight, rarity, keep, contexts, trigger,
                 cooldownDays, reach, newsValue, List.copyOf(roles), witnesses, display,
-                Map.copyOf(impacts), distortion, Map.copyOf(effects), List.copyOf(counters));
+                Map.copyOf(impacts), distortion, Map.copyOf(effects), List.copyOf(counters),
+                parsePregenParams(json), parseMaxPerLife(json), parseBond(json),
+                magnitudeBound(json, true), magnitudeBound(json, false));
+    }
+
+    /**
+     * How much this occurrence may vary in a fabricated past: {@code pregen.magnitude}
+     * as one number (fixed) or {@code [min, max]}. Defaults to the wide working range.
+     */
+    private static float magnitudeBound(JsonObject json, boolean min) {
+        float fallback = min
+                ? com.aetherianartificer.townstead.chronicle.pregen.PregenMagnitude.DEFAULT_MIN
+                : com.aetherianartificer.townstead.chronicle.pregen.PregenMagnitude.DEFAULT_MAX;
+        if (!json.has("pregen")) return fallback;
+        JsonObject pregen = GsonHelper.getAsJsonObject(json, "pregen");
+        if (!pregen.has("magnitude")) return fallback;
+        JsonElement spec = pregen.get("magnitude");
+        if (spec.isJsonArray() && spec.getAsJsonArray().size() == 2) {
+            return spec.getAsJsonArray().get(min ? 0 : 1).getAsFloat();
+        }
+        if (spec.isJsonPrimitive() && spec.getAsJsonPrimitive().isNumber()) {
+            return spec.getAsFloat();
+        }
+        return fallback;
+    }
+
+    /** The tie this forms, or ends, when it happens in a fabricated past. */
+    private static @Nullable PregenBond parseBond(JsonObject json) {
+        if (!json.has("pregen")) return null;
+        JsonObject pregen = GsonHelper.getAsJsonObject(json, "pregen");
+        boolean ends = pregen.has("ends_bond");
+        String block = ends ? "ends_bond" : "bond";
+        if (!pregen.has(block)) return null;
+        JsonObject bond = GsonHelper.getAsJsonObject(pregen, block);
+        String kind = GsonHelper.getAsString(bond, "kind", "");
+        String withRole = GsonHelper.getAsString(bond, "with", "");
+        return kind.isEmpty() || withRole.isEmpty() ? null : new PregenBond(kind, withRole, ends);
+    }
+
+    /**
+     * How often one person's fabricated life may contain this, 0 for no limit.
+     * Weddings happen once or twice; arguments happen forever.
+     */
+    private static int parseMaxPerLife(JsonObject json) {
+        if (!json.has("pregen")) return 0;
+        JsonObject pregen = GsonHelper.getAsJsonObject(json, "pregen");
+        return Math.max(0, GsonHelper.getAsInt(pregen, "max_per_life", 0));
+    }
+
+    private static Map<String, PregenParamSource> parsePregenParams(JsonObject json) {
+        if (!json.has("pregen")) return Map.of();
+        JsonObject pregen = GsonHelper.getAsJsonObject(json, "pregen");
+        if (!pregen.has("params")) return Map.of();
+        JsonObject params = GsonHelper.getAsJsonObject(pregen, "params");
+        Map<String, PregenParamSource> sources = new HashMap<>();
+        for (String param : params.keySet()) {
+            JsonObject spec = GsonHelper.getAsJsonObject(params, param);
+            ResourceLocation tag = DataPackLang.parseId(GsonHelper.getAsString(spec, "item_tag", ""));
+            if (tag != null) sources.put(param, new PregenParamSource(tag));
+        }
+        return Map.copyOf(sources);
     }
 
     private static DisplaySpec parseDisplay(ResourceLocation id, JsonObject json, Map<String, String> lang) {

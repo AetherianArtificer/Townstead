@@ -28,10 +28,12 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Loads {@link Gene}s from {@code data/<ns>/gene/*.json}. Each file names a
+ * Loads {@link Gene}s recursively below {@code data/<ns>/gene/}. Each file names a
  * {@link GeneType} via {@code "type"}; the type parses its own config. Common
  * fields ({@code display_name}, {@code description}, {@code category}) are parsed
- * here. Unknown/invalid types are skipped with a warning.
+ * here. Folder segments are part of the canonical id, while {@link GeneRegistry}
+ * also exposes an unambiguous basename alias so existing references survive files
+ * being moved into organizational folders. Unknown/invalid types are skipped with a warning.
  */
 public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
 

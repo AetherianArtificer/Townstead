@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Setting Point"
+    "text": "[PLACEHOLDER] BAKER SKILL 05"
   },
-  "icon": "minecraft:glass_bottle",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Know when a preserve will set, without waiting to find out."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/setting_point."
   },
   "tier": 1,
   "cost": 1,

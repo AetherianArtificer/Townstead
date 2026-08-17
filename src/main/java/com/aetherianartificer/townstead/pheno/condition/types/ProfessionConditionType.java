@@ -40,10 +40,11 @@ public final class ProfessionConditionType implements ConditionType {
                 professions.add(GsonHelper.getAsString(json, "profession"));
             }
         }
-        return ctx -> test(ctx, professions);
+        return Condition.subjectAware(ctx -> test(ctx, professions));
     }
 
     private static boolean test(ConditionContext ctx, Set<String> professions) {
+        if (ctx.subject() != null) return professions.contains(ctx.subject().professionId());
         if (!(ctx.entity() instanceof VillagerDataHolder holder)) return false;
         VillagerProfession profession = holder.getVillagerData().getProfession();
         ResourceLocation key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);

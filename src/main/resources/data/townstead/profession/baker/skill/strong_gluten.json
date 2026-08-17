@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Strong Gluten"
+    "text": "[PLACEHOLDER] BAKER SKILL 08"
   },
-  "icon": "minecraft:hay_block",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Knead until the dough pulls back, so loaves hold their shape."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/strong_gluten."
   },
   "tier": 2,
   "cost": 1,

@@ -100,7 +100,7 @@ public final class McaRoomBinding implements WorksiteBindings.Binding {
             // "kitchen_l3" is a type, not a name. A player renaming "The Kitchen" is editing
             // something that already reads like a place.
             String readable = com.aetherianartificer.townstead.work.site.WorksiteNames
-                    .fromBuildingType(building.getType());
+                    .fromBuildingType(McaBuildingCompat.effectiveType(village, building));
             if (!readable.isEmpty()) return readable;
         }
         return "";
@@ -118,11 +118,6 @@ public final class McaRoomBinding implements WorksiteBindings.Binding {
 
     @Nullable
     private static Building buildingAt(ServerLevel level, BlockPos pos) {
-        for (Village village : VillageManager.get(level)) {
-            for (Building building : McaBuildings.all(village)) {
-                if (building.containsPos(pos)) return building;
-            }
-        }
-        return null;
+        return McaBuildingCompat.functionalRoomAt(level, pos);
     }
 }

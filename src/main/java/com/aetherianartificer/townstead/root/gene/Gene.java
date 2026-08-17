@@ -16,7 +16,7 @@ import java.util.List;
  * variant is rolled at birth and carried on the villager. {@link #locus},
  * {@link #dominance} and {@link #weight} drive cross-gene allele resolution at a
  * shared slot (e.g. the life-cycle locus). Loaded from
- * {@code data/<ns>/gene/<path>.json}.</p>
+ * {@code data/<ns>/gene/<path>.json}. Paths may contain organizational subdirectories.</p>
  */
 public record Gene(
         ResourceLocation id,

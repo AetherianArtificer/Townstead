@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Piping Hand"
+    "text": "[PLACEHOLDER] BAKER SKILL 03"
   },
-  "icon": "minecraft:sugar",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Steady enough to decorate without smudging the work."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/piping_hand."
   },
   "tier": 2,
   "cost": 1,

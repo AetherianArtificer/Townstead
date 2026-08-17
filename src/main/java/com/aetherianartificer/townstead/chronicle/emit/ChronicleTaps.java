@@ -87,6 +87,24 @@ public final class ChronicleTaps {
         }
     }
 
+    /**
+     * Something that happened <em>to</em> someone rather than something they did:
+     * hunger becoming starvation, a cured villager waking up themselves again.
+     * Counted like work, because "how many times has this person starved" is a
+     * mechanical fact, but it is not work and does not read as work.
+     */
+    public static void survival(LivingEntity actor, String key, Map<String, String> params) {
+        try {
+            if (!(actor.level() instanceof ServerLevel level)) return;
+            Chronicles.addCounter(level.getServer(), actor.getUUID(), key, 1);
+            if (ChronicleTriggerIndex.isEmpty()) return;
+            ChronicleEmitter.emit(level, new TriggerKey("survival", key), actor, 1.0f,
+                    params == null ? Map.of() : params);
+        } catch (Throwable t) {
+            swallow(t);
+        }
+    }
+
     /** Heart shift between two entities; one friendship/argument story per pair per day. */
     public static void social(LivingEntity actor, LivingEntity other, boolean positive) {
         try {
@@ -149,7 +167,8 @@ public final class ChronicleTaps {
         }
     }
 
-    private static String itemName(ResourceLocation itemId) {
+    /** The one place an item becomes headline text; pre-history params use it too. */
+    public static String itemName(ResourceLocation itemId) {
         try {
             Item item = BuiltInRegistries.ITEM.get(itemId);
             return item.getDescription().getString();

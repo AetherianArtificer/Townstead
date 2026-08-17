@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:competence/v1",
+  "profession": "townstead:scribe",
+  "per_year": {
+    "townstead:produced": 90
+  }
+}

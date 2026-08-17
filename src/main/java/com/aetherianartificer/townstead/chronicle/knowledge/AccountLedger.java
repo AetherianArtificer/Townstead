@@ -1,11 +1,11 @@
 package com.aetherianartificer.townstead.chronicle.knowledge;
 
-import com.aetherianartificer.townstead.chronicle.Chronicles;
 import com.aetherianartificer.townstead.chronicle.model.Account;
 import com.aetherianartificer.townstead.chronicle.model.ChronicleEvent;
 import com.aetherianartificer.townstead.chronicle.model.Participation;
-import com.aetherianartificer.townstead.chronicle.store.ChronicleSavedData;
 import com.aetherianartificer.townstead.chronicle.template.ChronicleEventTemplate;
+import com.aetherianartificer.townstead.chronicle.world.ChronicleWorld;
+import com.aetherianartificer.townstead.chronicle.world.ServerChronicleWorld;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.LivingEntity;
@@ -44,32 +44,40 @@ public final class AccountLedger {
         }
     }
 
-    /**
-     * Creates the account, updates the known-stories cache, queues the archive
-     * row, and (for villagers) applies impacts. Returns the account.
-     */
     public static Account learn(MinecraftServer server, ChronicleEventTemplate template,
                                 ChronicleEvent event, UUID knower, boolean applyImpacts,
                                 @Nullable String role, SpreadChannel channel,
                                 long sourceAccountId, float fidelity, DistortionOverlay overlay,
                                 long learnedDay) {
-        ChronicleSavedData data = ChronicleSavedData.get(server);
-        long accountId = data.assignAccountId();
+        return learn(new ServerChronicleWorld(server), template, event, knower, applyImpacts,
+                role, channel, sourceAccountId, fidelity, overlay, learnedDay);
+    }
+
+    /**
+     * Creates the account, updates the known-stories cache, queues the archive
+     * row, and (for villagers) applies impacts. Returns the account.
+     */
+    public static Account learn(ChronicleWorld world, ChronicleEventTemplate template,
+                                ChronicleEvent event, UUID knower, boolean applyImpacts,
+                                @Nullable String role, SpreadChannel channel,
+                                long sourceAccountId, float fidelity, DistortionOverlay overlay,
+                                long learnedDay) {
+        long accountId = world.assignAccountId();
         Account account = new Account(accountId, event.eventId(), knower, channel.id(),
                 sourceAccountId, fidelity, learnedDay, overlay.toJson());
 
-        KnownStoriesCache.add(knower, new KnownStoriesCache.Entry(
+        world.noteKnownStory(knower, new KnownStoriesCache.Entry(
                 event.eventId(), accountId, fidelity, learnedDay, event.templateId(),
                 event.worldDay(), event.villageId(), event.magnitude(), event.reach(), overlay));
-        Chronicles.appendAccount(server, account);
+        world.appendAccount(account);
 
         if (applyImpacts) {
-            applyImpacts(data, template, event, knower, role, fidelity, overlay, accountId, learnedDay);
+            applyImpacts(world, template, event, knower, role, fidelity, overlay, accountId, learnedDay);
         }
         return account;
     }
 
-    private static void applyImpacts(ChronicleSavedData data, ChronicleEventTemplate template,
+    private static void applyImpacts(ChronicleWorld world, ChronicleEventTemplate template,
                                      ChronicleEvent event, UUID knower, @Nullable String role,
                                      float fidelity, DistortionOverlay overlay,
                                      long accountId, long today) {
@@ -83,7 +91,7 @@ public final class AccountLedger {
         if (impact == null) return;
 
         if (impact.mood() != 0f) {
-            data.addMoodImpact(knower, impact.mood() * fidelity * overlay.magnitudeMult());
+            world.addMoodImpact(knower, impact.mood() * fidelity * overlay.magnitudeMult());
         }
 
         ChronicleEventTemplate.SentimentImpact sentiment = impact.sentiment();
@@ -91,7 +99,7 @@ public final class AccountLedger {
             UUID toward = overlay.believedUuid(sentiment.towardRole(),
                     uuidOfRole(event, sentiment.towardRole()));
             if (toward != null && !toward.equals(knower)) {
-                data.adjustSentiment(knower, toward, sentiment.delta() * fidelity, today, accountId);
+                world.adjustSentiment(knower, toward, sentiment.delta() * fidelity, today, accountId);
             }
         }
 
@@ -102,7 +110,7 @@ public final class AccountLedger {
                     uuidOfRole(event, template.primaryRole().id()));
             if (knower.equals(otherParty)) otherParty = null;
             Map<String, String> params = overlay.applyToParams(event.params());
-            data.addOrReinforceMemory(knower, event.templateId().toString(), otherParty,
+            world.addOrReinforceMemory(knower, event.templateId().toString(), otherParty,
                     today, memory.strength() * fidelity * overlay.magnitudeMult(), valence, params);
         }
     }

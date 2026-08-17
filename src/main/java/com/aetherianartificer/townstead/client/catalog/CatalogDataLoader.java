@@ -142,6 +142,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         // The icon-to-type index and node-item overrides are now both complete.
         // Clear any negative result cached while parallel reload listeners ran.
         BuildingIconResolver.invalidate();
+        com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
         DATA_THEME = THEME;
         CLIENT_THEME_RESOURCE_MANAGER = null;
 
@@ -564,6 +565,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         CLIENT_THEME_RESOURCE_MANAGER = null;
         BuildingSpiritIndex.replaceAll(payload.spirits());
         BuildingIconResolver.invalidate();
+        com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
     }
 
     public static Theme theme() {

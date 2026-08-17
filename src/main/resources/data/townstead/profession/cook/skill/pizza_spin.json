@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Pizza Spin"
+    "text": "[PLACEHOLDER] COOK SKILL 06"
   },
-  "icon": "pizzadelight:pizza_slice",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Spin the dough out wide and let it take everything with it. Enemies around you are struck and thrown off their feet."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/pizza_spin."
   },
   "tier": 2,
   "cost": 1,

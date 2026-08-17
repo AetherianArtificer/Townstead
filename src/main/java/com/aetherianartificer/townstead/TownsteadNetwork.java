@@ -97,6 +97,10 @@ public final class TownsteadNetwork {
         // Server -> Client
         registerS2C(HungerSyncPayload.class, HungerSyncPayload::write, HungerSyncPayload::read,
                 TownsteadNetwork::handleHungerSync);
+        registerS2C(com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload::read,
+                TownsteadNetwork::handleConsumableEffectsSync);
         registerS2C(FarmStatusSyncPayload.class, FarmStatusSyncPayload::write, FarmStatusSyncPayload::read,
                 TownsteadNetwork::handleFarmStatusSync);
         registerS2C(ButcherStatusSyncPayload.class, ButcherStatusSyncPayload::write, ButcherStatusSyncPayload::read,
@@ -722,6 +726,11 @@ public final class TownsteadNetwork {
                 payload.farmerTier(), payload.farmerXp(), payload.farmerXpToNext(),
                 payload.cookTier(), payload.cookXp(), payload.cookXpToNext()
         );
+    }
+
+    private static void handleConsumableEffectsSync(
+            com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload payload) {
+        com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore.setFrom(payload);
     }
 
     private static void handleThirstSync(ThirstSyncPayload payload) {

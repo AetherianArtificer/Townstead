@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Slow Boil"
+    "text": "[PLACEHOLDER] BAKER SKILL 06"
   },
-  "icon": "minecraft:campfire",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Hold a preserve at a lazy simmer instead of driving it hard."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/slow_boil."
   },
   "tier": 3,
   "cost": 1,

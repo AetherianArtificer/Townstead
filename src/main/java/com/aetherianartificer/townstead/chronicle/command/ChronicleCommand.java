@@ -17,6 +17,7 @@ import com.aetherianartificer.townstead.chronicle.model.ChronicleRef;
 import com.aetherianartificer.townstead.chronicle.model.Participation;
 import com.aetherianartificer.townstead.chronicle.model.SentimentEntry;
 import com.aetherianartificer.townstead.chronicle.model.VillagerMemory;
+import com.aetherianartificer.townstead.chronicle.pregen.ChroniclePersonalPregen;
 import com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler;
 import com.aetherianartificer.townstead.chronicle.store.ChronicleSavedData;
 import com.aetherianartificer.townstead.chronicle.store.ChronicleStore;
@@ -28,6 +29,7 @@ import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Village;
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -138,7 +140,13 @@ public final class ChronicleCommand {
                         .executes(ctx -> concepts(ctx.getSource())))
                 .then(Commands.literal("pregen")
                         .then(Commands.literal("reroll")
-                                .executes(ctx -> pregenReroll(ctx.getSource()))))
+                                .executes(ctx -> pregenReroll(ctx.getSource())))
+                        .then(Commands.literal("life")
+                                .executes(ctx -> withFocus(ctx.getSource(),
+                                        target -> pregenLife(ctx.getSource(), target)))
+                                .then(Commands.argument("target", EntityArgument.entity())
+                                        .executes(ctx -> pregenLife(ctx.getSource(),
+                                                EntityArgument.getEntity(ctx, "target"))))))
                 .then(Commands.literal("emit")
                         .then(Commands.argument("template", StringArgumentType.string())
                                 .suggests((ctx, builder) -> {
@@ -329,10 +337,12 @@ public final class ChronicleCommand {
             float foreign = NewsScore.score(template, event.magnitude(), event.worldDay(),
                     event.villageId(), today, event.villageId() + 1);
             source.sendSuccess(() -> Component.literal(String.format(
-                    "#%d %s: base %.1f × rarity %.1f × magnitude %.1f, age %dd → score %.2f local / %.2f foreign",
-                    eventId, event.templateId(), template.newsValue(),
-                    template.rarity().newsMultiplier, event.magnitude(),
-                    today - event.worldDay(), local, foreign)), false);
+                    "#%d %s: news %.1f × magnitude %.1f, age %dd → score %.2f local / %.2f foreign"
+                            + " | significance %.1f",
+                    eventId, event.templateId(), template.newsValue(), event.magnitude(),
+                    today - event.worldDay(), local, foreign,
+                    com.aetherianartificer.townstead.chronicle.scope.ScopeRelevance.significance(
+                            template, event.magnitude()))), false);
         }));
         return 1;
     }
@@ -430,6 +440,50 @@ public final class ChronicleCommand {
         PregenScheduler.schedule(key, birth.worldDay(), birth.playerFounded(), player.blockPosition());
         source.sendSuccess(() -> Component.literal(
                 "Rerolling pre-history for village " + key.villageId()), false);
+        return 1;
+    }
+
+    /**
+     * Fabricates the life this villager would remember and reports it, kept
+     * beats and forgotten ones alike. Belief tier only: no truth rows, so this
+     * is safe to run repeatedly, and it is the same life every time because it
+     * is seeded from the villager's uuid.
+     */
+    private static int pregenLife(CommandSourceStack source, Entity target) {
+        if (!(target instanceof VillagerEntityMCA villager)) {
+            source.sendFailure(Component.literal("pregen life needs a villager"));
+            return 0;
+        }
+        MinecraftServer server = source.getServer();
+        var life = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life();
+        if (!life.hasBirth()) {
+            source.sendFailure(Component.literal("villager has no birth stamp yet"));
+            return 0;
+        }
+        // Births are stamped on the biological clock; generation runs on the world clock.
+        long birthDay = life.birthWorldDay() + WorldCalendarSavedData.get(server).lifeEpochShift();
+        int villageId = ChronicleEmitter.resolveVillageId(villager);
+        VillageKey key = new VillageKey(villager.level().dimension().location(), villageId);
+
+        List<VillagerEntityMCA> neighbours = villager.level().getEntitiesOfClass(
+                VillagerEntityMCA.class, villager.getBoundingBox().inflate(48.0),
+                other -> other != villager);
+        List<ChroniclePersonalPregen.Beat> beats = ChroniclePersonalPregen.generate(
+                server, villager, birthDay, key, neighbours);
+
+        source.sendSuccess(() -> Component.literal(
+                "=== " + villager.getName().getString() + ": " + beats.size() + " beats ==="), false);
+        if (beats.isEmpty()) {
+            source.sendSuccess(() -> Component.literal(
+                    "(no candidate templates fit this subject)"), false);
+            return 1;
+        }
+        for (ChroniclePersonalPregen.Beat beat : beats) {
+            source.sendSuccess(() -> Component.literal(String.format(
+                            "age %d: %s (rel %.1f) %s", beat.ageYears(), beat.headline(),
+                            beat.relevance(), beat.retained() ? "kept" : "forgotten"))
+                    .withStyle(beat.retained() ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY), false);
+        }
         return 1;
     }
 

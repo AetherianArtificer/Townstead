@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Clean Jar"
+    "text": "[PLACEHOLDER] BAKER SKILL 01"
   },
-  "icon": "minecraft:water_bucket",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Scald the jars first, so a batch keeps through the winter."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/clean_jar."
   },
   "tier": 2,
   "cost": 1,

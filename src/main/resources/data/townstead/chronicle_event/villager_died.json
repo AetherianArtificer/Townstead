@@ -4,20 +4,58 @@
   "weight": 10,
   "rarity": "rare",
   "keep": true,
-  "contexts": ["live", "pregen"],
-  "trigger": { "type": "lifecycle", "key": "townstead:death" },
-  "reach": "village",
-  "news_value": 4.0,
-  "roles": [
-    { "id": "deceased", "kind": "villager", "pregen": { "age": "adult" } }
+  "contexts": [
+    "live",
+    "pregen"
   ],
-  "witnesses": { "radius": 16.0, "max": 8 },
+  "trigger": {
+    "type": "lifecycle",
+    "key": "townstead:death"
+  },
+  "reach": "village",
+  "news_value": 5.0,
+  "roles": [
+    {
+      "id": "deceased",
+      "kind": "villager",
+      "pregen": {
+        "fatal": true
+      },
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      }
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
   "display": {
-    "headline": { "translate": "chronicle.townstead.villager_died" },
-    "params": ["deceased"]
+    "headline": {
+      "translate": "chronicle.townstead.villager_died"
+    },
+    "params": [
+      "deceased"
+    ]
   },
   "impact": {
-    "on_learn": { "mood": -3.0, "memory": { "valence": -0.8, "strength": 2.0 } }
+    "on_learn": {
+      "mood": -3.0,
+      "memory": {
+        "valence": -0.8,
+        "strength": 2.0
+      }
+    }
   },
-  "distortion": { "magnitude_drift": 1.3, "valence_drift": 0.2 }
+  "distortion": {
+    "magnitude_drift": 1.3,
+    "valence_drift": 0.2
+  },
+  "pregen": {
+    "magnitude": [
+      0.9,
+      1.1
+    ]
+  }
 }

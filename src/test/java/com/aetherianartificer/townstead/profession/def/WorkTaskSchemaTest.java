@@ -174,6 +174,40 @@ class WorkTaskSchemaTest {
                         .map(com.google.gson.JsonElement::getAsJsonObject)
                         .anyMatch(value -> "#bakery:jam".equals(value.get("id").getAsString())),
                 "Bakery's own semantic tags should be reused before listing its gaps");
+        java.util.Set<String> expectedBakeryJams = java.util.Set.of(
+                "bakery:apple_jam",
+                "bakery:chocolate_jam",
+                "bakery:glowberry_jam",
+                "bakery:strawberry_jam",
+                "bakery:sweetberry_jam");
+        java.util.Set<String> bakeryJamFallbacks = bakeryGoods.getAsJsonArray("values").asList().stream()
+                .filter(com.google.gson.JsonElement::isJsonObject)
+                .map(com.google.gson.JsonElement::getAsJsonObject)
+                .map(value -> value.get("id").getAsString())
+                .filter(expectedBakeryJams::contains)
+                .collect(java.util.stream.Collectors.toSet());
+        assertEquals(expectedBakeryJams, bakeryJamFallbacks,
+                "the currently shipped pot jams must remain orderable even if an upstream tag is absent");
+
+        //? if >=1.21 {
+        JsonObject jamKind = resourceJson(
+                "/data/townstead/tags/item/orders/jam.json");
+        //?} else {
+        /*JsonObject jamKind = resourceJson(
+                "/data/townstead/tags/items/orders/jam.json");
+        *///?}
+        java.util.Set<String> jamTags = jamKind.getAsJsonArray("values").asList().stream()
+                .filter(com.google.gson.JsonElement::isJsonObject)
+                .map(com.google.gson.JsonElement::getAsJsonObject)
+                .map(value -> value.get("id").getAsString())
+                .collect(java.util.stream.Collectors.toSet());
+        assertTrue(jamTags.contains("#c:jams"),
+                "Jam is a cross-mod kind and should expand through the common convention");
+        assertTrue(jamTags.contains("#bakery:jam"),
+                "Bakery's own singular tag remains a compatibility fallback");
+        assertEquals("Jam", com.aetherianartificer.townstead.work.order.OrdersService
+                        .categoryLabel(id("townstead:orders/jam")),
+                "the kind should be presented as Jam, not a provider-specific group");
 
         WorkTaskDef milling = tasks.stream()
                 .filter(task -> task.allowsBlock(id("kaleidoscope_cookery:millstone")))

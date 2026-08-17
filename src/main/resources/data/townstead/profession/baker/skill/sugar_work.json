@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Sugar Work"
+    "text": "[PLACEHOLDER] BAKER SKILL 09"
   },
-  "icon": "minecraft:honey_bottle",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Read sugar by its colour and pull it off the heat in time."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/sugar_work."
   },
   "tier": 3,
   "cost": 1,

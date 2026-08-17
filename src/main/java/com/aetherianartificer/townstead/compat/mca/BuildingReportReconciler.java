@@ -62,7 +62,7 @@ public final class BuildingReportReconciler {
 
     private static void detectAndSyncDockFromReport(ServerLevel level, BlockPos source, Village village, Logger log) {
         try {
-            if (insideEnclosedBuilding(village, source)) return;
+            if (insideEnclosedBuilding(level, village, source)) return;
             Dock dock = DockScanner.scanForReport(level, source, REPORT_SCAN_RADIUS);
             if (dock != null) {
                 DockBuildingSync.sync(level, dock, source);
@@ -74,13 +74,13 @@ public final class BuildingReportReconciler {
         }
     }
 
-    public static boolean insideEnclosedBuilding(Village village, BlockPos pos) {
+    public static boolean insideEnclosedBuilding(ServerLevel level, Village village, BlockPos pos) {
         for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             String t = b.getType();
             if (t == null) continue;
             if (t.startsWith("dock_")) continue;
             if (EnclosureTypeIndex.isEnclosureType(t)) continue;
-            if (b.containsPos(pos)) return true;
+            if (McaBuildingCompat.contains(level, village, b, pos)) return true;
         }
         return false;
     }

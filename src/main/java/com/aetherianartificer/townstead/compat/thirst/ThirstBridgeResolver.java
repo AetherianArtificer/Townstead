@@ -8,6 +8,7 @@ import javax.annotation.Nullable;
 public final class ThirstBridgeResolver {
     private static volatile String resolvedPreference;
     private static @Nullable ThirstCompatBridge cachedBridge;
+    private static @Nullable ThirstCompatBridge cachedNativeBridge;
 
     private ThirstBridgeResolver() {}
 
@@ -33,6 +34,13 @@ public final class ThirstBridgeResolver {
         return get() != null;
     }
 
+    /** The selected backend without Townstead's datapack overlay. */
+    public static @Nullable ThirstCompatBridge getNative() {
+        String preference = TownsteadConfig.preferredThirstBackend();
+        if (!preference.equals(resolvedPreference)) resolve(preference);
+        return cachedNativeBridge;
+    }
+
     private static synchronized void resolve(String preference) {
         if (preference.equals(resolvedPreference)) return;
         // TWR and TWP share the "thirst" mod id, so at most one of them can be
@@ -42,11 +50,13 @@ public final class ThirstBridgeResolver {
         ThirstCompatBridge thirst = ThirstWasReclaimedBridge.INSTANCE.isActive()
                 ? ThirstWasReclaimedBridge.INSTANCE
                 : ThirstWasTakenBridge.INSTANCE.isActive() ? ThirstWasTakenBridge.INSTANCE : null;
-        cachedBridge = switch (preference) {
+        ThirstCompatBridge selected = switch (preference) {
             case "thirst" -> thirst != null ? thirst : lso;
             // "auto" prefers LSO, matching pre-config behavior
             default -> lso != null ? lso : thirst;
         };
+        cachedNativeBridge = selected;
+        cachedBridge = selected == null ? null : new ConfiguredThirstBridge(selected);
         resolvedPreference = preference;
     }
 }

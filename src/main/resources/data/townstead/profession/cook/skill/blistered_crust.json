@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Blistered Crust"
+    "text": "[PLACEHOLDER] COOK SKILL 01"
   },
-  "icon": "minecraft:bread",
+  "icon": "minecraft:barrier",
   "description": {
-    "text": "Char in exactly the right places, which only the stone can give you."
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/blistered_crust."
   },
   "tier": 4,
   "cost": 1,

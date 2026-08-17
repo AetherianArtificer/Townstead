@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:consumable/v1",
+  "items": [
+    "#townstead:chocolate"
+  ],
+  "effects": {
+    "type": "pheno:energize",
+    "amount": 2
+  }
+}
