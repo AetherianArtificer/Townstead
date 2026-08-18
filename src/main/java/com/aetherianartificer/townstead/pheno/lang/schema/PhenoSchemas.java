@@ -123,7 +123,11 @@ public final class PhenoSchemas {
                 .field(of("start", PhenoType.INT))
                 .field(of("regen", PhenoType.INT))
                 .field(of("regen_interval", PhenoType.INT))
-                .field(of("color", PhenoType.COLOR))
+                .field(of("color", PhenoType.COLOR)
+                        .doc("The resource bar's fill colour. Frame primary and secondary colours come from display.color_theme."))
+                .field(of("persist_on_death", PhenoType.BOOL))
+                .field(of("display", PhenoType.OBJECT)
+                        .doc("Optional HUD shape, fill mode, pip art, frame geometry, frame colour theme, ordered bar-effect stack, authored anchor, visibility and ordering."))
                 .field(of("on_reach", PhenoType.OBJECT).asList()
                         .doc("Edge-triggered { at|every, do, then } when the meter crosses a threshold upward.")).build());
 

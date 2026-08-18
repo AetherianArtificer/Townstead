@@ -625,6 +625,8 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener((PlayerEvent.Clone e) -> {
+            com.aetherianartificer.townstead.root.ability.ResourceValues.onClone(
+                    e.getOriginal(), e.getEntity(), e.isWasDeath());
             if (e.isWasDeath()) com.aetherianartificer.townstead.root.KeepInventory.onClone(e.getOriginal(), e.getEntity());
         });
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> {
@@ -1029,6 +1031,8 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.Clone e) -> {
+            com.aetherianartificer.townstead.root.ability.ResourceValues.onClone(
+                    e.getOriginal(), e.getEntity(), e.isWasDeath());
             if (e.isWasDeath()) com.aetherianartificer.townstead.root.KeepInventory.onClone(e.getOriginal(), e.getEntity());
         });
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> {
@@ -2110,6 +2114,8 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.work.job.WorkJobs.Loader());
         event.addListener(new com.aetherianartificer.townstead.storage.StorageRoles.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry.ReloadHook());
+        event.addListener(new com.aetherianartificer.townstead.root.ability.ResourceHudDefinitions.ColorThemeLoader());
+        event.addListener(new com.aetherianartificer.townstead.root.ability.ResourceHudDefinitions.FrameLoader());
         event.addListener(new com.aetherianartificer.townstead.root.BaselinePowers.Loader());
         event.addListener(new com.aetherianartificer.townstead.root.trait.TraitJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.attachment.AttachmentServerLoader());
@@ -2486,7 +2492,7 @@ public class Townstead {
 
     //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar(MOD_ID).versioned("1");
+        var registrar = event.registrar(MOD_ID).versioned("3");
         boolean thirstAvailable = ThirstBridgeResolver.anyThirstModLoaded();
         registrar.playToClient(
                 HungerSyncPayload.TYPE,

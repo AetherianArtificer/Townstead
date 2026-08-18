@@ -38,7 +38,8 @@ public final class AuraGeneType implements GeneType {
     public record Instance(double radius, int interval, Action action,
                            @Nullable Condition condition, boolean includeSelf,
                            String target, @Nullable net.minecraft.resources.ResourceLocation costResource,
-                           int costAmount) implements GeneInstance {
+                           int costAmount)
+            implements GeneInstance, com.aetherianartificer.townstead.root.ability.ResourceConsumer {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
     }

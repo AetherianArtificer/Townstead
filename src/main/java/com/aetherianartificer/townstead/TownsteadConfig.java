@@ -25,6 +25,12 @@ import java.util.Set;
 public final class TownsteadConfig {
     private TownsteadConfig() {}
 
+    public enum ResourceHudAnchor {
+        TOP_LEFT, TOP_CENTER, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT, PACK_DECIDED
+    }
+    public enum ResourceHudVisibility { CONTEXTUAL, NOT_AT_REST, ALWAYS, NEVER }
+    public enum ResourceHudStack { DOWN, RIGHT }
+
     private static volatile ProtectedStorageRules protectedStorageRules = ProtectedStorageRules.empty();
 
     //? if neoforge {
@@ -85,6 +91,15 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ModConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
+    public static final ModConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
+    public static final ModConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
+    public static final ModConfigSpec.IntValue RESOURCE_HUD_OFFSET_X;
+    public static final ModConfigSpec.IntValue RESOURCE_HUD_OFFSET_Y;
+    public static final ModConfigSpec.DoubleValue RESOURCE_HUD_SCALE;
+    public static final ModConfigSpec.IntValue RESOURCE_HUD_HOLD_TICKS;
+    public static final ModConfigSpec.IntValue RESOURCE_HUD_FADE_TICKS;
+    public static final ModConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ModConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
@@ -170,6 +185,15 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ForgeConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
+    public static final ForgeConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
+    public static final ForgeConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
+    public static final ForgeConfigSpec.IntValue RESOURCE_HUD_OFFSET_X;
+    public static final ForgeConfigSpec.IntValue RESOURCE_HUD_OFFSET_Y;
+    public static final ForgeConfigSpec.DoubleValue RESOURCE_HUD_SCALE;
+    public static final ForgeConfigSpec.IntValue RESOURCE_HUD_HOLD_TICKS;
+    public static final ForgeConfigSpec.IntValue RESOURCE_HUD_FADE_TICKS;
+    public static final ForgeConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ForgeConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
@@ -644,6 +668,45 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.catalog.useTownsteadCatalog")
                 .comment("Use the Townstead extended catalog with kitchen building tiers. Disable to use MCA's original catalog.")
                 .define("useTownsteadCatalog", true);
+        clientBuilder.pop();
+
+        clientBuilder.translation("townstead.configuration.resource_hud").push("resource_hud");
+        RESOURCE_HUD_ANCHOR = clientBuilder
+                .translation("townstead.configuration.resource_hud.anchor")
+                .comment("Screen anchor for resource meters, or PACK_DECIDED to use each resource's datapack anchor.")
+                .defineEnum("anchor", ResourceHudAnchor.TOP_LEFT);
+        RESOURCE_HUD_OFFSET_X = clientBuilder
+                .translation("townstead.configuration.resource_hud.offsetX")
+                .comment("Horizontal pixel offset from the selected anchor, before HUD scale.")
+                .defineInRange("offsetX", 4, -4096, 4096);
+        RESOURCE_HUD_OFFSET_Y = clientBuilder
+                .translation("townstead.configuration.resource_hud.offsetY")
+                .comment("Vertical pixel offset from the selected anchor, before HUD scale.")
+                .defineInRange("offsetY", 4, -4096, 4096);
+        RESOURCE_HUD_SCALE = clientBuilder
+                .translation("townstead.configuration.resource_hud.scale")
+                .comment("Scale of Townstead resource meters, in addition to Minecraft's GUI scale.")
+                .defineInRange("scale", 1.0, 0.5, 3.0);
+        RESOURCE_HUD_STACK = clientBuilder
+                .translation("townstead.configuration.resource_hud.stack")
+                .comment("Direction used when more than one resource meter is visible.")
+                .defineEnum("stack", ResourceHudStack.DOWN);
+        RESOURCE_HUD_VISIBILITY = clientBuilder
+                .translation("townstead.configuration.resource_hud.visibility")
+                .comment("CONTEXTUAL fades after activity; NOT_AT_REST stays while away from its resting value; ALWAYS and NEVER are explicit overrides.")
+                .defineEnum("visibility", ResourceHudVisibility.CONTEXTUAL);
+        RESOURCE_HUD_HOLD_TICKS = clientBuilder
+                .translation("townstead.configuration.resource_hud.holdTicks")
+                .comment("Ticks a contextual resource stays fully visible after its value or definition changes.")
+                .defineInRange("holdTicks", 60, 0, 1200);
+        RESOURCE_HUD_FADE_TICKS = clientBuilder
+                .translation("townstead.configuration.resource_hud.fadeTicks")
+                .comment("Ticks used to fade a contextual resource after the hold time.")
+                .defineInRange("fadeTicks", 10, 0, 200);
+        RESOURCE_HUD_SHOW_VALUES = clientBuilder
+                .translation("townstead.configuration.resource_hud.showValues")
+                .comment("Draw the current and maximum values beside resource meters.")
+                .define("showValues", true);
         clientBuilder.pop();
 
         clientBuilder.translation("townstead.configuration.accessibility").push("accessibility");
