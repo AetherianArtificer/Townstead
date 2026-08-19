@@ -52,12 +52,10 @@ dependencies {
     // Iron's Spells API, for reading what is actually in a quick-cast slot. compileOnly and
     // non-transitive: the bridge is guarded by ModList, so nothing here is required at runtime.
     compileOnly("io.redspace:irons_spellbooks:1.21.1-3.16.2:api") { isTransitive = false }
-    // Chronicle archive backend, embedded into the mod jar via jarJar
-    implementation("org.xerial:sqlite-jdbc:3.46.1.3")
-    jarJar("org.xerial:sqlite-jdbc:3.46.1.3")
+    // Pure-Java Chronicle archive backend, embedded without SQLite's native binaries.
+    implementation(jarJar("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")!!)
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.xerial:sqlite-jdbc:3.46.1.3")
     // Pheno unit tests touch Minecraft types (ResourceLocation, GsonHelper); moddev keeps MC as a
     // non-transitive compileOnly, so surface the main compile classpath to the test classpath.
     testImplementation(files(sourceSets.main.get().compileClasspath))

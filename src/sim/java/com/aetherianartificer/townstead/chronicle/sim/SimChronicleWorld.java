@@ -26,7 +26,7 @@ import java.util.UUID;
 /**
  * The offline binding of {@link ChronicleWorld}: fabricated calendar, templates
  * loaded from disk, and every write captured in memory for printing. Nothing
- * touches a server, a save file, or the SQLite archive.
+ * touches a server, a save file, or the durable archive.
  *
  * <p>The hot tier is a real {@link ChronicleSavedData} instance rather than a
  * hand-rolled copy, so memory reinforcement, sentiment caps and mood clamping

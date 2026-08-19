@@ -558,11 +558,6 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
-        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) -> {
-                if (TownsteadConfig.DEBUG_LOGGING.get()) {
-                    com.aetherianartificer.townstead.chronicle.store.ChronicleSqlite.smokeTest(LOGGER);
-                }
-        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 com.aetherianartificer.townstead.chronicle.Chronicles.onServerStarted(e.getServer()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) ->
@@ -964,11 +959,6 @@ public class Townstead {
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
-        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) -> {
-                if (TownsteadConfig.DEBUG_LOGGING.get()) {
-                    com.aetherianartificer.townstead.chronicle.store.ChronicleSqlite.smokeTest(LOGGER);
-                }
-        });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 com.aetherianartificer.townstead.chronicle.Chronicles.onServerStarted(e.getServer()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) ->

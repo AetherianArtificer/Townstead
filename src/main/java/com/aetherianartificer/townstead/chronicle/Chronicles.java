@@ -41,7 +41,7 @@ public final class Chronicles {
 
     public static void onServerStarted(MinecraftServer server) {
         Path dbFile = server.getWorldPath(LevelResource.ROOT)
-                .resolve("data").resolve("townstead_chronicles.db");
+                .resolve("data").resolve("townstead_chronicles.mv");
         ChronicleStore opened = ChronicleDatabase.open(dbFile);
         store = opened;
         ChronicleSavedData.get(server).reconcileIdSequences(opened.idMaxima());

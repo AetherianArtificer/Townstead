@@ -25,7 +25,7 @@ import java.util.UUID;
 /**
  * The chronicle hot tier: the aggregates gameplay reads at tick rate.
  * Counters, memories, village digests, sentiments, and news points live here
- * so mood/careers/relationships never touch the SQLite archive, and keep
+ * so mood/careers/relationships never touch the durable archive, and keep
  * working even if the archive file is lost.
  */
 public class ChronicleSavedData extends SavedData {
@@ -95,7 +95,7 @@ public class ChronicleSavedData extends SavedData {
         return id;
     }
 
-    /** Ensure hot-tier sequences can never reuse ids already durable in SQLite. */
+    /** Ensure hot-tier sequences can never reuse ids already durable in the archive. */
     public void reconcileIdSequences(ChronicleStore.IdMaxima maxima) {
         long event = Math.max(nextEventId, maxima.eventId() + 1L);
         long arc = Math.max(nextArcId, maxima.arcId() + 1L);

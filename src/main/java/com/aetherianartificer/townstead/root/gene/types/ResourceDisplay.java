@@ -29,15 +29,110 @@ public record ResourceDisplay(
 ) {
 
     /** One entry in the ordered bar-effect stack. */
-    public record BarEffect(ResourceLocation type, float strength, String gradientShape,
-                            int highlightColor, int shadowColor) {
+    public record BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                            float frequency, int color,
+                            String gradientShape, int highlightColor, int shadowColor,
+                            int surfacePoints, float tension, float damping,
+                            float splash, float movementInfluence,
+                            int lobeCount, float viscosity, float stringiness,
+                            int bubbleCount, int bubbleSize, float bubbleWobble,
+                            int emberCount, float emberDrift, float emberFlicker,
+                            float emberEscape) {
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    12, 0.18f, 0.92f, 0.65f, 0.20f,
+                    5, 0.78f, 0.55f,
+                    6, 2, 0.35f,
+                    8, 0.45f, 0.65f, 0.80f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    5, 0.78f, 0.55f,
+                    6, 2, 0.35f,
+                    8, 0.45f, 0.65f, 0.80f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    6, 2, 0.35f,
+                    8, 0.45f, 0.65f, 0.80f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    8, 0.45f, 0.65f, 0.80f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, 0.80f);
+        }
+
         public BarEffect {
             type = type == null ? id("townstead:none", "townstead:none") : type;
             strength = Math.max(0f, Math.min(1f, strength));
+            speed = Math.max(0.05f, Math.min(4f, speed));
+            interval = Math.max(0.5f, Math.min(30f, interval));
+            frequency = Math.max(0.5f, Math.min(8f, frequency));
+            color = color < 0 ? -1 : color & 0xFFFFFF;
             gradientShape = gradientShape == null || gradientShape.isBlank()
                     ? "crosswise" : normalize(gradientShape);
             highlightColor = highlightColor < 0 ? -1 : highlightColor & 0xFFFFFF;
             shadowColor = shadowColor < 0 ? -1 : shadowColor & 0xFFFFFF;
+            surfacePoints = Math.max(8, Math.min(16, surfacePoints));
+            tension = Math.max(0f, Math.min(1f, tension));
+            damping = Math.max(0.5f, Math.min(0.995f, damping));
+            splash = Math.max(0f, Math.min(2f, splash));
+            movementInfluence = Math.max(0f, Math.min(1f, movementInfluence));
+            lobeCount = Math.max(3, Math.min(8, lobeCount));
+            viscosity = Math.max(0f, Math.min(0.98f, viscosity));
+            stringiness = Math.max(0f, Math.min(1f, stringiness));
+            bubbleCount = Math.max(1, Math.min(12, bubbleCount));
+            bubbleSize = Math.max(1, Math.min(3, bubbleSize));
+            bubbleWobble = Math.max(0f, Math.min(1f, bubbleWobble));
+            emberCount = Math.max(1, Math.min(16, emberCount));
+            emberDrift = Math.max(0f, Math.min(1f, emberDrift));
+            emberFlicker = Math.max(0f, Math.min(1f, emberFlicker));
+            emberEscape = Math.max(0f, Math.min(1f, emberEscape));
         }
     }
 
@@ -137,10 +232,100 @@ public record ResourceDisplay(
             JsonObject effect = element.getAsJsonObject();
             ResourceLocation type = id(GsonHelper.getAsString(effect, "type"), "townstead:none");
             if (!"townstead:none".equals(type.toString())
-                    && !"townstead:gradient".equals(type.toString())) {
+                    && !"townstead:gradient".equals(type.toString())
+                    && !"townstead:shimmer".equals(type.toString())
+                    && !"townstead:pulse".equals(type.toString())
+                    && !"townstead:flow".equals(type.toString())
+                    && !"townstead:liquid".equals(type.toString())
+                    && !"townstead:viscous".equals(type.toString())
+                    && !"townstead:bubbles".equals(type.toString())
+                    && !"townstead:embers".equals(type.toString())) {
                 throw new IllegalArgumentException("Unknown resource bar effect '" + type + "'");
             }
             if ("townstead:none".equals(type.toString())) continue;
+
+            if ("townstead:shimmer".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.35f),
+                        GsonHelper.getAsFloat(effect, "speed", 1f),
+                        GsonHelper.getAsFloat(effect, "interval", 3.6f),
+                        1f, optionalColor(effect, "color"), "crosswise", -1, -1));
+                continue;
+            }
+
+            if ("townstead:pulse".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.25f),
+                        GsonHelper.getAsFloat(effect, "speed", 1f),
+                        3.6f, 1f, optionalColor(effect, "color"), "crosswise", -1, -1));
+                continue;
+            }
+
+            if ("townstead:flow".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.30f),
+                        GsonHelper.getAsFloat(effect, "speed", 1f),
+                        3.6f, 1f, optionalColor(effect, "color"), "crosswise", -1, -1));
+                continue;
+            }
+
+            if ("townstead:liquid".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.35f),
+                        GsonHelper.getAsFloat(effect, "speed", 1f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        GsonHelper.getAsInt(effect, "surface_points", 12),
+                        GsonHelper.getAsFloat(effect, "tension", 0.18f),
+                        GsonHelper.getAsFloat(effect, "damping", 0.92f),
+                        GsonHelper.getAsFloat(effect, "splash", 0.65f),
+                        GsonHelper.getAsFloat(effect, "movement_influence", 0.20f)));
+                continue;
+            }
+
+            if ("townstead:viscous".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.55f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.65f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        GsonHelper.getAsInt(effect, "lobes", 5),
+                        GsonHelper.getAsFloat(effect, "viscosity", 0.78f),
+                        GsonHelper.getAsFloat(effect, "stringiness", 0.55f)));
+                continue;
+            }
+
+            if ("townstead:bubbles".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.65f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.85f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        GsonHelper.getAsInt(effect, "density", 6),
+                        GsonHelper.getAsInt(effect, "size", 2),
+                        GsonHelper.getAsFloat(effect, "wobble", 0.35f)));
+                continue;
+            }
+
+            if ("townstead:embers".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.70f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.95f),
+                        3.6f, 1f,
+                        optionalColor(effect, "hot_color"), "crosswise", -1,
+                        optionalColor(effect, "cool_color"),
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        6, 2, 0.35f,
+                        GsonHelper.getAsInt(effect, "density", 8),
+                        GsonHelper.getAsFloat(effect, "drift", 0.45f),
+                        GsonHelper.getAsFloat(effect, "flicker", 0.65f),
+                        GsonHelper.getAsFloat(effect, "escape", 0.80f)));
+                continue;
+            }
 
             String presetName = normalize(GsonHelper.getAsString(effect, "preset", "standard"));
             GradientPreset preset = gradientPreset(presetName);
@@ -151,7 +336,8 @@ public record ResourceDisplay(
             }
             int highlight = optionalColor(effect, "highlight_color");
             int shadow = optionalColor(effect, "shadow_color");
-            effects.add(new BarEffect(type, strength, shape, highlight, shadow));
+            effects.add(new BarEffect(type, strength, 1f, 3.6f, 1f,
+                    -1, shape, highlight, shadow));
         }
         return List.copyOf(effects);
     }
@@ -175,7 +361,7 @@ public record ResourceDisplay(
             if (hex.length() != 6) throw new NumberFormatException();
             return Integer.parseUnsignedInt(hex, 16) & 0xFFFFFF;
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("Expected #RRGGBB for gradient " + key + ", got '" + raw + "'");
+            throw new IllegalArgumentException("Expected #RRGGBB for resource effect " + key + ", got '" + raw + "'");
         }
     }
 

@@ -5,7 +5,7 @@ import java.nio.file.Path;
 
 /**
  * Fabricates chronicles from the terminal, running the same generators the
- * server runs. No Minecraft launch, no save, no SQLite archive.
+ * server runs. No Minecraft launch, save, or durable archive.
  *
  * <pre>
  *   gradlew chronicleSim --args="village --village 3 --years 180"

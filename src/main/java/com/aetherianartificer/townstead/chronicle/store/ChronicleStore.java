@@ -14,8 +14,9 @@ import java.util.concurrent.CompletableFuture;
  * Writes are fire-and-forget (queued off-thread); reads are async. The tick
  * thread must never block on this interface.
  *
- * <p>This is also the storage seam: the SQLite implementation is the only one
- * in v1, but a journal-file or remote backend can slot in behind it.</p>
+ * <p>This is also the storage seam: the default implementation is backed by
+ * a small persistent key/value store, while another local or remote backend
+ * can slot in behind it.</p>
  */
 public interface ChronicleStore extends AutoCloseable {
 
@@ -52,7 +53,7 @@ public interface ChronicleStore extends AutoCloseable {
 
     CompletableFuture<Optional<ChronicleEvent>> byId(long eventId);
 
-    /** Requests a WAL checkpoint so world-folder backups stay consistent. */
+    /** Requests a durable commit so world-folder saves include current archive data. */
     void requestCheckpoint();
 
     /** Drains the write queue before shutdown; returns false on timeout. */

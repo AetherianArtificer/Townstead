@@ -161,8 +161,15 @@ public final class ResourceValues {
         List<ResourceSyncS2CPayload.Effect> resolved = new ArrayList<>(effects.size());
         for (ResourceDisplay.BarEffect effect : effects) {
             resolved.add(new ResourceSyncS2CPayload.Effect(
-                    effect.type().toString(), effect.strength(), effect.gradientShape(),
-                    effect.highlightColor(), effect.shadowColor()));
+                    effect.type().toString(), effect.strength(), effect.speed(), effect.interval(),
+                    effect.frequency(), effect.color(),
+                    effect.gradientShape(), effect.highlightColor(), effect.shadowColor(),
+                    effect.surfacePoints(), effect.tension(), effect.damping(),
+                    effect.splash(), effect.movementInfluence(),
+                    effect.lobeCount(), effect.viscosity(), effect.stringiness(),
+                    effect.bubbleCount(), effect.bubbleSize(), effect.bubbleWobble(),
+                    effect.emberCount(), effect.emberDrift(), effect.emberFlicker(),
+                    effect.emberEscape()));
         }
         return List.copyOf(resolved);
     }

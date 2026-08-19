@@ -74,12 +74,11 @@ dependencies {
     implementation(jarJar("io.github.llamalad7:mixinextras-forge:${property("mixin_extras_version")}")) {
         jarJar.ranged(this, "[0.5.4,0.6)")
     }
-    // Chronicle archive backend: minecraftLibrary puts it on the dev-run classpath,
-    // jarJar embeds it in the shipped jar (deploy scripts pick the unclassified jar,
-    // which is the jarJar output below).
-    "minecraftLibrary"("org.xerial:sqlite-jdbc:3.46.1.3")
-    "jarJar"("org.xerial:sqlite-jdbc:[3.46.1.3,3.47.0)") {
-        jarJar.pin(this, "3.46.1.3")
+    // Pure-Java Chronicle archive backend. minecraftLibrary supplies dev runs;
+    // jarJar embeds the small MVStore artifact in distributions.
+    "minecraftLibrary"("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+    "jarJar"("com.h2database:h2-mvstore:[${property("h2_mvstore_version")},2.5.0)") {
+        jarJar.pin(this, property("h2_mvstore_version") as String)
     }
     compileOnly("dev.architectury:architectury-forge:9.2.14")
     compileOnly(fg.deobf("vazkii.patchouli:Patchouli:1.20.1-85-FORGE:api"))
@@ -91,7 +90,6 @@ dependencies {
     // only because its supported ForgeGradle setup requires it.
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.xerial:sqlite-jdbc:3.46.1.3")
     // Pheno unit tests touch Minecraft types; surface the main compile classpath to tests.
     testImplementation(files(sourceSets.main.get().compileClasspath))
 }
