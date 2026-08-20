@@ -27,7 +27,8 @@ public abstract class CookingPotResultSlotMixin {
             at = @At("TAIL"), remap = false)
     private void townstead$creditMealTaken(Player player, ItemStack stack, CallbackInfo ci) {
         if (player != null && !player.level().isClientSide) {
-            PlayerWorkHooks.onDishTaken(player, stack, "cooking_pot");
+            PlayerWorkHooks.onCookingCompleted(
+                    player, stack, stack.getCount(), "cooking_pot");
         }
     }
 }

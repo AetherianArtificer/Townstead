@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** Server to owning player: gameplay state plus resolved presentation for resource meters. */
 //? if neoforge {
@@ -26,7 +27,24 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
                          int lobeCount, float viscosity, float stringiness,
                          int bubbleCount, int bubbleSize, float bubbleWobble,
                          int emberCount, float emberDrift, float emberFlicker,
-                         float emberEscape) {
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement,
+                         int steamCount, int steamSize, float steamDrift,
+                         int electricCount, float electricBranching, float electricReach,
+                         int wispCount, int wispTrail, float wispWander,
+                         int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                         int crystalCount, int crystalDepth, float crystalGlint,
+                         String runeMode, int runeSpacing, String runeTexture,
+                         int runeGlyphWidth, int runeGlyphHeight, int runeColumns, int runeRows,
+                         float runeEscape,
+                         int corruptionCount, int corruptionSize,
+                         int voidCount, float voidInstability,
+                         float prismaticWidth,
+                         int sporeCount, int sporeSize, float sporeDrift,
+                         int fallingCount, int fallingSize, float fallingDrift,
+                         String fallingTexture, int fallingMarkWidth, int fallingMarkHeight,
+                         int fallingColumns, int fallingRows) {
         public Effect(String type, float strength, float speed, float interval,
                       float frequency, int color,
                       String gradientShape, int highlightColor, int shadowColor) {
@@ -96,6 +114,312 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
                     emberCount, emberDrift, emberFlicker, 0.80f);
         }
 
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    7, 7, 0.80f, "base");
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, "base");
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker,
+                      String flamePlacement) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    6, 3, 0.45f);
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker,
+                      String flamePlacement,
+                      int steamCount, int steamSize, float steamDrift) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    5, 0.45f, 0.65f);
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker,
+                      String flamePlacement,
+                      int steamCount, int steamSize, float steamDrift,
+                      int electricCount, float electricBranching, float electricReach) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    5, 3, 0.70f,
+                    6, 3, 0.65f,
+                    7, 3, 0.55f);
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker,
+                      String flamePlacement,
+                      int steamCount, int steamSize, float steamDrift,
+                      int electricCount, float electricBranching, float electricReach,
+                      int wispCount, int wispTrail, float wispWander) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    6, 3, 0.65f,
+                    7, 3, 0.55f);
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker,
+                      String flamePlacement,
+                      int steamCount, int steamSize, float steamDrift,
+                      int electricCount, float electricBranching, float electricReach,
+                      int wispCount, int wispTrail, float wispWander,
+                      int sparkleCount, int sparkleSize, float sparkleTwinkle) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    7, 3, 0.55f);
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker,
+                      String flamePlacement,
+                      int steamCount, int steamSize, float steamDrift,
+                      int electricCount, float electricBranching, float electricReach,
+                      int wispCount, int wispTrail, float wispWander,
+                      int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                      int crystalCount, int crystalDepth, float crystalGlint) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    crystalCount, crystalDepth, crystalGlint,
+                    "scroll", 3, "", 3, 5, 8, 2);
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker,
+                      String flamePlacement,
+                      int steamCount, int steamSize, float steamDrift,
+                      int electricCount, float electricBranching, float electricReach,
+                      int wispCount, int wispTrail, float wispWander,
+                      int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                      int crystalCount, int crystalDepth, float crystalGlint,
+                      String runeMode, int runeSpacing, String runeTexture,
+                      int runeGlyphWidth, int runeGlyphHeight, int runeColumns, int runeRows) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    crystalCount, crystalDepth, crystalGlint,
+                    runeMode, runeSpacing, runeTexture, runeGlyphWidth, runeGlyphHeight,
+                    runeColumns, runeRows, 0.55f);
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker,
+                      String flamePlacement,
+                      int steamCount, int steamSize, float steamDrift,
+                      int electricCount, float electricBranching, float electricReach,
+                      int wispCount, int wispTrail, float wispWander,
+                      int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                      int crystalCount, int crystalDepth, float crystalGlint,
+                      String runeMode, int runeSpacing, String runeTexture,
+                      int runeGlyphWidth, int runeGlyphHeight, int runeColumns, int runeRows,
+                      float runeEscape) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    crystalCount, crystalDepth, crystalGlint,
+                    runeMode, runeSpacing, runeTexture, runeGlyphWidth, runeGlyphHeight,
+                    runeColumns, runeRows, runeEscape,
+                    8, 2);
+        }
+
+        public Effect(String type, float strength, float speed, float interval,
+                      float frequency, int color,
+                      String gradientShape, int highlightColor, int shadowColor,
+                      int surfacePoints, float tension, float damping,
+                      float splash, float movementInfluence,
+                      int lobeCount, float viscosity, float stringiness,
+                      int bubbleCount, int bubbleSize, float bubbleWobble,
+                      int emberCount, float emberDrift, float emberFlicker,
+                      float emberEscape,
+                      int flameCount, int flameHeight, float flameFlicker,
+                      String flamePlacement,
+                      int steamCount, int steamSize, float steamDrift,
+                      int electricCount, float electricBranching, float electricReach,
+                      int wispCount, int wispTrail, float wispWander,
+                      int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                      int crystalCount, int crystalDepth, float crystalGlint,
+                      String runeMode, int runeSpacing, String runeTexture,
+                      int runeGlyphWidth, int runeGlyphHeight, int runeColumns, int runeRows,
+                      float runeEscape,
+                      int corruptionCount, int corruptionSize) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    crystalCount, crystalDepth, crystalGlint,
+                    runeMode, runeSpacing, runeTexture, runeGlyphWidth, runeGlyphHeight,
+                    runeColumns, runeRows, runeEscape,
+                    corruptionCount, corruptionSize,
+                    6, 0.60f, 0.35f,
+                    8, 2, 0.45f,
+                    9, 2, 0.35f, "", 2, 2, 8, 2);
+        }
+
         public Effect {
             type = type == null || type.isBlank() ? "townstead:none" : type;
             strength = Math.max(0f, Math.min(1f, strength));
@@ -122,6 +446,55 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
             emberDrift = Math.max(0f, Math.min(1f, emberDrift));
             emberFlicker = Math.max(0f, Math.min(1f, emberFlicker));
             emberEscape = Math.max(0f, Math.min(1f, emberEscape));
+            flameCount = Math.max(2, Math.min(16, flameCount));
+            flameHeight = Math.max(1, Math.min(10, flameHeight));
+            flameFlicker = Math.max(0f, Math.min(1f, flameFlicker));
+            flamePlacement = flamePlacement == null || flamePlacement.isBlank()
+                    ? "base" : flamePlacement.toLowerCase(Locale.ROOT);
+            if (!"base".equals(flamePlacement) && !"surface".equals(flamePlacement)) {
+                flamePlacement = "base";
+            }
+            steamCount = Math.max(1, Math.min(16, steamCount));
+            steamSize = Math.max(1, Math.min(4, steamSize));
+            steamDrift = Math.max(0f, Math.min(1f, steamDrift));
+            electricCount = Math.max(1, Math.min(12, electricCount));
+            electricBranching = Math.max(0f, Math.min(1f, electricBranching));
+            electricReach = Math.max(0f, Math.min(1f, electricReach));
+            wispCount = Math.max(1, Math.min(12, wispCount));
+            wispTrail = Math.max(0, Math.min(6, wispTrail));
+            wispWander = Math.max(0f, Math.min(1f, wispWander));
+            sparkleCount = Math.max(1, Math.min(16, sparkleCount));
+            sparkleSize = Math.max(1, Math.min(5, sparkleSize));
+            sparkleTwinkle = Math.max(0f, Math.min(1f, sparkleTwinkle));
+            crystalCount = Math.max(0, Math.min(3, crystalCount));
+            crystalDepth = Math.max(1, Math.min(5, crystalDepth));
+            crystalGlint = Math.max(0f, Math.min(1f, crystalGlint));
+            runeMode = runeMode == null || runeMode.isBlank()
+                    ? "scroll" : runeMode.toLowerCase(Locale.ROOT);
+            if (!"scroll".equals(runeMode) && !"blink".equals(runeMode)) runeMode = "scroll";
+            runeSpacing = Math.max(1, Math.min(8, runeSpacing));
+            runeTexture = runeTexture == null ? "" : runeTexture.trim();
+            runeGlyphWidth = Math.max(1, Math.min(16, runeGlyphWidth));
+            runeGlyphHeight = Math.max(1, Math.min(16, runeGlyphHeight));
+            runeColumns = Math.max(1, Math.min(32, runeColumns));
+            runeRows = Math.max(1, Math.min(32, runeRows));
+            runeEscape = Math.max(0f, Math.min(1f, runeEscape));
+            corruptionCount = Math.max(1, Math.min(20, corruptionCount));
+            corruptionSize = Math.max(1, Math.min(4, corruptionSize));
+            voidCount = Math.max(1, Math.min(16, voidCount));
+            voidInstability = Math.max(0f, Math.min(1f, voidInstability));
+            prismaticWidth = Math.max(0.08f, Math.min(0.80f, prismaticWidth));
+            sporeCount = Math.max(1, Math.min(16, sporeCount));
+            sporeSize = Math.max(1, Math.min(3, sporeSize));
+            sporeDrift = Math.max(0f, Math.min(1f, sporeDrift));
+            fallingCount = Math.max(1, Math.min(20, fallingCount));
+            fallingSize = Math.max(1, Math.min(4, fallingSize));
+            fallingDrift = Math.max(0f, Math.min(1f, fallingDrift));
+            fallingTexture = fallingTexture == null ? "" : fallingTexture.trim();
+            fallingMarkWidth = Math.max(1, Math.min(16, fallingMarkWidth));
+            fallingMarkHeight = Math.max(1, Math.min(16, fallingMarkHeight));
+            fallingColumns = Math.max(1, Math.min(32, fallingColumns));
+            fallingRows = Math.max(1, Math.min(32, fallingRows));
         }
     }
 
@@ -194,6 +567,49 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
                 buf.writeFloat(effect.emberDrift());
                 buf.writeFloat(effect.emberFlicker());
                 buf.writeFloat(effect.emberEscape());
+                buf.writeVarInt(effect.flameCount());
+                buf.writeVarInt(effect.flameHeight());
+                buf.writeFloat(effect.flameFlicker());
+                buf.writeUtf(effect.flamePlacement());
+                buf.writeVarInt(effect.steamCount());
+                buf.writeVarInt(effect.steamSize());
+                buf.writeFloat(effect.steamDrift());
+                buf.writeVarInt(effect.electricCount());
+                buf.writeFloat(effect.electricBranching());
+                buf.writeFloat(effect.electricReach());
+                buf.writeVarInt(effect.wispCount());
+                buf.writeVarInt(effect.wispTrail());
+                buf.writeFloat(effect.wispWander());
+                buf.writeVarInt(effect.sparkleCount());
+                buf.writeVarInt(effect.sparkleSize());
+                buf.writeFloat(effect.sparkleTwinkle());
+                buf.writeVarInt(effect.crystalCount());
+                buf.writeVarInt(effect.crystalDepth());
+                buf.writeFloat(effect.crystalGlint());
+                buf.writeUtf(effect.runeMode());
+                buf.writeVarInt(effect.runeSpacing());
+                buf.writeUtf(effect.runeTexture());
+                buf.writeVarInt(effect.runeGlyphWidth());
+                buf.writeVarInt(effect.runeGlyphHeight());
+                buf.writeVarInt(effect.runeColumns());
+                buf.writeVarInt(effect.runeRows());
+                buf.writeFloat(effect.runeEscape());
+                buf.writeVarInt(effect.corruptionCount());
+                buf.writeVarInt(effect.corruptionSize());
+                buf.writeVarInt(effect.voidCount());
+                buf.writeFloat(effect.voidInstability());
+                buf.writeFloat(effect.prismaticWidth());
+                buf.writeVarInt(effect.sporeCount());
+                buf.writeVarInt(effect.sporeSize());
+                buf.writeFloat(effect.sporeDrift());
+                buf.writeVarInt(effect.fallingCount());
+                buf.writeVarInt(effect.fallingSize());
+                buf.writeFloat(effect.fallingDrift());
+                buf.writeUtf(effect.fallingTexture());
+                buf.writeVarInt(effect.fallingMarkWidth());
+                buf.writeVarInt(effect.fallingMarkHeight());
+                buf.writeVarInt(effect.fallingColumns());
+                buf.writeVarInt(effect.fallingRows());
             }
             buf.writeUtf(bar.frameId());
             buf.writeUtf(bar.colorThemeId());
@@ -232,7 +648,20 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
                         buf.readFloat(), buf.readFloat(),
                         buf.readVarInt(), buf.readFloat(), buf.readFloat(),
                         buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
-                        buf.readVarInt(), buf.readFloat(), buf.readFloat(), buf.readFloat()));
+                        buf.readVarInt(), buf.readFloat(), buf.readFloat(), buf.readFloat(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readFloat(), buf.readUtf(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
+                        buf.readVarInt(), buf.readFloat(), buf.readFloat(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
+                        buf.readUtf(), buf.readVarInt(), buf.readUtf(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                        buf.readFloat(), buf.readVarInt(), buf.readVarInt(),
+                        buf.readVarInt(), buf.readFloat(), buf.readFloat(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readFloat(), buf.readUtf(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
             }
             String frame = buf.readUtf();
             String colorTheme = buf.readUtf();

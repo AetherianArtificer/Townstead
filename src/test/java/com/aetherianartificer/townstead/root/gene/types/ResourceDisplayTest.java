@@ -255,6 +255,303 @@ class ResourceDisplayTest {
         assertEquals(0xA82B18, custom.shadowColor());
     }
 
+    @Test
+    void flamesHaveBaseDefaultsAndOptionalSurfacePlacement() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:flames"},
+                  {"type":"townstead:flames","strength":0.9,"speed":1.4,
+                   "density":11,"height":8,"flicker":0.55,"placement":"surface",
+                   "hot_color":"#FFF4B0","cool_color":"#B83218"}
+                ]}}
+                """);
+
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals("townstead:flames", defaults.type().toString());
+        assertEquals(0.8f, defaults.strength());
+        assertEquals(1.1f, defaults.speed());
+        assertEquals(7, defaults.flameCount());
+        assertEquals(7, defaults.flameHeight());
+        assertEquals(0.8f, defaults.flameFlicker());
+        assertEquals("base", defaults.flamePlacement());
+        assertEquals(-1, defaults.color());
+        assertEquals(-1, defaults.shadowColor());
+
+        ResourceDisplay.BarEffect custom = resource.resourceDisplay().effects().get(1);
+        assertEquals(0.9f, custom.strength());
+        assertEquals(1.4f, custom.speed());
+        assertEquals(11, custom.flameCount());
+        assertEquals(8, custom.flameHeight());
+        assertEquals(0.55f, custom.flameFlicker());
+        assertEquals("surface", custom.flamePlacement());
+        assertEquals(0xFFF4B0, custom.color());
+        assertEquals(0xB83218, custom.shadowColor());
+    }
+
+    @Test
+    void steamHasExpandingPuffDefaultsAndOptionalOverrides() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:steam"},
+                  {"type":"townstead:steam","strength":0.9,"speed":1.2,
+                   "density":10,"size":4,"drift":0.75,"color":"#C8D8DE"}
+                ]}}
+                """);
+
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals("townstead:steam", defaults.type().toString());
+        assertEquals(0.65f, defaults.strength());
+        assertEquals(0.75f, defaults.speed());
+        assertEquals(6, defaults.steamCount());
+        assertEquals(3, defaults.steamSize());
+        assertEquals(0.45f, defaults.steamDrift());
+        assertEquals(-1, defaults.color());
+
+        ResourceDisplay.BarEffect custom = resource.resourceDisplay().effects().get(1);
+        assertEquals(0.9f, custom.strength());
+        assertEquals(1.2f, custom.speed());
+        assertEquals(10, custom.steamCount());
+        assertEquals(4, custom.steamSize());
+        assertEquals(0.75f, custom.steamDrift());
+        assertEquals(0xC8D8DE, custom.color());
+    }
+
+    @Test
+    void electricHasArcDefaultsAndOptionalOverrides() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:electric"},
+                  {"type":"townstead:electric","strength":0.9,"speed":1.7,
+                   "density":9,"branching":0.7,"reach":0.85,"color":"#E8FFFF"}
+                ]}}
+                """);
+
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals("townstead:electric", defaults.type().toString());
+        assertEquals(0.8f, defaults.strength());
+        assertEquals(1.25f, defaults.speed());
+        assertEquals(5, defaults.electricCount());
+        assertEquals(0.45f, defaults.electricBranching());
+        assertEquals(0.65f, defaults.electricReach());
+        assertEquals(-1, defaults.color());
+
+        ResourceDisplay.BarEffect custom = resource.resourceDisplay().effects().get(1);
+        assertEquals(0.9f, custom.strength());
+        assertEquals(1.7f, custom.speed());
+        assertEquals(9, custom.electricCount());
+        assertEquals(0.7f, custom.electricBranching());
+        assertEquals(0.85f, custom.electricReach());
+        assertEquals(0xE8FFFF, custom.color());
+    }
+
+    @Test
+    void wispsHaveSpectralMoteDefaultsAndOptionalOverrides() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:wisps"},
+                  {"type":"townstead:wisps","strength":0.9,"speed":1.15,
+                   "density":9,"trail":5,"wander":0.85,"color":"#D8FFF2"}
+                ]}}
+                """);
+
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals("townstead:wisps", defaults.type().toString());
+        assertEquals(0.7f, defaults.strength());
+        assertEquals(0.85f, defaults.speed());
+        assertEquals(5, defaults.wispCount());
+        assertEquals(3, defaults.wispTrail());
+        assertEquals(0.7f, defaults.wispWander());
+        assertEquals(-1, defaults.color());
+
+        ResourceDisplay.BarEffect custom = resource.resourceDisplay().effects().get(1);
+        assertEquals(0.9f, custom.strength());
+        assertEquals(1.15f, custom.speed());
+        assertEquals(9, custom.wispCount());
+        assertEquals(5, custom.wispTrail());
+        assertEquals(0.85f, custom.wispWander());
+        assertEquals(0xD8FFF2, custom.color());
+    }
+
+    @Test
+    void sparkleHasPixelStarDefaultsAndOptionalOverrides() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:sparkle"},
+                  {"type":"townstead:sparkle","strength":0.9,"speed":1.35,
+                   "density":11,"size":5,"twinkle":0.8,"color":"#FFF4CC"}
+                ]}}
+                """);
+
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals("townstead:sparkle", defaults.type().toString());
+        assertEquals(0.75f, defaults.strength());
+        assertEquals(1f, defaults.speed());
+        assertEquals(6, defaults.sparkleCount());
+        assertEquals(3, defaults.sparkleSize());
+        assertEquals(0.65f, defaults.sparkleTwinkle());
+        assertEquals(-1, defaults.color());
+
+        ResourceDisplay.BarEffect custom = resource.resourceDisplay().effects().get(1);
+        assertEquals(0.9f, custom.strength());
+        assertEquals(1.35f, custom.speed());
+        assertEquals(11, custom.sparkleCount());
+        assertEquals(5, custom.sparkleSize());
+        assertEquals(0.8f, custom.sparkleTwinkle());
+        assertEquals(0xFFF4CC, custom.color());
+    }
+
+    @Test
+    void crystallineHasGlassDefaultsAndOptionalOverrides() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:crystalline"},
+                  {"type":"townstead:crystalline","strength":0.82,"speed":1.1,
+                   "density":3,"depth":4,"glint":0.75,"color":"#CFF8FF"}
+                ]}}
+                """);
+
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals("townstead:crystalline", defaults.type().toString());
+        assertEquals(0.65f, defaults.strength());
+        assertEquals(0.65f, defaults.speed());
+        assertEquals(2, defaults.crystalCount());
+        assertEquals(2, defaults.crystalDepth());
+        assertEquals(0.55f, defaults.crystalGlint());
+        assertEquals(-1, defaults.color());
+
+        ResourceDisplay.BarEffect custom = resource.resourceDisplay().effects().get(1);
+        assertEquals(0.82f, custom.strength());
+        assertEquals(1.1f, custom.speed());
+        assertEquals(3, custom.crystalCount());
+        assertEquals(4, custom.crystalDepth());
+        assertEquals(0.75f, custom.crystalGlint());
+        assertEquals(0xCFF8FF, custom.color());
+    }
+
+    @Test
+    void runesHaveBuiltInDefaultsAndSupportPackGlyphSheets() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:runes"},
+                  {"type":"townstead:runes","strength":0.85,"speed":1.2,
+                   "mode":"blink","spacing":5,"color":"#E9D2FF",
+                   "texture":"example:textures/gui/runes.png","glyph_width":4,
+                   "glyph_height":6,"columns":10,"rows":3,"escape":0.8}
+                ]}}
+                """);
+
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals("townstead:runes", defaults.type().toString());
+        assertEquals(0.70f, defaults.strength());
+        assertEquals(0.75f, defaults.speed());
+        assertEquals("scroll", defaults.runeMode());
+        assertEquals(3, defaults.runeSpacing());
+        assertEquals("", defaults.runeTexture());
+        assertEquals(3, defaults.runeGlyphWidth());
+        assertEquals(5, defaults.runeGlyphHeight());
+        assertEquals(0.55f, defaults.runeEscape());
+
+        ResourceDisplay.BarEffect custom = resource.resourceDisplay().effects().get(1);
+        assertEquals("blink", custom.runeMode());
+        assertEquals(5, custom.runeSpacing());
+        assertEquals("example:textures/gui/runes.png", custom.runeTexture());
+        assertEquals(4, custom.runeGlyphWidth());
+        assertEquals(6, custom.runeGlyphHeight());
+        assertEquals(10, custom.runeColumns());
+        assertEquals(3, custom.runeRows());
+        assertEquals(0.8f, custom.runeEscape());
+        assertEquals(0xE9D2FF, custom.color());
+    }
+
+    @Test
+    void corruptionHasCrawlingPatchDefaultsAndOptionalOverrides() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:corruption"},
+                  {"type":"townstead:corruption","strength":0.9,"speed":1.25,
+                   "density":14,"size":4,"color":"#4D165E"}
+                ]}}
+                """);
+
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals("townstead:corruption", defaults.type().toString());
+        assertEquals(0.75f, defaults.strength());
+        assertEquals(0.80f, defaults.speed());
+        assertEquals(8, defaults.corruptionCount());
+        assertEquals(2, defaults.corruptionSize());
+        assertEquals(-1, defaults.color());
+
+        ResourceDisplay.BarEffect custom = resource.resourceDisplay().effects().get(1);
+        assertEquals(0.9f, custom.strength());
+        assertEquals(1.25f, custom.speed());
+        assertEquals(14, custom.corruptionCount());
+        assertEquals(4, custom.corruptionSize());
+        assertEquals(0x4D165E, custom.color());
+    }
+
+    @Test
+    void voidHasConfigurablePixelDeletionAndGlitchInstability() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:void"},
+                  {"type":"townstead:void","strength":0.9,"speed":1.1,
+                   "density":12,"instability":0.8}
+                ]}}
+                """);
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals(0.70f, defaults.strength());
+        assertEquals(0.75f, defaults.speed());
+        assertEquals(6, defaults.voidCount());
+        assertEquals(0.60f, defaults.voidInstability());
+        ResourceDisplay.BarEffect custom = resource.resourceDisplay().effects().get(1);
+        assertEquals(12, custom.voidCount());
+        assertEquals(0.8f, custom.voidInstability());
+        assertEquals(-1, custom.color());
+    }
+
+    @Test
+    void prismaticHasAControlledTravellingBand() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:prismatic"},
+                  {"type":"townstead:prismatic","strength":0.82,"speed":1.3,
+                   "band_width":0.58}
+                ]}}
+                """);
+        ResourceDisplay.BarEffect defaults = resource.resourceDisplay().effects().get(0);
+        assertEquals(0.65f, defaults.strength());
+        assertEquals(0.70f, defaults.speed());
+        assertEquals(0.35f, defaults.prismaticWidth());
+        assertEquals(0.58f, resource.resourceDisplay().effects().get(1).prismaticWidth());
+    }
+
+    @Test
+    void sporesAndFallingMotesHaveDistinctParticleControls() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[
+                  {"type":"townstead:spores","density":11,"size":3,"drift":0.7,
+                   "color":"#C9E88A"},
+                  {"type":"townstead:falling_motes","density":15,"size":4,"drift":0.6,
+                   "color":"#F2F7FF","texture":"example:textures/gui/motes.png",
+                   "mark_width":3,"mark_height":4,"columns":9,"rows":3}
+                ]}}
+                """);
+        ResourceDisplay.BarEffect spores = resource.resourceDisplay().effects().get(0);
+        assertEquals(11, spores.sporeCount());
+        assertEquals(3, spores.sporeSize());
+        assertEquals(0.7f, spores.sporeDrift());
+        assertEquals(0xC9E88A, spores.color());
+        ResourceDisplay.BarEffect falling = resource.resourceDisplay().effects().get(1);
+        assertEquals(15, falling.fallingCount());
+        assertEquals(4, falling.fallingSize());
+        assertEquals(0.6f, falling.fallingDrift());
+        assertEquals("example:textures/gui/motes.png", falling.fallingTexture());
+        assertEquals(3, falling.fallingMarkWidth());
+        assertEquals(4, falling.fallingMarkHeight());
+        assertEquals(9, falling.fallingColumns());
+        assertEquals(3, falling.fallingRows());
+    }
+
     private static ResourceGeneType.Instance parse(String json) {
         return (ResourceGeneType.Instance) new ResourceGeneType().parse(
                 JsonParser.parseString(json).getAsJsonObject());

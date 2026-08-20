@@ -14,7 +14,7 @@
     "FishingHookKeepAliveMixin",
     "compat.farmersdelight.CookingPotResultSlotMixin",
     "compat.farmersdelight.CookingPotServeMixin",
-    "compat.farmersdelight.SkilletPlayerCookMixin",
+    "compat.farmersdelight.SkilletCookingCompletionMixin",
     "compat.pizzadelight.PizzaStationResultSlotMixin",
     "compat.farmersdelight.StoveVillagerDamageMixin",
     "compat.mca.FamilyTreeNodeGenderGuardMixin",

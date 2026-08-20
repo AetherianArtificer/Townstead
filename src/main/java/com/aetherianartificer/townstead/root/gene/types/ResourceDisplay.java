@@ -37,7 +37,24 @@ public record ResourceDisplay(
                             int lobeCount, float viscosity, float stringiness,
                             int bubbleCount, int bubbleSize, float bubbleWobble,
                             int emberCount, float emberDrift, float emberFlicker,
-                            float emberEscape) {
+                            float emberEscape,
+                            int flameCount, int flameHeight, float flameFlicker,
+                            String flamePlacement,
+                            int steamCount, int steamSize, float steamDrift,
+                            int electricCount, float electricBranching, float electricReach,
+                            int wispCount, int wispTrail, float wispWander,
+                            int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                            int crystalCount, int crystalDepth, float crystalGlint,
+                            String runeMode, int runeSpacing, String runeTexture,
+                            int runeGlyphWidth, int runeGlyphHeight, int runeColumns, int runeRows,
+                            float runeEscape,
+                            int corruptionCount, int corruptionSize,
+                            int voidCount, float voidInstability,
+                            float prismaticWidth,
+                            int sporeCount, int sporeSize, float sporeDrift,
+                            int fallingCount, int fallingSize, float fallingDrift,
+                            String fallingTexture, int fallingMarkWidth, int fallingMarkHeight,
+                            int fallingColumns, int fallingRows) {
         public BarEffect(ResourceLocation type, float strength, float speed, float interval,
                          float frequency, int color,
                          String gradientShape, int highlightColor, int shadowColor) {
@@ -107,6 +124,312 @@ public record ResourceDisplay(
                     emberCount, emberDrift, emberFlicker, 0.80f);
         }
 
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    7, 7, 0.80f, "base");
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, "base");
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    6, 3, 0.45f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement,
+                         int steamCount, int steamSize, float steamDrift) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    5, 0.45f, 0.65f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement,
+                         int steamCount, int steamSize, float steamDrift,
+                         int electricCount, float electricBranching, float electricReach) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    5, 3, 0.70f,
+                    6, 3, 0.65f,
+                    7, 3, 0.55f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement,
+                         int steamCount, int steamSize, float steamDrift,
+                         int electricCount, float electricBranching, float electricReach,
+                         int wispCount, int wispTrail, float wispWander) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    6, 3, 0.65f,
+                    7, 3, 0.55f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement,
+                         int steamCount, int steamSize, float steamDrift,
+                         int electricCount, float electricBranching, float electricReach,
+                         int wispCount, int wispTrail, float wispWander,
+                         int sparkleCount, int sparkleSize, float sparkleTwinkle) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    7, 3, 0.55f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement,
+                         int steamCount, int steamSize, float steamDrift,
+                         int electricCount, float electricBranching, float electricReach,
+                         int wispCount, int wispTrail, float wispWander,
+                         int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                         int crystalCount, int crystalDepth, float crystalGlint) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    crystalCount, crystalDepth, crystalGlint,
+                    "scroll", 3, "", 3, 5, 8, 2);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement,
+                         int steamCount, int steamSize, float steamDrift,
+                         int electricCount, float electricBranching, float electricReach,
+                         int wispCount, int wispTrail, float wispWander,
+                         int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                         int crystalCount, int crystalDepth, float crystalGlint,
+                         String runeMode, int runeSpacing, String runeTexture,
+                         int runeGlyphWidth, int runeGlyphHeight, int runeColumns, int runeRows) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    crystalCount, crystalDepth, crystalGlint,
+                    runeMode, runeSpacing, runeTexture, runeGlyphWidth, runeGlyphHeight,
+                    runeColumns, runeRows, 0.55f);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement,
+                         int steamCount, int steamSize, float steamDrift,
+                         int electricCount, float electricBranching, float electricReach,
+                         int wispCount, int wispTrail, float wispWander,
+                         int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                         int crystalCount, int crystalDepth, float crystalGlint,
+                         String runeMode, int runeSpacing, String runeTexture,
+                         int runeGlyphWidth, int runeGlyphHeight, int runeColumns, int runeRows,
+                         float runeEscape) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    crystalCount, crystalDepth, crystalGlint,
+                    runeMode, runeSpacing, runeTexture, runeGlyphWidth, runeGlyphHeight,
+                    runeColumns, runeRows, runeEscape,
+                    8, 2);
+        }
+
+        public BarEffect(ResourceLocation type, float strength, float speed, float interval,
+                         float frequency, int color,
+                         String gradientShape, int highlightColor, int shadowColor,
+                         int surfacePoints, float tension, float damping,
+                         float splash, float movementInfluence,
+                         int lobeCount, float viscosity, float stringiness,
+                         int bubbleCount, int bubbleSize, float bubbleWobble,
+                         int emberCount, float emberDrift, float emberFlicker,
+                         float emberEscape,
+                         int flameCount, int flameHeight, float flameFlicker,
+                         String flamePlacement,
+                         int steamCount, int steamSize, float steamDrift,
+                         int electricCount, float electricBranching, float electricReach,
+                         int wispCount, int wispTrail, float wispWander,
+                         int sparkleCount, int sparkleSize, float sparkleTwinkle,
+                         int crystalCount, int crystalDepth, float crystalGlint,
+                         String runeMode, int runeSpacing, String runeTexture,
+                         int runeGlyphWidth, int runeGlyphHeight, int runeColumns, int runeRows,
+                         float runeEscape,
+                         int corruptionCount, int corruptionSize) {
+            this(type, strength, speed, interval, frequency, color,
+                    gradientShape, highlightColor, shadowColor,
+                    surfacePoints, tension, damping, splash, movementInfluence,
+                    lobeCount, viscosity, stringiness,
+                    bubbleCount, bubbleSize, bubbleWobble,
+                    emberCount, emberDrift, emberFlicker, emberEscape,
+                    flameCount, flameHeight, flameFlicker, flamePlacement,
+                    steamCount, steamSize, steamDrift,
+                    electricCount, electricBranching, electricReach,
+                    wispCount, wispTrail, wispWander,
+                    sparkleCount, sparkleSize, sparkleTwinkle,
+                    crystalCount, crystalDepth, crystalGlint,
+                    runeMode, runeSpacing, runeTexture, runeGlyphWidth, runeGlyphHeight,
+                    runeColumns, runeRows, runeEscape,
+                    corruptionCount, corruptionSize,
+                    6, 0.60f, 0.35f,
+                    8, 2, 0.45f,
+                    9, 2, 0.35f, "", 2, 2, 8, 2);
+        }
+
         public BarEffect {
             type = type == null ? id("townstead:none", "townstead:none") : type;
             strength = Math.max(0f, Math.min(1f, strength));
@@ -133,6 +456,51 @@ public record ResourceDisplay(
             emberDrift = Math.max(0f, Math.min(1f, emberDrift));
             emberFlicker = Math.max(0f, Math.min(1f, emberFlicker));
             emberEscape = Math.max(0f, Math.min(1f, emberEscape));
+            flameCount = Math.max(2, Math.min(16, flameCount));
+            flameHeight = Math.max(1, Math.min(10, flameHeight));
+            flameFlicker = Math.max(0f, Math.min(1f, flameFlicker));
+            flamePlacement = normalize(flamePlacement);
+            if (!List.of("base", "surface").contains(flamePlacement)) flamePlacement = "base";
+            steamCount = Math.max(1, Math.min(16, steamCount));
+            steamSize = Math.max(1, Math.min(4, steamSize));
+            steamDrift = Math.max(0f, Math.min(1f, steamDrift));
+            electricCount = Math.max(1, Math.min(12, electricCount));
+            electricBranching = Math.max(0f, Math.min(1f, electricBranching));
+            electricReach = Math.max(0f, Math.min(1f, electricReach));
+            wispCount = Math.max(1, Math.min(12, wispCount));
+            wispTrail = Math.max(0, Math.min(6, wispTrail));
+            wispWander = Math.max(0f, Math.min(1f, wispWander));
+            sparkleCount = Math.max(1, Math.min(16, sparkleCount));
+            sparkleSize = Math.max(1, Math.min(5, sparkleSize));
+            sparkleTwinkle = Math.max(0f, Math.min(1f, sparkleTwinkle));
+            crystalCount = Math.max(0, Math.min(3, crystalCount));
+            crystalDepth = Math.max(1, Math.min(5, crystalDepth));
+            crystalGlint = Math.max(0f, Math.min(1f, crystalGlint));
+            runeMode = normalize(runeMode);
+            if (!List.of("scroll", "blink").contains(runeMode)) runeMode = "scroll";
+            runeSpacing = Math.max(1, Math.min(8, runeSpacing));
+            runeTexture = runeTexture == null ? "" : runeTexture.trim();
+            runeGlyphWidth = Math.max(1, Math.min(16, runeGlyphWidth));
+            runeGlyphHeight = Math.max(1, Math.min(16, runeGlyphHeight));
+            runeColumns = Math.max(1, Math.min(32, runeColumns));
+            runeRows = Math.max(1, Math.min(32, runeRows));
+            runeEscape = Math.max(0f, Math.min(1f, runeEscape));
+            corruptionCount = Math.max(1, Math.min(20, corruptionCount));
+            corruptionSize = Math.max(1, Math.min(4, corruptionSize));
+            voidCount = Math.max(1, Math.min(16, voidCount));
+            voidInstability = Math.max(0f, Math.min(1f, voidInstability));
+            prismaticWidth = Math.max(0.08f, Math.min(0.80f, prismaticWidth));
+            sporeCount = Math.max(1, Math.min(16, sporeCount));
+            sporeSize = Math.max(1, Math.min(3, sporeSize));
+            sporeDrift = Math.max(0f, Math.min(1f, sporeDrift));
+            fallingCount = Math.max(1, Math.min(20, fallingCount));
+            fallingSize = Math.max(1, Math.min(4, fallingSize));
+            fallingDrift = Math.max(0f, Math.min(1f, fallingDrift));
+            fallingTexture = fallingTexture == null ? "" : fallingTexture.trim();
+            fallingMarkWidth = Math.max(1, Math.min(16, fallingMarkWidth));
+            fallingMarkHeight = Math.max(1, Math.min(16, fallingMarkHeight));
+            fallingColumns = Math.max(1, Math.min(32, fallingColumns));
+            fallingRows = Math.max(1, Math.min(32, fallingRows));
         }
     }
 
@@ -239,7 +607,19 @@ public record ResourceDisplay(
                     && !"townstead:liquid".equals(type.toString())
                     && !"townstead:viscous".equals(type.toString())
                     && !"townstead:bubbles".equals(type.toString())
-                    && !"townstead:embers".equals(type.toString())) {
+                    && !"townstead:embers".equals(type.toString())
+                    && !"townstead:flames".equals(type.toString())
+                    && !"townstead:steam".equals(type.toString())
+                    && !"townstead:electric".equals(type.toString())
+                    && !"townstead:wisps".equals(type.toString())
+                    && !"townstead:sparkle".equals(type.toString())
+                    && !"townstead:crystalline".equals(type.toString())
+                    && !"townstead:runes".equals(type.toString())
+                    && !"townstead:corruption".equals(type.toString())
+                    && !"townstead:void".equals(type.toString())
+                    && !"townstead:prismatic".equals(type.toString())
+                    && !"townstead:spores".equals(type.toString())
+                    && !"townstead:falling_motes".equals(type.toString())) {
                 throw new IllegalArgumentException("Unknown resource bar effect '" + type + "'");
             }
             if ("townstead:none".equals(type.toString())) continue;
@@ -327,6 +707,220 @@ public record ResourceDisplay(
                 continue;
             }
 
+            if ("townstead:flames".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.80f),
+                        GsonHelper.getAsFloat(effect, "speed", 1.10f),
+                        3.6f, 1f,
+                        optionalColor(effect, "hot_color"), "crosswise", -1,
+                        optionalColor(effect, "cool_color"),
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        6, 2, 0.35f,
+                        8, 0.45f, 0.65f, 0.80f,
+                        GsonHelper.getAsInt(effect, "density", 7),
+                        GsonHelper.getAsInt(effect, "height", 7),
+                        GsonHelper.getAsFloat(effect, "flicker", 0.80f),
+                        GsonHelper.getAsString(effect, "placement", "base")));
+                continue;
+            }
+
+            if ("townstead:steam".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.65f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.75f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        6, 2, 0.35f,
+                        8, 0.45f, 0.65f, 0.80f,
+                        7, 7, 0.80f, "base",
+                        GsonHelper.getAsInt(effect, "density", 6),
+                        GsonHelper.getAsInt(effect, "size", 3),
+                        GsonHelper.getAsFloat(effect, "drift", 0.45f)));
+                continue;
+            }
+
+            if ("townstead:electric".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.80f),
+                        GsonHelper.getAsFloat(effect, "speed", 1.25f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        6, 2, 0.35f,
+                        8, 0.45f, 0.65f, 0.80f,
+                        7, 7, 0.80f, "base",
+                        6, 3, 0.45f,
+                        GsonHelper.getAsInt(effect, "density", 5),
+                        GsonHelper.getAsFloat(effect, "branching", 0.45f),
+                        GsonHelper.getAsFloat(effect, "reach", 0.65f)));
+                continue;
+            }
+
+            if ("townstead:wisps".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.70f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.85f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        6, 2, 0.35f,
+                        8, 0.45f, 0.65f, 0.80f,
+                        7, 7, 0.80f, "base",
+                        6, 3, 0.45f,
+                        5, 0.45f, 0.65f,
+                        GsonHelper.getAsInt(effect, "density", 5),
+                        GsonHelper.getAsInt(effect, "trail", 3),
+                        GsonHelper.getAsFloat(effect, "wander", 0.70f)));
+                continue;
+            }
+
+            if ("townstead:sparkle".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.75f),
+                        GsonHelper.getAsFloat(effect, "speed", 1f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        6, 2, 0.35f,
+                        8, 0.45f, 0.65f, 0.80f,
+                        7, 7, 0.80f, "base",
+                        6, 3, 0.45f,
+                        5, 0.45f, 0.65f,
+                        5, 3, 0.70f,
+                        GsonHelper.getAsInt(effect, "density", 6),
+                        GsonHelper.getAsInt(effect, "size", 3),
+                        GsonHelper.getAsFloat(effect, "twinkle", 0.65f)));
+                continue;
+            }
+
+            if ("townstead:crystalline".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.65f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.65f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        6, 2, 0.35f,
+                        8, 0.45f, 0.65f, 0.80f,
+                        7, 7, 0.80f, "base",
+                        6, 3, 0.45f,
+                        5, 0.45f, 0.65f,
+                        5, 3, 0.70f,
+                        6, 3, 0.65f,
+                        GsonHelper.getAsInt(effect, "density", 2),
+                        GsonHelper.getAsInt(effect, "depth", 2),
+                        GsonHelper.getAsFloat(effect, "glint", 0.55f)));
+                continue;
+            }
+
+            if ("townstead:runes".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.70f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.75f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        6, 2, 0.35f,
+                        8, 0.45f, 0.65f, 0.80f,
+                        7, 7, 0.80f, "base",
+                        6, 3, 0.45f,
+                        5, 0.45f, 0.65f,
+                        5, 3, 0.70f,
+                        6, 3, 0.65f,
+                        7, 3, 0.55f,
+                        GsonHelper.getAsString(effect, "mode", "scroll"),
+                        GsonHelper.getAsInt(effect, "spacing", 3),
+                        GsonHelper.getAsString(effect, "texture", ""),
+                        GsonHelper.getAsInt(effect, "glyph_width", 3),
+                        GsonHelper.getAsInt(effect, "glyph_height", 5),
+                        GsonHelper.getAsInt(effect, "columns", 8),
+                        GsonHelper.getAsInt(effect, "rows", 2),
+                        GsonHelper.getAsFloat(effect, "escape", 0.55f)));
+                continue;
+            }
+
+            if ("townstead:corruption".equals(type.toString())) {
+                effects.add(new BarEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.75f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.80f),
+                        3.6f, 1f,
+                        optionalColor(effect, "color"), "crosswise", -1, -1,
+                        12, 0.18f, 0.92f, 0.65f, 0.20f,
+                        5, 0.78f, 0.55f,
+                        6, 2, 0.35f,
+                        8, 0.45f, 0.65f, 0.80f,
+                        7, 7, 0.80f, "base",
+                        6, 3, 0.45f,
+                        5, 0.45f, 0.65f,
+                        5, 3, 0.70f,
+                        6, 3, 0.65f,
+                        7, 3, 0.55f,
+                        "scroll", 3, "", 3, 5, 8, 2, 0.55f,
+                        GsonHelper.getAsInt(effect, "density", 8),
+                        GsonHelper.getAsInt(effect, "size", 2)));
+                continue;
+            }
+
+            if ("townstead:void".equals(type.toString())) {
+                effects.add(extendedEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.70f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.75f),
+                        -1,
+                        GsonHelper.getAsInt(effect, "density", 6),
+                        GsonHelper.getAsFloat(effect, "instability", 0.60f),
+                        0.35f, 7, 2, 0.45f,
+                        9, 2, 0.35f, "", 2, 2, 8, 2));
+                continue;
+            }
+
+            if ("townstead:prismatic".equals(type.toString())) {
+                effects.add(extendedEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.65f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.70f),
+                        -1, 6, 0.60f,
+                        GsonHelper.getAsFloat(effect, "band_width", 0.35f),
+                        7, 2, 0.45f,
+                        9, 2, 0.35f, "", 2, 2, 8, 2));
+                continue;
+            }
+
+            if ("townstead:spores".equals(type.toString())) {
+                effects.add(extendedEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.55f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.65f),
+                        optionalColor(effect, "color"), 6, 0.60f, 0.35f,
+                        GsonHelper.getAsInt(effect, "density", 8),
+                        GsonHelper.getAsInt(effect, "size", 2),
+                        GsonHelper.getAsFloat(effect, "drift", 0.45f),
+                        9, 2, 0.35f, "", 2, 2, 8, 2));
+                continue;
+            }
+
+            if ("townstead:falling_motes".equals(type.toString())) {
+                effects.add(extendedEffect(type,
+                        GsonHelper.getAsFloat(effect, "strength", 0.65f),
+                        GsonHelper.getAsFloat(effect, "speed", 0.75f),
+                        optionalColor(effect, "color"), 6, 0.60f, 0.35f,
+                        7, 2, 0.45f,
+                        GsonHelper.getAsInt(effect, "density", 9),
+                        GsonHelper.getAsInt(effect, "size", 2),
+                        GsonHelper.getAsFloat(effect, "drift", 0.35f),
+                        GsonHelper.getAsString(effect, "texture", ""),
+                        GsonHelper.getAsInt(effect, "mark_width", 2),
+                        GsonHelper.getAsInt(effect, "mark_height", 2),
+                        GsonHelper.getAsInt(effect, "columns", 8),
+                        GsonHelper.getAsInt(effect, "rows", 2)));
+                continue;
+            }
+
             String presetName = normalize(GsonHelper.getAsString(effect, "preset", "standard"));
             GradientPreset preset = gradientPreset(presetName);
             float strength = GsonHelper.getAsFloat(effect, "strength", preset.strength());
@@ -340,6 +934,36 @@ public record ResourceDisplay(
                     -1, shape, highlight, shadow));
         }
         return List.copyOf(effects);
+    }
+
+    private static BarEffect extendedEffect(ResourceLocation type, float strength, float speed,
+                                             int color,
+                                             int voidCount, float voidInstability,
+                                             float prismaticWidth,
+                                             int sporeCount, int sporeSize, float sporeDrift,
+                                             int fallingCount, int fallingSize, float fallingDrift,
+                                             String fallingTexture, int fallingMarkWidth,
+                                             int fallingMarkHeight, int fallingColumns,
+                                             int fallingRows) {
+        return new BarEffect(type, strength, speed, 3.6f, 1f,
+                color, "crosswise", -1, -1,
+                12, 0.18f, 0.92f, 0.65f, 0.20f,
+                5, 0.78f, 0.55f,
+                6, 2, 0.35f,
+                8, 0.45f, 0.65f, 0.80f,
+                7, 7, 0.80f, "base",
+                6, 3, 0.45f,
+                5, 0.45f, 0.65f,
+                5, 3, 0.70f,
+                6, 3, 0.65f,
+                7, 3, 0.55f,
+                "scroll", 3, "", 3, 5, 8, 2, 0.55f,
+                8, 2,
+                voidCount, voidInstability, prismaticWidth,
+                sporeCount, sporeSize, sporeDrift,
+                fallingCount, fallingSize, fallingDrift,
+                fallingTexture, fallingMarkWidth, fallingMarkHeight,
+                fallingColumns, fallingRows);
     }
 
     private static GradientPreset gradientPreset(String name) {

@@ -34,7 +34,8 @@ public abstract class CookingPotServeMixin {
                 self.getBlockPos().getX() + 0.5, self.getBlockPos().getY() + 0.5,
                 self.getBlockPos().getZ() + 0.5, 5.0, false);
         if (player != null) {
-            PlayerWorkHooks.onDishTaken(player, served, "cooking_pot");
+            PlayerWorkHooks.onCookingCompleted(
+                    player, served, served.getCount(), "cooking_pot");
         }
     }
 }

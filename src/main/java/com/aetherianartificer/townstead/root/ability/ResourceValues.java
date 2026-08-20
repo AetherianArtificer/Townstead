@@ -169,7 +169,23 @@ public final class ResourceValues {
                     effect.lobeCount(), effect.viscosity(), effect.stringiness(),
                     effect.bubbleCount(), effect.bubbleSize(), effect.bubbleWobble(),
                     effect.emberCount(), effect.emberDrift(), effect.emberFlicker(),
-                    effect.emberEscape()));
+                    effect.emberEscape(),
+                    effect.flameCount(), effect.flameHeight(), effect.flameFlicker(),
+                    effect.flamePlacement(),
+                    effect.steamCount(), effect.steamSize(), effect.steamDrift(),
+                    effect.electricCount(), effect.electricBranching(), effect.electricReach(),
+                    effect.wispCount(), effect.wispTrail(), effect.wispWander(),
+                    effect.sparkleCount(), effect.sparkleSize(), effect.sparkleTwinkle(),
+                    effect.crystalCount(), effect.crystalDepth(), effect.crystalGlint(),
+                    effect.runeMode(), effect.runeSpacing(), effect.runeTexture(),
+                    effect.runeGlyphWidth(), effect.runeGlyphHeight(),
+                    effect.runeColumns(), effect.runeRows(), effect.runeEscape(),
+                    effect.corruptionCount(), effect.corruptionSize(),
+                    effect.voidCount(), effect.voidInstability(), effect.prismaticWidth(),
+                    effect.sporeCount(), effect.sporeSize(), effect.sporeDrift(),
+                    effect.fallingCount(), effect.fallingSize(), effect.fallingDrift(),
+                    effect.fallingTexture(), effect.fallingMarkWidth(), effect.fallingMarkHeight(),
+                    effect.fallingColumns(), effect.fallingRows()));
         }
         return List.copyOf(resolved);
     }
