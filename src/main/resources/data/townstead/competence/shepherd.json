@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:competence/v1",
+  "profession": "minecraft:shepherd",
+  "per_year": {
+    "townstead:tended": 200,
+    "townstead:groomed": 120
+  }
+}

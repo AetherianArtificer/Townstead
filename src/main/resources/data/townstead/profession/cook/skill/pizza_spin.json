@@ -1,0 +1,66 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "[PLACEHOLDER] COOK SKILL 06"
+  },
+  "icon": "minecraft:barrier",
+  "description": {
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/pizza_spin."
+  },
+  "tier": 2,
+  "cost": 1,
+  "mods": [
+    "pizzadelight",
+    "farmersdelight"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 160,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4.0,
+          "bientity_condition": {
+            "type": "pheno:hostile"
+          },
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 5.0
+              },
+              {
+                "type": "pheno:add_velocity",
+                "x": 0,
+                "y": 0.45,
+                "z": 0,
+                "relative": false
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:crit",
+          "count": 35,
+          "spread": 2.2,
+          "speed": 0.12
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.sweep",
+          "volume": 1.0,
+          "pitch": 0.9
+        }
+      ]
+    }
+  }
+}

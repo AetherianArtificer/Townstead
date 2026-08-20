@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:chest",
+    "minecraft:trapped_chest",
+    "minecraft:barrel",
+    {"id": "#townstead:kitchen/storage", "required": false},
+    {"id": "#townstead:kitchen/upgraded_storage", "required": false},
+    {"id": "#townstead:kitchen/nether_storage", "required": false}
+  ]
+}

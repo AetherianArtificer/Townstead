@@ -44,11 +44,25 @@ public final class BuildingReportReconciler {
         DockLocationIndex.rebuildVillage(level, village);
         BuildingRecognitionTracker.reconcile(level, village);
         SpiritReconciler.reconcileVillage(level, village);
+        // Floor-system v2 never validates external buildings, so demolished landings/pens
+        // are cleaned up here, at report time with the village's chunks loaded.
+        com.aetherianartificer.townstead.village.VillageSanitizer.sweepDemolishedSynthetics(level, village);
+        // A rescan is exactly when a room's shape may have changed, so it is where a worksite's
+        // remembered extent stops being trustworthy. Without this the only correction is the
+        // freshness backstop, which is a bound on being wrong rather than a way of being right.
+        for (Building building : McaBuildings.all(village)) {
+            com.aetherianartificer.townstead.work.site.Worksites.invalidateExtent(level, building);
+        }
+        // A rescan is also the moment we can tell a demolished worksite from an unloaded one, so
+        // it is where retired places leave the register instead of accumulating for the life of
+        // the world. Ids are never reused, so a pruned site can only be replaced by a new one.
+        com.aetherianartificer.townstead.work.site.WorksiteRegister
+                .get(level.getServer()).prune(level);
     }
 
     private static void detectAndSyncDockFromReport(ServerLevel level, BlockPos source, Village village, Logger log) {
         try {
-            if (insideEnclosedBuilding(village, source)) return;
+            if (insideEnclosedBuilding(level, village, source)) return;
             Dock dock = DockScanner.scanForReport(level, source, REPORT_SCAN_RADIUS);
             if (dock != null) {
                 DockBuildingSync.sync(level, dock, source);
@@ -60,13 +74,13 @@ public final class BuildingReportReconciler {
         }
     }
 
-    public static boolean insideEnclosedBuilding(Village village, BlockPos pos) {
-        for (Building b : village.getBuildings().values()) {
+    public static boolean insideEnclosedBuilding(ServerLevel level, Village village, BlockPos pos) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             String t = b.getType();
             if (t == null) continue;
             if (t.startsWith("dock_")) continue;
             if (EnclosureTypeIndex.isEnclosureType(t)) continue;
-            if (b.containsPos(pos)) return true;
+            if (McaBuildingCompat.contains(level, village, b, pos)) return true;
         }
         return false;
     }

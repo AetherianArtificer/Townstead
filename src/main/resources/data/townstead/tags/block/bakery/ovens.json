@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "#townstead:furnace_stations",
+    "#townstead:smoker_stations"
+  ]
+}

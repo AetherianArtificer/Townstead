@@ -1,10 +1,11 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
+import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.needs.Amenities;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableMap;
@@ -58,7 +59,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
     private static final int REFRACTORY_TICKS = 600;
 
     private enum Phase { ACQUIRE, CONSUME }
-    private enum TargetType { NONE, GROUND_ITEM, CONTAINER, CROP }
+    private enum TargetType { NONE, GROUND_ITEM, CONTAINER, CROP, AMENITY }
     private enum Need { FOOD, DRINK }
 
     private Phase phase = Phase.CONSUME;
@@ -67,6 +68,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
     private BlockPos targetPos;
     private ItemEntity targetItem;
     private NearbyItemSources.ContainerSlot targetContainerSlot;
+    private Amenities.Candidate targetAmenity;
     // Container a session's rations were pulled from, so emptied containers go back there.
     private BlockPos sessionSource;
     private int cooldown;
@@ -151,6 +153,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         targetPos = null;
         targetItem = null;
         targetContainerSlot = null;
+        targetAmenity = null;
         sessionSource = null;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
 
@@ -188,13 +191,20 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
                     phase = Phase.CONSUME;
                 }
             }
-            case CONTAINER, CROP -> {
+            case CONTAINER, CROP, AMENITY -> {
                 if (targetPos == null) { doStop(level, villager, gameTime); return; }
                 BehaviorUtils.setWalkAndLookTargetMemories(villager, targetPos, WALK_SPEED, CLOSE_ENOUGH);
                 double distSq = villager.distanceToSqr(targetPos.getX() + 0.5, targetPos.getY() + 0.5, targetPos.getZ() + 0.5);
                 if (distSq <= (CLOSE_ENOUGH + 1) * (CLOSE_ENOUGH + 1)) {
                     if (targetType == TargetType.CONTAINER) grabFromContainer(villager);
-                    else harvestCrop(level, villager);
+                    else if (targetType == TargetType.CROP) harvestCrop(level, villager);
+                    else {
+                        if (targetAmenity == null || !Amenities.use(level, villager, targetAmenity)) {
+                            doStop(level, villager, gameTime);
+                            return;
+                        }
+                        ConsumableTargetClaims.releaseAll(villager.getUUID());
+                    }
                     phase = Phase.CONSUME;
                 }
             }
@@ -211,7 +221,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
 
         // Consume a carried ration for an unsatisfied need (food first).
         if (food) {
-            int slot = bestFoodSlot(villager.getInventory());
+            int slot = bestFoodSlot(villager);
             if (slot >= 0) {
                 ItemStack stack = villager.getInventory().getItem(slot);
                 if (VillagerConsumptionManager.startConsuming(villager, stack, sessionSource)) {
@@ -260,6 +270,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         targetPos = null;
         targetItem = null;
         targetContainerSlot = null;
+        targetAmenity = null;
         sessionSource = null;
         ConsumableTargetClaims.releaseAll(villager.getUUID());
         cooldown = REFRACTORY_TICKS;
@@ -270,15 +281,18 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
 
     private boolean hasRationFor(VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
         SimpleContainer inv = villager.getInventory();
-        if (wantsFood(needs) && !resting(villager) && bestFoodSlot(inv) >= 0) return true;
+        if (wantsFood(needs) && !resting(villager) && bestFoodSlot(villager) >= 0) return true;
         return wantsDrink(needs) && bestDrinkSlot(inv, ThirstBridgeResolver.get()) >= 0;
     }
 
-    private static int bestFoodSlot(SimpleContainer inv) {
+    // Takes the eater, not just the bag: whether sapient flesh counts as food depends on whose
+    // mouth is asking (cannibalism policy), so the pick and the bite must agree.
+    private static int bestFoodSlot(VillagerEntityMCA villager) {
+        SimpleContainer inv = villager.getInventory();
         int best = -1, bestNutrition = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (!FoodSafety.isSafeNutritiousFood(stack)) continue;
+            if (!FoodSafety.isSafeNutritiousFood(stack, villager)) continue;
             int n = getNutrition(stack);
             if (n > bestNutrition) { bestNutrition = n; best = i; }
         }
@@ -299,11 +313,15 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
 
     /** Picks a source for whichever need is unsatisfied and lacks a ration. Food is prioritized. */
     private boolean beginAcquire(ServerLevel level, VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
-        if (wantsFood(needs) && !resting(villager) && bestFoodSlot(villager.getInventory()) < 0) {
+        if (wantsFood(needs) && !resting(villager) && bestFoodSlot(villager) < 0) {
             if (acquireFood(level, villager)) { acquiring = Need.FOOD; setAcquireWalkTarget(villager); return true; }
         }
         if (wantsDrink(needs) && bestDrinkSlot(villager.getInventory(), ThirstBridgeResolver.get()) < 0) {
-            if (acquireDrink(level, villager)) { acquiring = Need.DRINK; setAcquireWalkTarget(villager); return true; }
+            if (acquireDrink(level, villager) || acquireAmenity(level, villager)) {
+                acquiring = Need.DRINK;
+                setAcquireWalkTarget(villager);
+                return true;
+            }
         }
         return false;
     }
@@ -321,7 +339,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         List<ScoredCandidate> candidates = new ArrayList<>();
         if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get()) {
             AABB box = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
-            for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, box, e -> !e.isRemoved() && FoodSafety.isSafeNutritiousFood(e.getItem()))) {
+            for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, box, e -> !e.isRemoved() && FoodSafety.isSafeNutritiousFood(e.getItem(), villager))) {
                 if (ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item)) continue;
                 candidates.add(new ScoredCandidate(TargetType.GROUND_ITEM, getNutrition(item.getItem()), item, null));
             }
@@ -377,6 +395,27 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
                     });
         }
         return selectAndClaim(level, villager, candidates, claimUntil);
+    }
+
+    private boolean acquireAmenity(ServerLevel level, VillagerEntityMCA villager) {
+        long claimUntil = level.getGameTime() + MAX_DURATION + 20L;
+        List<ReachableTargetSelector.Candidate<Amenities.Candidate>> reachable = new ArrayList<>();
+        for (Amenities.Candidate candidate : Amenities.candidates(level, villager)) {
+            if (!candidate.definition().projection().hydrates()) continue;
+            if (ConsumableTargetClaims.isClaimedByOtherPos(
+                    level, villager.getUUID(), CLAIM_CATEGORY, candidate.pos())) continue;
+            reachable.add(new ReachableTargetSelector.Candidate<>(candidate, candidate.pos()));
+        }
+        Amenities.Candidate chosen = ReachableTargetSelector.chooseReachable(level, villager, reachable,
+                CLOSE_ENOUGH, MAX_PATH_ATTEMPTS_PER_SEARCH, UNREACHABLE_TARGET_TTL_TICKS,
+                candidate -> villager.distanceToSqr(candidate.pos().getX() + 0.5,
+                        candidate.pos().getY() + 0.5, candidate.pos().getZ() + 0.5));
+        if (chosen == null || !ConsumableTargetClaims.tryClaimPos(
+                level, villager.getUUID(), CLAIM_CATEGORY, chosen.pos(), claimUntil)) return false;
+        targetType = TargetType.AMENITY;
+        targetAmenity = chosen;
+        targetPos = chosen.pos();
+        return true;
     }
 
     private record ScoredCandidate(TargetType type, int score, ItemEntity item, NearbyItemSources.ContainerSlot slot) {}

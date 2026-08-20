@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["butchery"],
+  "blocks": ["butchery:taxidermy_table"],
+
+  "requires": {
+    "type": "pheno:block_state",
+    "property": "blockstate",
+    "value": "0"
+  },
+
+  "inventory": {
+    "slots": {
+      "ingredients": [0, 1, 2],
+      "preview": [3]
+    }
+  }
+}

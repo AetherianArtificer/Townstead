@@ -1,0 +1,15 @@
+{
+  "color": "ff3f6fae",
+  "visible": true,
+  "priority": 2,
+  "icon": true,
+  "iconU": 240,
+  "iconV": 200,
+  "townsteadNodeItem": "mca:civil_registry",
+  "blocks": {
+    "minecraft:chiseled_bookshelf": 1,
+    "minecraft:bookshelf": 2,
+    "townstead:order_sheet": 1
+  },
+  "margin": 2
+}

@@ -47,3 +47,5 @@ roadmap/
 tools/
 # Parked stub-locale translations (MCA upstream is English; revisit later)
 localization-parked/
+/versions/1.20.1-forge
+/versions

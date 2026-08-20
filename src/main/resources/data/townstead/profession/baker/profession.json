@@ -1,0 +1,208 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Baker"
+  },
+  "icon": "minecraft:bread",
+  "description": {
+    "text": "A cook devoted to the oven, from daily bread to fine pastry."
+  },
+  "hidden": true,
+  "requirements": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:cooked",
+        "at_least": 25
+      },
+      {
+        "type": "pheno:career_xp",
+        "career": "townstead:cook",
+        "at_least": 110
+      }
+    ]
+  },
+  "acquisition_routes": [
+    "self_discovery",
+    "mentor",
+    "institution"
+  ],
+  "unlock_model": "experiential",
+  "history_counters": [
+    "townstead:cooked"
+  ],
+  "poi": [
+    {
+      "type": "townstead:building",
+      "type_prefix": "bakery"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/bakery/bread_stand_l",
+      "slots_per_tier": [
+        1
+      ]
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/bakery/bake_sale_l",
+      "slots_per_tier": [
+        1,
+        2
+      ]
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/bakery/bakery_l",
+      "slots_per_tier": [
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "work_tasks": [
+    {
+      "type": "townstead_work:craft",
+      "workstations": [
+        "minecraft:crafting_table"
+      ],
+      "recipes": [
+        "#townstead:orders/baker_goods"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "minecraft:furnace",
+        "minecraft:smoker"
+      ],
+      "recipes": [
+        "#townstead:orders/baker_goods"
+      ],
+      "weight": 8
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "kaleidoscope_cookery:millstone"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "bakery:baker_station",
+        "bakery:small_cooking_pot",
+        "farm_and_charm:crafting_bowl",
+        "farm_and_charm:cooking_pot",
+        "farm_and_charm:stove"
+      ],
+      "recipes": [
+        "#townstead:orders/baker_goods"
+      ],
+      "weight": 10
+    }
+  ],
+  "skills": [
+    "proving",
+    "strong_gluten",
+    "steam_bake",
+    "fine_crumb",
+    "piping_hand",
+    "sugar_work",
+    "setting_point",
+    "clean_jar",
+    "slow_boil"
+  ],
+  "paths": [
+    {
+      "id": "boulanger",
+      "color": "#C9A227",
+      "name": {
+        "text": "Boulanger"
+      },
+      "gateway": "proving",
+      "skills": [
+        "strong_gluten",
+        "steam_bake"
+      ],
+      "worksites": [
+        "minecraft:crafting_table",
+        "minecraft:furnace",
+        "minecraft:smoker",
+        "farm_and_charm:crafting_bowl",
+        "farm_and_charm:stove"
+      ]
+    },
+    {
+      "id": "patissier",
+      "color": "#D98CA8",
+      "name": {
+        "text": "Pâtissier"
+      },
+      "gateway": "fine_crumb",
+      "skills": [
+        "piping_hand",
+        "sugar_work"
+      ],
+      "worksites": [
+        "bakery:baker_station"
+      ]
+    },
+    {
+      "id": "confiturier",
+      "color": "#8E3B46",
+      "name": {
+        "text": "Confiturier"
+      },
+      "gateway": "setting_point",
+      "skills": [
+        "clean_jar",
+        "slow_boil"
+      ],
+      "worksites": [
+        "bakery:small_cooking_pot"
+      ]
+    }
+  ],
+  "titles": [
+    {
+      "id": "boulanger",
+      "name": {
+        "text": "Boulanger"
+      },
+      "skills": [
+        "proving",
+        "strong_gluten",
+        "steam_bake"
+      ]
+    },
+    {
+      "id": "patissier",
+      "name": {
+        "text": "Pâtissier"
+      },
+      "skills": [
+        "fine_crumb",
+        "piping_hand",
+        "sugar_work"
+      ]
+    },
+    {
+      "id": "confiturier",
+      "name": {
+        "text": "Confiturier"
+      },
+      "skills": [
+        "setting_point",
+        "clean_jar",
+        "slow_boil"
+      ]
+    }
+  ],
+  "daily_cap": 230,
+  "max_xp": 200000
+}

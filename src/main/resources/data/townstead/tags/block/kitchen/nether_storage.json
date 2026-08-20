@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:shulker_boxes",
+    { "id": "farmersdelight:crimson_cabinet", "required": false },
+    { "id": "farmersdelight:warped_cabinet", "required": false }
+  ]
+}

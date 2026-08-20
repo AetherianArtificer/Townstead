@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.pheno.lang;
 
+
 import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostic;
 import com.aetherianartificer.townstead.pheno.lang.compile.Severity;
 

@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.compat.cooking;
 
 import com.aetherianartificer.townstead.compat.ModCompat;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.npc.VillagerTrades;
@@ -28,7 +27,7 @@ public final class CookTradesCompat {
 
     public static void onVillagerTrades(VillagerTradesEvent event) {
         if (!ModCompat.isLoaded("farmersdelight")) return;
-        if (!FarmersDelightCookAssignment.isExternalCookProfession(event.getType())) return;
+        if (!com.aetherianartificer.townstead.profession.ProfessionAliases.isAnyOf(event.getType(), com.aetherianartificer.townstead.profession.ProfessionAliases.COOK)) return;
 
         addTieredSellTrades(event, 1, 2, List.of(
                 spec("farmersdelight:fried_egg", 2, 2, 16, 1),

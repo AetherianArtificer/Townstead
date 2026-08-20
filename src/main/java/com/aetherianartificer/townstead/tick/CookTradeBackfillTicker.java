@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.compat.ModCompat;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -25,7 +24,7 @@ public final class CookTradeBackfillTicker {
     public static void tick(VillagerEntityMCA villager) {
         if (!ModCompat.isLoaded("farmersdelight")) return;
         if (villager.tickCount % CHECK_INTERVAL_TICKS != 37) return;
-        if (!FarmersDelightCookAssignment.isExternalCookProfession(villager.getVillagerData().getProfession())) return;
+        if (!com.aetherianartificer.townstead.work.WorkTaskDeclarations.professionDeclares(villager.getVillagerData().getProfession(), com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP)) return;
 
         int currentLevel = villager.getVillagerData().getLevel();
         TownsteadVillager.ProfessionMemory memory = TownsteadVillagers.get(villager).professionMemory();

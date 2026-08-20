@@ -303,7 +303,9 @@ public final class HungerData {
         OUTPUT_BLOCKED("output_blocked", "townstead.butcher.blocked.output_blocked"),
         UNREACHABLE("unreachable", "townstead.butcher.blocked.unreachable"),
         OUT_OF_SCOPE("out_of_scope", "townstead.butcher.blocked.out_of_scope"),
-        NO_VALID_TARGET("no_valid_target", "townstead.butcher.blocked.no_valid_target");
+        NO_VALID_TARGET("no_valid_target", "townstead.butcher.blocked.no_valid_target"),
+        /** Stood down by the order board: at ease, not stuck. */
+        STANDING_DOWN("standing_down", "townstead.butcher.blocked.standing_down");
 
         private final String id;
         private final String translationKey;

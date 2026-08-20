@@ -2,9 +2,10 @@ package com.aetherianartificer.townstead.shepherd;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -65,7 +66,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (villager.getVillagerData().getProfession() != VillagerProfession.SHEPHERD) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.SHEAR)) return false;
         if (!ShepherdToolDamage.hasShears(villager)) return false;
         // If the villager has no room for more wool, yield to ShepherdDepositTask
         // so they walk to the Wool Shed and unload before continuing.
@@ -190,6 +191,8 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
 
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
-        ProfessionProgress.addXp(TownsteadVillagers.get(villager).professionMemory(), ProfessionXpType.SHEPHERD, amount, gameTime);
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.SHEPHERD, amount, gameTime,
+                "townstead:tended", null, null, amount);
     }
 }

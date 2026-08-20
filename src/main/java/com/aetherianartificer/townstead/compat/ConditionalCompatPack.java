@@ -30,34 +30,34 @@ import java.util.*;
  */
 public final class ConditionalCompatPack {
 
-    /** Each entry maps a mod ID to the classpath paths it gates. */
-    private static final Map<String, List<CompatEntry>> COMPAT_ENTRIES = new LinkedHashMap<>();
+    /** Each file gates itself via {@link ModCompat#isCompatAvailable} on its building-type path. */
+    private static final List<CompatEntry> COMPAT_ENTRIES = new ArrayList<>();
 
     static {
-        addCompat("farmersdelight",
+        addCompat(
                 "building_types/compat/farmersdelight/kitchen_l1.json",
                 "building_types/compat/farmersdelight/kitchen_l2.json",
                 "building_types/compat/farmersdelight/kitchen_l3.json",
                 "building_types/compat/farmersdelight/kitchen_l4.json",
-                "building_types/compat/farmersdelight/kitchen_l5.json");
-        addCompat("rusticdelight",
+                "building_types/compat/farmersdelight/kitchen_l5.json",
                 "building_types/compat/rusticdelight/cafe_l1.json",
                 "building_types/compat/rusticdelight/cafe_l2.json",
                 "building_types/compat/rusticdelight/cafe_l3.json",
                 "building_types/compat/rusticdelight/cafe_l4.json",
-                "building_types/compat/rusticdelight/cafe_l5.json");
-        addCompat("butchery",
+                "building_types/compat/rusticdelight/cafe_l5.json",
                 "building_types/compat/butchery/butcher_shop_l1.json",
                 "building_types/compat/butchery/butcher_shop_l2.json",
                 "building_types/compat/butchery/butcher_shop_l3.json",
                 "building_types/compat/butchery/slaughterhouse.json",
                 "building_types/compat/butchery/smokehouse.json",
                 "building_types/compat/butchery/tannery.json",
-                "building_types/compat/butchery/slaughter_pen.json");
+                "building_types/compat/butchery/slaughter_pen.json",
+                "building_types/compat/bakery/bread_stand_l1.json",
+                "building_types/compat/bakery/bake_sale_l2.json",
+                "building_types/compat/bakery/bakery_l3.json");
     }
 
-    private static void addCompat(String modId, String... paths) {
-        List<CompatEntry> entries = new ArrayList<>();
+    private static void addCompat(String... paths) {
         for (String path : paths) {
             // Building types live under data/mca/
             //? if >=1.21 {
@@ -66,12 +66,12 @@ public final class ConditionalCompatPack {
             /*ResourceLocation servePath = new ResourceLocation("mca", path);
             *///?}
             String classpathPath = "townstead_compat/" + path;
-            entries.add(new CompatEntry(servePath, classpathPath));
+            String typePath = path.substring("building_types/".length(), path.length() - ".json".length());
+            COMPAT_ENTRIES.add(new CompatEntry(servePath, classpathPath, typePath));
         }
-        COMPAT_ENTRIES.put(modId, entries);
     }
 
-    private record CompatEntry(ResourceLocation servePath, String classpathPath) {}
+    private record CompatEntry(ResourceLocation servePath, String classpathPath, String typePath) {}
 
     private ConditionalCompatPack() {}
 
@@ -116,9 +116,9 @@ public final class ConditionalCompatPack {
 
     private static List<CompatEntry> getActiveEntries() {
         List<CompatEntry> active = new ArrayList<>();
-        for (Map.Entry<String, List<CompatEntry>> entry : COMPAT_ENTRIES.entrySet()) {
-            if (ModCompat.isLoaded(entry.getKey())) {
-                active.addAll(entry.getValue());
+        for (CompatEntry entry : COMPAT_ENTRIES) {
+            if (ModCompat.isCompatAvailable(entry.typePath())) {
+                active.add(entry);
             }
         }
         return active;
@@ -196,7 +196,7 @@ public final class ConditionalCompatPack {
             if (serializer == PackMetadataSection.TYPE) {
                 //? if >=1.21 {
                 return (T) new PackMetadataSection(
-                        Component.literal("Townstead compat building types"), 34);
+                        Component.literal("Townstead compat building types"), 48);
                 //?} else {
                 /*return (T) new PackMetadataSection(
                         Component.literal("Townstead compat building types"), 15);

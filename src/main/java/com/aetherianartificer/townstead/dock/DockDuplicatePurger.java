@@ -30,7 +30,7 @@ public final class DockDuplicatePurger {
     private DockDuplicatePurger() {}
 
     public static void purgeAll(ServerLevel level, Village village) {
-        Map<Integer, Building> all = village.getBuildings();
+        Map<Integer, Building> all = com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village);
         List<Map.Entry<Integer, Building>> docks = new ArrayList<>();
         for (Map.Entry<Integer, Building> e : all.entrySet()) {
             Building b = e.getValue();

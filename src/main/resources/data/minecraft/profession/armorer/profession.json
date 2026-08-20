@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Armorer"
+  },
+  "icon": "minecraft:iron_chestplate",
+  "description": {
+    "text": "Smelt ore and reclaim old metal to build a history of smithing mastery."
+  },
+  "unlock_model": "experiential",
+  "poi": [
+    {
+      "type": "townstead:job_block",
+      "block": "minecraft:blast_furnace"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "armorer"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "armory"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "blacksmith"
+    }
+  ],
+  "work_tasks": [
+    {
+      "type": "townstead_work:smelt",
+      "workstations": [
+        "#townstead:blast_furnace_stations",
+        "#townstead:furnace_stations"
+      ],
+      "recipes": [
+        "#townstead:smelts/metals"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:craft",
+      "workstations": [
+        "minecraft:crafting_table",
+        "minecraft:smithing_table"
+      ],
+      "recipes": [
+        "armor",
+        "#townstead:crafts/armor"
+      ],
+      "weight": 8
+    }
+  ]
+}

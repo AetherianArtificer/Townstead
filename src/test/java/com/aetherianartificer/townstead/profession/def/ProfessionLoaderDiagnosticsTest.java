@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,5 +63,58 @@ class ProfessionLoaderDiagnosticsTest {
                 Map.of(), diag);
         assertNotNull(skill);
         assertTrue(has(diag, "$.grants[0].op", "Unknown op"));
+    }
+
+    /**
+     * Registers once and only if absent: a duplicate registration logs through
+     * {@code Townstead.LOGGER}, whose class initializer cannot run outside mod loading.
+     */
+    private static void registerEffectImmunity() {
+        if (com.aetherianartificer.townstead.root.gene.GeneTypes.get("pheno:effect_immunity").isEmpty()) {
+            com.aetherianartificer.townstead.root.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.root.gene.types.EffectImmunityGeneType());
+        }
+    }
+
+    @Test
+    void unknownPowerTypeErrorsButKeepsSkill() {
+        Diagnostics diag = new Diagnostics();
+        SkillDef skill = ProfessionDataLoader.parseSkill(rl("t:s"),
+                obj("{ 'profession':'t:p', 'power': { 'type':'nonsense:missing' } }"), Map.of(), diag);
+        assertNotNull(skill, "a bad power drops only the power, never the learned-history anchor");
+        assertNull(skill.power());
+        assertTrue(has(diag, "$.power.type", "Unknown power type"));
+    }
+
+    @Test
+    void invalidPowerConfigErrorsButKeepsSkill() {
+        registerEffectImmunity();
+        Diagnostics diag = new Diagnostics();
+        SkillDef skill = ProfessionDataLoader.parseSkill(rl("t:s"),
+                obj("{ 'profession':'t:p', 'power': { 'type':'pheno:effect_immunity' } }"), Map.of(), diag);
+        assertNotNull(skill);
+        assertNull(skill.power());
+        assertTrue(has(diag, "$.power", "Invalid config"));
+    }
+
+    @Test
+    void validPowerParsesThroughGeneTypeRegistry() {
+        registerEffectImmunity();
+        Diagnostics diag = new Diagnostics();
+        SkillDef skill = ProfessionDataLoader.parseSkill(rl("t:s"),
+                obj("{ 'profession':'t:p', 'power': { 'type':'pheno:effect_immunity',"
+                        + " 'effects':['minecraft:poison'] } }"), Map.of(), diag);
+        assertNotNull(skill);
+        assertNotNull(skill.power());
+        assertEquals("pheno:effect_immunity", skill.power().typeKey());
+    }
+
+    @Test
+    void skillGroupUsesRpgClassVocabulary() {
+        Diagnostics diag = new Diagnostics();
+        SkillDef skill = ProfessionDataLoader.parseSkill(rl("t:s"),
+                obj("{ 'profession':'t:p', 'skill_group':'t:combat_stance' }"), Map.of(), diag);
+        assertNotNull(skill);
+        assertEquals(rl("t:combat_stance"), skill.skillGroup());
     }
 }

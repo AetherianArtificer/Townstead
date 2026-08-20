@@ -2,7 +2,7 @@ package com.aetherianartificer.townstead.thirst;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
+import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;

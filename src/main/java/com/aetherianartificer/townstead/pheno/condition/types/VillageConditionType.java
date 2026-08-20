@@ -42,7 +42,7 @@ public final class VillageConditionType implements ConditionType {
             if (expectedId != Integer.MIN_VALUE && village.getId() != expectedId) return false;
             if (expectedVillageId != Integer.MIN_VALUE && village.getId() != expectedVillageId) return false;
             if (expectedName != null && !expectedName.equalsIgnoreCase(village.getName())) return false;
-            int buildingCount = village.getBuildings().size();
+            int buildingCount = com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).size();
             if (buildingCount < minBuildings || buildingCount > maxBuildings) return false;
             int population = village.getResidents(serverLevel).size();
             return population >= minPopulation && population <= maxPopulation;

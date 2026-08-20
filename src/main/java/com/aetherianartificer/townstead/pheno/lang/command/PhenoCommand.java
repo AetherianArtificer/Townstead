@@ -131,6 +131,13 @@ public final class PhenoCommand {
         }
         LearnedSkills.Result result = force ? LearnedSkills.forceLearn(living, id) : LearnedSkills.learn(living, id);
         if (result.ok()) {
+            // Admin learns also equip: a grouped skill left inactive expresses nothing, which
+            // reads as the command silently failing.
+            var def = SkillDefs.byId(id);
+            if (def != null && def.skillGroup() != null) {
+                com.aetherianartificer.townstead.profession.career.CareerChoices.activate(
+                        living, def.skillGroup(), id);
+            }
             source.sendSuccess(() -> Component.literal(target.getName().getString()
                     + (force ? " force-learned " : " learned ") + id).withStyle(ChatFormatting.GREEN), false);
             return 1;

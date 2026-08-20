@@ -3,11 +3,12 @@ package com.aetherianartificer.townstead.compat.butchery;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.aetherianartificer.townstead.tick.WorkToolTicker;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
@@ -95,10 +96,21 @@ public class HeadHammeringTask extends Behavior<VillagerEntityMCA> {
         ), MAX_DURATION);
     }
 
+    /** Whether this job has anything waiting, for the order list to defer to. */
+    static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
+                                  net.conczin.mca.entity.VillagerEntityMCA villager) {
+        return findHammerTarget(level, villager) != null;
+    }
+
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
-        if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HAMMER)) return false;
+        // The worksite may have been told to leave this job alone, to work only what is
+        // on its list, or to do something above this first. Costs nothing where no
+        // activity line exists.
+        if (!com.aetherianartificer.townstead.work.order.WorksiteOrders.mayStart(
+                level, villager, WorkTaskTypes.HAMMER)) return false;
         if (CarcassWorkTask.isBusyWithCarcassWork(level, villager)) return false;
         return findHammerTarget(level, villager) != null;
     }
@@ -335,8 +347,9 @@ public class HeadHammeringTask extends Behavior<VillagerEntityMCA> {
 
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
-        TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        ProfessionProgress.GainResult result = ProfessionProgress.addXp(mem, ProfessionXpType.BUTCHER, amount, gameTime);
+        ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
+                .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                        amount, gameTime, "townstead:butchered", null, null, amount);
         if (result.tierUp()) {
             ButcherTradeLevelSync.syncToTier(villager, result.tierAfter());
         }

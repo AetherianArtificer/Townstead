@@ -84,7 +84,7 @@ public final class VillageStorageIndex {
         List<Entry> entries = new ArrayList<>();
         Set<Long> visited = new HashSet<>();
 
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             for (BlockPos pos : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
                 long posKey = pos.asLong();
                 if (!visited.add(posKey)) continue;

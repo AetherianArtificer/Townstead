@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:competence/v1",
+  "profession": "townstead:cook",
+  "per_year": {
+    "townstead:cooked": 240,
+    "townstead:produced": 40
+  }
+}

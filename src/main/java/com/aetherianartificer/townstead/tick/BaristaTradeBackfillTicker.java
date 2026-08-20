@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.compat.ModCompat;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
+import com.aetherianartificer.townstead.profession.BaristaAssignment;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -25,7 +25,7 @@ public final class BaristaTradeBackfillTicker {
     public static void tick(VillagerEntityMCA villager) {
         if (!ModCompat.isLoaded("rusticdelight")) return;
         if (villager.tickCount % CHECK_INTERVAL_TICKS != 53) return;
-        if (!FarmersDelightBaristaAssignment.isBaristaProfession(villager.getVillagerData().getProfession())) return;
+        if (!BaristaAssignment.declaresBaristaWork(villager.getVillagerData().getProfession())) return;
 
         int currentLevel = villager.getVillagerData().getLevel();
         TownsteadVillager.ProfessionMemory memory = TownsteadVillagers.get(villager).professionMemory();

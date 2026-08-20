@@ -61,7 +61,8 @@ public final class ButcheryComplaintsTicker {
 
     public static void tick(VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return;
-        if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return;
+        if (!com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
+                villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BUTCHERY_SUITE)) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (!onWorkShift(villager, level)) return;
         if (level.getNearestPlayer(villager, PLAYER_RANGE) == null) return;
@@ -195,7 +196,7 @@ public final class ButcheryComplaintsTicker {
     }
 
     private static boolean villageHasBlock(Village village, ResourceLocation blockId) {
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
             List<BlockPos> positions = b.getBlocks().get(blockId);
             if (positions != null && !positions.isEmpty()) return true;

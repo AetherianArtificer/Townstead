@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "[PLACEHOLDER] COOK SKILL 04"
+  },
+  "icon": "minecraft:barrier",
+  "description": {
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/peel_vault."
+  },
+  "tier": 3,
+  "cost": 1,
+  "mods": [
+    "pizzadelight",
+    "farmersdelight"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 120,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 15
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "x": 0,
+          "y": 0.55,
+          "z": 0.9,
+          "relative": true
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.knockback",
+          "volume": 0.7,
+          "pitch": 1.3
+        }
+      ]
+    }
+  }
+}

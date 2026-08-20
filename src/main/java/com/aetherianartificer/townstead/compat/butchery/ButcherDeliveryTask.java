@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.compat.butchery;
 
 import com.aetherianartificer.townstead.hunger.ButcherSupplyManager;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
@@ -107,10 +109,21 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
         ), MAX_DURATION);
     }
 
+    /** Whether this job has anything waiting, for the order list to defer to. */
+    static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
+                                  net.conczin.mca.entity.VillagerEntityMCA villager) {
+        return planDelivery(level, villager) != null;
+    }
+
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
-        if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.DELIVER)) return false;
+        // The worksite may have been told to leave this job alone, to work only what is
+        // on its list, or to do something above this first. Costs nothing where no
+        // activity line exists.
+        if (!com.aetherianartificer.townstead.work.order.WorksiteOrders.mayStart(
+                level, villager, WorkTaskTypes.DELIVER)) return false;
         if (CarcassWorkTask.hasActionableWork(level, villager)) return false;
         return planDelivery(level, villager) != null;
     }

@@ -2,13 +2,14 @@ package com.aetherianartificer.townstead.compat.butchery;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.producer.ProducerStationClaims;
+import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.aetherianartificer.townstead.tick.WorkToolTicker;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
@@ -107,7 +108,12 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!ButcheryCompat.isLoaded()) return false;
-        if (villager.getVillagerData().getProfession() != VillagerProfession.BUTCHER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.BUTCHER)) return false;
+        // The worksite may have been told to leave this job alone, to work only what is
+        // on its list, or to do something above this first. Costs nothing where no
+        // activity line exists.
+        if (!com.aetherianartificer.townstead.work.order.WorksiteOrders.mayStart(
+                level, villager, WorkTaskTypes.BUTCHER)) return false;
         return findCarcassAcrossShops(level, villager, true) != null;
     }
 
@@ -395,7 +401,7 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
 
     /**
      * True if the villager has a processable carcass waiting in any of their
-     * carcass-capable shops. Called by {@link com.aetherianartificer.townstead.hunger.ButcherWorkTask}
+     * carcass-capable shops. Used by generic producer priority arbitration.
      * to yield the smoker while there's slaughterhouse work pending, so the
      * butcher prioritizes the higher-value carcass pipeline over smoking.
      */
@@ -747,8 +753,9 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
 
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
-        TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        ProfessionProgress.GainResult result = ProfessionProgress.addXp(mem, ProfessionXpType.BUTCHER, amount, gameTime);
+        ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
+                .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                        amount, gameTime, "townstead:butchered", null, null, amount);
         if (result.tierUp()) {
             ButcherTradeLevelSync.syncToTier(villager, result.tierAfter());
         }

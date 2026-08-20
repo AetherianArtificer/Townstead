@@ -151,15 +151,17 @@ public final class TownsteadAPI {
         java.util.Optional<Village> villageOpt = manager.findNearestVillage(pos, Village.MERGE_MARGIN);
         if (villageOpt.isEmpty()) return null;
         Village village = villageOpt.get();
-        for (Building building : village.getBuildings().values()) {
-            if (!building.containsPos(pos)) continue;
+        Building building = com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
+                .buildingAt(level, village, pos);
+        if (building != null) {
             BlockPos center = building.getCenter();
             BlockPos p0 = building.getPos0();
             BlockPos p1 = building.getPos1();
             return new TownsteadBuildingSnapshot(
                     building.getId(),
                     village.getId(),
-                    building.getType(),
+                    com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
+                            .effectiveType(village, building),
                     building.getSize(),
                     center.getX(),
                     center.getY(),

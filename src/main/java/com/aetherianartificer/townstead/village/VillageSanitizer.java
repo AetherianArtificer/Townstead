@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.village;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
@@ -54,7 +55,7 @@ public final class VillageSanitizer {
         TownsteadVillageSavedData.VillageRecord record = data.getRecord(level, village.getId());
 
         List<Integer> toRemove = new ArrayList<>();
-        for (Map.Entry<Integer, Building> entry : village.getBuildings().entrySet()) {
+        for (Map.Entry<Integer, Building> entry : com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).entrySet()) {
             String type = entry.getValue().getType();
             String reason = staleReason(record, entry.getKey(), type);
             if (reason == null) continue;
@@ -73,7 +74,58 @@ public final class VillageSanitizer {
         return toRemove.size();
     }
 
+    /**
+     * Removes Townstead-synthesized buildings (landings, pens) whose tracked blocks are all
+     * gone from the world. Pre-v2 MCA's grouped validation handled this ({@code
+     * validateBuilding} returning TOO_SMALL on rescan); floor-system v2 never validates
+     * external buildings, so demolition cleanup is ours on every MCA generation. Deliberately
+     * conservative: a building is removed only when its chunks are loaded and ZERO tracked
+     * blocks remain in place.
+     */
+    public static int sweepDemolishedSynthetics(ServerLevel level, Village village) {
+        if (level == null || village == null) return 0;
+        TownsteadVillageSavedData data = TownsteadVillageSavedData.get(level.getServer());
+        TownsteadVillageSavedData.VillageRecord record = data.getRecord(level, village.getId());
+        if (record == null) return 0;
+
+        List<Integer> toRemove = new ArrayList<>();
+        for (Map.Entry<Integer, Building> entry
+                : com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).entrySet()) {
+            TownsteadVillageSavedData.BuildingOverlay overlay = record.buildings().get((int) entry.getKey());
+            if (overlay == null) continue;
+            int total = 0;
+            int present = 0;
+            boolean allLoaded = true;
+            for (Map.Entry<String, long[]> byBlock : overlay.blockPositions().entrySet()) {
+                net.minecraft.world.level.block.Block expected = net.minecraft.core.registries.BuiltInRegistries.BLOCK
+                        .get(net.minecraft.resources.ResourceLocation.tryParse(byBlock.getKey()));
+                for (long packed : byBlock.getValue()) {
+                    net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.of(packed);
+                    if (!level.isLoaded(pos)) {
+                        allLoaded = false;
+                        break;
+                    }
+                    total++;
+                    if (level.getBlockState(pos).is(expected)) present++;
+                }
+                if (!allLoaded) break;
+            }
+            if (!allLoaded || total == 0) continue;
+            if (present == 0) toRemove.add(entry.getKey());
+        }
+        for (int id : toRemove) {
+            village.removeBuilding(id);
+            data.removeBuilding(level, village.getId(), id);
+            LOG.info("Removed demolished synthetic building {} from village {}", id, village.getId());
+        }
+        if (!toRemove.isEmpty()) village.markDirty();
+        return toRemove.size();
+    }
+
     private static String staleReason(TownsteadVillageSavedData.VillageRecord record, int buildingId, String type) {
+        if (CatalogDataLoader.isActiveSupersededBuildingType(type)) {
+            return "superseded by an installed building provider";
+        }
         if (!ModCompat.isCompatAvailable(type)) {
             return "compat mod '" + ModCompat.extractCompatModId(type) + "' is not loaded";
         }

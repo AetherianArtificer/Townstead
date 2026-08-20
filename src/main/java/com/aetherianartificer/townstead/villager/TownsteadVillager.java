@@ -31,7 +31,7 @@ import java.util.UUID;
  * boundaries and in temporary adapters for older call sites.</p>
  */
 public final class TownsteadVillager {
-    public static final int SCHEMA_VERSION = 4;
+    public static final int SCHEMA_VERSION = 5;
 
     private final UUID villagerId;
     private boolean dirty;
@@ -41,6 +41,8 @@ public final class TownsteadVillager {
     private final ScheduleState schedule = new ScheduleState();
     private final Life life = new Life();
     private final ProfessionMemory professionMemory = new ProfessionMemory();
+    private final WorksiteAssignmentPolicy worksiteAssignments =
+            new WorksiteAssignmentPolicy(this::markDirty);
 
     public TownsteadVillager(UUID villagerId) {
         this.villagerId = villagerId;
@@ -64,6 +66,10 @@ public final class TownsteadVillager {
 
     public ProfessionMemory professionMemory() {
         return professionMemory;
+    }
+
+    public WorksiteAssignmentPolicy worksiteAssignments() {
+        return worksiteAssignments;
     }
 
     public boolean isDirty() {
@@ -95,6 +101,7 @@ public final class TownsteadVillager {
         tag.put("schedule", schedule.toTag());
         tag.put("life", life.toTag());
         tag.put("professionMemory", professionMemory.toTag());
+        tag.put("worksiteAssignments", worksiteAssignments.toTag());
         return tag;
     }
 
@@ -103,6 +110,7 @@ public final class TownsteadVillager {
         schedule.load(tag.getCompound("schedule"));
         life.load(tag.getCompound("life"));
         professionMemory.load(tag.getCompound("professionMemory"));
+        worksiteAssignments.load(tag.getCompound("worksiteAssignments"));
         lastSeenGameTime = tag.getLong("lastSeenGameTime");
         clearDirty();
     }
@@ -796,6 +804,9 @@ public final class TownsteadVillager {
         private int cycleFingerprint;
         private String currentStageId = "";
         private boolean immortal;
+        // Acquired cannibalism: starvation broke something, and it does not mend. Separate from
+        // the cannibal GENE (born, inheritable) — CannibalismPolicy.isCannibal reads both.
+        private boolean cannibal;
         // Granted agelessness (the Potion of Agelessness). Separate from the immortal flag (which the
         // immortal trait/gene keeps) and from a species' intrinsic ageless life cycle; all three pin
         // the life stage via LifeStageProgression.isAgeless.
@@ -940,6 +951,16 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** Acquired cannibalism, as opposed to the inheritable gene. */
+        public boolean cannibal() {
+            return cannibal;
+        }
+
+        public void setCannibal(boolean value) {
+            cannibal = value;
+            markDirty();
+        }
+
         public boolean ageless() {
             return ageless;
         }
@@ -1069,6 +1090,7 @@ public final class TownsteadVillager {
                 tag.putString("currentStageId", currentStageId);
             }
             if (immortal) tag.putBoolean("immortal", true);
+            if (cannibal) tag.putBoolean("cannibal", true);
             if (ageless) tag.putBoolean("ageless", true);
             if (isSenior) tag.putBoolean("isSenior", true);
             if (fertility > 0f) tag.putFloat("fertility", fertility);
@@ -1106,6 +1128,7 @@ public final class TownsteadVillager {
             cycleFingerprint = tag.getInt("cycleFingerprint");
             currentStageId = tag.getString("currentStageId");
             immortal = tag.getBoolean("immortal");
+            cannibal = tag.getBoolean("cannibal");
             ageless = tag.getBoolean("ageless");
             isSenior = tag.getBoolean("isSenior");
             fertility = tag.getFloat("fertility");
@@ -1144,6 +1167,20 @@ public final class TownsteadVillager {
         private final Map<String, ProfessionXp> xpByProfession = new HashMap<>();
         private final Set<ResourceLocation> learnedSkills = new LinkedHashSet<>();
         private final Map<String, Integer> skillPoints = new HashMap<>();
+        private com.aetherianartificer.townstead.profession.career.CareerProfile careerProfile =
+                new com.aetherianartificer.townstead.profession.career.CareerProfile();
+
+        public com.aetherianartificer.townstead.profession.career.CareerProfile careerProfile() {
+            return careerProfile;
+        }
+
+        public void markCareerDirty() { markDirty(); }
+
+        public boolean setPrimaryVocation(ResourceLocation vocation) {
+            boolean changed = careerProfile.setPrimaryVocation(vocation);
+            if (changed) markDirty();
+            return changed;
+        }
 
         public String lastProfession() {
             return lastProfession;
@@ -1202,14 +1239,26 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /** Reads fall back from the canonical full career id to the bare legacy key old saves wrote. */
         public ProfessionXp professionXp(String professionId) {
             if (professionId == null) return ProfessionXp.EMPTY;
-            return xpByProfession.getOrDefault(professionId, ProfessionXp.EMPTY);
+            ProfessionXp direct = xpByProfession.get(professionId);
+            if (direct != null) return direct;
+            int colon = professionId.indexOf(':');
+            if (colon >= 0) {
+                ProfessionXp legacy = xpByProfession.get(professionId.substring(colon + 1));
+                if (legacy != null) return legacy;
+            }
+            return ProfessionXp.EMPTY;
         }
 
+        /** Writes under the canonical id and retire the bare legacy key, migrating lazily. */
         public void setProfessionXp(String professionId, ProfessionXp value) {
             if (professionId == null || professionId.isBlank()) return;
             xpByProfession.put(professionId, value == null ? ProfessionXp.EMPTY : value);
+            int colon = professionId.indexOf(':');
+            if (colon >= 0) xpByProfession.remove(professionId.substring(colon + 1));
+            careerProfile.setProfessionXp(professionId, value);
             markDirty();
         }
 
@@ -1224,12 +1273,14 @@ public final class TownsteadVillager {
 
         public boolean addSkill(ResourceLocation skillId) {
             if (skillId == null || !learnedSkills.add(skillId)) return false;
+            careerProfile.learnChoice(skillId);
             markDirty();
             return true;
         }
 
         public boolean removeSkill(ResourceLocation skillId) {
             if (skillId == null || !learnedSkills.remove(skillId)) return false;
+            careerProfile.adminForgetChoice(skillId);
             markDirty();
             return true;
         }
@@ -1317,6 +1368,7 @@ public final class TownsteadVillager {
                 if (value > 0) points.putInt(entry.getKey(), value);
             }
             if (!points.isEmpty()) tag.put("skillPoints", points);
+            tag.put("careerProfile", careerProfile.toTag());
             return tag;
         }
 
@@ -1361,6 +1413,14 @@ public final class TownsteadVillager {
             for (int i = 0; i < skills.size(); i++) {
                 ResourceLocation id = ResourceLocation.tryParse(skills.getString(i));
                 if (id != null) learnedSkills.add(id);
+            }
+            careerProfile = tag.contains("careerProfile", Tag.TAG_COMPOUND)
+                    ? com.aetherianartificer.townstead.profession.career.CareerProfile.fromTag(
+                    tag.getCompound("careerProfile"))
+                    : new com.aetherianartificer.townstead.profession.career.CareerProfile();
+            for (ResourceLocation learned : learnedSkills) careerProfile.learnChoice(learned);
+            for (Map.Entry<String, ProfessionXp> entry : xpByProfession.entrySet()) {
+                careerProfile.setProfessionXp(entry.getKey(), entry.getValue());
             }
             skillPoints.clear();
             CompoundTag points = tag.getCompound("skillPoints");

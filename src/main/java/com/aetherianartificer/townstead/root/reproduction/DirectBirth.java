@@ -92,6 +92,7 @@ public final class DirectBirth {
 
                 scatterAround(child, mother, random);
                 WorldUtils.spawnEntity(level, child, MobSpawnType.BREEDING);
+                com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.birth(child);
                 born.add(child);
             }
         } finally {

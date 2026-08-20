@@ -1,0 +1,66 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "world.danger",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live",
+    "pregen"
+  ],
+  "trigger": {
+    "type": "game",
+    "key": "minecraft:explode"
+  },
+  "cooldown_days": 3,
+  "reach": "village",
+  "news_value": 3.0,
+  "roles": [
+    {
+      "id": "survivor",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      },
+      "involvement": "witness"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.explosion_witnessed"
+    },
+    "params": [
+      "survivor"
+    ]
+  },
+  "impact": {
+    "survivor": {
+      "mood": -4.0,
+      "memory": {
+        "valence": -0.7,
+        "strength": 3.0
+      }
+    },
+    "witness": {
+      "mood": -2.0,
+      "memory": {
+        "valence": -0.7,
+        "strength": 1.5
+      }
+    },
+    "on_learn": {
+      "memory": {
+        "valence": -0.35,
+        "strength": 0.8
+      }
+    }
+  },
+  "pregen": {
+    "max_per_life": 2
+  }
+}

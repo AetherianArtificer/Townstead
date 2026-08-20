@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.storage.StorageRoles;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -21,7 +22,6 @@ import net.neoforged.neoforge.items.IItemHandler;
 /*import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.items.IItemHandler;
 *///?}
-
 
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -264,46 +264,43 @@ public final class NearbyItemSources {
         return isProcessingContainer(level.getBlockState(pos), be);
     }
 
+    /**
+     * Whether villagers must leave this block alone — a machine rather than a shelf.
+     *
+     * <p>Decided by data first ({@link StorageRoles}), so supporting a new mod is a tag file
+     * and never a code change. The guesses at the bottom are the last word only when nothing
+     * has been stated, and either tag overrules them.</p>
+     */
     public static boolean isProcessingContainer(BlockState state, BlockEntity be) {
+        if (StorageRoles.denied(state)) return true;
+        // A block a pack already calls a workstation is a machine; making packs say it twice
+        // would just be a second place to forget.
+        if (com.aetherianartificer.townstead.work.station.Workstations.byState(state) != null) {
+            return true;
+        }
+        if (StorageRoles.allowed(state)) return false;
+
+        // ── Nothing stated: fall back to guessing, and prefer to skip ──
         if (be instanceof AbstractFurnaceBlockEntity) return true;
         if (state.is(BlockTags.CAMPFIRES)) return true;
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (id == null) return false;
-        String ns = id.getNamespace();
         String path = id.getPath();
-        if ("farmersdelight".equals(ns)) {
-            return "cooking_pot".equals(path)
-                    || "skillet".equals(path)
-                    || "stove".equals(path)
-                    || "cutting_board".equals(path);
-        }
-        if ("farm_and_charm".equals(ns)) {
-            // The feeding trough is an animal feeder, not villager storage.
-            // Its block entity mirrors the slot-0 item count into a blockstate
-            // SIZE property capped at 4, so any setChanged() while the count
-            // exceeds 4 throws from updateBlockState -> setValue(SIZE, count).
-            // Extracting from it via our path triggers exactly that crash;
-            // keep villagers from reading or depositing into it.
-            return "feeding_trough".equals(path);
-        }
-        if ("butchery".equals(ns)) {
-            // Butchery's MCreator-generated blocks all ship with internal
-            // item slots, regardless of whether the block actually uses
-            // them. Generic deposit scans treat those slots as bottomless
-            // sinks. Treat every block in the namespace as processing
-            // except the freezer, which is the one legitimate storage.
-            return !"freezer".equals(path);
-        }
-        // Exclude blocks that are clearly machines/devices, not storage
-        if (path.contains("machine") || path.contains("vending")
+        // Butchery's MCreator-generated blocks ALL carry internal item slots whether or not the
+        // block uses them, and a generic deposit scan treats those as bottomless sinks. A tag
+        // cannot say "this whole namespace" without listing blocks nobody has enumerated, so the
+        // rule stays here — and anything it catches wrongly goes in #townstead:storage, which is
+        // already how butchery:freezer gets out.
+        if ("butchery".equals(id.getNamespace())) return true;
+        // A name that reads like machinery. Crude and deliberately so — it exists to keep
+        // villagers out of an unknown mod's equipment, and any block it catches wrongly is
+        // rescued by putting it in #townstead:storage.
+        return path.contains("machine") || path.contains("vending")
                 || path.contains("terminal") || path.contains("interface")
                 || path.contains("generator") || path.contains("engine")
                 || path.contains("press") || path.contains("crusher")
                 || path.contains("grinder") || path.contains("centrifuge")
-                || path.contains("assembler") || path.contains("processor")) {
-            return true;
-        }
-        return false;
+                || path.contains("assembler") || path.contains("processor");
     }
 
     private static void insertIntoContainer(Container container, ItemStack stack) {

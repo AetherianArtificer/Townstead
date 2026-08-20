@@ -11,6 +11,7 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
 import com.aetherianartificer.townstead.hunger.FishermanSupplyManager;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -30,7 +31,7 @@ public final class WorkToolTicker {
     private static final int CHECK_INTERVAL_TICKS = 10;
     private WorkToolTicker() {}
 
-    private record Rule(VillagerProfession profession, Predicate<ItemStack> matcher) {}
+    private record Rule(net.minecraft.resources.ResourceLocation[] taskTypes, Predicate<ItemStack> matcher) {}
 
     //? if >=1.21 {
     private static final TagKey<Item> CLEAVER_TAG_C = TagKey.create(
@@ -69,12 +70,16 @@ public final class WorkToolTicker {
     *///?}
 
     private static final List<Rule> RULES = List.of(
-            new Rule(VillagerProfession.FARMER, stack -> stack.getItem() instanceof HoeItem),
-            new Rule(VillagerProfession.FISHERMAN, FishermanSupplyManager::isFishingRod),
-            new Rule(VillagerProfession.BUTCHER, WorkToolTicker::isButcherTool),
-            new Rule(VillagerProfession.SHEPHERD,
+            new Rule(types(WorkTaskTypes.HARVEST), stack -> stack.getItem() instanceof HoeItem),
+            new Rule(types(WorkTaskTypes.FISH), FishermanSupplyManager::isFishingRod),
+            new Rule(WorkTaskTypes.BUTCHERY_SUITE, WorkToolTicker::isButcherTool),
+            new Rule(types(WorkTaskTypes.SHEAR),
                     com.aetherianartificer.townstead.shepherd.ShepherdShearToolCompatRegistry::isCompatibleShears)
     );
+
+    private static net.minecraft.resources.ResourceLocation[] types(net.minecraft.resources.ResourceLocation... ids) {
+        return ids;
+    }
 
     /**
      * Matches cleavers, skinning knives, hacksaws, hammers, and cleaning
@@ -160,7 +165,8 @@ public final class WorkToolTicker {
 
     private static Rule ruleFor(VillagerProfession profession) {
         for (Rule rule : RULES) {
-            if (rule.profession == profession) return rule;
+            if (com.aetherianartificer.townstead.work.WorkTaskDeclarations
+                    .professionDeclares(profession, rule.taskTypes)) return rule;
         }
         return null;
     }

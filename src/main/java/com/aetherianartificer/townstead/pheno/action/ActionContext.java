@@ -15,6 +15,7 @@ public final class ActionContext {
     private final LivingEntity entity;
     private final LivingEntity other;
     private final LivingEntity origin;
+    private final @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations;
     private boolean successful = true;
 
     public ActionContext(LivingEntity entity) {
@@ -26,9 +27,15 @@ public final class ActionContext {
     }
 
     public ActionContext(LivingEntity entity, @Nullable LivingEntity other, LivingEntity origin) {
+        this(entity, other, origin, null);
+    }
+
+    private ActionContext(LivingEntity entity, @Nullable LivingEntity other, LivingEntity origin,
+                          @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations) {
         this.entity = entity;
         this.other = other;
         this.origin = origin;
+        this.reservations = reservations;
     }
 
     public LivingEntity entity() {
@@ -48,6 +55,20 @@ public final class ActionContext {
 
     public Level level() {
         return entity.level();
+    }
+
+    public @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations() {
+        return reservations;
+    }
+
+    /** Preserves execution-owned state while an {@code on} selector changes the focus. */
+    public ActionContext retarget(LivingEntity target, @Nullable LivingEntity counterpart) {
+        return new ActionContext(target, counterpart, origin, reservations);
+    }
+
+    public ActionContext withReservations(
+            com.aetherianartificer.townstead.pheno.reservation.ReservationScope scope) {
+        return new ActionContext(entity, other, origin, scope);
     }
 
     /** Mark this action chain as unsuccessful (for example, no safe teleport destination). */

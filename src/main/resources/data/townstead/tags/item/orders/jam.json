@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#c:jams", "required": false },
+    { "id": "#forge:jams", "required": false },
+    { "id": "#bakery:jam", "required": false }
+  ]
+}

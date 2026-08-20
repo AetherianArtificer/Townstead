@@ -28,10 +28,12 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Loads {@link Gene}s from {@code data/<ns>/gene/*.json}. Each file names a
+ * Loads {@link Gene}s recursively below {@code data/<ns>/gene/}. Each file names a
  * {@link GeneType} via {@code "type"}; the type parses its own config. Common
  * fields ({@code display_name}, {@code description}, {@code category}) are parsed
- * here. Unknown/invalid types are skipped with a warning.
+ * here. Folder segments are part of the canonical id, while {@link GeneRegistry}
+ * also exposes an unambiguous basename alias so existing references survive files
+ * being moved into organizational folders. Unknown/invalid types are skipped with a warning.
  */
 public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
 
@@ -66,6 +68,9 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 Component description = obj.has("description")
                         ? DataPackLang.parseComponent(obj.get("description"), file + ".description", lang)
                         : null;
+                ResourceLocation icon = obj.has("icon")
+                        ? DataPackLang.parseId(GsonHelper.getAsString(obj, "icon", ""))
+                        : null;
                 String category = GsonHelper.getAsString(obj, "category", "general");
                 Dominance dominance = Dominance.fromString(GsonHelper.getAsString(obj, "dominance", "dominant"));
                 ResourceLocation locus = obj.has("locus")
@@ -81,7 +86,7 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 if (locus == null) {
                     locus = type.get().defaultLocus(variants.get(0).instance());
                 }
-                parsed.put(file, new Gene(file, displayName, description, category,
+                parsed.put(file, new Gene(file, displayName, description, icon, category,
                         dominance, locus, weight, variants));
                 registerCompanions(file, companionConfigs, lang, parsed, companions);
             } catch (Exception ex) {
@@ -130,8 +135,10 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                     : Component.literal(shortName);
             ResourceLocation locus = type.get().defaultLocus(instance);
             String category = ResourceGeneType.KEY.equals(typeKey) ? "resource" : "companion";
-            parsed.put(id, new Gene(id, name, null, category, Dominance.fromString("recessive"),
-                    locus, 1, List.of(new GeneVariant(shortName, name, 1, instance))));
+            // A companion is plumbing the player never picks, so it needs no icon of its own.
+            parsed.put(id, new Gene(id, name, null, null, category,
+                    Dominance.fromString("recessive"), locus, 1,
+                    List.of(new GeneVariant(shortName, name, 1, instance))));
             ids.add(id);
         }
         if (!ids.isEmpty()) companions.put(parent, ids);

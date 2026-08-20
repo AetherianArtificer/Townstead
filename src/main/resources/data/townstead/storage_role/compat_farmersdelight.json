@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:storage_role/v1",
+  "mods": "farmersdelight",
+  "role": "not_storage",
+  "blocks": [
+    "farmersdelight:cooking_pot",
+    "farmersdelight:skillet",
+    "farmersdelight:stove",
+    "farmersdelight:cutting_board"
+  ]
+}

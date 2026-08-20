@@ -11,6 +11,6 @@
     "farmersdelight:skillet": 1,
     "rusticdelight:roasted_coffee_beans_bag": 1,
     "#townstead:flower_pot": 2,
-    "#townstead:compat/farmersdelight/kitchen_storage": 3
+    "#townstead:kitchen/storage": 3
   }
 }

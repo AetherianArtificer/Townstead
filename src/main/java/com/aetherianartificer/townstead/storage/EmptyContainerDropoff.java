@@ -57,19 +57,19 @@ public final class EmptyContainerDropoff {
     private static final Map<Integer, List<PendingReturn>> LEDGER = new ConcurrentHashMap<>();
 
     //? if >=1.21 {
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_TAG =
-            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage"));
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
-            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_upgraded"));
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_NETHER_TAG =
-            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:compat/farmersdelight/kitchen_storage_nether"));
+    private static final TagKey<Block> KITCHEN_STORAGE_TAG =
+            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:kitchen/storage"));
+    private static final TagKey<Block> KITCHEN_STORAGE_UPGRADED_TAG =
+            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:kitchen/upgraded_storage"));
+    private static final TagKey<Block> KITCHEN_STORAGE_NETHER_TAG =
+            TagKey.create(Registries.BLOCK, ResourceLocation.parse("townstead:kitchen/nether_storage"));
     //?} else {
-    /*private static final TagKey<Block> FD_KITCHEN_STORAGE_TAG =
-            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage"));
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_UPGRADED_TAG =
-            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage_upgraded"));
-    private static final TagKey<Block> FD_KITCHEN_STORAGE_NETHER_TAG =
-            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "compat/farmersdelight/kitchen_storage_nether"));
+    /*private static final TagKey<Block> KITCHEN_STORAGE_TAG =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "kitchen/storage"));
+    private static final TagKey<Block> KITCHEN_STORAGE_UPGRADED_TAG =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "kitchen/upgraded_storage"));
+    private static final TagKey<Block> KITCHEN_STORAGE_NETHER_TAG =
+            TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "kitchen/nether_storage"));
     *///?}
 
     private EmptyContainerDropoff() {}
@@ -269,7 +269,7 @@ public final class EmptyContainerDropoff {
             StorageSearchContext.ObservedBlock observed = context.observe(pos);
             if (observed.protectedStorage()) continue;
             BlockState state = observed.state();
-            if (!(state.is(FD_KITCHEN_STORAGE_TAG) || state.is(FD_KITCHEN_STORAGE_UPGRADED_TAG) || state.is(FD_KITCHEN_STORAGE_NETHER_TAG))) {
+            if (!(state.is(KITCHEN_STORAGE_TAG) || state.is(KITCHEN_STORAGE_UPGRADED_TAG) || state.is(KITCHEN_STORAGE_NETHER_TAG))) {
                 continue;
             }
             BlockEntity be = observed.blockEntity();

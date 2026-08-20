@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Weaponsmith"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "text": "Keep the village armed to build a history of weaponsmithing mastery."
+  },
+  "unlock_model": "experiential",
+  "poi": [
+    {
+      "type": "townstead:job_block",
+      "block": "minecraft:grindstone"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "weaponsmith"
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "blacksmith"
+    }
+  ],
+  "work_tasks": [
+    {
+      "type": "townstead_work:smelt",
+      "workstations": [
+        "#townstead:blast_furnace_stations",
+        "#townstead:furnace_stations"
+      ],
+      "recipes": [
+        "#townstead:smelts/metals"
+      ],
+      "weight": 8
+    },
+    {
+      "type": "townstead_work:craft",
+      "workstations": [
+        "minecraft:crafting_table",
+        "minecraft:smithing_table"
+      ],
+      "recipes": [
+        "weapon",
+        "#townstead:crafts/weapons"
+      ],
+      "weight": 10
+    }
+  ]
+}

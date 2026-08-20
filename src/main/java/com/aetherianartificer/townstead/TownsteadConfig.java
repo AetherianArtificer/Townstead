@@ -25,6 +25,12 @@ import java.util.Set;
 public final class TownsteadConfig {
     private TownsteadConfig() {}
 
+    public enum ResourceHudAnchor {
+        TOP_LEFT, TOP_CENTER, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT, PACK_DECIDED
+    }
+    public enum ResourceHudVisibility { CONTEXTUAL, NOT_AT_REST, ALWAYS, NEVER }
+    public enum ResourceHudStack { DOWN, RIGHT }
+
     private static volatile ProtectedStorageRules protectedStorageRules = ProtectedStorageRules.empty();
 
     //? if neoforge {
@@ -75,6 +81,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
     public static final ModConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
     public static final ModConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
+    public static final ModConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -83,6 +91,15 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ModConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
+    public static final ModConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
+    public static final ModConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
+    public static final ModConfigSpec.IntValue RESOURCE_HUD_OFFSET_X;
+    public static final ModConfigSpec.IntValue RESOURCE_HUD_OFFSET_Y;
+    public static final ModConfigSpec.DoubleValue RESOURCE_HUD_SCALE;
+    public static final ModConfigSpec.IntValue RESOURCE_HUD_HOLD_TICKS;
+    public static final ModConfigSpec.IntValue RESOURCE_HUD_FADE_TICKS;
+    public static final ModConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ModConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
@@ -98,6 +115,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ModConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
@@ -157,6 +175,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
     public static final ForgeConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
     public static final ForgeConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
+    public static final ForgeConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -165,6 +185,15 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ForgeConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
+    public static final ForgeConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
+    public static final ForgeConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
+    public static final ForgeConfigSpec.IntValue RESOURCE_HUD_OFFSET_X;
+    public static final ForgeConfigSpec.IntValue RESOURCE_HUD_OFFSET_Y;
+    public static final ForgeConfigSpec.DoubleValue RESOURCE_HUD_SCALE;
+    public static final ForgeConfigSpec.IntValue RESOURCE_HUD_HOLD_TICKS;
+    public static final ForgeConfigSpec.IntValue RESOURCE_HUD_FADE_TICKS;
+    public static final ForgeConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ForgeConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
@@ -180,6 +209,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
@@ -379,7 +409,7 @@ public final class TownsteadConfig {
         b.pop();
 
         // ── Cooking ──
-        if (ModCompat.isLoaded("farmersdelight")) {
+        if (ModCompat.hasKitchenProvider()) {
             b.translation("townstead.configuration.cooking").push("cooking");
             ENABLE_COOK_REQUEST_CHAT = b
                     .translation("townstead.configuration.cooking.enableCookRequestChat")
@@ -445,6 +475,24 @@ public final class TownsteadConfig {
             HAMMER_TROPHY_HEADS = null;
         }
 
+        // ── Cannibalism ──
+        // Unconditional, unlike the butchery block above: the cannibal_meats tag can name any
+        // mod's sapient meat, so these settings must exist whether or not Butchery is installed.
+        b.translation("townstead.configuration.cannibalism").push("cannibalism");
+        CANNIBALISM_MODE = b
+                .translation("townstead.configuration.cannibalism.mode")
+                .comment("Who may eat sapient flesh (the townstead:cannibal_meats item tag). Each tier includes the ones below it:",
+                         "OFF: nobody. PREDATORS: roots declaring eats_sapients may eat other kinds, never their own.",
+                         "TRAIT: predators as above, and cannibals (born with the gene, or broken by starvation) may eat anything.",
+                         "EVERYONE: anything goes. Starvation can only create cannibals at TRAIT or above.")
+                .defineEnum("mode", com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode.OFF);
+        CANNIBALISM_PRODUCE = b
+                .translation("townstead.configuration.cannibalism.produce")
+                .comment("Offer and work sapient meat at worksites: order sheets list it, butchers smoke and grind it.",
+                         "Separate from mode on purpose: a village can hunt without selling, or trade without eating.")
+                .define("produce", false);
+        b.pop();
+
         // ── Caregiving ──
         b.translation("townstead.configuration.caregiving").push("caregiving");
         ENABLE_FEEDING_YOUNG = b
@@ -488,6 +536,15 @@ public final class TownsteadConfig {
                 .comment("Block tags (e.g. modid:tag_name) treated as protected storage.")
                 .defineListAllowEmpty("protectedStorageTags", List.of("townstead:protected_food_storage"),
                         TownsteadConfig::isValidResourceLocationString);
+        b.pop();
+
+        // ── MCA building compatibility ──
+        b.translation("townstead.configuration.mca_buildings").push("mca_buildings");
+        ENABLE_MCA_BUILDING_DISCOVERY = b
+                .translation("townstead.configuration.mca_buildings.enableDiscoveryBridge")
+                .comment("Ask MCA to rescan a room after Townstead building-signature blocks change.",
+                         "This fixes automatic discovery for modded appliances that are not vanilla POIs.")
+                .define("enableDiscoveryBridge", true);
         b.pop();
 
         // ── Chef's Delight ──
@@ -613,6 +670,45 @@ public final class TownsteadConfig {
                 .define("useTownsteadCatalog", true);
         clientBuilder.pop();
 
+        clientBuilder.translation("townstead.configuration.resource_hud").push("resource_hud");
+        RESOURCE_HUD_ANCHOR = clientBuilder
+                .translation("townstead.configuration.resource_hud.anchor")
+                .comment("Screen anchor for resource meters, or PACK_DECIDED to use each resource's datapack anchor.")
+                .defineEnum("anchor", ResourceHudAnchor.TOP_LEFT);
+        RESOURCE_HUD_OFFSET_X = clientBuilder
+                .translation("townstead.configuration.resource_hud.offsetX")
+                .comment("Horizontal pixel offset from the selected anchor, before HUD scale.")
+                .defineInRange("offsetX", 4, -4096, 4096);
+        RESOURCE_HUD_OFFSET_Y = clientBuilder
+                .translation("townstead.configuration.resource_hud.offsetY")
+                .comment("Vertical pixel offset from the selected anchor, before HUD scale.")
+                .defineInRange("offsetY", 4, -4096, 4096);
+        RESOURCE_HUD_SCALE = clientBuilder
+                .translation("townstead.configuration.resource_hud.scale")
+                .comment("Scale of Townstead resource meters, in addition to Minecraft's GUI scale.")
+                .defineInRange("scale", 1.0, 0.5, 3.0);
+        RESOURCE_HUD_STACK = clientBuilder
+                .translation("townstead.configuration.resource_hud.stack")
+                .comment("Direction used when more than one resource meter is visible.")
+                .defineEnum("stack", ResourceHudStack.DOWN);
+        RESOURCE_HUD_VISIBILITY = clientBuilder
+                .translation("townstead.configuration.resource_hud.visibility")
+                .comment("CONTEXTUAL fades after activity; NOT_AT_REST stays while away from its resting value; ALWAYS and NEVER are explicit overrides.")
+                .defineEnum("visibility", ResourceHudVisibility.CONTEXTUAL);
+        RESOURCE_HUD_HOLD_TICKS = clientBuilder
+                .translation("townstead.configuration.resource_hud.holdTicks")
+                .comment("Ticks a contextual resource stays fully visible after its value or definition changes.")
+                .defineInRange("holdTicks", 60, 0, 1200);
+        RESOURCE_HUD_FADE_TICKS = clientBuilder
+                .translation("townstead.configuration.resource_hud.fadeTicks")
+                .comment("Ticks used to fade a contextual resource after the hold time.")
+                .defineInRange("fadeTicks", 10, 0, 200);
+        RESOURCE_HUD_SHOW_VALUES = clientBuilder
+                .translation("townstead.configuration.resource_hud.showValues")
+                .comment("Draw the current and maximum values beside resource meters.")
+                .define("showValues", true);
+        clientBuilder.pop();
+
         clientBuilder.translation("townstead.configuration.accessibility").push("accessibility");
         REDUCE_MOTION = clientBuilder
                 .translation("townstead.configuration.accessibility.reduceMotion")
@@ -652,7 +748,7 @@ public final class TownsteadConfig {
     }
 
     public static boolean isTownsteadCookEnabled() {
-        if (!ModCompat.isLoaded("farmersdelight")) return false;
+        if (!ModCompat.hasKitchenProvider()) return false;
         if (ENABLE_TOWNSTEAD_COOK == null) return true;
         return ENABLE_TOWNSTEAD_COOK.get();
     }

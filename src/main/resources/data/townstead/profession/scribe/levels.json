@@ -1,0 +1,51 @@
+{
+  "daily_cap": 120,
+  "max_xp": 100000,
+  "levels": [
+    {
+      "xp": 60,
+      "trades": [
+        {
+          "cost": {
+            "item": "minecraft:paper",
+            "count": 24
+          },
+          "result": {
+            "item": "minecraft:emerald",
+            "count": 1
+          },
+          "max_uses": 16,
+          "villager_xp": 2
+        },
+        {
+          "cost": {
+            "item": "minecraft:emerald",
+            "count": 1
+          },
+          "result": {
+            "item": "minecraft:book",
+            "count": 1
+          },
+          "max_uses": 12,
+          "villager_xp": 2
+        }
+      ]
+    },
+    {
+      "xp": 100,
+      "skills": [
+        "steady_hand"
+      ]
+    },
+    {
+      "xp": 180,
+      "skills": [
+        "long_ledger"
+      ]
+    },
+    {
+      "xp": 360
+    },
+    {}
+  ]
+}

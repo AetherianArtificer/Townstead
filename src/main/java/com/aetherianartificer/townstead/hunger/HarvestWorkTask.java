@@ -2,19 +2,18 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
-import com.aetherianartificer.townstead.ai.work.WorkMovement;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.WorkTarget;
-import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
-import com.aetherianartificer.townstead.ai.work.WorkTargetFailures;
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
+import com.aetherianartificer.townstead.work.WorkBuildingNav;
+import com.aetherianartificer.townstead.work.WorkMovement;
+import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.work.WorkNavigationResult;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.WorkTarget;
+import com.aetherianartificer.townstead.work.WorkTaskAdapter;
+import com.aetherianartificer.townstead.work.WorkTargetFailures;
+import com.aetherianartificer.townstead.work.WorkPathing;
+import com.aetherianartificer.townstead.work.WorkTargetProgress;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 //? if forge {
@@ -27,6 +26,8 @@ import com.aetherianartificer.townstead.compat.farming.FarmerStockDroppableCompa
 import com.aetherianartificer.townstead.farming.cellplan.PlannedCell;
 import com.aetherianartificer.townstead.hunger.farm.FarmBlueprint;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
@@ -147,7 +148,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         BlockPos anchor = townstead$findWorkAnchor(level, villager);
@@ -156,7 +157,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return;
         actionType = ActionType.NONE;
         targetPos = null;
         farmAnchor = townstead$findWorkAnchor(level, villager);
@@ -218,7 +219,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             }
         }
 
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) {
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) {
             townstead$clearMovementIntent(villager);
             return;
         }
@@ -308,7 +309,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         if (farmAnchor != null && level.getBlockState(farmAnchor).getBlock() instanceof ComposterBlock) {
@@ -346,8 +347,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     @Override
-    public WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
-        return farmAnchor == null ? null : WorkSiteRef.zone(farmAnchor, townstead$farmRadius(), VERTICAL_RADIUS);
+    public WorkSiteView activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
+        return farmAnchor == null ? null : WorkSiteView.zone(
+                farmAnchor, townstead$farmRadius(), VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.work.site.Worksites.of(level, farmAnchor));
     }
 
     @Override
@@ -1565,10 +1568,23 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         };
     }
 
+    private static String townstead$chronicleFarmVerb(String source) {
+        return switch (source) {
+            case "harvest" -> "townstead:harvested";
+            case "plant" -> "townstead:planted";
+            case "till" -> "townstead:tilled";
+            case "groom" -> "townstead:groomed";
+            case "irrigate" -> "townstead:irrigated";
+            default -> "townstead:farmed";
+        };
+    }
+
     private void townstead$awardFarmerXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
         if (amount <= 0) return;
         TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        ProfessionProgress.GainResult result = ProfessionProgress.addXp(mem, ProfessionXpType.FARMER, amount, gameTime);
+        ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
+                .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.FARMER,
+                        amount, gameTime, townstead$chronicleFarmVerb(source), null, null, amount);
         if (result.appliedXp() <= 0) return;
         CompoundTag hungerTag = TownsteadVillagers.get(villager).needs().hungerTag();
         //? if neoforge {
@@ -1591,8 +1607,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                         result.tierBefore(),
                         result.tierAfter(),
                         source,
-                        ProfessionProgress.getXp(mem, ProfessionXpType.FARMER),
-                        ProfessionProgress.getXpToNextTier(mem, ProfessionXpType.FARMER)
+                        ProfessionProgress.getXp(mem, com.aetherianartificer.townstead.profession.career.Careers.FARMER),
+                        ProfessionProgress.getXpToNextTier(mem, com.aetherianartificer.townstead.profession.career.Careers.FARMER)
                 );
             }
         }
@@ -1647,7 +1663,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         int base = TownsteadConfig.FARMER_IDLE_BACKOFF_TICKS.get();
         return townstead$scaleInt(base, townstead$profile(villager).idleBackoffScale(), 10, 200);
     }
-
 
     private String townstead$detectCropPatternHint(SimpleContainer inv) {
         if (!FarmerCropCompatRegistry.hasAnyLoadedProvider()) return null;
@@ -1732,7 +1747,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         String name = villager.getName().getString();
         String id = villager.getUUID().toString();
         if (id.length() > 8) id = id.substring(0, 8);
-        WorkSiteRef site = activeWorkSite(level, villager);
+        WorkSiteView site = activeWorkSite(level, villager);
         WorkTarget target = activeWorkTarget(level, villager);
         WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         String anchor = farmAnchor == null ? "none" : farmAnchor.getX() + "," + farmAnchor.getY() + "," + farmAnchor.getZ();

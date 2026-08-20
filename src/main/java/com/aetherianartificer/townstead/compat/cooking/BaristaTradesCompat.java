@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.compat.cooking;
 
 import com.aetherianartificer.townstead.compat.ModCompat;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
+import com.aetherianartificer.townstead.profession.BaristaAssignment;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.npc.VillagerTrades;
@@ -28,7 +28,7 @@ public final class BaristaTradesCompat {
 
     public static void onVillagerTrades(VillagerTradesEvent event) {
         if (!ModCompat.isLoaded("rusticdelight")) return;
-        if (!FarmersDelightBaristaAssignment.isBaristaProfession(event.getType())) return;
+        if (!BaristaAssignment.isBaristaProfession(event.getType())) return;
 
         addTieredTrades(event, 1, 2, List.of(
                 buy("rusticdelight:coffee_beans", 16, 1, 16, 1),

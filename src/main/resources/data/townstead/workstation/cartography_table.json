@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:workstation/v1",
+  "type": "craft_surface",
+  "work_task": "townstead_work:craft",
+  "blocks": ["minecraft:cartography_table"],
+  "produces": [
+    {
+      "inputs": ["minecraft:filled_map", "minecraft:map"],
+      "output": "minecraft:filled_map",
+      "count": 1,
+      "copies": "minecraft:filled_map",
+      "time": 60
+    }
+  ]
+}

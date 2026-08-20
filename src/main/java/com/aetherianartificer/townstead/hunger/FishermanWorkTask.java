@@ -7,15 +7,15 @@ import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
 import com.aetherianartificer.townstead.dock.DockLocationIndex;
 import com.aetherianartificer.townstead.recognition.RecognitionEffects;
-import com.aetherianartificer.townstead.ai.work.WorkMovement;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.WorkTarget;
-import com.aetherianartificer.townstead.ai.work.WorkTargetFailures;
-import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
-import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
+import com.aetherianartificer.townstead.work.WorkMovement;
+import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.work.WorkNavigationResult;
+import com.aetherianartificer.townstead.work.WorkPathing;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.WorkTarget;
+import com.aetherianartificer.townstead.work.WorkTargetFailures;
+import com.aetherianartificer.townstead.work.WorkTargetProgress;
+import com.aetherianartificer.townstead.work.WorkTaskAdapter;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -24,6 +24,8 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 *///?}
 import com.google.common.collect.ImmutableMap;
 import com.mojang.authlib.GameProfile;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
@@ -103,7 +105,6 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int IDLE_BACKOFF_TICKS = 60;
     private static final int REQUEST_RANGE = 24;
     private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
-    private static final int FETCH_ROD_TIMEOUT_TICKS = 200;
     private static final int GO_TO_WATER_TIMEOUT_TICKS = 300;
     private static final int CAST_COOLDOWN_TICKS = 40;
     //? if forge {
@@ -166,6 +167,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
     // ── Task state ──
     private Phase phase = Phase.IDLE;
+    /** While the clock reads earlier than this, the fisherman is at ease and ticks do nothing. */
+    private long restUntilTick;
     private long phaseEnteredTick;
     private @Nullable BlockPos stationAnchor;
     private @Nullable FishingWaterIndex.FishingSpot currentWaterSpot;
@@ -221,7 +224,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FISHERMAN) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.FISH)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         BlockPos anchor = townstead$resolveBarrelAnchor(level, villager);
@@ -239,6 +242,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         nextCastReadyTick = 0L;
         currentHook = null;
         currentRod = FishermanSupplyManager.findRodInInventory(villager.getInventory());
+        restUntilTick = 0L;
         targetProgress.reset();
         nextRequestTick = 0L;
         nibbleTriggered = false;
@@ -251,7 +255,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FISHERMAN) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.FISH)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         if (stationAnchor == null) {
@@ -281,6 +285,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         debugTick(level, villager, gameTime);
+
+        // At ease: hopelessly blocked (no rod anywhere, no water) means rest on your feet and
+        // let the brain wander, not re-ask the world the same question every tick.
+        if (gameTime < restUntilTick) return;
 
         if (stationAnchor == null) {
             stationAnchor = townstead$resolveBarrelAnchor(level, villager);
@@ -349,6 +357,9 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (currentWaterSpot == null) {
             if (!acquireUnclaimedWaterSpot(level, villager, gameTime)) {
                 townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_WATER);
+                // Same at-ease rest as a missing rod: the water scan is not cheap, and the
+                // pond does not refill mid-stare.
+                restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
                 return;
             }
         }
@@ -377,11 +388,12 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             }
         }
 
-        if (gameTime - phaseEnteredTick >= FETCH_ROD_TIMEOUT_TICKS) {
-            townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_ROD);
-            // Stay in FETCH_ROD but reset timer so we retry periodically.
-            phaseEnteredTick = gameTime;
-        }
+        // No rod on them and none in storage: at ease. Retrying every tick pinned the
+        // fisherman to the barrel and hammered the storage search; a rod does not appear by
+        // being stared at. The rest expires on its own and this asks again.
+        townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_ROD);
+        restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
+        enterPhase(Phase.IDLE, gameTime);
     }
 
     private void tickGoToWater(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -1168,6 +1180,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             if (level.getBlockState(cachedBarrelAnchor).is(Blocks.BARREL)) return cachedBarrelAnchor;
             cachedBarrelAnchor = null;
         }
+        // "No barrel anywhere" is an answer worth remembering too. This resolver runs from the
+        // brain's start checks every tick, and the scan below reads ~21k block states — the TTL
+        // was being written and never consulted, so a fisherman with no barrel paid that cost
+        // every single tick. That was the villager everyone's frame time was going to.
+        if (gameTime < cachedBarrelUntilTick) return null;
         BlockPos center = villager.blockPosition();
         BlockPos best = null;
         double bestDistSq = Double.MAX_VALUE;
@@ -1495,7 +1512,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         String name = villager.getName().getString();
         String id = villager.getUUID().toString();
         if (id.length() > 8) id = id.substring(0, 8);
-        WorkSiteRef site = activeWorkSite(level, villager);
+        WorkSiteView site = activeWorkSite(level, villager);
         WorkTarget target = activeWorkTarget(level, villager);
         WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();
@@ -1543,8 +1560,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     // ── WorkTaskAdapter ──
 
     @Override
-    public @Nullable WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
-        return stationAnchor == null ? null : WorkSiteRef.zone(stationAnchor, townstead$waterSearchRadius(), VERTICAL_RADIUS);
+    public @Nullable WorkSiteView activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
+        return stationAnchor == null ? null : WorkSiteView.zone(
+                stationAnchor, townstead$waterSearchRadius(), VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.work.site.Worksites.of(level, stationAnchor));
     }
 
     @Override

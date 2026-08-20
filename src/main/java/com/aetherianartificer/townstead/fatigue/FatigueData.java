@@ -266,33 +266,10 @@ public final class FatigueData {
             TagKey.create(Registries.ITEM, new ResourceLocation(Townstead.MOD_ID, "energy_restoring"));
     *///?}
 
-    // Fallback item IDs. Some modpacks ship a datapack that replaces our
-    // townstead:energy_restoring tag (LSO bundles have been observed doing this),
-    // leaving villagers unable to auto-drink even when they hold coffee.
-    //? if >=1.21 {
-    private static final Set<ResourceLocation> FALLBACK_ENERGY_RESTORING_IDS = Set.of(
-            ResourceLocation.fromNamespaceAndPath("rusticdelight", "coffee"),
-            ResourceLocation.fromNamespaceAndPath("rusticdelight", "milk_coffee"),
-            ResourceLocation.fromNamespaceAndPath("rusticdelight", "chocolate_coffee"),
-            ResourceLocation.fromNamespaceAndPath("rusticdelight", "honey_coffee"),
-            ResourceLocation.fromNamespaceAndPath("rusticdelight", "syrup_coffee"),
-            ResourceLocation.fromNamespaceAndPath("rusticdelight", "dark_coffee")
-    );
-    //?} else {
-    /*private static final Set<ResourceLocation> FALLBACK_ENERGY_RESTORING_IDS = Set.of(
-            new ResourceLocation("rusticdelight", "coffee"),
-            new ResourceLocation("rusticdelight", "milk_coffee"),
-            new ResourceLocation("rusticdelight", "chocolate_coffee"),
-            new ResourceLocation("rusticdelight", "honey_coffee"),
-            new ResourceLocation("rusticdelight", "syrup_coffee"),
-            new ResourceLocation("rusticdelight", "dark_coffee")
-    );
-    *///?}
-
     /**
      * Apply fatigue reduction when a villager consumes an energy-restoring item.
-     * Items are matched via the {@code townstead:energy_restoring} item tag,
-     * with a hardcoded fallback for modpacks that override the tag.
+     * This is the compatibility fallback for the legacy {@code townstead:energy_restoring} tag.
+     * Data-defined {@code pheno:energize} effects are applied by the consumption manager.
      */
     public static void applyCoffeeEffect(VillagerEntityMCA villager, ItemStack consumed) {
         if (!TownsteadConfig.isVillagerFatigueEnabled()) return;
@@ -303,14 +280,13 @@ public final class FatigueData {
 
     /**
      * Check if an item is an energy-restoring item. Matches the
-     * {@code townstead:energy_restoring} item tag, or a hardcoded fallback list
-     * for modpacks that override the tag.
+     * {@code townstead:energy_restoring} item tag or a data-defined energize effect.
      */
     public static boolean isEnergyRestoring(ItemStack stack) {
         if (stack.isEmpty()) return false;
+        if (com.aetherianartificer.townstead.needs.Consumables.projection(stack).energizes()) return true;
         if (stack.is(ENERGY_RESTORING_TAG)) return true;
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return FALLBACK_ENERGY_RESTORING_IDS.contains(id);
+        return false;
     }
 
     /**
@@ -330,7 +306,9 @@ public final class FatigueData {
                 /*ItemStack consumed = stack.copy(); consumed.setCount(1);
                 *///?}
                 stack.shrink(1);
-                applyCoffeeEffect(villager, consumed);
+                var configured = com.aetherianartificer.townstead.needs.Consumables.projection(consumed);
+                com.aetherianartificer.townstead.needs.Consumables.apply(villager, consumed);
+                if (!configured.energizes()) applyCoffeeEffect(villager, consumed);
                 return true;
             }
         }

@@ -8,46 +8,39 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.List;
 
 /**
- * Resolves the {@link ProgressionSpec} for a profession id, preferring a data-driven
- * {@link ProfessionDef} when one is registered for that id and otherwise falling back to the
- * built-in {@link ProfessionXpType}. This is how {@code ProfessionXpType} is "migrated onto"
- * the data definitions: the enum stays as the shipped default, and a datapack profession whose
- * id matches (e.g. {@code minecraft:farmer}) overrides its progression without any code change.
+ * Resolves the {@link ProgressionSpec} for a career id from its data-pack
+ * {@link ProfessionDef}. The built-in careers (farmer, butcher, shepherd, cook) ship as
+ * ordinary defs inside the mod jar, so a pack overrides any progression by replacing the
+ * def with the same id; there is no privileged hardcoded path. A career with no def resolves
+ * to an inert spec (no tiers, no daily allowance), so a missing definition reads as missing
+ * rather than silently inventing numbers.
  */
 public final class ProfessionProgressions {
 
-    /** Used only for an unrecognised profession with no def and no built-in. */
+    /** Used only for an unrecognised career with no registered def. */
     private static final ProgressionSpec DEFAULT = new ProgressionSpec(new int[]{0}, 0, 0);
 
     private ProfessionProgressions() {}
 
-    public static ProgressionSpec spec(String professionId) {
-        ProfessionDef def = findDef(professionId);
-        if (def != null) return fromTrack(def.progression());
-        ProfessionXpType builtin = builtin(professionId);
-        return builtin != null ? builtin.spec() : DEFAULT;
+    public static ProgressionSpec spec(ResourceLocation careerId) {
+        return careerId == null ? DEFAULT : spec(careerId.toString());
     }
 
-    /** The spec for a built-in, still preferring a same-id datapack override. */
-    public static ProgressionSpec spec(ProfessionXpType type) {
-        ProfessionDef def = findDef(type.id());
-        return def != null ? fromTrack(def.progression()) : type.spec();
+    public static ProgressionSpec spec(String careerId) {
+        ProfessionDef def = findDef(careerId);
+        return def != null ? fromTrack(def.progression()) : DEFAULT;
     }
 
-    private static ProfessionDef findDef(String professionId) {
-        if (professionId == null || professionId.isBlank()) return null;
+    /** Matches a full id or alias exactly, or a bare legacy name by def path. */
+    private static ProfessionDef findDef(String careerId) {
+        if (careerId == null || careerId.isBlank()) return null;
+        ProfessionDef direct = ProfessionDefs.byId(ResourceLocation.tryParse(careerId));
+        if (direct != null) return direct;
         for (var entry : ProfessionDefs.all().entrySet()) {
             ResourceLocation id = entry.getKey();
-            if (id.toString().equals(professionId) || id.getPath().equals(professionId)) {
+            if (id.toString().equals(careerId) || id.getPath().equals(careerId)) {
                 return entry.getValue();
             }
-        }
-        return null;
-    }
-
-    private static ProfessionXpType builtin(String professionId) {
-        for (ProfessionXpType type : ProfessionXpType.values()) {
-            if (type.id().equals(professionId)) return type;
         }
         return null;
     }

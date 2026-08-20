@@ -1,0 +1,23 @@
+{
+  "color": "ffe9ae69",
+  "visible": true,
+  "priority": 3,
+  "icon": true,
+  "iconU": 241,
+  "iconV": 204,
+  "noBeds": true,
+  "blocks": {
+    "bakery:tray": 1,
+    "bakery:iron_table": 2,
+    "#townstead:compat/bakery/jams": 1,
+    "bakery:breadbox": 2,
+    "bakery:brick_counter": 5,
+    "#townstead:kitchen/storage": 2,
+    "#townstead:furnace_stations": 2,
+    "farm_and_charm:crafting_bowl": 1,
+    "farm_and_charm:stove": 1,
+    "bakery:baker_station": 1,
+    "bakery:small_cooking_pot": 1,
+    "minecraft:crafting_table": 1
+  }
+}

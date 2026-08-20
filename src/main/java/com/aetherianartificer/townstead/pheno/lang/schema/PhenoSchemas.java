@@ -123,11 +123,22 @@ public final class PhenoSchemas {
                 .field(of("start", PhenoType.INT))
                 .field(of("regen", PhenoType.INT))
                 .field(of("regen_interval", PhenoType.INT))
-                .field(of("color", PhenoType.COLOR))
+                .field(of("color", PhenoType.COLOR)
+                        .doc("The resource bar's fill colour. Frame primary and secondary colours come from display.color_theme."))
+                .field(of("persist_on_death", PhenoType.BOOL))
+                .field(of("display", PhenoType.OBJECT)
+                        .doc("Optional HUD shape, fill mode, pip art, frame geometry, frame colour theme, ordered bar-effect stack, authored anchor, visibility and ordering."))
                 .field(of("on_reach", PhenoType.OBJECT).asList()
                         .doc("Edge-triggered { at|every, do, then } when the meter crosses a threshold upward.")).build());
 
         // --- Action wrappers (the context transitions and meta combinators) ---
+        NodeSchemas.register(NodeSchema.of("pheno:reserve", NodeDomain.ACTION)
+                .doc("Exclusively reserves each entity selected by on for this execution scope.")
+                .field(required("on", PhenoType.ANY))
+                .field(of("action", PhenoType.ACTION))
+                .primaryChild("action").build());
+        NodeSchemas.register(NodeSchema.of("pheno:release", NodeDomain.ACTION)
+                .doc("Releases every entity reserved by this execution scope early.").build());
         NodeSchemas.register(NodeSchema.of("pheno:actor_action", NodeDomain.ACTION)
                 .doc("Runs the inner action on the actor (self).")
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
@@ -160,6 +171,15 @@ public final class PhenoSchemas {
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
 
         // --- Leaf actions with normalizable units ---
+        NodeSchemas.register(NodeSchema.of("pheno:hydrate", NodeDomain.ACTION)
+                .doc("Restores a Townstead villager's active thirst and slower hydration reserve.")
+                .field(of("immediate", PhenoType.ANY).doc("Active thirst restored; number or Pheno value."))
+                .field(of("lasting", PhenoType.ANY).doc("Hydration reserve restored; number or Pheno value."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:energize", NodeDomain.ACTION)
+                .doc("Reduces a Townstead villager's fatigue.")
+                .field(of("amount", PhenoType.ANY).doc("Fatigue removed; number or Pheno value."))
+                .build());
         NodeSchemas.register(NodeSchema.of("pheno:apply_effect", NodeDomain.ACTION)
                 .doc("Applies a status effect.")
                 .field(required("effect", PhenoType.ID))
@@ -242,6 +262,8 @@ public final class PhenoSchemas {
                 .field(required("block_action", PhenoType.BLOCK_ACTION)).primaryChild("block_action").build());
 
         // --- Consolidated condition ---
+        NodeSchemas.register(NodeSchema.of("pheno:reserved", NodeDomain.CONDITION)
+                .doc("Tests whether the current entity is held by any live Pheno reservation.").build());
         NodeSchemas.register(NodeSchema.of("pheno:environment", NodeDomain.CONDITION)
                 .doc("One block of weather/exposure/time/biome/dimension/effects (AND across, OR within).")
                 .field(of("weather", PhenoType.STRING).asList())

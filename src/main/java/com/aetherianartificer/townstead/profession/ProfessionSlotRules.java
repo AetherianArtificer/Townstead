@@ -31,6 +31,8 @@ public final class ProfessionSlotRules {
         if (professionId == null || professionId.isBlank() || NONE_ID.equals(professionId) || NITWIT_ID.equals(professionId)) {
             return SlotPolicy.UNLIMITED;
         }
+        SlotPolicy declared = declaredPolicy(professionId);
+        if (declared != null) return declared;
         if (COOK_ID.equals(professionId) || BARISTA_ID.equals(professionId)) {
             return SlotPolicy.CUSTOM_BUILDING_SLOTS;
         }
@@ -38,6 +40,29 @@ public final class ProfessionSlotRules {
             return SlotPolicy.UNLIMITED;
         }
         return hasJobSite ? SlotPolicy.POI_LIMITED : SlotPolicy.UNLIMITED;
+    }
+
+    /**
+     * The policy a career def's {@code poi} providers declare, or null when no def declares
+     * job sites for this profession (falling back to the legacy hardcoded rules above, which
+     * stay as the safety net for professions without defs, e.g. mca:guard).
+     */
+    @org.jetbrains.annotations.Nullable
+    private static SlotPolicy declaredPolicy(String professionId) {
+        com.aetherianartificer.townstead.profession.def.ProfessionDef def =
+                com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(
+                        ResourceLocation.tryParse(professionId));
+        if (def == null || def.jobSites().isEmpty()) return null;
+        boolean anyBlock = false;
+        for (var provider : def.jobSites()) {
+            if (provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building) {
+                return SlotPolicy.CUSTOM_BUILDING_SLOTS;
+            }
+            if (provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.JobBlock) {
+                anyBlock = true;
+            }
+        }
+        return anyBlock ? SlotPolicy.POI_LIMITED : SlotPolicy.UNLIMITED;
     }
 
     public static boolean requiresJobSite(VillagerProfession profession) {

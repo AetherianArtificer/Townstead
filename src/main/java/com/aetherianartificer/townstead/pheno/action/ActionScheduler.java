@@ -26,6 +26,7 @@ public final class ActionScheduler {
             action.run(ctx);
             return;
         }
+        if (ctx.reservations() != null && !ctx.reservations().retain()) return;
         PENDING.add(new Entry(level, level.getGameTime() + delayTicks, action, ctx));
     }
 
@@ -36,11 +37,18 @@ public final class ActionScheduler {
             Entry entry = it.next();
             if (entry.level().getGameTime() < entry.dueTick()) continue;
             it.remove();
-            if (!entry.ctx().entity().isRemoved()) entry.action().run(entry.ctx());
+            try {
+                if (!entry.ctx().entity().isRemoved()) entry.action().run(entry.ctx());
+            } finally {
+                if (entry.ctx().reservations() != null) entry.ctx().reservations().closeReference();
+            }
         }
     }
 
     public static void clear() {
+        for (Entry entry : PENDING) {
+            if (entry.ctx().reservations() != null) entry.ctx().reservations().closeReference();
+        }
         PENDING.clear();
     }
 }

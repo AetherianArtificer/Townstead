@@ -33,12 +33,13 @@ public final class EntityTypeConditionType implements ConditionType {
         if (json.has("tag")) {
             ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "tag", ""));
             if (id == null) return null;
-            TagKey<EntityType<?>> tag = TagKey.create(Registries.ENTITY_TYPE, id);
-            return ctx -> ctx.entity().getType().builtInRegistryHolder().is(tag);
+            // Keep datapack parsing registry-independent. Registries are guaranteed to exist when
+            // the condition is evaluated, but not in schema/unit-test parsing.
+            return ctx -> ctx.entity().getType().builtInRegistryHolder()
+                    .is(TagKey.create(Registries.ENTITY_TYPE, id));
         }
         ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "entity_type", ""));
         if (id == null) return null;
-        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(id);
-        return ctx -> ctx.entity().getType() == type;
+        return ctx -> ctx.entity().getType() == BuiltInRegistries.ENTITY_TYPE.get(id);
     }
 }

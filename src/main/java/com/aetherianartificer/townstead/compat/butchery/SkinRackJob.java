@@ -131,7 +131,7 @@ public final class SkinRackJob implements LeatherworkerJob {
         boolean salteRackPendingNoWetCloth = false;
 
         outer:
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!building.isComplete()) continue;
             List<BlockPos> racks = rackPositionsIn(level, building);
             if (racks.isEmpty()) continue;
@@ -213,7 +213,7 @@ public final class SkinRackJob implements LeatherworkerJob {
     private static BlockPos findNearestWaterCauldron(ServerLevel level, Village village, BlockPos origin) {
         BlockPos best = null;
         double bestDsq = Double.MAX_VALUE;
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!building.isComplete()) continue;
             // The leatherworker building type already requires
             // #minecraft:cauldrons, so the indexed positions cover the
@@ -317,7 +317,7 @@ public final class SkinRackJob implements LeatherworkerJob {
         boolean wantsSalt = false;
         boolean wantsCloth = false;
 
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!building.isComplete()) continue;
             for (BlockPos rackPos : rackPositionsIn(level, building)) {
                 BlockState state = level.getBlockState(rackPos);
@@ -380,7 +380,7 @@ public final class SkinRackJob implements LeatherworkerJob {
         boolean needsCloth = false;
         boolean needsStorageForLeather = false;
 
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!building.isComplete()) continue;
             for (BlockPos rackPos : rackPositionsIn(level, building)) {
                 BlockState state = level.getBlockState(rackPos);
@@ -505,7 +505,7 @@ public final class SkinRackJob implements LeatherworkerJob {
     private static Building findOwningBuilding(VillagerEntityMCA villager, BlockPos anchor) {
         Village village = resolveVillage(villager).orElse(null);
         if (village == null) return null;
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
             if (b.containsPos(anchor)) return b;
         }

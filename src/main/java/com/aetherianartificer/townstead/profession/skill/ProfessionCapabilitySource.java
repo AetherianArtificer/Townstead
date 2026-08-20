@@ -25,6 +25,15 @@ public final class ProfessionCapabilitySource implements CapabilitySource {
             if (skill == null) continue;
             Provenance provenance = new Provenance(skillId, SourceKind.SKILL, skill.profession().getPath());
             for (SkillGrant grant : skill.grants()) {
+                out.add(grant.toContribution(provenance,
+                        com.aetherianartificer.townstead.profession.career.CareerChoices
+                                .isActive(entity, skillId)));
+            }
+        }
+        // Combo Skills: derived from career history, always active once earned.
+        for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.unlockedFor(entity)) {
+            Provenance provenance = new Provenance(combo.id(), SourceKind.SKILL, "combo");
+            for (SkillGrant grant : combo.grants()) {
                 out.add(grant.toContribution(provenance, true));
             }
         }

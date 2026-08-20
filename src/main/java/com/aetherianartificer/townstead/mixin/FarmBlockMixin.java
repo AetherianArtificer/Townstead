@@ -23,7 +23,8 @@ public class FarmBlockMixin {
     private void townstead$preventHarvestChoreTrample(Level level, BlockState state, BlockPos pos, Entity entity, float fallDistance, CallbackInfo ci) {
         if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return;
         if (!(entity instanceof VillagerEntityMCA villager)) return;
-        if (villager.getVillagerData().getProfession() == VillagerProfession.FARMER) {
+        if (com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
+                villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.HARVEST)) {
             ci.cancel();
         }
     }
