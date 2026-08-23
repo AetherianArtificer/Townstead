@@ -25,4 +25,11 @@ class BlockConditionPortTest {
                 {"type":"pheno:block_shape","box":[3,0,3,3,1,13]}
                 """)));
     }
+
+    @Test
+    void smokeyUsesTheVanillaCampfirePredicate() {
+        assertNotNull(BlockConditions.parse(JsonParser.parseString("""
+                {"type":"pheno:smokey"}
+                """)));
+    }
 }

@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.profession.def;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,6 +40,7 @@ public final class WorkTaskTypes {
     // Zone engines.
     public static final ResourceLocation HARVEST = type("harvest");
     public static final ResourceLocation FISH = type("fish");
+    public static final ResourceLocation INTERACT = type("interact");
 
     // Butchery suite.
     public static final ResourceLocation SLAUGHTER = type("slaughter");
@@ -98,5 +100,32 @@ public final class WorkTaskTypes {
 
     public static boolean knows(@Nullable ResourceLocation id) {
         return id != null && KNOWN.contains(id);
+    }
+
+    /**
+     * Chronicle activities owned by code-driven task engines. Data-driven Jobs supersede these
+     * with their own resource ids; this table gives older engines the same automatic ownership.
+     */
+    public static List<String> activities(ResourceLocation id) {
+        if (id == null) return List.of();
+        if (id.equals(COOK) || id.equals(CHOP)) {
+            return List.of("townstead:cooked");
+        }
+        if (id.equals(BREW)) return List.of("townstead:brewed");
+        if (id.equals(HARVEST)) {
+            return List.of("townstead:harvested", "townstead:planted", "townstead:tilled",
+                    "townstead:groomed", "townstead:irrigated", "townstead:farmed");
+        }
+        if (id.equals(SHEAR)) return List.of("townstead:tended");
+        if (id.equals(CLEAN)) return List.of("townstead:cleaned");
+        if (id.equals(SLAUGHTER)) return List.of("townstead:slaughtered");
+        if (id.equals(BUTCHER) || id.equals(DISMANTLE) || id.equals(SMOKE) || id.equals(CURE)
+                || id.equals(HAMMER) || id.equals(DELIVER)) {
+            return List.of("townstead:butchered");
+        }
+        if (id.equals(GRIND) || id.equals(TAXIDERMY) || id.equals(SMELT) || id.equals(CRAFT)) {
+            return List.of("townstead:produced");
+        }
+        return List.of();
     }
 }

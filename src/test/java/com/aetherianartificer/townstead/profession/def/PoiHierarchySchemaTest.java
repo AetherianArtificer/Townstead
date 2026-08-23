@@ -96,11 +96,28 @@ class PoiHierarchySchemaTest {
         assertNotNull(in, "shipped resource missing: " + resource);
         JsonObject json = JsonParser.parseReader(
                 new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+        if ("townstead:cook".equals(idRaw)) {
+            ProfessionPathDocument.apply(json, "pizzaiolo", readResource(
+                    "/data/townstead/profession/cook/path/pizzaiolo/path.json"));
+        }
+        InputStream work = PoiHierarchySchemaTest.class.getResourceAsStream(
+                resource.substring(0, resource.lastIndexOf('/') + 1) + "work.json");
+        if (work != null) {
+            ProfessionWorkOverlay.apply(json, JsonParser.parseReader(
+                    new InputStreamReader(work, StandardCharsets.UTF_8)).getAsJsonObject());
+        }
         Diagnostics diagnostics = new Diagnostics();
         diagnostics.forResource(id(idRaw));
         ProfessionDef def = ProfessionDataLoader.parseProfession(
                 id(idRaw), json, Map.of(), diagnostics, new LinkedHashMap<>());
         assertNotNull(def, resource + " must parse");
         return def;
+    }
+
+    private static JsonObject readResource(String resource) {
+        InputStream in = PoiHierarchySchemaTest.class.getResourceAsStream(resource);
+        assertNotNull(in, "shipped resource missing: " + resource);
+        return JsonParser.parseReader(
+                new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
     }
 }

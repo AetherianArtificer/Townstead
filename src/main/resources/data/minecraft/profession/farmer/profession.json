@@ -7,39 +7,5 @@
   "description": {
     "text": "Work the fields to build a history of agricultural mastery."
   },
-  "unlock_model": "experiential",
-  "history_counters": [
-    "townstead:harvested",
-    "townstead:planted",
-    "townstead:tilled"
-  ],
-  "poi": [
-    {
-      "type": "townstead:job_block",
-      "block": "minecraft:composter"
-    }
-  ],
-  "work_tasks": [
-    {
-      "type": "townstead_work:harvest",
-      "weight": 10
-    }
-  ],
-  "daily_cap": 240,
-  "max_xp": 200000,
-  "levels": [
-    {
-      "xp": 120
-    },
-    {
-      "xp": 200
-    },
-    {
-      "xp": 380
-    },
-    {
-      "xp": 600
-    },
-    {}
-  ]
+  "unlock_model": "experiential"
 }

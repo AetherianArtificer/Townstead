@@ -8,18 +8,8 @@
     "text": "Prepare food to build a history of culinary mastery."
   },
   "skills": [
-    "blistered_crust",
-    "kitchen_rhythm",
-    "peel_sweep",
-    "peel_vault",
-    "pizza_craft",
-    "pizza_spin",
     "seasoned_hands",
-    "starter_culture",
-    "steady_simmer",
-    "stone_heat",
-    "stone_oven",
-    "stone_wisdom"
+    "steady_simmer"
   ],
   "unlock_model": "experiential",
   "mods": {
@@ -36,122 +26,6 @@
     "vca:cook",
     "villagerclothingaddition:cook"
   ],
-  "history_counters": [
-    "townstead:cooked",
-    "townstead:brewed"
-  ],
-  "poi": [
-    {
-      "type": "townstead:building",
-      "type_prefix": "compat/farmersdelight/kitchen_l",
-      "slots_per_tier": [1, 1, 2, 2, 3]
-    },
-    {
-      "type": "townstead:job_block",
-      "block": "farmersdelight:cooking_pot",
-      "via": "chefsdelight:chef"
-    },
-    {
-      "type": "townstead:job_block",
-      "block": "farmersdelight:skillet",
-      "via": "chefsdelight:cook"
-    }
-  ],
-  "work_tasks": [
-    {
-      "type": "townstead_work:cook",
-      "workstations": [
-        "farmersdelight:cooking_pot",
-        "farmersdelight:skillet",
-        "farmersdelight:stove",
-        "#minecraft:campfires",
-        "kaleidoscope_cookery:pot",
-        "kaleidoscope_cookery:stockpot",
-        "kaleidoscope_cookery:steamer",
-        "pizzadelight:basin",
-        "pizzadelight:raw_pizza",
-        "pizzadelight:pizza"
-      ],
-      "weight": 10
-    },
-    {
-      "type": "townstead_work:cook",
-      "workstations": [
-        "kaleidoscope_cookery:millstone"
-      ],
-      "weight": 9
-    },
-    {
-      "type": "townstead_work:chop",
-      "workstations": [
-        "farmersdelight:cutting_board",
-        "kaleidoscope_cookery:chopping_board"
-      ],
-      "weight": 10
-    },
-    {
-      "type": "townstead_work:cook",
-      "workstations": [
-        "minecraft:furnace",
-        "minecraft:smoker",
-        "minecraft:blast_furnace"
-      ],
-      "recipes": [
-        "edible",
-        "#townstead:cook_smeltable"
-      ],
-      "scope": "village",
-      "weight": 4
-    },
-    {
-      "type": "townstead_work:cook",
-      "workstations": [
-        "farm_and_charm:cooking_pot",
-        "farm_and_charm:stove",
-        "farm_and_charm:roaster",
-        "farm_and_charm:crafting_bowl",
-        "farm_and_charm:mincer"
-      ],
-      "weight": 10
-    },
-    {
-      "type": "townstead_work:cook",
-      "workstations": [
-        "caupona:stew_pot",
-        "caupona:lead_stew_pot"
-      ],
-      "weight": 10
-    }
-  ],
-  "daily_cap": 230,
-  "max_xp": 200000,
-  "paths": [
-    {
-      "id": "pizzaiolo",
-      "color": "#C8873E",
-      "name": {
-        "text": "Pizzaiolo"
-      },
-      "gateway": "pizza_craft",
-      "skills": [
-        "kitchen_rhythm",
-        "stone_oven",
-        "pizza_spin",
-        "peel_vault",
-        "stone_heat",
-        "starter_culture",
-        "blistered_crust",
-        "peel_sweep",
-        "stone_wisdom"
-      ],
-      "worksites": [
-        "pizzadelight:basin",
-        "pizzadelight:raw_pizza",
-        "pizzadelight:pizza",
-        "farmersdelight:stove"
-      ]
-    }
-  ],
   "titles": [
     {
       "id": "chef_de_cuisine",
@@ -161,20 +35,6 @@
       "skills": [
         "seasoned_hands",
         "steady_simmer"
-      ]
-    },
-    {
-      "id": "pizzaiolo",
-      "name": {
-        "text": "Pizzaiolo"
-      },
-      "skills": [
-        "pizza_craft",
-        "kitchen_rhythm",
-        "stone_oven",
-        "pizza_spin",
-        "peel_vault",
-        "stone_heat"
       ]
     }
   ]

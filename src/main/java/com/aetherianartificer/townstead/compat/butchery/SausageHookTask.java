@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
 import com.aetherianartificer.townstead.Townstead;
-import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableMap;
@@ -104,7 +103,7 @@ public class SausageHookTask extends Behavior<VillagerEntityMCA> {
     }
 
     /** Whether this job has anything waiting, for the order list to defer to. */
-    static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
+    public static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
                                   net.conczin.mca.entity.VillagerEntityMCA villager) {
         return findHangableHook(level, villager) != null;
     }
@@ -389,11 +388,8 @@ public class SausageHookTask extends Behavior<VillagerEntityMCA> {
 
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
-        ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
-                .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
-                        amount, gameTime, "townstead:butchered", null, null, amount);
-        if (result.tierUp()) {
-            ButcherTradeLevelSync.syncToTier(villager, result.tierAfter());
-        }
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                amount, gameTime, "townstead:butchered", null, null, amount);
     }
 }

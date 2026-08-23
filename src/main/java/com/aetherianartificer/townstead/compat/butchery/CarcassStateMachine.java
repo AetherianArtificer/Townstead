@@ -143,9 +143,14 @@ public final class CarcassStateMachine {
      */
     public static boolean isProcessable(Level level, BlockState state, BlockPos pos) {
         if (isDrainedCarcass(state)) {
-            return Stage.forCurrentState(currentState(state)) != null;
+            return Stage.forCurrentState(currentState(state)) != null
+                    && speciesFor(state) != null;
         }
         if (!isFreshCarcass(state)) return false;
+        // Butchery 5.2's broad carcass tag contains several irregular corpse
+        // names whose drained twin cannot be derived mechanically. Ignore
+        // those instead of repeatedly selecting work that can never advance.
+        if (drainedBlockFor(state) == null) return false;
         if (!hasBloodGrateBelow(level, pos)) return false;
         if (!(level instanceof ServerLevel sl)) return true;
         long readyTick = readDrainReadyTick(level, pos);
@@ -247,18 +252,7 @@ public final class CarcassStateMachine {
     public static boolean bleed(ServerLevel level, BlockPos pos) {
         BlockState current = level.getBlockState(pos);
         if (!isFreshCarcass(current)) return false;
-        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(current.getBlock());
-        if (id == null || !"butchery".equals(id.getNamespace())) return false;
-        String path = id.getPath();
-        if (!path.endsWith("_carcass")) return false;
-        String drainedPath = "drained_" + path;
-        //? if >=1.21 {
-        ResourceLocation drainedId = ResourceLocation.fromNamespaceAndPath("butchery", drainedPath);
-        //?} else {
-        /*ResourceLocation drainedId = new ResourceLocation("butchery", drainedPath);
-        *///?}
-        if (!BuiltInRegistries.BLOCK.containsKey(drainedId)) return false;
-        Block drained = BuiltInRegistries.BLOCK.get(drainedId);
+        Block drained = drainedBlockFor(current);
         if (drained == null) return false;
         BlockState target = drained.defaultBlockState();
         Property<?> prop = target.getBlock().getStateDefinition().getProperty(BLOCKSTATE_PROPERTY);
@@ -284,6 +278,24 @@ public final class CarcassStateMachine {
             level.sendBlockUpdated(pos, target, target, 3);
         }
         return true;
+    }
+
+    @Nullable
+    private static Block drainedBlockFor(BlockState fresh) {
+        if (!isFreshCarcass(fresh)) return null;
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(fresh.getBlock());
+        if (id == null || !"butchery".equals(id.getNamespace())) return null;
+        String path = id.getPath();
+        if (!path.endsWith("_carcass")) return null;
+        String drainedPath = "drained_" + path;
+        //? if >=1.21 {
+        ResourceLocation drainedId = ResourceLocation.fromNamespaceAndPath("butchery", drainedPath);
+        //?} else {
+        /*ResourceLocation drainedId = new ResourceLocation("butchery", drainedPath);
+        *///?}
+        if (!BuiltInRegistries.BLOCK.containsKey(drainedId)) return null;
+        Block drained = BuiltInRegistries.BLOCK.get(drainedId);
+        return drained == Blocks.AIR ? null : drained;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

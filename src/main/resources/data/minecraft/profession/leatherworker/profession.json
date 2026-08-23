@@ -7,34 +7,5 @@
   "description": {
     "text": "Cure and craft hides to build a history of leatherwork."
   },
-  "unlock_model": "experiential",
-  "poi": [
-    {
-      "type": "townstead:job_block",
-      "block": "minecraft:cauldron"
-    }
-  ],
-  "work_tasks": [
-    {
-      "type": "townstead_work:tan",
-      "weight": 10
-    }
-  ],
-  "daily_cap": 60,
-  "max_xp": 1000,
-  "levels": [
-    {
-      "xp": 20
-    },
-    {
-      "xp": 40
-    },
-    {
-      "xp": 60
-    },
-    {
-      "xp": 80
-    },
-    {}
-  ]
+  "unlock_model": "experiential"
 }

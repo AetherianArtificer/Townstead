@@ -1,6 +1,9 @@
 package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.profession.def.ProfessionPathDocument;
+import com.aetherianartificer.townstead.profession.def.ProfessionPathsOverlay;
+import com.aetherianartificer.townstead.profession.def.ProfessionWorkOverlay;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -27,7 +30,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 /**
- * Boot-time scan that turns advanced-profession defs bundled in mod jars into real
+ * Boot-time scan that turns eligible profession defs bundled in mod jars into real
  * {@link VillagerProfession} registrations, so a data-defined specialization is a full
  * profession like any other. A def whose {@code poi} declares {@code townstead:job_block}
  * gets a real job-site POI: blocks nobody claims become a new {@link PoiType} under the def's
@@ -39,11 +42,14 @@ import java.util.function.Predicate;
  * startup, so defs added by world data packs or {@code /reload} cannot register and are
  * reachable only through the career layer.</p>
  *
- * <p>Eligible: {@code data/<ns>/profession/*.json} with the Townstead profession schema and
- * non-empty {@code acquisition_routes} (practiced careers extend professions that already
- * exist), unless the def opts out with {@code "register_profession": false}. Ids already
- * present in the registry are skipped; {@code aliases} exist for converging on those
- * instead.</p>
+ * <p>Eligible: a Townstead profession def with either non-empty {@code acquisition_routes} or
+ * explicit {@code "register_profession": true}, which may be supplied by adjacent
+ * {@code work.json} in the directory layout. The scanner composes legacy {@code paths.json} and
+ * individual {@code path/<id>/path.json} documents first when present, so villager path-to-worksite
+ * affinities can still be validated at startup.
+ * The explicit form is how a practiced custom career says it owns a new villager profession;
+ * otherwise practiced careers extend professions that already exist. Ids already present in the
+ * registry are skipped; {@code aliases} exist for converging on those instead.</p>
  */
 public final class ScannedProfessions {
 
@@ -71,7 +77,7 @@ public final class ScannedProfessions {
 
     private ScannedProfessions() {}
 
-    /** Scanned advanced-profession defs, resolved lazily on first use during registration. */
+    /** Scanned profession defs, resolved lazily on first use during registration. */
     public static List<ScannedDef> defs() {
         List<ScannedDef> result = scanned;
         if (result == null) {
@@ -232,26 +238,68 @@ public final class ScannedProfessions {
                     // id = <ns>:<name>. Skill subdirectories never register professions.
                     Path def = file.resolve("profession.json");
                     if (Files.isRegularFile(def)) {
-                        readCandidate(def, ResourceLocation.tryParse(namespace + ":" + fileName),
-                                providerModIds, out);
+                        Path paths = file.resolve("paths.json");
+                        Path pathDirectory = file.resolve("path");
+                        Path work = file.resolve("work.json");
+                        readCandidate(def, Files.isRegularFile(paths) ? paths : null,
+                                Files.isDirectory(pathDirectory) ? pathDirectory : null,
+                                Files.isRegularFile(work) ? work : null,
+                                ResourceLocation.tryParse(namespace + ":" + fileName), providerModIds, out);
                     }
                     continue;
                 }
                 if (!fileName.endsWith(".json")) continue;
-                readCandidate(file, ResourceLocation.tryParse(
+                readCandidate(file, null, null, null, ResourceLocation.tryParse(
                                 namespace + ":" + fileName.substring(0, fileName.length() - ".json".length())),
                         providerModIds, out);
             }
         }
     }
 
-    private static void readCandidate(Path file, @org.jetbrains.annotations.Nullable ResourceLocation id,
+    private static void readCandidate(Path file, @org.jetbrains.annotations.Nullable Path pathsFile,
+                                      @org.jetbrains.annotations.Nullable Path pathDirectory,
+                                      @org.jetbrains.annotations.Nullable Path workFile,
+                                      @org.jetbrains.annotations.Nullable ResourceLocation id,
                                       Set<String> providerModIds, Map<ResourceLocation, ScannedDef> out) {
         if (id == null) return;
         try (Reader reader = Files.newBufferedReader(file)) {
             JsonElement parsed = JsonParser.parseReader(reader);
-            if (parsed.isJsonObject() && eligible(parsed.getAsJsonObject())) {
-                out.putIfAbsent(id, new ScannedDef(id, jobBlocks(parsed.getAsJsonObject()),
+            if (!parsed.isJsonObject()) return;
+            JsonObject profession = parsed.getAsJsonObject();
+            if (pathsFile != null) {
+                try (Reader pathsReader = Files.newBufferedReader(pathsFile)) {
+                    JsonElement paths = JsonParser.parseReader(pathsReader);
+                    if (!paths.isJsonObject()) throw new IllegalArgumentException("paths.json must be an object");
+                    ProfessionPathsOverlay.apply(profession, paths.getAsJsonObject());
+                }
+            }
+            if (pathDirectory != null) {
+                try (var pathDirectories = Files.list(pathDirectory)) {
+                    for (Path pathDir : pathDirectories.filter(Files::isDirectory)
+                            .sorted().toList()) {
+                        String pathId = pathDir.getFileName().toString();
+                        Path pathFile = pathDir.resolve("path.json");
+                        if (!Files.isRegularFile(pathFile)) continue;
+                        try (Reader pathReader = Files.newBufferedReader(pathFile)) {
+                            JsonElement path = JsonParser.parseReader(pathReader);
+                            if (!path.isJsonObject()) {
+                                throw new IllegalArgumentException(pathFile + " must be an object");
+                            }
+                            ProfessionPathDocument.apply(profession, pathId,
+                                    path.getAsJsonObject());
+                        }
+                    }
+                }
+            }
+            if (workFile != null) {
+                try (Reader workReader = Files.newBufferedReader(workFile)) {
+                    JsonElement work = JsonParser.parseReader(workReader);
+                    if (!work.isJsonObject()) throw new IllegalArgumentException("work.json must be an object");
+                    ProfessionWorkOverlay.apply(profession, work.getAsJsonObject());
+                }
+            }
+            if (eligible(profession)) {
+                out.putIfAbsent(id, new ScannedDef(id, jobBlocks(profession),
                         providerModIds));
             }
         } catch (Exception error) {
@@ -260,18 +308,22 @@ public final class ScannedProfessions {
     }
 
     /**
-     * Townstead profession defs that need a profession of their own: the schema guard keeps
-     * other mods' unrelated {@code profession/} data folders out; the practiced-vs-gated rule
-     * itself lives on {@link com.aetherianartificer.townstead.profession.def.ProfessionDef}
-     * (gated careers register, practiced careers extend a profession that already exists) —
-     * this scan cannot use the full parser because it runs before common setup registers the
-     * pheno condition types that {@code requirements} parsing needs. A def whose {@code mods}
-     * gate is unmet (or malformed) never registers a profession.
+     * Townstead profession defs that need a profession of their own. The schema guard keeps
+     * other mods' unrelated {@code profession/} data folders out. Gated careers register by
+     * default; a practiced career can opt in with {@code register_profession: true}, or opt out
+     * explicitly with {@code false}. The scan cannot use the full parser because it runs before
+     * common setup registers the Pheno condition types needed by {@code requirements}. A def
+     * whose {@code mods} gate is unmet (or malformed) never registers a profession.
      */
     static boolean eligible(JsonObject json) {
         if (!json.has("schema") || !json.get("schema").isJsonPrimitive()
                 || !SCHEMAS.contains(json.get("schema").getAsString())) return false;
-        if (json.has("register_profession") && !json.get("register_profession").getAsBoolean()) return false;
+        if (json.has("register_profession")) {
+            if (!json.get("register_profession").getAsBoolean()) return false;
+            if (json.has("mods") && !Boolean.TRUE.equals(
+                    com.aetherianartificer.townstead.data.ModGate.evaluate(json.get("mods")))) return false;
+            return true;
+        }
         if (json.has("mods") && !Boolean.TRUE.equals(
                 com.aetherianartificer.townstead.data.ModGate.evaluate(json.get("mods")))) return false;
         return com.aetherianartificer.townstead.profession.def.ProfessionDef.declaresAcquisitionRoutes(json);

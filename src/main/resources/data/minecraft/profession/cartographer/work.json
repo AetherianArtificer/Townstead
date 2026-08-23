@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "poi": [
+    { "type": "townstead:job_block", "block": "minecraft:cartography_table" },
+    { "type": "townstead:building", "type_prefix": "cartographer" }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:craft",
+      "workstations": ["minecraft:crafting_table", "minecraft:cartography_table"],
+      "recipes": ["navigation", "#townstead:crafts/cartography"],
+      "weight": 10
+    }
+  ]
+}

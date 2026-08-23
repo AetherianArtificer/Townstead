@@ -325,7 +325,7 @@ public final class CareerGraphBuilder {
             ProfessionDef def, boolean acquired) {
         List<CareerGraphS2CPayload.Evidence> evidence = new ArrayList<>();
         if (acquired) {
-            for (String counter : def.historyCounters()) {
+            for (String counter : CareerActivities.counters(def)) {
                 evidence.add(new CareerGraphS2CPayload.Evidence(counterLabel(counter),
                         Chronicles.count(server, entity.getUUID(), counter), 0, true));
             }
@@ -354,8 +354,16 @@ public final class CareerGraphBuilder {
         return evidence;
     }
 
-    /** "townstead:cooked" localizes via {@code townstead.counter.cooked}, else reads as "cooked". */
+    /** Engine activities use counter keys; data-driven Jobs use their resource translation key. */
     private static String counterLabel(String key) {
+        if (CareerActivities.isJob(key)) {
+            ResourceLocation job = ResourceLocation.tryParse(key);
+            if (job != null) {
+                String translation = "work_job." + job.getNamespace() + "."
+                        + job.getPath().replace('/', '.');
+                return localizeOr(translation, prettify(job.getPath()));
+            }
+        }
         int colon = key.indexOf(':');
         String path = colon >= 0 ? key.substring(colon + 1) : key;
         return localizeOr("townstead.counter." + path, prettify(key));

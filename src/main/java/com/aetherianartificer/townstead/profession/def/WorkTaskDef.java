@@ -44,19 +44,24 @@ public record WorkTaskDef(
         int weight,
         Scope scope,
         Condition requirements,
-        /**
-         * The history counter a finished job increments, so a pack's career counts its own verb
-         * ({@code "history_counter": "mypack:distilled"}). Null falls back to the engine's
-         * default for the trade.
-         */
-        @Nullable String historyCounter) {
+        @Nullable OrderOption order) {
 
-    /** Pre-counter constructor, for callers and tests that state no counter. */
+    /** Presentation for a task that players may place on a worksite order sheet. */
+    public record OrderOption(String name, ResourceLocation icon) {}
+
     public WorkTaskDef(ResourceLocation type, TargetSet workstations, TargetSet entities,
                        TargetSet recipes, TargetSet recipesDenied, int weight, Scope scope,
                        Condition requirements) {
         this(type, workstations, entities, recipes, recipesDenied,
                 TargetSet.EMPTY, TargetSet.EMPTY, weight, scope, requirements, null);
+    }
+
+    public WorkTaskDef(ResourceLocation type, TargetSet workstations, TargetSet entities,
+                       TargetSet recipes, TargetSet recipesDenied, TargetSet recipeInputs,
+                       TargetSet recipeInputsDenied, int weight, Scope scope,
+                       Condition requirements) {
+        this(type, workstations, entities, recipes, recipesDenied, recipeInputs,
+                recipeInputsDenied, weight, scope, requirements, null);
     }
 
     /**
@@ -313,12 +318,26 @@ public record WorkTaskDef(
             requirements = Conditions.parse(obj.get("requirements"));
             if (requirements == null) return null;
         }
-        String historyCounter = obj.has("history_counter")
-                ? GsonHelper.getAsString(obj, "history_counter", "") : null;
-        if (historyCounter != null && historyCounter.isBlank()) return null;
+        // Completed-work history belongs to the executable Job or task engine. Keeping an
+        // override here would let a profession rename the same activity depending on who did it.
+        if (obj.has("history_counter")) return null;
+        OrderOption order = null;
+        if (obj.has("order")) {
+            order = parseOrder(obj.get("order"));
+            if (order == null) return null;
+        }
         return new WorkTaskDef(type, workstations, entities, recipes, denied,
                 recipeInputs, deniedInputs,
-                GsonHelper.getAsInt(obj, "weight", 1), scope, requirements, historyCounter);
+                GsonHelper.getAsInt(obj, "weight", 1), scope, requirements, order);
+    }
+
+    private static @Nullable OrderOption parseOrder(JsonElement element) {
+        if (!element.isJsonObject()) return null;
+        JsonObject json = element.getAsJsonObject();
+        String name = GsonHelper.getAsString(json, "name", "").trim();
+        String rawIcon = GsonHelper.getAsString(json, "icon", "").trim();
+        ResourceLocation icon = rawIcon.isEmpty() ? null : ResourceLocation.tryParse(rawIcon);
+        return name.isEmpty() || icon == null ? null : new OrderOption(name, icon);
     }
 
     /** Reads an id/#tag string array into a {@link TargetSet}; null on any malformed entry. */

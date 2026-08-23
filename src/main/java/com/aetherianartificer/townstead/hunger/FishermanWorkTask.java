@@ -31,6 +31,7 @@ import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -105,6 +106,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int IDLE_BACKOFF_TICKS = 60;
     private static final int REQUEST_RANGE = 24;
     private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
+    //? if >=1.21 {
+    private static final ResourceLocation PROFESSION = ResourceLocation.parse("minecraft:fisherman");
+    //?} else {
+    /*private static final ResourceLocation PROFESSION = new ResourceLocation("minecraft", "fisherman");
+    *///?}
     private static final int GO_TO_WATER_TIMEOUT_TICKS = 300;
     private static final int CAST_COOLDOWN_TICKS = 40;
     //? if forge {
@@ -1384,7 +1390,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     }
 
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FISHERMAN_REQUEST_CHAT.get()) return;
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .repeatedRequestsEnabled()) return;
         if (blockedReason == HungerData.FishermanBlockedReason.NONE) return;
         if (townstead$suppressStaleRequest(level, villager, gameTime)) return;
         if (gameTime < nextRequestTick) return;
@@ -1405,14 +1412,14 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             case NO_BARREL, NONE -> null;
         };
         if (state == null) return;
-        String key = FishermanRequestDialogue.pickKey(villager, state, level.random);
-
-        villager.sendChatToAllAround(key);
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager, PROFESSION, state, gameTime)) return;
         villager.getLongTermMemory().remember("townstead.fisherman_request.any");
         villager.getLongTermMemory().remember("townstead.fisherman_request." + blockedReason.id());
 
-        int interval = Math.max(200, TownsteadConfig.FISHERMAN_REQUEST_INTERVAL_TICKS.get());
-        nextRequestTick = gameTime + interval;
+        nextRequestTick = gameTime
+                + com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .effectiveInterval(PROFESSION);
     }
 
     private boolean townstead$suppressStaleRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -1486,16 +1493,15 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     /**
      * One-shot "first time ever" chat on successful cast from inside a dock.
      * Gated by {@link #townstead$dockBonusActive} so shoreline fallbacks don't
-     * consume the milestone, and by the request-chat config + player-proximity
+     * consume the milestone, and by the universal feedback policy + player-proximity
      * check so we don't send translation keys into an empty scene.
      */
     private void townstead$maybeAnnounceFirstDockUse(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.ENABLE_FISHERMAN_REQUEST_CHAT.get()) return;
         if (!townstead$dockBonusActive()) return;
         if (villager.getLongTermMemory().hasMemory(MEMORY_FIRST_DOCK_USE)) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
-        String key = FishermanRequestDialogue.pickKey(villager, "dock_first_use", level.random);
-        villager.sendChatToAllAround(key);
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager, PROFESSION, "dock_first_use", level.getGameTime())) return;
         villager.getLongTermMemory().remember(MEMORY_FIRST_DOCK_USE);
         // Small, personal ack effect on the villager — MAJOR/GRAND are reserved
         // for structural dock milestones and fire from DockScanner instead.

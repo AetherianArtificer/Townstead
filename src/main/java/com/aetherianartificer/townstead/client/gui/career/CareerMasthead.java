@@ -287,25 +287,63 @@ final class CareerMasthead {
 
     // ── The picker ─────────────────────────────────────────────────────────
 
+    private static final int PICKER_HEAD_H = 13;
     private static final int ROW_H = 13;
 
     int pickerWidth() { return Math.max(120, crestW + 24); }
 
-    int pickerHeight(int careers) { return 13 + careers * ROW_H; }
+    private int visiblePickerRows(int careers, int availableHeight) {
+        int fit = Math.max(1, (availableHeight - PICKER_HEAD_H) / ROW_H);
+        return Math.min(Math.max(0, careers), fit);
+    }
+
+    int clampPickerScroll(int scroll, int careers, int availableHeight) {
+        int max = Math.max(0, careers - visiblePickerRows(careers, availableHeight));
+        return Mth.clamp(scroll, 0, max);
+    }
+
+    int scrollPicker(int scroll, double delta, int careers, int availableHeight) {
+        if (delta == 0) return clampPickerScroll(scroll, careers, availableHeight);
+        int rows = net.minecraft.client.gui.screens.Screen.hasShiftDown() ? 4 : 1;
+        return clampPickerScroll(scroll - (int) Math.signum(delta) * rows,
+                careers, availableHeight);
+    }
+
+    int scrollToCareer(List<String> roots, String career, int scroll, int availableHeight) {
+        int visible = visiblePickerRows(roots.size(), availableHeight);
+        int selected = roots.indexOf(career);
+        int clamped = clampPickerScroll(scroll, roots.size(), availableHeight);
+        if (selected < 0) return clamped;
+        if (selected < clamped) return selected;
+        if (selected >= clamped + visible) return Math.max(0, selected - visible + 1);
+        return clamped;
+    }
+
+    boolean overPicker(double mouseX, double mouseY, int careers, int x, int y,
+                       int availableHeight) {
+        int h = PICKER_HEAD_H + visiblePickerRows(careers, availableHeight) * ROW_H;
+        return mouseX >= x && mouseX < x + pickerWidth() && mouseY >= y && mouseY < y + h;
+    }
 
     /** @return the root id under the cursor, or null. */
-    String pickerHit(double mouseX, double mouseY, List<String> roots, int x, int y) {
+    String pickerHit(double mouseX, double mouseY, List<String> roots, int x, int y,
+                     int scroll, int availableHeight) {
         int w = pickerWidth();
         if (mouseX < x || mouseX >= x + w) return null;
-        int row = (int) ((mouseY - (y + 13)) / ROW_H);
-        if (row < 0 || row >= roots.size()) return null;
-        return roots.get(row);
+        int visible = visiblePickerRows(roots.size(), availableHeight);
+        int localRow = (int) ((mouseY - (y + PICKER_HEAD_H)) / ROW_H);
+        if (mouseY < y + PICKER_HEAD_H || localRow < 0 || localRow >= visible) return null;
+        int row = clampPickerScroll(scroll, roots.size(), availableHeight) + localRow;
+        return row >= roots.size() ? null : roots.get(row);
     }
 
     void drawPicker(GuiGraphics g, int x, int y, List<String> roots, String activeRoot,
-                    Map<String, CareerGraphS2CPayload.Node> byId, double mouseX, double mouseY) {
+                    Map<String, CareerGraphS2CPayload.Node> byId, int scroll, int availableHeight,
+                    double mouseX, double mouseY) {
         int w = pickerWidth();
-        int h = pickerHeight(roots.size());
+        int visible = visiblePickerRows(roots.size(), availableHeight);
+        int first = clampPickerScroll(scroll, roots.size(), availableHeight);
+        int h = PICKER_HEAD_H + visible * ROW_H;
         g.fill(x + 2, y + 2, x + w + 2, y + h + 2, 0x8C000000);
         g.fill(x, y, x + w, y + h, 0xFF241708);
         Palette.drawOutline(g, x, y, x + w, y + h, 0xFF6A4E24);
@@ -313,9 +351,12 @@ final class CareerMasthead {
         g.drawString(font, heading, x + 5, y + 3, 0xFF8A7048, false);
         g.fill(x + 4, y + 11, x + w - 4, y + 12, 0xFF4A3218);
 
-        for (int i = 0; i < roots.size(); i++) {
+        g.enableScissor(x + 1, y + PICKER_HEAD_H, x + w - 1, y + h - 1);
+        for (int local = 0; local < visible; local++) {
+            int i = first + local;
+            if (i >= roots.size()) break;
             String rootId = roots.get(i);
-            int rowY = y + 13 + i * ROW_H;
+            int rowY = y + PICKER_HEAD_H + local * ROW_H;
             boolean active = rootId.equals(activeRoot);
             boolean hover = mouseX >= x && mouseX < x + w
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
@@ -335,6 +376,18 @@ final class CareerMasthead {
                     g.drawString(font, rank, x + w - 5 - rankW, rowY + 2, 0xFF8A7048, false);
                 }
             }
+        }
+        g.disableScissor();
+
+        int maxScroll = Math.max(0, roots.size() - visible);
+        if (maxScroll > 0) {
+            int trackY = y + PICKER_HEAD_H + 1;
+            int trackH = Math.max(1, h - PICKER_HEAD_H - 2);
+            int thumbH = Math.max(8, trackH * visible / roots.size());
+            int thumbY = trackY + (trackH - thumbH) * first / maxScroll;
+            g.fill(x + w - 4, trackY, x + w - 2, trackY + trackH, 0xFF120B04);
+            g.fill(x + w - 4, thumbY, x + w - 2, thumbY + thumbH, Palette.BRASS_DEEP);
+            g.fill(x + w - 4, thumbY, x + w - 3, thumbY + thumbH, Palette.BRASS);
         }
     }
 }

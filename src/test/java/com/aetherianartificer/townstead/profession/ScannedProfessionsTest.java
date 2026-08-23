@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The scan's eligibility rules: advanced Townstead defs only, with an explicit opt-out. */
+/** The scan's eligibility rules for mod-bundled Townstead profession definitions. */
 class ScannedProfessionsTest {
 
     private static JsonObject obj(String singleQuoted) {
@@ -36,6 +36,53 @@ class ScannedProfessionsTest {
         assertFalse(ScannedProfessions.eligible(obj(
                 "{ 'schema': 'townstead:profession/v1', 'parents': ['townstead:cook'] }")),
                 "parents is dead schema; it neither gates nor grants registration");
+    }
+
+    @Test
+    void practicedCustomCareerCanExplicitlyRegister() {
+        assertTrue(ScannedProfessions.eligible(obj(
+                "{ 'schema': 'townstead:profession/v2', 'register_profession': true }")),
+                "a mod-bundled practiced career may explicitly own a new villager profession");
+    }
+
+    @Test
+    void workSidecarCanSupplyRegistrationAndJobSite() {
+        JsonObject profession = obj("{ 'schema': 'townstead:profession/v2' }");
+        com.aetherianartificer.townstead.profession.def.ProfessionWorkOverlay.apply(profession,
+                obj("{ 'schema': 'townstead:profession_work/v1', 'register_profession': true,"
+                        + " 'poi': [{ 'type': 'townstead:job_block', 'block': 'minecraft:beehive' }] }"));
+
+        assertTrue(ScannedProfessions.eligible(profession));
+        assertTrue(ScannedProfessions.jobBlocks(profession).contains(
+                net.minecraft.resources.ResourceLocation.tryParse("minecraft:beehive")));
+    }
+
+    @Test
+    void pathSidecarComposesBeforeWorksiteAffinities() {
+        JsonObject profession = obj("{ 'schema': 'townstead:profession/v2' }");
+        com.aetherianartificer.townstead.profession.def.ProfessionPathsOverlay.apply(profession,
+                obj("{ 'schema': 'townstead:profession_paths/v1',"
+                        + " 'paths': [{ 'id': 'hive_keeper', 'gateway': 'smoker_use' }] }"));
+        com.aetherianartificer.townstead.profession.def.ProfessionWorkOverlay.apply(profession,
+                obj("{ 'schema': 'townstead:profession_work/v1',"
+                        + " 'path_worksites': { 'hive_keeper': ['minecraft:beehive'] } }"));
+
+        assertTrue(profession.getAsJsonArray("paths").get(0).getAsJsonObject()
+                .getAsJsonArray("worksites").get(0).getAsString().equals("minecraft:beehive"));
+    }
+
+    @Test
+    void individualPathDocumentComposesBeforeWorksiteAffinities() {
+        JsonObject profession = obj("{ 'schema': 'townstead:profession/v2' }");
+        com.aetherianartificer.townstead.profession.def.ProfessionPathDocument.apply(profession,
+                "hive_keeper", obj("{ 'schema': 'townstead:profession_path/v1',"
+                        + " 'skills': ['smoker_use'] }"));
+        com.aetherianartificer.townstead.profession.def.ProfessionWorkOverlay.apply(profession,
+                obj("{ 'schema': 'townstead:profession_work/v1',"
+                        + " 'path_worksites': { 'hive_keeper': ['minecraft:beehive'] } }"));
+
+        assertTrue(profession.getAsJsonArray("paths").get(0).getAsJsonObject()
+                .getAsJsonArray("worksites").get(0).getAsString().equals("minecraft:beehive"));
     }
 
     @Test

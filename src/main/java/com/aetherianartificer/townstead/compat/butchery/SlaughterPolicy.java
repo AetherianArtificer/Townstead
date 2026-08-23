@@ -90,7 +90,8 @@ public final class SlaughterPolicy {
         // additions.
         if (animal instanceof TamableAnimal tamable && tamable.isTame()) return false;
         if (NEVER_KILL.contains(animal.getType())) return false;
-        if (carcassIdFor(animal.getType()) == null) return false;
+        ResourceLocation carcassId = carcassIdFor(animal.getType());
+        if (carcassId == null || !ButcheryCompat.carcassEnabled(carcassId)) return false;
         if (butcher == null || butcher.getUUID().equals(animal.getUUID())) return false;
         // A declared work task may narrow the species this profession slaughters;
         // it can never widen past the whitelist or NEVER_KILL above.

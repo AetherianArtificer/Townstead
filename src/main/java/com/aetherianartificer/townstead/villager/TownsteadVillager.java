@@ -31,7 +31,7 @@ import java.util.UUID;
  * boundaries and in temporary adapters for older call sites.</p>
  */
 public final class TownsteadVillager {
-    public static final int SCHEMA_VERSION = 5;
+    public static final int SCHEMA_VERSION = 6;
 
     private final UUID villagerId;
     private boolean dirty;
@@ -1161,6 +1161,7 @@ public final class TownsteadVillager {
         private String lastProfession = "";
         private ButcherSettings.SlaughterOverride slaughterOverride = ButcherSettings.SlaughterOverride.FOLLOW_CONFIG;
         private final Map<String, Progress> progressByProfession = new HashMap<>();
+        private final ProfessionOfferMemory tradeOffersByProfession = new ProfessionOfferMemory();
         private final Map<String, Integer> tradeBackfillLevels = new HashMap<>();
         private final Map<String, Long> cooldowns = new HashMap<>();
         private int lastSeenShopTier = -1;
@@ -1207,6 +1208,16 @@ public final class TownsteadVillager {
         public void putProgress(String professionId, int level, int xp) {
             if (professionId == null || professionId.isBlank()) return;
             progressByProfession.put(professionId, new Progress(Math.max(1, level), Math.max(0, xp)));
+            markDirty();
+        }
+
+        public CompoundTag tradeOffers(String professionId) {
+            return tradeOffersByProfession.get(professionId);
+        }
+
+        public void putTradeOffers(String professionId, CompoundTag offers) {
+            if (professionId == null || professionId.isBlank() || offers == null) return;
+            tradeOffersByProfession.put(professionId, offers);
             markDirty();
         }
 
@@ -1332,6 +1343,7 @@ public final class TownsteadVillager {
                 all.put(entry.getKey(), progress);
             }
             tag.put("progress", all);
+            tag.put("tradeOffers", tradeOffersByProfession.toTag());
             CompoundTag backfill = new CompoundTag();
             for (Map.Entry<String, Integer> entry : tradeBackfillLevels.entrySet()) {
                 int level = Math.max(0, entry.getValue());
@@ -1386,6 +1398,7 @@ public final class TownsteadVillager {
                         Math.max(1, progress.getInt("level")),
                         Math.max(0, progress.getInt("xp"))));
             }
+            tradeOffersByProfession.load(tag.getCompound("tradeOffers"));
             CompoundTag backfill = tag.getCompound("tradeBackfillLevels");
             for (String key : backfill.getAllKeys()) {
                 int level = Math.max(0, backfill.getInt(key));
@@ -1447,13 +1460,9 @@ public final class TownsteadVillager {
             if (cookLevel > 0) tradeBackfillLevels.put("cook", cookLevel);
             int baristaLevel = Math.max(0, hunger.getInt(LEGACY_BARISTA_TRADES_LEVEL));
             if (baristaLevel > 0) tradeBackfillLevels.put("barista", baristaLevel);
-            // Complaint throttles, the slaughter work throttle, and last-seen shop
-            // tier were all piggybacked in townstead_hunger.
+            // The slaughter work throttle and last-seen shop tier were piggybacked in
+            // townstead_hunger. Work-feedback cooldowns use provider ids in the new store.
             cooldowns.clear();
-            long leatherworkerComplaint = hunger.getLong("townstead_lastLeatherworkerComplaint");
-            if (leatherworkerComplaint != 0L) cooldowns.put("townstead_lastLeatherworkerComplaint", leatherworkerComplaint);
-            long butcheryComplaint = hunger.getLong("townstead_lastButcheryComplaint");
-            if (butcheryComplaint != 0L) cooldowns.put("townstead_lastButcheryComplaint", butcheryComplaint);
             long slaughterTick = hunger.getLong("townstead_lastSlaughterTick");
             if (slaughterTick != 0L) cooldowns.put("townstead_lastSlaughterTick", slaughterTick);
             lastSeenShopTier = hunger.contains("townstead_lastSeenShopTier") ? hunger.getInt("townstead_lastSeenShopTier") : -1;
@@ -1480,8 +1489,6 @@ public final class TownsteadVillager {
                 int baristaLevel = Math.max(0, hunger.getInt(LEGACY_BARISTA_TRADES_LEVEL));
                 if (baristaLevel > 0) tradeBackfillLevels.put("barista", baristaLevel);
             }
-            mergeLegacyCooldown(hunger, "townstead_lastLeatherworkerComplaint");
-            mergeLegacyCooldown(hunger, "townstead_lastButcheryComplaint");
             mergeLegacyCooldown(hunger, "townstead_lastSlaughterTick");
             if (lastSeenShopTier < 0 && hunger.contains("townstead_lastSeenShopTier")) {
                 lastSeenShopTier = hunger.getInt("townstead_lastSeenShopTier");

@@ -32,16 +32,21 @@ public final class WorkJobs {
         return DEFINITIONS;
     }
 
-    public static @Nullable WorkJobDef first(ResourceLocation task, ResourceLocation executor) {
+    public static @Nullable WorkJobDef first(ResourceLocation task, ResourceLocation type) {
         for (WorkJobDef def : DEFINITIONS) {
-            if (def.task().equals(task) && def.executor().equals(executor)) return def;
+            if (def.task().equals(task) && def.type().equals(type)) return def;
         }
         return null;
     }
 
-    public static List<WorkJobDef> forExecutor(ResourceLocation executor) {
+    public static @Nullable WorkJobDef byId(ResourceLocation id) {
+        for (WorkJobDef def : DEFINITIONS) if (def.id().equals(id)) return def;
+        return null;
+    }
+
+    public static List<WorkJobDef> forType(ResourceLocation type) {
         List<WorkJobDef> out = new ArrayList<>();
-        for (WorkJobDef def : DEFINITIONS) if (def.executor().equals(executor)) out.add(def);
+        for (WorkJobDef def : DEFINITIONS) if (def.type().equals(type)) out.add(def);
         return List.copyOf(out);
     }
 
@@ -73,7 +78,7 @@ public final class WorkJobs {
             for (Map.Entry<ResourceLocation, JsonObject> entry : prepared.entrySet()) {
                 JsonObject json = entry.getValue();
                 try {
-                    TownsteadSchema.validate(json, WorkJobDef.SCHEMA);
+                    TownsteadSchema.validateRequired(json, WorkJobDef.SCHEMA);
                 } catch (RuntimeException ex) {
                     LOGGER.warn("Work job {} rejected: {}", entry.getKey(), ex.getMessage());
                     continue;

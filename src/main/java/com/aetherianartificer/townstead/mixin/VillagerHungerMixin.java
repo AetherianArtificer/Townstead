@@ -102,8 +102,7 @@ public abstract class VillagerHungerMixin extends Villager {
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.COOK,
                                         "townstead:cooked",
                                         com.aetherianartificer.townstead.profession.career.Careers.COOK,
-                                        com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled,
-                                        "dialogue.chat.cook_request."))),
+                                        com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled))),
                         Pair.of(72, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
                                         "Barista",
@@ -112,8 +111,7 @@ public abstract class VillagerHungerMixin extends Villager {
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.BARISTA,
                                         "townstead:brewed",
                                         com.aetherianartificer.townstead.profession.career.Careers.BARISTA,
-                                        com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled,
-                                        "dialogue.chat.barista_request."))),
+                                        com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled))),
                         Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask()),
                         Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.GolemProcessingTask()),
                         Pair.of(75, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
@@ -124,8 +122,7 @@ public abstract class VillagerHungerMixin extends Villager {
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.BUTCHER,
                                         "townstead:butchered",
                                         com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
-                                        () -> true,
-                                        "dialogue.chat.butcher_request."))),
+                                        () -> true))),
                         Pair.of(76, new com.aetherianartificer.townstead.compat.butchery.ButcherDeliveryTask()),
                         Pair.of(77, new com.aetherianartificer.townstead.compat.butchery.SausageHookTask()),
                         Pair.of(78, new com.aetherianartificer.townstead.compat.butchery.BloodCleanupTask()),
@@ -134,6 +131,7 @@ public abstract class VillagerHungerMixin extends Villager {
                         Pair.of(81, new LeatherworkerWorkTask()),
                         Pair.of(82, new com.aetherianartificer.townstead.shepherd.ShepherdWorkTask()),
                         Pair.of(83, new com.aetherianartificer.townstead.shepherd.ShepherdDepositTask()),
+                        Pair.of(83, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask()),
                         Pair.of(84, new com.aetherianartificer.townstead.work.producer.StationWorkTask())
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.

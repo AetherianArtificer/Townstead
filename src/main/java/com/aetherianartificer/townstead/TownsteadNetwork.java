@@ -21,6 +21,7 @@ import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
 import com.aetherianartificer.townstead.profession.ProfessionScanner;
 import com.aetherianartificer.townstead.profession.ProfessionSlotRules;
+import com.aetherianartificer.townstead.profession.ProfessionTradeLedger;
 import com.aetherianartificer.townstead.profession.ProfessionSetPayload;
 import com.aetherianartificer.townstead.profession.ProfessionSyncPayload;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
@@ -69,7 +70,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.npc.VillagerProfession;
-import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
@@ -1219,6 +1219,11 @@ public final class TownsteadNetwork {
         if (!(villager.level() instanceof net.minecraft.server.level.ServerLevel level)) return;
 
         VillagerProfession oldProf = villager.getVillagerData().getProfession();
+        if (oldProf == newProf) {
+            ProfessionTradeLedger.ensureCurrent(villager);
+            return;
+        }
+        ProfessionTradeLedger.rememberCurrent(villager, oldProf);
         townstead$clearProfessionState(villager);
 
         BlockPos claimedJobSite = null;
@@ -1236,12 +1241,7 @@ public final class TownsteadNetwork {
             }
         }
 
-        villager.setVillagerData(villager.getVillagerData().setProfession(newProf).setLevel(1));
-        villager.setVillagerXp(0);
-        MerchantOffers offers = villager.getOffers();
-        if (offers != null) {
-            offers.clear();
-        }
+        ProfessionTradeLedger.activate(villager, newProf);
 
         if (claimedJobSite != null) {
             villager.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), claimedJobSite));

@@ -2,6 +2,7 @@
   "sensitive.dialogue.chat.butcher_request.no_livestock/1": "<sad>No animals to care for today. Means none need saying goodbye, at least.</sad>",
   "sensitive.dialogue.chat.butcher_request.no_hook/1": "<nervous>Could you... could you place a hook? I can't do the work without it.</nervous>",
   "sensitive.dialogue.chat.butcher_request.no_basin/1": "<nervous>A basin would help. I don't like the mess when there isn't one.</nervous>",
+  "sensitive.dialogue.chat.butcher_request.no_blood_grate/1": "<nervous>A blood grate would help. I don't like the mess when there isn't one.</nervous>",
   "sensitive.dialogue.chat.village_life.butcher_shop/1": "<happy>Our butcher treats the animals with respect. It matters, that.</happy>",
   "sensitive.dialogue.chat.village_life.slaughterhouse/1": "<sad>I try not to think about the slaughterhouse. It feels important work, but... hard.</sad>",
   "sensitive.dialogue.chat.village_life.smokehouse/1": "<happy>The smokehouse reminds me of my grandmother's cooking. Warm and good.</happy>",

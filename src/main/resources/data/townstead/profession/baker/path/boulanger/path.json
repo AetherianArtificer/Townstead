@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "text": "Boulanger"
+  },
+  "title": {
+    "text": "Boulanger"
+  },
+  "color": "#C9A227",
+  "skills": [
+    "proving",
+    "strong_gluten",
+    "steam_bake"
+  ]
+}

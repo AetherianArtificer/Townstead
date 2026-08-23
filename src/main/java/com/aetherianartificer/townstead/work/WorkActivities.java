@@ -31,43 +31,42 @@ public final class WorkActivities {
         boolean hasWork(ServerLevel level, VillagerEntityMCA villager);
     }
 
-    /**
-     * Whether this job is something the given place ever does.
-     *
-     * <p>Asked when building a worksite's catalogue. Without it every job is offered at every
-     * worksite, and a kitchen's order screen lists slaughtering — which is not merely untidy, it
-     * invites a player to write a line nobody there will ever work.</p>
-     */
-    public interface Relevance {
-        boolean appliesTo(ServerLevel level,
-                          com.aetherianartificer.townstead.work.site.Worksite site);
-    }
+    /** One task option composed from profession data and a code-owned availability probe. */
+    public record Option(ResourceLocation id, String name, ResourceLocation icon) {}
 
-    private record Entry(ResourceLocation id, String label, ResourceLocation icon,
-                         boolean discretionary, Probe probe, Relevance relevance) {}
+    private record Entry(ResourceLocation id, Probe probe) {}
 
     private static final Map<ResourceLocation, Entry> ENTRIES = new ConcurrentHashMap<>();
 
     private WorkActivities() {}
 
+    /** Register the live probes owned by bespoke task engines. Presentation stays in work data. */
+    public static void bootstrap() {
+        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.SLAUGHTER,
+                com.aetherianartificer.townstead.compat.butchery.SlaughterWorkTask::hasWorkWaiting);
+        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.DISMANTLE,
+                com.aetherianartificer.townstead.compat.butchery.GolemProcessingTask::hasWorkWaiting);
+        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.HAMMER,
+                com.aetherianartificer.townstead.compat.butchery.HeadHammeringTask::hasWorkWaiting);
+        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CLEAN,
+                com.aetherianartificer.townstead.compat.butchery.BloodCleanupTask::hasWorkWaiting);
+        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BUTCHER,
+                com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask::hasActionableWork);
+        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CURE,
+                com.aetherianartificer.townstead.compat.butchery.SausageHookTask::hasWorkWaiting);
+        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.DELIVER,
+                com.aetherianartificer.townstead.compat.butchery.ButcherDeliveryTask::hasWorkWaiting);
+    }
+
     /**
-     * Declares a job that can appear on an order list.
-     *
-     * <p>The probe is asked while deciding whether a <em>different</em> job may start, so it must
-     * be as cheap as that task's own start condition and must not change anything.</p>
+     * Register the executable question for a task type. The probe is asked while deciding whether
+     * a different job may start, so it must be read-only and no more expensive than the task's
+     * own start condition. An {@code order} object in work data independently decides whether the
+     * task appears on an order sheet.
      */
-    /**
-     * @param discretionary whether a player would ever plausibly want this switched off. Carrying
-     *                      finished goods to storage or dressing a carcass is not a choice, it is
-     *                      how the work happens; killing somebody's animals is. Only discretionary
-     *                      jobs are offered on a list, and only they can be withheld.
-     */
-    public static void register(ResourceLocation id, String label, ResourceLocation icon,
-                                boolean discretionary, Probe probe, Relevance relevance) {
+    public static void register(ResourceLocation id, Probe probe) {
         if (id == null || probe == null) return;
-        ENTRIES.put(id, new Entry(id, label == null || label.isEmpty() ? id.getPath() : label,
-                icon, discretionary, probe,
-                relevance == null ? (level, site) -> true : relevance));
+        ENTRIES.put(id, new Entry(id, probe));
     }
 
     /**
@@ -78,14 +77,26 @@ public final class WorkActivities {
      * would strand its output where it was made.</p>
      */
     public static boolean isDiscretionary(@Nullable ResourceLocation id) {
-        Entry entry = id == null ? null : ENTRIES.get(id);
-        return entry != null && entry.discretionary();
+        return orderOf(id) != null;
+    }
+
+    /** Whether this particular worksite declares the task as an orderable choice. */
+    public static boolean isDiscretionary(ServerLevel level,
+                                          com.aetherianartificer.townstead.work.site.Worksite site,
+                                          @Nullable ResourceLocation id) {
+        if (id == null || !ENTRIES.containsKey(id)) return false;
+        var extent = com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site);
+        for (var task : com.aetherianartificer.townstead.work.site.WorksiteWork
+                .declaredTasksAt(level, site, extent, id)) {
+            if (task.order() != null) return true;
+        }
+        return false;
     }
 
     /** The item a job borrows for its icon, since a job has no item of its own. */
     public static ResourceLocation iconOf(@Nullable ResourceLocation id) {
-        Entry entry = id == null ? null : ENTRIES.get(id);
-        return entry == null ? null : entry.icon();
+        var order = orderOf(id);
+        return order == null ? null : order.icon();
     }
 
     /** Every declared job, in a stable order. */
@@ -96,16 +107,20 @@ public final class WorkActivities {
     }
 
     /** The jobs worth offering at this place: discretionary, and relevant here. */
-    public static List<ResourceLocation> at(ServerLevel level,
-                                            com.aetherianartificer.townstead.work.site.Worksite site) {
-        List<ResourceLocation> out = new ArrayList<>();
-        for (ResourceLocation id : all()) {
-            Entry entry = ENTRIES.get(id);
-            if (entry == null || !entry.discretionary()) continue;
-            try {
-                if (entry.relevance().appliesTo(level, site)) out.add(id);
-            } catch (Throwable ignored) {
-                // A relevance check throwing must not empty the whole catalogue.
+    public static List<Option> at(ServerLevel level,
+                                  com.aetherianartificer.townstead.work.site.Worksite site) {
+        List<Option> out = new ArrayList<>();
+        var extent = com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site);
+        List<ResourceLocation> types = new ArrayList<>(
+                com.aetherianartificer.townstead.work.site.WorksiteWork.typesAt(level, site, extent));
+        types.sort(java.util.Comparator.comparing(ResourceLocation::toString));
+        for (ResourceLocation id : types) {
+            if (!ENTRIES.containsKey(id)) continue;
+            for (var task : com.aetherianartificer.townstead.work.site.WorksiteWork
+                    .declaredTasksAt(level, site, extent, id)) {
+                if (task.order() == null) continue;
+                out.add(new Option(id, task.order().name(), task.order().icon()));
+                break;
             }
         }
         return List.copyOf(out);
@@ -118,8 +133,20 @@ public final class WorkActivities {
     /** What to call this job on screen. Falls back to the id's path so nothing renders blank. */
     public static String labelOf(@Nullable ResourceLocation id) {
         if (id == null) return "";
-        Entry entry = ENTRIES.get(id);
-        return entry != null ? entry.label() : id.getPath().replace('_', ' ');
+        var order = orderOf(id);
+        return order != null ? order.name() : id.getPath().replace('_', ' ');
+    }
+
+    private static @Nullable com.aetherianartificer.townstead.profession.def.WorkTaskDef.OrderOption
+    orderOf(@Nullable ResourceLocation id) {
+        if (id == null || !ENTRIES.containsKey(id)) return null;
+        for (var profession : com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                .all().values()) {
+            for (var task : profession.workTasks()) {
+                if (id.equals(task.type()) && task.order() != null) return task.order();
+            }
+        }
+        return null;
     }
 
     /** Whether this job has work waiting. Unknown jobs report none, so they never outrank anything. */

@@ -16,7 +16,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Professions declare villager AI work behaviors in data: the {@code work_tasks} array names
+ * Profession work sidecars declare villager AI behavior: the authored {@code tasks} array names
  * registered task types, gates them to workstation blocks or tags, and orders them by weight.
  * Unknown types and broken entries drop with diagnostics rather than silently idling villagers.
  */
@@ -82,14 +82,15 @@ class WorkTaskSchemaTest {
     @Test
     void bakerHasAVanillaBaselineAndKeepsMillingSeparateFromTheMincer() {
         JsonObject baker = resourceJson("/data/townstead/profession/baker/profession.json");
-        var tasks = baker.getAsJsonArray("work_tasks").asList().stream()
+        JsonObject work = resourceJson("/data/townstead/profession/baker/work.json");
+        var tasks = work.getAsJsonArray("tasks").asList().stream()
                 .map(entry -> WorkTaskDef.parse(entry.getAsJsonObject()))
                 .toList();
         assertTrue(tasks.stream().allMatch(java.util.Objects::nonNull),
                 "every shipped Baker task must parse");
 
         assertFalse(baker.has("mods"), "the Baker must exist in a vanilla-only installation");
-        assertTrue(baker.getAsJsonArray("poi").asList().stream().anyMatch(entry -> {
+        assertTrue(work.getAsJsonArray("poi").asList().stream().anyMatch(entry -> {
                     JsonObject site = entry.getAsJsonObject();
                     return "townstead:building".equals(site.get("type").getAsString())
                             && "bakery".equals(site.get("type_prefix").getAsString());
@@ -229,8 +230,8 @@ class WorkTaskSchemaTest {
 
     @Test
     void bakeryCompatBuildingsKeepTheirSubmittedTierAndWorkforceContracts() {
-        JsonObject baker = resourceJson("/data/townstead/profession/baker/profession.json");
-        var sites = baker.getAsJsonArray("poi").asList().stream()
+        JsonObject work = resourceJson("/data/townstead/profession/baker/work.json");
+        var sites = work.getAsJsonArray("poi").asList().stream()
                 .map(element -> JobSiteProviders.parse(element.getAsJsonObject()))
                 .filter(java.util.Objects::nonNull)
                 .toList();
@@ -346,6 +347,34 @@ class WorkTaskSchemaTest {
     }
 
     @Test
+    void blockInteractionDeclaresItsStation() {
+        ProfessionDef def = parse("""
+                {"work_tasks": [{"type": "townstead_work:interact",
+                                  "workstations": ["minecraft:beehive"],
+                                  "scope": "worksite",
+                                  "weight": 10}]}""",
+                new Diagnostics());
+        WorkTaskDef harvest = def.workTasks().get(0);
+        assertEquals(WorkTaskTypes.INTERACT, harvest.type());
+        assertTrue(harvest.allowsBlock(id("minecraft:beehive")));
+        assertFalse(harvest.allowsBlock(id("minecraft:bee_nest")),
+                "a sample author can decide which hive blocks belong to this job");
+        assertEquals(WorkTaskDef.Scope.WORKSITE, harvest.scope());
+        assertEquals(10, harvest.weight());
+    }
+
+    @Test
+    void authoredHistoryCounterIsRejected() {
+        Diagnostics diagnostics = new Diagnostics();
+        ProfessionDef def = parse("""
+                {"work_tasks": [{"type": "townstead_work:interact",
+                                  "history_counter": "townstead_example:honey_harvested"}]}""",
+                diagnostics);
+        assertTrue(def.workTasks().isEmpty());
+        assertTrue(diagnostics.all().stream().anyMatch(d -> d.severity() == Severity.ERROR));
+    }
+
+    @Test
     void omittedWorkstationsMeanTypeDefaults() {
         ProfessionDef def = parse("""
                 {"work_tasks": [{"type": "townstead_work:brew"}]}""", new Diagnostics());
@@ -457,7 +486,30 @@ class WorkTaskSchemaTest {
                 .findFirst().orElseThrow();
         assertTrue(smoke.workstations().tags().contains(id("townstead:smoker_stations")));
         assertTrue(smoke.recipeInputs().tags().contains(id("townstead:butcher_smoker_input")));
-        assertEquals("townstead:butchered", smoke.historyCounter());
+        assertTrue(WorkTaskTypes.activities(smoke.type()).contains("townstead:butchered"));
+
+        WorkTaskDef slaughter = butcher.workTasks().stream()
+                .filter(task -> task.type().equals(WorkTaskTypes.SLAUGHTER))
+                .findFirst().orElseThrow();
+        assertNotNull(slaughter.order(), "order presentation belongs to the work declaration");
+        assertEquals("Slaughter", slaughter.order().name());
+        assertEquals(id("minecraft:iron_sword"), slaughter.order().icon());
+
+        WorkTaskDef carcasses = butcher.workTasks().stream()
+                .filter(task -> task.type().equals(WorkTaskTypes.BUTCHER))
+                .findFirst().orElseThrow();
+        assertNull(carcasses.order(),
+                "mandatory pipeline work is omitted from the player's order choices");
+    }
+
+    @Test
+    void malformedOrderPresentationDropsTheTask() {
+        Diagnostics diagnostics = new Diagnostics();
+        ProfessionDef def = parse("""
+                {"work_tasks": [{"type": "townstead_work:slaughter",
+                                  "order": {"name": "Slaughter"}}]}""", diagnostics);
+        assertTrue(def.workTasks().isEmpty());
+        assertTrue(diagnostics.all().stream().anyMatch(d -> d.severity() == Severity.ERROR));
     }
 
     @Test
@@ -497,11 +549,17 @@ class WorkTaskSchemaTest {
 
     private static ProfessionDef load(String resource, String idRaw) {
         JsonObject json = resourceJson(resource);
+        if ("townstead:cook".equals(idRaw)) {
+            ProfessionPathDocument.apply(json, "pizzaiolo", resourceJson(
+                    "/data/townstead/profession/cook/path/pizzaiolo/path.json"));
+        }
+        String directory = resource.substring(0, resource.lastIndexOf('/') + 1);
+        ProfessionWorkOverlay.apply(json, resourceJson(directory + "work.json"));
         Diagnostics diagnostics = new Diagnostics();
         diagnostics.forResource(id(idRaw));
         ProfessionDef def = ProfessionDataLoader.parseProfession(
                 id(idRaw), json, Map.of(), diagnostics, new LinkedHashMap<>());
-        assertNotNull(def, resource + " must parse");
+        assertNotNull(def, resource + " must parse: " + diagnostics.all());
         return def;
     }
 

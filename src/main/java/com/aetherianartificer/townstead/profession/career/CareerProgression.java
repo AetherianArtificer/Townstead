@@ -10,6 +10,7 @@ import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.ProfessionXpStore;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
@@ -50,6 +51,7 @@ public final class CareerProgression {
         int xp = withSkillBonus(worker, career, baseXp, magnitude);
         Set<ResourceLocation> combosBefore = comboIds(worker);
         ProfessionProgress.GainResult result = ProfessionProgress.addXp(store, career, xp, gameTime);
+        syncMerchantLevel(worker, career, result);
         Set<ResourceLocation> affected = Set.of(career);
         Map<ResourceLocation, ProfessionProgress.GainResult> gains = new java.util.LinkedHashMap<>();
         gains.put(career, result);
@@ -86,6 +88,25 @@ public final class CareerProgression {
             }
         }
         return result;
+    }
+
+    /**
+     * A villager's Career rank and merchant level are two views of the same active Profession.
+     * Keep them together here, where every kind of work completes, rather than teaching each
+     * Profession integration how MCA regenerates higher-level offers.
+     */
+    private static void syncMerchantLevel(LivingEntity worker, ResourceLocation career,
+                                          ProfessionProgress.GainResult result) {
+        if (!result.tierUp() || !(worker instanceof VillagerEntityMCA villager)) return;
+        ResourceLocation active = BuiltInRegistries.VILLAGER_PROFESSION.getKey(
+                villager.getVillagerData().getProfession());
+        if (active == null || !career.equals(ProfessionDefs.canonicalId(active))) return;
+
+        int target = Math.min(5, Math.max(1, result.tierAfter()));
+        int steps = target - villager.getVillagerData().getLevel();
+        for (int i = 0; i < steps; i++) {
+            villager.customLevelUp();
+        }
     }
 
     /** Rank-up is the loop's payoff: name the new rank and any skill points it brought. */

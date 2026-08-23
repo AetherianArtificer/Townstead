@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "periodic",
+  "priority": 100,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "townstead:work_signal",
+        "signal": "townstead_butchery:has_carcass_shop"
+      },
+      {
+        "type": "townstead:work_signal",
+        "signal": "townstead_butchery:slaughter_disabled"
+      }
+    ]
+  },
+  "dialogue": {
+    "translate": "dialogue.chat.butcher_request.slaughter_disabled"
+  },
+  "variants": 3
+}

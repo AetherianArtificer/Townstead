@@ -48,6 +48,15 @@ class ProfessionLoaderDiagnosticsTest {
     }
 
     @Test
+    void professionCannotDeclareCompletedWorkCounters() {
+        Diagnostics diag = new Diagnostics();
+        ProfessionDef profession = ProfessionDataLoader.parseProfession(rl("t:p"),
+                obj("{ 'history_counters':['t:made_thing'] }"), Map.of(), diag);
+        assertNull(profession);
+        assertTrue(has(diag, "$.history_counters", "not a profession field"));
+    }
+
+    @Test
     void skillMissingProfessionErrorsAndReturnsNull() {
         Diagnostics diag = new Diagnostics();
         SkillDef skill = ProfessionDataLoader.parseSkill(rl("t:s"), obj("{ 'tier':1 }"), Map.of(), diag);
@@ -116,5 +125,20 @@ class ProfessionLoaderDiagnosticsTest {
                 obj("{ 'profession':'t:p', 'skill_group':'t:combat_stance' }"), Map.of(), diag);
         assertNotNull(skill);
         assertEquals(rl("t:combat_stance"), skill.skillGroup());
+    }
+
+    @Test
+    void pathSkillReferencesResolveBesideTheSkillFile() {
+        Diagnostics diag = new Diagnostics();
+        SkillDef skill = ProfessionDataLoader.parseSkill(
+                rl("t:beekeeper/hive_keeper/first_aid"),
+                obj("{ 'profession':'t:beekeeper', 'requires':['smoker_use'],"
+                        + " 'exclusive_with':['protective_clothing'] }"), Map.of(), diag);
+
+        assertNotNull(skill);
+        assertEquals(java.util.List.of(rl("t:beekeeper/hive_keeper/smoker_use")),
+                skill.requires());
+        assertEquals(java.util.List.of(rl("t:beekeeper/hive_keeper/protective_clothing")),
+                skill.exclusiveWith());
     }
 }

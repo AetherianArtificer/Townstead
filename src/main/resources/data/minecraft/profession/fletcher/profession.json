@@ -7,28 +7,5 @@
   "description": {
     "text": "Fletch arrows and string bows to build a history of fletching mastery."
   },
-  "unlock_model": "experiential",
-  "poi": [
-    {
-      "type": "townstead:job_block",
-      "block": "minecraft:fletching_table"
-    },
-    {
-      "type": "townstead:building",
-      "type_prefix": "fletcher"
-    }
-  ],
-  "work_tasks": [
-    {
-      "type": "townstead_work:craft",
-      "workstations": [
-        "minecraft:crafting_table"
-      ],
-      "recipes": [
-        "ranged",
-        "#townstead:crafts/ranged"
-      ],
-      "weight": 10
-    }
-  ]
+  "unlock_model": "experiential"
 }

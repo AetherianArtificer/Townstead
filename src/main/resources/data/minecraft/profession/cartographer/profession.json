@@ -7,29 +7,5 @@
   "description": {
     "text": "Craft maps and wayfinding tools to build a history of cartography mastery."
   },
-  "unlock_model": "experiential",
-  "poi": [
-    {
-      "type": "townstead:job_block",
-      "block": "minecraft:cartography_table"
-    },
-    {
-      "type": "townstead:building",
-      "type_prefix": "cartographer"
-    }
-  ],
-  "work_tasks": [
-    {
-      "type": "townstead_work:craft",
-      "workstations": [
-        "minecraft:crafting_table",
-        "minecraft:cartography_table"
-      ],
-      "recipes": [
-        "navigation",
-        "#townstead:crafts/cartography"
-      ],
-      "weight": 10
-    }
-  ]
+  "unlock_model": "experiential"
 }

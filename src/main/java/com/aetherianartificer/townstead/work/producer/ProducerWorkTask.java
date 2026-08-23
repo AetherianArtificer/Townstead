@@ -188,8 +188,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     // ── XP ──
 
-    /** The history counter a finished job increments. */
-    protected String historyCounter() {
+    /** The code-driven engine's stable completed-work activity. */
+    protected String activityKey() {
         return "townstead:produced";
     }
 
@@ -210,7 +210,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
                 villager,
                 com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(profession),
-                xp, gameTime, historyCounter(), activeRecipe.output(), "item", activeRecipe.tier());
+                xp, gameTime, activityKey(), activeRecipe.output(), "item", activeRecipe.tier());
     }
 
     // ── Optional hooks (default no-op) ──

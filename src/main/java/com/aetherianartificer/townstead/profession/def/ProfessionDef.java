@@ -16,8 +16,9 @@ import java.util.List;
  * careers (Barista, Baker) declare routes plus pheno-condition {@code requirements}.
  * Specialization inside a profession is a {@code paths} branch (gateway skill, member skills,
  * favoured worksites), never a child profession. Each def carries its progression track, skill tree
- * membership, chronicle evidence counters, and the {@code poi} job-site providers that make the
- * job available in the world. {@code workTasks} declares which villager AI work behaviors the
+ * membership, and the {@code poi} job-site providers that make the job available in the world.
+ * Completed-work history is derived from those executable Jobs and task engines rather than
+ * repeated here. {@code workTasks} declares which villager AI work behaviors the
  * profession's workers run; the engines live in code, the composition lives here. Pheno owns
  * capabilities and powers granted through skills; Townstead owns what counts as successful work
  * and emits the events that drive XP.
@@ -31,7 +32,6 @@ public record ProfessionDef(
         int pointsPerTier,
         RetrainingPolicy retraining,
         List<ResourceLocation> skills,
-        List<String> historyCounters,
         boolean hidden,
         Condition requirements,
         List<String> acquisitionRoutes,
@@ -101,74 +101,34 @@ public record ProfessionDef(
         return n <= 0 || n >= 60 ? String.valueOf(n) : tens[n / 10] + ones[n % 10];
     }
 
-    /** Compatibility constructor predating {@code work_tasks}. */
-    public ProfessionDef(ResourceLocation id, Component displayName, @Nullable Component description,
-                         ProgressionTrack progression, UnlockModel unlockModel, int pointsPerTier,
-                         RetrainingPolicy retraining, List<ResourceLocation> skills,
-                         List<String> historyCounters, boolean hidden,
-                         Condition requirements, List<String> acquisitionRoutes,
-                         List<JobSiteProvider> jobSites, List<ResourceLocation> aliases,
-                         java.util.Map<Integer, List<TradeDef>> trades,
-                         List<RequirementHint> requirementHints, @Nullable ResourceLocation icon,
-                         List<LevelDef> levels) {
-        this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
-                skills, historyCounters, hidden, requirements, acquisitionRoutes, jobSites,
-                aliases, trades, requirementHints, icon, levels, List.of());
-    }
-
-    /** Compatibility constructor predating per-level {@code levels}. */
-    public ProfessionDef(ResourceLocation id, Component displayName, @Nullable Component description,
-                         ProgressionTrack progression, UnlockModel unlockModel, int pointsPerTier,
-                         RetrainingPolicy retraining, List<ResourceLocation> skills,
-                         List<String> historyCounters, boolean hidden,
-                         Condition requirements, List<String> acquisitionRoutes,
-                         List<JobSiteProvider> jobSites, List<ResourceLocation> aliases,
-                         java.util.Map<Integer, List<TradeDef>> trades,
-                         List<RequirementHint> requirementHints, @Nullable ResourceLocation icon) {
-        this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
-                skills, historyCounters, hidden, requirements, acquisitionRoutes, jobSites,
-                aliases, trades, requirementHints, icon, List.of());
-    }
-
-    /** Compatibility constructor predating the advanced-class unification. */
+    /** Small constructor for code-owned and test professions. */
     public ProfessionDef(ResourceLocation id, Component displayName, @Nullable Component description,
                          ProgressionTrack progression, UnlockModel unlockModel, int pointsPerTier,
                          RetrainingPolicy retraining, List<ResourceLocation> skills) {
         this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
-                skills, List.of());
+                skills, false, Conditions.ALWAYS, List.of(), List.of(), List.of(),
+                java.util.Map.of(), List.of(), null, List.of(), List.of());
     }
 
-    /** Compatibility constructor predating {@code requirements}/{@code poi}. */
+    /** Constructor for definitions that only need eligibility and job sites. */
     public ProfessionDef(ResourceLocation id, Component displayName, @Nullable Component description,
                          ProgressionTrack progression, UnlockModel unlockModel, int pointsPerTier,
                          RetrainingPolicy retraining, List<ResourceLocation> skills,
-                         List<String> historyCounters) {
+                         boolean hidden, Condition requirements,
+                         List<String> acquisitionRoutes, List<JobSiteProvider> jobSites) {
         this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
-                skills, historyCounters, false, Conditions.ALWAYS, List.of(), List.of(),
-                List.of());
+                skills, hidden, requirements, acquisitionRoutes, jobSites, List.of(),
+                java.util.Map.of(), List.of(), null, List.of(), List.of());
     }
 
-    /** Compatibility constructor predating {@code aliases}. */
+    /** Constructor for definitions that also declare aliases. */
     public ProfessionDef(ResourceLocation id, Component displayName, @Nullable Component description,
                          ProgressionTrack progression, UnlockModel unlockModel, int pointsPerTier,
                          RetrainingPolicy retraining, List<ResourceLocation> skills,
-                         List<String> historyCounters, boolean hidden,
-                         Condition requirements, List<String> acquisitionRoutes,
-                         List<JobSiteProvider> jobSites) {
-        this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
-                skills, historyCounters, hidden, requirements, acquisitionRoutes, jobSites,
-                List.of(), java.util.Map.of(), List.of(), null);
-    }
-
-    /** Compatibility constructor predating {@code trades}. */
-    public ProfessionDef(ResourceLocation id, Component displayName, @Nullable Component description,
-                         ProgressionTrack progression, UnlockModel unlockModel, int pointsPerTier,
-                         RetrainingPolicy retraining, List<ResourceLocation> skills,
-                         List<String> historyCounters, boolean hidden,
-                         Condition requirements, List<String> acquisitionRoutes,
+                         boolean hidden, Condition requirements, List<String> acquisitionRoutes,
                          List<JobSiteProvider> jobSites, List<ResourceLocation> aliases) {
         this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
-                skills, historyCounters, hidden, requirements, acquisitionRoutes, jobSites,
-                aliases, java.util.Map.of(), List.of(), null);
+                skills, hidden, requirements, acquisitionRoutes, jobSites, aliases,
+                java.util.Map.of(), List.of(), null, List.of(), List.of());
     }
 }

@@ -66,20 +66,14 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_GROOM_RADIUS;
     public static final ModConfigSpec.IntValue FARMER_GROOM_SCAN_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_AI;
-    public static final ModConfigSpec.BooleanValue ENABLE_FARMER_REQUEST_CHAT;
-    public static final ModConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
-    public static final ModConfigSpec.BooleanValue ENABLE_COOK_REQUEST_CHAT;
-    public static final ModConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
-    public static final ModConfigSpec.BooleanValue ENABLE_BARISTA_REQUEST_CHAT;
-    public static final ModConfigSpec.IntValue BARISTA_REQUEST_INTERVAL_TICKS;
-    public static final ModConfigSpec.BooleanValue ENABLE_FISHERMAN_REQUEST_CHAT;
-    public static final ModConfigSpec.IntValue FISHERMAN_REQUEST_INTERVAL_TICKS;
+    public static final ModConfigSpec.BooleanValue ENABLE_WORK_FEEDBACK;
+    public static final ModConfigSpec.BooleanValue ENABLE_REPEATED_WORK_REQUESTS;
+    public static final ModConfigSpec.IntValue MINIMUM_WORK_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
     public static final ModConfigSpec.IntValue FISHERMAN_INVENTORY_FULL_THRESHOLD;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_SLAUGHTER;
     public static final ModConfigSpec.BooleanValue ALLOW_HUMANOID_SLAUGHTER;
     public static final ModConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
-    public static final ModConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
     public static final ModConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
     public static final ModConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
@@ -160,20 +154,14 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue FARMER_GROOM_RADIUS;
     public static final ForgeConfigSpec.IntValue FARMER_GROOM_SCAN_INTERVAL_TICKS;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_AI;
-    public static final ForgeConfigSpec.BooleanValue ENABLE_FARMER_REQUEST_CHAT;
-    public static final ForgeConfigSpec.IntValue FARMER_REQUEST_INTERVAL_TICKS;
-    public static final ForgeConfigSpec.BooleanValue ENABLE_COOK_REQUEST_CHAT;
-    public static final ForgeConfigSpec.IntValue COOK_REQUEST_INTERVAL_TICKS;
-    public static final ForgeConfigSpec.BooleanValue ENABLE_BARISTA_REQUEST_CHAT;
-    public static final ForgeConfigSpec.IntValue BARISTA_REQUEST_INTERVAL_TICKS;
-    public static final ForgeConfigSpec.BooleanValue ENABLE_FISHERMAN_REQUEST_CHAT;
-    public static final ForgeConfigSpec.IntValue FISHERMAN_REQUEST_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_WORK_FEEDBACK;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_REPEATED_WORK_REQUESTS;
+    public static final ForgeConfigSpec.IntValue MINIMUM_WORK_REQUEST_INTERVAL_TICKS;
     public static final ForgeConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
     public static final ForgeConfigSpec.IntValue FISHERMAN_INVENTORY_FULL_THRESHOLD;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_SLAUGHTER;
     public static final ForgeConfigSpec.BooleanValue ALLOW_HUMANOID_SLAUGHTER;
     public static final ForgeConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
-    public static final ForgeConfigSpec.BooleanValue INCLUDE_EXOTIC_BUTCHERY_TRADES;
     public static final ForgeConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
     public static final ForgeConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
@@ -336,6 +324,22 @@ public final class TownsteadConfig {
         b.pop();
         b.pop();
 
+        // ── Work feedback ──
+        b.translation("townstead.configuration.feedback").push("feedback");
+        ENABLE_WORK_FEEDBACK = b
+                .translation("townstead.configuration.feedback.enableWorkFeedback")
+                .comment("Allow villagers to speak data-authored feedback about their work, including one-time events and repeated requests.")
+                .define("enableWorkFeedback", true);
+        ENABLE_REPEATED_WORK_REQUESTS = b
+                .translation("townstead.configuration.feedback.enableRepeatedWorkRequests")
+                .comment("Allow villagers to repeat feedback about blocked work, such as missing supplies, tools, targets, or worksites.")
+                .define("enableRepeatedWorkRequests", true);
+        MINIMUM_WORK_REQUEST_INTERVAL_TICKS = b
+                .translation("townstead.configuration.feedback.minimumRequestIntervalTicks")
+                .comment("Minimum ticks between repeated work-feedback messages from one villager. A profession may request a longer interval in its feedback data.")
+                .defineInRange("minimumRequestIntervalTicks", 3600, 200, 24000);
+        b.pop();
+
         // ── Farming ──
         b.translation("townstead.configuration.farming").push("farming");
         ENABLE_FARM_ASSIST = b
@@ -378,26 +382,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.farming.farmerGroomScanIntervalTicks")
                 .comment("Ticks between farmer grooming target scans.")
                 .defineInRange("farmerGroomScanIntervalTicks", 60, 20, 1200);
-        ENABLE_FARMER_REQUEST_CHAT = b
-                .translation("townstead.configuration.farming.enableFarmerRequestChat")
-                .comment("Allow farmers to periodically announce missing supplies (seeds/tools/etc.) in local chat.")
-                .define("enableFarmerRequestChat", true);
-        FARMER_REQUEST_INTERVAL_TICKS = b
-                .translation("townstead.configuration.farming.farmerRequestIntervalTicks")
-                .comment("Minimum ticks between farmer shortage request messages.")
-                .defineInRange("farmerRequestIntervalTicks", 3600, 200, 24000);
         b.pop();
 
         // ── Fishing ──
         b.translation("townstead.configuration.fishing").push("fishing");
-        ENABLE_FISHERMAN_REQUEST_CHAT = b
-                .translation("townstead.configuration.fishing.enableFishermanRequestChat")
-                .comment("Allow fishermen to periodically announce missing rods or water in local chat.")
-                .define("enableFishermanRequestChat", true);
-        FISHERMAN_REQUEST_INTERVAL_TICKS = b
-                .translation("townstead.configuration.fishing.fishermanRequestIntervalTicks")
-                .comment("Minimum ticks between fisherman shortage request messages.")
-                .defineInRange("fishermanRequestIntervalTicks", 3600, 200, 24000);
         FISHERMAN_WATER_SEARCH_RADIUS = b
                 .translation("townstead.configuration.fishing.fishermanWaterSearchRadius")
                 .comment("How many blocks away from the barrel to look for water when fishing.")
@@ -407,40 +395,6 @@ public final class TownsteadConfig {
                 .comment("Number of items the fisherman carries before returning to deposit.")
                 .defineInRange("fishermanInventoryFullThreshold", 16, 1, 64);
         b.pop();
-
-        // ── Cooking ──
-        if (ModCompat.hasKitchenProvider()) {
-            b.translation("townstead.configuration.cooking").push("cooking");
-            ENABLE_COOK_REQUEST_CHAT = b
-                    .translation("townstead.configuration.cooking.enableCookRequestChat")
-                    .comment("Allow cooks to periodically announce missing kitchen supplies in local chat.")
-                    .define("enableCookRequestChat", true);
-            COOK_REQUEST_INTERVAL_TICKS = b
-                    .translation("townstead.configuration.cooking.cookRequestIntervalTicks")
-                    .comment("Minimum ticks between cook shortage request messages.")
-                    .defineInRange("cookRequestIntervalTicks", 3600, 200, 24000);
-            if (ModCompat.isLoaded("rusticdelight")) {
-                b.translation("townstead.configuration.cooking.barista").push("barista");
-                ENABLE_BARISTA_REQUEST_CHAT = b
-                        .translation("townstead.configuration.cooking.barista.enableBaristaRequestChat")
-                        .comment("Allow baristas to periodically announce missing cafe supplies in local chat.")
-                        .define("enableBaristaRequestChat", true);
-                BARISTA_REQUEST_INTERVAL_TICKS = b
-                        .translation("townstead.configuration.cooking.barista.baristaRequestIntervalTicks")
-                        .comment("Minimum ticks between barista shortage request messages.")
-                        .defineInRange("baristaRequestIntervalTicks", 3600, 200, 24000);
-                b.pop();
-            } else {
-                ENABLE_BARISTA_REQUEST_CHAT = null;
-                BARISTA_REQUEST_INTERVAL_TICKS = null;
-            }
-            b.pop();
-        } else {
-            ENABLE_COOK_REQUEST_CHAT = null;
-            COOK_REQUEST_INTERVAL_TICKS = null;
-            ENABLE_BARISTA_REQUEST_CHAT = null;
-            BARISTA_REQUEST_INTERVAL_TICKS = null;
-        }
 
         // ── Butchery ──
         if (ModCompat.isLoaded("butchery")) {
@@ -458,10 +412,6 @@ public final class TownsteadConfig {
                     .translation("townstead.configuration.butchery.villagerSlaughterThrottleTicks")
                     .comment("Minimum ticks between kills for a single butcher villager.")
                     .defineInRange("villagerSlaughterThrottleTicks", 2400, 200, 24000);
-            INCLUDE_EXOTIC_BUTCHERY_TRADES = b
-                    .translation("townstead.configuration.butchery.includeExoticTrades")
-                    .comment("Add a second Master-tier trade pool with exotic cuts (brain, tongue, kidney, sweetbread).")
-                    .define("includeExoticTrades", false);
             HAMMER_TROPHY_HEADS = b
                     .translation("townstead.configuration.butchery.hammerTrophyHeads")
                     .comment("When true, the butcher auto-hammers rare / display-worthy heads (evoker, vindicator, pillager, warden, dragon, player, wither skull, ice skull) into their breakdown drops. Off by default so those heads stay whole for trophies and armor.")
@@ -471,7 +421,6 @@ public final class TownsteadConfig {
             ENABLE_VILLAGER_SLAUGHTER = null;
             ALLOW_HUMANOID_SLAUGHTER = null;
             VILLAGER_SLAUGHTER_THROTTLE_TICKS = null;
-            INCLUDE_EXOTIC_BUTCHERY_TRADES = null;
             HAMMER_TROPHY_HEADS = null;
         }
 
@@ -806,8 +755,16 @@ public final class TownsteadConfig {
         return true;
     }
 
-    public static boolean isBaristaRequestChatEnabled() {
-        return ENABLE_BARISTA_REQUEST_CHAT != null && ENABLE_BARISTA_REQUEST_CHAT.get();
+    public static boolean isWorkFeedbackEnabled() {
+        return ENABLE_WORK_FEEDBACK.get();
+    }
+
+    public static boolean isRepeatedWorkRequestsEnabled() {
+        return ENABLE_REPEATED_WORK_REQUESTS.get();
+    }
+
+    public static int minimumWorkRequestIntervalTicks() {
+        return Math.max(200, MINIMUM_WORK_REQUEST_INTERVAL_TICKS.get());
     }
 
     public static boolean isMoodVocalizationMuteEnabled() {

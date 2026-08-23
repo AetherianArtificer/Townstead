@@ -29,22 +29,25 @@ class PathAndTradeGateTest {
     void pathMembershipAndSpecDetection() {
         ProfessionPaths.Path path = new ProfessionPaths.Path(COOK, "pizzaiolo",
                 net.minecraft.network.chat.Component.literal("Pizzaiolo"),
-                id("townstead:cook/pizza_craft"),
-                List.of(id("townstead:cook/kitchen_rhythm")),
+                id("townstead:cook/pizzaiolo/pizza_craft"),
+                List.of(id("townstead:cook/pizzaiolo/kitchen_rhythm")),
                 List.of(id("pizzadelight:basin")));
         ProfessionPaths.replaceAll(Map.of(COOK, List.of(path)));
 
-        assertSame(path, ProfessionPaths.pathOwning(COOK, id("townstead:cook/pizza_craft")),
+        assertSame(path, ProfessionPaths.pathOwning(COOK,
+                id("townstead:cook/pizzaiolo/pizza_craft")),
                 "the gateway is a member");
-        assertSame(path, ProfessionPaths.pathOwning(COOK, id("townstead:cook/kitchen_rhythm")));
+        assertSame(path, ProfessionPaths.pathOwning(COOK,
+                id("townstead:cook/pizzaiolo/kitchen_rhythm")));
         assertNull(ProfessionPaths.pathOwning(COOK, id("townstead:cook/open_flame")),
                 "trunk skills belong to no path");
 
         // Any option on the path commits you to it: your first pick IS the path choice, so
         // there is no designated opening skill left for a member to be measured against.
-        Set<ResourceLocation> viaMember = Set.of(id("townstead:cook/kitchen_rhythm"));
+        Set<ResourceLocation> viaMember = Set.of(
+                id("townstead:cook/pizzaiolo/kitchen_rhythm"));
         assertEquals(List.of(path), ProfessionPaths.speccedPaths(viaMember::contains));
-        Set<ResourceLocation> viaFirst = Set.of(id("townstead:cook/pizza_craft"));
+        Set<ResourceLocation> viaFirst = Set.of(id("townstead:cook/pizzaiolo/pizza_craft"));
         assertEquals(List.of(path), ProfessionPaths.speccedPaths(viaFirst::contains));
     }
 
@@ -52,8 +55,9 @@ class PathAndTradeGateTest {
     void committedPathIsAnyOptionYouOwn() {
         ProfessionPaths.Path pizzaiolo = new ProfessionPaths.Path(COOK, "pizzaiolo",
                 net.minecraft.network.chat.Component.literal("Pizzaiolo"),
-                id("townstead:cook/pizza_craft"),
-                List.of(id("townstead:cook/kitchen_rhythm")), List.of(id("pizzadelight:basin")));
+                id("townstead:cook/pizzaiolo/pizza_craft"),
+                List.of(id("townstead:cook/pizzaiolo/kitchen_rhythm")),
+                List.of(id("pizzadelight:basin")));
         ProfessionPaths.Path rotisseur = new ProfessionPaths.Path(COOK, "rotisseur",
                 net.minecraft.network.chat.Component.literal("Rotisseur"),
                 id("townstead:cook/open_flame"),
@@ -62,9 +66,10 @@ class PathAndTradeGateTest {
 
         assertNull(ProfessionPaths.committedPath(COOK, skill -> false),
                 "owning nothing leaves the choice open");
-        Set<ResourceLocation> first = Set.of(id("townstead:cook/pizza_craft"));
+        Set<ResourceLocation> first = Set.of(id("townstead:cook/pizzaiolo/pizza_craft"));
         assertSame(pizzaiolo, ProfessionPaths.committedPath(COOK, first::contains));
-        Set<ResourceLocation> later = Set.of(id("townstead:cook/kitchen_rhythm"));
+        Set<ResourceLocation> later = Set.of(
+                id("townstead:cook/pizzaiolo/kitchen_rhythm"));
         assertSame(pizzaiolo, ProfessionPaths.committedPath(COOK, later::contains),
                 "reached by any option, not only by a designated first one");
         Set<ResourceLocation> rival = Set.of(id("townstead:cook/turning_spit"));
@@ -74,80 +79,88 @@ class PathAndTradeGateTest {
     @Test
     void tradeSkillGateParsesAndScopes() {
         JsonObject gated = JsonParser.parseString("""
-                {"cost": {"item": "minecraft:emerald", "count": 1},
-                 "result": {"item": "pizzadelight:cheese", "count": 3},
-                 "requires_skill": "pizza_craft"}""").getAsJsonObject();
-        TradeDef trade = TradeDef.parse(gated, COOK);
+                {"cost":"minecraft:emerald","result":"pizzadelight:cheese",
+                 "result_count":3,"requires":"pizza_craft"}""").getAsJsonObject();
+        TradeDef trade = TradeDef.parse(gated, COOK, 2);
         assertNotNull(trade);
-        assertEquals(id("townstead:cook/pizza_craft"), trade.requiresSkill(),
-                "bare refs scope to the owning profession's directory");
+        assertEquals(3, trade.resultCount());
+        assertEquals(12, trade.maxUses());
+        assertEquals(5, trade.villagerXp());
+        assertNull(trade.path());
+        assertNotSame(com.aetherianartificer.townstead.pheno.condition.Conditions.ALWAYS,
+                trade.requirements(), "a short Skill requirement becomes an executable gate");
+        assertEquals(id("townstead:cook/pizzaiolo/pizza_craft"),
+                TradeDef.skillRef("pizza_craft", COOK, "pizzaiolo"));
+        assertEquals(id("townstead:cook/seasoned_hands"),
+                TradeDef.skillRef("seasoned_hands", COOK, null));
 
-        gated.addProperty("requires_skill", "othermod:career/skill");
-        assertEquals(id("othermod:career/skill"), TradeDef.parse(gated, COOK).requiresSkill());
+        gated.remove("requires");
+        gated.addProperty("path", "pizzaiolo");
+        assertEquals("pizzaiolo", TradeDef.parse(gated, COOK, 2).path());
 
-        gated.remove("requires_skill");
-        assertNull(TradeDef.parse(gated, COOK).requiresSkill(),
-                "ungated trades stay unconditional");
+        gated.add("cost", JsonParser.parseString("{\"item\":\"minecraft:emerald\"}"));
+        assertNull(TradeDef.parse(gated, COOK, 2), "the unpublished nested stack shape is rejected");
     }
 
     @Test
     void shippedCookPathReferencesRealSkillFiles() throws Exception {
         try (var in = PathAndTradeGateTest.class.getResourceAsStream(
-                "/data/townstead/profession/cook/profession.json")) {
+                "/data/townstead/profession/cook/path/pizzaiolo/path.json")) {
             assertNotNull(in);
-            JsonObject def = JsonParser.parseReader(new java.io.InputStreamReader(
+            JsonObject path = JsonParser.parseReader(new java.io.InputStreamReader(
                     in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
-            assertTrue(def.has("paths"), "cook ships its specialization paths");
-            for (var element : def.getAsJsonArray("paths")) {
-                JsonObject path = element.getAsJsonObject();
-                String gateway = path.get("gateway").getAsString();
-                assertSkillFileExists(gateway);
-                Set<String> members = new java.util.HashSet<>(Set.of(gateway));
-                for (var skill : path.getAsJsonArray("skills")) {
-                    assertSkillFileExists(skill.getAsString());
-                    members.add(skill.getAsString());
-                }
-                assertFalse(path.getAsJsonArray("worksites").isEmpty(),
-                        "a path without worksites cannot steer villagers");
-                // Under levels-and-options a skill's LEVEL is the only thing gating it, and a
-                // prerequisite would silently make an option unreachable for anyone who answered
-                // an earlier level differently, which is precisely the freedom the model exists
-                // to give. So: no prerequisites on a path option, ever, and every option must sit
-                // inside the track.
-                java.util.Map<Integer, Integer> perLevel = new java.util.HashMap<>();
-                for (String member : members) {
-                    JsonObject skill = readSkill(member);
+            String pathId = "pizzaiolo";
+            int pathLevel = 0;
+            for (var authoredLevel : path.getAsJsonArray("skills")) {
+                pathLevel++;
+                var members = authoredLevel.isJsonArray()
+                        ? authoredLevel.getAsJsonArray()
+                        : JsonParser.parseString("[" + authoredLevel + "]").getAsJsonArray();
+                assertTrue(members.size() >= 2, pathId + ": level " + pathLevel
+                        + " must offer a real choice");
+                for (var member : members) {
+                    String skillId = member.getAsString();
+                    JsonObject skill = readSkill(pathId, skillId);
                     assertFalse(skill.has("requires"),
-                            path.get("id").getAsString() + ": " + member
+                            pathId + ": " + skillId
                                     + " must not declare prerequisites; its level is the gate");
-                    int tier = skill.has("tier") ? skill.get("tier").getAsInt() : 1;
-                    assertTrue(tier >= 1 && tier <= 5,
-                            member + " sits at level " + tier + ", outside the five-level track");
-                    perLevel.merge(tier, 1, Integer::sum);
-                }
-                // A level offering one option is not a choice, it is a handout.
-                for (var count : perLevel.entrySet()) {
-                    assertTrue(count.getValue() >= 2, path.get("id").getAsString()
-                            + ": level " + count.getKey() + " offers only "
-                            + count.getValue() + " option; a level must offer a real choice");
+                    assertFalse(skill.has("tier"),
+                            skillId + ": path position, not the Skill file, owns its level");
                 }
             }
-            // Every skill-gated trade must reference a real skill file too. Cook's progression
-            // ships as a sidecar, so the trades live there.
-            JsonObject levels;
-            try (var levelsIn = PathAndTradeGateTest.class.getResourceAsStream(
-                    "/data/townstead/profession/cook/levels.json")) {
-                assertNotNull(levelsIn, "cook ships a levels.json sidecar");
-                levels = JsonParser.parseReader(new java.io.InputStreamReader(
-                        levelsIn, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+            JsonObject work;
+            try (var workIn = PathAndTradeGateTest.class.getResourceAsStream(
+                    "/data/townstead/profession/cook/work.json")) {
+                assertNotNull(workIn);
+                work = JsonParser.parseReader(new java.io.InputStreamReader(
+                        workIn, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
             }
-            for (var level : levels.getAsJsonArray("levels")) {
-                if (!level.getAsJsonObject().has("trades")) continue;
-                for (var t : level.getAsJsonObject().getAsJsonArray("trades")) {
+            assertFalse(work.getAsJsonObject("path_worksites").getAsJsonArray(pathId).isEmpty(),
+                    "a Path without worksites cannot steer villagers");
+            // Every skill-gated offer in the independent trade sidecar references a real Skill.
+            JsonObject trades;
+            try (var tradesIn = PathAndTradeGateTest.class.getResourceAsStream(
+                    "/data/townstead/profession/cook/path/pizzaiolo/trade/base.json")) {
+                assertNotNull(tradesIn, "cook ships a Path trade contribution");
+                trades = JsonParser.parseReader(new java.io.InputStreamReader(
+                        tradesIn, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+            }
+            for (var level : trades.entrySet()) {
+                if (Set.of("schema", "replace").contains(level.getKey())) continue;
+                for (var t : level.getValue().getAsJsonArray()) {
                     JsonObject trade = t.getAsJsonObject();
-                    if (trade.has("requires_skill")) {
-                        assertSkillFileExists(trade.get("requires_skill").getAsString());
+                    if (trade.has("requires") && trade.get("requires").isJsonPrimitive()) {
+                        assertSkillFileExists(pathId, trade.get("requires").getAsString());
                     }
+                }
+            }
+            assertFalse(trades.has("path"), "the enclosing directory owns the Path link");
+            JsonObject composed = JsonParser.parseString(
+                    "{\"paths\":[{\"id\":\"pizzaiolo\"}]}").getAsJsonObject();
+            ProfessionTradeDocument.apply(composed, trades, pathId);
+            for (var authoredLevel : composed.getAsJsonObject("trades").entrySet()) {
+                for (var offer : authoredLevel.getValue().getAsJsonArray()) {
+                    assertEquals(pathId, offer.getAsJsonObject().get("path").getAsString());
                 }
             }
         }
@@ -163,7 +176,7 @@ class PathAndTradeGateTest {
     void shippedAbilitiesCannotHitFriendliesByAccident() throws Exception {
         java.io.File dir = new java.io.File(
                 PathAndTradeGateTest.class.getResource(
-                        "/data/townstead/profession/cook/skill").toURI());
+                        "/data/townstead/profession/cook/path/pizzaiolo/skill").toURI());
         int abilities = 0;
         for (java.io.File file : java.util.Objects.requireNonNull(dir.listFiles())) {
             if (!file.getName().endsWith(".json")) continue;
@@ -214,17 +227,19 @@ class PathAndTradeGateTest {
         return false;
     }
 
-    private static JsonObject readSkill(String bareRef) throws Exception {
+    private static JsonObject readSkill(String path, String bareRef) throws Exception {
         try (var in = PathAndTradeGateTest.class.getResourceAsStream(
-                "/data/townstead/profession/cook/skill/" + bareRef + ".json")) {
+                "/data/townstead/profession/cook/path/" + path + "/skill/"
+                        + bareRef + ".json")) {
             assertNotNull(in, "referenced skill file missing: " + bareRef);
             return JsonParser.parseReader(new java.io.InputStreamReader(
                     in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
         }
     }
 
-    private static void assertSkillFileExists(String bareRef) {
-        String file = "/data/townstead/profession/cook/skill/" + bareRef + ".json";
+    private static void assertSkillFileExists(String path, String bareRef) {
+        String file = "/data/townstead/profession/cook/path/" + path + "/skill/"
+                + bareRef + ".json";
         assertNotNull(PathAndTradeGateTest.class.getResource(file),
                 "referenced skill file missing: " + bareRef);
     }

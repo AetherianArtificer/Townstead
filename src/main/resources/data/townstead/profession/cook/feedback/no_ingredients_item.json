@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "dialogue": {
+    "translate": "dialogue.chat.cook_request.no_ingredients_item"
+  }
+}

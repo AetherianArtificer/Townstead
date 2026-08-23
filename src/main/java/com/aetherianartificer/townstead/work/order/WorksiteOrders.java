@@ -122,6 +122,8 @@ public final class WorksiteOrders {
 
         Worksite site = Worksites.of(level, worksiteAnchor);
         if (site == null) return true;
+        if (!com.aetherianartificer.townstead.work.WorkActivities
+                .isDiscretionary(level, site, activity)) return true;
         OrderList orders = site.orders();
         for (Order order : orders.orders()) {
             if (!order.isActivity() || !order.output().equals(activity)) continue;

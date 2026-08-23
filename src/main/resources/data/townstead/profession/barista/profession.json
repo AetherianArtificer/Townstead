@@ -31,38 +31,5 @@
     "mentor",
     "institution"
   ],
-  "unlock_model": "experiential",
-  "history_counters": [
-    "townstead:brewed"
-  ],
-  "poi": [
-    {
-      "type": "townstead:building",
-      "type_prefix": "compat/rusticdelight/cafe_l",
-      "slots_per_tier": [1, 1, 2, 2, 3]
-    }
-  ],
-  "work_tasks": [
-    {
-      "type": "townstead_work:brew",
-      "weight": 10
-    }
-  ],
-  "daily_cap": 230,
-  "max_xp": 200000,
-  "levels": [
-    {
-      "xp": 110
-    },
-    {
-      "xp": 190
-    },
-    {
-      "xp": 360
-    },
-    {
-      "xp": 590
-    },
-    {}
-  ]
+  "unlock_model": "experiential"
 }

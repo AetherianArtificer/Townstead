@@ -11,46 +11,82 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class WorkJobDefTest {
     @Test
-    void entityDeliveryUsesRoleKindsRatherThanMagicRoleNames() {
+    void entityDeliveryUsesSemanticSourceAndDestinationFields() {
         WorkJobDef def = WorkJobDef.parse(id("test:delivery"), JsonParser.parseString("""
                 {
                   "schema":"townstead:job/v1",
                   "task":"townstead_work:slaughter",
-                  "executor":"townstead:entity_delivery",
-                  "roles":{
-                    "whatever_the_author_calls_it":{
-                      "kind":"entity",
+                  "type":"townstead:entity_delivery",
+                  "source":{
                       "buildings":["example:pen*"],
                       "results":{"minecraft:cow":"example:carcass"}
-                    },
-                    "somewhere_to_put_it":{
-                      "kind":"block",
+                  },
+                  "destination":{
                       "blocks":["example:rail"],
                       "placement":{"offset":[0,-1,0],"properties":{"stage":1},
                                    "copy_properties":["facing"]}
-                    }
                   }
                 }
                 """).getAsJsonObject());
 
         assertNotNull(def);
-        assertNotNull(def.first(WorkJobDef.RoleKind.ENTITY));
-        assertNotNull(def.first(WorkJobDef.RoleKind.BLOCK));
-        assertNull(def.roles().get("hook"));
+        assertEquals(WorkJobDef.ENTITY_DELIVERY, def.type());
+        assertNotNull(def.source());
+        assertNotNull(def.destination());
+        assertNull(def.target());
         assertEquals(id("example:carcass"), def.resultFor(id("minecraft:cow")));
-        assertTrue(def.first(WorkJobDef.RoleKind.ENTITY).matchesBuilding("example:pen_l2"));
+        assertTrue(def.source().matchesBuilding("example:pen_l2"));
     }
 
     @Test
-    void entityDeliveryRequiresEntityAndBlockRoles() {
+    void entityDeliveryRequiresSourceAndDestination() {
         assertNull(WorkJobDef.parse(id("test:bad"), JsonParser.parseString("""
-                {"task":"townstead_work:slaughter","executor":"townstead:entity_delivery",
-                 "roles":{"source":{"kind":"entity","results":{"minecraft:cow":"example:carcass"}}}}
+                {"task":"townstead_work:slaughter","type":"townstead:entity_delivery",
+                 "source":{"results":{"minecraft:cow":"example:carcass"}}}
                 """).getAsJsonObject()));
     }
 
     @Test
-    void bundledButcheryJobKeepsRoleNamesGeneric() throws Exception {
+    void blockInteractionKeepsDomainFactsInData() {
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.BlockActionType() {
+                    @Override public String key() { return "pheno:use_block"; }
+                    @Override public com.aetherianartificer.townstead.pheno.action.block.BlockAction parse(
+                            com.google.gson.JsonObject json) { return context -> {}; }
+                });
+        WorkJobDef def = WorkJobDef.parse(id("test:hive"), JsonParser.parseString("""
+                {
+                  "schema":"townstead:job/v1",
+                  "task":"townstead_work:interact",
+                  "type":"townstead:block_interaction",
+                  "target":{
+                    "block":"minecraft:beehive",
+                    "condition":{"type":"pheno:block_state","property":"honey_level","value":"5"},
+                    "xp":4,
+                    "interactions":[{
+                      "item":"minecraft:shears",
+                      "output":"minecraft:honeycomb"
+                    }]
+                  }
+                }
+                """).getAsJsonObject());
+
+        assertNotNull(def);
+        assertEquals(WorkJobDef.BLOCK_INTERACTION, def.type());
+        WorkJobDef.BlockTarget target = def.target();
+        assertNotNull(target);
+        assertNotNull(target.condition());
+        assertEquals(id("minecraft:beehive"), target.blocks().iterator().next());
+        assertEquals("minecraft:shears", target.interactions().get(0).item());
+        assertEquals(id("minecraft:honeycomb"),
+                target.interactions().get(0).outputs().iterator().next());
+        assertEquals(4, target.interactions().get(0).xp());
+        assertEquals("test:hive", def.activityKey(),
+                "the Job resource id is its automatic Chronicle activity");
+    }
+
+    @Test
+    void bundledButcheryJobUsesSemanticFields() throws Exception {
         String path = "/data/townstead/work_job/butchery_slaughter.json";
         try (var stream = getClass().getResourceAsStream(path)) {
             assertNotNull(stream, path);
@@ -58,11 +94,19 @@ class WorkJobDefTest {
                     JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
                             .getAsJsonObject());
             assertNotNull(def);
-            assertEquals(java.util.Set.of("source", "destination"), def.roles().keySet());
-            assertFalse(def.roles().containsKey("hook"));
-            assertTrue(def.first(WorkJobDef.RoleKind.BLOCK).blocks()
+            assertNotNull(def.source());
+            assertNotNull(def.destination());
+            assertTrue(def.destination().blocks()
                     .contains(id("butchery:hook")));
         }
+    }
+
+    @Test
+    void unpublishedFreeFormRolesShapeIsRejected() {
+        assertNull(WorkJobDef.parse(id("test:old"), JsonParser.parseString("""
+                {"task":"townstead_work:interact","executor":"townstead:block_interaction",
+                 "roles":{"hive":{"kind":"block","blocks":["minecraft:beehive"]}}}
+                """).getAsJsonObject()));
     }
 
     private static ResourceLocation id(String value) {

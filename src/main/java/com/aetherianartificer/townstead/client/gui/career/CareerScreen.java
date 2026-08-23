@@ -73,6 +73,8 @@ public final class CareerScreen extends Screen {
     private StampTool stamp;
     private RecordPage.Result recordLayout;
     private boolean pickerOpen;
+    /** First career row shown in the crest picker. The picker is a bounded list, not a tall overlay. */
+    private int pickerScroll;
 
     /**
      * When the crest's one-time nudge started, or 0 once it has been shown.
@@ -184,6 +186,11 @@ public final class CareerScreen extends Screen {
     private int boardW() { return contentW() - PAGE_W - FRAME_THICK; }
     private int boardH() { return contentH() - CareerMasthead.HEIGHT; }
     private int pageX() { return contentX() + contentW() - PAGE_W; }
+    private int pickerX() { return boardX() + 2; }
+    private int pickerY() { return contentY() + CareerMasthead.HEIGHT - 2; }
+    private int pickerAvailableH() {
+        return Math.max(26, contentY() + contentH() - pickerY() - 2);
+    }
 
     /**
      * The foot strip the board may not draw into.
@@ -417,8 +424,11 @@ public final class CareerScreen extends Screen {
             g.flush();
             g.pose().pushPose();
             g.pose().translate(0, 0, 400);
-            masthead.drawPicker(g, boardX() + 2, contentY() + CareerMasthead.HEIGHT - 2,
-                    new ArrayList<>(byRoot.keySet()), activeRoot, byId, mouseX, mouseY);
+            List<String> roots = new ArrayList<>(byRoot.keySet());
+            pickerScroll = masthead.clampPickerScroll(
+                    pickerScroll, roots.size(), pickerAvailableH());
+            masthead.drawPicker(g, pickerX(), pickerY(), roots, activeRoot, byId,
+                    pickerScroll, pickerAvailableH(), mouseX, mouseY);
             g.pose().popPose();
         } else if (hovered != null) {
             List<FormattedCharSequence> lines = hoverTooltip(hovered);
@@ -617,11 +627,12 @@ public final class CareerScreen extends Screen {
         List<String> roots = new ArrayList<>(byRoot.keySet());
         if (pickerOpen) {
             String picked = masthead.pickerHit(mouseX, mouseY, roots,
-                    boardX() + 2, contentY() + CareerMasthead.HEIGHT - 2);
+                    pickerX(), pickerY(), pickerScroll, pickerAvailableH());
             pickerOpen = false;
             if (picked != null && !picked.equals(activeRoot)) {
                 activeRoot = picked;
                 selectedId = "";
+                pickerScroll = 0;
                 board.setUserFramed(false);
                 page.resetScroll();
                 rebuild();
@@ -632,6 +643,8 @@ public final class CareerScreen extends Screen {
             // Opening the list is also the answer to the nudge, so it stops.
             hintStart = 0L;
             pickerOpen = roots.size() > 1;
+            pickerScroll = masthead.scrollToCareer(
+                    roots, activeRoot, pickerScroll, pickerAvailableH());
             if (!pickerOpen) {
                 CareerGraphS2CPayload.Node career = nodeById(activeRoot);
                 if (career != null) {
@@ -732,6 +745,17 @@ public final class CareerScreen extends Screen {
      */
     private void scrollAt(double mouseX, double mouseY, double delta) {
         if (layout == null) return;
+        if (pickerOpen) {
+            List<String> roots = new ArrayList<>(byRoot.keySet());
+            if (masthead.overPicker(mouseX, mouseY, roots.size(), pickerX(), pickerY(),
+                    pickerAvailableH())) {
+                pickerScroll = masthead.scrollPicker(
+                        pickerScroll, delta, roots.size(), pickerAvailableH());
+            }
+            // A modal list owns the wheel even when the pointer slips over its edge; the career
+            // board behind it must not move while the user is choosing from the list.
+            return;
+        }
         // A stamp in hand takes the wheel: tilting it is part of pressing it, and a level mark
         // looks machine-applied when the whole point is that a hand did it.
         if (stamp.held()) {

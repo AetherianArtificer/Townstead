@@ -13,8 +13,6 @@ import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
 import com.aetherianartificer.townstead.fatigue.FatigueSyncPayload;
-import com.aetherianartificer.townstead.compat.cooking.BaristaTradesCompat;
-import com.aetherianartificer.townstead.compat.cooking.CookTradesCompat;
 import com.google.common.collect.ImmutableSet;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
@@ -25,6 +23,7 @@ import com.aetherianartificer.townstead.profession.ProfessionClientStore;
 import com.aetherianartificer.townstead.profession.ProfessionQueryPayload;
 import com.aetherianartificer.townstead.profession.ProfessionScanner;
 import com.aetherianartificer.townstead.profession.ProfessionSlotRules;
+import com.aetherianartificer.townstead.profession.ProfessionTradeLedger;
 import com.aetherianartificer.townstead.profession.ProfessionSetPayload;
 import com.aetherianartificer.townstead.profession.ProfessionSyncPayload;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
@@ -103,7 +102,6 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.entity.npc.VillagerProfession;
-import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.sounds.SoundEvents;
 import java.util.HashSet;
 import java.util.Locale;
@@ -614,11 +612,8 @@ public class Townstead {
         });
         ShiftTemplateRegistry.setChangeListener(Townstead::townstead$broadcastShiftTemplateSync);
         WeekPlanRegistry.setChangeListener(Townstead::townstead$broadcastWeekPlanSync);
-        NeoForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener(
                 com.aetherianartificer.townstead.profession.DataDrivenTrades::onVillagerTrades);
-        NeoForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
-        NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
         NeoForge.EVENT_BUS.addListener((PlayerEvent.Clone e) -> {
             com.aetherianartificer.townstead.root.ability.ResourceValues.onClone(
                     e.getOriginal(), e.getEntity(), e.isWasDeath());
@@ -1015,11 +1010,8 @@ public class Townstead {
         });
         ShiftTemplateRegistry.setChangeListener(TownsteadNetwork::broadcastShiftTemplateSync);
         WeekPlanRegistry.setChangeListener(TownsteadNetwork::broadcastWeekPlanSync);
-        MinecraftForge.EVENT_BUS.addListener(CookTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener(
                 com.aetherianartificer.townstead.profession.DataDrivenTrades::onVillagerTrades);
-        MinecraftForge.EVENT_BUS.addListener(BaristaTradesCompat::onVillagerTrades);
-        MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.compat.butchery.ButcherTradesCompat::onVillagerTrades);
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.Clone e) -> {
             com.aetherianartificer.townstead.root.ability.ResourceValues.onClone(
                     e.getOriginal(), e.getEntity(), e.isWasDeath());
@@ -1277,7 +1269,8 @@ public class Townstead {
             com.aetherianartificer.townstead.compat.caupona.CauponaPotAdapter.bootstrap();
             com.aetherianartificer.townstead.work.order.CookOrderCatalog.bootstrap();
             com.aetherianartificer.townstead.work.order.BaristaOrderCatalog.bootstrap();
-            com.aetherianartificer.townstead.compat.butchery.ButcheryActivities.bootstrap();
+            com.aetherianartificer.townstead.work.WorkActivities.bootstrap();
+            com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.bootstrap();
             com.aetherianartificer.townstead.work.order.ActivityCatalog.bootstrap();
             // After the trade-specific catalogues so their richer entries win the output dedup.
             com.aetherianartificer.townstead.work.order.StationProduceCatalog.bootstrap();
@@ -1702,6 +1695,10 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.root.condition.types.RootConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.PersonalityConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.work.feedback.WorkSignalConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.HealthConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.StatusEffectConditionType());
@@ -1749,6 +1746,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.chronicle.condition.ChronicleCountConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.profession.career.CareerXpConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.profession.career.SkillConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.SelectionTestConditionType(
                         "pheno:any",
@@ -2093,6 +2092,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.root.rig.RigJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.disposition.DispositionRelationsLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
+        event.addListener(new com.aetherianartificer.townstead.work.feedback.ProfessionFeedbackJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ComboSkills.Loader());
         event.addListener(new com.aetherianartificer.townstead.social.BondKindJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.collection.CollectionJsonLoader());
@@ -3955,6 +3955,11 @@ public class Townstead {
         if (!(villager.level() instanceof ServerLevel level)) return;
 
         VillagerProfession oldProf = villager.getVillagerData().getProfession();
+        if (oldProf == newProf) {
+            ProfessionTradeLedger.ensureCurrent(villager);
+            return;
+        }
+        ProfessionTradeLedger.rememberCurrent(villager, oldProf);
         townstead$clearProfessionState(villager);
 
         BlockPos claimedJobSite = null;
@@ -3972,12 +3977,7 @@ public class Townstead {
             }
         }
 
-        villager.setVillagerData(villager.getVillagerData().setProfession(newProf).setLevel(1));
-        villager.setVillagerXp(0);
-        MerchantOffers offers = villager.getOffers();
-        if (offers != null) {
-            offers.clear();
-        }
+        ProfessionTradeLedger.activate(villager, newProf);
 
         if (claimedJobSite != null) {
             villager.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), claimedJobSite));

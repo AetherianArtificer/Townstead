@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "poi": [
+    { "type": "townstead:building", "type_prefix": "archives" }
+  ],
+  "tasks": []
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "text": "Confiturier"
+  },
+  "title": {
+    "text": "Confiturier"
+  },
+  "color": "#8E3B46",
+  "skills": [
+    "setting_point",
+    "clean_jar",
+    "slow_boil"
+  ]
+}

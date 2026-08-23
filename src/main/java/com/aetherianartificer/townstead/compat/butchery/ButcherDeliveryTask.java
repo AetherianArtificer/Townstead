@@ -110,7 +110,7 @@ public class ButcherDeliveryTask extends Behavior<VillagerEntityMCA> {
     }
 
     /** Whether this job has anything waiting, for the order list to defer to. */
-    static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
+    public static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
                                   net.conczin.mca.entity.VillagerEntityMCA villager) {
         return planDelivery(level, villager) != null;
     }

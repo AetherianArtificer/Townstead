@@ -15,6 +15,7 @@ import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CampfireBlock;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -38,10 +39,11 @@ import java.util.Locale;
  * uniform public API on both branches: {@code block}/{@code in_tag}, {@code block_state},
  * {@code fluid}, {@code exposed_to_sky}, {@code light_level}, {@code height},
  * {@code hardness}, {@code blast_resistance}, {@code slipperiness}, {@code block_shape}, {@code replaceable},
- * {@code movement_blocking}, {@code light_blocking}, {@code water_loggable},
+ * {@code movement_blocking}, {@code smokey}, {@code light_blocking}, {@code water_loggable},
  * {@code block_entity}, {@code distance_from_coordinates}; the Apugli weather/air leaves
- * {@code air}, {@code in_rain}, {@code raining}, {@code thundering}; meta {@code offset} /
- * {@code adjacent}; and {@code and}/{@code or}/{@code constant}. {@code "inverted":true}
+ * {@code air}, {@code in_rain}, {@code raining}, {@code thundering}; meta {@code offset},
+ * {@code adjacent}, and {@code block_chain}; and {@code and}/{@code or}/{@code constant}.
+ * {@code "inverted":true}
  * negates. ({@code material} is deprecated; {@code attachable}/{@code command}/{@code nbt}
  * are deferred.)
  */
@@ -190,6 +192,8 @@ public final class BlockConditions {
                 return (level, pos) -> level.getBlockState(pos).canBeReplaced();
             case "movement_blocking":
                 return (level, pos) -> level.getBlockState(pos).blocksMotion();
+            case "smokey":
+                return (level, pos) -> CampfireBlock.isSmokeyPos(level, pos);
             case "light_blocking":
                 return (level, pos) -> level.getBlockState(pos).getLightBlock(level, pos) > 0;
             case "water_loggable":

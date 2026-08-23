@@ -43,15 +43,9 @@ public interface LeatherworkerJob {
      */
     void execute(ServerLevel level, VillagerEntityMCA villager, Plan plan);
 
-    /**
-     * Optional missing-supply complaint key for the chat throttle. Returned
-     * value is a dialogue key (e.g.
-     * {@code dialogue.chat.leatherworker_request.no_salt}). The complaints
-     * ticker appends a /1..N variant suffix at emit time. Returning
-     * {@code null} means "no complaint to make right now".
-     */
+    /** Optional stable reason id for data-authored work feedback. */
     @Nullable
-    default String missingSupplyDialogueKey(ServerLevel level, VillagerEntityMCA villager) {
+    default String missingSupplyReason(ServerLevel level, VillagerEntityMCA villager) {
         return null;
     }
 

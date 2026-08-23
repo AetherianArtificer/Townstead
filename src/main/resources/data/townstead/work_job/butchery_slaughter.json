@@ -2,39 +2,35 @@
   "schema": "townstead:job/v1",
   "mods": ["butchery"],
   "task": "townstead_work:slaughter",
-  "executor": "townstead:entity_delivery",
+  "type": "townstead:entity_delivery",
 
-  "roles": {
-    "source": {
-      "kind": "entity",
-      "buildings": [
-        "compat/butchery/butcher_shop_l*",
-        "compat/butchery/slaughterhouse",
-        "compat/butchery/slaughter_pen"
-      ],
-      "results": {
-        "minecraft:cow": "butchery:cow_carcass",
-        "minecraft:pig": "butchery:pig_carcass",
-        "minecraft:sheep": "butchery:sheep_carcass",
-        "minecraft:chicken": "butchery:chicken_carcass",
-        "minecraft:rabbit": "butchery:rabbit_carcass"
-      }
-    },
+  "source": {
+    "buildings": [
+      "compat/butchery/butcher_shop_l*",
+      "compat/butchery/slaughterhouse",
+      "compat/butchery/slaughter_pen"
+    ],
+    "results": {
+      "minecraft:cow": "butchery:cow_carcass",
+      "minecraft:pig": "butchery:pig_carcass",
+      "minecraft:sheep": "butchery:sheep_carcass",
+      "minecraft:chicken": "butchery:chicken_carcass",
+      "minecraft:rabbit": "butchery:rabbit_carcass"
+    }
+  },
 
-    "destination": {
-      "kind": "block",
-      "buildings": [
-        "compat/butchery/butcher_shop_l*",
-        "compat/butchery/slaughterhouse"
-      ],
-      "blocks": ["butchery:hook"],
-      "placement": {
-        "offset": [0, -1, 0],
-        "properties": {
-          "blockstate": 1
-        },
-        "copy_properties": ["facing"]
-      }
+  "destination": {
+    "buildings": [
+      "compat/butchery/butcher_shop_l*",
+      "compat/butchery/slaughterhouse"
+    ],
+    "blocks": ["butchery:hook"],
+    "placement": {
+      "offset": [0, -1, 0],
+      "properties": {
+        "blockstate": 1
+      },
+      "copy_properties": ["facing"]
     }
   }
 }

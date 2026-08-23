@@ -371,7 +371,7 @@ public final class SkinRackJob implements LeatherworkerJob {
 
     @Override
     @Nullable
-    public String missingSupplyDialogueKey(ServerLevel level, VillagerEntityMCA villager) {
+    public String missingSupplyReason(ServerLevel level, VillagerEntityMCA villager) {
         Village village = resolveVillage(villager).orElse(null);
         if (village == null) return null;
 
@@ -397,10 +397,10 @@ public final class SkinRackJob implements LeatherworkerJob {
                 }
             }
         }
-        if (needsHide) return "dialogue.chat.leatherworker_request.no_hide";
-        if (needsSalt) return "dialogue.chat.leatherworker_request.no_salt";
-        if (needsCloth) return "dialogue.chat.leatherworker_request.no_wet_sponge";
-        if (needsStorageForLeather) return "dialogue.chat.leatherworker_request.no_storage";
+        if (needsHide) return "no_hide";
+        if (needsSalt) return "no_salt";
+        if (needsCloth) return "no_wet_sponge";
+        if (needsStorageForLeather) return "no_storage";
         return null;
     }
 

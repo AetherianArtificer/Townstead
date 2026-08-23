@@ -2,9 +2,6 @@ package com.aetherianartificer.townstead.compat.butchery;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.TownsteadVillager;
-import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.aetherianartificer.townstead.tick.WorkToolTicker;
 import com.google.common.collect.ImmutableMap;
 import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
@@ -97,7 +94,7 @@ public class HeadHammeringTask extends Behavior<VillagerEntityMCA> {
     }
 
     /** Whether this job has anything waiting, for the order list to defer to. */
-    static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
+    public static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
                                   net.conczin.mca.entity.VillagerEntityMCA villager) {
         return findHammerTarget(level, villager) != null;
     }
@@ -347,22 +344,17 @@ public class HeadHammeringTask extends Behavior<VillagerEntityMCA> {
 
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
-        ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
-                .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
-                        amount, gameTime, "townstead:butchered", null, null, amount);
-        if (result.tierUp()) {
-            ButcherTradeLevelSync.syncToTier(villager, result.tierAfter());
-        }
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                amount, gameTime, "townstead:butchered", null, null, amount);
     }
 
     // ── Chat ──
 
     private static void emitNoHammerChat(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        long last = mem.cooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY);
-        if (gameTime - last < ButcheryComplaintsTicker.COMPLAINT_INTERVAL_TICKS) return;
-        String key = "dialogue.chat.butcher_request.no_hammer/" + (1 + level.random.nextInt(3));
-        villager.sendChatToAllAround(key);
-        mem.setCooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY, gameTime);
+        com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager,
+                com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                "no_hammer", gameTime);
     }
 }

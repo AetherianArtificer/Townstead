@@ -1,10 +1,8 @@
 package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.compat.butchery.ButcherToolAcquisitionTicker;
-import com.aetherianartificer.townstead.compat.butchery.ButcheryComplaintsTicker;
 import com.aetherianartificer.townstead.compat.butchery.SkinRackJob;
 import com.aetherianartificer.townstead.diagnostics.TownsteadProfiler;
-import com.aetherianartificer.townstead.leatherworking.LeatherworkerComplaintsTicker;
 import com.aetherianartificer.townstead.leatherworking.LeatherworkerSupplyAcquisitionTicker;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.storage.EmptyContainerDropoff;
@@ -52,8 +50,7 @@ public final class VillagerServerTickDispatcher {
         ButcherToolAcquisitionTicker.tick(villager);
         LeatherworkerSupplyAcquisitionTicker.tick(villager);
         WorkToolTicker.tick(villager);
-        ButcheryComplaintsTicker.tick(villager);
-        LeatherworkerComplaintsTicker.tick(villager);
+        com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.tick(villager);
         com.aetherianartificer.townstead.reaction.ReactionLockTracker.tickFreeze(villager, gameTime);
         com.aetherianartificer.townstead.reaction.trigger.event.ContextTickHook.tick(villager, gameTime);
         com.aetherianartificer.townstead.calendar.VillagerLifeStamper.tick(villager);
@@ -85,8 +82,8 @@ public final class VillagerServerTickDispatcher {
         profile("villager.butcher_tool_acquire", () -> ButcherToolAcquisitionTicker.tick(villager));
         profile("villager.leatherworker_supply", () -> LeatherworkerSupplyAcquisitionTicker.tick(villager));
         profile("villager.work_tool", () -> WorkToolTicker.tick(villager));
-        profile("villager.butchery_complaints", () -> ButcheryComplaintsTicker.tick(villager));
-        profile("villager.leatherworker_complaints", () -> LeatherworkerComplaintsTicker.tick(villager));
+        profile("villager.work_feedback", () ->
+                com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.tick(villager));
         profile("villager.reaction_lock", () ->
                 com.aetherianartificer.townstead.reaction.ReactionLockTracker.tickFreeze(villager, gameTime));
         profile("villager.reaction_context", () ->

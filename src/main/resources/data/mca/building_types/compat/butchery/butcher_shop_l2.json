@@ -11,6 +11,7 @@
     "#townstead:compat/butchery/butcher_shop_storage": 1,
     "butchery:basin": 1,
     "butchery:hook": 1,
+    "butchery:blood_grate": 1,
     "#townstead:compat/butchery/butcher_shop_counters": 1
   }
 }

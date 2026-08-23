@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "immediate",
+  "dialogue": {
+    "translate": "dialogue.chat.butcher_flavor.shop_promoted_to_tier_2"
+  }
+}

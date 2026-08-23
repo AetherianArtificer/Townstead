@@ -8,12 +8,6 @@
     "text": "The village's pen. Keeps the records at the Archives, prints the bulletin, and helps people toward their calling."
   },
   "unlock_model": "experiential",
-  "poi": [
-    {
-      "type": "townstead:building",
-      "type_prefix": "archives"
-    }
-  ],
   "titles": [
     {
       "id": "chronicler",

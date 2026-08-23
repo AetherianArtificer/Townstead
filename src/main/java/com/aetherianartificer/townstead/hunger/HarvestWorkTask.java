@@ -1698,7 +1698,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FARMER_REQUEST_CHAT.get()) return;
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .repeatedRequestsEnabled()) return;
         if (blockedReason == HungerData.FarmBlockedReason.NONE) return;
         if (gameTime < nextRequestTick) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) {
@@ -1706,28 +1707,30 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             return;
         }
 
-        String key = switch (blockedReason) {
-            case NO_FIELD_POST -> "dialogue.chat.farm_request.no_field_post/" + (1 + level.random.nextInt(6));
-            case NO_SEEDS -> "dialogue.chat.farm_request.no_seeds/" + (1 + level.random.nextInt(6));
-            case NO_TOOL -> "dialogue.chat.farm_request.no_tool/" + (1 + level.random.nextInt(6));
-            case NO_WATER_PLAN -> "dialogue.chat.farm_request.no_water_plan/" + (1 + level.random.nextInt(4));
-            case UNREACHABLE -> "dialogue.chat.farm_request.unreachable/" + (1 + level.random.nextInt(6));
-            case OUT_OF_SCOPE -> "dialogue.chat.farm_request.out_of_scope/" + (1 + level.random.nextInt(4));
+        String rule = switch (blockedReason) {
+            case NO_FIELD_POST -> "no_field_post";
+            case NO_SEEDS -> "no_seeds";
+            case NO_TOOL -> "no_tool";
+            case NO_WATER_PLAN -> "no_water_plan";
+            case UNREACHABLE -> "unreachable";
+            case OUT_OF_SCOPE -> "out_of_scope";
             case NO_VALID_TARGET, UNSUPPORTED_CROP -> null;
             default -> null;
         };
-        if (key == null) return;
+        if (rule == null) return;
 
-        villager.sendChatToAllAround(key);
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager,
+                com.aetherianartificer.townstead.profession.career.Careers.FARMER,
+                rule, gameTime)) return;
         // Hook for MCA ChatAI/LLM context and future prompt conditioning.
         villager.getLongTermMemory().remember("townstead.farm_request.any");
         villager.getLongTermMemory().remember("townstead.farm_request." + blockedReason.id());
-        int interval = townstead$scaleInt(
-                TownsteadConfig.FARMER_REQUEST_INTERVAL_TICKS.get(),
-                townstead$profile(villager).requestIntervalScale(),
-                100,
-                72000
-        );
+        long baseInterval = com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .effectiveInterval(com.aetherianartificer.townstead.profession.career.Careers.FARMER);
+        long personalityInterval = Math.round(baseInterval
+                * townstead$profile(villager).requestIntervalScale());
+        long interval = Math.max(baseInterval, Math.min(72000L, personalityInterval));
         nextRequestTick = gameTime + interval;
     }
 

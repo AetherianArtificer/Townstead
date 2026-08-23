@@ -16,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The v2 per-level schema: levels are the authoring unit, inline skills register with derived
- * ids and tiers, per-level trades land in the merchant map, and skill points accumulate per
- * level reached (v1 defs fall back to points_per_tier).
+ * ids and tiers, and skill points accumulate per level reached (v1 defs fall back to
+ * points_per_tier). Merchant offers compose through their independent sidecar.
  */
 class LevelSchemaTest {
 
@@ -43,20 +43,22 @@ class LevelSchemaTest {
         }
         assertFalse(cook.skills().contains(id("townstead:cook/open_flame")),
                 "removed paths must not leak their orphaned skills into the general pool");
-        assertTrue(cook.skills().contains(id("townstead:cook/pizza_craft")),
+        assertTrue(cook.skills().contains(id("townstead:cook/pizzaiolo/pizza_craft")),
                 "path skills pool like any other skill; the path steers who buys them");
-        assertTrue(cook.skills().contains(id("townstead:cook/pizza_spin")),
+        assertTrue(cook.skills().contains(id("townstead:cook/pizzaiolo/pizza_spin")),
                 "ability skills are ordinary skills; only their power block differs");
         // One path of ten options plus the two skills belonging to no path, which compete for
         // the same picks.
         assertEquals(12, cook.skills().size());
     }
 
-    /** Cook's progression ships as a sidecar, merged here the same way {@code apply()} does. */
+    /** Cook's progression ships as a sidecar, merged here the same way the scanner does. */
     private static ProfessionDef loadCook(Map<ResourceLocation, SkillDef> inlineOut) {
         JsonObject def = readResource("/data/townstead/profession/cook/profession.json");
-        ProfessionDataLoader.applyLevelsOverlay(def,
-                readResource("/data/townstead/profession/cook/levels.json"));
+        ProfessionPathDocument.apply(def, "pizzaiolo", readResource(
+                "/data/townstead/profession/cook/path/pizzaiolo/path.json"));
+        ProfessionProgressionOverlay.apply(def,
+                readResource("/data/townstead/profession/cook/progression.json"));
         Diagnostics diagnostics = new Diagnostics();
         diagnostics.forResource(id("townstead:cook"));
         ProfessionDef cook = ProfessionDataLoader.parseProfession(
@@ -99,12 +101,14 @@ class LevelSchemaTest {
     }
 
     @Test
-    void levelTradesLandInMerchantMap() {
+    void tradeSidecarLandsInMerchantMap() {
         // Scribe: no pheno requirements, so it parses without registered condition types. Its
-        // progression ships as a levels.json sidecar, merged here the same way apply() does.
+        // progression ships as a progression.json sidecar, merged here as the scanner does.
         JsonObject def = readResource("/data/townstead/profession/scribe/profession.json");
-        ProfessionDataLoader.applyLevelsOverlay(def,
-                readResource("/data/townstead/profession/scribe/levels.json"));
+        ProfessionProgressionOverlay.apply(def,
+                readResource("/data/townstead/profession/scribe/progression.json"));
+        ProfessionTradeDocument.apply(def,
+                readResource("/data/townstead/profession/scribe/trade/base.json"));
         Diagnostics diagnostics = new Diagnostics();
         diagnostics.forResource(id("townstead:scribe"));
         ProfessionDef scribe = ProfessionDataLoader.parseProfession(

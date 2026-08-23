@@ -2,6 +2,7 @@
   "relaxed.dialogue.chat.butcher_request.no_livestock/1": "<happy>No livestock today. No worries, I'll be here when there is.</happy>",
   "relaxed.dialogue.chat.butcher_request.no_hook/1": "<happy>A hook would be nice. When you get around to it.</happy>",
   "relaxed.dialogue.chat.butcher_request.no_basin/1": "<happy>Basin, basin. I'm patient. Drop one in sometime.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_blood_grate/1": "<happy>No hurry. I'll be ready whenever a blood grate is in place.</happy>",
   "relaxed.dialogue.chat.village_life.butcher_shop/1": "<happy>The butcher takes their time. I respect that about them.</happy>",
   "relaxed.dialogue.chat.village_life.smokehouse/1": "<happy>Smokehouse ham, a good seat, a quiet afternoon. Perfect.</happy>",
   "relaxed.dialogue.chat.village_life.tannery/1": "<happy>Tanner's always working. Unlike me. Good thing, really.</happy>",

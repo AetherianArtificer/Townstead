@@ -1,0 +1,67 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "poi": [
+    { "type": "townstead:building", "type_prefix": "bakery" },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/bakery/bread_stand_l",
+      "slots_per_tier": [1]
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/bakery/bake_sale_l",
+      "slots_per_tier": [1, 2]
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/bakery/bakery_l",
+      "slots_per_tier": [1, 2, 3]
+    }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:craft",
+      "workstations": ["minecraft:crafting_table"],
+      "recipes": ["#townstead:orders/baker_goods"],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": ["minecraft:furnace", "minecraft:smoker"],
+      "recipes": ["#townstead:orders/baker_goods"],
+      "weight": 8
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": ["kaleidoscope_cookery:millstone"],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "bakery:baker_station",
+        "bakery:small_cooking_pot",
+        "farm_and_charm:crafting_bowl",
+        "farm_and_charm:cooking_pot",
+        "farm_and_charm:stove"
+      ],
+      "recipes": ["#townstead:orders/baker_goods"],
+      "weight": 10
+    }
+  ],
+  "path_worksites": {
+    "boulanger": [
+      "minecraft:crafting_table",
+      "minecraft:furnace",
+      "minecraft:smoker",
+      "farm_and_charm:crafting_bowl",
+      "farm_and_charm:stove"
+    ],
+    "patissier": [
+      "bakery:baker_station"
+    ],
+    "confiturier": [
+      "bakery:small_cooking_pot"
+    ]
+  }
+}

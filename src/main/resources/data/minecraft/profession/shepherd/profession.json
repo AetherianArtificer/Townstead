@@ -7,41 +7,5 @@
   "description": {
     "text": "Tend the flock to build a history of animal husbandry."
   },
-  "unlock_model": "experiential",
-  "history_counters": [
-    "townstead:tended"
-  ],
-  "poi": [
-    {
-      "type": "townstead:job_block",
-      "block": "minecraft:loom"
-    }
-  ],
-  "work_tasks": [
-    {
-      "type": "townstead_work:shear",
-      "weight": 10
-    },
-    {
-      "type": "townstead_work:store",
-      "weight": 9
-    }
-  ],
-  "daily_cap": 60,
-  "max_xp": 1000,
-  "levels": [
-    {
-      "xp": 20
-    },
-    {
-      "xp": 40
-    },
-    {
-      "xp": 60
-    },
-    {
-      "xp": 80
-    },
-    {}
-  ]
+  "unlock_model": "experiential"
 }

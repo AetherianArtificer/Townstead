@@ -16,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
  * <p>Work tasks invoke {@code consume*Use} after a successful action
  * (slaughter swing, carcass stage advance). {@link #hasCleaver} is used by
  * {@link CarcassWorkTask} to gate the task start and by
- * {@link ButcheryComplaintsTicker} to surface the shortage.
+ * {@link ButcheryWorkFeedback} to surface the shortage.
  */
 public final class ButcherToolDamage {
     private ButcherToolDamage() {}

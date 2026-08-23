@@ -80,10 +80,9 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
             net.minecraft.resources.ResourceLocation taskType,
             @Nullable net.minecraft.resources.ResourceLocation secondaryTaskType,
             ProducerRole role,
-            String historyCounter,
+            String activityKey,
             net.minecraft.resources.ResourceLocation fallbackCareer,
-            java.util.function.BooleanSupplier enabled,
-            String requestKeyPrefix) {}
+            java.util.function.BooleanSupplier enabled) {}
 
     private final Spec spec;
     private final net.minecraft.resources.ResourceLocation[] taskTypes;
@@ -577,14 +576,12 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                     .canonicalId(BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession));
             if (canonical != null) careerId = canonical;
         }
-        // The declared task may name its own counter; the spec's is the trade default.
-        String counter = spec.historyCounter();
-        com.aetherianartificer.townstead.profession.def.WorkTaskDef declared =
-                com.aetherianartificer.townstead.work.WorkTaskDeclarations.first(villager, spec.taskType());
-        if (declared != null && declared.historyCounter() != null) counter = declared.historyCounter();
+        // The engine owns the completed-work activity. A profession chooses this task; it does
+        // not get to rename the same work in the Chronicle.
+        String activity = spec.activityKey();
         com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
                 villager, careerId, xp, level.getGameTime(),
-                counter, activeRecipe.output(), "dish", activeRecipe.tier(),
+                activity, activeRecipe.output(), "dish", activeRecipe.tier(),
                 metadata);
     }
 
@@ -857,9 +854,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         if (reason == ProducerBlockedReason.NONE || reason == ProducerBlockedReason.NO_RECIPE) return;
         boolean barista = spec.role() == ProducerRole.BARISTA;
         boolean butcher = spec.role() == ProducerRole.BUTCHER;
-        if (barista ? !TownsteadConfig.isBaristaRequestChatEnabled()
-                : butcher ? !TownsteadConfig.ENABLE_FARMER_REQUEST_CHAT.get()
-                : !TownsteadConfig.ENABLE_COOK_REQUEST_CHAT.get()) return;
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .repeatedRequestsEnabled()) return;
         if (shouldSuppressStaleRequest(level, villager, reason)) return;
         if (nextRequestTick == 0) {
             nextRequestTick = gameTime + REQUEST_INITIAL_DELAY_TICKS;
@@ -871,31 +867,23 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 && !shouldAnnounceBlockedNavigation(level, villager, activeWorkTarget(level, villager))) {
             return;
         }
-        switch (reason) {
-            case NO_WORKSITE -> villager.sendChatToAllAround(spec.requestKeyPrefix()
-                    + (barista ? "no_cafe/" : butcher ? "no_smoker/" : "no_kitchen/")
-                    + (1 + level.random.nextInt(4)));
-            case NO_INGREDIENTS -> {
-                if (butcher) {
-                    villager.sendChatToAllAround(spec.requestKeyPrefix() + "no_input/"
-                            + (1 + level.random.nextInt(6)));
-                } else if (detail != null && !detail.isBlank()) {
-                    villager.sendChatToAllAround(spec.requestKeyPrefix() + "no_ingredients_item", detail);
-                } else {
-                    villager.sendChatToAllAround(spec.requestKeyPrefix() + "no_ingredients/"
-                            + (1 + level.random.nextInt(barista ? 4 : 6)));
-                }
-            }
-            case NO_STORAGE -> villager.sendChatToAllAround(spec.requestKeyPrefix()
-                    + (butcher ? "output_blocked/" : "no_storage/") + (1 + level.random.nextInt(4)));
-            case UNREACHABLE -> villager.sendChatToAllAround(spec.requestKeyPrefix() + "unreachable/"
-                    + (1 + level.random.nextInt(barista ? 4 : 6)));
-            default -> {}
-        }
-        nextRequestTick = gameTime + Math.max(200, barista
-                ? TownsteadConfig.BARISTA_REQUEST_INTERVAL_TICKS.get()
-                : butcher ? TownsteadConfig.FARMER_REQUEST_INTERVAL_TICKS.get()
-                : TownsteadConfig.COOK_REQUEST_INTERVAL_TICKS.get());
+        String rule = switch (reason) {
+            case NO_WORKSITE -> barista ? "no_cafe" : butcher ? "no_smoker" : "no_kitchen";
+            case NO_INGREDIENTS -> butcher ? "no_input"
+                    : detail != null && !detail.isBlank() ? "no_ingredients_item" : "no_ingredients";
+            case NO_STORAGE -> butcher ? "output_blocked" : "no_storage";
+            case UNREACHABLE -> "unreachable";
+            default -> null;
+        };
+        if (rule == null) return;
+        Object[] arguments = reason == ProducerBlockedReason.NO_INGREDIENTS
+                && detail != null && !detail.isBlank() && !butcher
+                ? new Object[]{detail} : new Object[0];
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager, spec.fallbackCareer(), rule, gameTime, arguments)) return;
+        nextRequestTick = gameTime
+                + com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .effectiveInterval(spec.fallbackCareer());
     }
 
     private boolean shouldSuppressStaleRequest(

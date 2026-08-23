@@ -1,9 +1,6 @@
 package com.aetherianartificer.townstead.compat.butchery;
 
 import com.aetherianartificer.townstead.Townstead;
-import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.TownsteadVillager;
-import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.aetherianartificer.townstead.tick.WorkToolTicker;
 import com.google.common.collect.ImmutableMap;
 import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
@@ -81,7 +78,7 @@ public class GolemProcessingTask extends Behavior<VillagerEntityMCA> {
     }
 
     /** Whether this job has anything waiting, for the order list to defer to. */
-    static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
+    public static boolean hasWorkWaiting(net.minecraft.server.level.ServerLevel level,
                                   net.conczin.mca.entity.VillagerEntityMCA villager) {
         return findGolemAcrossShops(level, villager) != null;
     }
@@ -255,12 +252,9 @@ public class GolemProcessingTask extends Behavior<VillagerEntityMCA> {
 
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
-        ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
-                .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
-                        amount, gameTime, "townstead:butchered", null, null, amount);
-        if (result.tierUp()) {
-            ButcherTradeLevelSync.syncToTier(villager, result.tierAfter());
-        }
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                amount, gameTime, "townstead:butchered", null, null, amount);
     }
 
     // ── Scanning ──
@@ -359,21 +353,16 @@ public class GolemProcessingTask extends Behavior<VillagerEntityMCA> {
     // ── Chat ──
 
     private static void emitNoHacksawChat(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        long last = mem.cooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY);
-        if (gameTime - last < ButcheryComplaintsTicker.COMPLAINT_INTERVAL_TICKS) return;
-        String key = "dialogue.chat.butcher_request.no_hacksaw/"
-                + (1 + level.random.nextInt(3));
-        villager.sendChatToAllAround(key);
-        mem.setCooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY, gameTime);
+        com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager,
+                com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                "no_hacksaw", gameTime);
     }
 
     private static void emitStuckChat(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        long last = mem.cooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY);
-        if (gameTime - last < ButcheryComplaintsTicker.COMPLAINT_INTERVAL_TICKS) return;
-        String key = "dialogue.chat.butcher_request.carcass_stuck/" + (1 + level.random.nextInt(3));
-        villager.sendChatToAllAround(key);
-        mem.setCooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY, gameTime);
+        com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager,
+                com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                "carcass_stuck", gameTime);
     }
 }

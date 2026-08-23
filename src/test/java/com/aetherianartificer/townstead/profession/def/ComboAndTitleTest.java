@@ -107,14 +107,29 @@ class ComboAndTitleTest {
                 assertNotNull(in, "shipped def missing: " + e.profession());
                 var def = JsonParser.parseReader(new java.io.InputStreamReader(
                         in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+                if ("cook".equals(e.profession())) {
+                    try (var pathIn = ComboAndTitleTest.class.getResourceAsStream(
+                            "/data/townstead/profession/cook/path/pizzaiolo/path.json")) {
+                        assertNotNull(pathIn);
+                        ProfessionPathDocument.apply(def, "pizzaiolo", JsonParser.parseReader(
+                                new java.io.InputStreamReader(pathIn,
+                                        java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject());
+                    }
+                }
                 assertTrue(def.has("titles"), e.profession() + " ships titles");
                 var titles = def.getAsJsonArray("titles");
                 assertEquals(e.titleIds().length, titles.size(), e.profession());
                 for (var element : titles) {
                     var title = element.getAsJsonObject();
                     for (var skillRef : title.getAsJsonArray("skills")) {
-                        String skillFile = "/data/townstead/profession/" + e.profession()
-                                + "/skill/" + skillRef.getAsString() + ".json";
+                        String raw = skillRef.getAsString();
+                        int slash = raw.indexOf('/');
+                        String skillFile = slash < 0
+                                ? "/data/townstead/profession/" + e.profession()
+                                        + "/skill/" + raw + ".json"
+                                : "/data/townstead/profession/" + e.profession() + "/path/"
+                                        + raw.substring(0, slash) + "/skill/"
+                                        + raw.substring(slash + 1) + ".json";
                         assertNotNull(ComboAndTitleTest.class.getResource(skillFile),
                                 title.get("id").getAsString() + " references missing skill "
                                         + skillRef.getAsString());

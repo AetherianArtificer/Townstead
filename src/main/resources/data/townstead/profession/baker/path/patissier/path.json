@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "text": "Pâtissier"
+  },
+  "title": {
+    "text": "Pâtissier"
+  },
+  "color": "#D98CA8",
+  "skills": [
+    "fine_crumb",
+    "piping_hand",
+    "sugar_work"
+  ]
+}

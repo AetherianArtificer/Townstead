@@ -24,32 +24,28 @@ class BuiltinProfessionParityTest {
     @Test
     void farmerMatchesLegacyNumbers() {
         assertProgression("/data/minecraft/profession/farmer/profession.json", "minecraft:farmer",
-                List.of(0, 120, 320, 700, 1300), 240, 200000);
+                List.of(0, 120, 320, 700, 1300), 240, 1300);
     }
 
     @Test
     void butcherMatchesLegacyNumbers() {
         assertProgression("/data/minecraft/profession/butcher/profession.json", "minecraft:butcher",
-                List.of(0, 20, 60, 120, 200), 60, 1000);
+                List.of(0, 20, 60, 120, 200), 60, 200);
     }
 
     @Test
     void shepherdMatchesLegacyNumbers() {
         assertProgression("/data/minecraft/profession/shepherd/profession.json", "minecraft:shepherd",
-                List.of(0, 20, 60, 120, 200), 60, 1000);
+                List.of(0, 20, 60, 120, 200), 60, 200);
     }
 
-    /**
-     * Cook's track runs to 22 levels now, so the parity claim is a prefix: extending a career
-     * past level 5 must never move the thresholds a save has already been levelling against.
-     */
     @Test
     void cookMatchesLegacyNumbers() {
         ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook");
         assertEquals(List.of(0, 110, 300, 660, 1250),
                 cook.progression().tierThresholds().subList(0, 5), "cook tiers 1-5");
         assertEquals(230, cook.progression().dailyCap(), "cook daily cap");
-        assertEquals(200000, cook.progression().maxXp(), "cook max xp");
+        assertEquals(1250, cook.progression().maxXp(), "cook max xp");
     }
 
     private static void assertProgression(String resource, String id,
@@ -65,14 +61,11 @@ class BuiltinProfessionParityTest {
         assertNotNull(in, "shipped resource missing: " + resource);
         JsonObject json = JsonParser.parseReader(
                 new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
-        // A def may keep its progression in a levels.json sidecar; merge it exactly as apply() does,
-        // or the numbers under test are whatever is left in the manifest rather than what ships.
         InputStream sidecar = BuiltinProfessionParityTest.class.getResourceAsStream(
-                resource.substring(0, resource.lastIndexOf('/') + 1) + "levels.json");
-        if (sidecar != null) {
-            ProfessionDataLoader.applyLevelsOverlay(json, JsonParser.parseReader(
-                    new InputStreamReader(sidecar, StandardCharsets.UTF_8)).getAsJsonObject());
-        }
+                resource.substring(0, resource.lastIndexOf('/') + 1) + "progression.json");
+        assertNotNull(sidecar, "shipped progression missing: " + resource);
+        ProfessionProgressionOverlay.apply(json, JsonParser.parseReader(
+                new InputStreamReader(sidecar, StandardCharsets.UTF_8)).getAsJsonObject());
         Diagnostics diagnostics = new Diagnostics();
         diagnostics.forResource(ResourceLocation.tryParse(id));
         ProfessionDef def = ProfessionDataLoader.parseProfession(

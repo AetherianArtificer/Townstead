@@ -3,6 +3,7 @@
   "peppy.dialogue.chat.butcher_request.no_livestock/2": "<excited>Pen's empty! Send 'em my way, I'm raring to go!</excited>",
   "peppy.dialogue.chat.butcher_request.no_hook/1": "<happy>Hey hey, could we get a hook in here? I need somewhere to hang things!</happy>",
   "peppy.dialogue.chat.butcher_request.no_basin/1": "<excited>A basin, a basin, my village for a basin! Pretty please?</excited>",
+  "peppy.dialogue.chat.butcher_request.no_blood_grate/1": "<excited>A blood grate, a blood grate, my village for a blood grate! Pretty please?</excited>",
   "peppy.dialogue.chat.village_life.butcher_shop/1": "<happy>Our butcher is the BEST. Seriously, the best cuts in the region!</happy>",
   "peppy.dialogue.chat.village_life.smokehouse/1": "<excited>That smokehouse, oh my, the SMELL! Ham ham ham ham ham!</excited>",
   "peppy.dialogue.chat.village_life.tannery/1": "<happy>The tannery is pungent but the leather! Gorgeous! I have three belts!</happy>",

@@ -341,7 +341,7 @@ public final class CareerTreeOpener {
         java.util.Map<String, java.util.List<String>> byVerb = new java.util.HashMap<>();
         for (com.aetherianartificer.townstead.profession.def.ProfessionDef def
                 : com.aetherianartificer.townstead.profession.def.ProfessionDefs.all().values()) {
-            for (String counter : def.historyCounters()) {
+            for (String counter : CareerActivities.counters(def)) {
                 byVerb.computeIfAbsent(counter, key -> new java.util.ArrayList<>())
                         .add(def.id().toString());
             }

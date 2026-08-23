@@ -51,9 +51,9 @@ public final class DataDrivenTrades {
 
     /**
      * Vanilla rolls a merchant's offers once per level-up, so a villager who specs into a
-     * path after leveling would never see its skill-gated wares. Called when a villager
-     * learns a skill: appends the offers that skill just unlocked for levels already
-     * reached, skipping any result already on the ledger.
+     * path after leveling would never see its path-linked wares. Called when a villager
+     * learns a skill: re-evaluates gated offers for levels already reached, skipping any result
+     * already on the ledger. This also covers Skill shorthand and compound Pheno requirements.
      */
     public static void onSkillLearned(net.minecraft.world.entity.LivingEntity entity,
                                       ResourceLocation skill) {
@@ -68,7 +68,7 @@ public final class DataDrivenTrades {
         var offers = villager.getOffers();
         for (int level = 1; level <= merchantLevel; level++) {
             for (TradeDef trade : DataDrivenListing.tradesFor(def, level)) {
-                if (!skill.equals(trade.requiresSkill())) continue;
+                if (!trade.eligible(entity)) continue;
                 if (hasResult(offers, trade.resultItem())) continue;
                 MerchantOffer offer = DataDrivenListing.offer(trade);
                 if (offer != null) offers.add(offer);
@@ -96,11 +96,8 @@ public final class DataDrivenTrades {
             List<TradeDef> trades = tradesFor(def, level);
             if (slot >= trades.size()) return null;
             TradeDef trade = trades.get(slot);
-            // Path wares stay hidden until this merchant has specced into the path.
-            if (trade.requiresSkill() != null
-                    && !(trader instanceof net.minecraft.world.entity.LivingEntity living
-                            && com.aetherianartificer.townstead.profession.skill.LearnedSkills
-                                    .has(living, trade.requiresSkill()))) {
+            if (!(trader instanceof net.minecraft.world.entity.LivingEntity living)
+                    || !trade.eligible(living)) {
                 return null;
             }
             return offer(trade);

@@ -63,7 +63,7 @@ public final class CareerTreeRows {
             rows.add(new Row(depth, def.displayName().getString()
                     + (primary ? " [primary]" : "") + ": " + state, ""));
             if (xp > 0 || acquired) {
-                for (String counter : def.historyCounters()) {
+                for (String counter : CareerActivities.counters(def)) {
                     int count = Chronicles.count(server, entity.getUUID(), counter);
                     rows.add(new Row(depth + 1,
                             "history: " + counter + " = " + count, ""));

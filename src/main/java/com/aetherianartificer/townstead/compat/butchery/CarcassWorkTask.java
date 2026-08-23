@@ -3,9 +3,6 @@ package com.aetherianartificer.townstead.compat.butchery;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
-import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.TownsteadVillager;
-import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.aetherianartificer.townstead.tick.WorkToolTicker;
 import com.google.common.collect.ImmutableMap;
 import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
@@ -342,13 +339,10 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private static void emitNoKnifeChat(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        long last = mem.cooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY);
-        if (gameTime - last < ButcheryComplaintsTicker.COMPLAINT_INTERVAL_TICKS) return;
-        String key = "dialogue.chat.butcher_request.no_skinning_knife/"
-                + (1 + level.random.nextInt(3));
-        villager.sendChatToAllAround(key);
-        mem.setCooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY, gameTime);
+        com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager,
+                com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                "no_skinning_knife", gameTime);
     }
 
     private static void playDrainSounds(ServerLevel level, BlockPos pos) {
@@ -389,12 +383,10 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     private static void emitStuckChat(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        long last = mem.cooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY);
-        if (gameTime - last < ButcheryComplaintsTicker.COMPLAINT_INTERVAL_TICKS) return;
-        String key = "dialogue.chat.butcher_request.carcass_stuck/" + (1 + level.random.nextInt(3));
-        villager.sendChatToAllAround(key);
-        mem.setCooldown(ButcheryComplaintsTicker.LAST_COMPLAINT_KEY, gameTime);
+        com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager,
+                com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                "carcass_stuck", gameTime);
     }
 
     // --- helpers ---
@@ -589,7 +581,7 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
         return !requireAvailableTool || (villager != null && hasRequiredToolFor(state, villager));
     }
 
-    static boolean hasFreshCarcassWithoutBasin(ServerLevel level, Building building) {
+    static boolean hasFreshCarcassWithoutBloodGrate(ServerLevel level, Building building) {
         List<BlockPos> hooks = building.getBlocks().get(HOOK_ID);
         if (hooks != null) {
             for (BlockPos hook : hooks) {
@@ -753,11 +745,8 @@ public class CarcassWorkTask extends Behavior<VillagerEntityMCA> {
 
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
-        ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
-                .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
-                        amount, gameTime, "townstead:butchered", null, null, amount);
-        if (result.tierUp()) {
-            ButcherTradeLevelSync.syncToTier(villager, result.tierAfter());
-        }
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                amount, gameTime, "townstead:butchered", null, null, amount);
     }
 }

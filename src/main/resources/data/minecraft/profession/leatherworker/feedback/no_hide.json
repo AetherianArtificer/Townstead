@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "periodic",
+  "priority": 40,
+  "when": {
+    "type": "townstead:work_signal",
+    "signal": "townstead_leatherworking:no_hide"
+  },
+  "dialogue": {
+    "translate": "dialogue.chat.leatherworker_request.no_hide"
+  },
+  "variants": 3
+}

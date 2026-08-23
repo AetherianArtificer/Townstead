@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "periodic",
+  "priority": 80,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "townstead:work_signal",
+        "signal": "townstead_butchery:has_carcass_shop"
+      },
+      {
+        "type": "townstead:work_signal",
+        "signal": "townstead_butchery:no_cleaver"
+      }
+    ]
+  },
+  "dialogue": {
+    "translate": "dialogue.chat.butcher_request.no_cleaver"
+  },
+  "variants": 3
+}

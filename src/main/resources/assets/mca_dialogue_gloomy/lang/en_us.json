@@ -3,6 +3,7 @@
   "gloomy.dialogue.chat.butcher_request.no_livestock/2": "<sad>The pen is empty, like everything else today.</sad>",
   "gloomy.dialogue.chat.butcher_request.no_hook/1": "<sad>Can't start without a hook. Not that it matters when I do.</sad>",
   "gloomy.dialogue.chat.butcher_request.no_basin/1": "<sad>A basin would help, but what's the point of tidy work.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_blood_grate/1": "<sad>A blood grate would help, but what's the point of tidy work.</sad>",
   "gloomy.dialogue.chat.village_life.slaughterhouse/1": "<sad>The slaughterhouse reminds me how brief everything is.</sad>",
   "gloomy.dialogue.chat.village_life.smokehouse/1": "<sad>The smokehouse smells nice. It's the one comfort in this miserable place.</sad>",
   "gloomy.dialogue.chat.village_life.tannery/1": "<sad>The tannery reeks. Fitting, I suppose.</sad>",
