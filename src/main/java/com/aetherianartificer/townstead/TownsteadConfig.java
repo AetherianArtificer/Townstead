@@ -30,6 +30,7 @@ public final class TownsteadConfig {
     }
     public enum ResourceHudVisibility { CONTEXTUAL, NOT_AT_REST, ALWAYS, NEVER }
     public enum ResourceHudStack { DOWN, RIGHT }
+    public enum ResourceHudExitStyle { INSTANT, FADE, SLIDE, FLICKER }
 
     private static volatile ProtectedStorageRules protectedStorageRules = ProtectedStorageRules.empty();
 
@@ -87,6 +88,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ModConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
     public static final ModConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
+    public static final ModConfigSpec.EnumValue<ResourceHudExitStyle> RESOURCE_HUD_EXIT_STYLE;
     public static final ModConfigSpec.IntValue RESOURCE_HUD_OFFSET_X;
     public static final ModConfigSpec.IntValue RESOURCE_HUD_OFFSET_Y;
     public static final ModConfigSpec.DoubleValue RESOURCE_HUD_SCALE;
@@ -174,6 +176,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ForgeConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
     public static final ForgeConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
+    public static final ForgeConfigSpec.EnumValue<ResourceHudExitStyle> RESOURCE_HUD_EXIT_STYLE;
     public static final ForgeConfigSpec.IntValue RESOURCE_HUD_OFFSET_X;
     public static final ForgeConfigSpec.IntValue RESOURCE_HUD_OFFSET_Y;
     public static final ForgeConfigSpec.DoubleValue RESOURCE_HUD_SCALE;
@@ -611,7 +614,7 @@ public final class TownsteadConfig {
         RESOURCE_HUD_ANCHOR = clientBuilder
                 .translation("townstead.configuration.resource_hud.anchor")
                 .comment("Screen anchor for resource meters, or PACK_DECIDED to use each resource's datapack anchor.")
-                .defineEnum("anchor", ResourceHudAnchor.TOP_LEFT);
+                .defineEnum("anchor", ResourceHudAnchor.PACK_DECIDED);
         RESOURCE_HUD_OFFSET_X = clientBuilder
                 .translation("townstead.configuration.resource_hud.offsetX")
                 .comment("Horizontal pixel offset from the selected anchor, before HUD scale.")
@@ -630,15 +633,19 @@ public final class TownsteadConfig {
                 .defineEnum("stack", ResourceHudStack.DOWN);
         RESOURCE_HUD_VISIBILITY = clientBuilder
                 .translation("townstead.configuration.resource_hud.visibility")
-                .comment("CONTEXTUAL fades after activity; NOT_AT_REST stays while away from its resting value; ALWAYS and NEVER are explicit overrides.")
+                .comment("CONTEXTUAL leaves after activity using the selected exit style; NOT_AT_REST stays while away from its resting value; ALWAYS and NEVER are explicit overrides.")
                 .defineEnum("visibility", ResourceHudVisibility.CONTEXTUAL);
+        RESOURCE_HUD_EXIT_STYLE = clientBuilder
+                .translation("townstead.configuration.resource_hud.exitStyle")
+                .comment("Visual transition used when a contextual resource leaves the HUD. INSTANT disables the transition without forcing the meter to stay visible.")
+                .defineEnum("exitStyle", ResourceHudExitStyle.FADE);
         RESOURCE_HUD_HOLD_TICKS = clientBuilder
                 .translation("townstead.configuration.resource_hud.holdTicks")
                 .comment("Ticks a contextual resource stays fully visible after its value or definition changes.")
                 .defineInRange("holdTicks", 60, 0, 1200);
         RESOURCE_HUD_FADE_TICKS = clientBuilder
                 .translation("townstead.configuration.resource_hud.fadeTicks")
-                .comment("Ticks used to fade a contextual resource after the hold time.")
+                .comment("Ticks used by the selected contextual exit transition after the hold time.")
                 .defineInRange("fadeTicks", 10, 0, 200);
         RESOURCE_HUD_SHOW_VALUES = clientBuilder
                 .translation("townstead.configuration.resource_hud.showValues")

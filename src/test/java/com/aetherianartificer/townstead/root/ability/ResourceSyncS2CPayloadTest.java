@@ -166,7 +166,10 @@ class ResourceSyncS2CPayloadTest {
                         voidEffect, prismatic, spores, fallingMotes),
                 reactions, true, 42,
                 "townstead:plain", "townstead:arcane", "TOP_LEFT", "DOTS", 10, 0,
-                0xFF202020, 0x3FA0FF, 0xC8F3FF, 1, "", -1);
+                0xFF202020, 0x3FA0FF, 0xC8F3FF, 1, "", -1,
+                "example:textures/gui/frame/horizontal_base.png",
+                "example:textures/gui/frame/horizontal_primary.png",
+                "example:textures/gui/frame/horizontal_secondary.png");
         FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
 
         new ResourceSyncS2CPayload(List.of(bar)).write(buffer);

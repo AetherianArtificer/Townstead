@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.root.ability;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.root.gene.types.ResourceDisplay;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -26,14 +27,37 @@ public final class ResourceHudDefinitions {
     /** A two-colour frame palette. Bar fill, frame geometry and fill mode are independent. */
     public record ColorTheme(int framePrimaryColor, int frameSecondaryColor) {}
 
+    /** Resource-pack artwork for one canonical HUD shape. Every supplied PNG is the shape's exact GUI size. */
+    public record FrameArt(ResourceLocation baseTexture,
+                           ResourceLocation primaryTexture,
+                           ResourceLocation secondaryTexture) {
+        public boolean present() {
+            return baseTexture != null || primaryTexture != null || secondaryTexture != null;
+        }
+    }
+
     public record Frame(int backgroundColor, int thickness,
-                        ResourceLocation spriteTexture, int spriteRow) {
+                        ResourceLocation spriteTexture, int spriteRow,
+                        FrameArt horizontalArt, FrameArt verticalArt, FrameArt squircleArt) {
         public Frame(int backgroundColor, int thickness) {
-            this(backgroundColor, thickness, null, -1);
+            this(backgroundColor, thickness, null, -1, null, null, null);
+        }
+
+        public Frame(int backgroundColor, int thickness,
+                     ResourceLocation spriteTexture, int spriteRow) {
+            this(backgroundColor, thickness, spriteTexture, spriteRow, null, null, null);
         }
 
         public boolean hasSprite() {
             return spriteTexture != null && spriteRow >= 0;
+        }
+
+        public FrameArt art(ResourceDisplay.Shape shape) {
+            return switch (shape) {
+                case VERTICAL -> verticalArt;
+                case SQUIRCLE -> squircleArt;
+                default -> horizontalArt;
+            };
         }
     }
 
@@ -120,6 +144,66 @@ public final class ResourceHudDefinitions {
         return new ColorTheme(primary, secondary);
     }
 
+    static Frame parseFrame(JsonObject obj) {
+        String schema = GsonHelper.getAsString(obj, "schema", "townstead:resource_frame/v1");
+        if (!"townstead:resource_frame/v1".equals(schema)
+                && !"townstead:resource_frame/v2".equals(schema)
+                && !"townstead:resource_frame/v3".equals(schema)) {
+            throw new IllegalArgumentException(
+                    "Expected resource frame schema v1, v2 or v3, got '" + schema + "'");
+        }
+        int background = color(obj, "background_color", 0xFF202020);
+        int thickness = Math.max(1, Math.min(4, GsonHelper.getAsInt(obj, "thickness", 1)));
+        ResourceLocation texture = null;
+        int row = -1;
+        if (obj.has("sprite") && obj.get("sprite").isJsonObject()) {
+            JsonObject sprite = obj.getAsJsonObject("sprite");
+            texture = requiredTexture(sprite, "texture");
+            row = Math.max(0, Math.min(255, GsonHelper.getAsInt(sprite, "row", 0)));
+        }
+
+        FrameArt horizontal = null;
+        FrameArt vertical = null;
+        FrameArt squircle = null;
+        if (obj.has("art") && obj.get("art").isJsonObject()) {
+            if (!"townstead:resource_frame/v3".equals(schema)) {
+                throw new IllegalArgumentException("Per-shape frame art requires resource frame schema v3");
+            }
+            JsonObject art = obj.getAsJsonObject("art");
+            horizontal = parseFrameArt(art, "horizontal");
+            vertical = parseFrameArt(art, "vertical");
+            squircle = parseFrameArt(art, "squircle");
+        }
+        return new Frame(background, thickness, texture, row, horizontal, vertical, squircle);
+    }
+
+    private static FrameArt parseFrameArt(JsonObject art, String shape) {
+        if (!art.has(shape)) return null;
+        if (!art.get(shape).isJsonObject()) {
+            throw new IllegalArgumentException("Frame art '" + shape + "' must be an object");
+        }
+        JsonObject value = art.getAsJsonObject(shape);
+        FrameArt parsed = new FrameArt(optionalTexture(value, "base_texture"),
+                optionalTexture(value, "primary_texture"),
+                optionalTexture(value, "secondary_texture"));
+        if (!parsed.present()) {
+            throw new IllegalArgumentException("Frame art '" + shape + "' must supply at least one texture layer");
+        }
+        return parsed;
+    }
+
+    private static ResourceLocation optionalTexture(JsonObject obj, String key) {
+        if (!obj.has(key)) return null;
+        String raw = GsonHelper.getAsString(obj, key, "").trim();
+        return raw.isEmpty() ? null : id(raw);
+    }
+
+    private static ResourceLocation requiredTexture(JsonObject obj, String key) {
+        ResourceLocation texture = optionalTexture(obj, key);
+        if (texture == null) throw new IllegalArgumentException("Frame sprite requires '" + key + "'");
+        return texture;
+    }
+
     private static int derivedSecondary(int color) {
         int r = (color >> 16) & 0xFF;
         int g = (color >> 8) & 0xFF;
@@ -170,21 +254,7 @@ public final class ResourceHudDefinitions {
             for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
                 try {
                     JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), entry.getKey().toString());
-                    String schema = GsonHelper.getAsString(obj, "schema", "townstead:resource_frame/v1");
-                    if (!"townstead:resource_frame/v1".equals(schema)
-                            && !"townstead:resource_frame/v2".equals(schema)) {
-                        throw new IllegalArgumentException("Expected resource frame schema v1 or v2, got '" + schema + "'");
-                    }
-                    int background = color(obj, "background_color", 0xFF202020);
-                    int thickness = Math.max(1, Math.min(4, GsonHelper.getAsInt(obj, "thickness", 1)));
-                    ResourceLocation texture = null;
-                    int row = -1;
-                    if (obj.has("sprite") && obj.get("sprite").isJsonObject()) {
-                        JsonObject sprite = obj.getAsJsonObject("sprite");
-                        texture = id(GsonHelper.getAsString(sprite, "texture", ""));
-                        row = Math.max(0, Math.min(255, GsonHelper.getAsInt(sprite, "row", 0)));
-                    }
-                    parsed.put(entry.getKey(), new Frame(background, thickness, texture, row));
+                    parsed.put(entry.getKey(), parseFrame(obj));
                 } catch (Exception ex) {
                     LOGGER.warn("Failed to load resource frame {}: {}", entry.getKey(), ex.getMessage());
                 }

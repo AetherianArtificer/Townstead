@@ -75,6 +75,9 @@ public final class ResourceHudConfigScreen extends Screen {
                 ResourceHudConfig.fadeTicks(), 0, 200,
                 value -> Component.translatable("townstead.resource_hud.config.fade", ticksToSeconds(value)),
                 value -> TownsteadConfig.RESOURCE_HUD_FADE_TICKS.set((int) Math.round(value / 5d) * 5)));
+        addRenderableWidget(enumButton(left + columnWidth + GAP, controlsTop + rowStep * 4, columnWidth,
+                "townstead.resource_hud.config.exit_style", ResourceHudConfig.exitStyle(),
+                TownsteadConfig.ResourceHudExitStyle.values(), TownsteadConfig.RESOURCE_HUD_EXIT_STYLE::set));
 
         int bottomY = height - 27;
         int buttonCount = 3;
@@ -237,18 +240,21 @@ public final class ResourceHudConfigScreen extends Screen {
     private record Values(TownsteadConfig.ResourceHudAnchor anchor,
                           TownsteadConfig.ResourceHudVisibility visibility,
                           TownsteadConfig.ResourceHudStack stack,
+                          TownsteadConfig.ResourceHudExitStyle exitStyle,
                            int offsetX, int offsetY, double scale, int holdTicks, int fadeTicks,
                            boolean showValues) {
         static Values read() {
             return new Values(ResourceHudConfig.anchor(), ResourceHudConfig.visibility(), ResourceHudConfig.stack(),
+                    ResourceHudConfig.exitStyle(),
                     ResourceHudConfig.offsetX(), ResourceHudConfig.offsetY(), ResourceHudConfig.scale(),
                     ResourceHudConfig.holdTicks(), ResourceHudConfig.fadeTicks(),
                     ResourceHudConfig.showValues());
         }
 
         static Values defaults() {
-            return new Values(TownsteadConfig.ResourceHudAnchor.TOP_LEFT,
+            return new Values(TownsteadConfig.ResourceHudAnchor.PACK_DECIDED,
                     TownsteadConfig.ResourceHudVisibility.CONTEXTUAL, TownsteadConfig.ResourceHudStack.DOWN,
+                    TownsteadConfig.ResourceHudExitStyle.FADE,
                     4, 4, 1d, 60, 10, true);
         }
 
@@ -256,6 +262,7 @@ public final class ResourceHudConfigScreen extends Screen {
             TownsteadConfig.RESOURCE_HUD_ANCHOR.set(anchor);
             TownsteadConfig.RESOURCE_HUD_VISIBILITY.set(visibility);
             TownsteadConfig.RESOURCE_HUD_STACK.set(stack);
+            TownsteadConfig.RESOURCE_HUD_EXIT_STYLE.set(exitStyle);
             TownsteadConfig.RESOURCE_HUD_OFFSET_X.set(offsetX);
             TownsteadConfig.RESOURCE_HUD_OFFSET_Y.set(offsetY);
             TownsteadConfig.RESOURCE_HUD_SCALE.set(scale);

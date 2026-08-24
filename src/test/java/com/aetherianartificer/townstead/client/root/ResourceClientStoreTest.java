@@ -77,6 +77,6 @@ class ResourceClientStoreTest {
                 "HORIZONTAL", "CONTINUOUS", List.of(), List.of(), ready, regenerationSequence,
                 "townstead:plain", "townstead:arcane",
                 "TOP_LEFT", "DOTS", 10, 0, 0xFF202020, 0xFF5C5C5C, 0xFF101010, 1,
-                "", -1);
+                "", -1, "", "", "");
     }
 }

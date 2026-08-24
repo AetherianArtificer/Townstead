@@ -20,6 +20,8 @@ import java.util.Map;
 public final class ResourceHudOverlay {
 
     private static final int GAP = 4;
+    /** Keeps an empty procedural meter readable without turning dark frame palettes into slabs. */
+    private static final float TROUGH_OPACITY = 0.52f;
     private static final String[] BUILTIN_RUNES = {
             "111101111101101", "010111010111010", "101010111010101", "110010111010110",
             "111001010100111", "101111101111101", "010101111101010", "111100110001111"
@@ -38,9 +40,12 @@ public final class ResourceHudOverlay {
         // The ability wheel deliberately keeps resources visible. Every other screen owns its
         // complete render stack, including the resource HUD editor's isolated live preview.
         if (mc.screen != null && !abilityUiOpen) return;
+        TownsteadConfig.ResourceHudExitStyle exitStyle = effectiveExitStyle();
+        int transitionTicks = exitStyle == TownsteadConfig.ResourceHudExitStyle.INSTANT
+                ? 0 : ResourceHudConfig.fadeTicks();
         List<ResourceClientStore.Visible> visible = ResourceClientStore.visible(now,
                 ResourceHudConfig.visibility(), ResourceHudConfig.holdTicks(),
-                ResourceHudConfig.fadeTicks(), abilityUiOpen);
+                transitionTicks, abilityUiOpen);
         if (visible.isEmpty()) return;
 
         renderAnchoredGroups(graphics, visible, graphics.guiWidth(), graphics.guiHeight(), now, true);
@@ -49,19 +54,21 @@ public final class ResourceHudOverlay {
     /** Draws representative meters in the client configuration screen. */
     public static void renderPreview(GuiGraphics graphics, int x, int y, int width, int height) {
         if (width <= 0 || height <= 0) return;
+        long now = System.currentTimeMillis();
+        float transitionAlpha = previewTransitionAlpha(now);
         List<ResourceClientStore.Visible> preview = List.of(
                 new ResourceClientStore.Visible(previewBar("townstead:spirit/magical", 72, "horizontal",
-                        "continuous", "TOP_LEFT", 0x3FA0FF, 0xC04AC0, 0xF5C7FF, true), 1f),
+                        "continuous", "TOP_LEFT", 0x3FA0FF, 0xC04AC0, 0xF5C7FF, true), transitionAlpha),
                 new ResourceClientStore.Visible(previewBar("townstead:spirit/nautical", 46, "squircle",
-                        "continuous", "TOP_RIGHT", 0x3FA0FF, 0x4A90B8, 0xA8ECFF, false), 1f),
+                        "continuous", "TOP_RIGHT", 0x3FA0FF, 0x4A90B8, 0xA8ECFF, false), transitionAlpha),
                 new ResourceClientStore.Visible(previewBar("townstead:spirit/industrious", 61, "vertical",
-                        "pips", "BOTTOM_CENTER", 0x3FA0FF, 0xBF8A3A, 0xFFD27A, false), 1f));
+                        "pips", "BOTTOM_CENTER", 0x3FA0FF, 0xBF8A3A, 0xFFD27A, false), transitionAlpha));
 
         graphics.enableScissor(x, y, x + width, y + height);
         graphics.pose().pushPose();
         try {
             graphics.pose().translate(x, y, 0f);
-            renderAnchoredGroups(graphics, preview, width, height, System.currentTimeMillis(), false);
+            renderAnchoredGroups(graphics, preview, width, height, now, false);
         } finally {
             graphics.pose().popPose();
             graphics.disableScissor();
@@ -79,7 +86,8 @@ public final class ResourceHudOverlay {
                         "crosswise", -1, -1)) : List.of(),
                 List.of(), false, 0,
                 "townstead:spirit_trough", id, anchor, "DOTS", 10, 0,
-                0xD80E1014, framePrimaryColor, frameSecondaryColor, 2, "", -1);
+                0xD80E1014, framePrimaryColor, frameSecondaryColor, 2, "", -1,
+                "", "", "");
     }
 
     private static void renderAnchoredGroups(GuiGraphics graphics, List<ResourceClientStore.Visible> visible,
@@ -143,14 +151,19 @@ public final class ResourceHudOverlay {
         y = Math.max(0, Math.min(Math.max(0, anchorHeight - groupHeight), y));
 
         List<Placed> placed = new ArrayList<>(visible.size());
+        TownsteadConfig.ResourceHudExitStyle exitStyle = effectiveExitStyle();
         int cursorX = x;
         int cursorY = y;
         for (int i = 0; i < visible.size(); i++) {
             ResourceClientStore.Visible item = visible.get(i);
             ResourceSyncS2CPayload.Bar bar = item.bar();
-            placed.add(new Placed(bar, cursorX, cursorY, item.alpha(),
+            int seed = bar.resourceId() == null ? 0 : bar.resourceId().hashCode();
+            float renderedAlpha = ResourceHudMath.exitAlpha(item.alpha(), exitStyle, now, seed);
+            int slide = ResourceHudMath.exitSlide(item.alpha(), exitStyle, 10);
+            int renderedY = isBottomAnchor(anchor) ? cursorY + slide : cursorY - slide;
+            placed.add(new Placed(bar, cursorX, renderedY, renderedAlpha,
                     ResourceHudMath.normalized(bar.value(), bar.min(), bar.max()),
-                    withAlpha(0xFF000000 | bar.color(), item.alpha()), normalized(bar.shape()),
+                    withAlpha(0xFF000000 | bar.color(), renderedAlpha), normalized(bar.shape()),
                     item.reactions()));
             if (stack == TownsteadConfig.ResourceHudStack.DOWN) cursorY += sizes.get(i).height() + GAP;
             else cursorX += sizes.get(i).width() + GAP;
@@ -927,11 +940,15 @@ public final class ResourceHudOverlay {
                 case "townstead:spend_flash" -> {
                     float p = eventProgress(item.reactions().valueChangedAtMillis(), reaction.duration(), now);
                     if (p >= 0f && item.fraction() < previous) {
-                        renderReactionMask(graphics, item, color, (path, cross, x, y) -> {
-                            if (path < item.fraction() || path > previous) return 0f;
-                            float noise = (pixelHash(x, y, item.bar().resourceId()) & 0xFFFF) / 65535f;
-                            return noise > p * 0.92f ? (1f - p * 0.65f) * strength : 0f;
-                        });
+                        if ("pips".equals(normalized(item.bar().fillMode()))) {
+                            renderSpentPips(graphics, item, color, previous, p, strength, now);
+                        } else {
+                            renderReactionMask(graphics, item, color, (path, cross, x, y) -> {
+                                if (path < item.fraction() || path > previous) return 0f;
+                                float noise = (pixelHash(x, y, item.bar().resourceId()) & 0xFFFF) / 65535f;
+                                return noise > p * 0.92f ? (1f - p * 0.65f) * strength : 0f;
+                            });
+                        }
                     }
                 }
                 case "townstead:change_ripple" -> {
@@ -984,6 +1001,83 @@ public final class ResourceHudOverlay {
                         item.reactions().abilityReadyAtMillis(), color, strength, now, false);
                 default -> { }
             }
+        }
+    }
+
+    /**
+     * A continuous meter can leave a rectangular ghost behind when spent; pips cannot. Removed
+     * pips instead linger as their own glyphs and wink out from the new value boundary outward.
+     */
+    private static void renderSpentPips(GuiGraphics graphics, Placed item, int color,
+                                        float previousFraction, float progress, float strength,
+                                        long now) {
+        ResourceSyncS2CPayload.Bar bar = item.bar();
+        boolean squircle = isSquircle(item.shape());
+        boolean vertical = "vertical".equals(item.shape());
+        boolean sprite = hasSprite(bar);
+        int length = vertical ? (sprite ? 56 : Math.max(1, 64 - 2
+                * Math.max(1, Math.min(4, bar.frameThickness()))))
+                : (sprite ? 80 : Math.max(1, 82 - 2
+                * Math.max(1, Math.min(4, bar.frameThickness()))));
+        int units = squircle ? Math.max(2, Math.min(32, bar.segments()))
+                : Math.max(2, Math.min(bar.segments(), Math.max(2, length / 3)));
+        units = Math.min(units, squircle ? squirclePipCapacity(bar.pipStyle())
+                : linearPipCapacity(bar.pipStyle(), length));
+        int currentFilled = ResourceHudMath.filledUnits(item.fraction(), units);
+        int previousFilled = ResourceHudMath.filledUnits(previousFraction, units);
+        if (previousFilled <= currentFilled) return;
+
+        ResourceSyncS2CPayload.Effect liquid = liquidEffect(bar);
+        float liquidAccessibility = Accessibility.effectIntensity();
+        LiquidSurface liquidSurface = liquid != null && liquidAccessibility > 0f
+                ? liquidSurface(bar, liquid, now) : null;
+        int removed = previousFilled - currentFilled;
+        for (int i = currentFilled; i < previousFilled; i++) {
+            float order = removed <= 1 ? 0f : (i - currentFilled) / (float) (removed - 1);
+            float local = clamp01(progress * 1.28f - order * 0.18f);
+            float opacity = (1f - smoothStep(local)) * strength * item.alpha();
+            if (opacity <= 0.015f) continue;
+
+            float along = (i + 0.5f) / units;
+            int px;
+            int py;
+            boolean horizontalAxis;
+            if (squircle) {
+                int radius = liquidSurface == null ? 13 : 13 + Math.round(
+                        liquidSurface.sample(along) * liquid.strength()
+                                * liquidAccessibility * 1.5f);
+                int[] point = squirclePoint(along, radius);
+                px = item.x() + 20 + point[0];
+                py = item.y() + 20 + point[1];
+                horizontalAxis = Math.abs(point[0]) >= Math.abs(point[1]);
+            } else {
+                int t = Math.max(1, Math.min(4, bar.frameThickness()));
+                int innerX = item.x() + (sprite ? (vertical ? 6 : 10) : t);
+                int innerY = item.y() + (sprite ? (vertical ? 6 : 4) : t);
+                int innerWidth = sprite ? (vertical ? 8 : 80)
+                        : Math.max(1, (vertical ? 14 : 82) - t * 2);
+                int innerHeight = sprite ? (vertical ? 56 : 8)
+                        : Math.max(1, (vertical ? 64 : 10) - t * 2);
+                int inset = pipInset(bar.pipStyle());
+                int span = Math.max(0, length - 1 - inset * 2);
+                float position = units <= 1 ? inset + span * 0.5f
+                        : inset + i * span / (float) (units - 1);
+                px = vertical ? innerX + innerWidth / 2 : innerX + Math.round(position);
+                py = vertical ? innerY + innerHeight - 1 - Math.round(position)
+                        : innerY + innerHeight / 2;
+                if (liquidSurface != null) {
+                    int bob = Math.round(liquidSurface.sample(along)
+                            * liquid.strength() * liquidAccessibility * 1.5f);
+                    if (vertical) px += bob;
+                    else py += bob;
+                }
+                horizontalAxis = vertical;
+            }
+
+            int ghost = withAlpha(0xFF000000 | (color & 0xFFFFFF), opacity);
+            int highlight = lighten(ghost, 0.52f);
+            drawPip(graphics, px, py, bar.pipStyle(), ghost, highlight,
+                    horizontalAxis, true);
         }
     }
 
@@ -1764,13 +1858,20 @@ public final class ResourceHudOverlay {
         boolean sprite = hasSprite(bar);
         int width = sprite ? 100 : 82;
         int height = sprite ? 16 : 10;
-        frame(graphics, bar, x, y, width, height, alpha);
         int t = Math.max(1, Math.min(4, bar.frameThickness()));
         int innerX = x + (sprite ? 10 : t);
         int innerY = y + (sprite ? 4 : t);
         int innerWidth = sprite ? 80 : Math.max(1, width - t * 2);
         int innerHeight = sprite ? 8 : Math.max(1, height - t * 2);
+        boolean customArt = usesCustomFrameArt(bar);
+        if (customArt) {
+            graphics.fill(innerX, innerY, innerX + innerWidth, innerY + innerHeight,
+                    troughColor(bar, alpha));
+        } else {
+            frame(graphics, bar, x, y, width, height, alpha);
+        }
         renderLinear(graphics, bar, innerX, innerY, innerWidth, innerHeight, fraction, fillColor, false, now);
+        if (customArt) drawCustomFrameArt(graphics, bar, x, y, width, height, alpha);
     }
 
     private static void renderVertical(GuiGraphics graphics, ResourceSyncS2CPayload.Bar bar,
@@ -1778,13 +1879,20 @@ public final class ResourceHudOverlay {
         boolean sprite = hasSprite(bar);
         int width = sprite ? 20 : 14;
         int height = sprite ? 68 : 64;
-        frame(graphics, bar, x, y, width, height, alpha);
         int t = Math.max(1, Math.min(4, bar.frameThickness()));
         int innerX = x + (sprite ? 6 : t);
         int innerY = y + (sprite ? 6 : t);
         int innerWidth = sprite ? 8 : Math.max(1, width - t * 2);
         int innerHeight = sprite ? 56 : Math.max(1, height - t * 2);
+        boolean customArt = usesCustomFrameArt(bar);
+        if (customArt) {
+            graphics.fill(innerX, innerY, innerX + innerWidth, innerY + innerHeight,
+                    troughColor(bar, alpha));
+        } else {
+            frame(graphics, bar, x, y, width, height, alpha);
+        }
         renderLinear(graphics, bar, innerX, innerY, innerWidth, innerHeight, fraction, fillColor, true, now);
+        if (customArt) drawCustomFrameArt(graphics, bar, x, y, width, height, alpha);
     }
 
     private static void renderLinear(GuiGraphics graphics, ResourceSyncS2CPayload.Bar bar,
@@ -1825,6 +1933,7 @@ public final class ResourceHudOverlay {
 
         int units = Math.max(2, Math.min(bar.segments(), Math.max(2, length / 3)));
         if ("pips".equals(mode)) {
+            units = Math.min(units, linearPipCapacity(bar.pipStyle(), length));
             renderLinearPips(graphics, bar, x, y, width, height, displayedFraction,
                     fillColor, vertical, units, now);
             return;
@@ -1948,15 +2057,20 @@ public final class ResourceHudOverlay {
                                          int x, int y, int width, int height, float fraction,
                                          int fillColor, boolean vertical, int units, long now) {
         int filled = ResourceHudMath.filledUnits(fraction, units);
-        int empty = darken(bar.backgroundColor(), 0.72f);
+        int empty = lighten(bar.backgroundColor(), 0.24f);
+        int length = vertical ? height : width;
+        int inset = pipInset(bar.pipStyle());
+        int span = Math.max(0, length - 1 - inset * 2);
         ResourceSyncS2CPayload.Effect liquid = liquidEffect(bar);
         float liquidAccessibility = Accessibility.effectIntensity();
         LiquidSurface liquidSurface = liquid != null && liquidAccessibility > 0f
                 ? liquidSurface(bar, liquid, now) : null;
         for (int i = 0; i < units; i++) {
             float along = (i + 0.5f) / units;
-            int px = vertical ? x + width / 2 : x + Math.round(along * (width - 1));
-            int py = vertical ? y + height - 1 - Math.round(along * (height - 1)) : y + height / 2;
+            float position = units <= 1 ? inset + span * 0.5f
+                    : inset + i * span / (float) (units - 1);
+            int px = vertical ? x + width / 2 : x + Math.round(position);
+            int py = vertical ? y + height - 1 - Math.round(position) : y + height / 2;
             if (liquidSurface != null) {
                 int bob = Math.round(liquidSurface.sample(along)
                         * liquid.strength() * liquidAccessibility * 1.5f);
@@ -1970,39 +2084,118 @@ public final class ResourceHudOverlay {
                     ? applyBarEffects(bar, lighten(fillColor, 0.45f), 0.08f, along, 0.92f,
                     along, px, py, now)
                     : darken(empty, 0.72f);
-            drawPip(graphics, px, py, bar.pipStyle(), color, highlight, vertical);
+            drawPip(graphics, px, py, bar.pipStyle(), color, highlight, vertical, i < filled);
         }
     }
 
-    /** Pixel-art marks centered at (x,y); pips remain marks rather than miniature bar slices. */
+    private static int linearPipCapacity(String rawStyle, int length) {
+        int inset = pipInset(rawStyle);
+        int usable = Math.max(0, length - 1 - inset * 2);
+        return Math.max(2, 1 + usable / pipPitch(rawStyle));
+    }
+
+    private static int squirclePipCapacity(String rawStyle) {
+        return switch (normalized(rawStyle)) {
+            case "beads", "bead", "pearls", "shards", "shard", "crystals" -> 16;
+            case "notches", "notch", "ticks" -> 28;
+            default -> 24;
+        };
+    }
+
+    private static int pipInset(String rawStyle) {
+        return switch (normalized(rawStyle)) {
+            case "beads", "bead", "pearls", "shards", "shard", "crystals" -> 2;
+            default -> 1;
+        };
+    }
+
+    private static int pipPitch(String rawStyle) {
+        return switch (normalized(rawStyle)) {
+            case "beads", "bead", "pearls" -> 5;
+            case "shards", "shard", "crystals" -> 4;
+            case "notches", "notch", "ticks" -> 3;
+            default -> 4;
+        };
+    }
+
+    /** Pixel-art marks centered at (x,y); pips remain compact glyphs, never tiny bar slices. */
     private static void drawPip(GuiGraphics graphics, int x, int y, String rawStyle,
-                                int color, int highlight, boolean vertical) {
+                                int color, int highlight, boolean horizontalAxis,
+                                boolean filled) {
         String style = normalized(rawStyle);
+        int shadow = darken(color, 0.55f);
+        if (!filled) {
+            drawEmptyPip(graphics, x, y, style, color, horizontalAxis);
+            return;
+        }
         switch (style) {
             case "notches", "notch", "ticks" -> {
-                if (vertical) graphics.fill(x - 1, y, x + 2, y + 1, color);
-                else graphics.fill(x, y - 1, x + 1, y + 2, color);
+                if (horizontalAxis) {
+                    graphics.fill(x - 2, y - 1, x + 2, y + 1, color);
+                    graphics.fill(x - 2, y - 1, x - 1, y + 1, highlight);
+                    graphics.fill(x + 1, y, x + 2, y + 1, shadow);
+                } else {
+                    graphics.fill(x - 1, y - 2, x + 1, y + 2, color);
+                    graphics.fill(x - 1, y - 2, x + 1, y - 1, highlight);
+                    graphics.fill(x, y + 1, x + 1, y + 2, shadow);
+                }
             }
             case "beads", "bead", "pearls" -> {
-                graphics.fill(x - 1, y - 1, x + 2, y + 2, color);
-                graphics.fill(x, y - 1, x + 1, y, highlight);
-                graphics.fill(x - 1, y, x, y + 1, highlight);
+                graphics.fill(x - 1, y - 2, x + 1, y - 1, color);
+                graphics.fill(x - 2, y - 1, x + 2, y + 1, color);
+                graphics.fill(x - 1, y + 1, x + 1, y + 2, color);
+                graphics.fill(x - 1, y - 2, x + 1, y - 1, highlight);
+                graphics.fill(x - 2, y - 1, x - 1, y + 1, highlight);
+                graphics.fill(x - 1, y + 1, x + 1, y + 2, shadow);
+                graphics.fill(x + 1, y - 1, x + 2, y + 1, shadow);
             }
             case "shards", "shard", "crystals" -> {
-                if (vertical) {
-                    graphics.fill(x - 1, y - 2, x + 1, y + 2, color);
-                    graphics.fill(x + 1, y - 1, x + 2, y + 1, color);
-                    graphics.fill(x, y - 2, x + 1, y - 1, highlight);
-                } else {
-                    graphics.fill(x - 2, y - 1, x + 2, y + 1, color);
-                    graphics.fill(x - 1, y + 1, x + 1, y + 2, color);
+                if (horizontalAxis) {
+                    graphics.fill(x - 2, y, x, y + 1, color);
+                    graphics.fill(x - 1, y - 1, x + 2, y, color);
                     graphics.fill(x - 2, y, x - 1, y + 1, highlight);
+                    graphics.fill(x - 1, y - 1, x, y, highlight);
+                    graphics.fill(x + 1, y - 1, x + 2, y, shadow);
+                } else {
+                    graphics.fill(x, y - 2, x + 1, y, color);
+                    graphics.fill(x - 1, y - 1, x, y + 2, color);
+                    graphics.fill(x, y - 2, x + 1, y - 1, highlight);
+                    graphics.fill(x - 1, y - 1, x, y, highlight);
+                    graphics.fill(x - 1, y + 1, x, y + 2, shadow);
                 }
             }
             default -> {
-                graphics.fill(x, y - 1, x + 1, y + 2, color);
-                graphics.fill(x - 1, y, x + 2, y + 1, color);
-                graphics.fill(x, y - 1, x + 1, y, highlight);
+                graphics.fill(x - 1, y - 1, x + 1, y + 1, color);
+                graphics.fill(x - 1, y - 1, x, y, highlight);
+                graphics.fill(x, y, x + 1, y + 1, shadow);
+            }
+        }
+    }
+
+    private static void drawEmptyPip(GuiGraphics graphics, int x, int y, String style,
+                                     int color, boolean horizontalAxis) {
+        switch (style) {
+            case "notches", "notch", "ticks" -> {
+                if (horizontalAxis) graphics.fill(x - 2, y, x + 2, y + 1, color);
+                else graphics.fill(x, y - 2, x + 1, y + 2, color);
+            }
+            case "beads", "bead", "pearls" -> {
+                graphics.fill(x - 1, y - 2, x + 1, y - 1, color);
+                graphics.fill(x - 2, y - 1, x - 1, y + 1, color);
+                graphics.fill(x + 1, y - 1, x + 2, y + 1, color);
+                graphics.fill(x - 1, y + 1, x + 1, y + 2, color);
+            }
+            case "shards", "shard", "crystals" -> {
+                if (horizontalAxis) {
+                    graphics.fill(x - 2, y, x, y + 1, color);
+                    graphics.fill(x - 1, y - 1, x + 2, y, color);
+                } else {
+                    graphics.fill(x, y - 2, x + 1, y, color);
+                    graphics.fill(x - 1, y - 1, x, y + 2, color);
+                }
+            }
+            default -> {
+                graphics.fill(x, y, x + 1, y + 1, color);
             }
         }
     }
@@ -2032,10 +2225,13 @@ public final class ResourceHudOverlay {
                                        int x, int y, float fraction, int fillColor, float alpha, long now) {
         int centerX = x + 20;
         int centerY = y + 20;
-        if (hasSprite(bar) && !Accessibility.highContrast()) frame(graphics, bar, x, y, 40, 40, alpha);
-        else squircleFrame(graphics, bar, centerX, centerY, alpha);
+        boolean customArt = usesCustomFrameArt(bar);
+        if (!customArt) {
+            if (hasSprite(bar) && !Accessibility.highContrast()) frame(graphics, bar, x, y, 40, 40, alpha);
+            else squircleFrame(graphics, bar, centerX, centerY, alpha);
+        }
         String mode = normalized(bar.fillMode());
-        int empty = withAlpha(darken(bar.backgroundColor(), 0.55f), alpha);
+        int empty = troughColor(bar, alpha);
         int units = Math.max(2, Math.min(32, bar.segments()));
         ResourceSyncS2CPayload.Effect liquid = liquidEffect(bar);
         ResourceSyncS2CPayload.Effect viscous = viscousEffect(bar);
@@ -2048,13 +2244,15 @@ public final class ResourceHudOverlay {
                 : viscousAverage(viscousBoundary, fraction, viscous, effectAccessibility);
 
         if ("pips".equals(mode)) {
+            units = Math.min(units, squirclePipCapacity(bar.pipStyle()));
             int filled = ResourceHudMath.filledUnits(displayedFraction, units);
+            int emptyPip = withAlpha(lighten(bar.backgroundColor(), 0.24f), alpha);
             for (int i = 0; i < units; i++) {
                 float along = (i + 0.5f) / units;
                 int radius = liquidSurface != null
                         ? 13 + Math.round(liquidSurface.sample(along)
                         * liquid.strength() * effectAccessibility * 1.5f) : 13;
-                int[] point = squirclePoint(i / (float) units, radius);
+                int[] point = squirclePoint(along, radius);
                 int px = centerX + point[0];
                 int py = centerY + point[1];
                 int pipColor = applyBarEffects(bar, fillColor, 0.82f, along, 0.64f,
@@ -2062,8 +2260,10 @@ public final class ResourceHudOverlay {
                 int pipHighlight = applyBarEffects(
                         bar, lighten(fillColor, 0.45f), 0.08f, along, 0.92f,
                         along, px, py, now);
-                drawPip(graphics, px, py, bar.pipStyle(), i < filled ? pipColor : empty,
-                        i < filled ? pipHighlight : darken(empty, 0.72f), false);
+                boolean horizontalAxis = Math.abs(point[0]) >= Math.abs(point[1]);
+                drawPip(graphics, px, py, bar.pipStyle(), i < filled ? pipColor : emptyPip,
+                        i < filled ? pipHighlight : darken(emptyPip, 0.72f),
+                        horizontalAxis, i < filled);
             }
         } else {
             float shownFraction = "segmented".equals(mode)
@@ -2124,12 +2324,13 @@ public final class ResourceHudOverlay {
                     applyBarEffects(bar, lighten(fillColor, 0.45f), 0.5f, 1f, 1f,
                             1f, x2, y2, now));
         }
+        if (customArt) drawCustomFrameArt(graphics, bar, x, y, 40, 40, alpha);
     }
 
     /** Rounded-square trough modeled after the original GIF: transparent corners and centre. */
     private static void squircleFrame(GuiGraphics graphics, ResourceSyncS2CPayload.Bar bar,
                                     int centerX, int centerY, float alpha) {
-        int background = withAlpha(bar.backgroundColor(), alpha);
+        int background = troughColor(bar, alpha);
         int light = withAlpha(Accessibility.highContrast() ? 0xFFFFFFFF : bar.frameSecondaryColor(), alpha);
         int dark = withAlpha(Accessibility.highContrast() ? 0xFF000000 : bar.framePrimaryColor(), alpha);
         for (int py = -18; py <= 18; py++) {
@@ -2147,6 +2348,45 @@ public final class ResourceHudOverlay {
                 graphics.fill(centerX + px, centerY + py,
                         centerX + px + 1, centerY + py + 1, color);
             }
+        }
+    }
+
+    private static boolean usesCustomFrameArt(ResourceSyncS2CPayload.Bar bar) {
+        if (Accessibility.highContrast()) return false;
+        return availableFrameTexture(bar.frameBaseTexture()) != null
+                || availableFrameTexture(bar.framePrimaryTexture()) != null
+                || availableFrameTexture(bar.frameSecondaryTexture()) != null;
+    }
+
+    private static ResourceLocation availableFrameTexture(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        ResourceLocation texture = ResourceLocation.tryParse(raw);
+        if (texture == null) return null;
+        return Minecraft.getInstance().getResourceManager().getResource(texture).isPresent()
+                ? texture : null;
+    }
+
+    private static void drawCustomFrameArt(GuiGraphics graphics, ResourceSyncS2CPayload.Bar bar,
+                                           int x, int y, int width, int height, float alpha) {
+        drawFrameArtLayer(graphics, availableFrameTexture(bar.frameBaseTexture()),
+                x, y, width, height, 0xFFFFFF, alpha);
+        drawFrameArtLayer(graphics, availableFrameTexture(bar.framePrimaryTexture()),
+                x, y, width, height, bar.framePrimaryColor(), alpha);
+        drawFrameArtLayer(graphics, availableFrameTexture(bar.frameSecondaryTexture()),
+                x, y, width, height, bar.frameSecondaryColor(), alpha);
+    }
+
+    private static void drawFrameArtLayer(GuiGraphics graphics, ResourceLocation texture,
+                                          int x, int y, int width, int height,
+                                          int rgb, float alpha) {
+        if (texture == null) return;
+        RenderSystem.setShaderColor(((rgb >>> 16) & 0xFF) / 255f,
+                ((rgb >>> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, alpha);
+        try {
+            graphics.blit(texture, x, y, width, height,
+                    0f, 0f, width, height, width, height);
+        } finally {
+            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         }
     }
 
@@ -2179,7 +2419,7 @@ public final class ResourceHudOverlay {
             }
         }
         int thickness = Math.max(1, Math.min(4, bar.frameThickness()));
-        int background = withAlpha(bar.backgroundColor(), alpha);
+        int background = troughColor(bar, alpha);
         int light = withAlpha(Accessibility.highContrast() ? 0xFFFFFFFF : bar.frameSecondaryColor(), alpha);
         int dark = withAlpha(Accessibility.highContrast() ? 0xFF000000 : bar.framePrimaryColor(), alpha);
         graphics.fill(x, y, x + width, y + height, background);
@@ -2189,6 +2429,20 @@ public final class ResourceHudOverlay {
             graphics.fill(x + i, y + height - i - 1, x + width - i, y + height - i, dark);
             graphics.fill(x + width - i - 1, y + i, x + width - i, y + height - i, dark);
         }
+    }
+
+    /**
+     * The frame background is a trough tint, not an opaque backing plate. A small amount of the
+     * primary frame colour keeps very dark authored backgrounds identifiable while transparency
+     * lets the world remain visible through the unfilled part of the meter.
+     */
+    private static int troughColor(ResourceSyncS2CPayload.Bar bar, float alpha) {
+        if (Accessibility.highContrast()) {
+            return withAlpha(0xFF000000, alpha * 0.86f);
+        }
+        int tinted = blend(bar.backgroundColor(),
+                0xFF000000 | (bar.framePrimaryColor() & 0xFFFFFF), 0.18f);
+        return withAlpha(tinted, alpha * TROUGH_OPACITY);
     }
 
     private static void drawValue(GuiGraphics graphics, Minecraft mc, ResourceSyncS2CPayload.Bar bar,
@@ -2999,6 +3253,24 @@ public final class ResourceHudOverlay {
         return anchor == TownsteadConfig.ResourceHudAnchor.BOTTOM_LEFT
                 || anchor == TownsteadConfig.ResourceHudAnchor.BOTTOM_CENTER
                 || anchor == TownsteadConfig.ResourceHudAnchor.BOTTOM_RIGHT;
+    }
+
+    private static TownsteadConfig.ResourceHudExitStyle effectiveExitStyle() {
+        TownsteadConfig.ResourceHudExitStyle style = ResourceHudConfig.exitStyle();
+        if (Accessibility.isReduceMotion()
+                && (style == TownsteadConfig.ResourceHudExitStyle.SLIDE
+                || style == TownsteadConfig.ResourceHudExitStyle.FLICKER)) {
+            return TownsteadConfig.ResourceHudExitStyle.FADE;
+        }
+        return style;
+    }
+
+    private static float previewTransitionAlpha(long now) {
+        long phase = Math.floorMod(now, 6000L);
+        if (phase < 3500L) return 1f;
+        if (phase < 5000L) return 1f - (phase - 3500L) / 1500f;
+        if (phase < 5500L) return 0f;
+        return (phase - 5500L) / 500f;
     }
 
     private static TownsteadConfig.ResourceHudAnchor packAnchor(String raw) {

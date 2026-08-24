@@ -519,13 +519,18 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
                       String frameId, String colorThemeId,
                       String anchor, String pipStyle, int segments, int priority,
                       int backgroundColor, int framePrimaryColor, int frameSecondaryColor, int frameThickness,
-                      String frameTexture, int frameSpriteRow) {
+                      String frameTexture, int frameSpriteRow,
+                      String frameBaseTexture, String framePrimaryTexture,
+                      String frameSecondaryTexture) {
         public Bar {
             effects = effects == null ? List.of() : List.copyOf(effects);
             reactions = reactions == null ? List.of() : List.copyOf(reactions);
             anchor = anchor == null || anchor.isBlank() ? "TOP_LEFT" : anchor;
             pipStyle = pipStyle == null || pipStyle.isBlank() ? "DOTS" : pipStyle;
             frameTexture = frameTexture == null ? "" : frameTexture;
+            frameBaseTexture = frameBaseTexture == null ? "" : frameBaseTexture;
+            framePrimaryTexture = framePrimaryTexture == null ? "" : framePrimaryTexture;
+            frameSecondaryTexture = frameSecondaryTexture == null ? "" : frameSecondaryTexture;
         }
     }
 
@@ -652,6 +657,9 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
             buf.writeVarInt(bar.frameThickness());
             buf.writeUtf(bar.frameTexture());
             buf.writeVarInt(bar.frameSpriteRow() + 1);
+            buf.writeUtf(bar.frameBaseTexture());
+            buf.writeUtf(bar.framePrimaryTexture());
+            buf.writeUtf(bar.frameSecondaryTexture());
         }
     }
 
@@ -713,12 +721,16 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
             int thickness = buf.readVarInt();
             String frameTexture = buf.readUtf();
             int frameSpriteRow = buf.readVarInt() - 1;
+            String frameBaseTexture = buf.readUtf();
+            String framePrimaryTexture = buf.readUtf();
+            String frameSecondaryTexture = buf.readUtf();
             bars.add(new Bar(resourceId, value, min, max, resting, color,
                     shape, fill, List.copyOf(effects), List.copyOf(reactions),
                     abilityReady, regenerationSequence, frame, colorTheme,
                     anchor, pipStyle,
                     segments, priority, background, framePrimaryColor, frameSecondaryColor, thickness,
-                    frameTexture, frameSpriteRow));
+                    frameTexture, frameSpriteRow, frameBaseTexture, framePrimaryTexture,
+                    frameSecondaryTexture));
         }
         return new ResourceSyncS2CPayload(List.copyOf(bars));
     }

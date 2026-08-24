@@ -131,6 +131,7 @@ public final class ResourceValues {
 
             ResourceHudDefinitions.ColorTheme colorTheme = ResourceHudDefinitions.colorTheme(display.colorTheme());
             ResourceHudDefinitions.Frame frame = ResourceHudDefinitions.frame(display.frame());
+            ResourceHudDefinitions.FrameArt frameArt = frame.art(display.shape());
             int value = get(entity, power.id());
             bars.add(new ResourceSyncS2CPayload.Bar(
                     power.id().toString(), value, instance.min(), instance.max(),
@@ -144,7 +145,9 @@ public final class ResourceValues {
                     display.priority(), frame.backgroundColor(), colorTheme.framePrimaryColor(),
                     colorTheme.frameSecondaryColor(),
                     frame.thickness(), frame.spriteTexture() == null ? "" : frame.spriteTexture().toString(),
-                    frame.spriteRow()));
+                    frame.spriteRow(), frameTexture(frameArt == null ? null : frameArt.baseTexture()),
+                    frameTexture(frameArt == null ? null : frameArt.primaryTexture()),
+                    frameTexture(frameArt == null ? null : frameArt.secondaryTexture())));
             included.add(power.id());
         }
         for (com.aetherianartificer.townstead.api.resource.ResourceHudProvider.Meter meter
@@ -152,6 +155,7 @@ public final class ResourceValues {
             if (!included.add(meter.id())) continue;
             ResourceHudDefinitions.ColorTheme colorTheme = ResourceHudDefinitions.colorTheme(meter.colorTheme());
             ResourceHudDefinitions.Frame frame = ResourceHudDefinitions.frame(meter.frame());
+            ResourceHudDefinitions.FrameArt frameArt = frame.art(meter.shape());
             bars.add(new ResourceSyncS2CPayload.Bar(
                     meter.id().toString(), meter.value(), meter.min(), meter.max(), meter.restingValue(),
                     meter.color() < 0 ? 0x3FA0FF : meter.color() & 0xFFFFFF,
@@ -162,11 +166,17 @@ public final class ResourceValues {
                     frame.backgroundColor(), colorTheme.framePrimaryColor(),
                     colorTheme.frameSecondaryColor(), frame.thickness(),
                     frame.spriteTexture() == null ? "" : frame.spriteTexture().toString(),
-                    frame.spriteRow()));
+                    frame.spriteRow(), frameTexture(frameArt == null ? null : frameArt.baseTexture()),
+                    frameTexture(frameArt == null ? null : frameArt.primaryTexture()),
+                    frameTexture(frameArt == null ? null : frameArt.secondaryTexture())));
         }
         bars.sort(Comparator.comparingInt(ResourceSyncS2CPayload.Bar::priority).reversed()
                 .thenComparing(ResourceSyncS2CPayload.Bar::resourceId));
         return List.copyOf(bars);
+    }
+
+    private static String frameTexture(ResourceLocation texture) {
+        return texture == null ? "" : texture.toString();
     }
 
     private static List<ResourceSyncS2CPayload.Effect> effectsOf(
