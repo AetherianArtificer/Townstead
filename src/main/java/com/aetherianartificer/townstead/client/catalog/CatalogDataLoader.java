@@ -131,14 +131,17 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         Map<String, BuildingSpawnPolicy> spawnPolicies = new HashMap<>();
         Map<String, List<ResourceLocation>> workersByType = new HashMap<>();
         Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies = new HashMap<>();
+        Map<String, Set<String>> dialogueTopicsByType = new HashMap<>();
         scanLegacyBuildingTypes(resourceManager, blocksByType, priorityByType);
         scanSpiritCompanions(resourceManager);
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
         scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies, workersByType,
-                enclosurePolicies);
+                enclosurePolicies, dialogueTopicsByType);
         BuildingSpawnPolicies.replaceAll(spawnPolicies);
         com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex.replaceAll(workersByType);
         BuildingEnclosurePolicies.replaceAll(enclosurePolicies);
+        com.aetherianartificer.townstead.work.feedback.BuildingDialogueTopics
+                .replaceAll(dialogueTopicsByType);
         // The icon-to-type index and node-item overrides are now both complete.
         // Clear any negative result cached while parallel reload listeners ran.
         BuildingIconResolver.invalidate();
@@ -419,7 +422,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
      * Canonical {@code data/<ns>/extended_buildings/<building_type>.json}: all Townstead per-building
      * data in one file, keyed by MCA building-type id, so MCA's own {@code building_types} JSON stays
      * vanilla. Blocks: {@code catalog} (node_item/hide), {@code spirit}, {@code spawn}; the concise
-     * {@code enclosure} string selects required/optional/none physical enclosure. The legacy object
+     * {@code enclosure} string selects required/optional/none physical enclosure, and
+     * {@code dialogue.topics} declares the village-life subjects this place makes available. The legacy object
      * form of {@code enclosure} remains the fenced-area classifier and derives perimeter/interior
      * from the MCA {@code blocks} map cached in {@code blocksByType}.
      */
@@ -427,7 +431,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
             Map<String, Map<String, Integer>> blocksByType, Map<String, Integer> priorityByType,
             Map<String, BuildingSpawnPolicy> spawnPolicies,
             Map<String, List<ResourceLocation>> workersByType,
-            Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies) {
+            Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies,
+            Map<String, Set<String>> dialogueTopicsByType) {
         Map<ResourceLocation, Resource> resources = resourceManager.listResources("extended_buildings",
                 id -> id.getPath().endsWith(".json"));
         for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
@@ -474,6 +479,28 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                         if (profession != null && !workers.contains(profession)) workers.add(profession);
                     }
                     workersByType.put(buildingType, List.copyOf(workers));
+                }
+                if (json.has("dialogue")) {
+                    if (!json.get("dialogue").isJsonObject()) {
+                        throw new IllegalArgumentException("'dialogue' must be an object");
+                    }
+                    JsonObject dialogue = json.getAsJsonObject("dialogue");
+                    if (dialogue.has("topics")) {
+                        if (!dialogue.get("topics").isJsonArray()) {
+                            throw new IllegalArgumentException("'dialogue.topics' must be an array");
+                        }
+                        Set<String> topics = new java.util.LinkedHashSet<>();
+                        for (JsonElement element : dialogue.getAsJsonArray("topics")) {
+                            if (!element.isJsonPrimitive()
+                                    || !element.getAsJsonPrimitive().isString()
+                                    || element.getAsString().isBlank()) {
+                                throw new IllegalArgumentException(
+                                        "'dialogue.topics' entries must be non-empty strings");
+                            }
+                            topics.add(element.getAsString());
+                        }
+                        if (!topics.isEmpty()) dialogueTopicsByType.put(buildingType, Set.copyOf(topics));
+                    }
                 }
                 if (json.has("enclosure")) {
                     JsonElement enclosure = json.get("enclosure");

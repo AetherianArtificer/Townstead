@@ -1,7 +1,12 @@
 {
   "schema": "townstead:profession_feedback_rule/v1",
   "mods": "butchery",
-  "trigger": "immediate",
+  "trigger": "rising",
+  "when": {
+    "type": "townstead:worksite",
+    "scope": "profession",
+    "buildings": ["compat/butchery/butcher_shop_l2"]
+  },
   "dialogue": {
     "translate": "dialogue.chat.butcher_flavor.shop_promoted_to_tier_2"
   }

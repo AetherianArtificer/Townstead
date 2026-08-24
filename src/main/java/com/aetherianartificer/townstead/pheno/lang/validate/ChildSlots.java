@@ -47,7 +47,11 @@ public final class ChildSlots {
                         return null;
                 }
             case BLOCK_ACTION:
-                return key.equals("block_action") ? NodeDomain.BLOCK_ACTION : null;
+                if (key.equals("block_action") || key.equals("then") || key.equals("else")) {
+                    return NodeDomain.BLOCK_ACTION;
+                }
+                if (key.equals("action")) return NodeDomain.ITEM_ACTION;
+                return null;
             case ITEM_ACTION:
                 if (key.equals("item_action")) return NodeDomain.ITEM_ACTION;
                 if (key.equals("action")) return NodeDomain.ACTION;

@@ -16,8 +16,8 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>A station role cannot answer this. A furnace bakes a potato and smelts an iron ingot at the
  * same role, from the same recipe type, so neither the workstation def nor the recipe tells you
- * which trade a result belongs to. Nor does "is it edible": a butcher's day produces raw sausage,
- * mince, hide and intestines, none of which anyone eats as they are.</p>
+ * which trade a result belongs to. Nor does a broad property such as edibility express every
+ * authored catalogue boundary.</p>
  *
  * <p>So the set is stated rather than inferred. A recipe is offered to a trade only when its output
  * carries that trade's tag — no default, no heuristic, nothing for Townstead to keep noticing as
@@ -41,9 +41,6 @@ public final class WorkOutputTags {
     public static final TagKey<Item> COOK = tag("cook_output");
     /** Things a barista may be ordered to make. */
     public static final TagKey<Item> BREW = tag("brew_output");
-    /** Things a butcher may be ordered to make. Not food: sausage, mince, hide, intestines. */
-    public static final TagKey<Item> BUTCHER = tag("butcher_output");
-
     private static TagKey<Item> tag(String path) {
         //? if >=1.21 {
         return TagKey.create(Registries.ITEM,

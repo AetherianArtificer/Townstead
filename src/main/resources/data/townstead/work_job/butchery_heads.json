@@ -1,0 +1,498 @@
+{
+  "schema": "townstead:job/v2",
+  "mods": [
+    "butchery"
+  ],
+  "task": "townstead_work:hammer",
+  "type": "townstead:block_interaction",
+  "target": {
+    "blocks": [
+      "#butchery:heads",
+      "#butchery:skulls",
+      "#butchery:ice_skull",
+      "#butchery:wither_skull",
+      "#butchery:iron_heads",
+      "#butchery:spider_head"
+    ],
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:in_tag",
+          "tag": "butchery:unbreakable_heads",
+          "inverted": true
+        },
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:config",
+              "scope": "server",
+              "file": "townstead-server.toml",
+              "path": [
+                "professionWork",
+                "processTrophyOutputs"
+              ],
+              "equals": true,
+              "default": false
+            },
+            {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "butchery:wither_skull",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "butchery:ice_skull",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "butchery:evoker_head",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "butchery:vindicator_head",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "butchery:pillager_head",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "butchery:warden_head",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:dragon_head",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:dragon_wall_head",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:player_head",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:player_wall_head",
+                  "inverted": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "interactions": [
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:block",
+          "block": "butchery:evoker_head"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/head_breakdown"
+          },
+          {
+            "type": "pheno:return_item",
+            "item": "butchery:evoker_robes_helmet"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:block",
+          "block": "butchery:vindicator_head"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/head_breakdown"
+          },
+          {
+            "type": "pheno:return_item",
+            "item": "butchery:vindicatorarmor_helmet"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:block",
+          "block": "butchery:pillager_head"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/head_breakdown"
+          },
+          {
+            "type": "pheno:return_item",
+            "item": "butchery:pillager_armor_helmet"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:in_tag",
+          "tag": "butchery:eyeless_head"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/eyeless_head_breakdown"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:in_tag",
+          "tag": "butchery:skullless_head"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/skullless_head_breakdown"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:in_tag",
+          "tag": "butchery:ice_skull"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/ice_skull_breakdown"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:in_tag",
+          "tag": "butchery:wither_skull"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/wither_skull_breakdown"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:in_tag",
+          "tag": "butchery:iron_heads"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/iron_heads_breakdown"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:in_tag",
+          "tag": "butchery:spider_head"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/spider_eyes_drop"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:in_tag",
+          "tag": "butchery:skulls"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/skulls_breakdown"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_hammers",
+        "condition": {
+          "type": "pheno:in_tag",
+          "tag": "butchery:heads"
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.sniffer_egg.crack",
+            "volume": 1
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.break",
+            "volume": 1
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/head_breakdown"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          }
+        ],
+        "xp": 1
+      }
+    ]
+  }
+}

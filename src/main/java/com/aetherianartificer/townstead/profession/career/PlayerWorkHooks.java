@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.profession.career;
 
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -67,7 +68,7 @@ public final class PlayerWorkHooks {
         if (!(player instanceof ServerPlayer sp) || sp instanceof FakePlayer
                 || stack.isEmpty() || completed <= 0) return;
         CareerProgression.completeWork(sp, Careers.COOK, completed, sp.serverLevel().getGameTime(),
-                "townstead:cooked", BuiltInRegistries.ITEM.getKey(stack.getItem()),
+                WorkTaskTypes.COOK.toString(), BuiltInRegistries.ITEM.getKey(stack.getItem()),
                 "dish", completed,
                 Map.of("station", stationKind, "amount", Integer.toString(completed)));
     }

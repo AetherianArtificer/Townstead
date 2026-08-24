@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The scan's eligibility rules for mod-bundled Townstead profession definitions. */
@@ -46,15 +47,27 @@ class ScannedProfessionsTest {
     }
 
     @Test
+    void registrationMetadataIncludesWorkSound() {
+        assertEquals(net.minecraft.resources.ResourceLocation.tryParse(
+                        "minecraft:entity.villager.work_butcher"),
+                ScannedProfessions.workSound(obj(
+                        "{ 'work_sound': 'minecraft:entity.villager.work_butcher' }")));
+        assertEquals(null, ScannedProfessions.workSound(obj("{ 'work_sound': 'not an id' }")));
+    }
+
+    @Test
     void workSidecarCanSupplyRegistrationAndJobSite() {
         JsonObject profession = obj("{ 'schema': 'townstead:profession/v2' }");
         com.aetherianartificer.townstead.profession.def.ProfessionWorkOverlay.apply(profession,
                 obj("{ 'schema': 'townstead:profession_work/v1', 'register_profession': true,"
-                        + " 'poi': [{ 'type': 'townstead:job_block', 'block': 'minecraft:beehive' }] }"));
+                        + " 'poi': [{ 'type': 'townstead:job_block', 'block': 'minecraft:beehive' }],"
+                        + " 'tasks': [{ 'type': 'townstead_work:interact' }] }"));
 
         assertTrue(ScannedProfessions.eligible(profession));
         assertTrue(ScannedProfessions.jobBlocks(profession).contains(
                 net.minecraft.resources.ResourceLocation.tryParse("minecraft:beehive")));
+        assertTrue(ScannedProfessions.taskTypes(profession).contains(
+                net.minecraft.resources.ResourceLocation.tryParse("townstead_work:interact")));
     }
 
     @Test

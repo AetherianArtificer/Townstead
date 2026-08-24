@@ -40,6 +40,7 @@ public record ProfessionDef(
         java.util.Map<Integer, List<TradeDef>> trades,
         List<RequirementHint> requirementHints,
         @Nullable ResourceLocation icon,
+        @Nullable ResourceLocation workSound,
         List<LevelDef> levels,
         List<WorkTaskDef> workTasks) {
 
@@ -107,7 +108,7 @@ public record ProfessionDef(
                          RetrainingPolicy retraining, List<ResourceLocation> skills) {
         this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
                 skills, false, Conditions.ALWAYS, List.of(), List.of(), List.of(),
-                java.util.Map.of(), List.of(), null, List.of(), List.of());
+                java.util.Map.of(), List.of(), null, null, List.of(), List.of());
     }
 
     /** Constructor for definitions that only need eligibility and job sites. */
@@ -118,7 +119,7 @@ public record ProfessionDef(
                          List<String> acquisitionRoutes, List<JobSiteProvider> jobSites) {
         this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
                 skills, hidden, requirements, acquisitionRoutes, jobSites, List.of(),
-                java.util.Map.of(), List.of(), null, List.of(), List.of());
+                java.util.Map.of(), List.of(), null, null, List.of(), List.of());
     }
 
     /** Constructor for definitions that also declare aliases. */
@@ -129,6 +130,6 @@ public record ProfessionDef(
                          List<JobSiteProvider> jobSites, List<ResourceLocation> aliases) {
         this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
                 skills, hidden, requirements, acquisitionRoutes, jobSites, aliases,
-                java.util.Map.of(), List.of(), null, List.of(), List.of());
+                java.util.Map.of(), List.of(), null, null, List.of(), List.of());
     }
 }

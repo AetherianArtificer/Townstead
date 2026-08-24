@@ -33,6 +33,11 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import com.aetherianartificer.townstead.pheno.data.ScalarData;
+import com.aetherianartificer.townstead.pheno.selector.SelectorContext;
+import com.aetherianartificer.townstead.pheno.value.Value;
+import com.aetherianartificer.townstead.pheno.value.Values;
+import com.aetherianartificer.townstead.pheno.condition.Comparison;
 
 /**
  * Parses a block-condition JSON into a {@link BlockCondition}. The Apoli subset with a
@@ -214,6 +219,33 @@ public final class BlockConditions {
                     if (json.has("non_empty")) return hasContents(value) == nonEmpty;
                     return matchesJson(value, expected);
                 };
+            }
+            case "block_data": {
+                String key = GsonHelper.getAsString(json, "key", "");
+                JsonElement expected = json.get("value");
+                boolean exists = GsonHelper.getAsBoolean(json, "exists", true);
+                if (key.isBlank() || (expected == null && !json.has("exists"))) return null;
+                return (level, pos) -> {
+                    BlockEntity entity = level.getBlockEntity(pos);
+                    if (entity == null) return false;
+                    if (expected != null) return ScalarData.matches(entity.getPersistentData(), key, expected);
+                    return entity.getPersistentData().contains(key) == exists;
+                };
+            }
+            case "value": {
+                Value left = Values.parse(json.get("value"));
+                Value right = Values.parse(json.get("compare_to"));
+                if (left == null || right == null) return null;
+                Comparison comparison = Comparison.parse(GsonHelper.getAsString(json, "comparison", ">="));
+                return (level, pos) -> {
+                    SelectorContext context = SelectorContext.ofBlock(level, pos, null);
+                    return comparison.compare(left.get(context), right.get(context));
+                };
+            }
+            case "config": {
+                if (!com.aetherianartificer.townstead.data.ConfigGate.valid(json)) return null;
+                return (level, pos) -> Boolean.TRUE.equals(
+                        com.aetherianartificer.townstead.data.ConfigGate.evaluate(json, level));
             }
             case "distance_from_coordinates": {
                 double x = GsonHelper.getAsDouble(json, "x", 0);

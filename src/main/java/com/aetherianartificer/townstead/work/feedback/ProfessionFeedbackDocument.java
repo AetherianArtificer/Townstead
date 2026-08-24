@@ -34,7 +34,8 @@ public final class ProfessionFeedbackDocument {
             try {
                 trigger = Trigger.valueOf(triggerName.toUpperCase(java.util.Locale.ROOT));
             } catch (IllegalArgumentException exception) {
-                throw new IllegalArgumentException("'trigger' must be 'event', 'immediate', or 'periodic'");
+                throw new IllegalArgumentException(
+                        "'trigger' must be 'event', 'immediate', 'periodic', or 'rising'");
             }
             Condition when = Conditions.ALWAYS;
             if (json.has("when")) {
@@ -58,11 +59,16 @@ public final class ProfessionFeedbackDocument {
         public boolean immediate() {
             return trigger == Trigger.IMMEDIATE;
         }
+
+        public boolean rising() {
+            return trigger == Trigger.RISING;
+        }
     }
 
     public enum Trigger {
         EVENT,
         IMMEDIATE,
-        PERIODIC
+        PERIODIC,
+        RISING
     }
 }

@@ -18,6 +18,8 @@ import net.minecraft.network.chat.Component;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -30,35 +32,25 @@ import java.util.*;
  */
 public final class ConditionalCompatPack {
 
-    /** Each file gates itself via {@link ModCompat#isCompatAvailable} on its building-type path. */
-    private static final List<CompatEntry> COMPAT_ENTRIES = new ArrayList<>();
+    /** Build-generated inventory; adding a compat building JSON never requires a Java edit. */
+    private static final List<CompatEntry> COMPAT_ENTRIES = loadCompatEntries();
 
-    static {
-        addCompat(
-                "building_types/compat/farmersdelight/kitchen_l1.json",
-                "building_types/compat/farmersdelight/kitchen_l2.json",
-                "building_types/compat/farmersdelight/kitchen_l3.json",
-                "building_types/compat/farmersdelight/kitchen_l4.json",
-                "building_types/compat/farmersdelight/kitchen_l5.json",
-                "building_types/compat/rusticdelight/cafe_l1.json",
-                "building_types/compat/rusticdelight/cafe_l2.json",
-                "building_types/compat/rusticdelight/cafe_l3.json",
-                "building_types/compat/rusticdelight/cafe_l4.json",
-                "building_types/compat/rusticdelight/cafe_l5.json",
-                "building_types/compat/butchery/butcher_shop_l1.json",
-                "building_types/compat/butchery/butcher_shop_l2.json",
-                "building_types/compat/butchery/butcher_shop_l3.json",
-                "building_types/compat/butchery/slaughterhouse.json",
-                "building_types/compat/butchery/smokehouse.json",
-                "building_types/compat/butchery/tannery.json",
-                "building_types/compat/butchery/slaughter_pen.json",
-                "building_types/compat/bakery/bread_stand_l1.json",
-                "building_types/compat/bakery/bake_sale_l2.json",
-                "building_types/compat/bakery/bakery_l3.json");
+    private static List<CompatEntry> loadCompatEntries() {
+        List<CompatEntry> entries = new ArrayList<>();
+        InputStream input = ConditionalCompatPack.class.getClassLoader()
+                .getResourceAsStream("townstead_compat/index.txt");
+        if (input == null) return List.of();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            reader.lines().map(String::trim).filter(path -> !path.isEmpty())
+                    .forEach(path -> addCompat(entries, path));
+        } catch (IOException ignored) {
+            return List.of();
+        }
+        return List.copyOf(entries);
     }
 
-    private static void addCompat(String... paths) {
-        for (String path : paths) {
+    private static void addCompat(List<CompatEntry> entries, String path) {
             // Building types live under data/mca/
             //? if >=1.21 {
             ResourceLocation servePath = ResourceLocation.fromNamespaceAndPath("mca", path);
@@ -67,8 +59,7 @@ public final class ConditionalCompatPack {
             *///?}
             String classpathPath = "townstead_compat/" + path;
             String typePath = path.substring("building_types/".length(), path.length() - ".json".length());
-            COMPAT_ENTRIES.add(new CompatEntry(servePath, classpathPath, typePath));
-        }
+            entries.add(new CompatEntry(servePath, classpathPath, typePath));
     }
 
     private record CompatEntry(ResourceLocation servePath, String classpathPath, String typePath) {}

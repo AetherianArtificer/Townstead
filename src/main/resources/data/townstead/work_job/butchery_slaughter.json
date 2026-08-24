@@ -1,10 +1,11 @@
 {
-  "schema": "townstead:job/v1",
+  "schema": "townstead:job/v2",
   "mods": ["butchery"],
   "task": "townstead_work:slaughter",
   "type": "townstead:entity_delivery",
 
   "source": {
+    "item": "#townstead:butcher_cleavers",
     "buildings": [
       "compat/butchery/butcher_shop_l*",
       "compat/butchery/slaughterhouse",
@@ -16,7 +17,44 @@
       "minecraft:sheep": "butchery:sheep_carcass",
       "minecraft:chicken": "butchery:chicken_carcass",
       "minecraft:rabbit": "butchery:rabbit_carcass"
-    }
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:alive" },
+        { "type": "pheno:baby", "inverted": true },
+        { "type": "pheno:named", "inverted": true },
+        { "type": "pheno:tamed", "inverted": true },
+        {
+          "type": "pheno:config",
+          "scope": "server",
+          "file": "townstead-server.toml",
+          "path": ["professionWork", "allowLethalWork"],
+          "equals": true,
+          "default": true
+        }
+      ]
+    },
+    "action": [
+      { "type": "pheno:swing_hand" },
+      {
+        "type": "pheno:target_action",
+        "action": {
+          "type": "pheno:damage",
+          "amount": 4,
+          "source": "other"
+        }
+      }
+    ],
+    "range": 2,
+    "interval": 20,
+    "cooldown": {
+      "scope": "server",
+      "file": "townstead-server.toml",
+      "path": ["professionWork", "lethalWorkCooldownTicks"],
+      "default": 2400
+    },
+    "xp": 2
   },
 
   "destination": {
@@ -30,7 +68,12 @@
       "properties": {
         "blockstate": 1
       },
-      "copy_properties": ["facing"]
+      "copy_properties": ["facing"],
+      "action": {
+        "type": "pheno:play_sound",
+        "sound": "minecraft:block.chain.hit",
+        "category": "neutral"
+      }
     }
   }
 }

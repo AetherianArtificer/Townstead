@@ -4,6 +4,7 @@
     "text": "Barista"
   },
   "icon": "minecraft:honey_bottle",
+  "work_sound": "minecraft:entity.villager.work_butcher",
   "description": {
     "text": "A cook who has taken up the craft of coffee."
   },
@@ -16,7 +17,7 @@
     "conditions": [
       {
         "type": "pheno:chronicle_count",
-        "key": "townstead:brewed",
+        "key": "townstead_work:brew",
         "at_least": 20
       },
       {

@@ -13,7 +13,7 @@
     "conditions": [
       {
         "type": "pheno:chronicle_count",
-        "key": "townstead:cooked",
+        "key": "townstead_work:cook",
         "at_least": 25
       },
       {

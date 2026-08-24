@@ -8,7 +8,6 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.hunger.FishermanWorkTask;
-import com.aetherianartificer.townstead.leatherworking.LeatherworkerWorkTask;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
@@ -100,8 +99,6 @@ public abstract class VillagerHungerMixin extends Villager {
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK,
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP,
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.COOK,
-                                        "townstead:cooked",
-                                        com.aetherianartificer.townstead.profession.career.Careers.COOK,
                                         com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled))),
                         Pair.of(72, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
@@ -109,29 +106,18 @@ public abstract class VillagerHungerMixin extends Villager {
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW,
                                         null,
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.BARISTA,
-                                        "townstead:brewed",
-                                        com.aetherianartificer.townstead.profession.career.Careers.BARISTA,
                                         com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled))),
-                        Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask()),
-                        Pair.of(73, new com.aetherianartificer.townstead.compat.butchery.GolemProcessingTask()),
                         Pair.of(75, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
-                                        "Butcher",
+                                        "Smoker",
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.SMOKE,
                                         null,
-                                        com.aetherianartificer.townstead.work.producer.ProducerRole.BUTCHER,
-                                        "townstead:butchered",
-                                        com.aetherianartificer.townstead.profession.career.Careers.BUTCHER,
+                                        com.aetherianartificer.townstead.work.producer.ProducerRole.GENERAL,
                                         () -> true))),
-                        Pair.of(76, new com.aetherianartificer.townstead.compat.butchery.ButcherDeliveryTask()),
-                        Pair.of(77, new com.aetherianartificer.townstead.compat.butchery.SausageHookTask()),
-                        Pair.of(78, new com.aetherianartificer.townstead.compat.butchery.BloodCleanupTask()),
-                        Pair.of(79, new com.aetherianartificer.townstead.compat.butchery.HeadHammeringTask()),
-                        Pair.of(80, new com.aetherianartificer.townstead.compat.butchery.SlaughterWorkTask()),
-                        Pair.of(81, new LeatherworkerWorkTask()),
+                        Pair.of(80, new com.aetherianartificer.townstead.work.job.EntityDeliveryWorkTask()),
                         Pair.of(82, new com.aetherianartificer.townstead.shepherd.ShepherdWorkTask()),
                         Pair.of(83, new com.aetherianartificer.townstead.shepherd.ShepherdDepositTask()),
-                        Pair.of(83, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask()),
+                        Pair.of(73, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask()),
                         Pair.of(84, new com.aetherianartificer.townstead.work.producer.StationWorkTask())
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.

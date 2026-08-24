@@ -10,7 +10,7 @@
   ],
   "trigger": {
     "type": "work",
-    "key": "townstead:cooked"
+    "key": "townstead_work:cook"
   },
   "cooldown_days": 1,
   "reach": "village",

@@ -29,4 +29,14 @@ class ConfigGateTest {
         assertNull(ConfigGate.evaluate(JsonParser.parseString("{\"equals\":true}"), path -> true));
         assertNull(ConfigGate.evaluate(JsonParser.parseString("{\"path\":[],\"equals\":true}"), path -> true));
     }
+
+    @Test
+    void authoredDefaultCoversAnAbsentFileOrKey() {
+        var gate = JsonParser.parseString("""
+                {"file":"Butchery.toml","path":["General","Organs"],
+                 "equals":true,"default":true}
+                """);
+        assertEquals(Boolean.TRUE, ConfigGate.evaluate(gate, path -> null));
+        assertEquals(Boolean.FALSE, ConfigGate.evaluate(gate, path -> false));
+    }
 }

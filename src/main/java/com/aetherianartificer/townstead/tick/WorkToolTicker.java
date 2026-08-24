@@ -1,22 +1,15 @@
 package com.aetherianartificer.townstead.tick;
 
-import com.aetherianartificer.townstead.compat.butchery.ButcheryCompat;
 import net.conczin.mca.entity.VillagerEntityMCA;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.Brain;
-import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
 import com.aetherianartificer.townstead.hunger.FishermanSupplyManager;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.minecraft.world.item.HoeItem;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,103 +24,13 @@ public final class WorkToolTicker {
     private static final int CHECK_INTERVAL_TICKS = 10;
     private WorkToolTicker() {}
 
-    private record Rule(net.minecraft.resources.ResourceLocation[] taskTypes, Predicate<ItemStack> matcher) {}
-
-    //? if >=1.21 {
-    private static final TagKey<Item> CLEAVER_TAG_C = TagKey.create(
-            Registries.ITEM, ResourceLocation.parse("c:cleaver"));
-    private static final TagKey<Item> CLEAVER_TAG_FORGE = TagKey.create(
-            Registries.ITEM, ResourceLocation.parse("forge:cleaver"));
-    private static final TagKey<Item> KNIFE_TAG_C = TagKey.create(
-            Registries.ITEM, ResourceLocation.parse("c:skinning_knives"));
-    private static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(
-            Registries.ITEM, ResourceLocation.parse("forge:skinning_knives"));
-    private static final TagKey<Item> HACKSAW_TAG_C = TagKey.create(
-            Registries.ITEM, ResourceLocation.parse("c:hacksaw"));
-    private static final TagKey<Item> HACKSAW_TAG_FORGE = TagKey.create(
-            Registries.ITEM, ResourceLocation.parse("forge:hacksaw"));
-    private static final TagKey<Item> HAMMER_TAG_C = TagKey.create(
-            Registries.ITEM, ResourceLocation.parse("c:hammer"));
-    private static final TagKey<Item> HAMMER_TAG_FORGE = TagKey.create(
-            Registries.ITEM, ResourceLocation.parse("forge:hammer"));
-    //?} else {
-    /*private static final TagKey<Item> CLEAVER_TAG_C = TagKey.create(
-            Registries.ITEM, new ResourceLocation("c", "cleaver"));
-    private static final TagKey<Item> CLEAVER_TAG_FORGE = TagKey.create(
-            Registries.ITEM, new ResourceLocation("forge", "cleaver"));
-    private static final TagKey<Item> KNIFE_TAG_C = TagKey.create(
-            Registries.ITEM, new ResourceLocation("c", "skinning_knives"));
-    private static final TagKey<Item> KNIFE_TAG_FORGE = TagKey.create(
-            Registries.ITEM, new ResourceLocation("forge", "skinning_knives"));
-    private static final TagKey<Item> HACKSAW_TAG_C = TagKey.create(
-            Registries.ITEM, new ResourceLocation("c", "hacksaw"));
-    private static final TagKey<Item> HACKSAW_TAG_FORGE = TagKey.create(
-            Registries.ITEM, new ResourceLocation("forge", "hacksaw"));
-    private static final TagKey<Item> HAMMER_TAG_C = TagKey.create(
-            Registries.ITEM, new ResourceLocation("c", "hammer"));
-    private static final TagKey<Item> HAMMER_TAG_FORGE = TagKey.create(
-            Registries.ITEM, new ResourceLocation("forge", "hammer"));
-    *///?}
-
-    private static final List<Rule> RULES = List.of(
-            new Rule(types(WorkTaskTypes.HARVEST), stack -> stack.getItem() instanceof HoeItem),
-            new Rule(types(WorkTaskTypes.FISH), FishermanSupplyManager::isFishingRod),
-            new Rule(WorkTaskTypes.BUTCHERY_SUITE, WorkToolTicker::isButcherTool),
-            new Rule(types(WorkTaskTypes.SHEAR),
-                    com.aetherianartificer.townstead.shepherd.ShepherdShearToolCompatRegistry::isCompatibleShears)
-    );
-
-    private static net.minecraft.resources.ResourceLocation[] types(net.minecraft.resources.ResourceLocation... ids) {
-        return ids;
-    }
-
-    /**
-     * Matches cleavers, skinning knives, hacksaws, hammers, and cleaning
-     * cloths (sponge / rag) so the per-stage hand swap (cleaver for most
-     * cuts, knife for skin, hacksaw for golem, hammer for head breakdown,
-     * cloth for blood cleanup) doesn't get reverted by the ticker's next
-     * pass.
-     */
-    public static boolean isButcherTool(ItemStack stack) {
-        if (stack.isEmpty() || !ButcheryCompat.isLoaded()) return false;
-        return stack.is(CLEAVER_TAG_C) || stack.is(CLEAVER_TAG_FORGE)
-                || stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE)
-                || stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE)
-                || stack.is(HAMMER_TAG_C) || stack.is(HAMMER_TAG_FORGE)
-                || com.aetherianartificer.townstead.compat.butchery.SpongeRagHelper.isCloth(stack);
-    }
-
-    public static boolean isKnife(ItemStack stack) {
-        if (stack.isEmpty()) return false;
-        return stack.is(KNIFE_TAG_C) || stack.is(KNIFE_TAG_FORGE);
-    }
-
-    public static boolean isCleaver(ItemStack stack) {
-        if (stack.isEmpty()) return false;
-        return stack.is(CLEAVER_TAG_C) || stack.is(CLEAVER_TAG_FORGE);
-    }
-
-    public static boolean isHacksaw(ItemStack stack) {
-        if (stack.isEmpty()) return false;
-        return stack.is(HACKSAW_TAG_C) || stack.is(HACKSAW_TAG_FORGE);
-    }
-
-    public static boolean isHammer(ItemStack stack) {
-        if (stack.isEmpty()) return false;
-        return stack.is(HAMMER_TAG_C) || stack.is(HAMMER_TAG_FORGE);
-    }
-
     private static final Map<UUID, ItemStack> PREVIOUS_MAIN_HAND = new ConcurrentHashMap<>();
 
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
         if ((villager.level().getGameTime() + villager.getId()) % CHECK_INTERVAL_TICKS != 0) return;
 
-        Rule rule = ruleFor(villager.getVillagerData().getProfession());
-        if (rule == null) {
-            restore(villager);
-            return;
-        }
+        Predicate<ItemStack> matcher = stack -> matchesDeclaredTool(villager, stack);
 
         Brain<?> brain = villager.getBrain();
         long dayTime = villager.level().getDayTime() % 24000L;
@@ -141,11 +44,11 @@ public final class WorkToolTicker {
         UUID id = villager.getUUID();
 
         // Fast path: already holding a matching tool and state is tracked.
-        if (rule.matcher.test(currentMain) && PREVIOUS_MAIN_HAND.containsKey(id)) {
+        if (matcher.test(currentMain) && PREVIOUS_MAIN_HAND.containsKey(id)) {
             return;
         }
 
-        int slot = findSlot(villager.getInventory(), rule.matcher);
+        int slot = findSlot(villager.getInventory(), matcher);
         if (slot < 0) {
             restore(villager);
             return;
@@ -153,7 +56,7 @@ public final class WorkToolTicker {
 
         ItemStack tool = villager.getInventory().getItem(slot);
         if (!PREVIOUS_MAIN_HAND.containsKey(id)) {
-            ItemStack stash = rule.matcher.test(currentMain) ? ItemStack.EMPTY : currentMain.copy();
+            ItemStack stash = matcher.test(currentMain) ? ItemStack.EMPTY : currentMain.copy();
             PREVIOUS_MAIN_HAND.put(id, stash);
         }
         villager.setItemInHand(InteractionHand.MAIN_HAND, tool.copy());
@@ -163,12 +66,30 @@ public final class WorkToolTicker {
         PREVIOUS_MAIN_HAND.remove(villager.getUUID());
     }
 
-    private static Rule ruleFor(VillagerProfession profession) {
-        for (Rule rule : RULES) {
-            if (com.aetherianartificer.townstead.work.WorkTaskDeclarations
-                    .professionDeclares(profession, rule.taskTypes)) return rule;
+    /**
+     * Job documents already name every item a generic executor may put in a worker's hand. Read
+     * those selectors directly so a new profession, tool family, or integration mod does not need
+     * a ticker rule. The few code-owned engines retain their own semantic matchers.
+     */
+    private static boolean matchesDeclaredTool(VillagerEntityMCA villager, ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        for (var task : com.aetherianartificer.townstead.work.WorkTaskDeclarations.all(villager)) {
+            if (task.type().equals(WorkTaskTypes.HARVEST)
+                    && stack.getItem() instanceof HoeItem) return true;
+            if (task.type().equals(WorkTaskTypes.FISH)
+                    && FishermanSupplyManager.isFishingRod(stack)) return true;
+            if (task.type().equals(WorkTaskTypes.SHEAR)
+                    && com.aetherianartificer.townstead.shepherd.ShepherdShearToolCompatRegistry
+                    .isCompatibleShears(stack)) return true;
+            for (var job : com.aetherianartificer.townstead.work.job.WorkJobs.forTask(task.type())) {
+                if (job.source() != null && job.source().matches(stack)) return true;
+                if (job.target() == null) continue;
+                for (var interaction : job.target().interactions()) {
+                    if (interaction.matches(stack)) return true;
+                }
+            }
         }
-        return null;
+        return false;
     }
 
     private static void restore(VillagerEntityMCA villager) {

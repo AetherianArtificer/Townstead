@@ -104,6 +104,17 @@ tasks.withType<ProcessResources> {
             path = path.replace("data/mca/", "townstead_compat/")
         }
     }
+    doLast {
+        val compatRoot = destinationDir.resolve("townstead_compat/building_types/compat")
+        val index = destinationDir.resolve("townstead_compat/index.txt")
+        val entries = if (compatRoot.isDirectory) compatRoot.walkTopDown()
+            .filter { it.isFile && it.extension == "json" }
+            .map { it.relativeTo(destinationDir.resolve("townstead_compat")).invariantSeparatorsPath }
+            .sorted()
+            .toList() else emptyList()
+        index.parentFile.mkdirs()
+        index.writeText(entries.joinToString("\n", postfix = if (entries.isEmpty()) "" else "\n"))
+    }
 }
 
 tasks.withType<JavaCompile> { options.encoding = "UTF-8" }

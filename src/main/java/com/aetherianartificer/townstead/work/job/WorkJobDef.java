@@ -2,8 +2,16 @@ package com.aetherianartificer.townstead.work.job;
 
 import com.aetherianartificer.townstead.pheno.action.block.BlockAction;
 import com.aetherianartificer.townstead.pheno.action.block.BlockActions;
+import com.aetherianartificer.townstead.pheno.action.Action;
+import com.aetherianartificer.townstead.pheno.action.Actions;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
+import com.aetherianartificer.townstead.data.ConfigGate;
 import com.aetherianartificer.townstead.pheno.condition.block.BlockCondition;
 import com.aetherianartificer.townstead.pheno.condition.block.BlockConditions;
+import com.aetherianartificer.townstead.pheno.condition.item.ItemCondition;
+import com.aetherianartificer.townstead.pheno.condition.item.ItemConditions;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -12,6 +20,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -34,7 +44,7 @@ public record WorkJobDef(
         @Nullable BlockTarget destination,
         @Nullable BlockTarget target) {
 
-    public static final String SCHEMA = "townstead:job/v1";
+    public static final String SCHEMA = "townstead:job/v2";
     public static final ResourceLocation ENTITY_DELIVERY = id("townstead:entity_delivery");
     public static final ResourceLocation BLOCK_INTERACTION = id("townstead:block_interaction");
 
@@ -51,23 +61,55 @@ public record WorkJobDef(
             int y,
             int z,
             Map<String, String> properties,
-            List<String> copyProperties) {
+            List<String> copyProperties,
+            @Nullable BlockAction action) {
 
-        public static final Placement DEFAULT = new Placement(0, 0, 0, Map.of(), List.of());
+        public static final Placement DEFAULT = new Placement(0, 0, 0, Map.of(), List.of(), null);
     }
 
     public record EntitySource(
             List<String> buildings,
-            Map<ResourceLocation, ResourceLocation> results) {
+            Map<ResourceLocation, ResourceLocation> results,
+            @Nullable String item,
+            @Nullable Condition condition,
+            Action action,
+            double range,
+            int interval,
+            TunableInt cooldown,
+            int xp) {
 
         public boolean matchesBuilding(@Nullable String buildingType) {
             return matchesBuildingPattern(buildings, buildingType);
+        }
+
+        public boolean matches(ItemStack stack) {
+            return item != null && matchesItem(item, stack);
+        }
+
+        /** Whether this entity is one of the declared inputs and satisfies the authored policy. */
+        public boolean matches(LivingEntity entity) {
+            if (entity == null || !results.containsKey(
+                    BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()))) return false;
+            return condition == null || condition.test(new ConditionContext(entity));
+        }
+
+        public int cooldown(ServerLevel level) {
+            return cooldown.resolve(level);
+        }
+    }
+
+    /** An integer that may be literal or read from a TOML value with a data-authored fallback. */
+    public record TunableInt(int fallback, @Nullable JsonObject config) {
+        public int resolve(ServerLevel level) {
+            double value = config == null ? fallback : ConfigGate.number(config, level, fallback);
+            return Math.max(0, (int) Math.round(value));
         }
     }
 
     public record BlockTarget(
             List<String> buildings,
             Set<ResourceLocation> blocks,
+            List<ResourceLocation> blockTags,
             Placement placement,
             @Nullable BlockCondition condition,
             List<Interaction> interactions) {
@@ -79,23 +121,48 @@ public record WorkJobDef(
         public boolean ready(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) {
             return condition == null || condition.test(level, pos);
         }
+
+        public boolean matches(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) {
+            net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos);
+            if (blocks.contains(BuiltInRegistries.BLOCK.getKey(state.getBlock()))) return true;
+            for (ResourceLocation tag : blockTags) {
+                if (state.is(TagKey.create(Registries.BLOCK, tag))) return true;
+            }
+            return false;
+        }
     }
 
     /** One real block-use route offered by a generic block-interaction job. */
-    public record Interaction(String item, BlockAction action, Set<ResourceLocation> outputs, int xp) {
+    public record Interaction(@Nullable String item, @Nullable ItemCondition itemCondition,
+                              @Nullable BlockCondition condition,
+                              BlockAction action, Set<ResourceLocation> outputs, int xp) {
 
         public boolean matches(ItemStack stack) {
-            if (stack == null || stack.isEmpty()) return false;
-            ResourceLocation id = ResourceLocation.tryParse(
-                    item.startsWith("#") ? item.substring(1) : item);
-            if (id == null) return false;
-            return item.startsWith("#")
-                    ? stack.is(TagKey.create(Registries.ITEM, id))
-                    : stack.is(BuiltInRegistries.ITEM.get(id));
+            return item != null && matchesItem(item, stack);
+        }
+
+        public boolean requiresItem() {
+            return item != null;
         }
 
         public Set<ResourceLocation> outputIds() {
             return outputs;
+        }
+
+        public boolean ready(net.minecraft.world.level.Level level,
+                             net.minecraft.core.BlockPos pos) {
+            if (condition != null && !condition.test(level, pos)) return false;
+            return action.canRun(new com.aetherianartificer.townstead.pheno.action.block.BlockActionContext(
+                    (net.minecraft.server.level.ServerLevel) level, pos));
+        }
+
+        public boolean matches(net.minecraft.server.level.ServerLevel level,
+                               net.minecraft.core.BlockPos pos, ItemStack stack) {
+            if (item == null) return itemCondition == null && ready(level, pos);
+            if (!matches(stack) || (itemCondition != null && !itemCondition.test(level, stack))
+                    || (condition != null && !condition.test(level, pos))) return false;
+            return action.canRun(new com.aetherianartificer.townstead.pheno.action.block.BlockActionContext(
+                    level, pos).withItemRole("item", stack));
         }
     }
 
@@ -141,8 +208,20 @@ public record WorkJobDef(
             if (from == null || to == null) return null;
             results.put(from, to);
         }
+        String item = string(json, "item");
+        if (json.has("item") && !validSelector(item)) return null;
+        Condition condition = json.has("condition") ? Conditions.parse(json.get("condition")) : null;
+        if (json.has("condition") && condition == null) return null;
+        Action action = json.has("action") ? Actions.parse(json.get("action")) : null;
+        if (action == null) return null;
+        double range = number(json, "range", 2.0);
+        int interval = integer(json, "interval", 20);
+        TunableInt cooldown = tunableInt(json.get("cooldown"), 0);
+        int xp = integer(json, "xp", 1);
+        if (range <= 0.0 || interval < 1 || cooldown == null || xp < 1) return null;
         return results.isEmpty() ? null
-                : new EntitySource(List.copyOf(buildings), Map.copyOf(results));
+                : new EntitySource(List.copyOf(buildings), Map.copyOf(results), item, condition,
+                action, range, interval, cooldown, xp);
     }
 
     private static @Nullable BlockTarget parseBlockTarget(
@@ -153,6 +232,7 @@ public record WorkJobDef(
         if (buildings == null) return null;
 
         Set<ResourceLocation> blocks = new LinkedHashSet<>();
+        List<ResourceLocation> blockTags = new ArrayList<>();
         if (json.has("block")) {
             ResourceLocation block = resource(json, "block");
             if (block == null) return null;
@@ -162,12 +242,14 @@ public record WorkJobDef(
             List<String> rawBlocks = strings(json.get("blocks"));
             if (rawBlocks == null) return null;
             for (String raw : rawBlocks) {
-                ResourceLocation block = id(raw);
-                if (block == null || raw.startsWith("#")) return null;
-                blocks.add(block);
+                boolean tag = raw.startsWith("#");
+                ResourceLocation block = id(tag ? raw.substring(1) : raw);
+                if (block == null) return null;
+                if (tag) blockTags.add(block);
+                else blocks.add(block);
             }
         }
-        if (blocks.isEmpty()) return null;
+        if (blocks.isEmpty() && blockTags.isEmpty()) return null;
 
         Placement placement = json.has("placement")
                 ? parsePlacement(json.get("placement")) : Placement.DEFAULT;
@@ -179,7 +261,7 @@ public record WorkJobDef(
         if (xp < 1) return null;
         List<Interaction> interactions = parseInteractions(json.get("interactions"), xp);
         if (interactions == null || (interactionsRequired && interactions.isEmpty())) return null;
-        return new BlockTarget(List.copyOf(buildings), Set.copyOf(blocks), placement,
+        return new BlockTarget(List.copyOf(buildings), Set.copyOf(blocks), List.copyOf(blockTags), placement,
                 condition, List.copyOf(interactions));
     }
 
@@ -194,10 +276,11 @@ public record WorkJobDef(
             String item = string(json, "item");
             ResourceLocation selector = item == null ? null : id(
                     item.startsWith("#") ? item.substring(1) : item);
-            if (selector == null) return null;
+            if (item != null && selector == null) return null;
 
+            boolean explicitAction = json.has("action");
             JsonElement actionJson;
-            if (json.has("action")) {
+            if (explicitAction) {
                 actionJson = json.get("action");
             } else {
                 JsonObject useBlock = new JsonObject();
@@ -207,6 +290,13 @@ public record WorkJobDef(
             }
             BlockAction action = BlockActions.parse(actionJson);
             if (action == null) return null;
+
+            BlockCondition condition = json.has("condition")
+                    ? BlockConditions.parse(json.get("condition")) : null;
+            if (json.has("condition") && condition == null) return null;
+            ItemCondition itemCondition = json.has("item_condition")
+                    ? ItemConditions.parse(json.get("item_condition")) : null;
+            if (json.has("item_condition") && (itemCondition == null || item == null)) return null;
 
             Set<ResourceLocation> outputs = new LinkedHashSet<>();
             if (json.has("output")) {
@@ -224,8 +314,9 @@ public record WorkJobDef(
                 }
             }
             int xp = integer(json, "xp", defaultXp);
-            if (outputs.isEmpty() || xp < 1) return null;
-            interactions.add(new Interaction(item, action, Set.copyOf(outputs), xp));
+            if (xp < 1 || (item == null && !explicitAction)
+                    || (!explicitAction && outputs.isEmpty())) return null;
+            interactions.add(new Interaction(item, itemCondition, condition, action, Set.copyOf(outputs), xp));
         }
         return List.copyOf(interactions);
     }
@@ -257,7 +348,9 @@ public record WorkJobDef(
         }
         List<String> copied = strings(json.get("copy_properties"));
         if (copied == null) return null;
-        return new Placement(x, y, z, Map.copyOf(properties), List.copyOf(copied));
+        BlockAction action = json.has("action") ? BlockActions.parse(json.get("action")) : null;
+        if (json.has("action") && action == null) return null;
+        return new Placement(x, y, z, Map.copyOf(properties), List.copyOf(copied), action);
     }
 
     private static boolean matchesBuildingPattern(List<String> buildings,
@@ -293,6 +386,33 @@ public record WorkJobDef(
         }
     }
 
+    private static double number(JsonObject json, String key, double fallback) {
+        try {
+            return json.has(key) && json.get(key).isJsonPrimitive()
+                    ? json.get(key).getAsDouble() : fallback;
+        } catch (RuntimeException ignored) {
+            return Double.NaN;
+        }
+    }
+
+    private static @Nullable TunableInt tunableInt(@Nullable JsonElement element, int fallback) {
+        if (element == null || element.isJsonNull()) return new TunableInt(fallback, null);
+        try {
+            if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
+                int value = element.getAsInt();
+                return value < 0 ? null : new TunableInt(value, null);
+            }
+            if (ConfigGate.validNumber(element)) {
+                int value = element.getAsJsonObject().has("default")
+                        ? element.getAsJsonObject().get("default").getAsInt() : fallback;
+                return value < 0 ? null : new TunableInt(value, element.getAsJsonObject().deepCopy());
+            }
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+        return null;
+    }
+
     private static @Nullable ResourceLocation resource(JsonObject json, String key) {
         return id(string(json, key));
     }
@@ -305,5 +425,19 @@ public record WorkJobDef(
 
     private static @Nullable ResourceLocation id(@Nullable String raw) {
         return raw == null ? null : ResourceLocation.tryParse(raw);
+    }
+
+    private static boolean validSelector(@Nullable String selector) {
+        if (selector == null) return false;
+        return id(selector.startsWith("#") ? selector.substring(1) : selector) != null;
+    }
+
+    private static boolean matchesItem(String selector, ItemStack stack) {
+        if (stack == null || stack.isEmpty() || !validSelector(selector)) return false;
+        ResourceLocation id = ResourceLocation.tryParse(
+                selector.startsWith("#") ? selector.substring(1) : selector);
+        return selector.startsWith("#")
+                ? stack.is(TagKey.create(Registries.ITEM, id))
+                : stack.is(BuiltInRegistries.ITEM.get(id));
     }
 }

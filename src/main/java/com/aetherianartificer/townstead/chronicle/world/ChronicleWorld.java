@@ -57,7 +57,7 @@ public interface ChronicleWorld {
     void putConcept(ConceptLedger.ConceptEntry entry);
 
     /**
-     * Adds to a chronicle counter. A fabricated background writes the competence
+     * Adds to a chronicle counter. A fabricated background writes the work history
      * its age and trade imply here — a number, not a replay, so no invented event
      * ever enters the archive.
      */

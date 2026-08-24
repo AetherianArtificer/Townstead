@@ -1,28 +1,17 @@
 package com.aetherianartificer.townstead.profession;
 
-import com.aetherianartificer.townstead.Townstead;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
-import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.core.registries.BuiltInRegistries;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 public final class BaristaAssignment {
-    private static final String[] BARISTA_PROFESSION_IDS = new String[] {
-            "townstead:barista"
-    };
-
     private BaristaAssignment() {}
 
     /**
@@ -40,16 +29,9 @@ public final class BaristaAssignment {
      */
     public static boolean isBaristaProfession(VillagerProfession profession) {
         if (profession == null) return false;
-        for (String id : BARISTA_PROFESSION_IDS) {
-            //? if >=1.21 {
-            ResourceLocation key = ResourceLocation.parse(id);
-            //?} else {
-            /*ResourceLocation key = new ResourceLocation(id);
-            *///?}
-            if (!BuiltInRegistries.VILLAGER_PROFESSION.containsKey(key)) continue;
-            if (BuiltInRegistries.VILLAGER_PROFESSION.get(key) == profession) return true;
-        }
-        return false;
+        ResourceLocation id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+        return ScannedProfessions.idsForTask(
+                com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW).contains(id);
     }
 
     public static boolean canVillagerWorkAsBarista(ServerLevel level, VillagerEntityMCA villager) {

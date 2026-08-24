@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.pheno.lang.compile.Severity;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.resources.ResourceLocation;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
@@ -21,6 +22,27 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unknown types and broken entries drop with diagnostics rather than silently idling villagers.
  */
 class WorkTaskSchemaTest {
+
+    @BeforeAll
+    static void loadJobTaskVocabularyBeforeProfessionFixtures() {
+        // Production reloads work_job before profession data. Mirror that ordering for the
+        // classpath fixtures rather than restoring Job-owned ids to WorkTaskTypes.
+        for (String resource : new String[]{
+                "/data/townstead/work_job/butchery_carcass.json",
+                "/data/townstead/work_job/butchery_clean_blood.json",
+                "/data/townstead/work_job/butchery_golem.json",
+                "/data/townstead/work_job/butchery_heads.json",
+                "/data/townstead/work_job/butchery_leatherworking_rewet.json",
+                "/data/townstead/work_job/butchery_rewet_cloth.json",
+                "/data/townstead/work_job/butchery_sausage_hook.json",
+                "/data/townstead/work_job/butchery_skin_rack.json",
+                "/data/townstead/work_job/butchery_slaughter.json"}) {
+            WorkTaskTypes.register(id(resourceJson(resource).get("task").getAsString()));
+        }
+        // The isolated Beekeeper-style examples stand in for a custom pack whose Job loader
+        // would have declared this task before its Profession document was parsed.
+        WorkTaskTypes.register(id("townstead_work:interact"));
+    }
 
     @Test
     void cookDeclaresItsWorkTasks() {
@@ -355,7 +377,7 @@ class WorkTaskSchemaTest {
                                   "weight": 10}]}""",
                 new Diagnostics());
         WorkTaskDef harvest = def.workTasks().get(0);
-        assertEquals(WorkTaskTypes.INTERACT, harvest.type());
+        assertEquals(id("townstead_work:interact"), harvest.type());
         assertTrue(harvest.allowsBlock(id("minecraft:beehive")));
         assertFalse(harvest.allowsBlock(id("minecraft:bee_nest")),
                 "a sample author can decide which hive blocks belong to this job");
@@ -486,17 +508,17 @@ class WorkTaskSchemaTest {
                 .findFirst().orElseThrow();
         assertTrue(smoke.workstations().tags().contains(id("townstead:smoker_stations")));
         assertTrue(smoke.recipeInputs().tags().contains(id("townstead:butcher_smoker_input")));
-        assertTrue(WorkTaskTypes.activities(smoke.type()).contains("townstead:butchered"));
+        assertTrue(WorkTaskTypes.activities(smoke.type()).contains("townstead_work:smoke"));
 
         WorkTaskDef slaughter = butcher.workTasks().stream()
-                .filter(task -> task.type().equals(WorkTaskTypes.SLAUGHTER))
+                .filter(task -> task.type().equals(id("townstead_work:slaughter")))
                 .findFirst().orElseThrow();
         assertNotNull(slaughter.order(), "order presentation belongs to the work declaration");
         assertEquals("Slaughter", slaughter.order().name());
         assertEquals(id("minecraft:iron_sword"), slaughter.order().icon());
 
         WorkTaskDef carcasses = butcher.workTasks().stream()
-                .filter(task -> task.type().equals(WorkTaskTypes.BUTCHER))
+                .filter(task -> task.type().equals(id("townstead_work:butcher")))
                 .findFirst().orElseThrow();
         assertNull(carcasses.order(),
                 "mandatory pipeline work is omitted from the player's order choices");

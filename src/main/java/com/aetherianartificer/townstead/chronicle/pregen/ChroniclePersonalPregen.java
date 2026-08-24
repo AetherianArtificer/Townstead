@@ -95,7 +95,7 @@ public final class ChroniclePersonalPregen {
         // The counters this life would have accumulated, keyed like the live taps,
         // so a milestone gate ("their first meal") means the same thing here.
         Map<String, Integer> counters = new HashMap<>();
-        Map<String, Integer> perYear = CompetenceDefs.perYear(subject.professionId());
+        Map<String, Integer> perYear = ChronicleWorkHistories.perYear(subject.professionId());
         List<Bond> bonds = new ArrayList<>();
         int workedYears = 0;
         long day = birthDay + (long) FIRST_BEAT_AGE_YEARS * dpy;
@@ -123,14 +123,14 @@ public final class ChroniclePersonalPregen {
             if (counterKey != null) counters.merge(counterKey, 1, Integer::sum);
             // The trade's ordinary volume accrues after the beat is judged, so the
             // first meal is tested as a first and the years that follow are not.
-            workedYears += accrueCompetence(counters, perYear, subject, age, workedYears);
+            workedYears += accrueWorkHistory(counters, perYear, subject, age, workedYears);
 
             Beat beat = beat(world, subject, village, others, template,
                     paramPools.get(template.id()), day, age, scope, rng, bonds);
             beats.add(beat);
         }
 
-        // A background is a summary, not a replay: what is written is the competence
+        // A background is a summary, not a replay: what is written is the work history
         // the years imply, never an invented event.
         int adultYears = Math.max(0, (int) ((today - birthDay) / dpy) - adultAge(subject));
         for (Map.Entry<String, Integer> rate : perYear.entrySet()) {
@@ -141,8 +141,9 @@ public final class ChroniclePersonalPregen {
     }
 
     /** Years of the trade that have passed since the last beat, once they are grown. */
-    private static int accrueCompetence(Map<String, Integer> counters, Map<String, Integer> perYear,
-                                        ChronicleSubject subject, int age, int workedYears) {
+    private static int accrueWorkHistory(Map<String, Integer> counters,
+                                         Map<String, Integer> perYear,
+                                         ChronicleSubject subject, int age, int workedYears) {
         int grownFor = Math.max(0, age - adultAge(subject));
         int newYears = grownFor - workedYears;
         if (newYears <= 0 || perYear.isEmpty()) return 0;

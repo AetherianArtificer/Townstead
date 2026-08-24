@@ -623,6 +623,15 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         for (ResourceLocation inline : inlineSkillIds) {
             if (!skillIds.contains(inline)) skillIds.add(inline);
         }
+        ResourceLocation workSound = null;
+        if (obj.has("work_sound")) {
+            workSound = ResourceLocation.tryParse(GsonHelper.getAsString(obj, "work_sound", ""));
+            if (workSound == null) {
+                diag.warning(JsonPath.ROOT.field("work_sound"),
+                        "work_sound must be a valid sound event id; ignoring it.",
+                        "Use a full resource id such as minecraft:entity.villager.work_butcher.");
+            }
+        }
 
         return new ProfessionDef(id, name, description,
                 new ProgressionTrack(List.copyOf(tiers), dailyCap, maxXp),
@@ -638,6 +647,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 Map.copyOf(trades),
                 obj.has("requirements") ? RequirementHint.extract(obj.get("requirements")) : List.of(),
                 obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null,
+                workSound,
                 List.copyOf(levels),
                 List.copyOf(workTasks));
     }

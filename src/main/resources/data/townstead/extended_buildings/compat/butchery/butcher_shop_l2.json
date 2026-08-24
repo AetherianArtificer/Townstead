@@ -3,6 +3,9 @@
   "catalog": {
     "node_item": "butchery:basin"
   },
+  "dialogue": {
+    "topics": ["butchery", "butcher_shop"]
+  },
   "spirit": {
     "pastoral": 8,
     "industrious": 4

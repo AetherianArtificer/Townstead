@@ -103,8 +103,6 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleConsumableEffectsSync);
         registerS2C(FarmStatusSyncPayload.class, FarmStatusSyncPayload::write, FarmStatusSyncPayload::read,
                 TownsteadNetwork::handleFarmStatusSync);
-        registerS2C(ButcherStatusSyncPayload.class, ButcherStatusSyncPayload::write, ButcherStatusSyncPayload::read,
-                TownsteadNetwork::handleButcherStatusSync);
         registerS2C(FishermanStatusSyncPayload.class, FishermanStatusSyncPayload::write, FishermanStatusSyncPayload::read,
                 TownsteadNetwork::handleFishermanStatusSync);
         registerS2C(com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.class,
@@ -740,10 +738,6 @@ public final class TownsteadNetwork {
 
     private static void handleFarmStatusSync(FarmStatusSyncPayload payload) {
         HungerClientStore.setFarmBlockedReason(payload.entityId(), payload.blockedReasonId());
-    }
-
-    private static void handleButcherStatusSync(ButcherStatusSyncPayload payload) {
-        HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId());
     }
 
     private static void handleFishermanStatusSync(FishermanStatusSyncPayload payload) {

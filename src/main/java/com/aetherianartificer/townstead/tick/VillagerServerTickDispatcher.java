@@ -1,9 +1,6 @@
 package com.aetherianartificer.townstead.tick;
 
-import com.aetherianartificer.townstead.compat.butchery.ButcherToolAcquisitionTicker;
-import com.aetherianartificer.townstead.compat.butchery.SkinRackJob;
 import com.aetherianartificer.townstead.diagnostics.TownsteadProfiler;
-import com.aetherianartificer.townstead.leatherworking.LeatherworkerSupplyAcquisitionTicker;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.storage.EmptyContainerDropoff;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -21,9 +18,6 @@ public final class VillagerServerTickDispatcher {
         if (!villager.isAlive() || villager.isRemoved()) {
             FatigueVillagerTicker.forget(villager);
             WorkToolTicker.forget(villager);
-            ButcherToolAcquisitionTicker.forget(villager);
-            LeatherworkerSupplyAcquisitionTicker.forget(villager);
-            SkinRackJob.forget(villager);
             EmptyContainerDropoff.forget(villager);
             return;
         }
@@ -47,8 +41,6 @@ public final class VillagerServerTickDispatcher {
         EmptyContainerDropoff.tick(villager);
         ProfessionProgressMemoryTicker.tick(villager);
         GuardRestEnforcerTicker.tick(villager);
-        ButcherToolAcquisitionTicker.tick(villager);
-        LeatherworkerSupplyAcquisitionTicker.tick(villager);
         WorkToolTicker.tick(villager);
         com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.tick(villager);
         com.aetherianartificer.townstead.reaction.ReactionLockTracker.tickFreeze(villager, gameTime);
@@ -79,8 +71,6 @@ public final class VillagerServerTickDispatcher {
         profile("villager.container_dropoff", () -> EmptyContainerDropoff.tick(villager));
         profile("villager.profession_memory", () -> ProfessionProgressMemoryTicker.tick(villager));
         profile("villager.guard_rest", () -> GuardRestEnforcerTicker.tick(villager));
-        profile("villager.butcher_tool_acquire", () -> ButcherToolAcquisitionTicker.tick(villager));
-        profile("villager.leatherworker_supply", () -> LeatherworkerSupplyAcquisitionTicker.tick(villager));
         profile("villager.work_tool", () -> WorkToolTicker.tick(villager));
         profile("villager.work_feedback", () ->
                 com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.tick(villager));

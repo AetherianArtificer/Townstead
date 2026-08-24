@@ -155,8 +155,8 @@ public final class StorageRoles {
                 }
                 StorageRoleDef def = StorageRoleDef.parse(e.getKey(), obj);
                 if (def == null) {
-                    LOGGER.warn("Invalid storage role {} (needs \"role\": storage|not_storage and a"
-                            + " non-empty \"blocks\" list)", e.getKey());
+                    LOGGER.warn("Invalid storage role {} (needs \"role\": storage|not_storage and"
+                            + " non-empty \"blocks\" and/or \"namespaces\")", e.getKey());
                     continue;
                 }
                 defs.add(def);

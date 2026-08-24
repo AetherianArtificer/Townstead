@@ -7,12 +7,15 @@
     "type": "pheno:and",
     "conditions": [
       {
-        "type": "townstead:work_signal",
-        "signal": "townstead_butchery:has_carcass_shop"
+        "type": "pheno:inventory",
+        "item_condition": { "type": "pheno:ingredient", "tag": "butchery:raw_meats" }
       },
       {
-        "type": "townstead:work_signal",
-        "signal": "townstead_butchery:no_grinder"
+        "type": "townstead:worksite",
+        "scope": "village",
+        "block_condition": { "type": "pheno:block", "block": "butchery:meat_grinder" },
+        "compare_to": 0,
+        "comparison": "=="
       }
     ]
   },

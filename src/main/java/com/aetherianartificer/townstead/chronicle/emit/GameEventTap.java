@@ -24,7 +24,7 @@ import java.util.Map;
  *
  * <p>This is the perception layer, and it is mod-neutral for free: any mod's
  * explosion fires {@code minecraft:explode}, so nothing needs a compat module.
- * The semantic taps ({@code townstead:cooked} and friends) stay, because they
+ * Work-completion taps (such as {@code townstead_work:cook}) stay, because they
  * carry meaning a raw game event cannot — which recipe, which profession, how
  * much XP — while these carry only "this happened, here".</p>
  *

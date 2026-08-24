@@ -10,7 +10,7 @@
   ],
   "trigger": {
     "type": "work",
-    "key": "townstead:slaughtered"
+    "key": "townstead:butchery_slaughter"
   },
   "reach": "village",
   "news_value": 4.0,
@@ -27,7 +27,7 @@
           },
           {
             "type": "pheno:chronicle_count",
-            "key": "townstead:slaughtered",
+            "key": "townstead:butchery_slaughter",
             "at_least": 1,
             "at_most": 1
           }

@@ -1,5 +1,6 @@
 {
   "schema": "townstead:profession_work/v1",
+  "register_profession": true,
   "poi": [
     {
       "type": "townstead:building",

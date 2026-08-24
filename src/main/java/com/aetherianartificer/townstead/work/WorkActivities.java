@@ -19,10 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * say "do this before that", and deciding it needs one thing each job can answer: is there any of
  * you to do right now?</p>
  *
- * <p>Tasks answer for themselves by registering a probe. The pattern is the codebase's own —
- * {@code SlaughterWorkTask} already stands aside for {@code CarcassWorkTask.hasActionableWork} —
- * generalised so the order of deference comes from the player's list rather than from which task
- * happened to name which other one.</p>
+ * <p>Bespoke tasks register their own probes. Data-authored block Jobs share the generic Job
+ * executor's probe, so adding a new action document does not require another task class.</p>
  */
 public final class WorkActivities {
 
@@ -40,22 +38,10 @@ public final class WorkActivities {
 
     private WorkActivities() {}
 
-    /** Register the live probes owned by bespoke task engines. Presentation stays in work data. */
+    /** Register the live probes owned by bespoke task engines. Job executors register through data. */
     public static void bootstrap() {
-        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.SLAUGHTER,
-                com.aetherianartificer.townstead.compat.butchery.SlaughterWorkTask::hasWorkWaiting);
-        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.DISMANTLE,
-                com.aetherianartificer.townstead.compat.butchery.GolemProcessingTask::hasWorkWaiting);
-        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.HAMMER,
-                com.aetherianartificer.townstead.compat.butchery.HeadHammeringTask::hasWorkWaiting);
-        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CLEAN,
-                com.aetherianartificer.townstead.compat.butchery.BloodCleanupTask::hasWorkWaiting);
-        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BUTCHER,
-                com.aetherianartificer.townstead.compat.butchery.CarcassWorkTask::hasActionableWork);
-        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CURE,
-                com.aetherianartificer.townstead.compat.butchery.SausageHookTask::hasWorkWaiting);
-        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.DELIVER,
-                com.aetherianartificer.townstead.compat.butchery.ButcherDeliveryTask::hasWorkWaiting);
+        // Intentionally empty today. Code-owned engines may still register probes here; both
+        // generic Job executors are discovered and dispatched below from the loaded documents.
     }
 
     /**
@@ -84,7 +70,7 @@ public final class WorkActivities {
     public static boolean isDiscretionary(ServerLevel level,
                                           com.aetherianartificer.townstead.work.site.Worksite site,
                                           @Nullable ResourceLocation id) {
-        if (id == null || !ENTRIES.containsKey(id)) return false;
+        if (!isExecutable(id)) return false;
         var extent = com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, site);
         for (var task : com.aetherianartificer.townstead.work.site.WorksiteWork
                 .declaredTasksAt(level, site, extent, id)) {
@@ -102,6 +88,9 @@ public final class WorkActivities {
     /** Every declared job, in a stable order. */
     public static List<ResourceLocation> all() {
         List<ResourceLocation> out = new ArrayList<>(ENTRIES.keySet());
+        for (var job : com.aetherianartificer.townstead.work.job.WorkJobs.all()) {
+            if (!out.contains(job.task())) out.add(job.task());
+        }
         out.sort(java.util.Comparator.comparing(ResourceLocation::toString));
         return List.copyOf(out);
     }
@@ -115,7 +104,7 @@ public final class WorkActivities {
                 com.aetherianartificer.townstead.work.site.WorksiteWork.typesAt(level, site, extent));
         types.sort(java.util.Comparator.comparing(ResourceLocation::toString));
         for (ResourceLocation id : types) {
-            if (!ENTRIES.containsKey(id)) continue;
+            if (!isExecutable(id)) continue;
             for (var task : com.aetherianartificer.townstead.work.site.WorksiteWork
                     .declaredTasksAt(level, site, extent, id)) {
                 if (task.order() == null) continue;
@@ -127,7 +116,7 @@ public final class WorkActivities {
     }
 
     public static boolean isKnown(@Nullable ResourceLocation id) {
-        return id != null && ENTRIES.containsKey(id);
+        return isExecutable(id);
     }
 
     /** What to call this job on screen. Falls back to the id's path so nothing renders blank. */
@@ -139,7 +128,7 @@ public final class WorkActivities {
 
     private static @Nullable com.aetherianartificer.townstead.profession.def.WorkTaskDef.OrderOption
     orderOf(@Nullable ResourceLocation id) {
-        if (id == null || !ENTRIES.containsKey(id)) return null;
+        if (!isExecutable(id)) return null;
         for (var profession : com.aetherianartificer.townstead.profession.def.ProfessionDefs
                 .all().values()) {
             for (var task : profession.workTasks()) {
@@ -152,13 +141,26 @@ public final class WorkActivities {
     /** Whether this job has work waiting. Unknown jobs report none, so they never outrank anything. */
     public static boolean hasWork(ServerLevel level, VillagerEntityMCA villager, @Nullable ResourceLocation id) {
         Entry entry = id == null ? null : ENTRIES.get(id);
-        if (entry == null) return false;
         try {
-            return entry.probe().hasWork(level, villager);
+            if (entry != null && entry.probe().hasWork(level, villager)) return true;
+            for (var job : com.aetherianartificer.townstead.work.job.WorkJobs.forTask(id)) {
+                if (job.type().equals(com.aetherianartificer.townstead.work.job.WorkJobDef.ENTITY_DELIVERY)
+                        && com.aetherianartificer.townstead.work.job.EntityDeliveryWorkTask
+                        .hasWork(level, villager, id)) return true;
+                if (job.type().equals(com.aetherianartificer.townstead.work.job.WorkJobDef.BLOCK_INTERACTION)
+                        && com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask
+                        .hasWork(level, villager, id)) return true;
+            }
+            return false;
         } catch (Throwable ignored) {
             // A probe throwing must not take out the eligibility check that asked it.
             return false;
         }
+    }
+
+    private static boolean isExecutable(@Nullable ResourceLocation id) {
+        return id != null && (ENTRIES.containsKey(id)
+                || com.aetherianartificer.townstead.work.job.WorkJobs.handlesTask(id));
     }
 
     /**

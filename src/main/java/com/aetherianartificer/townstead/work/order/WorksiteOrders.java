@@ -19,9 +19,9 @@ import java.util.function.Function;
  *
  * <p>The order seam used to live entirely inside {@code ProducerWorkTask}, which made orders a
  * feature of the three trades that happen to extend it. Most work in Townstead is not shaped like
- * that: a butcher's grinder runs its own state machine and picks from an enum of recipes in
- * declaration order, and that hardcoded order is exactly the thing a player should be able to
- * overrule. Nothing about consulting a list requires a particular base class — only an output id
+ * that: independent station and interaction engines do not share a producer base class, yet a
+ * player should still be able to overrule their natural selection order. Nothing about consulting
+ * a list requires a particular base class — only an output id
  * per candidate.</p>
  */
 public final class WorksiteOrders {

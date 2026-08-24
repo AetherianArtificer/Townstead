@@ -75,7 +75,7 @@ public record ChronicleEventTemplate(
         }
     }
 
-    /** Semantic tap key, e.g. {@code work / townstead:cooked}. */
+    /** Trigger key, e.g. {@code work / townstead_work:cook}. */
     public record TriggerKey(String type, String key) {
         @Override
         public String toString() {

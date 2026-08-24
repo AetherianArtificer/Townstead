@@ -55,7 +55,7 @@ public final class SimTemplates {
             }
         }
         warnings.addAll(SimBondKinds.load(dataRoot, allLang));
-        warnings.addAll(SimCompetence.load(dataRoot));
+        warnings.addAll(SimChronicleWorkHistory.load(dataRoot));
 
         try (Stream<Path> namespaces = Files.list(dataRoot)) {
             for (Path namespaceDir : namespaces.filter(Files::isDirectory).toList()) {

@@ -261,6 +261,50 @@ public final class PhenoSchemas {
                 .field(of("z", PhenoType.INT))
                 .field(required("block_action", PhenoType.BLOCK_ACTION)).primaryChild("block_action").build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:set_block", NodeDomain.BLOCK_ACTION)
+                .doc("Replaces the focused block; the id may be literal or derived from the current block.")
+                .field(required("block", PhenoType.ANY))
+                .field(of("properties", PhenoType.OBJECT))
+                .field(of("copy_from", PhenoType.INT).asList()
+                        .doc("Relative [x,y,z] source for copied properties; defaults to the replaced block."))
+                .field(of("copy_properties", PhenoType.STRING).asList()).build());
+        NodeSchemas.register(NodeSchema.of("pheno:modify_block_state", NodeDomain.BLOCK_ACTION)
+                .doc("Sets, cycles, or numerically changes one block-state property.")
+                .field(required("property", PhenoType.STRING))
+                .field(of("value", PhenoType.STRING))
+                .field(of("operation", PhenoType.STRING))
+                .field(of("amount", PhenoType.INT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:change_block_data", NodeDomain.BLOCK_ACTION)
+                .doc("Sets, adds to, or removes a scalar persistent-data key on the focused block entity.")
+                .field(required("key", PhenoType.STRING))
+                .field(of("operation", PhenoType.STRING))
+                .field(of("value", PhenoType.ANY))
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:item_action", NodeDomain.BLOCK_ACTION)
+                .doc("Runs an item action on a named item role in the block transaction.")
+                .field(of("item", PhenoType.STRING))
+                .field(required("action", PhenoType.ITEM_ACTION)).primaryChild("action").build());
+        NodeSchemas.register(NodeSchema.of("pheno:loot_table", NodeDomain.BLOCK_ACTION)
+                .doc("Rolls a literal or block-derived loot table and returns its products to the transaction.")
+                .field(required("table", PhenoType.ANY)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:return_item", NodeDomain.BLOCK_ACTION)
+                .doc("Returns a literal or block-derived item to the surrounding transaction.")
+                .field(required("item", PhenoType.ANY))
+                .field(of("count", PhenoType.INT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:level_event", NodeDomain.BLOCK_ACTION)
+                .doc("Emits a vanilla level event at the focused block.")
+                .field(required("event", PhenoType.INT))
+                .field(of("data", PhenoType.STRING)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:change_data", NodeDomain.ITEM_ACTION)
+                .doc("Sets, adds to, or removes a scalar custom-data key on the focused item stack.")
+                .field(required("key", PhenoType.STRING))
+                .field(of("operation", PhenoType.STRING))
+                .field(of("value", PhenoType.ANY))
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
+
         // --- Consolidated condition ---
         NodeSchemas.register(NodeSchema.of("pheno:reserved", NodeDomain.CONDITION)
                 .doc("Tests whether the current entity is held by any live Pheno reservation.").build());
@@ -295,6 +339,32 @@ public final class PhenoSchemas {
                 .field(of("max_buildings", PhenoType.INT))
                 .field(of("min_population", PhenoType.INT))
                 .field(of("max_population", PhenoType.INT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:config", NodeDomain.CONDITION)
+                .doc("Tests a value in an ordinary global or per-world TOML config file.")
+                .field(required("file", PhenoType.STRING))
+                .field(required("path", PhenoType.STRING).asList())
+                .field(required("equals", PhenoType.ANY))
+                .field(of("default", PhenoType.ANY))
+                .field(of("scope", PhenoType.STRING).doc("global (default) or server."))
+                .build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:inventory", NodeDomain.CONDITION)
+                .doc("Counts matching items carried by a player, villager, or other inventory carrier.")
+                .field(required("item_condition", PhenoType.OBJECT))
+                .field(of("min", PhenoType.INT))
+                .field(of("max", PhenoType.INT)).build());
+
+        NodeSchemas.register(NodeSchema.of("townstead:worksite", NodeDomain.CONDITION)
+                .doc("Counts matching workplaces, blocks, or living entities without domain-specific Java.")
+                .field(of("scope", PhenoType.STRING)
+                        .doc("assigned (default), profession, or village."))
+                .field(of("buildings", PhenoType.STRING).asList()
+                        .doc("Exact building types or trailing-* prefixes."))
+                .field(of("block_condition", PhenoType.OBJECT))
+                .field(of("entity_condition", PhenoType.CONDITION))
+                .field(of("comparison", PhenoType.STRING))
+                .field(of("compare_to", PhenoType.INT)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:movement", NodeDomain.CONDITION)
                 .doc("Entity movement, pose, flight, and collision state.")

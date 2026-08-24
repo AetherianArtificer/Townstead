@@ -43,7 +43,7 @@ import java.util.function.Predicate;
  * block's own clock, and shelves what comes out. Adding a trade of this shape is data:
  * a profession def declaring the task type and a workstation def naming it.
  *
- * <p>Bespoke engines (cook, butcher) keep their types; {@link WorkTaskTypes} routes each type
+ * <p>Other producer engines keep their types; {@link WorkTaskTypes} routes each type
  * to exactly one driver, so a station is never worked by two engines at once.</p>
  */
 public class StationWorkTask extends ProducerWorkTask {

@@ -13,7 +13,6 @@ import com.aetherianartificer.townstead.fatigue.FatigueClientStore;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.FatigueSetPayload;
 import com.aetherianartificer.townstead.fatigue.FatigueSyncPayload;
-import com.google.common.collect.ImmutableSet;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSetPayload;
 import com.aetherianartificer.townstead.farming.FieldPostConfigSyncPayload;
 import com.aetherianartificer.townstead.farming.FieldPostGridSyncPayload;
@@ -62,7 +61,6 @@ import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.hunger.FarmStatusSyncPayload;
-import com.aetherianartificer.townstead.hunger.ButcherStatusSyncPayload;
 import com.aetherianartificer.townstead.hunger.FishermanHookLinkPayload;
 import com.aetherianartificer.townstead.hunger.FishermanHookLinkStore;
 import com.aetherianartificer.townstead.hunger.FishermanStatusSyncPayload;
@@ -100,9 +98,7 @@ import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
-import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.entity.npc.VillagerProfession;
-import net.minecraft.sounds.SoundEvents;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Optional;
@@ -151,8 +147,6 @@ public class Townstead {
     private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
             DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, MOD_ID);
     //?}
-    private static final DeferredRegister<VillagerProfession> PROFESSIONS =
-            DeferredRegister.create(net.minecraft.core.registries.Registries.VILLAGER_PROFESSION, MOD_ID);
     private static final DeferredRegister<net.minecraft.world.item.crafting.RecipeSerializer<?>> RECIPE_SERIALIZERS =
             DeferredRegister.create(net.minecraft.core.registries.Registries.RECIPE_SERIALIZER, MOD_ID);
     private static final DeferredRegister<Block> BLOCKS =
@@ -205,42 +199,6 @@ public class Townstead {
                     .build()
     );
     //?}
-
-    public static final Supplier<VillagerProfession> COOK_PROFESSION = PROFESSIONS.register(
-            "cook",
-            () -> new VillagerProfession(
-                    "cook",
-                    PoiType.NONE,
-                    PoiType.NONE,
-                    ImmutableSet.of(),
-                    ImmutableSet.of(),
-                    SoundEvents.VILLAGER_WORK_BUTCHER
-            )
-    );
-
-    public static final Supplier<VillagerProfession> BARISTA_PROFESSION = PROFESSIONS.register(
-            "barista",
-            () -> new VillagerProfession(
-                    "barista",
-                    PoiType.NONE,
-                    PoiType.NONE,
-                    ImmutableSet.of(),
-                    ImmutableSet.of(),
-                    SoundEvents.VILLAGER_WORK_BUTCHER
-            )
-    );
-
-    public static final Supplier<VillagerProfession> SCRIBE_PROFESSION = PROFESSIONS.register(
-            "scribe",
-            () -> new VillagerProfession(
-                    "scribe",
-                    PoiType.NONE,
-                    PoiType.NONE,
-                    ImmutableSet.of(),
-                    ImmutableSet.of(),
-                    SoundEvents.VILLAGER_WORK_LIBRARIAN
-            )
-    );
 
     // ── Field Post block ──
 
@@ -421,8 +379,6 @@ public class Townstead {
     //? if neoforge {
     public Townstead(IEventBus modBus, ModContainer modContainer) {
         ATTACHMENTS.register(modBus);
-        PROFESSIONS.register(modBus);
-        // After PROFESSIONS so the Java registrations land first and the scan can skip them
         modBus.addListener(com.aetherianartificer.townstead.profession.ScannedProfessions::onRegister);
         BLOCKS.register(modBus);
         ITEMS.register(modBus);
@@ -825,8 +781,6 @@ public class Townstead {
     //?} else if forge {
     /*public Townstead() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
-        PROFESSIONS.register(modBus);
-        // After PROFESSIONS so the Java registrations land first and the scan can skip them
         modBus.addListener(com.aetherianartificer.townstead.profession.ScannedProfessions::onRegister);
         BLOCKS.register(modBus);
         ITEMS.register(modBus);
@@ -1275,46 +1229,14 @@ public class Townstead {
             // After the trade-specific catalogues so their richer entries win the output dedup.
             com.aetherianartificer.townstead.work.order.StationProduceCatalog.bootstrap();
             com.aetherianartificer.townstead.compat.pizzadelight.PizzaDelightCompat.bootstrap();
-            if (!ModCompat.hasKitchenProvider()) return;
-            // Specialization paths read worksite contents through the cook-assignment model.
-            com.aetherianartificer.townstead.profession.career.PathAffinity.registerWorksiteProbe(
-                    (entity, worksites) -> entity
-                            instanceof net.conczin.mca.entity.VillagerEntityMCA villager
-                            && entity.level() instanceof net.minecraft.server.level.ServerLevel server
-                            && com.aetherianartificer.townstead.profession.ProfessionSites.worksiteContainsAny(server, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK), worksites));
-            VillagerProfession cook = COOK_PROFESSION.get();
-            // MCA drops non-important professions with no JOB_SITE memory.
-            // Mark cook important so kitchen-assigned cooks are retained.
-            //? if neoforge {
-            ProfessionsMCA.IS_IMPORTANT.add(cook);
-            ProfessionsMCA.CAN_NOT_TRADE.remove(cook);
-            //?} else {
-            /*ProfessionsMCA.isImportant.add(cook);
-            ProfessionsMCA.canNotTrade.remove(cook);
-            *///?}
-            com.aetherianartificer.townstead.profession.PoilessTradingProfessions.register(COOK_PROFESSION);
-
-            if (ModCompat.isLoaded("rusticdelight")) {
-                VillagerProfession barista = BARISTA_PROFESSION.get();
-                //? if neoforge {
-                ProfessionsMCA.IS_IMPORTANT.add(barista);
-                ProfessionsMCA.CAN_NOT_TRADE.remove(barista);
-                //?} else {
-                /*ProfessionsMCA.isImportant.add(barista);
-                ProfessionsMCA.canNotTrade.remove(barista);
-                *///?}
-                com.aetherianartificer.townstead.profession.PoilessTradingProfessions.register(BARISTA_PROFESSION);
+            if (ModCompat.hasKitchenProvider()) {
+                // Specialization paths read worksite contents through the cook-assignment model.
+                com.aetherianartificer.townstead.profession.career.PathAffinity.registerWorksiteProbe(
+                        (entity, worksites) -> entity
+                                instanceof net.conczin.mca.entity.VillagerEntityMCA villager
+                                && entity.level() instanceof net.minecraft.server.level.ServerLevel server
+                                && com.aetherianartificer.townstead.profession.ProfessionSites.worksiteContainsAny(server, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK), worksites));
             }
-
-            VillagerProfession scribe = SCRIBE_PROFESSION.get();
-            //? if neoforge {
-            ProfessionsMCA.IS_IMPORTANT.add(scribe);
-            ProfessionsMCA.CAN_NOT_TRADE.remove(scribe);
-            //?} else {
-            /*ProfessionsMCA.isImportant.add(scribe);
-            ProfessionsMCA.canNotTrade.remove(scribe);
-            *///?}
-            com.aetherianartificer.townstead.profession.PoilessTradingProfessions.register(SCRIBE_PROFESSION);
 
             // Scanned professions: POI-backed ones behave like any vanilla profession; the
             // POI-less ones (building/always job sites) get the cook treatment so MCA does
@@ -1569,6 +1491,11 @@ public class Townstead {
                         "pheno:hostile", ctx -> ctx.entity() instanceof net.minecraft.world.entity.monster.Enemy),
                 new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
                         "pheno:alive", ctx -> ctx.entity().isAlive()),
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:baby", ctx -> ctx.entity() instanceof net.minecraft.world.entity.AgeableMob mob
+                                && mob.isBaby()),
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:named", ctx -> ctx.entity().hasCustomName()),
         };
         for (var state : states) {
             com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(state);
@@ -1696,6 +1623,10 @@ public class Townstead {
                 new com.aetherianartificer.townstead.root.condition.types.RootConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.PersonalityConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.ConfigConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.work.condition.WorksiteConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.work.feedback.WorkSignalConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
@@ -1883,6 +1814,12 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.value.types.BondCountValueType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.BondMaxValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.GameTimeValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.BlockDataValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.ArithmeticValueType());
     }
 
     private static void registerActionTypes() {
@@ -2037,6 +1974,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.action.item.types.CooldownItemActionType());
         com.aetherianartificer.townstead.pheno.action.item.ItemActionTypes.register(
                 new com.aetherianartificer.townstead.root.collection.ChangeCollectionItemActionType());
+        com.aetherianartificer.townstead.pheno.action.item.ItemActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.item.types.ChangeDataItemActionType());
     }
 
     private static void registerBlockActionTypes() {
@@ -2068,6 +2007,24 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.action.block.types.UseBlockBlockActionType());
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.root.collection.ChangeCollectionBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.ChangeBlockDataBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.ItemActionBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.LootTableBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.ReturnItemBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.PlaySoundBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.SpawnParticlesBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.LevelEventBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.IfElseBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.NothingBlockActionType());
     }
 
     /** Datapack wheel actions: the reload listener AND the provider, so both see one map. */
@@ -2091,17 +2048,19 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.root.gene.GeneJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.rig.RigJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.disposition.DispositionRelationsLoader());
+        // Jobs load before professions so their data-authored task ids participate in profession
+        // validation during the same reload rather than requiring a Java vocabulary entry.
+        event.addListener(new com.aetherianartificer.townstead.work.job.WorkJobs.Loader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.work.feedback.ProfessionFeedbackJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ComboSkills.Loader());
         event.addListener(new com.aetherianartificer.townstead.social.BondKindJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.collection.CollectionJsonLoader());
-        event.addListener(new com.aetherianartificer.townstead.chronicle.pregen.CompetenceJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.chronicle.pregen.ChronicleWorkHistoryLoader());
         event.addListener(new com.aetherianartificer.townstead.needs.Consumables.Loader());
         event.addListener(new com.aetherianartificer.townstead.needs.Amenities.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.station.Workstations.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes.Loader());
-        event.addListener(new com.aetherianartificer.townstead.work.job.WorkJobs.Loader());
         event.addListener(new com.aetherianartificer.townstead.storage.StorageRoles.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry.ReloadHook());
         event.addListener(new com.aetherianartificer.townstead.root.ability.ResourceHudDefinitions.ColorThemeLoader());
@@ -2171,23 +2130,8 @@ public class Townstead {
     }
 
     private static boolean townstead$buildingMatchesLifeTopic(String type, String topic) {
-        return switch (topic) {
-            case "butchery" -> type.equals("butcher")
-                    || type.equals("compat/butchery/butcher_shop_l1")
-                    || type.equals("compat/butchery/butcher_shop_l2")
-                    || type.equals("compat/butchery/butcher_shop_l3")
-                    || type.equals("compat/butchery/slaughterhouse")
-                    || type.equals("compat/butchery/smokehouse")
-                    || type.equals("compat/butchery/tannery");
-            case "butcher_shop" -> type.equals("butcher")
-                    || type.equals("compat/butchery/butcher_shop_l1")
-                    || type.equals("compat/butchery/butcher_shop_l2")
-                    || type.equals("compat/butchery/butcher_shop_l3");
-            case "slaughterhouse" -> type.equals("compat/butchery/slaughterhouse");
-            case "smokehouse" -> type.equals("compat/butchery/smokehouse");
-            case "tannery" -> type.equals("compat/butchery/tannery");
-            default -> false;
-        };
+        return com.aetherianartificer.townstead.work.feedback.BuildingDialogueTopics
+                .matches(type, topic);
     }
 
     private static boolean townstead$hungerAtLeast(HungerData.HungerState current, String minimumState) {
@@ -2505,11 +2449,6 @@ public class Townstead {
                 FarmStatusSyncPayload.TYPE,
                 FarmStatusSyncPayload.STREAM_CODEC,
                 this::handleFarmStatusSync
-        );
-        registrar.playToClient(
-                ButcherStatusSyncPayload.TYPE,
-                ButcherStatusSyncPayload.STREAM_CODEC,
-                this::handleButcherStatusSync
         );
         registrar.playToClient(
                 FishermanStatusSyncPayload.TYPE,
@@ -3362,10 +3301,6 @@ public class Townstead {
 
     private void handleFarmStatusSync(FarmStatusSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> HungerClientStore.setFarmBlockedReason(payload.entityId(), payload.blockedReasonId()));
-    }
-
-    private void handleButcherStatusSync(ButcherStatusSyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> HungerClientStore.setButcherBlockedReason(payload.entityId(), payload.blockedReasonId()));
     }
 
     private void handleFishermanStatusSync(FishermanStatusSyncPayload payload, IPayloadContext context) {
@@ -4238,10 +4173,6 @@ public class Townstead {
                 villager.getId(),
                 HungerData.getFarmBlockedReason(hunger).id()
         ));
-        PacketDistributor.sendToPlayer(sp, new ButcherStatusSyncPayload(
-                villager.getId(),
-                HungerData.getButcherBlockedReason(hunger).id()
-        ));
         CompoundTag fatigue = state.needs().fatigueTag();
         PacketDistributor.sendToPlayer(sp, townstead$fatigueSync(villager, fatigue));
         CompoundTag shift = state.schedule().toTag();
@@ -4267,10 +4198,6 @@ public class Townstead {
         TownsteadNetwork.sendToPlayer(sp, new FarmStatusSyncPayload(
                 villager.getId(),
                 HungerData.getFarmBlockedReason(hunger).id()
-        ));
-        TownsteadNetwork.sendToPlayer(sp, new ButcherStatusSyncPayload(
-                villager.getId(),
-                HungerData.getButcherBlockedReason(hunger).id()
         ));
         CompoundTag fatigue = state.needs().fatigueTag();
         TownsteadNetwork.sendToPlayer(sp, townstead$fatigueSync(villager, fatigue));

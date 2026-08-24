@@ -80,8 +80,6 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
             net.minecraft.resources.ResourceLocation taskType,
             @Nullable net.minecraft.resources.ResourceLocation secondaryTaskType,
             ProducerRole role,
-            String activityKey,
-            net.minecraft.resources.ResourceLocation fallbackCareer,
             java.util.function.BooleanSupplier enabled) {}
 
     private final Spec spec;
@@ -566,19 +564,18 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
             metadata.put("taste", lastAppraisal.label());
             lastAppraisal = null;
         }
-        // Credit the villager's own canonical career (a cook-family career levels itself;
-        // careers are flat, XP never propagates), falling back to Cook for aliases and
-        // professions without defs.
-        ResourceLocation careerId = spec.fallbackCareer();
+        // Credit the villager's own canonical career. Careers are flat: a profession composing
+        // this engine levels itself, with no privileged built-in fallback.
+        ResourceLocation careerId = null;
         VillagerProfession profession = villager.getVillagerData().getProfession();
         if (com.aetherianartificer.townstead.work.WorkTaskDeclarations.professionDeclares(profession, taskTypes)) {
-            ResourceLocation canonical = com.aetherianartificer.townstead.profession.def.ProfessionDefs
+            careerId = com.aetherianartificer.townstead.profession.def.ProfessionDefs
                     .canonicalId(BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession));
-            if (canonical != null) careerId = canonical;
         }
+        if (careerId == null) return;
         // The engine owns the completed-work activity. A profession chooses this task; it does
         // not get to rename the same work in the Chronicle.
-        String activity = spec.activityKey();
+        String activity = spec.taskType().toString();
         com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
                 villager, careerId, xp, level.getGameTime(),
                 activity, activeRecipe.output(), "dish", activeRecipe.tier(),
@@ -852,8 +849,6 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     protected void announceBlocked(ServerLevel level, VillagerEntityMCA villager, long gameTime,
                                    ProducerBlockedReason reason, @Nullable String detail) {
         if (reason == ProducerBlockedReason.NONE || reason == ProducerBlockedReason.NO_RECIPE) return;
-        boolean barista = spec.role() == ProducerRole.BARISTA;
-        boolean butcher = spec.role() == ProducerRole.BUTCHER;
         if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
                 .repeatedRequestsEnabled()) return;
         if (shouldSuppressStaleRequest(level, villager, reason)) return;
@@ -868,22 +863,31 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
             return;
         }
         String rule = switch (reason) {
-            case NO_WORKSITE -> barista ? "no_cafe" : butcher ? "no_smoker" : "no_kitchen";
-            case NO_INGREDIENTS -> butcher ? "no_input"
-                    : detail != null && !detail.isBlank() ? "no_ingredients_item" : "no_ingredients";
-            case NO_STORAGE -> butcher ? "output_blocked" : "no_storage";
+            case NO_WORKSITE -> "no_worksite";
+            case NO_INGREDIENTS -> detail != null && !detail.isBlank() ? "no_input_item" : "no_input";
+            case NO_STORAGE -> "no_storage";
             case UNREACHABLE -> "unreachable";
             default -> null;
         };
         if (rule == null) return;
         Object[] arguments = reason == ProducerBlockedReason.NO_INGREDIENTS
-                && detail != null && !detail.isBlank() && !butcher
+                && detail != null && !detail.isBlank()
                 ? new Object[]{detail} : new Object[0];
+        ResourceLocation career = com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                .canonicalId(BuiltInRegistries.VILLAGER_PROFESSION
+                        .getKey(villager.getVillagerData().getProfession()));
+        if (career == null) return;
         if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
-                villager, spec.fallbackCareer(), rule, gameTime, arguments)) return;
+                villager, career, rule, gameTime, arguments)) {
+            // The item-specific form is optional. A profession may author only the general input
+            // request and still receive useful feedback.
+            if (!"no_input_item".equals(rule)
+                    || !com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                    villager, career, "no_input", gameTime)) return;
+        }
         nextRequestTick = gameTime
                 + com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
-                .effectiveInterval(spec.fallbackCareer());
+                .effectiveInterval(career);
     }
 
     private boolean shouldSuppressStaleRequest(

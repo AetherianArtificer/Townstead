@@ -105,7 +105,7 @@ public class WorksiteRegister extends SavedData {
     /**
      * Whether any worksite anywhere holds an activity line.
      *
-     * <p>Exists so the butchery tasks can ask "may I?" in their start conditions without paying for
+     * <p>Exists so work tasks can ask "may I?" in their start conditions without paying for
      * it. Those run in brain eligibility, every villager every tick, and resolving a worksite means
      * walking villages and buildings — far too expensive to do speculatively. In the overwhelming
      * case there are no activity lines at all and this answers false immediately.</p>

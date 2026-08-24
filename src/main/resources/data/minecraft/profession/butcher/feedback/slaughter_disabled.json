@@ -7,12 +7,17 @@
     "type": "pheno:and",
     "conditions": [
       {
-        "type": "townstead:work_signal",
-        "signal": "townstead_butchery:has_carcass_shop"
+        "type": "townstead:worksite",
+        "scope": "profession",
+        "buildings": ["compat/butchery/butcher_shop_l*"]
       },
       {
-        "type": "townstead:work_signal",
-        "signal": "townstead_butchery:slaughter_disabled"
+        "type": "pheno:config",
+        "scope": "server",
+        "file": "townstead-server.toml",
+        "path": ["professionWork", "allowLethalWork"],
+        "equals": false,
+        "default": true
       }
     ]
   },

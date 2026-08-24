@@ -164,7 +164,7 @@ public final class NearbyItemSources {
             if (observed.protectedStorage()) continue;
             BlockEntity be = observed.blockEntity();
             // Exclude processing containers from generic storage insertion.
-            // Production tasks (e.g. butcher smoker workflow) target these explicitly.
+            // Production tasks target processing containers explicitly.
             if (isProcessingContainer(observed.state(), be)) continue;
             if (be instanceof Container container) {
                 int beforeCount = stack.getCount();
@@ -286,12 +286,6 @@ public final class NearbyItemSources {
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (id == null) return false;
         String path = id.getPath();
-        // Butchery's MCreator-generated blocks ALL carry internal item slots whether or not the
-        // block uses them, and a generic deposit scan treats those as bottomless sinks. A tag
-        // cannot say "this whole namespace" without listing blocks nobody has enumerated, so the
-        // rule stays here — and anything it catches wrongly goes in #townstead:storage, which is
-        // already how butchery:freezer gets out.
-        if ("butchery".equals(id.getNamespace())) return true;
         // A name that reads like machinery. Crude and deliberately so — it exists to keep
         // villagers out of an unknown mod's equipment, and any block it catches wrongly is
         // rescued by putting it in #townstead:storage.

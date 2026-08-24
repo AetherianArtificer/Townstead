@@ -10,7 +10,7 @@
   ],
   "trigger": {
     "type": "work",
-    "key": "townstead:butchered"
+    "key": "townstead:butchery_carcass"
   },
   "reach": "village",
   "news_value": 5.0,
@@ -27,7 +27,7 @@
           },
           {
             "type": "pheno:chronicle_count",
-            "key": "townstead:butchered",
+            "key": "townstead:butchery_carcass",
             "at_least": 100,
             "at_most": 100
           }

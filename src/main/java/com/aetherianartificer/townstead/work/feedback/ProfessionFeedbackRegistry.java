@@ -27,6 +27,13 @@ public final class ProfessionFeedbackRegistry {
                             .thenComparing(ProfessionFeedbackDocument.Rule::id))
                     .toList();
         }
+
+        public List<ProfessionFeedbackDocument.Rule> risingRules() {
+            return rules.values().stream().filter(ProfessionFeedbackDocument.Rule::rising)
+                    .sorted(Comparator.comparingInt(ProfessionFeedbackDocument.Rule::priority).reversed()
+                            .thenComparing(ProfessionFeedbackDocument.Rule::id))
+                    .toList();
+        }
     }
 
     private static volatile Map<ResourceLocation, Channel> CHANNELS = Map.of();

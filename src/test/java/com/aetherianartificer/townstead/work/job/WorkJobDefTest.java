@@ -6,20 +6,23 @@ import org.junit.jupiter.api.Test;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class WorkJobDefTest {
     @Test
     void entityDeliveryUsesSemanticSourceAndDestinationFields() {
+        registerEntityPrimitives();
         WorkJobDef def = WorkJobDef.parse(id("test:delivery"), JsonParser.parseString("""
                 {
-                  "schema":"townstead:job/v1",
+                  "schema":"townstead:job/v2",
                   "task":"townstead_work:slaughter",
                   "type":"townstead:entity_delivery",
                   "source":{
                       "buildings":["example:pen*"],
-                      "results":{"minecraft:cow":"example:carcass"}
+                      "results":{"minecraft:cow":"example:carcass"},
+                      "action":{"type":"pheno:nothing"}
                   },
                   "destination":{
                       "blocks":["example:rail"],
@@ -47,6 +50,63 @@ class WorkJobDefTest {
     }
 
     @Test
+    void bundledButcheryBlockJobsUseVersionTwo() throws Exception {
+        registerProcedurePrimitives();
+        for (String name : List.of("butchery_carcass", "butchery_golem", "butchery_heads",
+                "butchery_clean_blood", "butchery_rewet_cloth", "butchery_sausage_hook",
+                "butchery_skin_rack", "butchery_leatherworking_rewet")) {
+            String path = "/data/townstead/work_job/" + name + ".json";
+            try (var stream = getClass().getResourceAsStream(path)) {
+                assertNotNull(stream, path);
+                var json = JsonParser.parseReader(new InputStreamReader(
+                        stream, StandardCharsets.UTF_8)).getAsJsonObject();
+                assertEquals(WorkJobDef.SCHEMA, json.get("schema").getAsString());
+                WorkJobDef def = WorkJobDef.parse(id("townstead:" + name), json);
+                assertNotNull(def, path);
+                assertEquals(WorkJobDef.BLOCK_INTERACTION, def.type());
+                assertFalse(def.target().interactions().isEmpty());
+            }
+        }
+    }
+
+    private static void registerProcedurePrimitives() {
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.BlockActionType() {
+                    @Override public String key() { return "pheno:use_block"; }
+                    @Override public com.aetherianartificer.townstead.pheno.action.block.BlockAction parse(
+                            com.google.gson.JsonObject json) { return context -> {}; }
+                });
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.GameTimeValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.BlockDataValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.ArithmeticValueType());
+        com.aetherianartificer.townstead.pheno.action.item.ItemActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.item.types.DamageItemActionType());
+        com.aetherianartificer.townstead.pheno.action.item.ItemActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.item.types.ConsumeItemActionType());
+        com.aetherianartificer.townstead.pheno.action.item.ItemActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.item.types.ChangeDataItemActionType());
+        for (com.aetherianartificer.townstead.pheno.action.block.BlockActionType type : List.of(
+                new com.aetherianartificer.townstead.pheno.action.block.types.SetBlockBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.OffsetBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.ModifyBlockStateBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.DestroyBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.ChangeBlockDataBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.ItemActionBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.LootTableBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.ReturnItemBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.PlaySoundBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.SpawnParticlesBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.LevelEventBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.IfElseBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.NothingBlockActionType())) {
+            com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(type);
+        }
+    }
+
+    @Test
     void blockInteractionKeepsDomainFactsInData() {
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.block.BlockActionType() {
@@ -56,7 +116,7 @@ class WorkJobDefTest {
                 });
         WorkJobDef def = WorkJobDef.parse(id("test:hive"), JsonParser.parseString("""
                 {
-                  "schema":"townstead:job/v1",
+                  "schema":"townstead:job/v2",
                   "task":"townstead_work:interact",
                   "type":"townstead:block_interaction",
                   "target":{
@@ -77,6 +137,7 @@ class WorkJobDefTest {
         assertNotNull(target);
         assertNotNull(target.condition());
         assertEquals(id("minecraft:beehive"), target.blocks().iterator().next());
+        assertTrue(target.blockTags().isEmpty());
         assertEquals("minecraft:shears", target.interactions().get(0).item());
         assertEquals(id("minecraft:honeycomb"),
                 target.interactions().get(0).outputs().iterator().next());
@@ -86,7 +147,33 @@ class WorkJobDefTest {
     }
 
     @Test
+    void versionTwoAcceptsBlockTagsConditionsAndOutputlessActions() {
+        WorkJobDef def = WorkJobDef.parse(id("test:cleanup"), JsonParser.parseString("""
+                {
+                  "schema":"townstead:job/v2",
+                  "task":"townstead_work:clean",
+                  "type":"townstead:block_interaction",
+                  "target":{
+                    "blocks":["#example:spills"],
+                    "interactions":[{
+                      "item":"#example:cloths",
+                      "condition":{"type":"pheno:constant","value":true},
+                      "action":{"type":"pheno:use_block"}
+                    }]
+                  }
+                }
+                """).getAsJsonObject());
+
+        assertNotNull(def);
+        assertEquals(List.of(id("example:spills")), def.target().blockTags());
+        assertTrue(def.target().interactions().get(0).outputs().isEmpty());
+        assertNotNull(def.target().interactions().get(0).condition());
+    }
+
+    @Test
     void bundledButcheryJobUsesSemanticFields() throws Exception {
+        registerProcedurePrimitives();
+        registerEntityPrimitives();
         String path = "/data/townstead/work_job/butchery_slaughter.json";
         try (var stream = getClass().getResourceAsStream(path)) {
             assertNotNull(stream, path);
@@ -95,10 +182,47 @@ class WorkJobDefTest {
                             .getAsJsonObject());
             assertNotNull(def);
             assertNotNull(def.source());
+            assertEquals("#townstead:butcher_cleavers", def.source().item());
+            assertNotNull(def.source().condition());
+            assertNotNull(def.source().action());
+            assertEquals(20, def.source().interval());
+            assertEquals(2400, def.source().cooldown().fallback());
+            assertNotNull(def.source().cooldown().config());
+            assertEquals(2, def.source().xp());
             assertNotNull(def.destination());
+            assertNotNull(def.destination().placement().action());
             assertTrue(def.destination().blocks()
                     .contains(id("butchery:hook")));
         }
+    }
+
+    private static void registerEntityPrimitives() {
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.LogicConditionType(
+                        "pheno:and",
+                        com.aetherianartificer.townstead.pheno.condition.types.LogicConditionType.Mode.AND));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:alive", ctx -> true));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:baby", ctx -> false));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:named", ctx -> false));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.StateConditionType(
+                        "pheno:tamed", ctx -> false));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.ConfigConditionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.NothingActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.SwingHandActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.TargetActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.DamageActionType());
     }
 
     @Test

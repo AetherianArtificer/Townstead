@@ -57,6 +57,15 @@ class ProfessionLoaderDiagnosticsTest {
     }
 
     @Test
+    void professionOwnsItsWorkSoundMetadata() {
+        Diagnostics diag = new Diagnostics();
+        ProfessionDef profession = ProfessionDataLoader.parseProfession(rl("minecraft:butcher"),
+                obj("{ 'work_sound':'minecraft:entity.villager.work_butcher' }"), Map.of(), diag);
+        assertNotNull(profession);
+        assertEquals(rl("minecraft:entity.villager.work_butcher"), profession.workSound());
+    }
+
+    @Test
     void skillMissingProfessionErrorsAndReturnsNull() {
         Diagnostics diag = new Diagnostics();
         SkillDef skill = ProfessionDataLoader.parseSkill(rl("t:s"), obj("{ 'tier':1 }"), Map.of(), diag);

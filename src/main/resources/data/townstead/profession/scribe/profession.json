@@ -4,6 +4,7 @@
     "text": "Scribe"
   },
   "icon": "minecraft:writable_book",
+  "work_sound": "minecraft:entity.villager.work_librarian",
   "description": {
     "text": "The village's pen. Keeps the records at the Archives, prints the bulletin, and helps people toward their calling."
   },

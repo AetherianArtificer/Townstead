@@ -12,8 +12,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
 //?}
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 //? if neoforge {
@@ -55,32 +55,20 @@ public final class UseBlockBlockActionType implements BlockActionType {
                 actor.setItemInHand(InteractionHand.MAIN_HAND, supplied);
                 BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(context.pos()),
                         Direction.UP, context.pos(), false);
-                //? if >=1.21 {
-                /* Dispatch through BlockState, which is Minecraft's public polymorphic block-use
-                 * contract. ServerPlayerGameMode wraps this same dispatch in advancement and
-                 * player-session bookkeeping; a transactional machine actor must not run those
-                 * player-only effects. The fallback order below mirrors vanilla useItemOn. */
-                UseOnContext useContext = new UseOnContext(actor, InteractionHand.MAIN_HAND, hit);
-                InteractionResult result = actor.getMainHandItem().onItemUseFirst(useContext);
-                if (result == InteractionResult.PASS) {
-                    ItemInteractionResult blockResult = context.level().getBlockState(context.pos())
-                            .useItemOn(actor.getMainHandItem(), context.level(), actor,
-                                    InteractionHand.MAIN_HAND, hit);
-                    result = blockResult.result();
-                    if (!blockResult.consumesAction()
-                            && blockResult == ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
-                        result = context.level().getBlockState(context.pos())
-                                .useWithoutItem(context.level(), actor, hit);
-                    }
-                    if (!result.consumesAction() && !actor.getMainHandItem().isEmpty()) {
-                        result = actor.getMainHandItem().useOn(useContext);
-                    }
-                }
-                //?} else {
-                /*InteractionResult result = actor.gameMode.useItemOn(actor, context.level(),
+                BlockState beforeBlock = context.level().getBlockState(context.pos());
+                ItemStack beforeItem = actor.getMainHandItem().copy();
+                // Use the server's complete player-interaction path. Optional mods commonly
+                // implement machines through RightClickBlock listeners rather than Block methods;
+                // bypassing ServerPlayerGameMode would make those machines impossible to port
+                // through data alone.
+                InteractionResult result = actor.gameMode.useItemOn(actor, context.level(),
                         actor.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
-                *///?}
-                if (!result.consumesAction()) context.fail();
+                boolean changed = !beforeBlock.equals(context.level().getBlockState(context.pos()))
+                        || !ItemStack.matches(beforeItem, actor.getMainHandItem());
+                // Event-driven integrations do not always claim the vanilla interaction result,
+                // even after mutating the block or item. A real transaction is still successful
+                // when one of those observable values changed.
+                if (!result.consumesAction() && !changed) context.fail();
                 context.setItemRole(role, actor.getMainHandItem().copy());
 
                 // The held remainder already lives in the role. Empty the selected slot before

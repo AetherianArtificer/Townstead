@@ -3,7 +3,6 @@ package com.aetherianartificer.townstead.villager;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.fatigue.SleepBlockReason;
 import com.aetherianartificer.townstead.fatigue.SleepReason;
-import com.aetherianartificer.townstead.compat.butchery.ButcherSettings;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.thirst.ThirstData;
@@ -138,7 +137,6 @@ public final class TownsteadVillager {
         private boolean eatingMode;
         private float hungerMoodDrift;
         private HungerData.FarmBlockedReason farmBlockedReason = HungerData.FarmBlockedReason.NONE;
-        private HungerData.ButcherBlockedReason butcherBlockedReason = HungerData.ButcherBlockedReason.NONE;
         private HungerData.FishermanBlockedReason fishermanBlockedReason = HungerData.FishermanBlockedReason.NONE;
 
         private int thirst = ThirstData.DEFAULT_THIRST;
@@ -204,21 +202,12 @@ public final class TownsteadVillager {
             return farmBlockedReason;
         }
 
-        public HungerData.ButcherBlockedReason butcherBlockedReason() {
-            return butcherBlockedReason;
-        }
-
         public HungerData.FishermanBlockedReason fishermanBlockedReason() {
             return fishermanBlockedReason;
         }
 
         public void setFarmBlockedReason(HungerData.FarmBlockedReason reason) {
             farmBlockedReason = reason == null ? HungerData.FarmBlockedReason.NONE : reason;
-            markDirty();
-        }
-
-        public void setButcherBlockedReason(HungerData.ButcherBlockedReason reason) {
-            butcherBlockedReason = reason == null ? HungerData.ButcherBlockedReason.NONE : reason;
             markDirty();
         }
 
@@ -609,7 +598,6 @@ public final class TownsteadVillager {
             tag.putBoolean("eatingMode", eatingMode);
             tag.putFloat("moodDrift", hungerMoodDrift);
             tag.putString("farmBlockedReason", farmBlockedReason.id());
-            tag.putString("butcherBlockedReason", butcherBlockedReason.id());
             tag.putString("fishermanBlockedReason", fishermanBlockedReason.id());
             return tag;
         }
@@ -622,7 +610,6 @@ public final class TownsteadVillager {
             eatingMode = HungerData.isEatingMode(tag);
             hungerMoodDrift = HungerData.getMoodDrift(tag);
             farmBlockedReason = HungerData.getFarmBlockedReason(tag);
-            butcherBlockedReason = HungerData.getButcherBlockedReason(tag);
             fishermanBlockedReason = HungerData.getFishermanBlockedReason(tag);
             markDirty();
         }
@@ -1159,12 +1146,11 @@ public final class TownsteadVillager {
         private static final String LEGACY_COOK_TRADES_LEVEL = "townsteadCookTradesLevel";
         private static final String LEGACY_BARISTA_TRADES_LEVEL = "townsteadBaristaTradesLevel";
         private String lastProfession = "";
-        private ButcherSettings.SlaughterOverride slaughterOverride = ButcherSettings.SlaughterOverride.FOLLOW_CONFIG;
         private final Map<String, Progress> progressByProfession = new HashMap<>();
         private final ProfessionOfferMemory tradeOffersByProfession = new ProfessionOfferMemory();
         private final Map<String, Integer> tradeBackfillLevels = new HashMap<>();
         private final Map<String, Long> cooldowns = new HashMap<>();
-        private int lastSeenShopTier = -1;
+        private final Map<String, Boolean> feedbackObservations = new HashMap<>();
         private final Map<String, ProfessionXp> xpByProfession = new HashMap<>();
         private final Set<ResourceLocation> learnedSkills = new LinkedHashSet<>();
         private final Map<String, Integer> skillPoints = new HashMap<>();
@@ -1189,15 +1175,6 @@ public final class TownsteadVillager {
 
         public void setLastProfession(String value) {
             lastProfession = value == null ? "" : value;
-            markDirty();
-        }
-
-        public ButcherSettings.SlaughterOverride slaughterOverride() {
-            return slaughterOverride;
-        }
-
-        public void setSlaughterOverride(ButcherSettings.SlaughterOverride value) {
-            slaughterOverride = value == null ? ButcherSettings.SlaughterOverride.FOLLOW_CONFIG : value;
             markDirty();
         }
 
@@ -1227,8 +1204,8 @@ public final class TownsteadVillager {
         }
 
         /**
-         * Last gameTime a named per-villager throttle fired (complaint cooldowns,
-         * the slaughter work throttle, etc.). Returns 0 if never recorded.
+         * Last gameTime a named per-villager throttle fired (feedback, Job
+         * pacing, and similar systems). Returns 0 if never recorded.
          */
         public long cooldown(String key) {
             if (key == null) return 0L;
@@ -1241,12 +1218,13 @@ public final class TownsteadVillager {
             markDirty();
         }
 
-        public int lastSeenShopTier() {
-            return lastSeenShopTier;
+        public Boolean feedbackObservation(String key) {
+            return key == null ? null : feedbackObservations.get(key);
         }
 
-        public void setLastSeenShopTier(int tier) {
-            lastSeenShopTier = tier;
+        public void setFeedbackObservation(String key, boolean value) {
+            if (key == null || key.isBlank()) return;
+            if (java.util.Objects.equals(feedbackObservations.put(key, value), value)) return;
             markDirty();
         }
 
@@ -1332,9 +1310,6 @@ public final class TownsteadVillager {
         private CompoundTag toTag() {
             CompoundTag tag = new CompoundTag();
             tag.putString("lastProfession", lastProfession);
-            if (slaughterOverride != ButcherSettings.SlaughterOverride.FOLLOW_CONFIG) {
-                tag.putByte("slaughterOverride", slaughterOverride.code);
-            }
             CompoundTag all = new CompoundTag();
             for (Map.Entry<String, Progress> entry : progressByProfession.entrySet()) {
                 CompoundTag progress = new CompoundTag();
@@ -1355,7 +1330,11 @@ public final class TownsteadVillager {
                 cooldownTag.putLong(entry.getKey(), entry.getValue());
             }
             tag.put("cooldowns", cooldownTag);
-            if (lastSeenShopTier >= 0) tag.putInt("lastSeenShopTier", lastSeenShopTier);
+            CompoundTag feedbackTag = new CompoundTag();
+            for (Map.Entry<String, Boolean> entry : feedbackObservations.entrySet()) {
+                feedbackTag.putBoolean(entry.getKey(), entry.getValue());
+            }
+            if (!feedbackTag.isEmpty()) tag.put("feedbackObservations", feedbackTag);
             CompoundTag xpAll = new CompoundTag();
             for (Map.Entry<String, ProfessionXp> entry : xpByProfession.entrySet()) {
                 ProfessionXp value = entry.getValue();
@@ -1386,9 +1365,6 @@ public final class TownsteadVillager {
 
         private void load(CompoundTag tag) {
             lastProfession = tag.getString("lastProfession");
-            slaughterOverride = tag.contains("slaughterOverride")
-                    ? ButcherSettings.SlaughterOverride.fromCode(tag.getByte("slaughterOverride"))
-                    : ButcherSettings.SlaughterOverride.FOLLOW_CONFIG;
             progressByProfession.clear();
             tradeBackfillLevels.clear();
             CompoundTag all = tag.getCompound("progress");
@@ -1409,7 +1385,11 @@ public final class TownsteadVillager {
             for (String key : cooldownTag.getAllKeys()) {
                 cooldowns.put(key, cooldownTag.getLong(key));
             }
-            lastSeenShopTier = tag.contains("lastSeenShopTier") ? tag.getInt("lastSeenShopTier") : -1;
+            feedbackObservations.clear();
+            CompoundTag feedbackTag = tag.getCompound("feedbackObservations");
+            for (String key : feedbackTag.getAllKeys()) {
+                feedbackObservations.put(key, feedbackTag.getBoolean(key));
+            }
             xpByProfession.clear();
             CompoundTag xpAll = tag.getCompound("professionXp");
             for (String key : xpAll.getAllKeys()) {
@@ -1446,7 +1426,6 @@ public final class TownsteadVillager {
 
         private void loadLegacyHunger(CompoundTag hunger) {
             lastProfession = hunger.getString("townsteadLastProfession");
-            slaughterOverride = ButcherSettings.getSlaughterOverride(hunger);
             progressByProfession.clear();
             tradeBackfillLevels.clear();
             CompoundTag all = hunger.getCompound("townsteadProfessionProgress");
@@ -1460,12 +1439,11 @@ public final class TownsteadVillager {
             if (cookLevel > 0) tradeBackfillLevels.put("cook", cookLevel);
             int baristaLevel = Math.max(0, hunger.getInt(LEGACY_BARISTA_TRADES_LEVEL));
             if (baristaLevel > 0) tradeBackfillLevels.put("barista", baristaLevel);
-            // The slaughter work throttle and last-seen shop tier were piggybacked in
-            // townstead_hunger. Work-feedback cooldowns use provider ids in the new store.
+            // The slaughter work throttle was piggybacked in townstead_hunger.
+            // Work-feedback cooldowns use provider ids in the new store.
             cooldowns.clear();
             long slaughterTick = hunger.getLong("townstead_lastSlaughterTick");
             if (slaughterTick != 0L) cooldowns.put("townstead_lastSlaughterTick", slaughterTick);
-            lastSeenShopTier = hunger.contains("townstead_lastSeenShopTier") ? hunger.getInt("townstead_lastSeenShopTier") : -1;
             // Per-profession XP was piggybacked in townstead_hunger as flat <id>Xp/<id>Tier/... keys.
             xpByProfession.clear();
             importLegacyProfessionXp(hunger, "farmer");
@@ -1475,9 +1453,6 @@ public final class TownsteadVillager {
         }
 
         private void mergeLegacyHunger(CompoundTag hunger) {
-            if (slaughterOverride == ButcherSettings.SlaughterOverride.FOLLOW_CONFIG) {
-                slaughterOverride = ButcherSettings.getSlaughterOverride(hunger);
-            }
             if (lastProfession.isEmpty()) {
                 lastProfession = hunger.getString("townsteadLastProfession");
             }
@@ -1490,9 +1465,6 @@ public final class TownsteadVillager {
                 if (baristaLevel > 0) tradeBackfillLevels.put("barista", baristaLevel);
             }
             mergeLegacyCooldown(hunger, "townstead_lastSlaughterTick");
-            if (lastSeenShopTier < 0 && hunger.contains("townstead_lastSeenShopTier")) {
-                lastSeenShopTier = hunger.getInt("townstead_lastSeenShopTier");
-            }
             mergeLegacyProfessionXp(hunger, "farmer");
             mergeLegacyProfessionXp(hunger, "butcher");
             mergeLegacyProfessionXp(hunger, "cook");

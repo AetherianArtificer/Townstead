@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.aetherianartificer.townstead.pheno.data.ScalarData;
 
 /**
  * Parses an item-condition JSON into an {@link ItemCondition}. Parity-clean subset:
@@ -105,6 +106,27 @@ public final class ItemConditions {
                 return (level, stack) -> {
                     if (id == null) return stack.isEnchanted();
                     return enchantmentLevel(stack, id) >= min;
+                };
+            }
+            case "data": {
+                String key = GsonHelper.getAsString(json, "key", "");
+                JsonElement expected = json.get("value");
+                double min = GsonHelper.getAsDouble(json, "min", -Double.MAX_VALUE);
+                double max = GsonHelper.getAsDouble(json, "max", Double.MAX_VALUE);
+                double fallback = GsonHelper.getAsDouble(json, "default", 0);
+                boolean hasDefault = json.has("default");
+                boolean hasRange = json.has("min") || json.has("max");
+                boolean exists = GsonHelper.getAsBoolean(json, "exists", true);
+                if (key.isBlank() || (expected == null && !hasRange && !json.has("exists"))) return null;
+                return (level, stack) -> {
+                    var tag = ScalarData.itemTag(stack);
+                    if (expected != null) return ScalarData.matches(tag, key, expected);
+                    if (hasRange) {
+                        if (!tag.contains(key) && !hasDefault) return false;
+                        double value = tag.contains(key) ? tag.getDouble(key) : fallback;
+                        return value >= min && value <= max;
+                    }
+                    return tag.contains(key) == exists;
                 };
             }
             case "and": {

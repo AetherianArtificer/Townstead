@@ -7,40 +7,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.schedule.Activity;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /** Schedules and delivers data-authored profession feedback. */
 public final class WorkFeedbackTicker {
-    private static final java.util.List<Observer> OBSERVERS = new CopyOnWriteArrayList<>();
-
-    /** A runtime integration that can discover an immediate, one-shot work event. */
-    public interface Observer {
-        ResourceLocation id();
-
-        @Nullable Event observe(ServerLevel level, VillagerEntityMCA villager);
-    }
-
-    public record Event(ResourceLocation profession, String rule, Object[] arguments,
-                        Runnable delivered) {
-        public Event(ResourceLocation profession, String rule) {
-            this(profession, rule, new Object[0], () -> {});
-        }
-    }
-
     private WorkFeedbackTicker() {}
 
     public static void bootstrap() {
         com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask.bootstrapFeedbackSignals();
-        com.aetherianartificer.townstead.compat.butchery.ButcheryWorkFeedback.bootstrap();
-        com.aetherianartificer.townstead.leatherworking.LeatherworkerWorkFeedback.bootstrap();
-    }
-
-    public static void register(Observer observer) {
-        if (observer == null || observer.id() == null) return;
-        OBSERVERS.removeIf(existing -> existing.id().equals(observer.id()));
-        OBSERVERS.add(observer);
     }
 
     public static void tick(VillagerEntityMCA villager) {
@@ -48,14 +21,7 @@ public final class WorkFeedbackTicker {
         if (!TownsteadConfig.isWorkFeedbackEnabled()) return;
         if (!onWorkShift(villager, level)) return;
 
-        for (Observer observer : OBSERVERS) {
-            Event event = observer.observe(level, villager);
-            if (event != null && send(villager, event.profession(), event.rule(),
-                    level.getGameTime(), event.arguments())) {
-                event.delivered().run();
-                return;
-            }
-        }
+        if (observeRisingRules(level, villager)) return;
 
         if (!TownsteadConfig.isRepeatedWorkRequestsEnabled()) return;
         long gameTime = level.getGameTime();
@@ -71,6 +37,36 @@ public final class WorkFeedbackTicker {
                 }
             }
         }
+    }
+
+    /** Evaluate data-authored false-to-true edges, seeding first sight silently. */
+    private static boolean observeRisingRules(ServerLevel level, VillagerEntityMCA villager) {
+        for (ProfessionFeedbackRegistry.Channel channel : ProfessionFeedbackRegistry.all()) {
+            if (!ProfessionFeedbackRegistry.matchesProfession(channel.profession(), villager)) continue;
+            for (ProfessionFeedbackDocument.Rule rule : channel.risingRules()) {
+                String key = "townstead:work_feedback/rising/" + rule.source();
+                boolean current = ProfessionFeedbackRegistry.matches(rule.when(), villager);
+                Boolean previous = TownsteadVillagers.get(villager).professionMemory()
+                        .feedbackObservation(key);
+                if (previous == null) {
+                    TownsteadVillagers.get(villager).professionMemory()
+                            .setFeedbackObservation(key, current);
+                    continue;
+                }
+                if (!current) {
+                    if (previous) TownsteadVillagers.get(villager).professionMemory()
+                            .setFeedbackObservation(key, false);
+                    continue;
+                }
+                if (previous || level.getNearestPlayer(villager, channel.range()) == null) continue;
+                if (speak(villager, rule, new Object[0])) {
+                    TownsteadVillagers.get(villager).professionMemory()
+                            .setFeedbackObservation(key, true);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Deliver a named rule discovered by a work task. JSON owns the wording and variants. */

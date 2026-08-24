@@ -1,8 +1,0 @@
-{
-  "schema": "townstead:competence/v1",
-  "profession": "townstead:barista",
-  "per_year": {
-    "townstead:brewed": 200,
-    "townstead:produced": 30
-  }
-}

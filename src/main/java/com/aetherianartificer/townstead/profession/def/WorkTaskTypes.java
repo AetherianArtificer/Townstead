@@ -40,19 +40,11 @@ public final class WorkTaskTypes {
     // Zone engines.
     public static final ResourceLocation HARVEST = type("harvest");
     public static final ResourceLocation FISH = type("fish");
-    public static final ResourceLocation INTERACT = type("interact");
-
-    // Butchery suite.
-    public static final ResourceLocation SLAUGHTER = type("slaughter");
-    public static final ResourceLocation BUTCHER = type("butcher");
-    public static final ResourceLocation DISMANTLE = type("dismantle");
+    // Job-backed task ids are discovered from work_job data. Only code-owned engines are named
+    // here; content packs may introduce as many Job task ids as they need without a Java change.
     public static final ResourceLocation GRIND = stationDriven("grind");
     public static final ResourceLocation TAXIDERMY = stationDriven("taxidermy");
     public static final ResourceLocation SMOKE = type("smoke");
-    public static final ResourceLocation CURE = type("cure");
-    public static final ResourceLocation CLEAN = type("clean");
-    public static final ResourceLocation HAMMER = type("hammer");
-    public static final ResourceLocation DELIVER = type("deliver");
 
     // Smith family, served by the generic station engine: a workstation def naming this type is
     // all it takes for the work to run.
@@ -61,14 +53,9 @@ public final class WorkTaskTypes {
     // trade may craft is its own declaration's recipes filter, never the family's full breadth.
     public static final ResourceLocation CRAFT = stationDriven("craft");
 
-    // Tend / leatherwork / storage.
+    // Tend / storage.
     public static final ResourceLocation SHEAR = type("shear");
-    public static final ResourceLocation TAN = type("tan");
     public static final ResourceLocation STORE = type("store");
-
-    /** Every butchery-suite type, for gates that serve the whole shop. Do not mutate. */
-    public static final ResourceLocation[] BUTCHERY_SUITE = {
-            SLAUGHTER, BUTCHER, DISMANTLE, GRIND, TAXIDERMY, SMOKE, CURE, CLEAN, HAMMER, DELIVER};
 
     private WorkTaskTypes() {}
 
@@ -99,7 +86,8 @@ public final class WorkTaskTypes {
     }
 
     public static boolean knows(@Nullable ResourceLocation id) {
-        return id != null && KNOWN.contains(id);
+        return id != null && (KNOWN.contains(id)
+                || com.aetherianartificer.townstead.work.job.WorkJobs.knowsTask(id));
     }
 
     /**
@@ -108,21 +96,13 @@ public final class WorkTaskTypes {
      */
     public static List<String> activities(ResourceLocation id) {
         if (id == null) return List.of();
-        if (id.equals(COOK) || id.equals(CHOP)) {
-            return List.of("townstead:cooked");
-        }
-        if (id.equals(BREW)) return List.of("townstead:brewed");
+        if (id.equals(COOK) || id.equals(CHOP)) return List.of(COOK.toString());
+        if (id.equals(BREW) || id.equals(SMOKE)) return List.of(id.toString());
         if (id.equals(HARVEST)) {
             return List.of("townstead:harvested", "townstead:planted", "townstead:tilled",
                     "townstead:groomed", "townstead:irrigated", "townstead:farmed");
         }
         if (id.equals(SHEAR)) return List.of("townstead:tended");
-        if (id.equals(CLEAN)) return List.of("townstead:cleaned");
-        if (id.equals(SLAUGHTER)) return List.of("townstead:slaughtered");
-        if (id.equals(BUTCHER) || id.equals(DISMANTLE) || id.equals(SMOKE) || id.equals(CURE)
-                || id.equals(HAMMER) || id.equals(DELIVER)) {
-            return List.of("townstead:butchered");
-        }
         if (id.equals(GRIND) || id.equals(TAXIDERMY) || id.equals(SMELT) || id.equals(CRAFT)) {
             return List.of("townstead:produced");
         }

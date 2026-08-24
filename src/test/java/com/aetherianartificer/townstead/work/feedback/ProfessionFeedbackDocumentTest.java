@@ -78,6 +78,20 @@ class ProfessionFeedbackDocumentTest {
                         """)));
     }
 
+    @Test
+    void parsesRisingEdgeRules() {
+        ProfessionFeedbackDocument.Rule rule = ProfessionFeedbackDocument.Rule.parse(
+                id("test:source"), id("test:beekeeper"), "new_apiary", object("""
+                        {
+                          "schema":"townstead:profession_feedback_rule/v1",
+                          "trigger":"rising",
+                          "dialogue":{"translate":"dialogue.test.new_apiary"}
+                        }
+                        """));
+
+        assertEquals(ProfessionFeedbackDocument.Trigger.RISING, rule.trigger());
+    }
+
     private static ProfessionFeedbackDocument.Rule rule(String name, String translation) {
         return ProfessionFeedbackDocument.Rule.parse(
                 id("test:profession/beekeeper/feedback/" + name), id("test:beekeeper"), name,

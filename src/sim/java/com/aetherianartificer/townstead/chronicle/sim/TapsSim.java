@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.chronicle.sim;
 
-import com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys;
 import com.aetherianartificer.townstead.chronicle.template.ChronicleEventTemplate;
 
 import java.util.ArrayList;
@@ -8,12 +7,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TreeMap;
 
 /**
- * Coverage: what the game can report against what any template listens for.
- * A key with no template is a story the world is telling that nobody writes
- * down; a template bound to no key can only ever appear in a fabricated past.
+ * The Chronicle trigger vocabulary authored by loaded templates. Work Jobs and task engines
+ * own their completion ids, so this report must not maintain a second Java list of them.
  */
 public final class TapsSim {
 
@@ -31,23 +28,10 @@ public final class TapsSim {
                     .add(template);
         }
 
-        int covered = 0;
-        int total = 0;
-        SimOutput.heading("tap coverage: what the game reports vs what listens");
-        for (Map.Entry<String, List<String>> group
-                : new TreeMap<>(ChronicleTapKeys.BY_TYPE).entrySet()) {
-            System.out.printf(Locale.ROOT, "%n%s%n", group.getKey());
-            for (String key : group.getValue()) {
-                List<ChronicleEventTemplate> bound =
-                        byTrigger.getOrDefault(group.getKey() + "/" + key, List.of());
-                total++;
-                if (!bound.isEmpty()) covered++;
-                System.out.printf(Locale.ROOT, "  %-28s %s%n", key,
-                        bound.isEmpty() ? "-" : names(bound));
-            }
-        }
-
-        System.out.printf(Locale.ROOT, "%n%d of %d semantic keys have a template.%n", covered, total);
+        SimOutput.heading("chronicle triggers: data-authored bindings");
+        byTrigger.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry ->
+                System.out.printf(Locale.ROOT, "  %-42s %s%n", entry.getKey(), names(entry.getValue())));
+        System.out.printf(Locale.ROOT, "%n%d trigger bindings are authored.%n", byTrigger.size());
 
         List<String> gameBound = new ArrayList<>();
         byTrigger.forEach((trigger, templates) -> {

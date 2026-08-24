@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#c:hammer", "required": false },
+    { "id": "#forge:hammer", "required": false }
+  ]
+}

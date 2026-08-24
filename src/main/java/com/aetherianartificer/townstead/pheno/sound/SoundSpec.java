@@ -28,7 +28,28 @@ import java.util.List;
  */
 public final class SoundSpec {
 
-    public record Entry(SoundEvent sound, float volume, float pitch, float chance, int weight) {}
+    /** A parsed sound id; registry lookup is deliberately deferred until the sound is used. */
+    public static final class Entry {
+        private final ResourceLocation id;
+        private final float volume;
+        private final float pitch;
+        private final float chance;
+        private final int weight;
+
+        private Entry(ResourceLocation id, float volume, float pitch, float chance, int weight) {
+            this.id = id;
+            this.volume = volume;
+            this.pitch = pitch;
+            this.chance = chance;
+            this.weight = weight;
+        }
+
+        public SoundEvent sound() { return BuiltInRegistries.SOUND_EVENT.get(id); }
+        public float volume() { return volume; }
+        public float pitch() { return pitch; }
+        public float chance() { return chance; }
+        public int weight() { return weight; }
+    }
 
     private final List<Entry> entries;
     private final int totalWeight;
@@ -88,8 +109,7 @@ public final class SoundSpec {
     @Nullable
     private static Entry entry(@Nullable ResourceLocation id, float volume, float pitch, float chance, int weight) {
         if (id == null) return null;
-        SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(id);
-        return sound == null ? null : new Entry(sound, volume, pitch, chance, weight);
+        return new Entry(id, volume, pitch, chance, weight);
     }
 
     /** Weighted pick (a single-entry spec always returns that entry). */

@@ -1,5 +1,8 @@
 {
   "schema": "townstead:extended_building/v1",
+  "dialogue": {
+    "topics": ["butchery", "butcher_shop"]
+  },
   "spirit": {
     "pastoral": 5,
     "industrious": 2

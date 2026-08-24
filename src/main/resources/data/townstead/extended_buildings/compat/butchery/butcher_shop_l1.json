@@ -3,6 +3,9 @@
   "catalog": {
     "node_item": "butchery:metal_butchers_table"
   },
+  "dialogue": {
+    "topics": ["butchery", "butcher_shop"]
+  },
   "spirit": {
     "pastoral": 4,
     "industrious": 2

@@ -7,17 +7,53 @@
     "type": "pheno:and",
     "conditions": [
       {
-        "type": "townstead:work_signal",
-        "signal": "townstead_butchery:has_carcass_shop"
+        "type": "townstead:worksite",
+        "scope": "profession",
+        "buildings": ["compat/butchery/butcher_shop_l*"]
       },
       {
-        "type": "townstead:work_signal",
-        "signal": "townstead_butchery:pending_work",
-        "inverted": true
+        "type": "townstead:worksite",
+        "scope": "profession",
+        "buildings": ["compat/butchery/butcher_shop_l*"],
+        "block_condition": {
+          "type": "pheno:or",
+          "conditions": [
+            { "type": "pheno:in_tag", "tag": "butchery:carcass" },
+            { "type": "pheno:in_tag", "tag": "butchery:drained_carcass" }
+          ]
+        },
+        "compare_to": 0,
+        "comparison": "=="
       },
       {
-        "type": "townstead:work_signal",
-        "signal": "townstead_butchery:no_livestock"
+        "type": "townstead:worksite",
+        "scope": "village",
+        "buildings": [
+          "compat/butchery/butcher_shop_l*",
+          "compat/butchery/slaughterhouse",
+          "compat/butchery/slaughter_pen"
+        ],
+        "entity_condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:or",
+              "conditions": [
+                { "type": "pheno:entity_type", "entity_type": "minecraft:cow" },
+                { "type": "pheno:entity_type", "entity_type": "minecraft:pig" },
+                { "type": "pheno:entity_type", "entity_type": "minecraft:sheep" },
+                { "type": "pheno:entity_type", "entity_type": "minecraft:chicken" },
+                { "type": "pheno:entity_type", "entity_type": "minecraft:rabbit" }
+              ]
+            },
+            { "type": "pheno:alive" },
+            { "type": "pheno:baby", "inverted": true },
+            { "type": "pheno:tamed", "inverted": true },
+            { "type": "pheno:named", "inverted": true }
+          ]
+        },
+        "compare_to": 0,
+        "comparison": "=="
       }
     ]
   },

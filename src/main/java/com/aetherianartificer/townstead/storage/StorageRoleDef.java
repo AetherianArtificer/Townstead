@@ -25,7 +25,8 @@ import java.util.Set;
  *   "schema": "townstead:storage_role/v1",
  *   "mods": "farm_and_charm",
  *   "role": "not_storage",
- *   "blocks": ["farm_and_charm:stove", "#examplemod:machines"]
+ *   "blocks": ["farm_and_charm:stove", "#examplemod:machines"],
+ *   "namespaces": ["machine_heavy_mod"]
  * }
  * </pre>
  *
@@ -37,7 +38,10 @@ public record StorageRoleDef(
         ResourceLocation id,
         Role role,
         Set<ResourceLocation> blocks,
-        List<ResourceLocation> blockTags) {
+        List<ResourceLocation> blockTags,
+        Set<String> namespaces,
+        Set<ResourceLocation> exceptions,
+        List<ResourceLocation> exceptionTags) {
 
     public enum Role {
         /** A shelf: villagers may read from it and deposit into it. */
@@ -57,6 +61,9 @@ public record StorageRoleDef(
     public StorageRoleDef {
         blocks = Set.copyOf(blocks);
         blockTags = List.copyOf(blockTags);
+        namespaces = Set.copyOf(namespaces);
+        exceptions = Set.copyOf(exceptions);
+        exceptionTags = List.copyOf(exceptionTags);
     }
 
     /** Whether this statement speaks about this block. */
@@ -64,7 +71,12 @@ public record StorageRoleDef(
         if (state == null) return false;
         ResourceLocation blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK
                 .getKey(state.getBlock());
-        if (blockId != null && blocks.contains(blockId)) return true;
+        if (blockId != null && exceptions.contains(blockId)) return false;
+        for (ResourceLocation tag : exceptionTags) {
+            if (state.is(TagKey.create(Registries.BLOCK, tag))) return false;
+        }
+        if (blockId != null && (blocks.contains(blockId)
+                || namespaces.contains(blockId.getNamespace()))) return true;
         for (ResourceLocation tag : blockTags) {
             if (state.is(TagKey.create(Registries.BLOCK, tag))) return true;
         }
@@ -78,17 +90,44 @@ public record StorageRoleDef(
 
         Set<ResourceLocation> blocks = new LinkedHashSet<>();
         List<ResourceLocation> tags = new ArrayList<>();
-        if (!obj.has("blocks") || !obj.get("blocks").isJsonArray()) return null;
-        for (JsonElement e : obj.getAsJsonArray("blocks")) {
-            if (!e.isJsonPrimitive()) return null;
-            String raw = e.getAsString();
-            ResourceLocation parsed = ResourceLocation.tryParse(
-                    raw.startsWith("#") ? raw.substring(1) : raw);
-            if (parsed == null) return null;
-            if (raw.startsWith("#")) tags.add(parsed); else blocks.add(parsed);
+        if (obj.has("blocks")) {
+            if (!obj.get("blocks").isJsonArray()) return null;
+            for (JsonElement e : obj.getAsJsonArray("blocks")) {
+                if (!e.isJsonPrimitive()) return null;
+                String raw = e.getAsString();
+                ResourceLocation parsed = ResourceLocation.tryParse(
+                        raw.startsWith("#") ? raw.substring(1) : raw);
+                if (parsed == null) return null;
+                if (raw.startsWith("#")) tags.add(parsed); else blocks.add(parsed);
+            }
+        }
+        Set<String> namespaces = new LinkedHashSet<>();
+        if (obj.has("namespaces")) {
+            if (!obj.get("namespaces").isJsonArray()) return null;
+            for (JsonElement e : obj.getAsJsonArray("namespaces")) {
+                if (!e.isJsonPrimitive() || !e.getAsJsonPrimitive().isString()) return null;
+                String namespace = e.getAsString().trim();
+                ResourceLocation probe = ResourceLocation.tryParse(namespace + ":probe");
+                if (namespace.isEmpty() || probe == null
+                        || !probe.getNamespace().equals(namespace)) return null;
+                namespaces.add(namespace);
+            }
+        }
+        Set<ResourceLocation> exceptions = new LinkedHashSet<>();
+        List<ResourceLocation> exceptionTags = new ArrayList<>();
+        if (obj.has("except")) {
+            if (!obj.get("except").isJsonArray()) return null;
+            for (JsonElement e : obj.getAsJsonArray("except")) {
+                if (!e.isJsonPrimitive()) return null;
+                String raw = e.getAsString();
+                ResourceLocation parsed = ResourceLocation.tryParse(
+                        raw.startsWith("#") ? raw.substring(1) : raw);
+                if (parsed == null) return null;
+                if (raw.startsWith("#")) exceptionTags.add(parsed); else exceptions.add(parsed);
+            }
         }
         // An empty list is a statement nothing can satisfy, not a statement about everything.
-        if (blocks.isEmpty() && tags.isEmpty()) return null;
-        return new StorageRoleDef(id, role, blocks, tags);
+        if (blocks.isEmpty() && tags.isEmpty() && namespaces.isEmpty()) return null;
+        return new StorageRoleDef(id, role, blocks, tags, namespaces, exceptions, exceptionTags);
     }
 }

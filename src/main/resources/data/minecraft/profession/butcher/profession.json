@@ -4,6 +4,7 @@
     "text": "Butcher"
   },
   "icon": "minecraft:beef",
+  "work_sound": "minecraft:entity.villager.work_butcher",
   "description": {
     "text": "Slaughter and process livestock to build a history of butchery mastery."
   },

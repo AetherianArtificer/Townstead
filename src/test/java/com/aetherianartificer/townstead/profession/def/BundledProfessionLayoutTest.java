@@ -12,6 +12,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BundledProfessionLayoutTest {
 
@@ -38,6 +39,13 @@ class BundledProfessionLayoutTest {
             assertEquals(ProfessionProgressionOverlay.SCHEMA,
                     progression.get("schema").getAsString(), id);
             assertEquals(ProfessionWorkOverlay.SCHEMA, work.get("schema").getAsString(), id);
+            if (id.equals("townstead:cook") || id.equals("townstead:barista")
+                    || id.equals("townstead:scribe")) {
+                assertTrue(work.get("register_profession").getAsBoolean(),
+                        id + " owns registration policy in work.json");
+                assertTrue(profession.has("work_sound"),
+                        id + " owns its registered work sound in profession.json");
+            }
         }
     }
 

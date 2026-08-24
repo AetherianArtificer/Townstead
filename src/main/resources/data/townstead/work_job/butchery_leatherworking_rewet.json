@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:job/v2",
+  "mods": ["butchery"],
+  "task": "townstead_work:tan",
+  "type": "townstead:block_interaction",
+  "target": {
+    "block": "minecraft:water_cauldron",
+    "interactions": [
+      {
+        "item": "butchery:sponge",
+        "item_condition": {
+          "type": "pheno:data",
+          "key": "spongeWetness",
+          "max": 0,
+          "default": 0
+        },
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "xp": 1
+      },
+      {
+        "item": "butchery:rag",
+        "item_condition": {
+          "type": "pheno:data",
+          "key": "ragWetness",
+          "max": 0,
+          "default": 0
+        },
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "xp": 1
+      }
+    ]
+  }
+}

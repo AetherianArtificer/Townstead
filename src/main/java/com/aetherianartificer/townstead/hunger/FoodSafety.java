@@ -24,8 +24,7 @@ import net.minecraft.world.item.ItemStack;
  * Used by every pick-path that decides what a villager is about to eat:
  * {@code SeekFoodTask} (inventory, ground, storage, crop drops),
  * {@code CareForYoungTask} (feeding children), {@code HungerVillagerTicker}
- * (passive hunger), {@code HarvestWorkTask} (farmer self-feed), and
- * {@code ButcherSupplyManager} (reserved food slot). Further defended by
+ * (passive hunger), and {@code HarvestWorkTask} (farmer self-feed). Further defended by
  * {@code VillagerEatSafetyMixin}, which blocks the final {@code eat()}
  * call as a backstop for any third-party code path we don't control.
  */

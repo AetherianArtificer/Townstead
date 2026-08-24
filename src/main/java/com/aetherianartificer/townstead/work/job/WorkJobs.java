@@ -20,11 +20,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Reload-safe registry for {@code data/<namespace>/work_job/*.json}. */
 public final class WorkJobs {
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/WorkJobs");
     private static volatile List<WorkJobDef> DEFINITIONS = List.of();
+    private static volatile Set<ResourceLocation> DECLARED_TASKS = Set.of();
 
     private WorkJobs() {}
 
@@ -48,6 +50,26 @@ public final class WorkJobs {
         List<WorkJobDef> out = new ArrayList<>();
         for (WorkJobDef def : DEFINITIONS) if (def.type().equals(type)) out.add(def);
         return List.copyOf(out);
+    }
+
+    /** Every Job document attached to a profession-facing task id. */
+    public static List<WorkJobDef> forTask(ResourceLocation task) {
+        if (task == null) return List.of();
+        List<WorkJobDef> out = new ArrayList<>();
+        for (WorkJobDef def : DEFINITIONS) if (def.task().equals(task)) out.add(def);
+        return List.copyOf(out);
+    }
+
+    /** Whether loaded Job data supplies an executor for this task id. */
+    public static boolean handlesTask(@Nullable ResourceLocation task) {
+        if (task == null) return false;
+        for (WorkJobDef def : DEFINITIONS) if (def.task().equals(task)) return true;
+        return false;
+    }
+
+    /** Whether a valid Job document declares this task, including a currently unmet mod gate. */
+    public static boolean knowsTask(@Nullable ResourceLocation task) {
+        return task != null && DECLARED_TASKS.contains(task);
     }
 
     public static final class Loader extends SimplePreparableReloadListener<Map<ResourceLocation, JsonObject>> {
@@ -75,6 +97,7 @@ public final class WorkJobs {
         protected void apply(Map<ResourceLocation, JsonObject> prepared, ResourceManager resources,
                              ProfilerFiller profiler) {
             List<WorkJobDef> loaded = new ArrayList<>();
+            Set<ResourceLocation> declaredTasks = new java.util.LinkedHashSet<>();
             for (Map.Entry<ResourceLocation, JsonObject> entry : prepared.entrySet()) {
                 JsonObject json = entry.getValue();
                 try {
@@ -83,15 +106,17 @@ public final class WorkJobs {
                     LOGGER.warn("Work job {} rejected: {}", entry.getKey(), ex.getMessage());
                     continue;
                 }
-                if (json.has("mods") && !Boolean.TRUE.equals(ModGate.evaluate(json.get("mods")))) continue;
                 WorkJobDef def = WorkJobDef.parse(entry.getKey(), json);
                 if (def == null) {
                     LOGGER.warn("Invalid work job {}", entry.getKey());
                     continue;
                 }
+                declaredTasks.add(def.task());
+                if (json.has("mods") && !Boolean.TRUE.equals(ModGate.evaluate(json.get("mods")))) continue;
                 loaded.add(def);
             }
             DEFINITIONS = List.copyOf(loaded);
+            DECLARED_TASKS = Set.copyOf(declaredTasks);
             LOGGER.info("Loaded {} work job definitions", loaded.size());
         }
     }

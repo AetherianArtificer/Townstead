@@ -13,6 +13,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.entity.npc.VillagerProfession;
@@ -57,6 +58,8 @@ public final class ScannedProfessions {
             "townstead:profession/v1", "townstead:profession/v2");
 
     public record ScannedDef(ResourceLocation id, Set<ResourceLocation> jobBlocks,
+                             @org.jetbrains.annotations.Nullable ResourceLocation workSound,
+                             Set<ResourceLocation> taskTypes,
                              Set<String> providerModIds) {
 
         /**
@@ -91,6 +94,16 @@ public final class ScannedProfessions {
 
     public static List<ResourceLocation> ids() {
         return defs().stream().map(ScannedDef::id).toList();
+    }
+
+    /** Boot-safe profession ids whose authored work sidecar declares this task type. */
+    public static Set<ResourceLocation> idsForTask(ResourceLocation taskType) {
+        if (taskType == null) return Set.of();
+        Set<ResourceLocation> ids = new LinkedHashSet<>();
+        for (ScannedDef def : defs()) {
+            if (def.taskTypes().contains(taskType)) ids.add(def.id());
+        }
+        return Set.copyOf(ids);
     }
 
     //? if neoforge {
@@ -190,8 +203,10 @@ public final class ScannedProfessions {
         Predicate<Holder<PoiType>> jobSite = keys.isEmpty()
                 ? PoiType.NONE
                 : holder -> keys.stream().anyMatch(holder::is);
+        SoundEvent workSound = def.workSound() == null ? null
+                : BuiltInRegistries.SOUND_EVENT.getOptional(def.workSound()).orElse(null);
         return new VillagerProfession(def.id().getPath(), jobSite, jobSite,
-                ImmutableSet.of(), ImmutableSet.of(), null);
+                ImmutableSet.of(), ImmutableSet.of(), workSound);
     }
 
     private static List<ScannedDef> scan() {
@@ -299,7 +314,8 @@ public final class ScannedProfessions {
                 }
             }
             if (eligible(profession)) {
-                out.putIfAbsent(id, new ScannedDef(id, jobBlocks(profession),
+                out.putIfAbsent(id, new ScannedDef(id, jobBlocks(profession), workSound(profession),
+                        taskTypes(profession),
                         providerModIds));
             }
         } catch (Exception error) {
@@ -350,5 +366,26 @@ public final class ScannedProfessions {
             }
         }
         return out;
+    }
+
+    /** Optional work sound used when the bundled definition registers a real profession. */
+    static @org.jetbrains.annotations.Nullable ResourceLocation workSound(JsonObject json) {
+        if (!json.has("work_sound") || !json.get("work_sound").isJsonPrimitive()
+                || !json.getAsJsonPrimitive("work_sound").isString()) return null;
+        return ResourceLocation.tryParse(json.get("work_sound").getAsString());
+    }
+
+    /** Task ids composed from the adjacent work sidecar during the same boot scan. */
+    static Set<ResourceLocation> taskTypes(JsonObject json) {
+        if (!json.has("work_tasks") || !json.get("work_tasks").isJsonArray()) return Set.of();
+        Set<ResourceLocation> out = new LinkedHashSet<>();
+        for (JsonElement element : json.getAsJsonArray("work_tasks")) {
+            if (!element.isJsonObject()) continue;
+            String raw = net.minecraft.util.GsonHelper.getAsString(element.getAsJsonObject(), "type", "");
+            ResourceLocation id = ResourceLocation.tryParse(raw.contains(":")
+                    ? raw : com.aetherianartificer.townstead.profession.def.WorkTaskTypes.NAMESPACE + ":" + raw);
+            if (id != null) out.add(id);
+        }
+        return Set.copyOf(out);
     }
 }

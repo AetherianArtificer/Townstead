@@ -16,6 +16,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.LevelResource;
 
 /**
  * Read-only predicate over another mod's ordinary TOML configuration.
@@ -26,9 +29,20 @@ import java.util.function.Function;
  */
 public final class ConfigGate {
 
+    private static final long CACHE_NANOS = 1_000_000_000L;
+    private static final ConcurrentHashMap<Path, CachedConfig> CACHE = new ConcurrentHashMap<>();
+
+    private record CachedConfig(long checkedAt, long modified, long size,
+                                @Nullable CommentedConfig config) {}
+
     private ConfigGate() {}
 
     public static @Nullable Boolean evaluate(@Nullable JsonElement expression) {
+        return evaluate(expression, (Level) null);
+    }
+
+    /** Evaluates a global config, or a world's {@code serverconfig} when scope is {@code server}. */
+    public static @Nullable Boolean evaluate(@Nullable JsonElement expression, @Nullable Level level) {
         if (!valid(expression)) return null;
         JsonObject object = expression.getAsJsonObject();
         String file = string(object.get("file"));
@@ -37,19 +51,19 @@ public final class ConfigGate {
         if (file == null || file.isBlank() || path == null || path.isEmpty()
                 || expected == null || expected.isJsonNull()) return null;
 
-        Path root = configDirectory().toAbsolutePath().normalize();
+        String scope = string(object.get("scope"));
+        Path root = "server".equalsIgnoreCase(scope == null ? "" : scope) && level != null
+                && level.getServer() != null
+                ? level.getServer().getWorldPath(LevelResource.ROOT).resolve("serverconfig")
+                : configDirectory();
+        root = root.toAbsolutePath().normalize();
         Path target = root.resolve(file).normalize();
         if (!target.startsWith(root) || !target.getFileName().toString().toLowerCase(java.util.Locale.ROOT)
                 .endsWith(".toml")) return null;
-        if (!Files.isRegularFile(target)) return Boolean.FALSE;
-
-        try (Reader reader = Files.newBufferedReader(target, StandardCharsets.UTF_8)) {
-            CommentedConfig config = CommentedConfig.inMemory();
-            new TomlParser().parse(reader, config, ParsingMode.REPLACE);
-            return compare(expected, config.get(path));
-        } catch (IOException | RuntimeException ignored) {
-            return Boolean.FALSE;
-        }
+        CommentedConfig config = cached(target);
+        if (config == null) return fallback(object, expected);
+        Object actual = config.get(path);
+        return actual == null ? fallback(object, expected) : compare(expected, actual);
     }
 
     /** World-free seam used by schema tests and by future config backends. */
@@ -60,7 +74,8 @@ public final class ConfigGate {
         List<String> path = path(object.get("path"));
         JsonElement expected = object.get("equals");
         if (path == null || path.isEmpty() || expected == null || expected.isJsonNull()) return null;
-        return compare(expected, lookup.apply(path));
+        Object actual = lookup.apply(path);
+        return actual == null ? fallback(object, expected) : compare(expected, actual);
     }
 
     public static boolean valid(@Nullable JsonElement expression) {
@@ -69,8 +84,96 @@ public final class ConfigGate {
         String file = string(object.get("file"));
         List<String> path = path(object.get("path"));
         JsonElement expected = object.get("equals");
+        JsonElement fallback = object.get("default");
         return file != null && !file.isBlank() && path != null && !path.isEmpty()
-                && expected != null && expected.isJsonPrimitive();
+                && expected != null && expected.isJsonPrimitive()
+                && (fallback == null || fallback.isJsonPrimitive());
+    }
+
+    /**
+     * Reads a number from an ordinary TOML file. The expression uses the same
+     * {@code file}, {@code scope}, and {@code path} fields as a config condition,
+     * with {@code default} supplying the value when the file or entry is absent.
+     * This keeps data-authored timings and limits independent of Java config fields.
+     */
+    public static double number(@Nullable JsonElement expression, @Nullable Level level,
+                                double fallback) {
+        if (expression == null || !expression.isJsonObject()) return fallback;
+        JsonObject object = expression.getAsJsonObject();
+        String file = string(object.get("file"));
+        List<String> path = path(object.get("path"));
+        if (file == null || file.isBlank() || path == null || path.isEmpty()) return fallback;
+
+        String scope = string(object.get("scope"));
+        Path root = "server".equalsIgnoreCase(scope == null ? "" : scope) && level != null
+                && level.getServer() != null
+                ? level.getServer().getWorldPath(LevelResource.ROOT).resolve("serverconfig")
+                : configDirectory();
+        root = root.toAbsolutePath().normalize();
+        Path target = root.resolve(file).normalize();
+        if (!target.startsWith(root) || !target.getFileName().toString()
+                .toLowerCase(java.util.Locale.ROOT).endsWith(".toml")) return fallback;
+
+        CommentedConfig config = cached(target);
+        Object actual = config == null ? null : config.get(path);
+        if (actual instanceof Number number) return number.doubleValue();
+        JsonElement defaultValue = object.get("default");
+        return defaultValue != null && defaultValue.isJsonPrimitive()
+                && defaultValue.getAsJsonPrimitive().isNumber()
+                ? defaultValue.getAsDouble() : fallback;
+    }
+
+    /** Whether an object is a well-formed numeric config reference. */
+    public static boolean validNumber(@Nullable JsonElement expression) {
+        if (expression == null || !expression.isJsonObject()) return false;
+        JsonObject object = expression.getAsJsonObject();
+        JsonElement defaultValue = object.get("default");
+        String file = string(object.get("file"));
+        List<String> path = path(object.get("path"));
+        return file != null && !file.isBlank()
+                && path != null && !path.isEmpty()
+                && (defaultValue == null || defaultValue.isJsonPrimitive()
+                && defaultValue.getAsJsonPrimitive().isNumber());
+    }
+
+    private static Boolean fallback(JsonObject object, JsonElement expected) {
+        JsonElement fallback = object.get("default");
+        return fallback == null ? Boolean.FALSE : compare(expected, primitive(fallback));
+    }
+
+    private static @Nullable Object primitive(JsonElement element) {
+        if (element == null || !element.isJsonPrimitive()) return null;
+        var value = element.getAsJsonPrimitive();
+        if (value.isBoolean()) return value.getAsBoolean();
+        if (value.isNumber()) return value.getAsDouble();
+        return value.getAsString();
+    }
+
+    private static @Nullable CommentedConfig cached(Path target) {
+        long now = System.nanoTime();
+        CachedConfig cached = CACHE.get(target);
+        if (cached != null && now - cached.checkedAt() < CACHE_NANOS) return cached.config();
+        try {
+            if (!Files.isRegularFile(target)) {
+                CACHE.put(target, new CachedConfig(now, -1, -1, null));
+                return null;
+            }
+            long modified = Files.getLastModifiedTime(target).toMillis();
+            long size = Files.size(target);
+            if (cached != null && cached.modified() == modified && cached.size() == size) {
+                CACHE.put(target, new CachedConfig(now, modified, size, cached.config()));
+                return cached.config();
+            }
+            try (Reader reader = Files.newBufferedReader(target, StandardCharsets.UTF_8)) {
+                CommentedConfig config = CommentedConfig.inMemory();
+                new TomlParser().parse(reader, config, ParsingMode.REPLACE);
+                CACHE.put(target, new CachedConfig(now, modified, size, config));
+                return config;
+            }
+        } catch (IOException | RuntimeException ignored) {
+            CACHE.put(target, new CachedConfig(now, -1, -1, null));
+            return null;
+        }
     }
 
     private static @Nullable Boolean compare(JsonElement expected, @Nullable Object actual) {

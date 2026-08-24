@@ -7,12 +7,17 @@
     "type": "pheno:and",
     "conditions": [
       {
-        "type": "townstead:work_signal",
-        "signal": "townstead_butchery:has_carcass_shop"
+        "type": "townstead:worksite",
+        "scope": "profession",
+        "buildings": ["compat/butchery/butcher_shop_l*"]
       },
       {
-        "type": "townstead:work_signal",
-        "signal": "townstead_butchery:no_cleaver"
+        "type": "pheno:inventory",
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "tag": "townstead:butcher_cleavers"
+        },
+        "inverted": true
       }
     ]
   },

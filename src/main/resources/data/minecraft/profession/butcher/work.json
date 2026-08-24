@@ -34,7 +34,6 @@
       "recipe_inputs": ["#townstead:butcher_smoker_input"],
       "weight": 8
     },
-    { "type": "townstead_work:deliver", "weight": 7 },
     { "type": "townstead_work:cure", "weight": 6 },
     {
       "type": "townstead_work:clean",

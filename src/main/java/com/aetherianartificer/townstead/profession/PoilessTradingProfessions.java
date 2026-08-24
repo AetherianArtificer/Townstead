@@ -17,8 +17,8 @@ import java.util.function.Supplier;
  * drives restocking for them explicitly via {@link
  * com.aetherianartificer.townstead.tick.PoilessTradeRestockTicker}.
  *
- * <p>Suppliers are resolved lazily so this can be populated during
- * {@code FMLCommonSetupEvent} before profession DeferredRegisters fire.
+ * <p>Suppliers are resolved lazily so the common-setup pass can register professions created
+ * by the boot-time Profession scanner without retaining a second Java registry declaration.
  */
 public final class PoilessTradingProfessions {
     private static final Set<Supplier<VillagerProfession>> SUPPLIERS = new CopyOnWriteArraySet<>();

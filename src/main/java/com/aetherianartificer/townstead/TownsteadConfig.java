@@ -71,10 +71,9 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue MINIMUM_WORK_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
     public static final ModConfigSpec.IntValue FISHERMAN_INVENTORY_FULL_THRESHOLD;
-    public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_SLAUGHTER;
-    public static final ModConfigSpec.BooleanValue ALLOW_HUMANOID_SLAUGHTER;
-    public static final ModConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
-    public static final ModConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
+    public static final ModConfigSpec.BooleanValue ALLOW_LETHAL_WORK;
+    public static final ModConfigSpec.IntValue LETHAL_WORK_COOLDOWN_TICKS;
+    public static final ModConfigSpec.BooleanValue PROCESS_TROPHY_OUTPUTS;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
     public static final ModConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
@@ -159,10 +158,9 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue MINIMUM_WORK_REQUEST_INTERVAL_TICKS;
     public static final ForgeConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
     public static final ForgeConfigSpec.IntValue FISHERMAN_INVENTORY_FULL_THRESHOLD;
-    public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_SLAUGHTER;
-    public static final ForgeConfigSpec.BooleanValue ALLOW_HUMANOID_SLAUGHTER;
-    public static final ForgeConfigSpec.IntValue VILLAGER_SLAUGHTER_THROTTLE_TICKS;
-    public static final ForgeConfigSpec.BooleanValue HAMMER_TROPHY_HEADS;
+    public static final ForgeConfigSpec.BooleanValue ALLOW_LETHAL_WORK;
+    public static final ForgeConfigSpec.IntValue LETHAL_WORK_COOLDOWN_TICKS;
+    public static final ForgeConfigSpec.BooleanValue PROCESS_TROPHY_OUTPUTS;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
     public static final ForgeConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
@@ -396,37 +394,27 @@ public final class TownsteadConfig {
                 .defineInRange("fishermanInventoryFullThreshold", 16, 1, 64);
         b.pop();
 
-        // ── Butchery ──
-        if (ModCompat.isLoaded("butchery")) {
-            b.translation("townstead.configuration.butchery").push("butchery");
-            ENABLE_VILLAGER_SLAUGHTER = b
-                    .translation("townstead.configuration.butchery.enableVillagerSlaughter")
-                    .comment("Allow butchers to slaughter whitelisted livestock inside their shop bounds.")
-                    .define("enableVillagerSlaughter", true);
-            ALLOW_HUMANOID_SLAUGHTER = b
-                    .translation("townstead.configuration.butchery.allowHumanoidSlaughter")
-                    .comment("Permit villager-driven slaughter of humanoid carcasses (villagers, pillagers, witches).",
-                             "Off by default; the integration does not lean into this even when enabled.")
-                    .define("allowHumanoidSlaughter", false);
-            VILLAGER_SLAUGHTER_THROTTLE_TICKS = b
-                    .translation("townstead.configuration.butchery.villagerSlaughterThrottleTicks")
-                    .comment("Minimum ticks between kills for a single butcher villager.")
-                    .defineInRange("villagerSlaughterThrottleTicks", 2400, 200, 24000);
-            HAMMER_TROPHY_HEADS = b
-                    .translation("townstead.configuration.butchery.hammerTrophyHeads")
-                    .comment("When true, the butcher auto-hammers rare / display-worthy heads (evoker, vindicator, pillager, warden, dragon, player, wither skull, ice skull) into their breakdown drops. Off by default so those heads stay whole for trophies and armor.")
-                    .define("hammerTrophyHeads", false);
-            b.pop();
-        } else {
-            ENABLE_VILLAGER_SLAUGHTER = null;
-            ALLOW_HUMANOID_SLAUGHTER = null;
-            VILLAGER_SLAUGHTER_THROTTLE_TICKS = null;
-            HAMMER_TROPHY_HEADS = null;
-        }
+        // ── Profession work ──
+        // These are universal policy seams. Job and feedback JSON decide which authored actions
+        // consult them; the config never needs to know which profession or integration supplied
+        // that work.
+        b.translation("townstead.configuration.professionWork").push("professionWork");
+        ALLOW_LETHAL_WORK = b
+                .translation("townstead.configuration.professionWork.allowLethalWork")
+                .comment("Allow data-authored villager jobs that deliberately kill a living target.")
+                .define("allowLethalWork", true);
+        LETHAL_WORK_COOLDOWN_TICKS = b
+                .translation("townstead.configuration.professionWork.lethalWorkCooldownTicks")
+                .comment("Default minimum ticks between lethal work actions by one villager.")
+                .defineInRange("lethalWorkCooldownTicks", 2400, 200, 24000);
+        PROCESS_TROPHY_OUTPUTS = b
+                .translation("townstead.configuration.professionWork.processTrophyOutputs")
+                .comment("Allow authored jobs to process rare display-worthy outputs instead of preserving them.")
+                .define("processTrophyOutputs", false);
+        b.pop();
 
         // ── Cannibalism ──
-        // Unconditional, unlike the butchery block above: the cannibal_meats tag can name any
-        // mod's sapient meat, so these settings must exist whether or not Butchery is installed.
+        // The cannibal_meats tag can name any mod's sapient meat, so these settings are universal.
         b.translation("townstead.configuration.cannibalism").push("cannibalism");
         CANNIBALISM_MODE = b
                 .translation("townstead.configuration.cannibalism.mode")
@@ -437,7 +425,7 @@ public final class TownsteadConfig {
                 .defineEnum("mode", com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode.OFF);
         CANNIBALISM_PRODUCE = b
                 .translation("townstead.configuration.cannibalism.produce")
-                .comment("Offer and work sapient meat at worksites: order sheets list it, butchers smoke and grind it.",
+                .comment("Offer and work sapient meat at worksites: order sheets list it and eligible jobs may process it.",
                          "Separate from mode on purpose: a village can hunt without selling, or trade without eating.")
                 .define("produce", false);
         b.pop();

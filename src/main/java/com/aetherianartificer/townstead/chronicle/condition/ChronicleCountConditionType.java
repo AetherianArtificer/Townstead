@@ -10,7 +10,7 @@ import net.minecraft.util.GsonHelper;
 
 /**
  * {@code pheno:chronicle_count} — tests a chronicle counter for the entity:
- * {@code { "type": "pheno:chronicle_count", "key": "townstead:cooked", "at_least": 100 }}.
+ * {@code { "type": "pheno:chronicle_count", "key": "townstead_work:cook", "at_least": 100 }}.
  *
  * <p>This is the Careers mastery contract ("cooked 100 meals"): a truth-side
  * read of record-time counters. Server-only — the client has no counter
