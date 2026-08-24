@@ -153,12 +153,18 @@ class ResourceSyncS2CPayloadTest {
         ResourceSyncS2CPayload.Effect fallingMotes = new ResourceSyncS2CPayload.Effect(
                 "townstead:falling_motes", 0.65f, 0.75f, 3.6f, 1f, 0xF2F7FF,
                 "crosswise", -1, -1);
+        List<ResourceSyncS2CPayload.Reaction> reactions = List.of(
+                new ResourceSyncS2CPayload.Reaction("townstead:gain_flash", 0.75f,
+                        0.55f, 1.2f, -1, 0.2f, "flash", 0.25f),
+                new ResourceSyncS2CPayload.Reaction("townstead:low_warning", 0.5f,
+                        0.9f, 1f, 0xFFE080, 0.18f, "pulse", 0.3f));
         ResourceSyncS2CPayload.Bar bar = new ResourceSyncS2CPayload.Bar(
                 "townstead:test", 68, 0, 100, 100, 0x3FA0FF,
                 "HORIZONTAL", "CONTINUOUS",
                 List.of(gradient, shimmer, pulse, flow, liquid, viscous, bubbles, embers,
                         flames, steam, electric, wisps, sparkle, crystalline, runes, corruption,
                         voidEffect, prismatic, spores, fallingMotes),
+                reactions, true, 42,
                 "townstead:plain", "townstead:arcane", "TOP_LEFT", "DOTS", 10, 0,
                 0xFF202020, 0x3FA0FF, 0xC8F3FF, 1, "", -1);
         FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());

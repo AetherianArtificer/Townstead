@@ -498,15 +498,31 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
         }
     }
 
+    public record Reaction(String type, float strength, float duration, float speed,
+                           int color, float threshold, String mode, float continuing) {
+        public Reaction {
+            type = type == null || type.isBlank() ? "townstead:gain_flash" : type;
+            strength = Math.max(0f, Math.min(1f, strength));
+            duration = Math.max(0.10f, Math.min(5f, duration));
+            speed = Math.max(0.05f, Math.min(4f, speed));
+            color = color < 0 ? -1 : color & 0xFFFFFF;
+            threshold = Math.max(0f, Math.min(1f, threshold));
+            mode = mode == null || mode.isBlank() ? "flash" : mode;
+            continuing = Math.max(0f, Math.min(1f, continuing));
+        }
+    }
+
     public record Bar(String resourceId, int value, int min, int max, int restingValue,
                       int color,
-                      String shape, String fillMode, List<Effect> effects,
+                      String shape, String fillMode, List<Effect> effects, List<Reaction> reactions,
+                      boolean abilityReady, int regenerationSequence,
                       String frameId, String colorThemeId,
                       String anchor, String pipStyle, int segments, int priority,
                       int backgroundColor, int framePrimaryColor, int frameSecondaryColor, int frameThickness,
                       String frameTexture, int frameSpriteRow) {
         public Bar {
             effects = effects == null ? List.of() : List.copyOf(effects);
+            reactions = reactions == null ? List.of() : List.copyOf(reactions);
             anchor = anchor == null || anchor.isBlank() ? "TOP_LEFT" : anchor;
             pipStyle = pipStyle == null || pipStyle.isBlank() ? "DOTS" : pipStyle;
             frameTexture = frameTexture == null ? "" : frameTexture;
@@ -611,6 +627,19 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
                 buf.writeVarInt(effect.fallingColumns());
                 buf.writeVarInt(effect.fallingRows());
             }
+            buf.writeVarInt(bar.reactions().size());
+            for (Reaction reaction : bar.reactions()) {
+                buf.writeUtf(reaction.type());
+                buf.writeFloat(reaction.strength());
+                buf.writeFloat(reaction.duration());
+                buf.writeFloat(reaction.speed());
+                buf.writeInt(reaction.color());
+                buf.writeFloat(reaction.threshold());
+                buf.writeUtf(reaction.mode());
+                buf.writeFloat(reaction.continuing());
+            }
+            buf.writeBoolean(bar.abilityReady());
+            buf.writeVarInt(bar.regenerationSequence());
             buf.writeUtf(bar.frameId());
             buf.writeUtf(bar.colorThemeId());
             buf.writeUtf(bar.anchor());
@@ -663,6 +692,15 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
                         buf.readVarInt(), buf.readVarInt(), buf.readFloat(), buf.readUtf(),
                         buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
             }
+            int reactionCount = buf.readVarInt();
+            List<Reaction> reactions = new ArrayList<>(reactionCount);
+            for (int reactionIndex = 0; reactionIndex < reactionCount; reactionIndex++) {
+                reactions.add(new Reaction(buf.readUtf(), buf.readFloat(), buf.readFloat(),
+                        buf.readFloat(), buf.readInt(), buf.readFloat(), buf.readUtf(),
+                        buf.readFloat()));
+            }
+            boolean abilityReady = buf.readBoolean();
+            int regenerationSequence = buf.readVarInt();
             String frame = buf.readUtf();
             String colorTheme = buf.readUtf();
             String anchor = buf.readUtf();
@@ -676,7 +714,8 @@ public record ResourceSyncS2CPayload(List<Bar> bars) implements CustomPacketPayl
             String frameTexture = buf.readUtf();
             int frameSpriteRow = buf.readVarInt() - 1;
             bars.add(new Bar(resourceId, value, min, max, resting, color,
-                    shape, fill, List.copyOf(effects), frame, colorTheme,
+                    shape, fill, List.copyOf(effects), List.copyOf(reactions),
+                    abilityReady, regenerationSequence, frame, colorTheme,
                     anchor, pipStyle,
                     segments, priority, background, framePrimaryColor, frameSecondaryColor, thickness,
                     frameTexture, frameSpriteRow));

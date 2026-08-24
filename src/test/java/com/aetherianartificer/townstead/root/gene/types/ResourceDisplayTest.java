@@ -15,7 +15,37 @@ class ResourceDisplayTest {
         assertEquals(ResourceDisplay.Eligibility.WHEN_EXPRESSED, resource.resourceDisplay().eligibility());
         assertEquals(0x3FA0FF, resource.color());
         assertTrue(resource.resourceDisplay().effects().isEmpty());
+        assertTrue(resource.resourceDisplay().reactions().isEmpty());
         assertFalse(resource.persistOnDeath());
+    }
+
+    @Test
+    void valueReactionsAreAnIndependentOrderedStack() {
+        ResourceGeneType.Instance resource = parse("""
+                {"max":100,"display":{"effects":[{"type":"townstead:flow"}],"reactions":[
+                  {"type":"townstead:gain_flash"},
+                  {"type":"townstead:spend_flash"},
+                  {"type":"townstead:change_ripple"},
+                  {"type":"townstead:full_charge","mode":"pulse"},
+                  {"type":"townstead:low_warning","threshold":0.16,"color":"#FFE080"},
+                  {"type":"townstead:empty_warning","continuing":0.4},
+                  {"type":"townstead:regeneration_tick"},
+                  {"type":"townstead:ability_ready","duration":1.6,"mode":"edge_sweep"}
+                ]}}
+                """);
+
+        assertEquals(1, resource.resourceDisplay().effects().size());
+        assertEquals(8, resource.resourceDisplay().reactions().size());
+        ResourceDisplay.BarReaction gain = resource.resourceDisplay().reactions().get(0);
+        assertEquals("townstead:gain_flash", gain.type().toString());
+        assertEquals(0.75f, gain.strength());
+        assertEquals(0.55f, gain.duration());
+        ResourceDisplay.BarReaction low = resource.resourceDisplay().reactions().get(4);
+        assertEquals(0.16f, low.threshold());
+        assertEquals(0xFFE080, low.color());
+        assertEquals("pulse", low.mode());
+        assertEquals(0.4f, resource.resourceDisplay().reactions().get(5).continuing());
+        assertEquals(1.6f, resource.resourceDisplay().reactions().get(7).duration());
     }
 
     @Test

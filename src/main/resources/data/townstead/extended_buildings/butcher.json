@@ -1,5 +1,6 @@
 {
   "schema": "townstead:extended_building/v1",
+  "workers": ["minecraft:butcher"],
   "dialogue": {
     "topics": ["butchery", "butcher_shop"]
   },

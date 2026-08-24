@@ -22,11 +22,28 @@ public record ResourceDisplay(
         ResourceLocation frame,
         ResourceLocation colorTheme,
         List<BarEffect> effects,
+        List<BarReaction> reactions,
         Anchor anchor,
         Eligibility eligibility,
         int segments,
         int priority
 ) {
+
+    /** One independent event/value-driven overlay layered above the persistent effect stack. */
+    public record BarReaction(ResourceLocation type, float strength, float duration,
+                              float speed, int color, float threshold,
+                              String mode, float continuing) {
+        public BarReaction {
+            type = type == null ? id("townstead:gain_flash", "townstead:gain_flash") : type;
+            strength = Math.max(0f, Math.min(1f, strength));
+            duration = Math.max(0.10f, Math.min(5f, duration));
+            speed = Math.max(0.05f, Math.min(4f, speed));
+            color = color < 0 ? -1 : color & 0xFFFFFF;
+            threshold = Math.max(0f, Math.min(1f, threshold));
+            mode = mode == null || mode.isBlank() ? "flash" : normalize(mode);
+            continuing = Math.max(0f, Math.min(1f, continuing));
+        }
+    }
 
     /** One entry in the ordered bar-effect stack. */
     public record BarEffect(ResourceLocation type, float strength, float speed, float interval,
@@ -581,13 +598,71 @@ public record ResourceDisplay(
         ResourceLocation colorTheme = id(colorThemeRaw,
                 "townstead:arcane");
         List<BarEffect> effects = parseEffects(display);
+        List<BarReaction> reactions = parseReactions(display);
         Anchor anchor = Anchor.parse(GsonHelper.getAsString(display, "anchor", "top_left"));
         Eligibility eligibility = Eligibility.parse(
                 GsonHelper.getAsString(display, "visibility", "when_expressed"));
         int segments = Math.max(2, Math.min(64, GsonHelper.getAsInt(display, "segments", 10)));
         int priority = GsonHelper.getAsInt(display, "priority", 0);
-        return new ResourceDisplay(shape, fill, pipStyle, frame, colorTheme, effects,
+        return new ResourceDisplay(shape, fill, pipStyle, frame, colorTheme, effects, reactions,
                 anchor, eligibility, segments, priority);
+    }
+
+    private static List<BarReaction> parseReactions(JsonObject display) {
+        if (!display.has("reactions") || !display.get("reactions").isJsonArray()) return List.of();
+        List<BarReaction> reactions = new ArrayList<>();
+        for (JsonElement element : display.getAsJsonArray("reactions")) {
+            if (!element.isJsonObject()) {
+                throw new IllegalArgumentException("Resource display reactions must be objects");
+            }
+            JsonObject reaction = element.getAsJsonObject();
+            ResourceLocation type = id(GsonHelper.getAsString(reaction, "type"),
+                    "townstead:gain_flash");
+            String key = type.toString();
+            if (!List.of("townstead:gain_flash", "townstead:spend_flash",
+                    "townstead:change_ripple", "townstead:full_charge",
+                    "townstead:low_warning", "townstead:empty_warning",
+                    "townstead:regeneration_tick", "townstead:ability_ready").contains(key)) {
+                throw new IllegalArgumentException("Unknown resource bar reaction '" + type + "'");
+            }
+            float defaultStrength = switch (key) {
+                case "townstead:change_ripple", "townstead:low_warning" -> 0.50f;
+                case "townstead:regeneration_tick" -> 0.65f;
+                case "townstead:spend_flash" -> 0.70f;
+                case "townstead:gain_flash" -> 0.75f;
+                case "townstead:empty_warning" -> 0.80f;
+                case "townstead:full_charge" -> 0.85f;
+                default -> 0.95f;
+            };
+            float defaultDuration = switch (key) {
+                case "townstead:gain_flash" -> 0.55f;
+                case "townstead:regeneration_tick" -> 0.65f;
+                case "townstead:change_ripple" -> 0.70f;
+                case "townstead:spend_flash" -> 0.80f;
+                case "townstead:low_warning" -> 0.90f;
+                case "townstead:empty_warning" -> 1.00f;
+                case "townstead:full_charge" -> 1.10f;
+                default -> 1.20f;
+            };
+            String defaultMode = switch (key) {
+                case "townstead:full_charge" -> "sparkle_burst";
+                case "townstead:ability_ready" -> "edge_sweep";
+                case "townstead:low_warning" -> "pulse";
+                case "townstead:empty_warning" -> "flash";
+                case "townstead:regeneration_tick" -> "glint";
+                case "townstead:spend_flash" -> "dissolve";
+                default -> "flash";
+            };
+            reactions.add(new BarReaction(type,
+                    GsonHelper.getAsFloat(reaction, "strength", defaultStrength),
+                    GsonHelper.getAsFloat(reaction, "duration", defaultDuration),
+                    GsonHelper.getAsFloat(reaction, "speed", 1f),
+                    optionalColor(reaction, "color"),
+                    GsonHelper.getAsFloat(reaction, "threshold", 0.20f),
+                    GsonHelper.getAsString(reaction, "mode", defaultMode),
+                    GsonHelper.getAsFloat(reaction, "continuing", 0.25f)));
+        }
+        return List.copyOf(reactions);
     }
 
     private static List<BarEffect> parseEffects(JsonObject display) {

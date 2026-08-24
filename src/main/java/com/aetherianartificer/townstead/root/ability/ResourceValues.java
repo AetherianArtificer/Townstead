@@ -3,9 +3,11 @@ package com.aetherianartificer.townstead.root.ability;
 import com.aetherianartificer.townstead.root.gene.Gene;
 import com.aetherianartificer.townstead.root.gene.GeneRegistry;
 import com.aetherianartificer.townstead.root.gene.types.ReachHook;
+import com.aetherianartificer.townstead.root.gene.types.ActiveAbilityGeneType;
 import com.aetherianartificer.townstead.root.gene.types.ResourceDisplay;
 import com.aetherianartificer.townstead.root.gene.types.ResourceGeneType;
 import com.aetherianartificer.townstead.pheno.action.ActionContext;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.pheno.power.Power;
 import com.aetherianartificer.townstead.pheno.power.Powers;
 import net.minecraft.nbt.CompoundTag;
@@ -36,6 +38,8 @@ public final class ResourceValues {
     static final int STORAGE_VERSION = 1;
 
     private static final Map<UUID, Integer> LAST_SYNC_HASH = new ConcurrentHashMap<>();
+    private static final Map<UUID, Map<ResourceLocation, Integer>> REGEN_SEQUENCES =
+            new ConcurrentHashMap<>();
 
     private ResourceValues() {}
 
@@ -84,7 +88,12 @@ public final class ResourceValues {
         for (Power power : Powers.active(entity)) {
             if (!(power.component() instanceof ResourceGeneType.Instance instance)) continue;
             if (instance.regen() == 0 || entity.tickCount % instance.regenInterval() != 0) continue;
+            int before = get(entity, power.id());
             change(entity, power.id(), instance.regen());
+            if (get(entity, power.id()) != before) {
+                REGEN_SEQUENCES.computeIfAbsent(entity.getUUID(), ignored -> new ConcurrentHashMap<>())
+                        .merge(power.id(), 1, Integer::sum);
+            }
         }
     }
 
@@ -122,10 +131,14 @@ public final class ResourceValues {
 
             ResourceHudDefinitions.ColorTheme colorTheme = ResourceHudDefinitions.colorTheme(display.colorTheme());
             ResourceHudDefinitions.Frame frame = ResourceHudDefinitions.frame(display.frame());
+            int value = get(entity, power.id());
             bars.add(new ResourceSyncS2CPayload.Bar(
-                    power.id().toString(), get(entity, power.id()), instance.min(), instance.max(),
+                    power.id().toString(), value, instance.min(), instance.max(),
                     instance.start(), instance.color(),
                     display.shape().name(), display.fillMode().name(), effectsOf(display.effects()),
+                    reactionsOf(display.reactions()),
+                    abilityReady(entity, active, power.id(), value),
+                    regenerationSequence(entity, power.id()),
                     display.frame().toString(), display.colorTheme().toString(), display.anchor().name(),
                     display.pipStyle().name(), display.segments(),
                     display.priority(), frame.backgroundColor(), colorTheme.framePrimaryColor(),
@@ -143,6 +156,7 @@ public final class ResourceValues {
                     meter.id().toString(), meter.value(), meter.min(), meter.max(), meter.restingValue(),
                     meter.color() < 0 ? 0x3FA0FF : meter.color() & 0xFFFFFF,
                     meter.shape().name(), meter.fillMode().name(), effectsOf(meter.effects()),
+                    reactionsOf(meter.reactions()), meter.abilityReady(), meter.regenerationSequence(),
                     meter.frame().toString(), meter.colorTheme().toString(),
                     meter.anchor().name(), meter.pipStyle().name(), meter.segments(), meter.priority(),
                     frame.backgroundColor(), colorTheme.framePrimaryColor(),
@@ -190,6 +204,38 @@ public final class ResourceValues {
         return List.copyOf(resolved);
     }
 
+    private static List<ResourceSyncS2CPayload.Reaction> reactionsOf(
+            List<ResourceDisplay.BarReaction> reactions) {
+        if (reactions == null || reactions.isEmpty()) return List.of();
+        List<ResourceSyncS2CPayload.Reaction> resolved = new ArrayList<>(reactions.size());
+        for (ResourceDisplay.BarReaction reaction : reactions) {
+            resolved.add(new ResourceSyncS2CPayload.Reaction(reaction.type().toString(),
+                    reaction.strength(), reaction.duration(), reaction.speed(), reaction.color(),
+                    reaction.threshold(), reaction.mode(), reaction.continuing()));
+        }
+        return List.copyOf(resolved);
+    }
+
+    private static int regenerationSequence(LivingEntity entity, ResourceLocation resourceId) {
+        Map<ResourceLocation, Integer> sequences = REGEN_SEQUENCES.get(entity.getUUID());
+        return sequences == null ? 0 : sequences.getOrDefault(resourceId, 0);
+    }
+
+    private static boolean abilityReady(LivingEntity entity, List<Power> active,
+                                        ResourceLocation resourceId, int value) {
+        long now = entity.level().getGameTime();
+        for (Power power : active) {
+            if (!(power.component() instanceof ActiveAbilityGeneType.Instance ability)
+                    || !resourceId.equals(ability.costResource())) continue;
+            if (!com.aetherianartificer.townstead.assign.AssignCooldowns.isReady(
+                    entity, power.id(), now)) continue;
+            if (ability.condition() != null
+                    && !ability.condition().test(new ConditionContext(entity))) continue;
+            if (value >= ability.costAmount()) return true;
+        }
+        return false;
+    }
+
     /** Copy persistent values during a player clone, resetting death-sensitive meters. */
     public static void onClone(Player original, Player replacement, boolean wasDeath) {
         CompoundTag originalValues = valuesTag(readStorage(original));
@@ -210,6 +256,7 @@ public final class ResourceValues {
     /** Clears only runtime synchronization state; persisted values remain saved. */
     public static void clear(UUID uuid) {
         LAST_SYNC_HASH.remove(uuid);
+        REGEN_SEQUENCES.remove(uuid);
     }
 
     public static int colorOf(LivingEntity entity, ResourceLocation resourceId) {

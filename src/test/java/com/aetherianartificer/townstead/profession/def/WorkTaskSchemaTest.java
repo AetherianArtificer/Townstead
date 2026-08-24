@@ -517,6 +517,26 @@ class WorkTaskSchemaTest {
         assertEquals("Slaughter", slaughter.order().name());
         assertEquals(id("minecraft:iron_sword"), slaughter.order().icon());
 
+        var orderable = butcher.workTasks().stream()
+                .filter(task -> task.order() != null)
+                .map(WorkTaskDef::type)
+                .collect(java.util.stream.Collectors.toSet());
+        assertEquals(java.util.Set.of(
+                        id("townstead_work:dismantle"),
+                        id("townstead_work:clean"),
+                        id("townstead_work:hammer"),
+                        id("townstead_work:slaughter")), orderable,
+                "the four optional Butchery jobs must remain available to the order sheet");
+
+        for (String building : java.util.List.of("butcher_shop_l1", "butcher_shop_l2",
+                "butcher_shop_l3", "slaughter_pen", "slaughterhouse", "smokehouse")) {
+            JsonObject extension = resourceJson(
+                    "/data/townstead/extended_buildings/compat/butchery/" + building + ".json");
+            assertTrue(extension.getAsJsonArray("workers").asList().stream()
+                            .anyMatch(value -> "minecraft:butcher".equals(value.getAsString())),
+                    building + " must advertise the Butcher whose Jobs its order sheet offers");
+        }
+
         WorkTaskDef carcasses = butcher.workTasks().stream()
                 .filter(task -> task.type().equals(id("townstead_work:butcher")))
                 .findFirst().orElseThrow();

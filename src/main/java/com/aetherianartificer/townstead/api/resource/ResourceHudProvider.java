@@ -21,8 +21,10 @@ public interface ResourceHudProvider {
                  ResourceDisplay.Shape shape, ResourceDisplay.FillMode fillMode,
                  ResourceDisplay.PipStyle pipStyle,
                  ResourceLocation frame, ResourceLocation colorTheme,
-                 List<ResourceDisplay.BarEffect> effects, ResourceDisplay.Anchor anchor,
-                 int segments, int priority) {
+                 List<ResourceDisplay.BarEffect> effects,
+                 List<ResourceDisplay.BarReaction> reactions,
+                 boolean abilityReady, int regenerationSequence,
+                 ResourceDisplay.Anchor anchor, int segments, int priority) {
         public Meter {
             if (id == null) throw new IllegalArgumentException("Resource HUD meter id cannot be null");
             shape = shape == null ? ResourceDisplay.Shape.HORIZONTAL : shape;
@@ -31,6 +33,7 @@ public interface ResourceHudProvider {
             frame = frame == null ? DataPackLang.parseId("townstead:plain") : frame;
             colorTheme = colorTheme == null ? DataPackLang.parseId("townstead:arcane") : colorTheme;
             effects = effects == null ? List.of() : List.copyOf(effects);
+            reactions = reactions == null ? List.of() : List.copyOf(reactions);
             anchor = anchor == null ? ResourceDisplay.Anchor.TOP_LEFT : anchor;
             segments = Math.max(2, Math.min(64, segments));
         }

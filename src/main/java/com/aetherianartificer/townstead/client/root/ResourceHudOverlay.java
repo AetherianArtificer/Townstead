@@ -77,6 +77,7 @@ public final class ResourceHudOverlay {
                 gradient ? List.of(new ResourceSyncS2CPayload.Effect(
                         "townstead:gradient", 0.3f, 1f, 3.6f, 1f, -1,
                         "crosswise", -1, -1)) : List.of(),
+                List.of(), false, 0,
                 "townstead:spirit_trough", id, anchor, "DOTS", 10, 0,
                 0xD80E1014, framePrimaryColor, frameSecondaryColor, 2, "", -1);
     }
@@ -149,7 +150,8 @@ public final class ResourceHudOverlay {
             ResourceSyncS2CPayload.Bar bar = item.bar();
             placed.add(new Placed(bar, cursorX, cursorY, item.alpha(),
                     ResourceHudMath.normalized(bar.value(), bar.min(), bar.max()),
-                    withAlpha(0xFF000000 | bar.color(), item.alpha()), normalized(bar.shape())));
+                    withAlpha(0xFF000000 | bar.color(), item.alpha()), normalized(bar.shape()),
+                    item.reactions()));
             if (stack == TownsteadConfig.ResourceHudStack.DOWN) cursorY += sizes.get(i).height() + GAP;
             else cursorX += sizes.get(i).width() + GAP;
         }
@@ -174,6 +176,7 @@ public final class ResourceHudOverlay {
                 for (Placed item : placed) renderElectric(graphics, item, now);
                 for (Placed item : placed) renderWisps(graphics, item, now);
                 for (Placed item : placed) renderSparkles(graphics, item, now);
+                for (Placed item : placed) renderReactions(graphics, item, now);
             } finally {
                 graphics.pose().popPose();
             }
@@ -896,6 +899,223 @@ public final class ResourceHudOverlay {
         int filled = Math.max(1, Math.round(innerWidth * item.fraction()));
         return new int[]{innerX + Math.round(along * Math.max(0, filled - 1)),
                 innerY + Math.round(across * Math.max(0, innerHeight - 1))};
+    }
+
+    /** One-shot and state-driven reactions render after, and independently from, persistent effects. */
+    private static void renderReactions(GuiGraphics graphics, Placed item, long now) {
+        float accessibility = Accessibility.effectIntensity();
+        if (accessibility <= 0f || item.bar().reactions().isEmpty()) return;
+        float previous = ResourceHudMath.normalized(item.reactions().previousValue(),
+                item.bar().min(), item.bar().max());
+        for (ResourceSyncS2CPayload.Reaction reaction : item.bar().reactions()) {
+            String type = normalized(reaction.type());
+            int color = reaction.color() < 0
+                    ? blend(item.fillColor(), 0xFFFFFFFF, 0.76f)
+                    : 0xFF000000 | reaction.color();
+            float strength = reaction.strength() * accessibility;
+            switch (type) {
+                case "townstead:gain_flash" -> {
+                    float p = eventProgress(item.reactions().valueChangedAtMillis(), reaction.duration(), now);
+                    if (p >= 0f && item.fraction() > previous) {
+                        float center = previous + (item.fraction() - previous) * smoothStep(p);
+                        renderReactionMask(graphics, item, color, (path, cross, x, y) ->
+                                path >= previous && path <= item.fraction()
+                                        ? band(path, center, 0.055f + 0.035f / reaction.speed())
+                                        * (1f - p) * strength : 0f);
+                    }
+                }
+                case "townstead:spend_flash" -> {
+                    float p = eventProgress(item.reactions().valueChangedAtMillis(), reaction.duration(), now);
+                    if (p >= 0f && item.fraction() < previous) {
+                        renderReactionMask(graphics, item, color, (path, cross, x, y) -> {
+                            if (path < item.fraction() || path > previous) return 0f;
+                            float noise = (pixelHash(x, y, item.bar().resourceId()) & 0xFFFF) / 65535f;
+                            return noise > p * 0.92f ? (1f - p * 0.65f) * strength : 0f;
+                        });
+                    }
+                }
+                case "townstead:change_ripple" -> {
+                    float p = eventProgress(item.reactions().valueChangedAtMillis(), reaction.duration(), now);
+                    if (p >= 0f) {
+                        float center = smoothStep(p);
+                        renderReactionMask(graphics, item, color, (path, cross, x, y) ->
+                                path <= Math.max(item.fraction(), 0.025f)
+                                        ? band(path, center, 0.075f) * (1f - p * 0.6f) * strength : 0f);
+                    }
+                }
+                case "townstead:full_charge" -> renderConfiguredReaction(graphics, item, reaction,
+                        item.reactions().fullChargeAtMillis(), color, strength, now, true);
+                case "townstead:low_warning" -> {
+                    if (item.fraction() > 0f && item.fraction() <= reaction.threshold()) {
+                        float phase = now / 1000f * reaction.speed() * 5.2f;
+                        float wave = "flicker".equals(normalized(reaction.mode()))
+                                ? 0.35f + 0.65f * Math.abs((float) Math.sin(phase * 2.31f)
+                                * (float) Math.sin(phase * 0.73f))
+                                : 0.25f + 0.75f * (0.5f + 0.5f * (float) Math.sin(phase));
+                        renderReactionMask(graphics, item, color, (path, cross, x, y) ->
+                                path <= item.fraction() ? strength * wave * 0.72f : 0f);
+                    }
+                }
+                case "townstead:empty_warning" -> {
+                    float p = eventProgress(item.reactions().emptyAtMillis(), reaction.duration(), now);
+                    if (p >= 0f) {
+                        renderReactionMask(graphics, item, color, (path, cross, x, y) ->
+                                strength * (1f - p) * (0.55f + 0.45f
+                                        * Math.abs((float) Math.sin(p * Math.PI * 5f))));
+                    } else if (item.fraction() <= 0f && reaction.continuing() > 0f) {
+                        float pulse = 0.35f + 0.25f * (float) Math.sin(
+                                now / 1000f * reaction.speed() * 3.5f);
+                        renderReactionMask(graphics, item, color, (path, cross, x, y) ->
+                                strength * reaction.continuing() * pulse);
+                    }
+                }
+                case "townstead:regeneration_tick" -> {
+                    float p = eventProgress(item.reactions().regenerationAtMillis(), reaction.duration(), now);
+                    if (p >= 0f) {
+                        float center = Math.min(item.fraction(), Math.max(0.02f,
+                                previous + (item.fraction() - previous) * smoothStep(p)));
+                        renderReactionMask(graphics, item, color, (path, cross, x, y) ->
+                                path <= item.fraction()
+                                        ? band(path, center, 0.035f) * (1f - p) * strength : 0f);
+                        renderReactionBurst(graphics, item, color, p, strength * 0.55f, 3);
+                    }
+                }
+                case "townstead:ability_ready" -> renderConfiguredReaction(graphics, item, reaction,
+                        item.reactions().abilityReadyAtMillis(), color, strength, now, false);
+                default -> { }
+            }
+        }
+    }
+
+    private static void renderConfiguredReaction(GuiGraphics graphics, Placed item,
+                                                   ResourceSyncS2CPayload.Reaction reaction,
+                                                   long startedAt, int color, float strength,
+                                                   long now, boolean limitToFill) {
+        float p = eventProgress(startedAt, reaction.duration(), now);
+        if (p < 0f) return;
+        String mode = normalized(reaction.mode());
+        if ("sparkle_burst".equals(mode)) {
+            renderReactionBurst(graphics, item, color, p, strength, 12);
+        } else if ("edge_sweep".equals(mode)) {
+            float center = smoothStep(p);
+            renderReactionMask(graphics, item, color, (path, cross, x, y) ->
+                    (!limitToFill || path <= item.fraction())
+                            ? band(path, center, 0.055f) * (1f - p * 0.45f) * strength : 0f);
+        } else {
+            float opacity = "pulse".equals(mode)
+                    ? (float) Math.sin(p * Math.PI) * strength : (1f - p) * strength;
+            renderReactionMask(graphics, item, color, (path, cross, x, y) ->
+                    (!limitToFill || path <= item.fraction()) ? opacity : 0f);
+        }
+    }
+
+    @FunctionalInterface
+    private interface ReactionPixel {
+        float opacity(float path, float cross, int x, int y);
+    }
+
+    private static void renderReactionMask(GuiGraphics graphics, Placed item, int color,
+                                           ReactionPixel pixel) {
+        ResourceSyncS2CPayload.Bar bar = item.bar();
+        if (isSquircle(item.shape())) {
+            int cx = item.x() + 20;
+            int cy = item.y() + 20;
+            for (int py = -15; py <= 15; py++) {
+                for (int px = -15; px <= 15; px++) {
+                    if (!insideRoundedSquare(px, py, 15, 5)
+                            || insideRoundedSquare(px, py, 10, 3)) continue;
+                    double angle = Math.atan2(px, -py);
+                    if (angle < 0d) angle += Math.PI * 2d;
+                    float path = (float) (angle / (Math.PI * 2d));
+                    float cross = clamp01((Math.max(Math.abs(px), Math.abs(py)) - 10) / 5f);
+                    float opacity = clamp01(pixel.opacity(path, cross, cx + px, cy + py)) * item.alpha();
+                    if (opacity > 0.015f) graphics.fill(cx + px, cy + py, cx + px + 1, cy + py + 1,
+                            withAlpha(0xFF000000 | color, opacity));
+                }
+            }
+            return;
+        }
+
+        boolean vertical = "vertical".equals(item.shape());
+        boolean sprite = hasSprite(bar);
+        int t = Math.max(1, Math.min(4, bar.frameThickness()));
+        int innerX = item.x() + (sprite ? (vertical ? 6 : 10) : t);
+        int innerY = item.y() + (sprite ? (vertical ? 6 : 4) : t);
+        int innerWidth = sprite ? (vertical ? 8 : 80)
+                : Math.max(1, (vertical ? 14 : 82) - t * 2);
+        int innerHeight = sprite ? (vertical ? 56 : 8)
+                : Math.max(1, (vertical ? 64 : 10) - t * 2);
+        for (int py = 0; py < innerHeight; py++) {
+            for (int px = 0; px < innerWidth; px++) {
+                float path = vertical ? 1f - py / (float) Math.max(1, innerHeight - 1)
+                        : px / (float) Math.max(1, innerWidth - 1);
+                float cross = vertical ? px / (float) Math.max(1, innerWidth - 1)
+                        : py / (float) Math.max(1, innerHeight - 1);
+                int sx = innerX + px;
+                int sy = innerY + py;
+                float opacity = clamp01(pixel.opacity(path, cross, sx, sy)) * item.alpha();
+                if (opacity > 0.015f) graphics.fill(sx, sy, sx + 1, sy + 1,
+                        withAlpha(0xFF000000 | color, opacity));
+            }
+        }
+    }
+
+    private static void renderReactionBurst(GuiGraphics graphics, Placed item, int color,
+                                            float progress, float strength, int count) {
+        int cx;
+        int cy;
+        int rx;
+        int ry;
+        if (isSquircle(item.shape())) {
+            cx = item.x() + 20; cy = item.y() + 20; rx = 18; ry = 18;
+        } else if ("vertical".equals(item.shape())) {
+            cx = item.x() + (hasSprite(item.bar()) ? 10 : 7); cy = item.y() + 32;
+            rx = hasSprite(item.bar()) ? 10 : 7; ry = 32;
+        } else {
+            cx = item.x() + (hasSprite(item.bar()) ? 50 : 41);
+            cy = item.y() + (hasSprite(item.bar()) ? 8 : 5);
+            rx = hasSprite(item.bar()) ? 50 : 41; ry = hasSprite(item.bar()) ? 8 : 5;
+        }
+        float life = (float) Math.sin(progress * Math.PI) * strength * item.alpha();
+        for (int i = 0; i < count; i++) {
+            float angle = (float) (Math.PI * 2d * i / count + (i % 3) * 0.17d);
+            float outward = 1f + progress * (3f + i % 4);
+            int px = cx + Math.round((rx + outward) * (float) Math.cos(angle));
+            int py = cy + Math.round((ry + outward) * (float) Math.sin(angle));
+            int argb = withAlpha(0xFF000000 | color, life * (0.65f + (i % 3) * 0.15f));
+            graphics.fill(px, py, px + 1, py + 1, argb);
+            if (i % 4 == 0 && progress < 0.7f) {
+                graphics.fill(px - 1, py, px + 2, py + 1, argb);
+                graphics.fill(px, py - 1, px + 1, py + 2, argb);
+            }
+        }
+    }
+
+    private static float eventProgress(long startedAt, float durationSeconds, long now) {
+        if (startedAt == Long.MIN_VALUE || now < startedAt) return -1f;
+        float progress = (now - startedAt) / Math.max(100f, durationSeconds * 1000f);
+        return progress <= 1f ? progress : -1f;
+    }
+
+    private static float smoothStep(float value) {
+        float n = clamp01(value);
+        return n * n * (3f - 2f * n);
+    }
+
+    private static float band(float value, float center, float halfWidth) {
+        return clamp01(1f - Math.abs(value - center) / Math.max(0.001f, halfWidth));
+    }
+
+    private static float clamp01(float value) {
+        return Math.max(0f, Math.min(1f, value));
+    }
+
+    private static int pixelHash(int x, int y, String resourceId) {
+        int hash = (resourceId == null ? 0 : resourceId.hashCode())
+                ^ x * 0x45d9f3b ^ y * 0x27d4eb2d;
+        hash ^= hash >>> 16;
+        hash *= 0x7feb352d;
+        return hash ^ hash >>> 15;
     }
 
     /** Tiny authored glyphs moving beneath the resource fill; packs may replace the glyph sheet. */
@@ -2815,5 +3035,6 @@ public final class ResourceHudOverlay {
     private record Size(int width, int height) {}
 
     private record Placed(ResourceSyncS2CPayload.Bar bar, int x, int y, float alpha,
-                          float fraction, int fillColor, String shape) {}
+                          float fraction, int fillColor, String shape,
+                          ResourceClientStore.ReactionState reactions) {}
 }

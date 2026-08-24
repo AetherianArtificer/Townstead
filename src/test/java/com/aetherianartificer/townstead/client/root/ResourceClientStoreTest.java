@@ -44,10 +44,38 @@ class ResourceClientStoreTest {
                 TownsteadConfig.ResourceHudVisibility.NOT_AT_REST, 60, 10, false).size());
     }
 
+    @Test
+    void recordsValueAndGameplayTransitionsWithoutFiringOnFirstSnapshot() {
+        ResourceClientStore.set(List.of(bar(40, false, 0)), 1_000L);
+        ResourceClientStore.Visible initial = ResourceClientStore.visible(1_000L,
+                TownsteadConfig.ResourceHudVisibility.ALWAYS, 60, 10, false).get(0);
+        assertEquals(Long.MIN_VALUE, initial.reactions().valueChangedAtMillis());
+
+        ResourceClientStore.set(List.of(bar(100, true, 1)), 2_000L);
+        ResourceClientStore.ReactionState state = ResourceClientStore.visible(2_000L,
+                TownsteadConfig.ResourceHudVisibility.ALWAYS, 60, 10, false).get(0).reactions();
+        assertEquals(40, state.previousValue());
+        assertEquals(2_000L, state.valueChangedAtMillis());
+        assertEquals(2_000L, state.fullChargeAtMillis());
+        assertEquals(2_000L, state.regenerationAtMillis());
+        assertEquals(2_000L, state.abilityReadyAtMillis());
+
+        ResourceClientStore.set(List.of(bar(0, true, 1)), 3_000L);
+        state = ResourceClientStore.visible(3_000L,
+                TownsteadConfig.ResourceHudVisibility.ALWAYS, 60, 10, false).get(0).reactions();
+        assertEquals(100, state.previousValue());
+        assertEquals(3_000L, state.emptyAtMillis());
+    }
+
     private static ResourceSyncS2CPayload.Bar bar(int value) {
+        return bar(value, false, 0);
+    }
+
+    private static ResourceSyncS2CPayload.Bar bar(int value, boolean ready, int regenerationSequence) {
         return new ResourceSyncS2CPayload.Bar("townstead:test", value, 0, 100, 100,
                 0x3FA0FF,
-                "HORIZONTAL", "CONTINUOUS", List.of(), "townstead:plain", "townstead:arcane",
+                "HORIZONTAL", "CONTINUOUS", List.of(), List.of(), ready, regenerationSequence,
+                "townstead:plain", "townstead:arcane",
                 "TOP_LEFT", "DOTS", 10, 0, 0xFF202020, 0xFF5C5C5C, 0xFF101010, 1,
                 "", -1);
     }
