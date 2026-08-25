@@ -31,7 +31,8 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 /**
- * Boot-time scan that turns eligible profession defs bundled in mod jars into real
+ * Boot-time scan that turns eligible profession defs bundled in mod jars or installed as
+ * global Townstead Career packs into real
  * {@link VillagerProfession} registrations, so a data-defined specialization is a full
  * profession like any other. A def whose {@code poi} declares {@code townstead:job_block}
  * gets a real job-site POI: blocks nobody claims become a new {@link PoiType} under the def's
@@ -39,9 +40,11 @@ import java.util.function.Predicate;
  * type) are accepted through that type instead. Defs with only building/always providers
  * register POI-less like {@code townstead:cook}.
  *
- * <p>Only jar-bundled defs can get this treatment: the profession registry freezes at
- * startup, so defs added by world data packs or {@code /reload} cannot register and are
- * reachable only through the career layer.</p>
+ * <p>The profession registry freezes at startup. Ordinary world data packs and
+ * {@code /reload} therefore cannot add registry entries. Townstead Career packs installed in
+ * the profile-level {@code datapacks} directory or under
+ * {@code config/townstead/career-packs} are deliberately scanned before that freeze and can
+ * opt in to real profession registration without shipping a mod.</p>
  *
  * <p>Eligible: a Townstead profession def with either non-empty {@code acquisition_routes} or
  * explicit {@code "register_profession": true}, which may be supplied by adjacent
@@ -75,9 +78,6 @@ public final class ScannedProfessions {
     }
 
     private static volatile List<ScannedDef> scanned = null;
-    /** Filled during the POI register event; read during the profession event that follows. */
-    private static final Map<ResourceLocation, Set<ResourceKey<PoiType>>> POI_KEYS = new LinkedHashMap<>();
-
     private ScannedProfessions() {}
 
     /** Scanned profession defs, resolved lazily on first use during registration. */
@@ -138,10 +138,9 @@ public final class ScannedProfessions {
      * later in the same event and a blockstate may belong to only one type.
      */
     private static void registerPoiTypes(Sink<PoiType> sink) {
-        POI_KEYS.clear();
         for (ScannedDef def : defs()) {
             if (def.jobBlocks().isEmpty()) continue;
-            Set<ResourceKey<PoiType>> keys = new LinkedHashSet<>();
+            Set<ResourceKey<PoiType>> existingKeys = new LinkedHashSet<>();
             Set<BlockState> unclaimed = new LinkedHashSet<>();
             for (ResourceLocation blockId : def.jobBlocks()) {
                 Block block = BuiltInRegistries.BLOCK.getOptional(blockId).orElse(null);
@@ -152,10 +151,9 @@ public final class ScannedProfessions {
                 boolean mayClaim = "minecraft".equals(blockId.getNamespace())
                         || def.ownsNamespace(blockId.getNamespace());
                 for (BlockState state : block.getStateDefinition().getPossibleStates()) {
-                    var claimed = PoiTypes.forState(state).flatMap(Holder::unwrapKey);
-                    if (claimed.isPresent()) {
-                        keys.add(claimed.get());
-                    } else if (mayClaim) {
+                    Set<ResourceKey<PoiType>> owners = existingPoiKeys(state);
+                    existingKeys.addAll(owners);
+                    if (owners.isEmpty() && mayClaim) {
                         unclaimed.add(state);
                     }
                 }
@@ -168,13 +166,32 @@ public final class ScannedProfessions {
             if (!unclaimed.isEmpty()) {
                 try {
                     sink.accept(def.id(), new PoiType(Set.copyOf(unclaimed), 1, 1));
-                    keys.add(ResourceKey.create(Registries.POINT_OF_INTEREST_TYPE, def.id()));
                 } catch (Exception error) {
                     Townstead.LOGGER.warn("Could not register POI for scanned profession {}", def.id(), error);
                 }
             }
-            if (!keys.isEmpty()) POI_KEYS.put(def.id(), Set.copyOf(keys));
+            if (!existingKeys.isEmpty()) {
+                Townstead.LOGGER.info("Bound scanned profession {} to existing POI type(s): {}",
+                        def.id(), existingKeys.stream()
+                                .map(key -> key.location().toString()).sorted().toList());
+            }
         }
+    }
+
+    /**
+     * Finds existing owners without relying solely on PoiTypes' block-state cache. During a
+     * mod registry event that cache can lag behind the registry even though the vanilla POI is
+     * already present. Treating such a state as unclaimed registers a second POI that the world
+     * never uses.
+     */
+    private static Set<ResourceKey<PoiType>> existingPoiKeys(BlockState state) {
+        Set<ResourceKey<PoiType>> keys = new LinkedHashSet<>();
+        PoiTypes.forState(state).flatMap(Holder::unwrapKey).ifPresent(keys::add);
+        for (PoiType poi : BuiltInRegistries.POINT_OF_INTEREST_TYPE) {
+            if (!poi.matchingStates().contains(state)) continue;
+            BuiltInRegistries.POINT_OF_INTEREST_TYPE.getResourceKey(poi).ifPresent(keys::add);
+        }
+        return keys;
     }
 
     private static void registerProfessions(Sink<VillagerProfession> sink) {
@@ -197,16 +214,34 @@ public final class ScannedProfessions {
     }
 
     private static VillagerProfession create(ScannedDef def) {
-        Set<ResourceKey<PoiType>> keys = POI_KEYS.getOrDefault(def.id(), Set.of());
         // Building/always providers have no vanilla POI: the career layer and building slot
         // rules own availability, exactly like townstead:cook.
-        Predicate<Holder<PoiType>> jobSite = keys.isEmpty()
-                ? PoiType.NONE
-                : holder -> keys.stream().anyMatch(holder::is);
+        Predicate<Holder<PoiType>> jobSite = jobSitePredicate(def);
         SoundEvent workSound = def.workSound() == null ? null
                 : BuiltInRegistries.SOUND_EVENT.getOptional(def.workSound()).orElse(null);
         return new VillagerProfession(def.id().getPath(), jobSite, jobSite,
                 ImmutableSet.of(), ImmutableSet.of(), workSound);
+    }
+
+    /**
+     * Matches the authored blocks at evaluation time. Existing vanilla POIs (notably beehives)
+     * can have an id unrelated to the custom profession, while a mod-supplied POI may register
+     * after Townstead's scan. The block states are the stable contract in both cases.
+     */
+    static Predicate<Holder<PoiType>> jobSitePredicate(ScannedDef def) {
+        if (def.jobBlocks().isEmpty()) return PoiType.NONE;
+        return holder -> holder != null && matchesAuthoredBlock(def.jobBlocks(),
+                holder.value().matchingStates().stream()
+                        .map(state -> BuiltInRegistries.BLOCK.getKey(state.getBlock()))
+                        .toList());
+    }
+
+    static boolean matchesAuthoredBlock(Set<ResourceLocation> authored,
+                                        Iterable<ResourceLocation> poiBlocks) {
+        for (ResourceLocation blockId : poiBlocks) {
+            if (blockId != null && authored.contains(blockId)) return true;
+        }
+        return false;
     }
 
     private static List<ScannedDef> scan() {
@@ -237,7 +272,20 @@ public final class ScannedProfessions {
             Townstead.LOGGER.warn("Profession scan failed; gated careers will not register "
                     + "their own professions this session", error);
         }
+        CareerPackSource.visitDataRoots(data -> collectDataRoot(data, Set.of(), out));
         return List.copyOf(out.values());
+    }
+
+    static void collectDataRoot(Path data, Set<String> providerModIds,
+                                Map<ResourceLocation, ScannedDef> out) {
+        if (!Files.isDirectory(data)) return;
+        try (var namespaces = Files.list(data)) {
+            for (Path nsDir : (Iterable<Path>) namespaces::iterator) {
+                collectNamespace(nsDir, providerModIds, out);
+            }
+        } catch (Exception error) {
+            Townstead.LOGGER.warn("Profession scan could not read Career-pack data root {}", data, error);
+        }
     }
 
     private static void collectNamespace(Path nsDir, Set<String> providerModIds,
@@ -366,6 +414,19 @@ public final class ScannedProfessions {
             }
         }
         return out;
+    }
+
+    /** Whether a JSON file declares one of Townstead's Profession document schemas. */
+    static boolean hasProfessionSchema(Path file) {
+        try (Reader reader = Files.newBufferedReader(file)) {
+            JsonElement parsed = JsonParser.parseReader(reader);
+            if (!parsed.isJsonObject()) return false;
+            JsonElement schema = parsed.getAsJsonObject().get("schema");
+            return schema != null && schema.isJsonPrimitive()
+                    && SCHEMAS.contains(schema.getAsString());
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     /** Optional work sound used when the bundled definition registers a real profession. */

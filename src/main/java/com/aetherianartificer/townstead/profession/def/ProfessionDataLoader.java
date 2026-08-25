@@ -142,6 +142,10 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     tradeDocuments.computeIfAbsent(professionId, ignored -> new LinkedHashMap<>())
                             .put(file, new TradeDocument(null, json));
                 }
+            } else if (isFeedbackSidecar(subpath)) {
+                // Feedback has its own reload listener. It shares the Profession directory so
+                // related files stay together, but it is not a Profession document or overlay.
+                continue;
             } else if (subpath.endsWith("/profession")) {
                 ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":"
                         + subpath.substring(0, subpath.length() - "/profession".length()));
@@ -176,6 +180,11 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         }
         return new Prepared(professions, skills, levelOverlays, progressionOverlays,
                 pathOverlays, pathDocuments, workOverlays, tradeDocuments);
+    }
+
+    static boolean isFeedbackSidecar(String professionSubpath) {
+        return professionSubpath.indexOf("/feedback/") > 0
+                || professionSubpath.endsWith("/feedback");
     }
 
     @Override
@@ -644,6 +653,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 List.copyOf(routes),
                 List.copyOf(jobSites),
                 parseIdList(obj, "aliases"),
+                parseIdScalarOrList(obj, "clothing", diag),
                 Map.copyOf(trades),
                 obj.has("requirements") ? RequirementHint.extract(obj.get("requirements")) : List.of(),
                 obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null,
@@ -986,6 +996,41 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     if (id != null) out.add(id);
                 }
             }
+        }
+        return List.copyOf(out);
+    }
+
+    /** Ordered resource-id chain with ergonomic scalar shorthand for a single candidate. */
+    private static List<ResourceLocation> parseIdScalarOrList(JsonObject obj, String key,
+                                                               Diagnostics diag) {
+        if (!obj.has(key)) return List.of();
+        JsonElement value = obj.get(key);
+        List<ResourceLocation> out = new ArrayList<>();
+        if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
+            ResourceLocation id = ResourceLocation.tryParse(value.getAsString());
+            if (id != null) out.add(id);
+            else diag.warning(JsonPath.ROOT.field(key),
+                    "Invalid clothing identity '" + value.getAsString() + "'; entry ignored.",
+                    "Use a resource id such as minecraft:farmer.");
+        } else if (value.isJsonArray()) {
+            for (int i = 0; i < value.getAsJsonArray().size(); i++) {
+                JsonElement entry = value.getAsJsonArray().get(i);
+                if (!entry.isJsonPrimitive() || !entry.getAsJsonPrimitive().isString()) {
+                    diag.warning(JsonPath.ROOT.field(key).index(i),
+                            "Clothing identities must be strings; entry ignored.",
+                            "Use a resource id such as minecraft:farmer.");
+                    continue;
+                }
+                ResourceLocation id = ResourceLocation.tryParse(entry.getAsString());
+                if (id != null) out.add(id);
+                else diag.warning(JsonPath.ROOT.field(key).index(i),
+                        "Invalid clothing identity '" + entry.getAsString() + "'; entry ignored.",
+                        "Use a resource id such as minecraft:farmer.");
+            }
+        } else {
+            diag.warning(JsonPath.ROOT.field(key),
+                    "clothing must be a resource-id string or ordered list; ignoring it.",
+                    "Use clothing: minecraft:farmer or an array of fallback identities.");
         }
         return List.copyOf(out);
     }

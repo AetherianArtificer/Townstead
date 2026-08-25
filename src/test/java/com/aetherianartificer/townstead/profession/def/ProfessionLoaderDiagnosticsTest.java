@@ -12,9 +12,18 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProfessionLoaderDiagnosticsTest {
+
+    @Test
+    void feedbackSidecarsAreNotProfessionDocuments() {
+        assertTrue(ProfessionDataLoader.isFeedbackSidecar("beekeeper/feedback"));
+        assertTrue(ProfessionDataLoader.isFeedbackSidecar("beekeeper/feedback/no_input"));
+        assertFalse(ProfessionDataLoader.isFeedbackSidecar("beekeeper/profession"));
+        assertFalse(ProfessionDataLoader.isFeedbackSidecar("beekeeper/path/field_keeper/path"));
+    }
 
     private static JsonObject obj(String singleQuoted) {
         return JsonParser.parseString(singleQuoted.replace('\'', '"')).getAsJsonObject();

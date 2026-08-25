@@ -9,6 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -137,13 +138,43 @@ public final class ProfessionScanner {
         if (level == null || village == null || profession == null || profession == VillagerProfession.NONE) return 0;
         BlockPos center = new BlockPos(village.getCenter());
         PoiManager poiManager = level.getPoiManager();
-        return (int) poiManager.findAll(
+        List<BlockPos> positions = poiManager.findAll(
                 profession.heldJobSite(),
                 pos -> village.isWithinBorder(pos, Village.BORDER_MARGIN),
                 center,
                 128,
                 PoiManager.Occupancy.ANY
-        ).count();
+        ).map(BlockPos::immutable).toList();
+
+        com.aetherianartificer.townstead.profession.def.ProfessionDef def =
+                com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(
+                        BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession));
+        if (def == null) return positions.size();
+        List<com.aetherianartificer.townstead.profession.def.JobSiteProvider.JobBlock> providers =
+                def.jobSites().stream()
+                        .filter(com.aetherianartificer.townstead.profession.def.JobSiteProvider.JobBlock.class::isInstance)
+                        .map(com.aetherianartificer.townstead.profession.def.JobSiteProvider.JobBlock.class::cast)
+                        .toList();
+        if (providers.isEmpty()) return positions.size();
+
+        int[] sites = new int[providers.size()];
+        int ungrouped = 0;
+        for (BlockPos pos : positions) {
+            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+            boolean grouped = false;
+            for (int i = 0; i < providers.size(); i++) {
+                if (!providers.get(i).blocks().contains(blockId)) continue;
+                sites[i]++;
+                grouped = true;
+                break;
+            }
+            if (!grouped) ungrouped++;
+        }
+        int slots = ungrouped;
+        for (int i = 0; i < providers.size(); i++) {
+            slots += providers.get(i).slotsForSites(sites[i]);
+        }
+        return slots;
     }
 
     private static Map<String, Integer> countResidentProfessions(ServerLevel level, Village village) {
@@ -213,6 +244,8 @@ public final class ProfessionScanner {
                 PoiManager.Occupancy.ANY
         ).forEach(pos -> {
             if (liveClaims.contains(pos)) return;
+            if (poiManager.getType(pos).map(holder -> holder.value().maxTickets() == 0)
+                    .orElse(false)) return;
             if (poiManager.getFreeTickets(pos) > 0) return;
             poiManager.release(pos);
         });

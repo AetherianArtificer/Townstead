@@ -1190,6 +1190,9 @@ public class Townstead {
 
     //? if neoforge {
     private void addPackFinders(net.neoforged.neoforge.event.AddPackFindersEvent event) {
+        event.addRepositorySource(c ->
+                com.aetherianartificer.townstead.profession.CareerPackSource.loadPacks(
+                        event.getPackType(), c));
         if (event.getPackType() == net.minecraft.server.packs.PackType.SERVER_DATA) {
             Pack pack = DynamicFlowerPotTagPack.create();
             if (pack != null) event.addRepositorySource(c -> c.accept(pack));
@@ -1199,6 +1202,9 @@ public class Townstead {
     }
     //?} else if forge {
     /*private void addPackFinders(net.minecraftforge.event.AddPackFindersEvent event) {
+        event.addRepositorySource(c ->
+                com.aetherianartificer.townstead.profession.CareerPackSource.loadPacks(
+                        event.getPackType(), c));
         if (event.getPackType() == net.minecraft.server.packs.PackType.SERVER_DATA) {
             Pack pack = DynamicFlowerPotTagPack.create();
             if (pack != null) event.addRepositorySource(c -> c.accept(pack));
@@ -3986,16 +3992,40 @@ public class Townstead {
                     PoiManager.Occupancy.HAS_SPACE
             ).orElse(null);
         }
-        if (closest == null) return null;
-        BlockPos targetJobSite = closest;
+        if (closest != null) {
+            BlockPos targetJobSite = closest;
+            return poiManager.take(
+                    profession.heldJobSite(),
+                    (holder, pos) -> pos.equals(targetJobSite),
+                    targetJobSite,
+                    1
+            ).orElse(null);
+        }
 
-        BlockPos claimed = poiManager.take(
-                profession.heldJobSite(),
-                (holder, pos) -> pos.equals(targetJobSite),
-                targetJobSite,
-                1
-        ).orElse(null);
-        return claimed;
+        // Some vanilla POIs describe world features rather than villager workstations. A
+        // beehive, for example, is a real POI so bees can find it, but its maxTickets is zero.
+        // Replacing that POI would break the original system. For these sites Townstead uses
+        // the villager's JOB_SITE memory as the exclusive claim and leaves the vanilla POI
+        // untouched.
+        Set<BlockPos> assigned = new HashSet<>();
+        for (VillagerEntityMCA resident : village.getResidents(level)) {
+            if (!resident.isAlive() || resident == villager) continue;
+            resident.getBrain().getMemory(MemoryModuleType.JOB_SITE)
+                    .filter(globalPos -> globalPos.dimension().equals(level.dimension()))
+                    .map(GlobalPos::pos)
+                    .ifPresent(assigned::add);
+        }
+        return poiManager.findAllClosestFirstWithType(
+                        profession.heldJobSite(),
+                        pos -> village.isWithinBorder(pos, Village.BORDER_MARGIN),
+                        center,
+                        128,
+                        PoiManager.Occupancy.ANY)
+                .filter(pair -> pair.getFirst().value().maxTickets() == 0)
+                .map(com.mojang.datafixers.util.Pair::getSecond)
+                .filter(pos -> !assigned.contains(pos))
+                .findFirst()
+                .orElse(null);
     }
 
     private static void townstead$releaseStaleJobSites(ServerPlayer sp, ServerLevel level, Village village, VillagerProfession profession) {
@@ -4020,6 +4050,8 @@ public class Townstead {
                 PoiManager.Occupancy.ANY
         ).forEach(pos -> {
             if (liveClaims.contains(pos)) return;
+            if (poiManager.getType(pos).map(holder -> holder.value().maxTickets() == 0)
+                    .orElse(false)) return;
             if (poiManager.getFreeTickets(pos) > 0) return;
             if (poiManager.release(pos)) {
                 LOGGER.debug("Released stale job-site ticket for {} at {}", profession, pos);

@@ -14,6 +14,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -37,11 +38,13 @@ import java.util.Set;
  * surfaces — the subordinate {@code via} job blocks plus every block its work tasks declare
  * (tags expanded). The {@code via} professions and any other registered aliases are hidden
  * from JEP's native listing, so "place a pot, gain a chef" appears as recruitment flavor of
- * the one career instead of a sibling profession.</p>
+ * the one career instead of a sibling profession. Special roles that hold no workstation while
+ * declaring every POI acquirable are hidden too; JEP otherwise lists them under every workstation
+ * in the game.</p>
  *
  * <p>Defs live server-side: in singleplayer and LAN the integrated server shares the registry
- * statics, so this works; on a dedicated-server client no defs are loaded and both steps
- * quietly do nothing, leaving JEP's stock behavior.</p>
+ * statics, so hierarchy consolidation works there. On a dedicated-server client no defs are
+ * loaded, but the special-role filter still works from the client profession registry.</p>
  */
 final class JepConsolidation {
 
@@ -136,7 +139,33 @@ final class JepConsolidation {
                 }
             }
         }
+        for (VillagerProfession profession : BuiltInRegistries.VILLAGER_PROFESSION) {
+            if (!isUniversalAcquisitionWithoutWorkstation(
+                    profession.heldJobSite(), profession.acquirableJobSite())) {
+                continue;
+            }
+            ResourceLocation id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+            if (id != null) hidden.add(id);
+        }
         return hidden;
+    }
+
+    /**
+     * MCA uses this exact predicate pair for roles assigned outside vanilla workstation logic.
+     * Identity checks are deliberate: narrower custom predicates are real acquisition rules and
+     * must remain visible.
+     */
+    static boolean isUniversalAcquisitionWithoutWorkstation(
+            java.util.function.Predicate<Holder<PoiType>> held,
+            java.util.function.Predicate<Holder<PoiType>> acquirable) {
+        return isUniversalAcquisitionWithoutWorkstation(
+                held == PoiType.NONE,
+                acquirable == VillagerProfession.ALL_ACQUIRABLE_JOBS);
+    }
+
+    static boolean isUniversalAcquisitionWithoutWorkstation(
+            boolean holdsNoWorkstation, boolean acceptsEveryPoi) {
+        return holdsNoWorkstation && acceptsEveryPoi;
     }
 
     private static VillagerProfession registeredProfession(ResourceLocation id) {

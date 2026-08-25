@@ -7,6 +7,10 @@
   "description": {
     "text": "A cook devoted to the oven, from daily bread to fine pastry."
   },
+  "clothing": [
+    "townstead:baker",
+    "mca:baker"
+  ],
   "hidden": true,
   "requirements": {
     "type": "pheno:and",

@@ -49,6 +49,25 @@ class BundledProfessionLayoutTest {
         }
     }
 
+    @Test
+    void customProfessionsDeclareOrderedClothingFallbacks() {
+        assertEquals(List.of("townstead:baker", "mca:baker"),
+                strings(resource("/data/townstead/profession/baker/profession.json"), "clothing"));
+        assertEquals(List.of("townstead:cook", "chefsdelight:cook",
+                        "chefsdelight:chef", "minecraft:butcher"),
+                strings(resource("/data/townstead/profession/cook/profession.json"), "clothing"));
+        assertEquals(List.of("townstead:scribe", "iceandfire:scribe", "minecraft:librarian"),
+                strings(resource("/data/townstead/profession/scribe/profession.json"), "clothing"));
+        assertFalse(resource("/data/townstead/profession/barista/profession.json").has("clothing"),
+                "barista keeps its current clothes until a suitable wardrobe is authored");
+    }
+
+    private static List<String> strings(JsonObject object, String member) {
+        return object.getAsJsonArray(member).asList().stream()
+                .map(element -> element.getAsString())
+                .toList();
+    }
+
     private static JsonObject resource(String path) {
         InputStream input = BundledProfessionLayoutTest.class.getResourceAsStream(path);
         assertNotNull(input, "shipped resource missing: " + path);

@@ -8,6 +8,11 @@
   "description": {
     "text": "The village's pen. Keeps the records at the Archives, prints the bulletin, and helps people toward their calling."
   },
+  "clothing": [
+    "townstead:scribe",
+    "iceandfire:scribe",
+    "minecraft:librarian"
+  ],
   "unlock_model": "experiential",
   "titles": [
     {

@@ -3,12 +3,18 @@ package com.aetherianartificer.townstead.profession;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The scan's eligibility rules for mod-bundled Townstead profession definitions. */
+/** The scan's eligibility and composition rules for installed Townstead profession definitions. */
 class ScannedProfessionsTest {
 
     private static JsonObject obj(String singleQuoted) {
@@ -43,7 +49,31 @@ class ScannedProfessionsTest {
     void practicedCustomCareerCanExplicitlyRegister() {
         assertTrue(ScannedProfessions.eligible(obj(
                 "{ 'schema': 'townstead:profession/v2', 'register_profession': true }")),
-                "a mod-bundled practiced career may explicitly own a new villager profession");
+                "an early-installed practiced career may explicitly own a new villager profession");
+    }
+
+    @Test
+    void globalCareerPackDirectorySuppliesRegistrationMetadata(@TempDir Path root) throws Exception {
+        Path profession = root.resolve(
+                "data/townstead_example/profession/beekeeper/profession.json");
+        Path work = profession.resolveSibling("work.json");
+        Files.createDirectories(profession.getParent());
+        Files.writeString(profession,
+                "{\"schema\":\"townstead:profession/v2\",\"display_name\":\"Beekeeper\"}");
+        Files.writeString(work,
+                "{\"schema\":\"townstead:profession_work/v1\"," +
+                        "\"register_profession\":true," +
+                        "\"poi\":[{\"type\":\"townstead:job_block\"," +
+                        "\"block\":\"minecraft:beehive\"}]}");
+
+        var found = new LinkedHashMap<net.minecraft.resources.ResourceLocation,
+                ScannedProfessions.ScannedDef>();
+        ScannedProfessions.collectDataRoot(root.resolve("data"), Set.of(), found);
+
+        var id = net.minecraft.resources.ResourceLocation.tryParse("townstead_example:beekeeper");
+        assertTrue(found.containsKey(id));
+        assertTrue(found.get(id).jobBlocks().contains(
+                net.minecraft.resources.ResourceLocation.tryParse("minecraft:beehive")));
     }
 
     @Test
@@ -68,6 +98,17 @@ class ScannedProfessionsTest {
                 net.minecraft.resources.ResourceLocation.tryParse("minecraft:beehive")));
         assertTrue(ScannedProfessions.taskTypes(profession).contains(
                 net.minecraft.resources.ResourceLocation.tryParse("townstead_work:interact")));
+    }
+
+    @Test
+    void scannedProfessionMatchesAnExistingPoiByItsAuthoredBlockId() {
+        var beehive = net.minecraft.resources.ResourceLocation.tryParse("minecraft:beehive");
+        var lectern = net.minecraft.resources.ResourceLocation.tryParse("minecraft:lectern");
+
+        assertTrue(ScannedProfessions.matchesAuthoredBlock(
+                Set.of(beehive), Set.of(beehive)));
+        assertFalse(ScannedProfessions.matchesAuthoredBlock(
+                Set.of(beehive), Set.of(lectern)));
     }
 
     @Test

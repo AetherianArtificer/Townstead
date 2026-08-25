@@ -25,13 +25,27 @@ public interface JobSiteProvider {
      * hierarchy: the first entry is the primary surface, and a subordinate job-block entry may
      * name {@code via} — the (alias) profession whose vanilla POI claim manifests this surface
      * (e.g. the cooking pot manifests through {@code chefsdelight:chef}). Claiming such a POI
-     * acquires the canonical career, gated by the village's total capacity.
+     * acquires the canonical career, gated by the village's total capacity. Several matching
+     * sites may form one worker's workload through {@code sitesPerWorker}; the default of one
+     * preserves vanilla's one-workstation, one-worker rule.
      */
-    record JobBlock(Set<ResourceLocation> blocks, @Nullable ResourceLocation via) implements JobSiteProvider {
-        public JobBlock { blocks = Set.copyOf(blocks); }
-        public JobBlock(Set<ResourceLocation> blocks) { this(blocks, null); }
+    record JobBlock(Set<ResourceLocation> blocks, @Nullable ResourceLocation via,
+                    int sitesPerWorker) implements JobSiteProvider {
+        public JobBlock {
+            blocks = Set.copyOf(blocks);
+            sitesPerWorker = Math.max(1, sitesPerWorker);
+        }
+        public JobBlock(Set<ResourceLocation> blocks, @Nullable ResourceLocation via) {
+            this(blocks, via, 1);
+        }
+        public JobBlock(Set<ResourceLocation> blocks) { this(blocks, null, 1); }
         public static final String KEY = "townstead:job_block";
         @Override public String typeKey() { return KEY; }
+
+        /** One through {@code sitesPerWorker} sites seat one worker; the next starts another. */
+        public int slotsForSites(int siteCount) {
+            return siteCount <= 0 ? 0 : (siteCount + sitesPerWorker - 1) / sitesPerWorker;
+        }
     }
 
     /**

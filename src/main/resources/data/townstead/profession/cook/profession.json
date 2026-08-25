@@ -8,6 +8,12 @@
   "description": {
     "text": "Prepare food to build a history of culinary mastery."
   },
+  "clothing": [
+    "townstead:cook",
+    "chefsdelight:cook",
+    "chefsdelight:chef",
+    "minecraft:butcher"
+  ],
   "skills": [
     "seasoned_hands",
     "steady_simmer"
@@ -23,9 +29,7 @@
   },
   "aliases": [
     "chefsdelight:cook",
-    "chefsdelight:chef",
-    "vca:cook",
-    "villagerclothingaddition:cook"
+    "chefsdelight:chef"
   ],
   "titles": [
     {

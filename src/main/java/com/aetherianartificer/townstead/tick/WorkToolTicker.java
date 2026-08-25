@@ -9,16 +9,21 @@ import com.aetherianartificer.townstead.hunger.FishermanSupplyManager;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerLevel;
 
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 /**
  * While a villager is on a WORK shift, display their profession's tool of trade
- * in their main hand. The previous main-hand item is stashed and restored when
- * the shift ends, the profession changes, or no matching tool is in inventory.
+ * in their main hand. Data-authored Job tools appear only while their Job has runnable work;
+ * code-owned professions retain their own semantic display rules. The previous main-hand item
+ * is stashed and restored when the shift ends, the profession changes, or no usable tool is in
+ * inventory.
  */
 public final class WorkToolTicker {
     private static final int CHECK_INTERVAL_TICKS = 10;
@@ -30,7 +35,18 @@ public final class WorkToolTicker {
         if (villager.level().isClientSide) return;
         if ((villager.level().getGameTime() + villager.getId()) % CHECK_INTERVAL_TICKS != 0) return;
 
-        Predicate<ItemStack> matcher = stack -> matchesDeclaredTool(villager, stack);
+        Set<net.minecraft.resources.ResourceLocation> actionableTasks = new HashSet<>();
+        if (villager.level() instanceof ServerLevel level) {
+            for (var task : com.aetherianartificer.townstead.work.WorkTaskDeclarations.all(villager)) {
+                if (!com.aetherianartificer.townstead.work.job.WorkJobs.forTask(task.type()).isEmpty()
+                        && com.aetherianartificer.townstead.work.WorkActivities
+                        .hasWork(level, villager, task.type())) {
+                    actionableTasks.add(task.type());
+                }
+            }
+        }
+        Predicate<ItemStack> matcher = stack ->
+                matchesDeclaredTool(villager, stack, actionableTasks);
 
         Brain<?> brain = villager.getBrain();
         long dayTime = villager.level().getDayTime() % 24000L;
@@ -71,7 +87,9 @@ public final class WorkToolTicker {
      * those selectors directly so a new profession, tool family, or integration mod does not need
      * a ticker rule. The few code-owned engines retain their own semantic matchers.
      */
-    private static boolean matchesDeclaredTool(VillagerEntityMCA villager, ItemStack stack) {
+    private static boolean matchesDeclaredTool(
+            VillagerEntityMCA villager, ItemStack stack,
+            Set<net.minecraft.resources.ResourceLocation> actionableTasks) {
         if (stack.isEmpty()) return false;
         for (var task : com.aetherianartificer.townstead.work.WorkTaskDeclarations.all(villager)) {
             if (task.type().equals(WorkTaskTypes.HARVEST)
@@ -82,6 +100,10 @@ public final class WorkToolTicker {
                     && com.aetherianartificer.townstead.shepherd.ShepherdShearToolCompatRegistry
                     .isCompatibleShears(stack)) return true;
             for (var job : com.aetherianartificer.townstead.work.job.WorkJobs.forTask(task.type())) {
+                // A Job document names every item that could be used, not what can be used now.
+                // Idle workers should not flash those possible tools when no source or target is
+                // runnable.
+                if (!actionableTasks.contains(task.type())) continue;
                 if (job.source() != null && job.source().matches(stack)) return true;
                 if (job.target() == null) continue;
                 for (var interaction : job.target().interactions()) {

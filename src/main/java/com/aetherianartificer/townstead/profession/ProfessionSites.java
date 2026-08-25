@@ -152,12 +152,36 @@ public final class ProfessionSites {
     public static Set<Long> extentOf(ServerLevel level, VillagerEntityMCA villager,
                                      @Nullable ProfessionDef def) {
         Optional<Site> site = assignedSite(level, villager, def);
-        if (site.isEmpty()) return Set.of();
+        if (site.isEmpty()) {
+            // Direct vanilla-style POIs are explicitly assigned in JOB_SITE memory rather than
+            // synthesized as MCA building seats. The work area around that anchor may contain
+            // several authored sites, such as a group of hives serviced by one beekeeper.
+            Optional<net.minecraft.core.GlobalPos> memory = villager.getBrain()
+                    .getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE);
+            if (def != null && memory.isPresent()
+                    && memory.get().dimension().equals(level.dimension())
+                    && matchesDirectJobBlock(level, memory.get().pos(), def)) {
+                return com.aetherianartificer.townstead.work.WorkSiteBounds
+                        .workAreaAround(level, memory.get().pos());
+            }
+            return Set.of();
+        }
         Building building = site.get().building();
         return building != null
                 ? com.aetherianartificer.townstead.work.WorkSiteBounds.workArea(level, building)
                 : com.aetherianartificer.townstead.work.WorkSiteBounds
                         .workAreaAround(level, site.get().post());
+    }
+
+    private static boolean matchesDirectJobBlock(ServerLevel level, BlockPos pos,
+                                                 ProfessionDef def) {
+        net.minecraft.resources.ResourceLocation blockId = net.minecraft.core.registries
+                .BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        for (JobSiteProvider provider : def.jobSites()) {
+            if (provider instanceof JobSiteProvider.JobBlock block
+                    && block.via() == null && block.blocks().contains(blockId)) return true;
+        }
+        return false;
     }
 
     /** Whether this villager's worksite contains any of these blocks. */

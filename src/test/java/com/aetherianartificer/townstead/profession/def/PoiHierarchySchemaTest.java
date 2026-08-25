@@ -62,6 +62,23 @@ class PoiHierarchySchemaTest {
     }
 
     @Test
+    void jobBlockCanGroupSeveralSitesIntoOneWorkerSlot() {
+        JobSiteProvider.JobBlock hives = (JobSiteProvider.JobBlock) JobSiteProviders.parse(
+                JsonParser.parseString("""
+                        {"type":"townstead:job_block","block":"minecraft:beehive",
+                         "sites_per_worker":4}
+                        """).getAsJsonObject());
+
+        assertNotNull(hives);
+        assertEquals(4, hives.sitesPerWorker());
+        assertEquals(1, hives.slotsForSites(1));
+        assertEquals(1, hives.slotsForSites(4));
+        assertEquals(2, hives.slotsForSites(5));
+        assertEquals(2, hives.slotsForSites(8));
+        assertEquals(3, hives.slotsForSites(9));
+    }
+
+    @Test
     void shippedCookDefDeclaresTheChefsDelightSurfaces() {
         ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook");
         assertTrue(PoiHierarchy.hasAcquisitionHierarchy(cook));
