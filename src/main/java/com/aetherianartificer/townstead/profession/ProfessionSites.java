@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
+import com.aetherianartificer.townstead.compat.mca.McaBuildingCompat;
 import com.aetherianartificer.townstead.profession.def.JobSiteProvider;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 
@@ -258,14 +259,16 @@ public final class ProfessionSites {
         if (def == null || def.jobSites().isEmpty()) return List.of();
         List<Site> sites = new ArrayList<>();
         List<Building> claimed = new ArrayList<>();
+        java.util.Map<Integer, String> effectiveTypes = McaBuildingCompat.effectiveTypes(village);
 
         // Pass one: buildings. They run first regardless of where they sit in the list, because
         // a post only knows whether it stands outside a building once every building is known.
         for (int i = 0; i < def.jobSites().size(); i++) {
             if (!(def.jobSites().get(i) instanceof JobSiteProvider.Building provider)) continue;
-            for (Building building : sortedBuildings(village, provider)) {
+            for (Building building : sortedBuildings(village, provider, effectiveTypes)) {
                 claimed.add(building);
-                int seats = provider.slotsFor(building.getType());
+                int seats = seatsForBuilding(provider, building.getType(),
+                        effectiveTypes.get(building.getId()));
                 for (int seat = 0; seat < seats; seat++) {
                     sites.add(new Site(building, null, i));
                 }
@@ -304,13 +307,26 @@ public final class ProfessionSites {
      * load-bearing: it decides which building each worker is assigned to, so changing it
      * reshuffles who works where in existing worlds.
      */
-    private static List<Building> sortedBuildings(Village village, JobSiteProvider.Building provider) {
+    private static List<Building> sortedBuildings(
+            Village village, JobSiteProvider.Building provider,
+            java.util.Map<Integer, String> effectiveTypes) {
         List<Building> matches = new ArrayList<>();
         for (Building building : McaBuildings.all(village)) {
-            if (provider.matches(building.getType())) matches.add(building);
+            String type = effectiveTypes.getOrDefault(building.getId(), building.getType());
+            if (provider.matches(type)) matches.add(building);
         }
         matches.sort(ProfessionSites::compareBuildings);
         return matches;
+    }
+
+    /**
+     * Seats are derived from MCA's effective type, because floor rooms may inherit their
+     * workplace classification from a main room while retaining a generic raw type. The raw
+     * type is only the compatibility fallback for MCA versions without derived room types.
+     */
+    static int seatsForBuilding(JobSiteProvider.Building provider, @Nullable String rawType,
+                                @Nullable String effectiveType) {
+        return provider.slotsFor(effectiveType == null ? rawType : effectiveType);
     }
 
     private static int compareBuildings(Building a, Building b) {
