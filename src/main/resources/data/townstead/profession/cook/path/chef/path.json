@@ -1,0 +1,60 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "mods": "chefsdelight",
+  "name": {
+    "text": "Chef"
+  },
+  "title": {
+    "text": "Chef"
+  },
+  "color": "#C95F3B",
+  "worksites": [
+    "farmersdelight:cooking_pot",
+    "farmersdelight:skillet",
+    "farmersdelight:stove",
+    "farmersdelight:cutting_board"
+  ],
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              { "type": "pheno:skill", "skill": "townstead:cook/chef/kitchen_flow" },
+              { "type": "pheno:skill", "skill": "townstead:cook/chef/main_course" },
+              { "type": "pheno:skill", "skill": "townstead:cook/chef/saute_toss" }
+            ]
+          },
+          { "type": "pheno:building", "building_prefix": "compat/farmersdelight/kitchen_l" },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 8,
+            "block_condition": {
+              "type": "pheno:and",
+              "conditions": [
+                { "type": "pheno:in_tag", "tag": "townstead:kitchen/heat_sources" },
+                { "type": "pheno:block_state", "property": "lit", "value": "true", "if_missing": "pass" }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:flow",
+        "amount": 6
+      }
+    }
+  ],
+  "skills": [
+    ["kitchen_pace", "appetizer_menu", "chefs_knife"],
+    ["mise_en_place", "soup_course", "precision_cut"],
+    ["kitchen_flow", "main_course", "saute_toss"],
+    ["running_the_pass", "dessert_menu", "flambe"],
+    ["chef_de_cuisine", "grand_banquet", "dinner_rush"]
+  ]
+}

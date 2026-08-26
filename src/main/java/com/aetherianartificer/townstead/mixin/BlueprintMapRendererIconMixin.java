@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.compat.BuildingIconSwap;
+import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -76,6 +77,15 @@ public class BlueprintMapRendererIconMixin {
             BuildingType type, Operation<Boolean> original) {
         boolean pointIcon = original.call(type);
         townstead$externalFootprintIcon.remove();
+        boolean townsteadItemIcon = type.visible() && type.hasIcon()
+                && BuildingIconResolver.nodeItemForIconUv(type.iconU(), type.iconV()).isPresent();
+        if (townsteadItemIcon) {
+            // MCA draws point icons inside its world-space map transform. That makes a 16 px item
+            // grow with the map zoom (often to 40-60 px). Townstead item icons belong on the
+            // footprint path below, which cancels the world scale and remains screen-sized.
+            townstead$externalFootprintIcon.set(type);
+            return false;
+        }
         if (!pointIcon && type.visible() && type.hasIcon()) {
             townstead$externalFootprintIcon.set(type);
         }

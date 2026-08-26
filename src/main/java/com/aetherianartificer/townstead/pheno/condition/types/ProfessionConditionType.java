@@ -44,10 +44,20 @@ public final class ProfessionConditionType implements ConditionType {
     }
 
     private static boolean test(ConditionContext ctx, Set<String> professions) {
-        if (ctx.subject() != null) return professions.contains(ctx.subject().professionId());
-        if (!(ctx.entity() instanceof VillagerDataHolder holder)) return false;
-        VillagerProfession profession = holder.getVillagerData().getProfession();
-        ResourceLocation key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
-        return key != null && professions.contains(key.toString());
+        ResourceLocation actual;
+        if (ctx.subject() != null) {
+            actual = ResourceLocation.tryParse(ctx.subject().professionId());
+        } else {
+            if (!(ctx.entity() instanceof VillagerDataHolder holder)) return false;
+            VillagerProfession profession = holder.getVillagerData().getProfession();
+            actual = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+        }
+        if (actual == null) return false;
+        for (String authored : professions) {
+            ResourceLocation expected = ResourceLocation.tryParse(authored);
+            if (expected != null && com.aetherianartificer.townstead.profession.ProfessionIdentity
+                    .matches(ctx.entity(), actual, expected)) return true;
+        }
+        return false;
     }
 }

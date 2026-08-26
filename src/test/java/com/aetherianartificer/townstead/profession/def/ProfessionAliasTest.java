@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession.def;
 
 import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostics;
+import com.aetherianartificer.townstead.profession.ProfessionIdentity;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.ProfessionXp;
 import com.aetherianartificer.townstead.villager.ProfessionXpStore;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,6 +28,7 @@ class ProfessionAliasTest {
 
     private static final ResourceLocation BAKER = ResourceLocation.tryParse("townstead:baker");
     private static final ResourceLocation OTHER_BAKER = ResourceLocation.tryParse("somemod:baker");
+    private static final ResourceLocation OTHER_CHEF = ResourceLocation.tryParse("somemod:chef");
 
     @AfterEach
     void clearDefs() {
@@ -45,6 +48,33 @@ class ProfessionAliasTest {
         assertSame(ProfessionDefs.byId(BAKER), ProfessionDefs.byId(OTHER_BAKER));
         assertEquals(BAKER, ProfessionDefs.canonicalId(OTHER_BAKER));
         assertEquals(BAKER, ProfessionDefs.canonicalId(BAKER));
+    }
+
+    @Test
+    void pathAliasResolvesToTheCareerAndRetainsItsPathMeaning() {
+        ProfessionDefs.replaceAll(Map.of(BAKER, def(BAKER, List.of())), Map.of(
+                OTHER_BAKER, new ProfessionDefs.Resolution(BAKER, null),
+                OTHER_CHEF, new ProfessionDefs.Resolution(BAKER, "chef")));
+
+        assertSame(ProfessionDefs.byId(BAKER), ProfessionDefs.byId(OTHER_CHEF));
+        assertEquals(BAKER, ProfessionDefs.canonicalId(OTHER_CHEF));
+        assertEquals("chef", ProfessionDefs.pathId(OTHER_CHEF));
+        assertNull(ProfessionDefs.pathId(OTHER_BAKER));
+        assertEquals(Set.of(OTHER_BAKER, OTHER_CHEF),
+                ProfessionDefs.compatibilityIds(BAKER));
+    }
+
+    @Test
+    void rootReferenceMatchesAPathCarrierButPathReferenceRemainsSpecific() {
+        ProfessionDefs.replaceAll(Map.of(BAKER, def(BAKER, List.of())), Map.of(
+                OTHER_BAKER, new ProfessionDefs.Resolution(BAKER, null),
+                OTHER_CHEF, new ProfessionDefs.Resolution(BAKER, "chef")));
+
+        assertTrue(ProfessionIdentity.matches(null, OTHER_CHEF, BAKER));
+        assertTrue(ProfessionIdentity.matches(null, OTHER_CHEF, OTHER_BAKER));
+        assertTrue(ProfessionIdentity.matches(null, OTHER_CHEF, OTHER_CHEF));
+        assertFalse(ProfessionIdentity.matches(null, OTHER_BAKER, OTHER_CHEF));
+        assertFalse(ProfessionIdentity.matches(null, BAKER, OTHER_CHEF));
     }
 
     @Test

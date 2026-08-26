@@ -11,7 +11,6 @@
   "clothing": [
     "townstead:cook",
     "chefsdelight:cook",
-    "chefsdelight:chef",
     "minecraft:butcher"
   ],
   "skills": [
@@ -26,21 +25,5 @@
       "kaleidoscope_cookery",
       "rusticdelight"
     ]
-  },
-  "aliases": [
-    "chefsdelight:cook",
-    "chefsdelight:chef"
-  ],
-  "titles": [
-    {
-      "id": "chef_de_cuisine",
-      "name": {
-        "text": "Head Chef"
-      },
-      "skills": [
-        "seasoned_hands",
-        "steady_simmer"
-      ]
-    }
-  ]
+  }
 }

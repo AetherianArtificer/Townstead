@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.work.site;
 
-import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.LivingEntity;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,9 +37,19 @@ public final class BuildingWorkforceIndex {
 
     public static boolean accepts(String buildingType, ResourceLocation profession) {
         if (buildingType == null || profession == null) return false;
-        ResourceLocation canonical = ProfessionDefs.canonicalId(profession);
         for (ResourceLocation accepted : professionsFor(buildingType)) {
-            if (ProfessionDefs.canonicalId(accepted).equals(canonical)) return true;
+            if (com.aetherianartificer.townstead.profession.ProfessionIdentity
+                    .matches(null, profession, accepted)) return true;
+        }
+        return false;
+    }
+
+    /** Path-aware worker acceptance for compatibility professions such as Cook/Chef. */
+    public static boolean accepts(String buildingType, LivingEntity worker) {
+        if (buildingType == null || worker == null) return false;
+        for (ResourceLocation accepted : professionsFor(buildingType)) {
+            if (com.aetherianartificer.townstead.profession.ProfessionIdentity
+                    .matches(worker, accepted)) return true;
         }
         return false;
     }

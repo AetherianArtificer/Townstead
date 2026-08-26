@@ -49,8 +49,10 @@ public final class ProfessionSlotRules {
      */
     @org.jetbrains.annotations.Nullable
     private static SlotPolicy declaredPolicy(String professionId) {
+        // Slot ownership is physical, not semantic. A foreign profession may mean the same
+        // Career (or one of its Paths) without surrendering its native POI to Townstead.
         com.aetherianartificer.townstead.profession.def.ProfessionDef def =
-                com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(
+                com.aetherianartificer.townstead.profession.def.ProfessionDefs.all().get(
                         ResourceLocation.tryParse(professionId));
         if (def == null || def.jobSites().isEmpty()) return null;
         boolean anyBlock = false;

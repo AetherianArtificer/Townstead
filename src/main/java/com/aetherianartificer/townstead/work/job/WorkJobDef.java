@@ -12,6 +12,8 @@ import com.aetherianartificer.townstead.pheno.condition.block.BlockCondition;
 import com.aetherianartificer.townstead.pheno.condition.block.BlockConditions;
 import com.aetherianartificer.townstead.pheno.condition.item.ItemCondition;
 import com.aetherianartificer.townstead.pheno.condition.item.ItemConditions;
+import com.aetherianartificer.townstead.pheno.selector.BlockSelector;
+import com.aetherianartificer.townstead.pheno.selector.BlockSelectors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -44,7 +46,7 @@ public record WorkJobDef(
         @Nullable BlockTarget destination,
         @Nullable BlockTarget target) {
 
-    public static final String SCHEMA = "townstead:job/v2";
+    public static final String SCHEMA = "townstead:job/v3";
     public static final ResourceLocation ENTITY_DELIVERY = id("townstead:entity_delivery");
     public static final ResourceLocation BLOCK_INTERACTION = id("townstead:block_interaction");
 
@@ -112,6 +114,7 @@ public record WorkJobDef(
             List<ResourceLocation> blockTags,
             Placement placement,
             @Nullable BlockCondition condition,
+            List<ManagedRequirement> requirements,
             List<Interaction> interactions) {
 
         public boolean matchesBuilding(@Nullable String buildingType) {
@@ -129,6 +132,35 @@ public record WorkJobDef(
                 if (state.is(TagKey.create(Registries.BLOCK, tag))) return true;
             }
             return false;
+        }
+    }
+
+    /** A world fact which may already hold or may be established temporarily for one work session. */
+    public record ManagedRequirement(String id, BlockCondition satisfiedWhen,
+                                     @Nullable Provision provision) {
+        public boolean satisfied(net.minecraft.world.level.Level level,
+                                 net.minecraft.core.BlockPos target) {
+            return satisfiedWhen.test(level, target);
+        }
+    }
+
+    /** How a worker establishes a requirement and reverses only Townstead-managed preparation. */
+    public record Provision(BlockSelector at, @Nullable String item,
+                            @Nullable ItemCondition itemCondition, BlockAction start,
+                            @Nullable BlockCondition managedWhen, BlockAction stop) {
+        public boolean requiresItem() { return item != null; }
+
+        public boolean matches(net.minecraft.server.level.ServerLevel level,
+                               net.minecraft.core.BlockPos pos, ItemStack stack) {
+            return item != null && matchesItem(item, stack)
+                    && (itemCondition == null || itemCondition.test(level, stack))
+                    && start.canRun(new com.aetherianartificer.townstead.pheno.action.block.BlockActionContext(
+                    level, pos).withItemRole("item", stack));
+        }
+
+        public boolean sourceManaged(net.minecraft.world.level.Level level,
+                                     net.minecraft.core.BlockPos pos) {
+            return managedWhen == null || managedWhen.test(level, pos);
         }
     }
 
@@ -261,8 +293,49 @@ public record WorkJobDef(
         if (xp < 1) return null;
         List<Interaction> interactions = parseInteractions(json.get("interactions"), xp);
         if (interactions == null || (interactionsRequired && interactions.isEmpty())) return null;
+        List<ManagedRequirement> requirements = parseRequirements(json.get("requirements"));
+        if (requirements == null) return null;
         return new BlockTarget(List.copyOf(buildings), Set.copyOf(blocks), List.copyOf(blockTags), placement,
-                condition, List.copyOf(interactions));
+                condition, List.copyOf(requirements), List.copyOf(interactions));
+    }
+
+    private static @Nullable List<ManagedRequirement> parseRequirements(@Nullable JsonElement element) {
+        if (element == null || element.isJsonNull()) return List.of();
+        if (!element.isJsonArray()) return null;
+        List<ManagedRequirement> result = new ArrayList<>();
+        Set<String> ids = new LinkedHashSet<>();
+        for (JsonElement child : element.getAsJsonArray()) {
+            if (!child.isJsonObject()) return null;
+            JsonObject json = child.getAsJsonObject();
+            String requirementId = string(json, "id");
+            if (requirementId == null || !requirementId.matches("[a-z0-9_.-]+")
+                    || !ids.add(requirementId) || !json.has("satisfied_when")) return null;
+            BlockCondition satisfied = BlockConditions.parse(json.get("satisfied_when"));
+            if (satisfied == null) return null;
+            Provision provision = json.has("provision") ? parseProvision(json.get("provision")) : null;
+            if (json.has("provision") && provision == null) return null;
+            result.add(new ManagedRequirement(requirementId, satisfied, provision));
+        }
+        return List.copyOf(result);
+    }
+
+    private static @Nullable Provision parseProvision(JsonElement element) {
+        if (!element.isJsonObject()) return null;
+        JsonObject json = element.getAsJsonObject();
+        BlockSelector at = json.has("at") ? BlockSelectors.parse(json.get("at")) : null;
+        if (at == null || !json.has("start") || !json.has("stop")) return null;
+        String item = string(json, "item");
+        if (json.has("item") && !validSelector(item)) return null;
+        ItemCondition itemCondition = json.has("item_condition")
+                ? ItemConditions.parse(json.get("item_condition")) : null;
+        if (json.has("item_condition") && (itemCondition == null || item == null)) return null;
+        BlockAction start = BlockActions.parse(json.get("start"));
+        BlockAction stop = BlockActions.parse(json.get("stop"));
+        if (start == null || stop == null) return null;
+        BlockCondition managedWhen = json.has("managed_when")
+                ? BlockConditions.parse(json.get("managed_when")) : null;
+        if (json.has("managed_when") && managedWhen == null) return null;
+        return new Provision(at, item, itemCondition, start, managedWhen, stop);
     }
 
     private static @Nullable List<Interaction> parseInteractions(

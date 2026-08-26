@@ -52,7 +52,12 @@ public final class TownsteadAPI {
         TownsteadVillager.ScheduleState schedule = state.schedule();
         ResourceLocation professionKey = BuiltInRegistries.VILLAGER_PROFESSION.getKey(
                 villager.getVillagerData().getProfession());
-        String professionId = professionKey == null ? "" : professionKey.toString();
+        ResourceLocation canonicalProfession = com.aetherianartificer.townstead.profession.def
+                .ProfessionDefs.canonicalId(professionKey);
+        String professionId = canonicalProfession == null ? "" : canonicalProfession.toString();
+        var professionPath = canonicalProfession == null ? null
+                : com.aetherianartificer.townstead.profession.ProfessionIdentity
+                .path(villager, canonicalProfession);
         ProfessionXp xp = state.professionMemory().professionXp(professionId);
         MinecraftServer server = villager.getServer();
         long ageDays = 0L;
@@ -74,6 +79,7 @@ public final class TownsteadAPI {
                 life.isSenior(),
                 life.personalityId(),
                 professionId,
+                professionPath == null ? "" : professionPath.id(),
                 xp.tier(),
                 xp.xp(),
                 life.fertility(),
@@ -114,6 +120,7 @@ public final class TownsteadAPI {
                 false,
                 false,
                 false,
+                "",
                 "",
                 "",
                 0,

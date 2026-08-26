@@ -3,6 +3,7 @@
   "values": [
     { "id": "farmersdelight:cooking_pot", "required": false },
     { "id": "farmersdelight:skillet", "required": false },
+    { "id": "farmersdelight:cutting_board", "required": false },
     { "id": "farm_and_charm:cooking_pot", "required": false },
     { "id": "farm_and_charm:mincer", "required": false },
     { "id": "farm_and_charm:crafting_bowl", "required": false },

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
+import com.aetherianartificer.townstead.profession.def.ClothingChoice;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Gender;
 import net.conczin.mca.resources.ClothingList;
@@ -50,8 +51,8 @@ public final class ProfessionClothing {
             return;
         }
 
-        for (ResourceLocation source : def.clothing()) {
-            List<Clothing> options = compatible(catalogue, villager, source);
+        for (ClothingChoice choice : def.clothing()) {
+            List<Clothing> options = compatible(catalogue, villager, choice.id());
             if (options.isEmpty()) continue;
             Optional<String> selected = SkinSelection.pickWeightedId(options);
             if (selected.isPresent()) {
@@ -94,12 +95,12 @@ public final class ProfessionClothing {
     /** First renderable identity in an authored chain, retaining a valid current variant. */
     static Optional<String> firstAvailable(Collection<Clothing> catalogue,
                                            Gender gender,
-                                           List<ResourceLocation> sources,
+                                           List<ClothingChoice> choices,
                                            String current,
                                            Predicate<String> available) {
-        for (ResourceLocation source : sources) {
-            if (source == null) continue;
-            List<Clothing> options = compatible(catalogue, gender, source);
+        for (ClothingChoice choice : choices) {
+            if (choice == null) continue;
+            List<Clothing> options = compatible(catalogue, gender, choice.id());
             if (options.stream().map(Clothing::getIdentifier)
                     .anyMatch(id -> Objects.equals(id, current) && available.test(id))) {
                 return Optional.of(current);
@@ -110,5 +111,30 @@ public final class ProfessionClothing {
             if (selected.isPresent()) return selected;
         }
         return Optional.empty();
+    }
+
+    /** Hair presentation belonging to the exact clothing variant the villager currently wears. */
+    public static ClothingChoice.HairPolicy hairPolicy(VillagerEntityMCA villager) {
+        if (villager == null) return ClothingChoice.HairPolicy.NORMAL;
+        ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION
+                .getKey(villager.getVillagerData().getProfession());
+        ProfessionDef def = professionId == null ? null : ProfessionDefs.all().get(professionId);
+        if (def == null || def.clothing().isEmpty()) return ClothingChoice.HairPolicy.NORMAL;
+        return hairPolicy(catalogue(), villager.getGenetics().getGender(),
+                def.clothing(), villager.getClothes());
+    }
+
+    static ClothingChoice.HairPolicy hairPolicy(Collection<Clothing> catalogue,
+                                                  Gender gender,
+                                                  List<ClothingChoice> choices,
+                                                  String current) {
+        if (current == null || current.isBlank()) return ClothingChoice.HairPolicy.NORMAL;
+        for (ClothingChoice choice : choices) {
+            boolean selected = compatible(catalogue, gender, choice.id()).stream()
+                    .map(Clothing::getIdentifier)
+                    .anyMatch(current::equals);
+            if (selected) return choice.hair();
+        }
+        return ClothingChoice.HairPolicy.NORMAL;
     }
 }

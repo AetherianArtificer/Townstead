@@ -1,0 +1,18 @@
+{
+  "type": "pheno:resource",
+  "mods": "chefsdelight",
+  "min": 0,
+  "max": 100,
+  "start": 0,
+  "regen": -2,
+  "regen_interval": 20,
+  "color": "#C95F3B",
+  "display": {
+    "shape": "horizontal",
+    "fill_mode": "continuous",
+    "frame": "townstead:gauge",
+    "color_theme": "townstead:mechanical",
+    "visibility": "when_referenced",
+    "priority": 20
+  }
+}

@@ -42,6 +42,22 @@ class ProfessionSlotRulesTest {
     }
 
     @Test
+    void semanticAliasKeepsItsOwnPhysicalPoiPolicy() {
+        ResourceLocation cook = ResourceLocation.tryParse("townstead:cook");
+        ResourceLocation chef = ResourceLocation.tryParse("somepack:chef");
+        ProfessionDef def = new ProfessionDef(cook, null, null,
+                new ProgressionTrack(List.of(0), 0, 0), UnlockModel.EXPERIENTIAL, 1,
+                RetrainingPolicy.FREE, List.of(), false, Conditions.ALWAYS, List.of(),
+                List.of(new JobSiteProvider.Building(List.of("compat/somepack/kitchen"))));
+        ProfessionDefs.replaceAll(Map.of(cook, def), Map.of(
+                chef, new ProfessionDefs.Resolution(cook, "chef")));
+
+        assertEquals(ProfessionSlotRules.SlotPolicy.POI_LIMITED,
+                ProfessionSlotRules.classify("somepack:chef", true),
+                "semantic compatibility must not replace the foreign profession's POI");
+    }
+
+    @Test
     void defDeclaredJobBlockDrivesPoiLimit() {
         registerDef("somepack:scribe", List.of(
                 new JobSiteProvider.JobBlock(Set.of(ResourceLocation.tryParse("minecraft:lectern")))));

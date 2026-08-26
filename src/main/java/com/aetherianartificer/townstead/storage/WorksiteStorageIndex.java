@@ -21,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -77,20 +78,33 @@ public final class WorksiteStorageIndex {
         WorksiteStorageCandidateIndex.invalidate(level, changedPos);
         String dimensionId = level.dimension().location().toString();
         long changedKey = changedPos.asLong();
-        SNAPSHOTS.keySet().removeIf(key -> key.dimensionId.equals(dimensionId)
-                && key.boundsKey.candidateSearchContains(changedKey));
+        SNAPSHOTS.entrySet().removeIf(entry -> entry.getKey().dimensionId.equals(dimensionId)
+                && (entry.getKey().boundsKey.candidateSearchContains(changedKey)
+                || entry.getValue().containsPosition(changedKey)));
     }
 
     private static Snapshot buildSnapshot(ServerLevel level, VillagerEntityMCA villager, Set<Long> kitchenBounds, long gameTime) {
-        if (kitchenBounds.isEmpty()) {
-            return new Snapshot(List.of(), Map.of(), gameTime + SNAPSHOT_TTL_TICKS);
-        }
         StorageSearchContext searchContext = new StorageSearchContext(level);
         List<Entry> entries = new ArrayList<>();
         Map<ResourceLocation, Integer> itemCounts = new HashMap<>();
         Set<Long> visited = new HashSet<>();
+        StoragePreference preference = StoragePreference.forVillager(villager);
 
+        List<CandidatePosition> candidates = new ArrayList<>();
+        for (var building : PreferredStorageBuildings.resolve(level, villager)) {
+            int buildingRank = preference.buildingRank(building.getType());
+            building.getBlockPosStream().forEach(pos ->
+                    candidates.add(new CandidatePosition(pos.immutable(), buildingRank)));
+        }
         for (BlockPos pos : candidateStoragePositions(level, kitchenBounds)) {
+            candidates.add(new CandidatePosition(pos, StoragePreference.FALLBACK_RANK));
+        }
+        if (candidates.isEmpty()) {
+            return new Snapshot(List.of(), Map.of(), gameTime + SNAPSHOT_TTL_TICKS);
+        }
+
+        for (CandidatePosition candidate : candidates) {
+            BlockPos pos = candidate.pos();
             if (!visited.add(pos.asLong())) continue;
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
             BlockEntity be = observed.blockEntity();
@@ -117,9 +131,13 @@ public final class WorksiteStorageIndex {
                 accumulate(itemCounts, slot.stack());
             }
             if (!slots.isEmpty()) {
-                entries.add(new Entry(observed.pos(), List.copyOf(slots)));
+                entries.add(new Entry(observed.pos(), List.copyOf(slots), candidate.buildingRank(),
+                        preference.rank(observed.state())));
             }
         }
+
+        entries.sort(Comparator.comparingInt(Entry::buildingRank)
+                .thenComparingInt(Entry::storageRank));
 
         return new Snapshot(List.copyOf(entries), Map.copyOf(itemCounts), gameTime + SNAPSHOT_TTL_TICKS);
     }
@@ -131,6 +149,13 @@ public final class WorksiteStorageIndex {
     public record Snapshot(List<Entry> entries, Map<ResourceLocation, Integer> itemCounts, long expiresAt) {
         public boolean validAt(long gameTime) {
             return gameTime <= expiresAt;
+        }
+
+        boolean containsPosition(long packedPos) {
+            for (Entry entry : entries) {
+                if (entry.pos().asLong() == packedPos) return true;
+            }
+            return false;
         }
 
         public Map<ResourceLocation, Integer> supply(Set<ResourceLocation> trackedIds, ServerLevel level) {
@@ -166,16 +191,26 @@ public final class WorksiteStorageIndex {
         public @Nullable NearbyItemSources.ContainerSlot findBestSlot(
                 VillagerEntityMCA villager, Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer) {
             NearbyItemSources.ContainerSlot best = null;
+            int bestBuildingRank = StoragePreference.FALLBACK_RANK;
+            int bestStorageRank = StoragePreference.FALLBACK_RANK;
             for (Entry entry : entries) {
                 for (SlotView slot : entry.slots()) {
                     if (!matcher.test(slot.stack())) continue;
+                    if (entry.buildingRank() > bestBuildingRank
+                            || (entry.buildingRank() == bestBuildingRank
+                            && entry.storageRank() > bestStorageRank)) continue;
                     int score = scorer.applyAsInt(slot.stack());
                     double dist = villager.distanceToSqr(
                             slot.pos().getX() + 0.5,
                             slot.pos().getY() + 0.5,
                             slot.pos().getZ() + 0.5
                     );
-                    if (isBetter(best, dist, score)) {
+                    boolean betterPlace = entry.buildingRank() < bestBuildingRank
+                            || (entry.buildingRank() == bestBuildingRank
+                            && entry.storageRank() < bestStorageRank);
+                    if (betterPlace || isBetter(best, dist, score)) {
+                        bestBuildingRank = entry.buildingRank();
+                        bestStorageRank = entry.storageRank();
                         best = new NearbyItemSources.ContainerSlot(
                                 slot.pos(),
                                 slot.container(),
@@ -233,7 +268,9 @@ public final class WorksiteStorageIndex {
         }
     }
 
-    private record Entry(BlockPos pos, List<SlotView> slots) {}
+    private record CandidatePosition(BlockPos pos, int buildingRank) {}
+
+    private record Entry(BlockPos pos, List<SlotView> slots, int buildingRank, int storageRank) {}
 
     record SlotView(BlockPos pos, @Nullable Container container, boolean itemHandler, int slot,
                             @Nullable Direction side, ItemStack stack) {}
@@ -242,10 +279,13 @@ public final class WorksiteStorageIndex {
 
     public record ExtractionPlan(List<PlannedExtraction> slots, int totalAvailable) {}
 
-    private record SnapshotKey(String dimensionId, BoundsKey boundsKey) {
+    private record SnapshotKey(String dimensionId, String professionId, BoundsKey boundsKey) {
         static SnapshotKey create(ServerLevel level, VillagerEntityMCA villager, Set<Long> kitchenBounds) {
+            ResourceLocation profession = BuiltInRegistries.VILLAGER_PROFESSION
+                    .getKey(villager.getVillagerData().getProfession());
             return new SnapshotKey(
                     level.dimension().location().toString(),
+                    profession == null ? "minecraft:none" : profession.toString(),
                     BoundsKey.of(kitchenBounds)
             );
         }

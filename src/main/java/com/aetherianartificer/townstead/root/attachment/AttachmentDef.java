@@ -165,8 +165,10 @@ public record AttachmentDef(
      * One physics chain, {@code bones} ordered root to tip. {@code stiffness} (0..1)
      * pulls each joint back to its authored pose, {@code damping} (0..1) is how much
      * swing survives each tick, {@code gravity} (0..1) droops the chain toward
-     * world-down, {@code maxAngle} (degrees) clamps each joint, and {@code sway}
-     * (degrees) adds ambient idle motion.
+     * world-down, {@code restPitch} (degrees) shifts the neutral spring target,
+     * {@code minPitch}/{@code maxPitch} independently clamp downward/upward pitch,
+     * {@code maxAngle} (degrees) clamps side swing, and {@code sway} (degrees) adds
+     * ambient idle motion. Negative pitch is down.
      *
      * <p>Feel tuning: {@code follow} (0..1) is how much each joint chases its parent
      * (the whip lag), {@code droopAngle} (degrees) is the full-gravity rest angle,
@@ -182,7 +184,8 @@ public record AttachmentDef(
      * weren't authored as chains.</p>
      */
     public record PhysicsChain(java.util.List<String> bones, float stiffness, float damping,
-                               float gravity, float maxAngle, float sway,
+                               float gravity, float maxAngle, float minPitch, float maxPitch,
+                               float restPitch, float sway,
                                float follow, float droopAngle, float swaySpeed, float snap,
                                float[] response, int segments, String axis) {
 

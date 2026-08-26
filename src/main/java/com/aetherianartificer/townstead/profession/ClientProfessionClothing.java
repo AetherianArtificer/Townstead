@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
+import com.aetherianartificer.townstead.profession.def.ClothingChoice;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.resources.data.skin.Clothing;
 import net.minecraft.client.Minecraft;
@@ -48,17 +49,17 @@ public final class ClientProfessionClothing {
         // the client can render it; only a blank, missing, or disabled-pack texture falls through.
         if (textureAvailable(villager.getClothes())) return;
 
-        applyFirstAvailable(villager, catalogue, List.of(CIVILIAN));
+        applyFirstAvailable(villager, catalogue, List.of(new ClothingChoice(CIVILIAN)));
     }
 
     private static boolean applyFirstAvailable(VillagerEntityMCA villager,
                                                Collection<Clothing> catalogue,
-                                               List<ResourceLocation> sources) {
+                                               List<ClothingChoice> choices) {
         String current = villager.getClothes();
         // Validation and priority selection are centralized in the common resolver; this client
         // class supplies the local resource-pack predicate.
         Optional<String> selected = ProfessionClothing.firstAvailable(catalogue,
-                villager.getGenetics().getGender(), sources, current,
+                villager.getGenetics().getGender(), choices, current,
                 ClientProfessionClothing::textureAvailable);
         selected.ifPresent(villager::setClothes);
         return selected.isPresent();

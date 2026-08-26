@@ -1116,6 +1116,22 @@ public final class WorkIngredients {
         return pullSingleTool(level, villager, matcher, center, kitchenBounds);
     }
 
+    /** Read-only counterpart to {@link #pullToolMatching}; used by Job feedback probes. */
+    public static boolean matchingToolAvailable(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            java.util.function.Predicate<ItemStack> matcher,
+            BlockPos center,
+            Set<Long> kitchenBounds
+    ) {
+        SimpleContainer inventory = villager.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (matcher.test(inventory.getItem(slot))) return true;
+        }
+        return findWorksiteStorageSlot(level, villager, matcher, kitchenBounds) != null
+                || findWorksiteStorageSlotLive(level, villager, matcher, kitchenBounds) != null;
+    }
+
     /**
      * Protocol-station hook: pull up to {@code max} DISTINCT items of {@code tag} from storage
      * into inventory (one of each — variety, not volume). Returns how many distinct items the
@@ -1219,14 +1235,30 @@ public final class WorkIngredients {
             Set<Long> kitchenBounds
     ) {
         if (stack.isEmpty()) return 0;
-        if (kitchenBounds.isEmpty()) return 0;
+        int totalInserted = com.aetherianartificer.townstead.storage.PreferredStorageBuildings
+                .insert(level, villager, stack);
+        if (stack.isEmpty() || kitchenBounds.isEmpty()) return totalInserted;
         BlockPos origin = center != null ? center : villager.blockPosition();
-        int totalInserted = 0;
         StorageSearchContext searchContext = new StorageSearchContext(level);
+        com.aetherianartificer.townstead.storage.StoragePreference storagePreference =
+                com.aetherianartificer.townstead.storage.StoragePreference.forVillager(villager);
+        // Use the same worksite-adjacent candidates as ingredient collection. Outdoor worksites
+        // such as an Apiary do not ordinarily contain a chest in their MCA block membership, but
+        // a barrel beside a hive is still plainly storage for that workplace. Named profession
+        // stores were already tried above; these candidates are the non-required fallback.
+        List<BlockPos> storageOrder = new ArrayList<>(
+                WorksiteStorageIndex.candidateStoragePositions(level, kitchenBounds));
+        storageOrder.sort(java.util.Comparator
+                .comparingInt((BlockPos pos) -> storagePreference.rank(level.getBlockState(pos)))
+                .thenComparingLong(pos -> {
+                    long dx = (long) pos.getX() - origin.getX();
+                    long dy = (long) pos.getY() - origin.getY();
+                    long dz = (long) pos.getZ() - origin.getZ();
+                    return dx * dx + dy * dy + dz * dz;
+                }));
 
-        for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-16, -3, -16), origin.offset(16, 3, 16))) {
+        for (BlockPos pos : storageOrder) {
             if (stack.isEmpty()) break;
-            if (!kitchenBounds.contains(pos.asLong())) continue;
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
             BlockEntity be = observed.blockEntity();
             if (!StorageRoles.isStorageCandidate(level, pos, be)) continue;

@@ -112,6 +112,8 @@ public final class PhenoSchemas {
                 .field(required("action", PhenoType.ACTION))
                 .field(of("interval", PhenoType.DURATION))
                 .field(of("condition", PhenoType.CONDITION))
+                .field(of("resource_cost", PhenoType.OBJECT)
+                        .doc("Optional {resource, amount}; amount 0 declares a HUD reference without spending."))
                 .primaryChild("action").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:resource", NodeDomain.GENE)
@@ -197,6 +199,27 @@ public final class PhenoSchemas {
                 .doc("Makes the entity jump (the vanilla impulse, respecting Jump Boost), scaled by "
                         + "strength; clears fall distance so a mid-air jump banks no fall damage.")
                 .field(of("strength", PhenoType.FLOAT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:add_velocity", NodeDomain.ACTION)
+                .doc("Adds a one-off velocity impulse to the actor.")
+                .field(of("x", PhenoType.FLOAT))
+                .field(of("y", PhenoType.FLOAT))
+                .field(of("z", PhenoType.FLOAT))
+                .field(of("relative", PhenoType.BOOL)
+                        .doc("Rotates x/z to the actor's facing; z is forward."))
+                .field(of("away_from_other", PhenoType.FLOAT)
+                        .doc("Adds a horizontal impulse away from the context's other entity."))
+                .build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:area_of_effect", NodeDomain.ACTION)
+                .doc("Runs an action on nearby living entities.")
+                .field(of("radius", PhenoType.FLOAT))
+                .field(of("include_self", PhenoType.BOOL))
+                .field(of("target", PhenoType.STRING)
+                        .doc("all (default), hostile, or non_hostile."))
+                .field(of("bientity_condition", PhenoType.BIENTITY_CONDITION)
+                        .doc("Optional actor-to-candidate filter."))
+                .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:teleport", NodeDomain.ACTION)
                 .doc("Teleports the entities selected by on to a place, role, or entity selection; "
@@ -321,6 +344,9 @@ public final class PhenoSchemas {
                 .doc("Tests the Townstead/MCA building at the entity's position.")
                 .field(of("building", PhenoType.STRING).doc("Building type id or slug, such as mca:tavern or tavern."))
                 .field(of("building_type", PhenoType.STRING).doc("Alias for building."))
+                .field(of("building_prefix", PhenoType.STRING)
+                        .doc("Matches the start of the full building type id."))
+                .field(of("type_prefix", PhenoType.STRING).doc("Alias for building_prefix."))
                 .field(of("id", PhenoType.INT).doc("Specific MCA building id."))
                 .field(of("village", PhenoType.INT).doc("Specific MCA village id."))
                 .field(of("village_id", PhenoType.INT).doc("Alias for village."))
@@ -365,6 +391,14 @@ public final class PhenoSchemas {
                 .field(of("entity_condition", PhenoType.CONDITION))
                 .field(of("comparison", PhenoType.STRING))
                 .field(of("compare_to", PhenoType.INT)).build());
+
+        NodeSchemas.register(NodeSchema.of("townstead:work_requirement", NodeDomain.CONDITION)
+                .doc("Tests one named managed requirement on a data-authored block-interaction Job.")
+                .field(required("job", PhenoType.ID))
+                .field(required("requirement", PhenoType.STRING))
+                .field(of("state", PhenoType.STRING)
+                        .doc("satisfied, unsatisfied, provisionable, missing_source, or missing_input."))
+                .build());
 
         NodeSchemas.register(NodeSchema.of("pheno:movement", NodeDomain.CONDITION)
                 .doc("Entity movement, pose, flight, and collision state.")

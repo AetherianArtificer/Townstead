@@ -75,6 +75,22 @@ class ComboAndTitleTest {
     }
 
     @Test
+    void pathTitleAcceptsOneChoiceFromEveryLevel() {
+        ResourceLocation cook = id("townstead:cook");
+        ResourceLocation pace = id("townstead:cook/chef/kitchen_pace");
+        ResourceLocation knife = id("townstead:cook/chef/chefs_knife");
+        ResourceLocation soup = id("townstead:cook/chef/soup_course");
+        ResourceLocation precision = id("townstead:cook/chef/precision_cut");
+        ProfessionTitles.replaceAll(Map.of(cook, List.of(
+                new ProfessionTitles.Title(cook, "chef", Component.literal("Chef"), List.of(),
+                        List.of(List.of(pace, knife), List.of(soup, precision))))));
+
+        Set<ResourceLocation> complete = Set.of(knife, soup);
+        assertEquals("chef", ProfessionTitles.resolve(cook, complete::contains).id());
+        assertNull(ProfessionTitles.resolve(cook, Set.of(knife)::contains));
+    }
+
+    @Test
     void shippedComboSkillsParse() throws Exception {
         record Expected(String file, String career, int level) {}
         for (Expected e : new Expected[]{
@@ -100,7 +116,7 @@ class ComboAndTitleTest {
         record Expected(String profession, String[] titleIds) {}
         for (Expected e : new Expected[]{
                 new Expected("cook", new String[]{
-                        "chef_de_cuisine", "pizzaiolo"}),
+                        "pizzaiolo"}),
                 new Expected("scribe", new String[]{"chronicler"})}) {
             try (var in = ComboAndTitleTest.class.getResourceAsStream(
                     "/data/townstead/profession/" + e.profession() + "/profession.json")) {
@@ -121,7 +137,14 @@ class ComboAndTitleTest {
                 assertEquals(e.titleIds().length, titles.size(), e.profession());
                 for (var element : titles) {
                     var title = element.getAsJsonObject();
-                    for (var skillRef : title.getAsJsonArray("skills")) {
+                    java.util.List<com.google.gson.JsonElement> requirements = new java.util.ArrayList<>();
+                    if (title.has("skills")) requirements.addAll(title.getAsJsonArray("skills").asList());
+                    if (title.has("skill_groups")) {
+                        for (var group : title.getAsJsonArray("skill_groups")) {
+                            requirements.addAll(group.getAsJsonArray().asList());
+                        }
+                    }
+                    for (var skillRef : requirements) {
                         String raw = skillRef.getAsString();
                         int slash = raw.indexOf('/');
                         String skillFile = slash < 0

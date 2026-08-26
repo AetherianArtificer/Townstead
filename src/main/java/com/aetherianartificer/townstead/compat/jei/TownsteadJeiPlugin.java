@@ -9,10 +9,10 @@ import net.minecraft.resources.ResourceLocation;
 
 /**
  * JEI integration. Today this exists to make Just Enough Professions tell the truth about
- * careers: without it, JEP documents the incidental acquisition surfaces (chefsdelight's chef
- * at the pot, its cook at the skillet) as separate professions while the canonical POI-less
- * career shows nothing. When JEP is installed, one consolidated entry per hierarchy-bearing
- * career is added to JEP's own category and the absorbed flavor entries are hidden. It also
+ * careers: JEP natively understands POI-bound professions, while Townstead may acquire a Career
+ * from a building and may interpret a foreign profession as a root or Path compatibility identity.
+ * When JEP is installed, one consolidated entry per such Career is added to JEP's own category
+ * and the absorbed compatibility entries are hidden. It also
  * suppresses workstation entries for special roles that explicitly hold no workstation while
  * accepting every POI for external assignment. This class is only ever loaded by JEI's plugin
  * scan, so it is safe when JEI is absent; all JEP class access lives behind reflection in

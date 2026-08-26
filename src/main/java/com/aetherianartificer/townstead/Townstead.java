@@ -439,6 +439,7 @@ public class Townstead {
             com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
             com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
             com.aetherianartificer.townstead.work.order.OrdersWatchers.tick(e.getServer());
+            com.aetherianartificer.townstead.work.job.ManagedRequirementLeases.tick(e.getServer());
             com.aetherianartificer.townstead.building.pin.BuildingPinService.tick(e.getServer());
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityJoinLevelEvent e) -> {
@@ -841,6 +842,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
                 com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
                 com.aetherianartificer.townstead.work.order.OrdersWatchers.tick(e.getServer());
+                com.aetherianartificer.townstead.work.job.ManagedRequirementLeases.tick(e.getServer());
                 com.aetherianartificer.townstead.building.pin.BuildingPinService.tick(e.getServer());
             }
         });
@@ -1193,6 +1195,9 @@ public class Townstead {
         event.addRepositorySource(c ->
                 com.aetherianartificer.townstead.profession.CareerPackSource.loadPacks(
                         event.getPackType(), c));
+        Pack kubeJsPack = com.aetherianartificer.townstead.data.KubeJsPackSource.create(
+                event.getPackType());
+        if (kubeJsPack != null) event.addRepositorySource(c -> c.accept(kubeJsPack));
         if (event.getPackType() == net.minecraft.server.packs.PackType.SERVER_DATA) {
             Pack pack = DynamicFlowerPotTagPack.create();
             if (pack != null) event.addRepositorySource(c -> c.accept(pack));
@@ -1205,6 +1210,9 @@ public class Townstead {
         event.addRepositorySource(c ->
                 com.aetherianartificer.townstead.profession.CareerPackSource.loadPacks(
                         event.getPackType(), c));
+        Pack kubeJsPack = com.aetherianartificer.townstead.data.KubeJsPackSource.create(
+                event.getPackType());
+        if (kubeJsPack != null) event.addRepositorySource(c -> c.accept(kubeJsPack));
         if (event.getPackType() == net.minecraft.server.packs.PackType.SERVER_DATA) {
             Pack pack = DynamicFlowerPotTagPack.create();
             if (pack != null) event.addRepositorySource(c -> c.accept(pack));
@@ -1636,6 +1644,8 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.work.feedback.WorkSignalConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.work.feedback.WorkRequirementConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.HealthConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.StatusEffectConditionType());
@@ -1811,6 +1821,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.selector.types.RayBlockSelectorType());
         com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
                 new com.aetherianartificer.townstead.pheno.selector.types.ConnectedBlockSelectorType());
+        com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
+                new com.aetherianartificer.townstead.pheno.selector.types.ColumnBlockSelectorType());
         // Value sources (the object form of a number)
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.CountValueType());

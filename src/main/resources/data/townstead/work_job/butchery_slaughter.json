@@ -1,5 +1,5 @@
 {
-  "schema": "townstead:job/v2",
+  "schema": "townstead:job/v3",
   "mods": ["butchery"],
   "task": "townstead_work:slaughter",
   "type": "townstead:entity_delivery",

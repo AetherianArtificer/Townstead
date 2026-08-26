@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackType;
 //? if >=1.21 {
@@ -13,6 +14,8 @@ import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -21,6 +24,9 @@ import java.util.Comparator;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import org.slf4j.Logger;
 
 /**
  * Townstead's global Career-pack source.
@@ -28,13 +34,15 @@ import java.util.function.Consumer;
  * <p>World data packs are normally discovered after the vanilla registries freeze. Townstead
  * scans Career packs from the profile-level {@code datapacks} directory used by launchers such
  * as CurseForge, and from the manual {@code config/townstead/career-packs} directory, before
- * that freeze. It then mounts them as required server-data and client-resource packs. This lets
- * one ordinary pack contain a real custom villager profession, its Career documents, and its
- * translations.</p>
+ * that freeze. Complete pack folders nested under {@code kubejs/data} are also mounted, allowing
+ * the same folder to carry its server data and assets. It then mounts them as required server-data
+ * and client-resource packs. This lets one ordinary pack contain a real custom villager
+ * profession, its Career documents, and its translations.</p>
  */
 public final class CareerPackSource {
 
     private static final String DIRECTORY = "career-packs";
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     private CareerPackSource() {}
 
@@ -65,15 +73,31 @@ public final class CareerPackSource {
     public static void loadPacks(PackType type, Consumer<Pack> output) {
         loadPacks(directory(), type, output, false, "manual");
         loadPacks(profileDataPackDirectory(), type, output, true, "profile");
+        Path kubeJsData = com.aetherianartificer.townstead.data.KubeJsPackSource.dataDirectory();
+        if (Files.isDirectory(kubeJsData)) {
+            // KubeJS already mounts ZIPs from its data folder as server data. Directory packs
+            // are a Townstead extension, and ZIPs are still mounted on the client so bundled
+            // assets/locales travel with their data.
+            boolean skipZip = type == PackType.SERVER_DATA
+                    && com.aetherianartificer.townstead.compat.ModCompat.isLoaded("kubejs");
+            loadPacks(kubeJsData, type, output, false, "kubejs", skipZip);
+        }
     }
 
     private static void loadPacks(Path directory, PackType type, Consumer<Pack> output,
                                   boolean requireCareerDocument, String source) {
+        loadPacks(directory, type, output, requireCareerDocument, source, false);
+    }
+
+    private static void loadPacks(Path directory, PackType type, Consumer<Pack> output,
+                                  boolean requireCareerDocument, String source,
+                                  boolean skipZip) {
         try {
             Files.createDirectories(directory);
             //? if >=1.21 {
             DirectoryValidator validator = new DirectoryValidator(path -> true);
             FolderRepositorySource.discoverPacks(directory, validator, (path, resources) -> {
+                if (skipZip && isZip(path)) return;
                 if (requireCareerDocument && !isCareerPack(path)) return;
                 String id = packId(path, type, source);
                 PackLocationInfo info = new PackLocationInfo(
@@ -90,6 +114,7 @@ public final class CareerPackSource {
             });
             //?} else {
             /*FolderRepositorySource.discoverPacks(directory, false, (path, resources) -> {
+                if (skipZip && isZip(path)) return;
                 if (requireCareerDocument && !isCareerPack(path)) return;
                 Pack pack = Pack.readMetaAndCreate(
                         packId(path, type, source),
@@ -114,6 +139,8 @@ public final class CareerPackSource {
     static void visitDataRoots(Consumer<Path> visitor) {
         visitDataRoots(directory(), false, visitor);
         visitDataRoots(profileDataPackDirectory(), true, visitor);
+        visitDataRoots(com.aetherianartificer.townstead.data.KubeJsPackSource.dataDirectory(),
+                false, visitor);
     }
 
     private static void visitDataRoots(Path directory, boolean requireCareerDocument,
@@ -159,14 +186,33 @@ public final class CareerPackSource {
                     && containsCareerDefinition(entry.resolve("data"));
         }
         if (!isZip(entry)) return false;
-        try (FileSystem zip = FileSystems.newFileSystem(entry)) {
-            Path root = zip.getRootDirectories().iterator().next();
-            return Files.isRegularFile(root.resolve("pack.mcmeta"))
-                    && containsCareerDefinition(root.resolve("data"));
+        try (ZipFile zip = new ZipFile(entry.toFile())) {
+            return zip.getEntry("pack.mcmeta") != null && containsCareerDefinition(zip);
         } catch (Exception error) {
-            Townstead.LOGGER.warn("Could not inspect potential Townstead Career pack {}", entry, error);
+            LOGGER.warn("Could not inspect potential Townstead Career pack {}", entry, error);
             return false;
         }
+    }
+
+    private static boolean containsCareerDefinition(ZipFile zip) throws IOException {
+        var entries = zip.entries();
+        while (entries.hasMoreElements()) {
+            ZipEntry entry = entries.nextElement();
+            if (entry.isDirectory() || !isProfessionDocument(entry.getName())) continue;
+            try (var reader = new InputStreamReader(
+                    zip.getInputStream(entry), StandardCharsets.UTF_8)) {
+                if (ScannedProfessions.hasProfessionSchema(reader)) return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isProfessionDocument(String name) {
+        String[] parts = name.replace('\\', '/').split("/");
+        if (parts.length < 4 || !"data".equals(parts[0])
+                || !"profession".equals(parts[2])) return false;
+        return parts.length == 4 && parts[3].endsWith(".json")
+                || parts.length == 5 && "profession.json".equals(parts[4]);
     }
 
     static boolean containsCareerDefinition(Path data) {

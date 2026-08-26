@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession.def;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import com.aetherianartificer.townstead.pheno.power.PowerComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -10,8 +11,9 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 /**
- * Specialization paths within a profession: a branch opened by buying its gateway skill
- * ("spec into pizzaiolo"). A path names its member skills and the worksites it favours.
+ * Specialization paths within a profession: a branch entered by taking any of its first-level
+ * choices ("spec into pizzaiolo"). A path names its member skills, the worksites it favours, and
+ * any Pheno components shared by every build on the path.
  * Players enter by choice and are never steered; villagers enter through circumstance,
  * because their worksite contains the path's stations, and once specced they prefer those
  * stations and finish the build. The completed build usually carries a matching
@@ -20,7 +22,10 @@ import java.util.function.Predicate;
 public final class ProfessionPaths {
 
     /**
-     * One specialization branch. {@code skills} excludes the gateway; {@code members} is both.
+     * One specialization branch. {@code gateway} is the first flattened option retained by the
+     * established runtime shape; commitment is still detected from any member. {@code skills}
+     * contains the remaining options, and {@code members} is both. {@code powers} are expressed
+     * once whenever any member is learned.
      *
      * <p>{@code color} and {@code backdrop} are the path's own look on the Career board, where it
      * occupies a titled section of the page. A pack that adds a path should be able to give it a
@@ -31,17 +36,27 @@ public final class ProfessionPaths {
     public record Path(ResourceLocation professionId, String id, Component displayName,
                        ResourceLocation gateway,
                        List<ResourceLocation> skills, List<ResourceLocation> worksites,
-                       int color, @Nullable ResourceLocation backdrop) {
+                       int color, @Nullable ResourceLocation backdrop,
+                       List<PowerComponent> powers) {
         public Path {
             skills = List.copyOf(skills);
             worksites = List.copyOf(worksites);
+            powers = List.copyOf(powers);
         }
 
         /** Compatibility constructor predating the board's section styling. */
         public Path(ResourceLocation professionId, String id, Component displayName,
                     ResourceLocation gateway,
                     List<ResourceLocation> skills, List<ResourceLocation> worksites) {
-            this(professionId, id, displayName, gateway, skills, worksites, 0, null);
+            this(professionId, id, displayName, gateway, skills, worksites, 0, null, List.of());
+        }
+
+        public Path(ResourceLocation professionId, String id, Component displayName,
+                    ResourceLocation gateway, List<ResourceLocation> skills,
+                    List<ResourceLocation> worksites, int color,
+                    @Nullable ResourceLocation backdrop) {
+            this(professionId, id, displayName, gateway, skills, worksites,
+                    color, backdrop, List.of());
         }
 
         public boolean isMember(ResourceLocation skillId) {
@@ -69,6 +84,16 @@ public final class ProfessionPaths {
 
     public static List<Path> pathsFor(ResourceLocation professionId) {
         return BY_PROFESSION.getOrDefault(professionId, List.of());
+    }
+
+    /** A Path by its author id within one Profession. */
+    @Nullable
+    public static Path byId(ResourceLocation professionId, String pathId) {
+        if (pathId == null) return null;
+        for (Path path : pathsFor(professionId)) {
+            if (path.id().equals(pathId)) return path;
+        }
+        return null;
     }
 
     /** The path a skill belongs to within its profession, or null for trunk skills. */

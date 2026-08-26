@@ -48,12 +48,16 @@ public final class ProfessionPathDocument {
         copy(document, normalized, "title");
         copy(document, normalized, "color");
         copy(document, normalized, "backdrop");
+        copy(document, normalized, "worksites");
+        copy(document, normalized, "powers");
 
         String gateway = tiers.keySet().iterator().next();
         normalized.addProperty("gateway", gateway);
         JsonArray members = new JsonArray();
         tiers.keySet().stream().skip(1).forEach(members::add);
         normalized.add("skills", members);
+        normalized.add("skill_levels", normalizedSkillLevels(pathId,
+                document.getAsJsonArray("skills")));
 
         JsonArray paths = profession.has("paths") && profession.get("paths").isJsonArray()
                 ? profession.getAsJsonArray("paths").deepCopy() : new JsonArray();
@@ -103,6 +107,27 @@ public final class ProfessionPathDocument {
             throw new IllegalArgumentException("Skill '" + skill
                     + "' appears at both path levels " + previous + " and " + level);
         }
+    }
+
+    /** Preserve the authored one-of-many rows for completion titles after the path is flattened. */
+    private static JsonArray normalizedSkillLevels(String pathId, JsonArray authored) {
+        JsonArray levels = new JsonArray();
+        for (JsonElement level : authored) {
+            JsonArray options = new JsonArray();
+            if (level.isJsonArray()) {
+                for (JsonElement option : level.getAsJsonArray()) {
+                    options.add(normalizedSkillId(pathId, option.getAsString()));
+                }
+            } else {
+                options.add(normalizedSkillId(pathId, level.getAsString()));
+            }
+            levels.add(options);
+        }
+        return levels;
+    }
+
+    private static String normalizedSkillId(String pathId, String authored) {
+        return authored.contains(":") ? authored : pathId + "/" + authored;
     }
 
     private static void rejectMembershipConflicts(JsonObject profession, String pathId,

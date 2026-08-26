@@ -22,6 +22,7 @@ class ProfessionWorkOverlayTest {
                  "display_name":"Must not cross the boundary",
                  "register_profession":true,
                  "poi":[{"type":"townstead:job_block","block":"minecraft:beehive"}],
+                 "storage":{"preferred":["minecraft:barrel"]},
                  "tasks":[{"type":"townstead_work:interact"}],
                  "path_worksites":{"hive_keeper":["minecraft:beehive"]}}
                 """);
@@ -34,6 +35,8 @@ class ProfessionWorkOverlayTest {
         assertEquals("townstead_work:interact",
                 profession.getAsJsonArray("work_tasks").get(0).getAsJsonObject().get("type").getAsString());
         assertFalse(profession.has("trades"));
+        assertEquals("minecraft:barrel", profession.getAsJsonObject("storage")
+                .getAsJsonArray("preferred").get(0).getAsString());
         assertEquals("Apiarist", profession.get("display_name").getAsString());
         assertEquals("minecraft:beehive", profession.getAsJsonArray("paths").get(0)
                 .getAsJsonObject().getAsJsonArray("worksites").get(0).getAsString());

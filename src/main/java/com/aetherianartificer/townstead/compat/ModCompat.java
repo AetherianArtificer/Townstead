@@ -22,7 +22,7 @@ public final class ModCompat {
      * contributes to, so a kitchen can be built, staffed and worked without it.
      */
     public static final List<String> KITCHEN_PROVIDERS = List.of(
-            "farmersdelight", "farm_and_charm", "kaleidoscope_cookery");
+            "farmersdelight", "farm_and_charm", "kaleidoscope_cookery", "rusticdelight");
 
     /**
      * Compat paths whose requirements are satisfiable by more than one provider mod (their

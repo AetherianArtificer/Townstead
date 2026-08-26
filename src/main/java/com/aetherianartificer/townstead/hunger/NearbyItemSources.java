@@ -220,40 +220,53 @@ public final class NearbyItemSources {
         int maxY = Math.max(p0.getY(), p1.getY());
         int maxZ = Math.max(p0.getZ(), p1.getZ());
         StorageSearchContext searchContext = new StorageSearchContext(level);
+        com.aetherianartificer.townstead.storage.StoragePreference storagePreference =
+                com.aetherianartificer.townstead.storage.StoragePreference.forVillager(villager);
+        java.util.List<BlockPos> positions = new java.util.ArrayList<>();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int y = minY; y <= maxY && !stack.isEmpty(); y++) {
-            for (int x = minX; x <= maxX && !stack.isEmpty(); x++) {
-                for (int z = minZ; z <= maxZ && !stack.isEmpty(); z++) {
+        for (int y = minY; y <= maxY; y++) {
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
                     cursor.set(x, y, z);
                     if (!building.containsPos(cursor)) continue;
-                    StorageSearchContext.ObservedBlock observed = searchContext.observe(cursor);
-                    if (observed.protectedStorage()) continue;
-                    BlockEntity be = observed.blockEntity();
-                    if (be == null) continue;
-                    if (isProcessingContainer(observed.state(), be)) continue;
-                    if (be instanceof Container container) {
-                        int beforeCount = stack.getCount();
-                        insertIntoContainer(container, stack);
-                        if (stack.getCount() != beforeCount) {
-                            NearbyStorageIndex.invalidate(level, observed.pos());
-                        }
-                        if (stack.isEmpty()) return true;
+                    positions.add(cursor.immutable());
+                }
+            }
+        }
+        positions.sort(java.util.Comparator.comparingInt(
+                pos -> storagePreference.rank(level.getBlockState(pos))));
+        for (BlockPos pos : positions) {
+            if (stack.isEmpty()) break;
+            StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
+            if (observed.protectedStorage()) continue;
+            BlockEntity be = observed.blockEntity();
+            if (be == null) continue;
+            if (isProcessingContainer(observed.state(), be)) continue;
+            if (be instanceof Container container) {
+                int beforeCount = stack.getCount();
+                insertIntoContainer(container, stack);
+                if (stack.getCount() != beforeCount) {
+                    NearbyStorageIndex.invalidate(level, observed.pos());
+                    com.aetherianartificer.townstead.storage.WorksiteStorageIndex
+                            .invalidate(level, observed.pos());
+                }
+                if (stack.isEmpty()) return true;
+            }
+            IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
+            if (handler != null) {
+                for (int i = 0; i < handler.getSlots(); i++) {
+                    int beforeCount = stack.getCount();
+                    // Shrink in place by what was accepted (see insertIntoNearbyStorage);
+                    // reassigning the local would dupe items into handler-only storage.
+                    ItemStack remainder = handler.insertItem(i, stack, false);
+                    int inserted = beforeCount - remainder.getCount();
+                    if (inserted > 0) {
+                        stack.shrink(inserted);
+                        NearbyStorageIndex.invalidate(level, observed.pos());
+                        com.aetherianartificer.townstead.storage.WorksiteStorageIndex
+                                .invalidate(level, observed.pos());
                     }
-                    IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
-                    if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            int beforeCount = stack.getCount();
-                            // Shrink in place by what was accepted (see insertIntoNearbyStorage);
-                            // reassigning the local would dupe items into handler-only storage.
-                            ItemStack remainder = handler.insertItem(i, stack, false);
-                            int inserted = beforeCount - remainder.getCount();
-                            if (inserted > 0) {
-                                stack.shrink(inserted);
-                                NearbyStorageIndex.invalidate(level, observed.pos());
-                            }
-                            if (stack.isEmpty()) return true;
-                        }
-                    }
+                    if (stack.isEmpty()) return true;
                 }
             }
         }

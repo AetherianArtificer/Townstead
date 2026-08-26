@@ -30,16 +30,18 @@ public final class CareerGraphBuilder {
     private CareerGraphBuilder() {}
 
     public static List<CareerGraphS2CPayload.Node> build(MinecraftServer server, LivingEntity entity,
-                                                         Map<String, List<String>> momentsByCareer) {
+                                                         Map<String, List<String>> momentsByCareer,
+                                                         String locale) {
         List<CareerGraphS2CPayload.Node> nodes = new ArrayList<>();
         CareerProfile profile = CareerProfiles.of(entity);
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
         if (profile == null || store == null) return nodes;
         // Careers are flat: every def is its own top-level section on the board.
         for (ProfessionDef def : ProfessionDefs.all().values()) {
-            appendCareer(nodes, server, entity, profile, store, def, def.id(), momentsByCareer);
+            appendCareer(nodes, server, entity, profile, store, def, def.id(), momentsByCareer,
+                    locale);
         }
-        appendComboSkills(nodes, entity, store);
+        appendComboSkills(nodes, entity, store, locale);
         return nodes;
     }
 
@@ -48,7 +50,8 @@ public final class CareerGraphBuilder {
      * threshold with live progress, so the plaque explains exactly which histories it wants.
      */
     private static void appendComboSkills(List<CareerGraphS2CPayload.Node> nodes,
-                                          LivingEntity entity, ProfessionXpStore store) {
+                                          LivingEntity entity, ProfessionXpStore store,
+                                          String locale) {
         var unlockedIds = new java.util.HashSet<ResourceLocation>();
         for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.unlockedFor(entity)) {
             unlockedIds.add(combo.id());
@@ -59,7 +62,7 @@ public final class CareerGraphBuilder {
             for (var threshold : combo.thresholds().entrySet()) {
                 ProfessionDef careerDef = ProfessionDefs.byId(threshold.getKey());
                 String careerName = careerDef != null
-                        ? careerDef.displayName().getString() : threshold.getKey().toString();
+                        ? localized(careerDef.displayName(), locale) : threshold.getKey().toString();
                 int current = ProfessionProgress.getTier(store, threshold.getKey());
                 evidence.add(new CareerGraphS2CPayload.Evidence(
                         Component.translatable("townstead.career.combo.threshold",
@@ -75,8 +78,8 @@ public final class CareerGraphBuilder {
                         combo.id().toString(), involved.toString(), involved.toString(),
                         CareerGraphS2CPayload.KIND_COMBO,
                         unlocked ? CareerGraphS2CPayload.STATE_ACQUIRED : CareerGraphS2CPayload.STATE_LOCKED,
-                        combo.displayName().getString(),
-                        combo.description() == null ? "" : combo.description().getString(),
+                        localized(combo.displayName(), locale),
+                        combo.description() == null ? "" : localized(combo.description(), locale),
                         combo.icon() == null ? "" : combo.icon().toString(),
                         // The rank THIS career must reach, so the board can put the mark in the band
                         // that actually gates it. Sending 0 parked every combo in rank I, however
@@ -94,7 +97,8 @@ public final class CareerGraphBuilder {
                                      LivingEntity entity, CareerProfile profile,
                                      ProfessionXpStore store, ProfessionDef def,
                                      ResourceLocation rootId,
-                                     Map<String, List<String>> momentsByCareer) {
+                                     Map<String, List<String>> momentsByCareer,
+                                     String locale) {
         if (nodes.size() > 512) return;
         ResourceLocation careerId = def.id();
         int xp = ProfessionProgress.getXp(store, careerId);
@@ -141,14 +145,13 @@ public final class CareerGraphBuilder {
                 : momentsByCareer.getOrDefault(careerId.toString(), List.of());
 
         // Build titles: a completed skill build renames the plaque, "Rotisseur (Cook)".
-        String displayName = def.displayName().getString();
+        String displayName = localized(def.displayName(), locale);
         if (!masked && acquired) {
             var title = com.aetherianartificer.townstead.profession.def.ProfessionTitles.resolve(
                     careerId, skillId -> com.aetherianartificer.townstead.profession.skill.LearnedSkills
                             .has(entity, skillId));
             if (title != null) {
-                displayName = net.minecraft.network.chat.Component.translatable(
-                        "townstead.career.titled", title.name(), def.displayName()).getString();
+                displayName = localized(title.name(), locale) + " (" + displayName + ")";
             }
         }
 
@@ -157,7 +160,7 @@ public final class CareerGraphBuilder {
                 def.isRoot() ? CareerGraphS2CPayload.KIND_ROOT : CareerGraphS2CPayload.KIND_ADVANCED,
                 state,
                 masked ? "" : displayName,
-                masked || def.description() == null ? "" : def.description().getString(),
+                masked || def.description() == null ? "" : localized(def.description(), locale),
                 masked || def.icon() == null ? "" : def.icon().toString(),
                 currentTier, maxTier, xp,
                 ProfessionProgress.getXpToNextTier(store, careerId), xpToday, dailyCap,
@@ -188,17 +191,17 @@ public final class CareerGraphBuilder {
                         choice.toString(), rootId.toString(), careerId.toString(),
                         CareerGraphS2CPayload.KIND_SKILL,
                         skillState,
-                        skill.displayName().getString(),
-                        skill.description() == null ? "" : skill.description().getString(),
+                        localized(skill.displayName(), locale),
+                        skill.description() == null ? "" : localized(skill.description(), locale),
                         skill.icon() == null ? "" : skill.icon().toString(),
                         skill.tier(), 0, 0, 0, 0, 0, false, equipped, false,
                         "", equipped || (!learned && !learnable)
-                                ? "" : replacedSkillName(entity, def, skill),
+                                ? "" : replacedSkillName(entity, def, skill, locale),
                         List.of(), List.of(),
                         def.levelName(skill.tier()).getString(), Math.max(0, skill.cost()),
                         skill.skillGroup() == null ? "" : skill.skillGroup().toString(),
                         "", effectLines(skill),
-                        prerequisitesWithin(def, skill), pathTag(def, choice),
+                        prerequisitesWithin(def, skill), pathTag(def, choice, locale),
                         stampOf(profile, choice), abilityOf(skill)));
             }
         }
@@ -228,11 +231,12 @@ public final class CareerGraphBuilder {
     }
 
     /** The specialization arm a skill sits on, or {@code NONE} for the career's trunk. */
-    private static CareerGraphS2CPayload.PathTag pathTag(ProfessionDef def, ResourceLocation skill) {
+    private static CareerGraphS2CPayload.PathTag pathTag(ProfessionDef def, ResourceLocation skill,
+                                                        String locale) {
         var path = com.aetherianartificer.townstead.profession.def.ProfessionPaths
                 .pathOwning(def.id(), skill);
         return path == null ? CareerGraphS2CPayload.PathTag.NONE
-                : new CareerGraphS2CPayload.PathTag(path.id(), path.displayName().getString(),
+                : new CareerGraphS2CPayload.PathTag(path.id(), localized(path.displayName(), locale),
                         path.gateway().equals(skill), path.color(),
                         path.backdrop() == null ? "" : path.backdrop().toString());
     }
@@ -301,13 +305,16 @@ public final class CareerGraphBuilder {
     }
 
     /** The currently equipped sibling this skill would replace within its choice group. */
-    private static String replacedSkillName(LivingEntity entity, ProfessionDef career, SkillDef skill) {
+    private static String replacedSkillName(LivingEntity entity, ProfessionDef career,
+                                            SkillDef skill, String locale) {
         if (skill.skillGroup() == null) return "";
         for (ResourceLocation otherId : career.skills()) {
             if (otherId.equals(skill.id())) continue;
             SkillDef other = SkillDefs.byId(otherId);
             if (other == null || !skill.skillGroup().equals(other.skillGroup())) continue;
-            if (CareerChoices.isActive(entity, otherId)) return other.displayName().getString();
+            if (CareerChoices.isActive(entity, otherId)) {
+                return localized(other.displayName(), locale);
+            }
         }
         return "";
     }
@@ -379,5 +386,12 @@ public final class CareerGraphBuilder {
         int colon = key.indexOf(':');
         String path = colon >= 0 ? key.substring(colon + 1) : key;
         return path.replace('_', ' ');
+    }
+
+    /** Resolve a data-authored component for the player receiving this server-rendered record. */
+    private static String localized(Component component, String locale) {
+        String[] pair = com.aetherianartificer.townstead.calendar.ComponentSync
+                .extract(component, locale);
+        return pair[1].isEmpty() ? component.getString() : pair[1];
     }
 }

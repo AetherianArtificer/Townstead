@@ -43,8 +43,9 @@ import java.util.function.Predicate;
  * <p>The profession registry freezes at startup. Ordinary world data packs and
  * {@code /reload} therefore cannot add registry entries. Townstead Career packs installed in
  * the profile-level {@code datapacks} directory or under
- * {@code config/townstead/career-packs} are deliberately scanned before that freeze and can
- * opt in to real profession registration without shipping a mod.</p>
+ * {@code config/townstead/career-packs}, or the loose {@code kubejs/data} tree are deliberately
+ * scanned before that freeze and can opt in to real profession registration without shipping a
+ * mod.</p>
  *
  * <p>Eligible: a Townstead profession def with either non-empty {@code acquisition_routes} or
  * explicit {@code "register_profession": true}, which may be supplied by adjacent
@@ -273,6 +274,10 @@ public final class ScannedProfessions {
                     + "their own professions this session", error);
         }
         CareerPackSource.visitDataRoots(data -> collectDataRoot(data, Set.of(), out));
+        // KubeJS mounts its loose data tree during normal resource loading, but professions that
+        // opt into real vanilla registration must also be visible here, before registries freeze.
+        collectDataRoot(com.aetherianartificer.townstead.data.KubeJsPackSource.dataDirectory(),
+                Set.of("kubejs"), out);
         return List.copyOf(out.values());
     }
 
@@ -348,8 +353,11 @@ public final class ScannedProfessions {
                             if (!path.isJsonObject()) {
                                 throw new IllegalArgumentException(pathFile + " must be an object");
                             }
-                            ProfessionPathDocument.apply(profession, pathId,
-                                    path.getAsJsonObject());
+                            JsonObject pathDocument = path.getAsJsonObject();
+                            if (pathDocument.has("mods") && !Boolean.TRUE.equals(
+                                    com.aetherianartificer.townstead.data.ModGate.evaluate(
+                                            pathDocument.get("mods")))) continue;
+                            ProfessionPathDocument.apply(profession, pathId, pathDocument);
                         }
                     }
                 }
@@ -419,6 +427,14 @@ public final class ScannedProfessions {
     /** Whether a JSON file declares one of Townstead's Profession document schemas. */
     static boolean hasProfessionSchema(Path file) {
         try (Reader reader = Files.newBufferedReader(file)) {
+            return hasProfessionSchema(reader);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    static boolean hasProfessionSchema(Reader reader) {
+        try {
             JsonElement parsed = JsonParser.parseReader(reader);
             if (!parsed.isJsonObject()) return false;
             JsonElement schema = parsed.getAsJsonObject().get("schema");

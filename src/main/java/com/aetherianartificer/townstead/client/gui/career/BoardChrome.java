@@ -183,20 +183,22 @@ final class BoardChrome {
         }
     }
 
-    /**
-     * The spine down each column, and the stub joining every mark to it.
-     *
-     * <p>Without these the board had no lines at all: most skills declare no {@code requires}, so
-     * their only stated parent is the career, and the career is not on the board any more. A spine
-     * is honest about that. It says these marks belong to one path in rank order, which is true,
-     * rather than inventing prerequisite arrows between them, which would not be. It lights up to
-     * the rank you have actually reached.</p>
-     */
+    /** Unpathed skills use a shared trunk; Path skills connect only through authored requirements. */
     private void drawSpines(GuiGraphics g, List<CareerGraphS2CPayload.Node> tabNodes) {
+        Set<Integer> pathColumns = new HashSet<>();
+        for (CareerGraphS2CPayload.Node node : tabNodes) {
+            if (node.kind() == CareerGraphS2CPayload.KIND_SKILL && node.path().present()) {
+                pathColumns.add(layout.columnIndexOf(node));
+            }
+        }
+
+        // General skills and Combo Skills do not have authored lane positions. Their one shared
+        // spine remains the honest statement: these marks belong to this column in rank order.
         List<CareerLayout.Column> columns = layout.columns();
         int litTo = sy(layout.bandTop(Math.max(0,
                 Math.min(layout.bands().size() - 1, layout.careerTier()))) - 6);
         for (int i = 0; i < columns.size(); i++) {
+            if (pathColumns.contains(i)) continue;
             int spineX = sx(layout.columnX(i) + CareerLayout.COL_W / 2);
             if (spineX < board.viewX() - 4 || spineX > board.viewX() + board.viewW() + 4) continue;
             // The spine runs between the first and last mark it actually joins. It used to run the
@@ -214,6 +216,7 @@ final class BoardChrome {
             }
         }
         for (CareerGraphS2CPayload.Node node : tabNodes) {
+            if (node.path().present()) continue;
             int[] at = layout.positionOf(node.id());
             if (at == null) continue;
             int spineX = sx(layout.columnX(layout.columnIndexOf(node)) + CareerLayout.COL_W / 2);

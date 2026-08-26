@@ -42,6 +42,9 @@ import java.util.Set;
  * skill tier.
  * Villager composition lives in {@code work.json}; general merchant-offer contributions live in
  * the Profession's {@code trade/}, while Path contributions live in the Path's {@code trade/}.
+ * Optional-mod meanings live in {@code compatibility/*.json}: root aliases and foreign
+ * professions that imply a particular Path. Path documents may carry their own {@code mods}
+ * gate, in which case their skills and trades disappear with the Path.
  * Legacy {@code levels.json}, aggregate
  * {@code paths.json}, and inline fields remain readable. The flat forms
  * ({@code profession/<name>.json}, {@code data/<ns>/skill/*.json} with an explicit
@@ -60,6 +63,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                            Map<ResourceLocation, JsonObject> progressionOverlays,
                            Map<ResourceLocation, JsonObject> pathOverlays,
                            Map<ResourceLocation, Map<String, JsonObject>> pathDocuments,
+                           Map<ResourceLocation, Map<ResourceLocation, JsonObject>> compatibilityDocuments,
                            Map<ResourceLocation, JsonObject> workOverlays,
                            Map<ResourceLocation, Map<ResourceLocation, TradeDocument>> tradeDocuments) {}
 
@@ -71,6 +75,8 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         Map<ResourceLocation, JsonObject> progressionOverlays = new LinkedHashMap<>();
         Map<ResourceLocation, JsonObject> pathOverlays = new LinkedHashMap<>();
         Map<ResourceLocation, Map<String, JsonObject>> pathDocuments = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<ResourceLocation, JsonObject>> compatibilityDocuments =
+                new LinkedHashMap<>();
         Map<ResourceLocation, JsonObject> workOverlays = new LinkedHashMap<>();
         Map<ResourceLocation, Map<ResourceLocation, TradeDocument>> tradeDocuments =
                 new LinkedHashMap<>();
@@ -82,6 +88,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             JsonObject json = readJson(e.getValue(), file);
             if (json == null) continue;
             int pathDir = subpath.indexOf("/path/");
+            int compatibilityDir = subpath.indexOf("/compatibility/");
             int pathSkillDir = pathDir > 0
                     ? subpath.indexOf("/skill/", pathDir + "/path/".length()) : -1;
             int pathTradeDir = pathDir > 0
@@ -99,6 +106,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 if (!json.has("profession")) {
                     json.addProperty("profession", file.getNamespace() + ":" + professionPath);
                 }
+                json.addProperty("__townstead_path", pathId);
                 skills.put(skillId, json);
             } else if (pathDir > 0 && pathTradeDir > pathDir) {
                 String professionPath = subpath.substring(0, pathDir);
@@ -134,6 +142,17 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             } else if (pathDir > 0) {
                 // Only path/<id>/path.json and its skill/ and trade/ children are resources.
                 continue;
+            } else if (compatibilityDir > 0) {
+                String professionPath = subpath.substring(0, compatibilityDir);
+                String contributionName = subpath.substring(
+                        compatibilityDir + "/compatibility/".length());
+                ResourceLocation professionId = ResourceLocation.tryParse(
+                        file.getNamespace() + ":" + professionPath);
+                if (professionId != null && !contributionName.isBlank()) {
+                    compatibilityDocuments.computeIfAbsent(professionId,
+                                    ignored -> new LinkedHashMap<>())
+                            .put(file, json);
+                }
             } else if (tradeDir > 0) {
                 String professionPath = subpath.substring(0, tradeDir);
                 ResourceLocation professionId = ResourceLocation.tryParse(
@@ -179,7 +198,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             }
         }
         return new Prepared(professions, skills, levelOverlays, progressionOverlays,
-                pathOverlays, pathDocuments, workOverlays, tradeDocuments);
+                pathOverlays, pathDocuments, compatibilityDocuments, workOverlays, tradeDocuments);
     }
 
     static boolean isFeedbackSidecar(String professionSubpath) {
@@ -282,9 +301,25 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 continue;
             }
             for (Map.Entry<String, JsonObject> path : owner.getValue().entrySet()) {
+                JsonObject document = path.getValue();
+                if (document.has("mods")) {
+                    Boolean met = com.aetherianartificer.townstead.data.ModGate.evaluate(
+                            document.get("mods"));
+                    if (met == null) {
+                        diagnostics.error(JsonPath.ROOT.field("mods"),
+                                "Invalid mods gate expression on Path '" + path.getKey() + "'.",
+                                "Use a mod id, an array, or an all/any/not object.");
+                        continue;
+                    }
+                    if (!met) {
+                        LOGGER.debug("Path {}/{} skipped: mods gate unmet",
+                                owner.getKey(), path.getKey());
+                        continue;
+                    }
+                }
                 try {
                     ProfessionPathDocument.Applied applied = ProfessionPathDocument.apply(
-                            def, path.getKey(), path.getValue());
+                            def, path.getKey(), document);
                     for (Map.Entry<String, Integer> skillTier : applied.skillTiers().entrySet()) {
                         ResourceLocation skillId = resolveSkillRef(owner.getKey(), skillTier.getKey());
                         if (skillId == null) continue;
@@ -335,6 +370,12 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     .stream().sorted(Map.Entry.comparingByKey()).toList()) {
                 try {
                     JsonObject document = contribution.getValue().document();
+                    String path = contribution.getValue().path();
+                    if (path != null && !declaredPathIds(def).contains(path)) {
+                        LOGGER.debug("Path trade contribution {} skipped: Path {} is not active",
+                                contribution.getKey(), path);
+                        continue;
+                    }
                     if (document.has("mods")) {
                         Boolean met = com.aetherianartificer.townstead.data.ModGate.evaluate(
                                 document.get("mods"));
@@ -379,6 +420,11 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             ResourceLocation skillProfession = ResourceLocation.tryParse(
                     GsonHelper.getAsString(e.getValue(), "profession", ""));
             if (skillProfession != null && gated.contains(skillProfession)) continue;
+            String path = GsonHelper.getAsString(e.getValue(), "__townstead_path", "");
+            if (skillProfession != null && !path.isBlank()) {
+                JsonObject profession = activeDefs.get(skillProfession);
+                if (profession == null || !declaredPathIds(profession).contains(path)) continue;
+            }
             diagnostics.forResource(e.getKey());
             try {
                 SkillDef skill = parseSkill(e.getKey(), e.getValue(), lang, diagnostics);
@@ -390,7 +436,9 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         }
 
         validateAliases(professions, diagnostics);
-        ProfessionDefs.replaceAll(professions);
+        Map<ResourceLocation, ProfessionDefs.Resolution> compatibility = parseCompatibility(
+                prepared.compatibilityDocuments(), activeDefs, professions.keySet(), diagnostics);
+        ProfessionDefs.replaceAll(professions, compatibility);
         SkillDefs.replaceAll(skills);
         ProfessionTitles.replaceAll(parseAllTitles(activeDefs, professions.keySet(), lang, diagnostics));
         ProfessionPaths.replaceAll(parseAllPaths(activeDefs, professions.keySet(), lang, diagnostics));
@@ -642,6 +690,21 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             }
         }
 
+        com.aetherianartificer.townstead.storage.StoragePreference storage =
+                com.aetherianartificer.townstead.storage.StoragePreference.NONE;
+        if (obj.has("storage")) {
+            try {
+                storage = com.aetherianartificer.townstead.storage.StoragePreference
+                        .parse(obj.get("storage"));
+            } catch (IllegalArgumentException error) {
+                diag.error(JsonPath.ROOT.field("storage"),
+                        "Invalid profession storage preference: " + error.getMessage(),
+                        "Use {\"buildings\":[\"namespace/storehouse\"],"
+                                + "\"preferred\":[\"minecraft:barrel\",\"#namespace:block_tag\"]}.");
+                return null;
+            }
+        }
+
         return new ProfessionDef(id, name, description,
                 new ProgressionTrack(List.copyOf(tiers), dailyCap, maxXp),
                 UnlockModel.fromString(unlock),
@@ -653,7 +716,8 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 List.copyOf(routes),
                 List.copyOf(jobSites),
                 parseIdList(obj, "aliases"),
-                parseIdScalarOrList(obj, "clothing", diag),
+                parseClothing(obj, diag),
+                storage,
                 Map.copyOf(trades),
                 obj.has("requirements") ? RequirementHint.extract(obj.get("requirements")) : List.of(),
                 obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null,
@@ -720,6 +784,78 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         }
     }
 
+    private static Map<ResourceLocation, ProfessionDefs.Resolution> parseCompatibility(
+            Map<ResourceLocation, Map<ResourceLocation, JsonObject>> documents,
+            Map<ResourceLocation, JsonObject> activeDefs,
+            Set<ResourceLocation> loaded,
+            Diagnostics diagnostics) {
+        Map<ResourceLocation, ProfessionDefs.Resolution> mappings = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, Map<ResourceLocation, JsonObject>> owner
+                : documents.entrySet()) {
+            if (!loaded.contains(owner.getKey())) continue;
+            JsonObject profession = activeDefs.get(owner.getKey());
+            if (profession == null) continue;
+            Set<String> paths = declaredPathIds(profession);
+            for (Map.Entry<ResourceLocation, JsonObject> contribution : owner.getValue().entrySet()
+                    .stream().sorted(Map.Entry.comparingByKey()).toList()) {
+                diagnostics.forResource(contribution.getKey());
+                JsonObject document = contribution.getValue();
+                try {
+                    if (document.has("mods")) {
+                        Boolean met = com.aetherianartificer.townstead.data.ModGate.evaluate(
+                                document.get("mods"));
+                        if (met == null) {
+                            throw new IllegalArgumentException("Invalid mods gate expression");
+                        }
+                        if (!met) {
+                            LOGGER.debug("Profession compatibility contribution {} skipped: "
+                                    + "mods gate unmet", contribution.getKey());
+                            continue;
+                        }
+                    }
+                    for (Map.Entry<ResourceLocation, ProfessionDefs.Resolution> mapping
+                            : ProfessionCompatibilityDocument.parse(
+                                    owner.getKey(), document, paths).entrySet()) {
+                        if (loaded.contains(mapping.getKey())) {
+                            diagnostics.warning(JsonPath.ROOT,
+                                    "Compatibility profession '" + mapping.getKey()
+                                            + "' shadows a primary Career and is ignored.",
+                                    "Remove the mapping or the conflicting profession definition.");
+                            continue;
+                        }
+                        ProfessionDefs.Resolution previous = mappings.putIfAbsent(
+                                mapping.getKey(), mapping.getValue());
+                        if (previous != null && !previous.equals(mapping.getValue())) {
+                            diagnostics.warning(JsonPath.ROOT,
+                                    "Compatibility profession '" + mapping.getKey()
+                                            + "' already means '" + previous.professionId()
+                                            + "'; first contribution wins.",
+                                    "Give each external profession one canonical Career meaning.");
+                        }
+                    }
+                } catch (IllegalArgumentException error) {
+                    diagnostics.error(JsonPath.ROOT,
+                            "Invalid compatibility contribution: " + error.getMessage(),
+                            "Use schema '" + ProfessionCompatibilityDocument.SCHEMA
+                                    + "' with aliases and/or path_aliases.");
+                }
+            }
+        }
+        return Map.copyOf(mappings);
+    }
+
+    private static Set<String> declaredPathIds(JsonObject profession) {
+        Set<String> paths = new java.util.LinkedHashSet<>();
+        if (profession == null || !profession.has("paths")
+                || !profession.get("paths").isJsonArray()) return paths;
+        for (JsonElement element : profession.getAsJsonArray("paths")) {
+            if (!element.isJsonObject()) continue;
+            String id = GsonHelper.getAsString(element.getAsJsonObject(), "id", "");
+            if (!id.isBlank()) paths.add(id);
+        }
+        return paths;
+    }
+
     static SkillDef parseSkill(ResourceLocation id, JsonObject obj, Map<String, String> lang,
                                        Diagnostics diag) {
         TownsteadSchema.validate(obj, "townstead:skill/v1");
@@ -763,9 +899,10 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
     }
 
     /**
-     * Build titles from each def's {@code titles} array: {@code {id, name, skills}} where bare
-     * skill refs resolve to the owning profession's path-scoped ids. A title is flavour over
-     * the base profession ("Rotisseur (Cook)"), earned by completing the named skill build.
+     * Build titles from each def's {@code titles} array. {@code skills} are all required;
+     * {@code skill_groups} are one-of-many requirements, used by Paths with several choices at
+     * each level. Bare refs resolve to the owning profession's path-scoped ids. A title is flavour
+     * over the base profession ("Rotisseur (Cook)"), earned by completing the named skill build.
      */
     private static Map<ResourceLocation, List<ProfessionTitles.Title>> parseAllTitles(
             Map<ResourceLocation, JsonObject> activeDefs, Set<ResourceLocation> loaded,
@@ -788,17 +925,29 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     ResourceLocation skillId = resolveSkillRef(e.getKey(), raw.getAsString());
                     if (skillId != null) skillIds.add(skillId);
                 }
-                if (titleId.isBlank() || skillIds.isEmpty()) {
+                List<List<ResourceLocation>> skillGroups = new ArrayList<>();
+                for (JsonElement rawGroup : GsonHelper.getAsJsonArray(t, "skill_groups", new JsonArray())) {
+                    if (!rawGroup.isJsonArray()) continue;
+                    List<ResourceLocation> group = new ArrayList<>();
+                    for (JsonElement raw : rawGroup.getAsJsonArray()) {
+                        if (!raw.isJsonPrimitive()) continue;
+                        ResourceLocation skillId = resolveSkillRef(e.getKey(), raw.getAsString());
+                        if (skillId != null) group.add(skillId);
+                    }
+                    if (!group.isEmpty()) skillGroups.add(List.copyOf(group));
+                }
+                if (titleId.isBlank() || (skillIds.isEmpty() && skillGroups.isEmpty())) {
                     diagnostics.warning(JsonPath.ROOT.field("titles").index(i),
-                            "A title needs an id and at least one skill; ignored.",
-                            "Use {\"id\": ..., \"name\": ..., \"skills\": [...]}.");
+                            "A title needs an id and at least one skill requirement; ignored.",
+                            "Use 'skills' for all-of requirements or 'skill_groups' for one-of requirements.");
                     continue;
                 }
                 Component name = t.has("name")
                         ? DataPackLang.parseComponent(t.get("name"),
                                 e.getKey() + ".title." + titleId, lang)
                         : Component.literal(titleId);
-                titles.add(new ProfessionTitles.Title(e.getKey(), titleId, name, skillIds));
+                titles.add(new ProfessionTitles.Title(e.getKey(), titleId, name,
+                        skillIds, skillGroups));
             }
             if (!titles.isEmpty()) out.put(e.getKey(), List.copyOf(titles));
         }
@@ -806,7 +955,8 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
     }
 
     /**
-     * A def's {@code paths} block: specialization branches opened by buying a gateway skill.
+     * A def's normalized {@code paths} block: specialization branches entered by learning any
+     * member option. The retained gateway field is the first flattened option, not a separate pick.
      * Skill refs resolve path-scoped like title refs; worksites are full block ids because
      * they usually belong to other mods.
      */
@@ -829,7 +979,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                         GsonHelper.getAsString(p, "gateway", ""));
                 if (pathId.isBlank() || gateway == null) {
                     diagnostics.warning(JsonPath.ROOT.field("paths").index(i),
-                            "A path needs an id and a gateway skill; ignored.",
+                            "A path needs an id and at least one first-level skill; ignored.",
                             "Use {\"id\": ..., \"gateway\": ..., \"skills\": [...], \"worksites\": [...]}.");
                     continue;
                 }
@@ -850,8 +1000,17 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                         JsonPath.ROOT.field("paths").index(i));
                 ResourceLocation backdrop = p.has("backdrop")
                         ? DataPackLang.parseId(GsonHelper.getAsString(p, "backdrop", "")) : null;
+                List<com.aetherianartificer.townstead.pheno.power.PowerComponent> powers =
+                        new ArrayList<>();
+                for (JsonElement raw : GsonHelper.getAsJsonArray(p, "powers", new JsonArray())) {
+                    if (!raw.isJsonObject()) continue;
+                    JsonObject holder = new JsonObject();
+                    holder.add("power", raw.deepCopy());
+                    var power = parsePower(holder, lang, diagnostics);
+                    if (power != null) powers.add(power);
+                }
                 paths.add(new ProfessionPaths.Path(e.getKey(), pathId, name, gateway,
-                        skillIds, worksites, color, backdrop));
+                        skillIds, worksites, color, backdrop, powers));
             }
             if (!paths.isEmpty()) out.put(e.getKey(), List.copyOf(paths));
         }
@@ -1000,32 +1159,54 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         return List.copyOf(out);
     }
 
-    /** Ordered resource-id chain with ergonomic scalar shorthand for a single candidate. */
-    private static List<ResourceLocation> parseIdScalarOrList(JsonObject obj, String key,
-                                                               Diagnostics diag) {
+    /** Ordered clothing chain; strings use normal hair and objects may declare headwear policy. */
+    private static List<ClothingChoice> parseClothing(JsonObject obj, Diagnostics diag) {
+        String key = "clothing";
         if (!obj.has(key)) return List.of();
         JsonElement value = obj.get(key);
-        List<ResourceLocation> out = new ArrayList<>();
+        List<ClothingChoice> out = new ArrayList<>();
         if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
             ResourceLocation id = ResourceLocation.tryParse(value.getAsString());
-            if (id != null) out.add(id);
+            if (id != null) out.add(new ClothingChoice(id));
             else diag.warning(JsonPath.ROOT.field(key),
                     "Invalid clothing identity '" + value.getAsString() + "'; entry ignored.",
                     "Use a resource id such as minecraft:farmer.");
         } else if (value.isJsonArray()) {
             for (int i = 0; i < value.getAsJsonArray().size(); i++) {
                 JsonElement entry = value.getAsJsonArray().get(i);
-                if (!entry.isJsonPrimitive() || !entry.getAsJsonPrimitive().isString()) {
-                    diag.warning(JsonPath.ROOT.field(key).index(i),
-                            "Clothing identities must be strings; entry ignored.",
+                JsonPath path = JsonPath.ROOT.field(key).index(i);
+                if (entry.isJsonPrimitive() && entry.getAsJsonPrimitive().isString()) {
+                    ResourceLocation id = ResourceLocation.tryParse(entry.getAsString());
+                    if (id != null) out.add(new ClothingChoice(id));
+                    else diag.warning(path,
+                            "Invalid clothing identity '" + entry.getAsString() + "'; entry ignored.",
                             "Use a resource id such as minecraft:farmer.");
                     continue;
                 }
-                ResourceLocation id = ResourceLocation.tryParse(entry.getAsString());
-                if (id != null) out.add(id);
-                else diag.warning(JsonPath.ROOT.field(key).index(i),
-                        "Invalid clothing identity '" + entry.getAsString() + "'; entry ignored.",
+                if (!entry.isJsonObject()) {
+                    diag.warning(JsonPath.ROOT.field(key).index(i),
+                            "Clothing entries must be resource-id strings or objects; entry ignored.",
+                            "Use minecraft:farmer or {\"id\":\"minecraft:farmer\",\"hair\":\"covered\"}.");
+                    continue;
+                }
+                JsonObject choice = entry.getAsJsonObject();
+                ResourceLocation id = choice.has("id") && choice.get("id").isJsonPrimitive()
+                        ? ResourceLocation.tryParse(choice.get("id").getAsString()) : null;
+                if (id == null) {
+                    diag.warning(path.field("id"),
+                            "Clothing object needs a valid id; entry ignored.",
                         "Use a resource id such as minecraft:farmer.");
+                    continue;
+                }
+                try {
+                    String hair = choice.has("hair") && choice.get("hair").isJsonPrimitive()
+                            ? choice.get("hair").getAsString() : "normal";
+                    out.add(new ClothingChoice(id, ClothingChoice.HairPolicy.fromString(hair)));
+                } catch (IllegalArgumentException error) {
+                    diag.warning(path.field("hair"), error.getMessage() + "; using normal hair.",
+                            "Use normal, covered, or hidden.");
+                    out.add(new ClothingChoice(id));
+                }
             }
         } else {
             diag.warning(JsonPath.ROOT.field(key),

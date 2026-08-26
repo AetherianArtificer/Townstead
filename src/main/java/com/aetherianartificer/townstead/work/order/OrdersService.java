@@ -79,7 +79,18 @@ public final class OrdersService {
             for (net.conczin.mca.server.world.data.Village village
                     : net.conczin.mca.server.world.data.VillageManager.get(level)) {
                 if (village.getId() != site.villageId()) continue;
+                net.conczin.mca.server.world.data.Building building =
+                        com.aetherianartificer.townstead.compat.mca.McaRoomBinding
+                                .byId(level, site.key());
+                String buildingType = building == null ? null
+                        : com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
+                        .effectiveType(village, building);
                 for (net.conczin.mca.entity.VillagerEntityMCA resident : village.getResidents(level)) {
+                    if (buildingType != null
+                            && com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex
+                            .defines(buildingType)
+                            && !com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex
+                            .accepts(buildingType, resident)) continue;
                     ResourceLocation profession = BuiltInRegistries.VILLAGER_PROFESSION
                             .getKey(resident.getVillagerData().getProfession());
                     profession = com.aetherianartificer.townstead.profession.def.ProfessionDefs

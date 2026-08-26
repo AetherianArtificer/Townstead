@@ -13,6 +13,7 @@ import com.aetherianartificer.townstead.work.recipe.WorkIngredients;
 import com.aetherianartificer.townstead.work.station.StationDropOutputs;
 import com.aetherianartificer.townstead.work.station.StationProtocols;
 import com.aetherianartificer.townstead.work.station.StationSupplies;
+import com.aetherianartificer.townstead.pheno.selector.SelectorContext;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -42,6 +43,10 @@ import java.util.Set;
  */
 public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> {
 
+    public enum RequirementState {
+        NOT_APPLICABLE, SATISFIED, PROVISIONABLE, MISSING_SOURCE, MISSING_INPUT
+    }
+
     private static final int MAX_DURATION = 300;
     private static final double USE_RANGE_SQ = 5.0;
     private static final float WALK_SPEED = 0.55f;
@@ -49,6 +54,9 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     private @Nullable Candidate target;
     private @Nullable WorkJobDef.Interaction interaction;
+    private List<RequirementSession> requirements = List.of();
+    private int requirementIndex;
+    private Phase phase = Phase.PREPARE;
     private Set<Long> worksite = Set.of();
     private long startedAt;
     private long useAt;
@@ -69,15 +77,19 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         });
         registerSignal("block_interaction/has_target", villager -> {
             if (!(villager.level() instanceof ServerLevel level)) return false;
-            return findTarget(level, villager, null, false, false, true) != null;
+            return findTarget(level, villager, null, false, false, false, true) != null;
         });
         registerSignal("block_interaction/has_ready_target", villager -> {
             if (!(villager.level() instanceof ServerLevel level)) return false;
-            return findTarget(level, villager, null, true, false, true) != null;
+            return findTarget(level, villager, null, true, false, false, true) != null;
+        });
+        registerSignal("block_interaction/has_ready_interaction", villager -> {
+            if (!(villager.level() instanceof ServerLevel level)) return false;
+            return findTarget(level, villager, null, true, true, false, true) != null;
         });
         registerSignal("block_interaction/has_input", villager -> {
             if (!(villager.level() instanceof ServerLevel level)) return false;
-            return findTarget(level, villager, null, true, true, true) != null;
+            return findTarget(level, villager, null, true, true, true, true) != null;
         });
     }
 
@@ -102,7 +114,12 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        return findTarget(level, villager) != null;
+        for (Candidate candidate : findTargets(level, villager, null, true, true, false, true)) {
+            if (hasAvailableInteractionInput(level, villager, candidate.pos(), candidate.extent(),
+                    candidate.definition())
+                    && requirementsAvailable(level, villager, candidate)) return true;
+        }
+        return false;
     }
 
     @Override
@@ -110,26 +127,32 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         target = null;
         interaction = null;
         worksite = Set.of();
+        requirements = List.of();
+        requirementIndex = 0;
+        phase = Phase.PREPARE;
         startedAt = gameTime;
         useAt = gameTime + WORK_DELAY;
-        for (Candidate candidate : findTargets(level, villager, null, true, false, true)) {
+        for (Candidate candidate : findTargets(level, villager, null, true, true, false, true)) {
             WorkJobDef.Interaction selected = selectInteraction(
                     level, villager, candidate.definition(), candidate.pos(), candidate.extent());
             if (selected == null) continue;
+            List<RequirementSession> planned = planRequirements(level, villager, candidate);
+            if (planned == null) continue;
             target = candidate;
             interaction = selected;
+            requirements = new ArrayList<>(planned);
             worksite = candidate.extent();
             break;
         }
         if (target == null) return;
-        setWalkTarget(villager, target.pos());
+        moveForCurrentPhase(villager, gameTime);
     }
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        return target != null && interaction != null
-                && gameTime - startedAt <= MAX_DURATION
-                && target.task().available(villager)
+        if (target == null || interaction == null || gameTime - startedAt > MAX_DURATION) return false;
+        if (phase == Phase.CLEANUP) return true;
+        return target.task().available(villager)
                 && target.definition().matches(level, target.pos())
                 && target.task().allowsBlock(blockId(level, target.pos()))
                 && target.definition().ready(level, target.pos())
@@ -140,6 +163,15 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (target == null || interaction == null) return;
+        renewRequirements(level, villager);
+        if (phase == Phase.PREPARE) {
+            tickPreparation(level, villager, gameTime);
+            return;
+        }
+        if (phase == Phase.CLEANUP) {
+            tickCleanup(level, villager, gameTime);
+            return;
+        }
         BlockPos pos = target.pos();
         villager.getLookControl().setLookAt(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         if (villager.distanceToSqr(Vec3.atCenterOf(pos)) > USE_RANGE_SQ) {
@@ -149,35 +181,52 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         }
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
         if (gameTime < useAt) return;
-        perform(level, villager, target, interaction, worksite, gameTime);
-        target = null;
-        interaction = null;
+        for (WorkJobDef.ManagedRequirement requirement : target.definition().requirements()) {
+            if (!requirement.satisfied(level, target.pos())) {
+                target = null;
+                return;
+            }
+        }
+        if (!perform(level, villager, target, interaction, worksite, gameTime)) {
+            target = null;
+            return;
+        }
+        phase = Phase.CLEANUP;
+        requirementIndex = requirements.size() - 1;
+        moveForCurrentPhase(villager, gameTime);
     }
 
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        releaseAllRequirements(level, villager);
         target = null;
         interaction = null;
+        requirements = List.of();
         worksite = Set.of();
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
     }
 
     private static @Nullable Candidate findTarget(ServerLevel level, VillagerEntityMCA villager) {
-        return findTarget(level, villager, null, true, false, true);
+        return findTarget(level, villager, null, true, true, false, true);
     }
 
     private static @Nullable Candidate findTarget(ServerLevel level, VillagerEntityMCA villager,
                                                    @Nullable ResourceLocation onlyTask,
-                                                   boolean requireReady, boolean requireInput,
+                                                   boolean requireTargetReady,
+                                                   boolean requireInteractionReady,
+                                                   boolean requireInput,
                                                    boolean respectOrders) {
         List<Candidate> candidates = findTargets(
-                level, villager, onlyTask, requireReady, requireInput, respectOrders);
+                level, villager, onlyTask, requireTargetReady, requireInteractionReady,
+                requireInput, respectOrders);
         return candidates.isEmpty() ? null : candidates.get(0);
     }
 
     private static List<Candidate> findTargets(ServerLevel level, VillagerEntityMCA villager,
                                                @Nullable ResourceLocation onlyTask,
-                                               boolean requireReady, boolean requireInput,
+                                               boolean requireTargetReady,
+                                               boolean requireInteractionReady,
+                                               boolean requireInput,
                                                boolean respectOrders) {
         ProfessionDef profession = profession(villager);
         List<WorkTaskDef> declarations = WorkTaskDeclarations.all(villager);
@@ -198,10 +247,11 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                         BlockPos pos = BlockPos.of(packed);
                         ResourceLocation block = blockId(level, pos);
                         if (!target.matches(level, pos) || !task.allowsBlock(block)
-                                || (requireReady && (!target.ready(level, pos)
-                                || !hasReadyInteraction(level, pos, target)))
-                                || (requireInput && !hasMatchingInteraction(
-                                level, pos, villager.getInventory(), target))) continue;
+                                || (requireTargetReady && !target.ready(level, pos))
+                                || (requireInteractionReady
+                                && !hasReadyInteraction(level, pos, target))
+                                || (requireInput && !hasAvailableInteractionInput(
+                                level, villager, pos, extent, target))) continue;
                         taskCandidates.add(new Candidate(job, target, task, pos.immutable(), extent));
                     }
                 }
@@ -216,7 +266,230 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     /** Read-only availability probe used by worksite orders and other task engines. */
     public static boolean hasWork(ServerLevel level, VillagerEntityMCA villager,
                                   ResourceLocation task) {
-        return findTarget(level, villager, task, true, false, false) != null;
+        for (Candidate candidate : findTargets(level, villager, task, true, true, false, false)) {
+            if (requirementsAvailable(level, villager, candidate)) return true;
+        }
+        return false;
+    }
+
+    private static boolean requirementsAvailable(ServerLevel level, VillagerEntityMCA villager,
+                                                  Candidate candidate) {
+        for (WorkJobDef.ManagedRequirement requirement : candidate.definition().requirements()) {
+            if (requirement.satisfied(level, candidate.pos())) continue;
+            WorkJobDef.Provision provision = requirement.provision();
+            if (provision == null) return false;
+            boolean available = false;
+            for (BlockPos source : provision.at().select(SelectorContext.ofBlock(
+                    level, candidate.pos(), villager))) {
+                if (provisionInputAvailable(level, villager, source, candidate.extent(), provision)) {
+                    available = true;
+                    break;
+                }
+            }
+            if (!available) return false;
+        }
+        return true;
+    }
+
+    /** Exact authored requirement state for profession feedback; never infers one condition from another. */
+    public static RequirementState requirementState(ServerLevel level, VillagerEntityMCA villager,
+                                                    ResourceLocation jobId, String requirementId) {
+        for (Candidate candidate : findTargets(level, villager, null, true, false, false, true)) {
+            if (!candidate.job().id().equals(jobId)) continue;
+            for (WorkJobDef.ManagedRequirement requirement : candidate.definition().requirements()) {
+                if (!requirement.id().equals(requirementId)) continue;
+                if (requirement.satisfied(level, candidate.pos())) return RequirementState.SATISFIED;
+                WorkJobDef.Provision provision = requirement.provision();
+                if (provision == null) return RequirementState.MISSING_SOURCE;
+                List<BlockPos> sources = provision.at().select(
+                        SelectorContext.ofBlock(level, candidate.pos(), villager));
+                if (sources.isEmpty()) return RequirementState.MISSING_SOURCE;
+                for (BlockPos source : sources) {
+                    if (provisionInputAvailable(level, villager, source, candidate.extent(), provision)) {
+                        return RequirementState.PROVISIONABLE;
+                    }
+                }
+                return RequirementState.MISSING_INPUT;
+            }
+        }
+        return RequirementState.NOT_APPLICABLE;
+    }
+
+    private static boolean provisionInputAvailable(ServerLevel level, VillagerEntityMCA villager,
+                                                    BlockPos source, Set<Long> extent,
+                                                    WorkJobDef.Provision provision) {
+        if (!provision.requiresItem()) {
+            return provision.start().canRun(new BlockActionContext(level, source, villager));
+        }
+        return WorkIngredients.matchingToolAvailable(level, villager,
+                stack -> provision.matches(level, source, stack), source, extent);
+    }
+
+    private static @Nullable List<RequirementSession> planRequirements(
+            ServerLevel level, VillagerEntityMCA villager, Candidate candidate) {
+        List<RequirementSession> result = new ArrayList<>();
+        ManagedRequirementLeases ledger = ManagedRequirementLeases.get(level.getServer());
+        for (WorkJobDef.ManagedRequirement requirement : candidate.definition().requirements()) {
+            WorkJobDef.Provision provision = requirement.provision();
+            List<BlockPos> sources = provision == null ? List.of() : provision.at().select(
+                    SelectorContext.ofBlock(level, candidate.pos(), villager));
+            if (requirement.satisfied(level, candidate.pos())) {
+                if (provision != null) {
+                    ManagedRequirementLeases.Key lease = ledger.acquireExisting(level,
+                            candidate.job().id(), requirement.id(), sources, villager.getUUID());
+                    if (lease != null) result.add(new RequirementSession(
+                            requirement, BlockPos.of(lease.source()), lease, false));
+                }
+                continue;
+            }
+            if (provision == null) {
+                releasePlanned(level, villager, result);
+                return null;
+            }
+            BlockPos selected = null;
+            for (BlockPos source : sources) {
+                if (provisionInputAvailable(level, villager, source, candidate.extent(), provision)) {
+                    selected = source.immutable();
+                    break;
+                }
+            }
+            if (selected == null) {
+                releasePlanned(level, villager, result);
+                return null;
+            }
+            result.add(new RequirementSession(requirement, selected, null, true));
+        }
+        return List.copyOf(result);
+    }
+
+    private static void releasePlanned(ServerLevel level, VillagerEntityMCA villager,
+                                       List<RequirementSession> planned) {
+        ManagedRequirementLeases ledger = ManagedRequirementLeases.get(level.getServer());
+        for (RequirementSession session : planned) {
+            if (session.lease != null) ledger.release(level.getServer(), session.lease, villager.getUUID());
+        }
+    }
+
+    private void tickPreparation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        while (requirementIndex < requirements.size()
+                && !requirements.get(requirementIndex).needsStart) requirementIndex++;
+        if (requirementIndex >= requirements.size()) {
+            phase = Phase.WORK;
+            moveForCurrentPhase(villager, gameTime);
+            return;
+        }
+        RequirementSession session = requirements.get(requirementIndex);
+        if (!approach(villager, session.source, gameTime)) return;
+        if (!startProvision(level, villager, session)) {
+            target = null;
+            return;
+        }
+        WorkJobDef.Provision provision = session.requirement.provision();
+        if (target == null || provision == null
+                || !session.requirement.satisfied(level, target.pos())
+                || !provision.sourceManaged(level, session.source)) {
+            if (provision != null && provision.sourceManaged(level, session.source)) {
+                provision.stop().run(new BlockActionContext(level, session.source, villager));
+            }
+            target = null;
+            return;
+        }
+        ManagedRequirementLeases.Key lease = ManagedRequirementLeases.get(level.getServer())
+                .acquireNew(level, target.job().id(), session.requirement.id(), target.pos(),
+                        session.source, villager.getUUID());
+        requirements.set(requirementIndex, new RequirementSession(
+                session.requirement, session.source, lease, false));
+        requirementIndex++;
+        moveForCurrentPhase(villager, gameTime);
+    }
+
+    private boolean startProvision(ServerLevel level, VillagerEntityMCA villager,
+                                   RequirementSession session) {
+        WorkJobDef.Provision provision = session.requirement.provision();
+        if (provision == null) return false;
+        if (provision.requiresItem()) {
+            StationSupplies.pullMatching(level, villager,
+                    stack -> provision.matches(level, session.source, stack), 1,
+                    session.source, worksite);
+        }
+        ItemStack supplied = takeProvisionItem(level, villager, session.source, provision);
+        if (provision.requiresItem() && supplied.isEmpty()) return false;
+        BlockActionContext context = new BlockActionContext(level, session.source, villager)
+                .withItemRole("item", supplied);
+        provision.start().run(context);
+        StationProtocols.giveBack(villager, context.itemRole("item").copy());
+        for (ItemStack returned : context.returnedItems()) StationProtocols.giveBack(villager, returned);
+        if (context.succeeded()) villager.swing(InteractionHand.MAIN_HAND, true);
+        return context.succeeded();
+    }
+
+    private static ItemStack takeProvisionItem(ServerLevel level, VillagerEntityMCA villager,
+                                               BlockPos source, WorkJobDef.Provision provision) {
+        if (!provision.requiresItem()) return ItemStack.EMPTY;
+        SimpleContainer inventory = villager.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (provision.matches(level, source, stack)) return stack.split(1);
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private void tickCleanup(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        while (requirementIndex >= 0 && requirements.get(requirementIndex).lease == null) {
+            requirementIndex--;
+        }
+        if (requirementIndex < 0) {
+            target = null;
+            interaction = null;
+            requirements = List.of();
+            return;
+        }
+        RequirementSession session = requirements.get(requirementIndex);
+        if (!approach(villager, session.source, gameTime)) return;
+        ManagedRequirementLeases.get(level.getServer()).release(
+                level.getServer(), session.lease, villager.getUUID());
+        requirements.set(requirementIndex, new RequirementSession(
+                session.requirement, session.source, null, false));
+        villager.swing(InteractionHand.MAIN_HAND, true);
+        requirementIndex--;
+        moveForCurrentPhase(villager, gameTime);
+    }
+
+    private boolean approach(VillagerEntityMCA villager, BlockPos pos, long gameTime) {
+        villager.getLookControl().setLookAt(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        if (villager.distanceToSqr(Vec3.atCenterOf(pos)) > USE_RANGE_SQ) {
+            setWalkTarget(villager, pos);
+            useAt = gameTime + WORK_DELAY;
+            return false;
+        }
+        villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+        return gameTime >= useAt;
+    }
+
+    private void moveForCurrentPhase(VillagerEntityMCA villager, long gameTime) {
+        BlockPos next = target == null ? null : target.pos();
+        if (phase == Phase.PREPARE && requirementIndex < requirements.size()) {
+            next = requirements.get(requirementIndex).source;
+        } else if (phase == Phase.CLEANUP && requirementIndex >= 0
+                && requirementIndex < requirements.size()) {
+            next = requirements.get(requirementIndex).source;
+        }
+        useAt = gameTime + WORK_DELAY;
+        if (next != null) setWalkTarget(villager, next);
+    }
+
+    private void renewRequirements(ServerLevel level, VillagerEntityMCA villager) {
+        ManagedRequirementLeases ledger = ManagedRequirementLeases.get(level.getServer());
+        for (RequirementSession session : requirements) {
+            if (session.lease != null) ledger.renew(level.getServer(), session.lease, villager.getUUID());
+        }
+    }
+
+    private void releaseAllRequirements(ServerLevel level, VillagerEntityMCA villager) {
+        ManagedRequirementLeases ledger = ManagedRequirementLeases.get(level.getServer());
+        for (RequirementSession session : requirements) {
+            if (session.lease != null) ledger.release(level.getServer(), session.lease, villager.getUUID());
+        }
     }
 
     private static boolean hasReadyInteraction(ServerLevel level, BlockPos pos,
@@ -227,11 +500,14 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         return false;
     }
 
-    private static boolean hasMatchingInteraction(ServerLevel level, BlockPos pos,
-                                                   SimpleContainer inventory,
-                                                   WorkJobDef.BlockTarget target) {
+    private static boolean hasAvailableInteractionInput(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos pos, Set<Long> extent,
+            WorkJobDef.BlockTarget target) {
         for (WorkJobDef.Interaction option : target.interactions()) {
-            if (hasMatching(level, pos, inventory, option)) return true;
+            if (!option.ready(level, pos)) continue;
+            if (!option.requiresItem()) return true;
+            if (WorkIngredients.matchingToolAvailable(level, villager,
+                    stack -> option.matches(level, pos, stack), pos, extent)) return true;
         }
         return false;
     }
@@ -270,7 +546,17 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
         int produced = 0;
         ResourceLocation firstOutput = null;
-        if (!itemRemainder.isEmpty()) StationProtocols.giveBack(villager, itemRemainder);
+        if (!itemRemainder.isEmpty()) {
+            ResourceLocation remainderId = BuiltInRegistries.ITEM.getKey(itemRemainder.getItem());
+            if (context.succeeded() && interaction.outputIds().contains(remainderId)) {
+                // Player-like interactions may replace the input in hand rather than drop an
+                // entity (a glass bottle becomes a honey bottle). That replacement is output,
+                // not a reusable tool remainder, and belongs in the same storage/history path.
+                outputs.add(itemRemainder);
+            } else {
+                StationProtocols.giveBack(villager, itemRemainder);
+            }
+        }
         for (ItemStack stack : outputs) {
             if (stack.isEmpty()) continue;
             ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
@@ -355,4 +641,10 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     private record Candidate(WorkJobDef job, WorkJobDef.BlockTarget definition,
                              WorkTaskDef task, BlockPos pos, Set<Long> extent) {}
+
+    private enum Phase { PREPARE, WORK, CLEANUP }
+
+    private record RequirementSession(WorkJobDef.ManagedRequirement requirement, BlockPos source,
+                                      @Nullable ManagedRequirementLeases.Key lease,
+                                      boolean needsStart) {}
 }

@@ -243,7 +243,8 @@ public final class CareerTreeOpener {
                     CareerGraphS2CPayload payload = new CareerGraphS2CPayload(
                             titleFor(viewer, target), scribeNameFor(viewer), inspect, notice,
                             authorityFor(viewer), todayFor(server, viewer),
-                            CareerGraphBuilder.build(server, target, moments));
+                            CareerGraphBuilder.build(server, target, moments,
+                                    viewer.clientInformation().language()));
                     //? if neoforge {
                     net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(viewer, payload);
                     //?} else {

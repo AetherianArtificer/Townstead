@@ -14,7 +14,10 @@ import net.minecraft.world.entity.npc.VillagerProfession;
  */
 public final class ProfessionAliases {
 
-    /** Professions that mean "cook" to another mod, plus Townstead's own. */
+    /**
+     * Early-load Cook carriers. At runtime the data registry distinguishes root aliases from
+     * Path-specific identities (notably Chef); this list only answers whether Cook UI applies.
+     */
     public static final String[] COOK = {
             "townstead:cook",
             "chefsdelight:cook",

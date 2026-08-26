@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.profession.ProfessionCapacity;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
+import com.aetherianartificer.townstead.compat.mca.McaBuildingCompat;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -89,9 +90,11 @@ public final class ProfessionWorksites {
         if (village == null) return List.of();
 
         var policy = TownsteadVillagers.get(villager).worksiteAssignments();
+        var effectiveTypes = McaBuildingCompat.effectiveTypes(village);
         List<Building> buildings = new ArrayList<>();
         for (Building building : McaBuildings.all(village)) {
-            if (BuildingWorkforceIndex.accepts(building.getType(), def.id())) buildings.add(building);
+            String buildingType = effectiveTypes.getOrDefault(building.getId(), building.getType());
+            if (BuildingWorkforceIndex.accepts(buildingType, villager)) buildings.add(building);
         }
         buildings.sort(Comparator
                 .comparingInt((Building b) -> center(b).getY())

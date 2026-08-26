@@ -45,6 +45,25 @@ class WorkTaskSchemaTest {
     }
 
     @Test
+    void generalStorageTagIsAProviderExtensibleBuildingRequirement() {
+        JsonObject storage = resourceJson("/data/townstead/tags/block/storage.json");
+        var values = storage.getAsJsonArray("values").asList();
+        assertTrue(values.stream().anyMatch(value -> value.isJsonPrimitive()
+                        && "minecraft:chest".equals(value.getAsString())),
+                "a vanilla chest must satisfy a general storage requirement");
+        assertTrue(values.stream().anyMatch(value -> value.isJsonPrimitive()
+                        && "minecraft:barrel".equals(value.getAsString())),
+                "a barrel remains storage without defining the building as a Fisherman's hut");
+        assertTrue(values.stream().anyMatch(value -> value.isJsonObject()
+                        && "#c:chests".equals(value.getAsJsonObject().get("id").getAsString())),
+                "providers may extend the common chest convention without editing Townstead");
+        assertEquals("#townstead:storage", resourceJson(
+                        "/data/townstead/tags/block/kitchen/storage.json")
+                        .getAsJsonArray("values").get(0).getAsString(),
+                "specialized storage tags should build on the general contract");
+    }
+
+    @Test
     void cookDeclaresItsWorkTasks() {
         ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook");
         assertEquals(6, cook.workTasks().size());

@@ -125,12 +125,15 @@ public final class ProfessionScanner {
     }
 
     private static void filterSuppressedProfessions(Set<String> result) {
-        // Chef's Delight professions are absorbed as aliases of townstead:cook (acquired in the
-        // world at their pot/skillet POIs); the picker offers only the canonical cook so players
-        // aren't shown three flavors of the same career.
+        // Compatibility professions are alternate carriers for the canonical Cook Career. Some
+        // imply a Path (Chef), others mean the root (Cook); neither is a second picker entry.
         if (TownsteadConfig.isTownsteadCookEnabled()) {
-            result.remove("chefsdelight:chef");
-            result.remove("chefsdelight:cook");
+            ResourceLocation cook = ResourceLocation.tryParse("townstead:cook");
+            for (ResourceLocation compatibility
+                    : com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                    .compatibilityIds(cook)) {
+                result.remove(compatibility.toString());
+            }
         }
     }
 

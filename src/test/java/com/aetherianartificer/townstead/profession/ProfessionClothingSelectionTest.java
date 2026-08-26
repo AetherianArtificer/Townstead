@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession;
 
 import net.conczin.mca.entity.ai.relationship.Gender;
 import net.conczin.mca.resources.data.skin.Clothing;
+import com.aetherianartificer.townstead.profession.def.ClothingChoice;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
@@ -58,12 +59,29 @@ class ProfessionClothingSelectionTest {
 
         Optional<String> selected = ProfessionClothing.firstAvailable(
                 List.of(absentProvider, farmer), Gender.FEMALE,
-                List.of(ResourceLocation.tryParse("forestry:beekeeper"),
-                        ResourceLocation.tryParse("minecraft:farmer")),
+                List.of(new ClothingChoice(ResourceLocation.tryParse("forestry:beekeeper")),
+                        new ClothingChoice(ResourceLocation.tryParse("minecraft:farmer"))),
                 "optional:skins/clothing/normal/neutral/beekeeper.png",
                 id -> id.startsWith("mca:"));
 
         assertEquals(Optional.of("mca:skins/clothing/normal/female/farmer/0.png"), selected);
+    }
+
+    @Test
+    void hairPolicyBelongsOnlyToTheSelectedFallback() {
+        Clothing beekeeper = clothing("test:beekeeper", "example:beekeeper", Gender.NEUTRAL);
+        Clothing farmer = clothing("test:farmer", "minecraft:farmer", Gender.NEUTRAL);
+        List<ClothingChoice> choices = List.of(
+                new ClothingChoice(ResourceLocation.tryParse("example:beekeeper"),
+                        ClothingChoice.HairPolicy.COVERED),
+                new ClothingChoice(ResourceLocation.tryParse("minecraft:farmer")));
+
+        assertEquals(ClothingChoice.HairPolicy.COVERED,
+                ProfessionClothing.hairPolicy(List.of(beekeeper, farmer), Gender.FEMALE,
+                        choices, "test:beekeeper"));
+        assertEquals(ClothingChoice.HairPolicy.NORMAL,
+                ProfessionClothing.hairPolicy(List.of(beekeeper, farmer), Gender.FEMALE,
+                        choices, "test:farmer"));
     }
 
     private static Clothing clothing(String id, String profession, Gender gender) {

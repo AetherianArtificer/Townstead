@@ -24,7 +24,7 @@ public interface JobSiteProvider {
      * A vanilla-style job-site block. The def's {@code poi} list is an ordered acquisition
      * hierarchy: the first entry is the primary surface, and a subordinate job-block entry may
      * name {@code via} — the (alias) profession whose vanilla POI claim manifests this surface
-     * (e.g. the cooking pot manifests through {@code chefsdelight:chef}). Claiming such a POI
+     * (e.g. a compatibility forge manifests through another mod's smith). Claiming such a POI
      * acquires the canonical career, gated by the village's total capacity. Several matching
      * sites may form one worker's workload through {@code sitesPerWorker}; the default of one
      * preserves vanilla's one-workstation, one-worker rule.

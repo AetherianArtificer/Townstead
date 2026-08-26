@@ -256,6 +256,16 @@ class WorkstationV2DefTest {
             }
         }
 
+        try (var stream = blockTag("/data/townstead/tags/block/kitchen/workstations.json")) {
+            assertNotNull(stream);
+            var values = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+                    .getAsJsonObject().getAsJsonArray("values");
+            assertTrue(valuesContainOptionalId(values, "farmersdelight:cutting_board"),
+                    "Farmer's Delight cutting boards must count as kitchen workstations");
+            assertTrue(valuesContainOptionalId(values, "kaleidoscope_cookery:chopping_board"),
+                    "Kaleidoscope Cookery chopping boards must count as kitchen workstations");
+        }
+
         String[][] aliases = {
                 {"kitchen_advanced_heat", "advanced_heat"}, {"kitchen_cookware", "cookware"},
                 {"kitchen_copper", "copper"}, {"kitchen_heat_sources", "heat_sources"},
@@ -273,6 +283,15 @@ class WorkstationV2DefTest {
                 assertEquals("#townstead:kitchen/" + alias[1], values.get(0).getAsString());
             }
         }
+    }
+
+    private static boolean valuesContainOptionalId(com.google.gson.JsonArray values, String id) {
+        for (var value : values) {
+            if (value.isJsonObject() && id.equals(value.getAsJsonObject().get("id").getAsString())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Test

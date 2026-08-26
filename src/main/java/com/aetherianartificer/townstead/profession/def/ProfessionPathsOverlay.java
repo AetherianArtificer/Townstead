@@ -27,7 +27,7 @@ public final class ProfessionPathsOverlay {
         deriveCompletionTitles(profession, pathList);
     }
 
-    /** A path-owned title is earned by learning its gateway and every remaining member. */
+    /** A path-owned title is earned by taking one option from each authored Path level. */
     static void deriveCompletionTitles(JsonObject profession, JsonArray paths) {
         boolean hadStandaloneTitles = profession.has("titles")
                 && profession.get("titles").isJsonArray();
@@ -48,22 +48,25 @@ public final class ProfessionPathsOverlay {
                 throw new IllegalArgumentException("Title for path '" + id + "' cannot be null");
             }
 
-            Set<String> members = new LinkedHashSet<>();
-            members.add(gateway);
-            if (path.has("skills") && path.get("skills").isJsonArray()) {
-                for (JsonElement skill : path.getAsJsonArray("skills")) {
-                    if (skill.isJsonPrimitive() && skill.getAsJsonPrimitive().isString()) {
-                        members.add(skill.getAsString());
-                    }
-                }
-            }
-
             JsonObject title = new JsonObject();
             title.addProperty("id", id);
             title.add("name", path.get("title").deepCopy());
-            JsonArray skills = new JsonArray();
-            members.forEach(skills::add);
-            title.add("skills", skills);
+            if (path.has("skill_levels") && path.get("skill_levels").isJsonArray()) {
+                title.add("skill_groups", path.get("skill_levels").deepCopy());
+            } else {
+                Set<String> members = new LinkedHashSet<>();
+                members.add(gateway);
+                if (path.has("skills") && path.get("skills").isJsonArray()) {
+                    for (JsonElement skill : path.getAsJsonArray("skills")) {
+                        if (skill.isJsonPrimitive() && skill.getAsJsonPrimitive().isString()) {
+                            members.add(skill.getAsString());
+                        }
+                    }
+                }
+                JsonArray skills = new JsonArray();
+                members.forEach(skills::add);
+                title.add("skills", skills);
+            }
             for (int i = titles.size() - 1; i >= 0; i--) {
                 JsonElement existing = titles.get(i);
                 if (existing.isJsonObject() && id.equals(string(existing.getAsJsonObject(), "id"))) {

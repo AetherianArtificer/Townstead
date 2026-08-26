@@ -16,7 +16,7 @@ class WorkJobDefTest {
         registerEntityPrimitives();
         WorkJobDef def = WorkJobDef.parse(id("test:delivery"), JsonParser.parseString("""
                 {
-                  "schema":"townstead:job/v2",
+                  "schema":"townstead:job/v3",
                   "task":"townstead_work:slaughter",
                   "type":"townstead:entity_delivery",
                   "source":{
@@ -50,7 +50,7 @@ class WorkJobDefTest {
     }
 
     @Test
-    void bundledButcheryBlockJobsUseVersionTwo() throws Exception {
+    void bundledButcheryBlockJobsUseCurrentSchema() throws Exception {
         registerProcedurePrimitives();
         for (String name : List.of("butchery_carcass", "butchery_golem", "butchery_heads",
                 "butchery_clean_blood", "butchery_rewet_cloth", "butchery_sausage_hook",
@@ -116,7 +116,7 @@ class WorkJobDefTest {
                 });
         WorkJobDef def = WorkJobDef.parse(id("test:hive"), JsonParser.parseString("""
                 {
-                  "schema":"townstead:job/v2",
+                  "schema":"townstead:job/v3",
                   "task":"townstead_work:interact",
                   "type":"townstead:block_interaction",
                   "target":{
@@ -147,10 +147,10 @@ class WorkJobDefTest {
     }
 
     @Test
-    void versionTwoAcceptsBlockTagsConditionsAndOutputlessActions() {
+    void currentSchemaAcceptsBlockTagsConditionsAndOutputlessActions() {
         WorkJobDef def = WorkJobDef.parse(id("test:cleanup"), JsonParser.parseString("""
                 {
-                  "schema":"townstead:job/v2",
+                  "schema":"townstead:job/v3",
                   "task":"townstead_work:clean",
                   "type":"townstead:block_interaction",
                   "target":{
@@ -168,6 +168,58 @@ class WorkJobDefTest {
         assertEquals(List.of(id("example:spills")), def.target().blockTags());
         assertTrue(def.target().interactions().get(0).outputs().isEmpty());
         assertNotNull(def.target().interactions().get(0).condition());
+    }
+
+    @Test
+    void managedRequirementsUseAnExplicitSatisfiedConditionAndProvision() {
+        registerProcedurePrimitives();
+        WorkJobDef def = WorkJobDef.parse(id("test:managed"), JsonParser.parseString("""
+                {
+                  "schema":"townstead:job/v3",
+                  "task":"townstead_work:interact",
+                  "type":"townstead:block_interaction",
+                  "target":{
+                    "block":"minecraft:beehive",
+                    "requirements":[{
+                      "id":"smoke",
+                      "satisfied_when":{"type":"pheno:smokey"},
+                      "provision":{
+                        "at":{"offset":[0,-1,0]},
+                        "item":"minecraft:flint_and_steel",
+                        "start":{"type":"pheno:use_block","item":"item"},
+                        "managed_when":{"type":"pheno:block_state","property":"lit","value":"true"},
+                        "stop":{"type":"pheno:modify_block_state","property":"lit","value":"false"}
+                      }
+                    }],
+                    "interactions":[{"item":"minecraft:shears","output":"minecraft:honeycomb"}]
+                  }
+                }
+                """).getAsJsonObject());
+
+        assertNotNull(def);
+        assertEquals(1, def.target().requirements().size());
+        WorkJobDef.ManagedRequirement requirement = def.target().requirements().get(0);
+        assertEquals("smoke", requirement.id());
+        assertNotNull(requirement.satisfiedWhen());
+        assertNotNull(requirement.provision());
+        assertEquals("minecraft:flint_and_steel", requirement.provision().item());
+        assertNotNull(requirement.provision().managedWhen());
+    }
+
+    @Test
+    void managedRequirementRejectsAmbiguousWhenField() {
+        registerProcedurePrimitives();
+        assertNull(WorkJobDef.parse(id("test:ambiguous"), JsonParser.parseString("""
+                {
+                  "task":"townstead_work:interact",
+                  "type":"townstead:block_interaction",
+                  "target":{
+                    "block":"minecraft:beehive",
+                    "requirements":[{"id":"smoke","when":{"type":"pheno:smokey"}}],
+                    "interactions":[{"item":"minecraft:shears","output":"minecraft:honeycomb"}]
+                  }
+                }
+                """).getAsJsonObject()));
     }
 
     @Test

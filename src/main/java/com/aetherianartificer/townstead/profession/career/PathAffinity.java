@@ -13,10 +13,10 @@ import java.util.Set;
 import java.util.function.BiPredicate;
 
 /**
- * How villagers relate to specialization paths. Players have free will: they buy a path's
- * gateway skill or they don't, and nothing here applies to them. Villagers spec by
+ * How villagers relate to specialization paths. Players have free will: they choose a Path option
+ * or they don't, and nothing here applies to them. Villagers spec by
  * circumstance: a path's skills only enter their auto-spend pool when their worksite
- * actually contains the path's stations, a committed villager (gateway learned) is weighted
+ * actually contains the path's stations, a villager with any Path option is weighted
  * toward finishing the build, and a specced villager prefers the path's stations when
  * choosing work. Worksite contents are read through a probe the active work compat
  * registers, so this layer stays free of any one mod's kitchen model.
@@ -45,6 +45,9 @@ public final class PathAffinity {
     static int autoSpendWeight(LivingEntity villager, ProfessionDef def, SkillDef skill) {
         ProfessionPaths.Path path = ProfessionPaths.pathOwning(def.id(), skill.id());
         if (path == null) return 1;
+        ProfessionPaths.Path identityPath = com.aetherianartificer.townstead.profession
+                .ProfessionIdentity.path(villager, def.id());
+        if (identityPath != null && identityPath.id().equals(path.id())) return 4;
         for (ResourceLocation member : path.members()) {
             if (LearnedSkills.has(villager, member)) return 4;
         }
@@ -54,8 +57,12 @@ public final class PathAffinity {
     /** Station blocks the entity's specced paths favour; empty when unspecced (or a player). */
     public static Set<ResourceLocation> preferredWorksites(LivingEntity villager) {
         Set<ResourceLocation> learned = LearnedSkills.learned(villager);
-        if (learned.isEmpty()) return Set.of();
         Set<ResourceLocation> out = new HashSet<>();
+        ResourceLocation career = com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                .canonicalId(com.aetherianartificer.townstead.profession.ProfessionIdentity.rawId(villager));
+        ProfessionPaths.Path identityPath = career == null ? null
+                : com.aetherianartificer.townstead.profession.ProfessionIdentity.path(villager, career);
+        if (identityPath != null) out.addAll(identityPath.worksites());
         for (ProfessionPaths.Path path : ProfessionPaths.speccedPaths(learned::contains)) {
             out.addAll(path.worksites());
         }

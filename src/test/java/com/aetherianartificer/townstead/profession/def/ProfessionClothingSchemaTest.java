@@ -16,14 +16,25 @@ class ProfessionClothingSchemaTest {
     void acceptsOneClothingIdentityAsScalar() {
         ProfessionDef def = parse("{\"schema\":\"townstead:profession/v2\","
                 + "\"clothing\":\"minecraft:farmer\"}");
-        assertEquals(List.of(id("minecraft:farmer")), def.clothing());
+        assertEquals(List.of(new ClothingChoice(id("minecraft:farmer"))), def.clothing());
     }
 
     @Test
     void preservesClothingFallbackOrder() {
         ProfessionDef def = parse("{\"schema\":\"townstead:profession/v2\","
                 + "\"clothing\":[\"example:beekeeper\",\"minecraft:farmer\"]}");
-        assertEquals(List.of(id("example:beekeeper"), id("minecraft:farmer")), def.clothing());
+        assertEquals(List.of(new ClothingChoice(id("example:beekeeper")),
+                new ClothingChoice(id("minecraft:farmer"))), def.clothing());
+    }
+
+    @Test
+    void acceptsHairCoverageOnOneFallback() {
+        ProfessionDef def = parse("{\"schema\":\"townstead:profession/v2\","
+                + "\"clothing\":[{\"id\":\"example:beekeeper\",\"hair\":\"covered\"},"
+                + "\"minecraft:farmer\"]}");
+        assertEquals(List.of(
+                new ClothingChoice(id("example:beekeeper"), ClothingChoice.HairPolicy.COVERED),
+                new ClothingChoice(id("minecraft:farmer"))), def.clothing());
     }
 
     private static ProfessionDef parse(String json) {

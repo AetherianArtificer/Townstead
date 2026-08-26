@@ -79,19 +79,14 @@ class PoiHierarchySchemaTest {
     }
 
     @Test
-    void shippedCookDefDeclaresTheChefsDelightSurfaces() {
+    void shippedCookUsesItsTownsteadBuildingRatherThanChefsDelightAcquisition() {
         ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook");
-        assertTrue(PoiHierarchy.hasAcquisitionHierarchy(cook));
-        assertTrue(PoiHierarchy.isAcquisitionSurface(cook, id("chefsdelight:chef")),
-                "the cooking pot manifests through chefsdelight:chef");
-        assertTrue(PoiHierarchy.isAcquisitionSurface(cook, id("chefsdelight:cook")),
-                "the skillet manifests through chefsdelight:cook");
+        assertFalse(PoiHierarchy.hasAcquisitionHierarchy(cook),
+                "Chef's Delight professions are semantic compatibility identities, not POIs");
         assertTrue(cook.jobSites().get(0) instanceof JobSiteProvider.Building,
-                "entry 0 stays the primary building surface");
-        for (ResourceLocation via : new ResourceLocation[]{id("chefsdelight:chef"), id("chefsdelight:cook")}) {
-            assertTrue(cook.aliases().contains(via),
-                    via + " must also be a cook alias so the claim resolves to the canonical career");
-        }
+                "the kitchen remains Cook's ordinary acquisition surface");
+        assertTrue(cook.aliases().isEmpty(),
+                "optional-mod meanings live in gated compatibility documents");
     }
 
     private static ProfessionDef parse(String json) {

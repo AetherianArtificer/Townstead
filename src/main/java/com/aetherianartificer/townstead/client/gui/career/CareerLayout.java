@@ -6,7 +6,6 @@ import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,10 +20,10 @@ import java.util.TreeMap;
  * must reach before anything inside it can be taken, and it bounds a region of every column at
  * once.</p>
  *
- * <p>Within a band a node sits where the constellation wants it, jittered in both axes, rather than
- * on a shared row. Pinning skills to fixed rows is what made the old board read as a spreadsheet:
- * the rows were structural, so nothing could sit anywhere interesting. Jitter is derived from the
- * node id, so a board looks the same every time you open it and does not shuffle on relayout.</p>
+ * <p>A lone node may sit where the constellation wants it. Several choices offered by one Path at
+ * one rank are different: they form one authored question, so they share a row and retain the order
+ * written in {@code path.json}. Their order never implies an ability category; three passive
+ * choices, three active choices, or any mixture are equally valid.</p>
  *
  * <p>Board units, origin at the top left of the content. {@link BoardView} centres and clamps.</p>
  */
@@ -45,7 +44,7 @@ final class CareerLayout {
     /** Clearance inside a band so a mark never touches its divider. */
     private static final int BAND_INSET = 15;
     /** How far a mark may sit either side of its column's centre line. */
-    private static final int LANE = 21;
+    private static final int LANE = 25;
 
     private static final int[] ARM_TINTS = {
             0xFFC9A05A, 0xFFC46A42, 0xFF7E9E62, 0xFF8A7EA8, 0xFF6E93A8, 0xFFB08A4E};
@@ -232,7 +231,7 @@ final class CareerLayout {
         }
     }
 
-    /** Every skill into its column's slice of its rank's band, scattered rather than ruled. */
+    /** Every skill into its column's slice of its rank's band. */
     private void placeSkills(List<CareerGraphS2CPayload.Node> tabNodes) {
         Map<Long, List<CareerGraphS2CPayload.Node>> cells = new TreeMap<>();
         for (CareerGraphS2CPayload.Node node : tabNodes) {
@@ -248,29 +247,39 @@ final class CareerLayout {
             int column = (int) (cell.getKey() >> 32);
             int band = (int) (cell.getKey() & 0xFFFFFFFFL);
             List<CareerGraphS2CPayload.Node> group = cell.getValue();
-            group.sort(Comparator.comparing(CareerGraphS2CPayload.Node::id));
 
             int centre = columnX(column) + COL_W / 2;
             int top = bandTop(band) + BAND_INSET;
             int inner = BAND_H - 2 * BAND_INSET;
-            int count = group.size();
-            for (int i = 0; i < count; i++) {
-                CareerGraphS2CPayload.Node node = group.get(i);
-                // Spread down the band's inner height, then knock each mark off its slot so no two
-                // columns ever line up into a row. A run of three at one rank should read as a
-                // cluster, not as the third line of a table.
-                int slot = count == 1 ? inner / 2 : (inner * (2 * i + 1)) / (2 * count);
-                int y = top + slot + jitter(node.id(), 11, 5);
-                // Siblings spread EVENLY across the column's lane width, so a run of two and a run
-                // of three both read as a fan off the spine. The old spread stepped by a fixed
-                // amount per sibling, so a pair sat close in and a trio flung its outer marks to
-                // the alcove wall; with the jitter on top there was no rule a reader could learn.
-                int offset = count == 1 ? 0
-                        : Math.round((2f * i / (count - 1) - 1f) * LANE);
-                int x = centre + offset + jitter(node.id(), 37, 3);
-                positions.put(node.id(), new int[]{x, y});
-            }
+            positions.putAll(placeCell(group, centre, top, inner));
         }
+    }
+
+    /** Pure placement for one column/rank cell, split out so ordering is regression-testable. */
+    static Map<String, int[]> placeCell(List<CareerGraphS2CPayload.Node> group,
+                                        int centre, int top, int inner) {
+        Map<String, int[]> placed = new LinkedHashMap<>();
+        int count = group.size();
+        // Nodes arrive in ProfessionDef.skills order. Path documents deliberately preserve each
+        // level's nested array while they are lowered into that list, so sorting here by resource
+        // id silently changed an authored choice into alphabetical order.
+        boolean authoredChoiceRow = count > 1 && group.get(0).path().present();
+        for (int i = 0; i < count; i++) {
+            CareerGraphS2CPayload.Node node = group.get(i);
+            // A Path's alternatives are peers, not successive steps. Giving their list index to Y
+            // produced a downward staircase and falsely described progression between them.
+            // Lone/trunk clusters keep the looser constellation treatment.
+            int slot = count == 1 ? inner / 2
+                    : (inner * (2 * i + 1)) / (2 * count);
+            int y = authoredChoiceRow ? top + inner / 2
+                    : top + slot + jitter(node.id(), 11, 5);
+            int offset = count == 1 ? 0
+                    : Math.round((2f * i / (count - 1) - 1f) * LANE);
+            int x = centre + offset
+                    + (authoredChoiceRow ? 0 : jitter(node.id(), 37, 3));
+            placed.put(node.id(), new int[]{x, y});
+        }
+        return placed;
     }
 
     /** The topmost and bottommost placed mark in a column, or null when it holds none. */

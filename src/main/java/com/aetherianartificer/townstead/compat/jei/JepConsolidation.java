@@ -33,12 +33,11 @@ import java.util.Set;
  * {@code ProfessionEntry}/{@code ProfessionWrapper} records are reached by reflection; every
  * call degrades to a no-op (with one log line) if JEP's internals move.
  *
- * <p>Entries come from profession defs: a def whose {@code poi} list declares an acquisition
- * hierarchy gets ONE entry under its canonical profession, whose stacks are the real work
- * surfaces — the subordinate {@code via} job blocks plus every block its work tasks declare
- * (tags expanded). The {@code via} professions and any other registered aliases are hidden
- * from JEP's native listing, so "place a pot, gain a chef" appears as recruitment flavor of
- * the one career instead of a sibling profession. Special roles that hold no workstation while
+ * <p>Entries come from profession defs. A building-acquired Career or a Career whose {@code poi}
+ * list declares a subordinate acquisition hierarchy gets ONE entry under its canonical
+ * profession, using its real work surfaces (tags expanded). Foreign professions mapped to that
+ * root or one of its Paths are hidden from JEP's native listing, so compatibility identities do
+ * not become sibling Careers. Special roles that hold no workstation while
  * declaring every POI acquirable are hidden too; JEP otherwise lists them under every workstation
  * in the game.</p>
  *
@@ -64,7 +63,7 @@ final class JepConsolidation {
             if (type == null) return;
             List<Object> wrappers = new ArrayList<>();
             for (ProfessionDef def : ProfessionDefs.all().values()) {
-                if (!PoiHierarchy.hasAcquisitionHierarchy(def)) continue;
+                if (!presentationEnabled(def) || !needsSyntheticEntry(def)) continue;
                 VillagerProfession profession = registeredProfession(def.id());
                 if (profession == null) continue;
                 List<ItemStack> stacks = surfaceStacks(def);
@@ -125,14 +124,12 @@ final class JepConsolidation {
         return stacks;
     }
 
-    /** Registered alias and via professions of hierarchy defs — JEP's fragmented flavor entries. */
+    /** Registered compatibility and via professions represented by a synthetic Career entry. */
     private static Set<ResourceLocation> absorbedProfessionIds() {
         Set<ResourceLocation> hidden = new LinkedHashSet<>();
         for (ProfessionDef def : ProfessionDefs.all().values()) {
-            if (!PoiHierarchy.hasAcquisitionHierarchy(def)) continue;
-            for (ResourceLocation alias : def.aliases()) {
-                if (!alias.equals(def.id())) hidden.add(alias);
-            }
+            if (!presentationEnabled(def) || !needsSyntheticEntry(def)) continue;
+            hidden.addAll(ProfessionDefs.compatibilityIds(def.id()));
             for (JobSiteProvider provider : def.jobSites()) {
                 if (provider instanceof JobSiteProvider.JobBlock block && block.via() != null) {
                     hidden.add(block.via());
@@ -148,6 +145,21 @@ final class JepConsolidation {
             if (id != null) hidden.add(id);
         }
         return hidden;
+    }
+
+    /** Building careers need a synthetic JEP entry even when no foreign POI owns acquisition. */
+    private static boolean needsSyntheticEntry(ProfessionDef def) {
+        if (PoiHierarchy.hasAcquisitionHierarchy(def)) return true;
+        for (JobSiteProvider provider : def.jobSites()) {
+            if (provider instanceof JobSiteProvider.Building
+                    || provider instanceof JobSiteProvider.StationPost) return true;
+        }
+        return false;
+    }
+
+    private static boolean presentationEnabled(ProfessionDef def) {
+        return !"townstead:cook".equals(def.id().toString())
+                || com.aetherianartificer.townstead.TownsteadConfig.isTownsteadCookEnabled();
     }
 
     /**

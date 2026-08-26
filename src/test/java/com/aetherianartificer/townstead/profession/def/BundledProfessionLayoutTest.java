@@ -53,13 +53,42 @@ class BundledProfessionLayoutTest {
     void customProfessionsDeclareOrderedClothingFallbacks() {
         assertEquals(List.of("townstead:baker", "mca:baker"),
                 strings(resource("/data/townstead/profession/baker/profession.json"), "clothing"));
-        assertEquals(List.of("townstead:cook", "chefsdelight:cook",
-                        "chefsdelight:chef", "minecraft:butcher"),
+        assertEquals(List.of("townstead:cook", "chefsdelight:cook", "minecraft:butcher"),
                 strings(resource("/data/townstead/profession/cook/profession.json"), "clothing"));
         assertEquals(List.of("townstead:scribe", "iceandfire:scribe", "minecraft:librarian"),
                 strings(resource("/data/townstead/profession/scribe/profession.json"), "clothing"));
         assertFalse(resource("/data/townstead/profession/barista/profession.json").has("clothing"),
                 "barista keeps its current clothes until a suitable wardrobe is authored");
+    }
+
+    @Test
+    void chefsDelightContributesAnOptionalCookPathRatherThanACareer() {
+        JsonObject path = resource(
+                "/data/townstead/profession/cook/path/chef/path.json");
+        JsonObject compatibility = resource(
+                "/data/townstead/profession/cook/compatibility/chefs_delight.json");
+
+        assertEquals("chefsdelight", path.get("mods").getAsString());
+        assertEquals(5, path.getAsJsonArray("skills").size());
+        for (var level : path.getAsJsonArray("skills")) {
+            assertTrue(level.isJsonArray(), "each Chef level presents authored choices");
+            assertEquals(3, level.getAsJsonArray().size(),
+                    "each Chef level offers passive, support, and combat choices");
+            for (var skill : level.getAsJsonArray()) {
+                assertNotNull(BundledProfessionLayoutTest.class.getResource(
+                                "/data/townstead/profession/cook/path/chef/skill/"
+                                        + skill.getAsString() + ".json"),
+                        "Chef references a missing Skill: " + skill.getAsString());
+            }
+        }
+        assertFalse(path.getAsJsonArray("powers").isEmpty(),
+                "Chef owns its shared Flow machinery at Path scope");
+        assertEquals(ProfessionCompatibilityDocument.SCHEMA,
+                compatibility.get("schema").getAsString());
+        assertEquals("chefsdelight:cook",
+                compatibility.getAsJsonArray("aliases").get(0).getAsString());
+        assertEquals("chef", compatibility.getAsJsonObject("path_aliases")
+                .get("chefsdelight:chef").getAsString());
     }
 
     private static List<String> strings(JsonObject object, String member) {

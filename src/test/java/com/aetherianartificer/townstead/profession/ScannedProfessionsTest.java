@@ -77,6 +77,24 @@ class ScannedProfessionsTest {
     }
 
     @Test
+    void kubeJsDataRootCanOwnARegisteredKubeJsProfession(@TempDir Path data) throws Exception {
+        Path profession = data.resolve("kubejs/profession/herbalist/profession.json");
+        Files.createDirectories(profession.getParent());
+        Files.writeString(profession,
+                "{\"schema\":\"townstead:profession/v2\"," +
+                        "\"register_profession\":true}");
+
+        var found = new LinkedHashMap<net.minecraft.resources.ResourceLocation,
+                ScannedProfessions.ScannedDef>();
+        ScannedProfessions.collectDataRoot(data, Set.of("kubejs"), found);
+
+        var id = net.minecraft.resources.ResourceLocation.tryParse("kubejs:herbalist");
+        assertTrue(found.containsKey(id));
+        assertTrue(found.get(id).ownsNamespace("kubejs"),
+                "the KubeJS source owns its conventional namespace during early registration");
+    }
+
+    @Test
     void registrationMetadataIncludesWorkSound() {
         assertEquals(net.minecraft.resources.ResourceLocation.tryParse(
                         "minecraft:entity.villager.work_butcher"),

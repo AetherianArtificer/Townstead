@@ -14,8 +14,8 @@ import java.util.List;
  * A data-driven profession: the one and only career concept, and careers are FLAT. Practiced
  * careers (Farmer, Cook) declare no {@code acquisition_routes} and are simply worked; gated
  * careers (Barista, Baker) declare routes plus pheno-condition {@code requirements}.
- * Specialization inside a profession is a {@code paths} branch (gateway skill, member skills,
- * favoured worksites), never a child profession. Each def carries its progression track, skill tree
+ * Specialization inside a profession is a {@code paths} branch (levelled choices, shared powers,
+ * and favoured worksites), never a child profession. Each def carries its progression track, skill tree
  * membership, and the {@code poi} job-site providers that make the job available in the world.
  * Completed-work history is derived from those executable Jobs and task engines rather than
  * repeated here. {@code workTasks} declares which villager AI work behaviors the
@@ -37,7 +37,8 @@ public record ProfessionDef(
         List<String> acquisitionRoutes,
         List<JobSiteProvider> jobSites,
         List<ResourceLocation> aliases,
-        List<ResourceLocation> clothing,
+        List<ClothingChoice> clothing,
+        com.aetherianartificer.townstead.storage.StoragePreference storage,
         java.util.Map<Integer, List<TradeDef>> trades,
         List<RequirementHint> requirementHints,
         @Nullable ResourceLocation icon,
@@ -109,7 +110,8 @@ public record ProfessionDef(
                          RetrainingPolicy retraining, List<ResourceLocation> skills) {
         this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
                 skills, false, Conditions.ALWAYS, List.of(), List.of(), List.of(),
-                List.of(), java.util.Map.of(), List.of(), null, null, List.of(), List.of());
+                List.of(), com.aetherianartificer.townstead.storage.StoragePreference.NONE,
+                java.util.Map.of(), List.of(), null, null, List.of(), List.of());
     }
 
     /** Constructor for definitions that only need eligibility and job sites. */
@@ -120,7 +122,8 @@ public record ProfessionDef(
                          List<String> acquisitionRoutes, List<JobSiteProvider> jobSites) {
         this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
                 skills, hidden, requirements, acquisitionRoutes, jobSites, List.of(),
-                List.of(), java.util.Map.of(), List.of(), null, null, List.of(), List.of());
+                List.of(), com.aetherianartificer.townstead.storage.StoragePreference.NONE,
+                java.util.Map.of(), List.of(), null, null, List.of(), List.of());
     }
 
     /** Constructor for definitions that also declare aliases. */
@@ -131,6 +134,7 @@ public record ProfessionDef(
                          List<JobSiteProvider> jobSites, List<ResourceLocation> aliases) {
         this(id, displayName, description, progression, unlockModel, pointsPerTier, retraining,
                 skills, hidden, requirements, acquisitionRoutes, jobSites, aliases,
-                List.of(), java.util.Map.of(), List.of(), null, null, List.of(), List.of());
+                List.of(), com.aetherianartificer.townstead.storage.StoragePreference.NONE,
+                java.util.Map.of(), List.of(), null, null, List.of(), List.of());
     }
 }

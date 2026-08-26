@@ -529,35 +529,36 @@ final class RecordPage {
         return y + h + GAP;
     }
 
-    /** The sibling this skill rules out, shown before you spend rather than after. */
+    /** The other skills competing for this rank's one pick, shown before it is spent. */
     private int drawChoiceBlock(GuiGraphics g, int x, int y, int inner,
                                 CareerGraphS2CPayload.Node skill,
                                 Map<String, CareerGraphS2CPayload.Node> byId) {
-        if (skill.group().isEmpty()) return y;
-        CareerGraphS2CPayload.Node other = null;
+        if (skill.kind() != CareerGraphS2CPayload.KIND_SKILL || skill.tier() <= 0) return y;
+        List<CareerGraphS2CPayload.Node> alternatives = new ArrayList<>();
         for (CareerGraphS2CPayload.Node node : byId.values()) {
             if (node.id().equals(skill.id())) continue;
-            if (!node.group().equals(skill.group())) continue;
-            if (!node.rootId().equals(skill.rootId())) continue;
-            other = node;
-            break;
+            if (node.kind() != CareerGraphS2CPayload.KIND_SKILL) continue;
+            // One pick is spent within the owning Profession. Advanced Professions may share a
+            // root tree, so rootId would incorrectly mix their same-numbered ranks together.
+            if (!node.parentId().equals(skill.parentId())) continue;
+            if (node.tier() != skill.tier()) continue;
+            alternatives.add(node);
         }
-        if (other == null) return y;
-        List<FormattedCharSequence> lines = other.effects().isEmpty()
-                ? List.of() : font.split(Component.literal(other.effects().get(0)), inner - 2 * PAD);
+        if (alternatives.isEmpty()) return y;
+
+        // byId is populated from the payload's LinkedHashMap, whose order is the Path's authored
+        // order. Do not sort this list by id or by active/passive kind: either would rewrite the
+        // choice the pack actually authored, and every mixture of ability kinds is valid.
         List<FormattedCharSequence> closes = font.split(
                 Component.translatable("townstead.career.screen.closes_other"), inner - 2 * PAD);
-        int rows = 1 + lines.size();
-        int h = RecordArt.stripHeight() + 2 + rows * line() + 3
+        int h = RecordArt.stripHeight() + 2 + alternatives.size() * line() + 3
                 + closes.size() * line() - unit + FOOT;
         RecordArt.card(g, font, x, y, inner, h,
                 Component.translatable("townstead.career.screen.or_choose").getString(), "",
                 RecordArt.BAD);
         int cy = y + RecordArt.stripHeight() + 2;
-        g.drawString(font, other.name(), x + PAD, cy, RecordArt.INK, false);
-        cy += line();
-        for (FormattedCharSequence text : lines) {
-            g.drawString(font, text, x + PAD, cy, RecordArt.INK_DIM, false);
+        for (CareerGraphS2CPayload.Node alternative : alternatives) {
+            g.drawString(font, alternative.name(), x + PAD, cy, RecordArt.INK, false);
             cy += line();
         }
         g.fill(x + PAD, cy, x + inner - PAD, cy + 1, 0x59A8322A);

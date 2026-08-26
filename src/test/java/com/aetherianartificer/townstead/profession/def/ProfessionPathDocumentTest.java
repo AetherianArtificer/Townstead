@@ -16,6 +16,7 @@ class ProfessionPathDocumentTest {
                 profession, "hive_keeper", object("""
                         {"schema":"townstead:profession_path/v1",
                          "name":"Hive Keeper","title":"Apiarist","color":"#D6A928",
+                         "worksites":["minecraft:beehive"],
                          "skills":[
                            "smoker_use",
                            ["protective_clothing","veil_mending"],
@@ -27,13 +28,17 @@ class ProfessionPathDocumentTest {
         assertEquals("hive_keeper", path.get("id").getAsString());
         assertEquals("hive_keeper/smoker_use", path.get("gateway").getAsString());
         assertEquals(3, path.getAsJsonArray("skills").size());
+        assertEquals("minecraft:beehive",
+                path.getAsJsonArray("worksites").get(0).getAsString());
         assertEquals(1, applied.skillTiers().get("hive_keeper/smoker_use"));
         assertEquals(2, applied.skillTiers().get("hive_keeper/protective_clothing"));
         assertEquals(2, applied.skillTiers().get("hive_keeper/veil_mending"));
         assertEquals(3, applied.skillTiers().get("hive_keeper/first_aid"));
         assertEquals(4, profession.getAsJsonArray("skills").size());
-        assertEquals(4, profession.getAsJsonArray("titles").get(0).getAsJsonObject()
-                .getAsJsonArray("skills").size());
+        var requirements = profession.getAsJsonArray("titles").get(0).getAsJsonObject()
+                .getAsJsonArray("skill_groups");
+        assertEquals(3, requirements.size());
+        assertEquals(2, requirements.get(1).getAsJsonArray().size());
     }
 
     @Test

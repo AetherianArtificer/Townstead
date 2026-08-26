@@ -26,6 +26,7 @@ public final class ProfessionWorkOverlay {
         }
         copy(work, profession, "register_profession", "register_profession");
         copy(work, profession, "poi", "poi");
+        copy(work, profession, "storage", "storage");
         if (work.has("tasks")) {
             copy(work, profession, "tasks", "work_tasks");
         } else {

@@ -55,8 +55,9 @@ public final class AttachmentDoctorCommand {
                     List.of("head", "body", "left_arm", "right_arm", "left_leg", "right_leg"), b);
 
     private static final List<String> PHYSICS_PARAMS = List.of(
-            "stiffness", "damping", "gravity", "max_angle", "sway", "follow", "droop_angle", "sway_speed",
-            "snap", "response_vertical", "response_forward", "response_lateral", "response_turn");
+            "stiffness", "damping", "gravity", "max_angle", "min_pitch", "max_pitch", "rest_pitch", "sway",
+            "follow", "droop_angle", "sway_speed", "snap", "response_vertical", "response_forward",
+            "response_lateral", "response_turn");
 
     private static final SuggestionProvider<CommandSourceStack> PARAMS = (c, b) ->
             SharedSuggestionProvider.suggest(PHYSICS_PARAMS, b);
@@ -213,7 +214,8 @@ public final class AttachmentDoctorCommand {
 
     private static AttachmentDef.PhysicsChain chainWith(AttachmentDef.PhysicsChain chain, String param, float value) {
         float stiffness = chain.stiffness(), damping = chain.damping(), gravity = chain.gravity();
-        float maxAngle = chain.maxAngle(), sway = chain.sway(), follow = chain.follow();
+        float maxAngle = chain.maxAngle(), minPitch = chain.minPitch(), maxPitch = chain.maxPitch();
+        float restPitch = chain.restPitch(), sway = chain.sway(), follow = chain.follow();
         float droopAngle = chain.droopAngle(), swaySpeed = chain.swaySpeed(), snap = chain.snap();
         float[] response = java.util.Arrays.copyOf(chain.response(), 4);
         switch (param) {
@@ -221,6 +223,9 @@ public final class AttachmentDoctorCommand {
             case "damping" -> damping = value;
             case "gravity" -> gravity = value;
             case "max_angle" -> maxAngle = value;
+            case "min_pitch" -> minPitch = value;
+            case "max_pitch" -> maxPitch = value;
+            case "rest_pitch" -> restPitch = value;
             case "sway" -> sway = value;
             case "follow" -> follow = value;
             case "droop_angle" -> droopAngle = value;
@@ -231,8 +236,9 @@ public final class AttachmentDoctorCommand {
             case "response_lateral" -> response[2] = value;
             case "response_turn" -> response[3] = value;
         }
-        return new AttachmentDef.PhysicsChain(chain.bones(), stiffness, damping, gravity, maxAngle, sway,
-                follow, droopAngle, swaySpeed, snap, response, chain.segments(), chain.axis());
+        return new AttachmentDef.PhysicsChain(chain.bones(), stiffness, damping, gravity, maxAngle,
+                minPitch, maxPitch, restPitch, sway, follow, droopAngle, swaySpeed, snap, response,
+                chain.segments(), chain.axis());
     }
 
     private static int dump(CommandSourceStack source, String id) {
@@ -315,6 +321,9 @@ public final class AttachmentDoctorCommand {
             out.addProperty("damping", chain.damping());
             out.addProperty("gravity", chain.gravity());
             out.addProperty("max_angle", chain.maxAngle());
+            out.addProperty("min_pitch", chain.minPitch());
+            out.addProperty("max_pitch", chain.maxPitch());
+            out.addProperty("rest_pitch", chain.restPitch());
             out.addProperty("sway", chain.sway());
             out.addProperty("follow", chain.follow());
             out.addProperty("droop_angle", chain.droopAngle());

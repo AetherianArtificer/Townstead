@@ -112,6 +112,9 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 buf.writeFloat(chain.damping());
                 buf.writeFloat(chain.gravity());
                 buf.writeFloat(chain.maxAngle());
+                buf.writeFloat(chain.minPitch());
+                buf.writeFloat(chain.maxPitch());
+                buf.writeFloat(chain.restPitch());
                 buf.writeFloat(chain.sway());
                 buf.writeFloat(chain.follow());
                 buf.writeFloat(chain.droopAngle());
@@ -237,6 +240,9 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 float damping = buf.readFloat();
                 float gravity = buf.readFloat();
                 float maxAngle = buf.readFloat();
+                float minPitch = buf.readFloat();
+                float maxPitch = buf.readFloat();
+                float restPitch = buf.readFloat();
                 float sway = buf.readFloat();
                 float follow = buf.readFloat();
                 float droopAngle = buf.readFloat();
@@ -246,7 +252,8 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 int segments = buf.readVarInt();
                 String axis = buf.readUtf();
                 physics.add(new AttachmentDef.PhysicsChain(chainBones, stiffness, damping, gravity,
-                        maxAngle, sway, follow, droopAngle, swaySpeed, snap, response, segments, axis));
+                        maxAngle, minPitch, maxPitch, restPitch, sway, follow, droopAngle, swaySpeed,
+                        snap, response, segments, axis));
             }
             int animCount = buf.readVarInt();
             List<AttachmentDef.AnimationEntry> animations = new ArrayList<>(animCount);

@@ -105,6 +105,7 @@
     "client.FishingHookRendererMixin",
     "client.FaceLayerCustomEyesMixin",
     "client.HairLayerSeniorMixin",
+    "client.HairLayerCoveredClothingMixin",
     "client.LivingEntityGlideTiltMixin",
     "client.LivingEntityRendererEmoteMixin",
     "client.LivingEntityRendererSleepMixin",

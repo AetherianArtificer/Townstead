@@ -87,15 +87,9 @@ public record TradeDef(
     private boolean onPath(LivingEntity entity) {
         if (path == null) return true;
         if (profession == null) return false;
-        for (ProfessionPaths.Path candidate : ProfessionPaths.pathsFor(profession)) {
-            if (!path.equals(candidate.id())) continue;
-            for (ResourceLocation skill : candidate.members()) {
-                if (com.aetherianartificer.townstead.profession.skill.LearnedSkills
-                        .has(entity, skill)) return true;
-            }
-            return false;
-        }
-        return false;
+        ProfessionPaths.Path active = com.aetherianartificer.townstead.profession
+                .ProfessionIdentity.path(entity, profession);
+        return active != null && path.equals(active.id());
     }
 
     private static int defaultUses(int merchantLevel) {
