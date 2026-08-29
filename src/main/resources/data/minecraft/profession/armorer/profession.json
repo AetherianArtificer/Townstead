@@ -5,7 +5,7 @@
   },
   "icon": "minecraft:iron_chestplate",
   "description": {
-    "text": "Smelt ore and reclaim old metal to build a history of smithing mastery."
+    "text": "Smelt metal and forge protective equipment to build a history of armoring mastery."
   },
   "unlock_model": "experiential"
 }

@@ -89,7 +89,7 @@ class ProfessionSlotRulesTest {
         assertEquals(ProfessionSlotRules.SlotPolicy.CUSTOM_BUILDING_SLOTS,
                 ProfessionSlotRules.classify("townstead:cook", false));
         assertEquals(ProfessionSlotRules.SlotPolicy.CUSTOM_BUILDING_SLOTS,
-                ProfessionSlotRules.classify("townstead:barista", false));
+                ProfessionSlotRules.classify("townstead:beverage_artisan", false));
     }
 
     @Test

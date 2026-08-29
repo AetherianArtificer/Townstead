@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -61,6 +62,13 @@ public final class StationAdapters {
         default int batchCapacity(ServerLevel level, BlockPos anchor, WorkstationDef def,
                                   DiscoveredRecipe recipe) {
             return 1;
+        }
+
+        /** Supplies required by the station's live state rather than by the recipe itself. */
+        default List<RecipeIngredient> additionalInputs(ServerLevel level, BlockPos anchor,
+                                                        WorkstationDef def,
+                                                        DiscoveredRecipe recipe) {
+            return List.of();
         }
 
         /** Canonical cell for a multi-block station, or null when the supplied cell is canonical. */

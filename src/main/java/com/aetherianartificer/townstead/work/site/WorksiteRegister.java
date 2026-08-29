@@ -32,7 +32,7 @@ import java.util.Map;
 public class WorksiteRegister extends SavedData {
 
     public static final String FILE_ID = "townstead_worksites";
-    public static final int SCHEMA_VERSION = 3;   // 3 added worksite driver assignment
+    public static final int SCHEMA_VERSION = 6;   // 6 separated private access from named people
 
     private static final String KEY_SCHEMA_VERSION = "schemaVersion";
     private static final String KEY_SITES = "worksites";
@@ -48,8 +48,17 @@ public class WorksiteRegister extends SavedData {
     private static final String KEY_LAST_SEEN = "lastSeen";
     private static final String KEY_ORDERS = "orders";
     private static final String KEY_DRIVER = "driver";
+    private static final String KEY_OWNERSHIP_TAG = "ownershipTag";
+    private static final String KEY_OWNERSHIP_SCOPE = "ownershipScope";
+    private static final String KEY_OWNERSHIP_PRIVATE = "ownershipPrivate";
+    private static final String KEY_OWNERS = "owners";
+    private static final String KEY_OWNER_UUID = "uuid";
+    private static final String KEY_OWNER_NAME = "name";
+    private static final String KEY_OWNER_KIND = "kind";
     private static final String KEY_LIST_ONLY = "listOnly";
     private static final String KEY_ORDER_OUTPUT = "item";
+    private static final String KEY_ORDER_PRODUCT = "product";
+    private static final String KEY_ORDER_PRODUCT_NAME = "productName";
     private static final String KEY_ORDER_MODE = "mode";
     private static final String KEY_ORDER_TARGET = "target";
     private static final String KEY_ORDER_SCOPE = "scope";
@@ -247,6 +256,27 @@ public class WorksiteRegister extends SavedData {
             // stale "Kitchen" heals on load rather than surviving as accidental custom.
             data.sites.get(key).loadNameCustom(entry.getBoolean(KEY_NAME_CUSTOM));
             if (entry.hasUUID(KEY_DRIVER)) data.sites.get(key).setDriver(entry.getUUID(KEY_DRIVER));
+            if (entry.contains(KEY_OWNERSHIP_TAG)) {
+                List<com.aetherianartificer.townstead.storage.RoomOwner> owners = new ArrayList<>();
+                if (entry.contains(KEY_OWNERS, Tag.TAG_LIST)) {
+                    ListTag ownerRows = entry.getList(KEY_OWNERS, Tag.TAG_COMPOUND);
+                    for (int ownerIndex = 0; ownerIndex < ownerRows.size(); ownerIndex++) {
+                        CompoundTag owner = ownerRows.getCompound(ownerIndex);
+                        if (!owner.hasUUID(KEY_OWNER_UUID)) continue;
+                        owners.add(new com.aetherianartificer.townstead.storage.RoomOwner(
+                                owner.getUUID(KEY_OWNER_UUID), owner.getString(KEY_OWNER_NAME),
+                                com.aetherianartificer.townstead.storage.RoomOwner.Kind
+                                        .parse(owner.getString(KEY_OWNER_KIND))));
+                    }
+                }
+                data.sites.get(key).setOwnership(
+                        net.minecraft.core.BlockPos.of(entry.getLong(KEY_OWNERSHIP_TAG)),
+                        com.aetherianartificer.townstead.storage.OwnershipScope
+                                .parse(entry.getString(KEY_OWNERSHIP_SCOPE)),
+                        entry.contains(KEY_OWNERSHIP_PRIVATE)
+                                ? entry.getBoolean(KEY_OWNERSHIP_PRIVATE) : !owners.isEmpty(),
+                        owners);
+            }
             loadOrders(entry, data.sites.get(key));
             highestLoadedId = Math.max(highestLoadedId, id);
         }
@@ -285,6 +315,20 @@ public class WorksiteRegister extends SavedData {
             entry.putLong(KEY_CREATED, site.createdGameTime());
             entry.putLong(KEY_LAST_SEEN, site.lastSeenGameTime());
             if (site.driver() != null) entry.putUUID(KEY_DRIVER, site.driver());
+            if (site.ownershipTag() != null) {
+                entry.putLong(KEY_OWNERSHIP_TAG, site.ownershipTag().asLong());
+                entry.putString(KEY_OWNERSHIP_SCOPE, site.ownershipScope().name());
+                entry.putBoolean(KEY_OWNERSHIP_PRIVATE, site.ownershipPrivate());
+                ListTag owners = new ListTag();
+                for (com.aetherianartificer.townstead.storage.RoomOwner roomOwner : site.owners()) {
+                    CompoundTag owner = new CompoundTag();
+                    owner.putUUID(KEY_OWNER_UUID, roomOwner.uuid());
+                    owner.putString(KEY_OWNER_NAME, roomOwner.name());
+                    owner.putString(KEY_OWNER_KIND, roomOwner.kind().name());
+                    owners.add(owner);
+                }
+                entry.put(KEY_OWNERS, owners);
+            }
             saveOrders(entry, site);
             list.add(entry);
         }
@@ -306,6 +350,10 @@ public class WorksiteRegister extends SavedData {
         for (com.aetherianartificer.townstead.work.order.Order order : orders.orders()) {
             CompoundTag row = new CompoundTag();
             row.putString(KEY_ORDER_OUTPUT, order.output().toString());
+            if (order.exactProduct()) {
+                row.putString(KEY_ORDER_PRODUCT, order.product().toString());
+                row.putString(KEY_ORDER_PRODUCT_NAME, order.productName());
+            }
             row.putString(KEY_ORDER_MODE, order.mode().name());
             row.putString(KEY_ORDER_KIND, order.kind().name());
             row.putInt(KEY_ORDER_TARGET, order.target());
@@ -351,6 +399,12 @@ public class WorksiteRegister extends SavedData {
                             com.aetherianartificer.townstead.work.order.Order.Mode
                                     .parse(row.getString(KEY_ORDER_MODE)),
                             row.getInt(KEY_ORDER_TARGET));
+            if (row.contains(KEY_ORDER_PRODUCT)) {
+                ResourceLocation product = parseRl(row.getString(KEY_ORDER_PRODUCT));
+                if (product != null) {
+                    order.setProduct(product, row.getString(KEY_ORDER_PRODUCT_NAME));
+                }
+            }
             order.setScope(com.aetherianartificer.townstead.work.order.Order.CountScope
                     .parse(row.getString(KEY_ORDER_SCOPE)));
             order.setPaused(row.getBoolean(KEY_ORDER_PAUSED));

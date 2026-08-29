@@ -150,10 +150,18 @@ public final class NearbyItemSources {
     }
 
     public static boolean insertIntoNearbyStorage(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, int horizontalRadius, int verticalRadius) {
-        return insertIntoNearbyStorage(level, villager, stack, horizontalRadius, verticalRadius, villager.blockPosition());
+        return insertIntoNearbyStorage(level, villager, stack, horizontalRadius, verticalRadius,
+                villager.blockPosition(), com.aetherianartificer.townstead.storage.StorageUse.OUTPUT);
     }
 
     public static boolean insertIntoNearbyStorage(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, int horizontalRadius, int verticalRadius, BlockPos center) {
+        return insertIntoNearbyStorage(level, villager, stack, horizontalRadius, verticalRadius, center,
+                com.aetherianartificer.townstead.storage.StorageUse.OUTPUT);
+    }
+
+    public static boolean insertIntoNearbyStorage(ServerLevel level, VillagerEntityMCA villager,
+            ItemStack stack, int horizontalRadius, int verticalRadius, BlockPos center,
+            com.aetherianartificer.townstead.storage.StorageUse use) {
         if (stack.isEmpty()) return true;
         StorageSearchContext searchContext = new StorageSearchContext(level);
         for (BlockPos pos : BlockPos.betweenClosed(
@@ -161,11 +169,8 @@ public final class NearbyItemSources {
                 center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
 
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
-            if (observed.protectedStorage()) continue;
             BlockEntity be = observed.blockEntity();
-            // Exclude processing containers from generic storage insertion.
-            // Production tasks target processing containers explicitly.
-            if (isProcessingContainer(observed.state(), be)) continue;
+            if (!StorageRoles.isStorageCandidate(level, observed.pos(), be, villager, use)) continue;
             if (be instanceof Container container) {
                 int beforeCount = stack.getCount();
                 insertIntoContainer(container, stack);
@@ -209,6 +214,13 @@ public final class NearbyItemSources {
      */
     public static boolean insertIntoBuildingStorage(ServerLevel level, VillagerEntityMCA villager,
             ItemStack stack, net.conczin.mca.server.world.data.Building building) {
+        return insertIntoBuildingStorage(level, villager, stack, building,
+                com.aetherianartificer.townstead.storage.StorageUse.OUTPUT);
+    }
+
+    public static boolean insertIntoBuildingStorage(ServerLevel level, VillagerEntityMCA villager,
+            ItemStack stack, net.conczin.mca.server.world.data.Building building,
+            com.aetherianartificer.townstead.storage.StorageUse use) {
         if (stack.isEmpty()) return true;
         if (building == null) return false;
         BlockPos p0 = building.getPos0();
@@ -220,8 +232,6 @@ public final class NearbyItemSources {
         int maxY = Math.max(p0.getY(), p1.getY());
         int maxZ = Math.max(p0.getZ(), p1.getZ());
         StorageSearchContext searchContext = new StorageSearchContext(level);
-        com.aetherianartificer.townstead.storage.StoragePreference storagePreference =
-                com.aetherianartificer.townstead.storage.StoragePreference.forVillager(villager);
         java.util.List<BlockPos> positions = new java.util.ArrayList<>();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = minY; y <= maxY; y++) {
@@ -233,15 +243,16 @@ public final class NearbyItemSources {
                 }
             }
         }
-        positions.sort(java.util.Comparator.comparingInt(
-                pos -> storagePreference.rank(level.getBlockState(pos))));
+        positions.sort(java.util.Comparator
+                .comparingInt((BlockPos pos) -> StorageRoles.useRank(level.getBlockState(pos), use))
+                .thenComparingDouble(pos -> villager.distanceToSqr(
+                        pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));
         for (BlockPos pos : positions) {
             if (stack.isEmpty()) break;
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
-            if (observed.protectedStorage()) continue;
             BlockEntity be = observed.blockEntity();
             if (be == null) continue;
-            if (isProcessingContainer(observed.state(), be)) continue;
+            if (!StorageRoles.isStorageCandidate(level, observed.pos(), be, villager, use)) continue;
             if (be instanceof Container container) {
                 int beforeCount = stack.getCount();
                 insertIntoContainer(container, stack);
@@ -251,6 +262,7 @@ public final class NearbyItemSources {
                             .invalidate(level, observed.pos());
                 }
                 if (stack.isEmpty()) return true;
+                continue;
             }
             IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
             if (handler != null) {
@@ -265,9 +277,10 @@ public final class NearbyItemSources {
                         NearbyStorageIndex.invalidate(level, observed.pos());
                         com.aetherianartificer.townstead.storage.WorksiteStorageIndex
                                 .invalidate(level, observed.pos());
-                    }
-                    if (stack.isEmpty()) return true;
                 }
+                if (stack.isEmpty()) return true;
+                continue;
+            }
             }
         }
         return stack.isEmpty();
@@ -304,6 +317,8 @@ public final class NearbyItemSources {
         // rescued by putting it in #townstead:storage.
         return path.contains("machine") || path.contains("vending")
                 || path.contains("terminal") || path.contains("interface")
+                || path.contains("trough") || path.contains("feeder")
+                || path.contains("feeding") || path.contains("pet_bowl")
                 || path.contains("generator") || path.contains("engine")
                 || path.contains("press") || path.contains("crusher")
                 || path.contains("grinder") || path.contains("centrifuge")

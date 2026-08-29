@@ -110,10 +110,11 @@ public final class ProfessionSites {
     /**
      * The site this villager works, or empty when the village has no room for them.
      *
-     * <p>Sites and workers are both deterministically ordered and worker N takes site N, so every
-     * caller and every tick agrees without storing an assignment anywhere. Who counts as a worker
-     * is the def's own work tasks, which is what lets a Baker fill a kitchen seat a Cook would
-     * have taken while a Barista, declaring only brewing, does not.</p>
+     * <p>Sites and workers are both deterministically ordered. Workers with a committed Path
+     * claim seats from providers carrying its {@code path_affinity} first; everyone else keeps
+     * ordinary UUID/site order. Who counts as a worker is the def's own work tasks, which is what
+     * lets a Baker fill a kitchen seat a Cook would have taken while a Beverage Artisan, declaring only
+     * brewing, does not.</p>
      */
     public static Optional<Site> assignedSite(ServerLevel level, VillagerEntityMCA villager,
                                               @Nullable ProfessionDef def) {
@@ -126,9 +127,19 @@ public final class ProfessionSites {
         List<Site> sites = sites(level, village, def);
         if (sites.isEmpty()) return Optional.empty();
 
-        int index = workers(level, village, def, villager).indexOf(villager.getUUID());
-        if (index < 0 || index >= sites.size()) return Optional.empty();
-        return Optional.of(sites.get(index));
+        List<VillagerEntityMCA> workers = workers(level, village, def, villager);
+        int workerIndex = -1;
+        List<String> paths = new ArrayList<>(workers.size());
+        for (int i = 0; i < workers.size(); i++) {
+            VillagerEntityMCA worker = workers.get(i);
+            if (worker.getUUID().equals(villager.getUUID())) workerIndex = i;
+            com.aetherianartificer.townstead.profession.def.ProfessionPaths.Path path =
+                    ProfessionIdentity.path(worker, def.id());
+            paths.add(path == null ? null : path.id());
+        }
+        if (workerIndex < 0) return Optional.empty();
+        int siteIndex = assignedSiteIndex(paths, sites, def.jobSites(), workerIndex);
+        return siteIndex < 0 ? Optional.empty() : Optional.of(sites.get(siteIndex));
     }
 
     /**
@@ -198,6 +209,19 @@ public final class ProfessionSites {
         return false;
     }
 
+    /** Whether this villager's assigned building provider favours the named local Path. */
+    public static boolean worksiteHasPathAffinity(ServerLevel level, VillagerEntityMCA villager,
+                                                  @Nullable ProfessionDef def, String pathId) {
+        if (def == null || pathId == null) return false;
+        Optional<Site> assigned = assignedSite(level, villager, def);
+        if (assigned.isEmpty()) return false;
+        int providerIndex = assigned.get().providerIndex();
+        if (providerIndex < 0 || providerIndex >= def.jobSites().size()) return false;
+        JobSiteProvider provider = def.jobSites().get(providerIndex);
+        return provider instanceof JobSiteProvider.Building building
+                && building.hasPathAffinity(pathId);
+    }
+
     /** Whether this village could employ one more of this career. */
     public static boolean hasFreeSite(ServerLevel level, VillagerEntityMCA villager,
                                       @Nullable ProfessionDef def) {
@@ -215,20 +239,84 @@ public final class ProfessionSites {
      * this work — a villager being considered for a seat has to appear in the ordering that
      * decides seats, or they could never be given one.
      */
-    private static List<java.util.UUID> workers(ServerLevel level, Village village, ProfessionDef def,
-                                                VillagerEntityMCA asking) {
+    private static List<VillagerEntityMCA> workers(ServerLevel level, Village village,
+                                                   ProfessionDef def,
+                                                   VillagerEntityMCA asking) {
         net.minecraft.resources.ResourceLocation[] taskTypes = def.workTasks().stream()
                 .map(com.aetherianartificer.townstead.profession.def.WorkTaskDef::type)
                 .distinct()
                 .toArray(net.minecraft.resources.ResourceLocation[]::new);
-        List<java.util.UUID> ids = new ArrayList<>();
+        List<VillagerEntityMCA> workers = new ArrayList<>();
         for (VillagerEntityMCA resident : village.getResidents(level)) {
             if (!declares(resident, taskTypes)) continue;
-            if (!ids.contains(resident.getUUID())) ids.add(resident.getUUID());
+            if (workers.stream().noneMatch(worker ->
+                    worker.getUUID().equals(resident.getUUID()))) workers.add(resident);
         }
-        if (declares(asking, taskTypes) && !ids.contains(asking.getUUID())) ids.add(asking.getUUID());
-        ids.sort(Comparator.comparing(java.util.UUID::toString));
-        return ids;
+        if (declares(asking, taskTypes) && workers.stream().noneMatch(worker ->
+                worker.getUUID().equals(asking.getUUID()))) workers.add(asking);
+        workers.sort(Comparator.comparing(worker -> worker.getUUID().toString()));
+        return workers;
+    }
+
+    /**
+     * Stable seat matching with reciprocal Path affinity. Workers whose committed Path has an
+     * affiliated provider claim those seats first; everyone else retains UUID/site order. A
+     * Path is a preference, never an eligibility gate, so unmatched specialists fall back to the
+     * first remaining ordinary seat.
+     */
+    static int assignedSiteIndex(List<@Nullable String> workerPaths, List<Site> sites,
+                                 List<JobSiteProvider> providers, int askingWorkerIndex) {
+        if (askingWorkerIndex < 0 || askingWorkerIndex >= workerPaths.size()) return -1;
+        boolean[] claimed = new boolean[sites.size()];
+        int[] assignment = new int[workerPaths.size()];
+        java.util.Arrays.fill(assignment, -1);
+
+        List<Integer> workerOrder = new ArrayList<>(workerPaths.size());
+        for (int i = 0; i < workerPaths.size(); i++) workerOrder.add(i);
+        workerOrder.sort(Comparator
+                .comparingInt((Integer i) -> hasDeclaredAffinity(
+                        workerPaths.get(i), providers) ? 0 : 1)
+                .thenComparingInt(Integer::intValue));
+
+        for (int worker : workerOrder) {
+            String path = workerPaths.get(worker);
+            int chosen = firstAvailableAffinity(path, sites, providers, claimed);
+            if (chosen < 0) chosen = firstAvailable(claimed);
+            if (chosen < 0) continue;
+            claimed[chosen] = true;
+            assignment[worker] = chosen;
+        }
+        return assignment[askingWorkerIndex];
+    }
+
+    private static boolean hasDeclaredAffinity(@Nullable String path,
+                                               List<JobSiteProvider> providers) {
+        if (path == null) return false;
+        for (JobSiteProvider provider : providers) {
+            if (provider instanceof JobSiteProvider.Building building
+                    && building.hasPathAffinity(path)) return true;
+        }
+        return false;
+    }
+
+    private static int firstAvailableAffinity(@Nullable String path, List<Site> sites,
+                                              List<JobSiteProvider> providers,
+                                              boolean[] claimed) {
+        if (path == null) return -1;
+        for (int i = 0; i < sites.size(); i++) {
+            if (claimed[i]) continue;
+            int providerIndex = sites.get(i).providerIndex();
+            if (providerIndex < 0 || providerIndex >= providers.size()) continue;
+            JobSiteProvider provider = providers.get(providerIndex);
+            if (provider instanceof JobSiteProvider.Building building
+                    && building.hasPathAffinity(path)) return i;
+        }
+        return -1;
+    }
+
+    private static int firstAvailable(boolean[] claimed) {
+        for (int i = 0; i < claimed.length; i++) if (!claimed[i]) return i;
+        return -1;
     }
 
     private static boolean declares(VillagerEntityMCA villager,
@@ -313,7 +401,12 @@ public final class ProfessionSites {
         List<Building> matches = new ArrayList<>();
         for (Building building : McaBuildings.all(village)) {
             String type = effectiveTypes.getOrDefault(building.getId(), building.getType());
-            if (provider.matches(type)) matches.add(building);
+            // A floor may inherit the main room's presentation type while retaining its own
+            // functional raw type. Employment belongs to either truth: a room recognised as a
+            // Pizzeria still seats a Cook even when MCA presents the containing structure's type.
+            if (provider.matches(type) || provider.matches(building.getType())) {
+                matches.add(building);
+            }
         }
         matches.sort(ProfessionSites::compareBuildings);
         return matches;
@@ -326,7 +419,8 @@ public final class ProfessionSites {
      */
     static int seatsForBuilding(JobSiteProvider.Building provider, @Nullable String rawType,
                                 @Nullable String effectiveType) {
-        return provider.slotsFor(effectiveType == null ? rawType : effectiveType);
+        if (provider.matches(effectiveType)) return provider.slotsFor(effectiveType);
+        return provider.slotsFor(rawType);
     }
 
     private static int compareBuildings(Building a, Building b) {

@@ -5,6 +5,7 @@
     { "type": "townstead:building", "type_prefix": "weaponsmith" },
     { "type": "townstead:building", "type_prefix": "blacksmith" }
   ],
+  "storage": { "preferred_roles": ["townstead:equipment"] },
   "tasks": [
     {
       "type": "townstead_work:smelt",

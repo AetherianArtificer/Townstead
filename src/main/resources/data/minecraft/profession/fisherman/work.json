@@ -4,6 +4,13 @@
     { "type": "townstead:job_block", "block": "minecraft:barrel" }
   ],
   "tasks": [
-    { "type": "townstead_work:fish", "weight": 10 }
+    {
+      "type": "townstead_work:fish",
+      "weight": 10,
+      "order": {
+        "name": "Fish",
+        "icon": "minecraft:fishing_rod"
+      }
+    }
   ]
 }

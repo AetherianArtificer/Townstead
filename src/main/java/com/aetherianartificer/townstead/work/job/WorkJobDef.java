@@ -167,7 +167,8 @@ public record WorkJobDef(
     /** One real block-use route offered by a generic block-interaction job. */
     public record Interaction(@Nullable String item, @Nullable ItemCondition itemCondition,
                               @Nullable BlockCondition condition,
-                              BlockAction action, Set<ResourceLocation> outputs, int xp) {
+                              BlockAction action, Set<ResourceLocation> outputs,
+                              int expectedCount, int xp) {
 
         public boolean matches(ItemStack stack) {
             return item != null && matchesItem(item, stack);
@@ -266,9 +267,12 @@ public record WorkJobDef(
         Set<ResourceLocation> blocks = new LinkedHashSet<>();
         List<ResourceLocation> blockTags = new ArrayList<>();
         if (json.has("block")) {
-            ResourceLocation block = resource(json, "block");
+            String raw = string(json, "block");
+            boolean tag = raw != null && raw.startsWith("#");
+            ResourceLocation block = id(tag ? raw.substring(1) : raw);
             if (block == null) return null;
-            blocks.add(block);
+            if (tag) blockTags.add(block);
+            else blocks.add(block);
         }
         if (json.has("blocks")) {
             List<String> rawBlocks = strings(json.get("blocks"));
@@ -387,9 +391,11 @@ public record WorkJobDef(
                 }
             }
             int xp = integer(json, "xp", defaultXp);
-            if (xp < 1 || (item == null && !explicitAction)
+            int expectedCount = integer(json, "expected_count", 1);
+            if (xp < 1 || expectedCount < 1 || (item == null && !explicitAction)
                     || (!explicitAction && outputs.isEmpty())) return null;
-            interactions.add(new Interaction(item, itemCondition, condition, action, Set.copyOf(outputs), xp));
+            interactions.add(new Interaction(item, itemCondition, condition, action,
+                    Set.copyOf(outputs), expectedCount, xp));
         }
         return List.copyOf(interactions);
     }

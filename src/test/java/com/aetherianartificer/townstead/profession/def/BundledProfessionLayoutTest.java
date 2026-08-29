@@ -17,11 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BundledProfessionLayoutTest {
 
     private static final List<String> PROFESSIONS = List.of(
-            "minecraft:armorer", "minecraft:butcher", "minecraft:cartographer",
+            "minecraft:armorer", "minecraft:butcher", "minecraft:cartographer", "minecraft:cleric",
             "minecraft:farmer", "minecraft:fisherman", "minecraft:fletcher",
             "minecraft:leatherworker", "minecraft:librarian", "minecraft:mason",
             "minecraft:shepherd", "minecraft:toolsmith", "minecraft:weaponsmith",
-            "townstead:baker", "townstead:barista", "townstead:cook", "townstead:scribe");
+            "townstead:baker", "townstead:beverage_artisan", "townstead:cook", "townstead:scribe");
 
     @Test
     void everyBundledProfessionUsesTheCanonicalSidecarLayout() {
@@ -39,7 +39,7 @@ class BundledProfessionLayoutTest {
             assertEquals(ProfessionProgressionOverlay.SCHEMA,
                     progression.get("schema").getAsString(), id);
             assertEquals(ProfessionWorkOverlay.SCHEMA, work.get("schema").getAsString(), id);
-            if (id.equals("townstead:cook") || id.equals("townstead:barista")
+            if (id.equals("townstead:cook") || id.equals("townstead:beverage_artisan")
                     || id.equals("townstead:scribe")) {
                 assertTrue(work.get("register_profession").getAsBoolean(),
                         id + " owns registration policy in work.json");
@@ -57,8 +57,11 @@ class BundledProfessionLayoutTest {
                 strings(resource("/data/townstead/profession/cook/profession.json"), "clothing"));
         assertEquals(List.of("townstead:scribe", "iceandfire:scribe", "minecraft:librarian"),
                 strings(resource("/data/townstead/profession/scribe/profession.json"), "clothing"));
-        assertFalse(resource("/data/townstead/profession/barista/profession.json").has("clothing"),
-                "barista keeps its current clothes until a suitable wardrobe is authored");
+        assertFalse(resource("/data/townstead/profession/beverage_artisan/profession.json").has("clothing"),
+                "the root Beverage Artisan keeps its current clothes");
+        assertEquals(List.of("townstead:barista"),
+                strings(resource("/data/townstead/profession/beverage_artisan/path/barista/path.json"),
+                        "clothing"));
     }
 
     @Test

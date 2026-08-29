@@ -159,6 +159,8 @@ public final class RecipeSelector {
             // recipes/deny_recipes lists bind initial picks and per-station re-picks alike.
             if (!com.aetherianartificer.townstead.work.producer.ProducerTaskDeclarations
                     .allowsRecipe(villager, targetStationType, recipe, taskTypes)) continue;
+            if (!com.aetherianartificer.townstead.work.order.BuildingRecipeScopes
+                    .allowsAssigned(level, villager, recipe.id())) continue;
             Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
             if (cooldownUntil != null && cooldownUntil > now) continue;
             boolean candidatePlanable = WorkIngredients.canPlanWithVirtual(

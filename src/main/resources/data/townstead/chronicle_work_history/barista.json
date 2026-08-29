@@ -1,8 +1,0 @@
-{
-  "schema": "townstead:chronicle_work_history/v1",
-  "profession": "townstead:barista",
-  "per_year": {
-    "townstead_work:brew": 200,
-    "townstead:produced": 30
-  }
-}

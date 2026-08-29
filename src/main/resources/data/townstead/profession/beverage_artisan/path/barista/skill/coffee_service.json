@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.coffee_service"
+  },
+  "icon": "rusticdelight:coffee",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.coffee_service.description"
+  },
+  "cost": 1,
+  "mods": ["farmersdelight", "rusticdelight"]
+}

@@ -2,8 +2,6 @@
   "schema": "townstead:storage_role/v1",
   "role": "storage",
   "blocks": [
-    "minecraft:chest",
-    "minecraft:trapped_chest",
-    "minecraft:barrel"
+    "#townstead:storage"
   ]
 }

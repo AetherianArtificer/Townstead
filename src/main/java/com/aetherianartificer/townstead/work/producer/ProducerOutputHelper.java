@@ -39,10 +39,11 @@ public final class ProducerOutputHelper {
         List<ItemStack> drops = StationDropOutputs.collectWithinWorksite(
                 level, stationAnchor, outputIds, worksiteBounds);
         if (drops.isEmpty()) return false;
+        boolean allCarried = true;
         for (ItemStack drop : drops) {
-            storeOutput(level, villager, drop, stationAnchor, worksiteBounds);
+            allCarried &= storeOutput(level, villager, drop, stationAnchor, worksiteBounds);
         }
-        return true;
+        return allCarried;
     }
 
     public static boolean hotStationOutputCollectible(
@@ -74,8 +75,9 @@ public final class ProducerOutputHelper {
             if (outputItem != Items.AIR) {
                 int extracted = StationContents.extract(level, stationAnchor, outputItem, activeRecipe.outputCount());
                 if (extracted > 0) {
-                    storeOutput(level, villager, new ItemStack(outputItem, extracted), stationAnchor, worksiteBounds);
-                    collected = true;
+                    collected = storeOutput(level, villager,
+                            new ItemStack(outputItem, extracted), stationAnchor, worksiteBounds);
+                    if (!collected) return new CollectResult(false, true);
                 } else if (waitWhenExactOutputMissing) {
                     return new CollectResult(false, true);
                 }
@@ -84,7 +86,9 @@ public final class ProducerOutputHelper {
 
         List<ItemStack> outputs = StationContents.extractMatching(level, stationAnchor, outputIds);
         for (ItemStack output : outputs) {
-            storeOutput(level, villager, output, stationAnchor, worksiteBounds);
+            if (!storeOutput(level, villager, output, stationAnchor, worksiteBounds)) {
+                return new CollectResult(false, true);
+            }
             collected = true;
         }
         return new CollectResult(collected, false);
@@ -102,15 +106,7 @@ public final class ProducerOutputHelper {
             storeOutput(level, villager, pendingOutput, stationAnchor, worksiteBounds);
         }
 
-        net.minecraft.world.SimpleContainer inv = villager.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty()) continue;
-            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (itemId != null && outputIds.contains(itemId)) {
-                WorkIngredients.storeOutputInWorksiteStorage(level, villager, stack, stationAnchor, worksiteBounds);
-            }
-        }
+        // Existing inventory outputs remain in hand for ProducerWorkTask.DELIVER.
     }
 
     public static boolean sweepWorksiteOutputs(
@@ -174,26 +170,29 @@ public final class ProducerOutputHelper {
             }
             BlockPos dropPos = drop.blockPosition();
             drop.discard();
-            storeOutput(level, villager, stack, dropPos, worksiteBounds);
+            if (!storeOutput(level, villager, stack, dropPos, worksiteBounds)) {
+                sweptWatchedOutput = false;
+            }
         }
         return sweptWatchedOutput;
     }
 
-    public static void storeOutput(
+    public static boolean storeOutput(
             ServerLevel level,
             VillagerEntityMCA villager,
             ItemStack output,
             @Nullable BlockPos stationAnchor,
             Set<Long> worksiteBounds
     ) {
-        WorkIngredients.storeOutputInWorksiteStorage(level, villager, output, stationAnchor, worksiteBounds);
         if (!output.isEmpty()) {
             ItemStack remainder = villager.getInventory().addItem(output);
             if (!remainder.isEmpty()) {
                 ItemEntity entity = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder);
                 entity.setPickUpDelay(0);
                 level.addFreshEntity(entity);
+                return false;
             }
         }
+        return true;
     }
 }

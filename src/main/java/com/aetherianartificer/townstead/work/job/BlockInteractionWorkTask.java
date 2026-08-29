@@ -9,11 +9,15 @@ import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
 import com.aetherianartificer.townstead.profession.def.WorkTaskDef;
 import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.work.order.Order;
+import com.aetherianartificer.townstead.work.order.WorksiteOrders;
 import com.aetherianartificer.townstead.work.recipe.WorkIngredients;
+import com.aetherianartificer.townstead.work.site.Worksite;
 import com.aetherianartificer.townstead.work.station.StationDropOutputs;
 import com.aetherianartificer.townstead.work.station.StationProtocols;
 import com.aetherianartificer.townstead.work.station.StationSupplies;
 import com.aetherianartificer.townstead.pheno.selector.SelectorContext;
+import com.aetherianartificer.townstead.storage.PhysicalStorageDelivery;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -31,6 +35,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -47,17 +52,24 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         NOT_APPLICABLE, SATISFIED, PROVISIONABLE, MISSING_SOURCE, MISSING_INPUT
     }
 
-    private static final int MAX_DURATION = 300;
+    private static final int MAX_DURATION = 1200;
     private static final double USE_RANGE_SQ = 5.0;
     private static final float WALK_SPEED = 0.55f;
     private static final int WORK_DELAY = 16;
 
     private @Nullable Candidate target;
     private @Nullable WorkJobDef.Interaction interaction;
+    private @Nullable Order claimedOrder;
+    private @Nullable Worksite claimedOrderSite;
+    private @Nullable ResourceLocation claimedOutput;
+    private int claimedAmount;
     private List<RequirementSession> requirements = List.of();
     private int requirementIndex;
     private Phase phase = Phase.PREPARE;
     private Set<Long> worksite = Set.of();
+    private Set<ResourceLocation> deliveryItems = Set.of();
+    private final Set<Long> rejectedStorage = new HashSet<>();
+    private @Nullable BlockPos deliveryTarget;
     private long startedAt;
     private long useAt;
 
@@ -114,9 +126,16 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
+        Set<ResourceLocation> carried = declaredOutputIds(villager);
+        Set<Long> assigned = ProfessionSites.extentOf(level, villager, profession(villager));
+        if (hasCarriedOutput(villager, carried)) {
+            // A worker already carrying this job's product must finish that physical delivery
+            // before harvesting another target. With nowhere to put it, keep it in inventory.
+            return PhysicalStorageDelivery.findDestination(level, villager, assigned,
+                    outputMatcher(carried), Set.of()) != null;
+        }
         for (Candidate candidate : findTargets(level, villager, null, true, true, false, true)) {
-            if (hasAvailableInteractionInput(level, villager, candidate.pos(), candidate.extent(),
-                    candidate.definition())
+            if (chooseInteraction(level, villager, candidate, false) != null
                     && requirementsAvailable(level, villager, candidate)) return true;
         }
         return false;
@@ -124,24 +143,41 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        releaseOrderClaim();
         target = null;
         interaction = null;
         worksite = Set.of();
+        deliveryItems = Set.of();
+        rejectedStorage.clear();
+        deliveryTarget = null;
         requirements = List.of();
         requirementIndex = 0;
         phase = Phase.PREPARE;
         startedAt = gameTime;
         useAt = gameTime + WORK_DELAY;
+        Set<ResourceLocation> carried = declaredOutputIds(villager);
+        Set<Long> assigned = ProfessionSites.extentOf(level, villager, profession(villager));
+        if (hasCarriedOutput(villager, carried)) {
+            deliveryItems = carried;
+            worksite = assigned;
+            deliveryTarget = findDeliveryTarget(level, villager);
+            if (deliveryTarget != null) {
+                phase = Phase.DELIVER;
+                moveForCurrentPhase(villager, gameTime);
+                return;
+            }
+        }
         for (Candidate candidate : findTargets(level, villager, null, true, true, false, true)) {
-            WorkJobDef.Interaction selected = selectInteraction(
-                    level, villager, candidate.definition(), candidate.pos(), candidate.extent());
+            WorksiteOrders.OutputChoice<WorkJobDef.Interaction> selected =
+                    chooseInteraction(level, villager, candidate, true);
             if (selected == null) continue;
             List<RequirementSession> planned = planRequirements(level, villager, candidate);
             if (planned == null) continue;
             target = candidate;
-            interaction = selected;
+            interaction = selected.candidate();
             requirements = new ArrayList<>(planned);
             worksite = candidate.extent();
+            claimOrder(level, candidate.pos(), selected);
             break;
         }
         if (target == null) return;
@@ -150,7 +186,11 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (target == null || interaction == null || gameTime - startedAt > MAX_DURATION) return false;
+        if (gameTime - startedAt > MAX_DURATION) return false;
+        if (phase == Phase.DELIVER) {
+            return !deliveryItems.isEmpty() && hasCarriedOutput(villager, deliveryItems);
+        }
+        if (target == null || interaction == null) return false;
         if (phase == Phase.CLEANUP) return true;
         return target.task().available(villager)
                 && target.definition().matches(level, target.pos())
@@ -162,6 +202,10 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (phase == Phase.DELIVER) {
+            tickDelivery(level, villager, gameTime);
+            return;
+        }
         if (target == null || interaction == null) return;
         renewRequirements(level, villager);
         if (phase == Phase.PREPARE) {
@@ -199,10 +243,14 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         releaseAllRequirements(level, villager);
+        releaseOrderClaim();
         target = null;
         interaction = null;
         requirements = List.of();
         worksite = Set.of();
+        deliveryItems = Set.of();
+        rejectedStorage.clear();
+        deliveryTarget = null;
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
     }
 
@@ -235,13 +283,18 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         List<Candidate> ordered = new ArrayList<>();
         for (WorkTaskDef task : declarations) {
             if (onlyTask != null && !onlyTask.equals(task.type())) continue;
-            if (respectOrders && !com.aetherianartificer.townstead.work.order.WorksiteOrders
-                    .mayStart(level, villager, task.type())) continue;
             List<Candidate> taskCandidates = new ArrayList<>();
             for (WorkJobDef job : WorkJobs.forType(WorkJobDef.BLOCK_INTERACTION)) {
                 if (!job.task().equals(task.type())) continue;
                 WorkJobDef.BlockTarget target = job.target();
                 if (target == null) continue;
+                // A job with declared products is governed by item lines below, not by the
+                // activity permission for its broad task id. Otherwise list-only plus "keep ten
+                // bottles" would stop the interaction task before it ever saw the bottle line.
+                boolean outputProducing = target.interactions().stream()
+                        .anyMatch(option -> !option.outputIds().isEmpty());
+                if (respectOrders && !outputProducing
+                        && !WorksiteOrders.mayStart(level, villager, task.type())) continue;
                 for (Set<Long> extent : targetExtents(level, villager, profession, target)) {
                     for (long packed : extent) {
                         BlockPos pos = BlockPos.of(packed);
@@ -439,9 +492,14 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
             requirementIndex--;
         }
         if (requirementIndex < 0) {
-            target = null;
-            interaction = null;
             requirements = List.of();
+            if (!deliveryItems.isEmpty() && hasCarriedOutput(villager, deliveryItems)) {
+                phase = Phase.DELIVER;
+                deliveryTarget = findDeliveryTarget(level, villager);
+                moveForCurrentPhase(villager, gameTime);
+            } else {
+                finishCycle();
+            }
             return;
         }
         RequirementSession session = requirements.get(requirementIndex);
@@ -473,9 +531,90 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         } else if (phase == Phase.CLEANUP && requirementIndex >= 0
                 && requirementIndex < requirements.size()) {
             next = requirements.get(requirementIndex).source;
+        } else if (phase == Phase.DELIVER) {
+            next = deliveryTarget;
         }
         useAt = gameTime + WORK_DELAY;
         if (next != null) setWalkTarget(villager, next);
+    }
+
+    private void tickDelivery(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (deliveryItems.isEmpty() || !hasCarriedOutput(villager, deliveryItems)) {
+            finishCycle();
+            return;
+        }
+        if (deliveryTarget == null) {
+            if (gameTime < useAt) return;
+            deliveryTarget = findDeliveryTarget(level, villager);
+            useAt = gameTime + WORK_DELAY;
+            if (deliveryTarget == null) {
+                villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+                return;
+            }
+            setWalkTarget(villager, deliveryTarget);
+        }
+        if (!approach(villager, deliveryTarget, gameTime)) return;
+
+        int moved = PhysicalStorageDelivery.depositMatchingAt(
+                level, villager, deliveryTarget, outputMatcher(deliveryItems));
+        if (moved <= 0) rejectedStorage.add(deliveryTarget.asLong());
+        villager.swing(InteractionHand.MAIN_HAND, true);
+        deliveryTarget = null;
+        useAt = gameTime + WORK_DELAY;
+
+        if (!hasCarriedOutput(villager, deliveryItems)) {
+            finishCycle();
+            return;
+        }
+        deliveryTarget = findDeliveryTarget(level, villager);
+        if (deliveryTarget != null) setWalkTarget(villager, deliveryTarget);
+    }
+
+    private @Nullable BlockPos findDeliveryTarget(ServerLevel level, VillagerEntityMCA villager) {
+        return PhysicalStorageDelivery.findDestination(
+                level, villager, worksite, outputMatcher(deliveryItems), rejectedStorage);
+    }
+
+    private void finishCycle() {
+        target = null;
+        interaction = null;
+        requirements = List.of();
+        worksite = Set.of();
+        deliveryItems = Set.of();
+        rejectedStorage.clear();
+        deliveryTarget = null;
+    }
+
+    private static boolean hasCarriedOutput(VillagerEntityMCA villager,
+                                            Set<ResourceLocation> outputIds) {
+        return !outputIds.isEmpty()
+                && PhysicalStorageDelivery.hasMatching(villager, outputMatcher(outputIds));
+    }
+
+    private static java.util.function.Predicate<ItemStack> outputMatcher(
+            Set<ResourceLocation> outputIds) {
+        return stack -> outputIds.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+    }
+
+    private static Set<ResourceLocation> declaredOutputIds(VillagerEntityMCA villager) {
+        java.util.LinkedHashSet<ResourceLocation> outputs = new java.util.LinkedHashSet<>();
+        for (WorkTaskDef task : WorkTaskDeclarations.all(villager)) {
+            for (WorkJobDef job : WorkJobs.forTask(task.type())) {
+                if (!WorkJobDef.BLOCK_INTERACTION.equals(job.type()) || job.target() == null) continue;
+                for (WorkJobDef.Interaction option : job.target().interactions()) {
+                    outputs.addAll(option.outputIds());
+                }
+            }
+        }
+        return Set.copyOf(outputs);
+    }
+
+    private static Set<ResourceLocation> union(Set<ResourceLocation> existing,
+                                               ResourceLocation added) {
+        if (added == null || existing.contains(added)) return existing;
+        java.util.LinkedHashSet<ResourceLocation> result = new java.util.LinkedHashSet<>(existing);
+        result.add(added);
+        return Set.copyOf(result);
     }
 
     private void renewRequirements(ServerLevel level, VillagerEntityMCA villager) {
@@ -512,24 +651,31 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         return false;
     }
 
-    private static @Nullable WorkJobDef.Interaction selectInteraction(
-            ServerLevel level, VillagerEntityMCA villager, WorkJobDef.BlockTarget target,
-            BlockPos center, Set<Long> extent) {
-        for (WorkJobDef.Interaction candidate : target.interactions()) {
-            if (hasMatching(level, center, villager.getInventory(), candidate)) return candidate;
-        }
-        for (WorkJobDef.Interaction candidate : target.interactions()) {
-            if (!candidate.ready(level, center)) continue;
-            StationSupplies.pullMatching(level, villager,
-                    stack -> candidate.matches(level, center, stack), 1, center, extent);
-            if (hasMatching(level, center, villager.getInventory(), candidate)) return candidate;
-        }
-        return null;
+    private static @Nullable WorksiteOrders.OutputChoice<WorkJobDef.Interaction> chooseInteraction(
+            ServerLevel level, VillagerEntityMCA villager, Candidate target, boolean gatherInput) {
+        return WorksiteOrders.chooseOutput(level, villager, target.pos(),
+                target.definition().interactions(), WorkJobDef.Interaction::outputIds,
+                option -> interactionAvailable(level, villager, target.pos(), target.extent(),
+                        option, gatherInput));
     }
 
-    private static boolean perform(ServerLevel level, VillagerEntityMCA villager,
-                                   Candidate target, WorkJobDef.Interaction interaction,
-                                   Set<Long> extent, long gameTime) {
+    private static boolean interactionAvailable(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos center, Set<Long> extent,
+            WorkJobDef.Interaction candidate, boolean gatherInput) {
+        if (hasMatching(level, center, villager.getInventory(), candidate)) return true;
+        if (!candidate.ready(level, center) || !candidate.requiresItem()) return false;
+        if (!gatherInput) {
+            return WorkIngredients.matchingToolAvailable(level, villager,
+                    stack -> candidate.matches(level, center, stack), center, extent);
+        }
+        StationSupplies.pullMatching(level, villager,
+                stack -> candidate.matches(level, center, stack), 1, center, extent);
+        return hasMatching(level, center, villager.getInventory(), candidate);
+    }
+
+    private boolean perform(ServerLevel level, VillagerEntityMCA villager,
+                            Candidate target, WorkJobDef.Interaction interaction,
+                            Set<Long> extent, long gameTime) {
         ItemStack supplied = takeMatching(level, target.pos(), villager.getInventory(), interaction);
         if (interaction.requiresItem() && supplied.isEmpty()) return false;
 
@@ -545,6 +691,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         }
 
         int produced = 0;
+        int orderedProduced = 0;
         ResourceLocation firstOutput = null;
         if (!itemRemainder.isEmpty()) {
             ResourceLocation remainderId = BuiltInRegistries.ITEM.getKey(itemRemainder.getItem());
@@ -564,12 +711,16 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                     || interaction.outputIds().contains(item))) {
                 if (firstOutput == null) firstOutput = item;
                 produced += stack.getCount();
-                storeOutput(level, villager, target.pos(), extent, stack);
+                if (item.equals(claimedOutput)) orderedProduced += stack.getCount();
+                StationProtocols.giveBack(villager, stack);
+                deliveryItems = union(deliveryItems, item);
             } else {
                 StationProtocols.giveBack(villager, stack);
             }
         }
         if (!context.succeeded()) return false;
+
+        finishOrderClaim(orderedProduced);
 
         villager.swing(InteractionHand.MAIN_HAND, true);
         ResourceLocation career = ProfessionDefs.canonicalId(BuiltInRegistries.VILLAGER_PROFESSION
@@ -580,10 +731,44 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         return true;
     }
 
-    private static void storeOutput(ServerLevel level, VillagerEntityMCA villager, BlockPos center,
-                                    Set<Long> extent, ItemStack stack) {
-        WorkIngredients.storeOutputInWorksiteStorage(level, villager, stack, center, extent);
-        if (!stack.isEmpty()) StationProtocols.giveBack(villager, stack);
+    /** Reserve the exact line that selected this harvest so another worker sees it in progress. */
+    private void claimOrder(ServerLevel level, BlockPos anchor,
+                            WorksiteOrders.OutputChoice<WorkJobDef.Interaction> choice) {
+        if (choice.order() == null || choice.output() == null) return;
+        Worksite site = com.aetherianartificer.townstead.work.site.Worksites.of(level, anchor);
+        if (site == null) return;
+        claimedOrder = choice.order();
+        claimedOrderSite = site;
+        claimedOutput = choice.output();
+        // The authored count is planning information, not an item grant: the real block use still
+        // decides what physically appears, and completion credits that observed count.
+        claimedAmount = Math.max(1, choice.candidate().expectedCount());
+        claimedOrder.claim(claimedAmount);
+        site.bumpOrdersRevision();
+    }
+
+    /** The block use succeeded; release the reservation and credit what physically appeared. */
+    private void finishOrderClaim(int produced) {
+        if (claimedOrder == null) return;
+        claimedOrder.finish(claimedAmount, Math.max(0, produced));
+        if (claimedOrderSite != null) claimedOrderSite.bumpOrdersRevision();
+        clearOrderClaim();
+    }
+
+    /** A path, requirement or action failed before production; put the line back untouched. */
+    private void releaseOrderClaim() {
+        if (claimedOrder != null) {
+            claimedOrder.abandon(claimedAmount);
+            if (claimedOrderSite != null) claimedOrderSite.bumpOrdersRevision();
+        }
+        clearOrderClaim();
+    }
+
+    private void clearOrderClaim() {
+        claimedOrder = null;
+        claimedOrderSite = null;
+        claimedOutput = null;
+        claimedAmount = 0;
     }
 
     private static boolean hasMatching(ServerLevel level, BlockPos pos,
@@ -642,7 +827,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     private record Candidate(WorkJobDef job, WorkJobDef.BlockTarget definition,
                              WorkTaskDef task, BlockPos pos, Set<Long> extent) {}
 
-    private enum Phase { PREPARE, WORK, CLEANUP }
+    private enum Phase { PREPARE, WORK, CLEANUP, DELIVER }
 
     private record RequirementSession(WorkJobDef.ManagedRequirement requirement, BlockPos source,
                                       @Nullable ManagedRequirementLeases.Key lease,

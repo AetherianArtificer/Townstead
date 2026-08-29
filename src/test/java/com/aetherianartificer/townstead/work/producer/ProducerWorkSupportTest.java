@@ -18,14 +18,14 @@ class ProducerWorkSupportTest {
     private record FakeRecipe(String id, String output, boolean beverage) {}
 
     @Test
-    void baristaRoleIsBeveragesOnly() {
-        assertTrue(ProducerWorkSupport.beveragesOnly(ProducerRole.BARISTA));
+    void beverageArtisanUsesAuthoredRecipeScope() {
+        assertFalse(ProducerWorkSupport.restrictToBeverages(ProducerRole.BEVERAGE_ARTISAN));
     }
 
     @Test
     void recipeOwnershipDoesNotDependOnNearbyWorkerState() {
         assertTrue(ProducerWorkSupport.excludeBeverages(ProducerRole.COOK, null, null));
-        assertFalse(ProducerWorkSupport.excludeBeverages(ProducerRole.BARISTA, null, null));
+        assertFalse(ProducerWorkSupport.excludeBeverages(ProducerRole.BEVERAGE_ARTISAN, null, null));
     }
 
     @Test

@@ -59,6 +59,17 @@ public final class PizzaDelightCompat {
         return tasteFromUniqueness(unique);
     }
 
+    /**
+     * Whether a raw-pizza stack has actually passed through Pizza Delight's assembly station.
+     * Blank bases and prepared pizzas share one item id, so order counting must distinguish them.
+     */
+    public static boolean isAssembledPizza(ItemStack stack) {
+        ResourceLocation id = stack == null || stack.isEmpty()
+                ? null : BuiltInRegistries.ITEM.getKey(stack.getItem());
+        return id != null && "pizzadelight:raw_pizza".equals(id.toString())
+                && uniqueIngredients(stack) >= 1;
+    }
+
     /** Mirrors Pizza Delight's TasteHandler thresholds (size = 9 ingredient slots). */
     static OutputAppraisal.Appraisal tasteFromUniqueness(int unique) {
         int pointer = unique - 9;

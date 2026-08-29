@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * A data-driven profession: the one and only career concept, and careers are FLAT. Practiced
  * careers (Farmer, Cook) declare no {@code acquisition_routes} and are simply worked; gated
- * careers (Barista, Baker) declare routes plus pheno-condition {@code requirements}.
+ * gated careers (such as Baker) declare routes plus pheno-condition {@code requirements}.
  * Specialization inside a profession is a {@code paths} branch (levelled choices, shared powers,
  * and favoured worksites), never a child profession. Each def carries its progression track, skill tree
  * membership, and the {@code poi} job-site providers that make the job available in the world.

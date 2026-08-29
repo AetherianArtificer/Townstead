@@ -36,6 +36,8 @@ public final class WorkTaskTypes {
     public static final ResourceLocation COOK = type("cook");
     public static final ResourceLocation CHOP = type("chop");
     public static final ResourceLocation BREW = type("brew");
+    /** Vanilla and loader-registered potion mixes worked at a Brewing Stand. */
+    public static final ResourceLocation BREW_POTION = stationDriven("brew_potion");
 
     // Zone engines.
     public static final ResourceLocation HARVEST = type("harvest");
@@ -97,7 +99,9 @@ public final class WorkTaskTypes {
     public static List<String> activities(ResourceLocation id) {
         if (id == null) return List.of();
         if (id.equals(COOK) || id.equals(CHOP)) return List.of(COOK.toString());
-        if (id.equals(BREW) || id.equals(SMOKE)) return List.of(id.toString());
+        if (id.equals(BREW) || id.equals(BREW_POTION) || id.equals(SMOKE)) {
+            return List.of(id.toString());
+        }
         if (id.equals(HARVEST)) {
             return List.of("townstead:harvested", "townstead:planted", "townstead:tilled",
                     "townstead:groomed", "townstead:irrigated", "townstead:farmed");

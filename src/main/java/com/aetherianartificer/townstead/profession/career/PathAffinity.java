@@ -23,13 +23,24 @@ import java.util.function.BiPredicate;
  */
 public final class PathAffinity {
 
+    @FunctionalInterface
+    public interface WorksitePathProbe {
+        boolean test(LivingEntity villager, ResourceLocation professionId, String pathId);
+    }
+
     /** villager, path worksite block ids → does the villager's worksite contain any of them. */
     private static volatile BiPredicate<LivingEntity, List<ResourceLocation>> WORKSITE_PROBE;
+    /** villager, profession, path → is their assigned building affiliated with that Path. */
+    private static volatile WorksitePathProbe WORKSITE_PATH_PROBE;
 
     private PathAffinity() {}
 
     public static void registerWorksiteProbe(BiPredicate<LivingEntity, List<ResourceLocation>> probe) {
         WORKSITE_PROBE = probe;
+    }
+
+    public static void registerWorksitePathProbe(WorksitePathProbe probe) {
+        WORKSITE_PATH_PROBE = probe;
     }
 
     /**
@@ -51,7 +62,8 @@ public final class PathAffinity {
         for (ResourceLocation member : path.members()) {
             if (LearnedSkills.has(villager, member)) return 4;
         }
-        return worksiteHasAny(villager, path.worksites()) ? 3 : 0;
+        return worksiteHasPathAffinity(villager, def.id(), path.id())
+                || worksiteHasAny(villager, path.worksites()) ? 3 : 0;
     }
 
     /** Station blocks the entity's specced paths favour; empty when unspecced (or a player). */
@@ -72,5 +84,12 @@ public final class PathAffinity {
     private static boolean worksiteHasAny(LivingEntity villager, List<ResourceLocation> worksites) {
         BiPredicate<LivingEntity, List<ResourceLocation>> probe = WORKSITE_PROBE;
         return probe != null && !worksites.isEmpty() && probe.test(villager, worksites);
+    }
+
+    private static boolean worksiteHasPathAffinity(LivingEntity villager,
+                                                   ResourceLocation professionId,
+                                                   String pathId) {
+        WorksitePathProbe probe = WORKSITE_PATH_PROBE;
+        return probe != null && probe.test(villager, professionId, pathId);
     }
 }

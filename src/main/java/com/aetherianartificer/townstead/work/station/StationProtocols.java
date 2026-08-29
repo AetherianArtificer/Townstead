@@ -287,7 +287,7 @@ public final class StationProtocols {
 
     /**
      * Garnish a composed place-surface block with up to {@code extrasMax} DISTINCT extra items
-     * from the produce's extras tag — pulled from real storage, inserted through the block's
+     * from the produce's extras tag — carried in by the producer, inserted through the block's
      * own item handler (which enforces its acceptance rules). Extras are best-effort: a
      * plainer product still ships, a fuller pantry yields a better one.
      */
@@ -296,8 +296,6 @@ public final class StationProtocols {
         WorkstationDef.Produce produce = produceFor(def, recipe);
         if (produce == null || produce.extrasTag() == null || produce.extrasMax() <= 0) return;
         TagKey<Item> tag = TagKey.create(net.minecraft.core.registries.Registries.ITEM, produce.extrasTag());
-        StationSupplies.pullDistinct(level, villager, tag, produce.extrasMax(), anchor, storageBounds);
-
         IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
         if (handler == null) return;
         Set<Item> inserted = new HashSet<>();
@@ -356,7 +354,6 @@ public final class StationProtocols {
         if (def == null || adapter == null) return false;
         java.util.List<ItemStack> invalid = adapter.extractInvalidContents(level, anchor, def);
         for (ItemStack stack : invalid) {
-            WorkIngredients.storeOutputInWorksiteStorage(level, villager, stack, anchor, storageBounds);
             if (!stack.isEmpty()) {
                 ItemStack remainder = villager.getInventory().addItem(stack);
                 if (!remainder.isEmpty()) villager.spawnAtLocation(remainder);
@@ -365,13 +362,10 @@ public final class StationProtocols {
         return !invalid.isEmpty();
     }
 
-    /** The declared harvest tool must actually be in the villager's hands (pulled from storage). */
+    /** The producer acquisition state has already walked to storage for this declared tool. */
     private static boolean ensureHarvestTool(ServerLevel level, VillagerEntityMCA villager,
                                              BlockPos anchor, WorkstationDef def, Set<Long> storageBounds) {
         if (def.harvestTools().isEmpty()) return true;
-        if (hasHarvestTool(villager, def)) return true;
-        StationSupplies.pullTool(level, villager,
-                stack -> matchesHarvestTool(def, stack), anchor, storageBounds);
         return hasHarvestTool(villager, def);
     }
 
@@ -459,6 +453,7 @@ public final class StationProtocols {
         CampfireStationAdapter.bootstrap();
         FurnaceStationAdapter.bootstrap();
         CraftSurfaceAdapter.bootstrap();
+        BrewingStandStationAdapter.bootstrap();
         DataDrivenStationAdapter.bootstrap();
     }
 

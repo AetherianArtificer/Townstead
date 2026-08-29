@@ -40,8 +40,8 @@ public final class ClientProfessionClothing {
                 .getKey(villager.getVillagerData().getProfession());
         ProfessionDef def = professionId == null ? null : ProfessionDefs.all().get(professionId);
 
-        if (def != null && !def.clothing().isEmpty()
-                && applyFirstAvailable(villager, catalogue, def.clothing())) {
+        List<ClothingChoice> choices = ProfessionClothing.choicesFor(villager, def);
+        if (!choices.isEmpty() && applyFirstAvailable(villager, catalogue, choices)) {
             return;
         }
 

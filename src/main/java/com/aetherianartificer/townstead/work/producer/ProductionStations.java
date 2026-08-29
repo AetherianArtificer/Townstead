@@ -160,7 +160,6 @@ public final class ProductionStations {
         List<ItemStack> drops = StationDropOutputs.collectWithinWorksite(
                 level, pos, WorkRecipeRegistry.allOutputIds(level), storageBounds);
         for (ItemStack drop : drops) {
-            WorkIngredients.storeOutputInWorksiteStorage(level, villager, drop, pos, storageBounds);
             if (!drop.isEmpty()) {
                 ItemStack remainder = villager.getInventory().addItem(drop);
                 if (!remainder.isEmpty()) villager.spawnAtLocation(remainder);

@@ -4,6 +4,7 @@
     { "type": "townstead:job_block", "block": "minecraft:stonecutter" },
     { "type": "townstead:building", "type_prefix": "mason" }
   ],
+  "storage": { "preferred_roles": ["townstead:materials"] },
   "tasks": [
     {
       "type": "townstead_work:craft",

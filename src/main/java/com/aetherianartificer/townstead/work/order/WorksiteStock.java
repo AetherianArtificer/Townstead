@@ -58,6 +58,27 @@ public final class WorksiteStock {
         return total[0];
     }
 
+    /** Exact-product count for component-bearing order lines. */
+    public static int countProduct(ServerLevel level, Worksite site, Order order,
+                                   Order.CountScope scope) {
+        if (order == null || !order.exactProduct()) {
+            return order == null ? 0 : count(level, site, order.output(), scope);
+        }
+        Set<Long> extent = Worksites.extentOf(level, site);
+        int[] total = {0};
+        eachStack(level, extent, stack -> {
+            if (OrderProducts.matches(order.product(), stack)) total[0] += stack.getCount();
+        });
+        eachAssociatedStack(level, site, stack -> {
+            if (OrderProducts.matches(order.product(), stack)) total[0] += stack.getCount();
+        });
+        if (scope == Order.CountScope.VILLAGE) {
+            total[0] += VillageStores.countProduct(
+                    level, site.villageId(), order.product(), extent);
+        }
+        return total[0];
+    }
+
     /** The same count over a tag: every member on the shelves, summed. */
     public static int countTag(ServerLevel level, Worksite site, ResourceLocation tagId,
                                Order.CountScope scope) {
@@ -98,6 +119,18 @@ public final class WorksiteStock {
                     && OrderStackFilters.counts(item, stack)) {
                 total += stack.getCount();
             }
+        }
+        return total;
+    }
+
+    public static int carriedProduct(net.conczin.mca.entity.VillagerEntityMCA villager,
+                                     ResourceLocation product) {
+        if (product == null) return 0;
+        int total = 0;
+        var inv = villager.getInventory();
+        for (int slot = 0; slot < inv.getContainerSize(); slot++) {
+            ItemStack stack = inv.getItem(slot);
+            if (OrderProducts.matches(product, stack)) total += stack.getCount();
         }
         return total;
     }

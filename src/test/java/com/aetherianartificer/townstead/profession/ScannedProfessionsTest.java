@@ -27,7 +27,7 @@ class ScannedProfessionsTest {
         // ModGateTest covers the grammar via the predicate overload.
         assertTrue(ScannedProfessions.eligible(obj(
                 "{ 'schema': 'townstead:profession/v1', 'acquisition_routes': ['mentor'] }")),
-                "gated careers (barista, baker) register their own professions");
+                "gated careers register their own professions");
         assertTrue(ScannedProfessions.eligible(obj(
                 "{ 'schema': 'townstead:profession/v2', 'acquisition_routes': ['mentor'] }")),
                 "dir-layout v2 defs register too");

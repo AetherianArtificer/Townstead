@@ -697,11 +697,13 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 storage = com.aetherianartificer.townstead.storage.StoragePreference
                         .parse(obj.get("storage"));
             } catch (IllegalArgumentException error) {
-                diag.error(JsonPath.ROOT.field("storage"),
+                // Storage routing supplements a profession; it must never erase the profession's
+                // work, trades and paths because one optional preference is stale or malformed.
+                // Keep the default local/general route and make the pack error visible.
+                diag.warning(JsonPath.ROOT.field("storage"),
                         "Invalid profession storage preference: " + error.getMessage(),
-                        "Use {\"buildings\":[\"namespace/storehouse\"],"
-                                + "\"preferred\":[\"minecraft:barrel\",\"#namespace:block_tag\"]}.");
-                return null;
+                        "Use {\"preferred_roles\":[\"townstead:materials\"]}, or omit storage "
+                                + "to use local shelves and general stores.");
             }
         }
 
@@ -1010,7 +1012,8 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     if (power != null) powers.add(power);
                 }
                 paths.add(new ProfessionPaths.Path(e.getKey(), pathId, name, gateway,
-                        skillIds, worksites, color, backdrop, powers));
+                        skillIds, worksites, color, backdrop, powers,
+                        parseClothing(p, diagnostics)));
             }
             if (!paths.isEmpty()) out.put(e.getKey(), List.copyOf(paths));
         }

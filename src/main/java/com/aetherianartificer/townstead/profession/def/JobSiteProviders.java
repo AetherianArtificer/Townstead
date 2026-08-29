@@ -60,7 +60,13 @@ public final class JobSiteProviders {
                 if (!e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber()) return null;
                 slotsPerTier.add(Math.max(0, e.getAsInt()));
             }
-            return new JobSiteProvider.Building(prefixes, slotsPerTier);
+            List<String> pathAffinities = new ArrayList<>();
+            for (JsonElement e : GsonHelper.getAsJsonArray(json, "path_affinity", new JsonArray())) {
+                if (!e.isJsonPrimitive() || !e.getAsJsonPrimitive().isString()) return null;
+                String path = e.getAsString().trim();
+                if (!path.isEmpty() && !pathAffinities.contains(path)) pathAffinities.add(path);
+            }
+            return new JobSiteProvider.Building(prefixes, slotsPerTier, pathAffinities);
         });
         register(JobSiteProvider.StationPost.KEY, json -> {
             Set<ResourceLocation> blocks = new LinkedHashSet<>();

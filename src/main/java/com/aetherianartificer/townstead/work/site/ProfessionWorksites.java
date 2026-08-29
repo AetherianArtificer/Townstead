@@ -21,21 +21,20 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Which building a villager works, answered from their profession def alone.
  *
- * <p>Every trade used to re-derive this for itself: the cook and the barista each carry a private
+ * <p>Every trade used to re-derive this for itself: cooking and beverage work each carried a private
  * copy of the same algorithm, differing only in a hardcoded building-type prefix. The algorithm
  * itself was never trade-specific — the def already names the building types it claims, so any
  * profession's workplace can be resolved the same way: the villager's village, the village's
- * claimed buildings in a deterministic order, and workers paired to them by sorted identity so
- * two smiths in a two-forge village each keep their own forge across re-resolutions.</p>
+ * claimed building seats in deterministic order, and workers paired to them through the shared
+ * profession-site resolver. That resolver preserves sorted identity while giving a committed
+ * Path first claim on building families carrying its {@code path_affinity}.</p>
  *
- * <p>Workers beyond the building count share by wrap-around rather than idling: a claimed job is
- * a job, and a second armorer at a one-forge village belongs at the forge, not in the street.
- * Station claims arbitrate the actual blocks.</p>
+ * <p>Capacity remains the building definition's decision. A tier that seats two workers exposes
+ * two seats; excess workers do not silently manufacture another position.</p>
  */
 public final class ProfessionWorksites {
 
@@ -49,25 +48,11 @@ public final class ProfessionWorksites {
     public static Assignment resolve(ServerLevel level, VillagerEntityMCA villager) {
         ProfessionDef def = defOf(villager);
         if (def == null) return null;
-        Village village = ProfessionCapacity.resolveVillage(villager).orElse(null);
-        if (village == null) return null;
-
-        List<Building> buildings = new ArrayList<>(ProfessionCapacity.countedBuildings(village, def));
-        if (buildings.isEmpty()) return null;
-        // The def's poi order is a preference: an armorer lists armorer, armory, blacksmith,
-        // so their own room fills before the shared smithy. A shared building (the blacksmith,
-        // last in every smith's list) thereby offers one seat per trade — each trade counts it
-        // among its own buildings and sends someone only after its more specific rooms are
-        // spoken for. Position only breaks ties.
-        List<String> prefixes = prefixOrder(def);
-        buildings.sort(Comparator
-                .<Building>comparingInt(b -> prefixRank(prefixes, b))
-                .thenComparingInt(b -> center(b).getY())
-                .thenComparingInt(b -> center(b).getZ())
-                .thenComparingInt(b -> center(b).getX()));
-
-        int index = workerIndex(level, village, def, villager);
-        Building building = buildings.get(Math.floorMod(index, buildings.size()));
+        com.aetherianartificer.townstead.profession.ProfessionSites.Site assigned =
+                com.aetherianartificer.townstead.profession.ProfessionSites
+                        .assignedSite(level, villager, def).orElse(null);
+        if (assigned == null || assigned.building() == null) return null;
+        Building building = assigned.building();
         Worksite site = Worksites.of(level, building);
         if (site == null) return null;
         return new Assignment(building, site, referenceOf(building, villager));
@@ -93,8 +78,19 @@ public final class ProfessionWorksites {
         var effectiveTypes = McaBuildingCompat.effectiveTypes(village);
         List<Building> buildings = new ArrayList<>();
         for (Building building : McaBuildings.all(village)) {
-            String buildingType = effectiveTypes.getOrDefault(building.getId(), building.getType());
-            if (BuildingWorkforceIndex.accepts(buildingType, villager)) buildings.add(building);
+            String rawType = building.getType();
+            String effectiveType = effectiveTypes.getOrDefault(building.getId(), rawType);
+            boolean acceptsWorker = BuildingWorkforceIndex.accepts(effectiveType, villager)
+                    || (!java.util.Objects.equals(effectiveType, rawType)
+                    && BuildingWorkforceIndex.accepts(rawType, villager));
+            if (!acceptsWorker) continue;
+
+            // A profession-owned building already contributes a finite number of real seats.
+            // Its broad `workers` declaration advertises who can use its Order Sheet; it must not
+            // turn the same building into an unlimited secondary workplace for every villager of
+            // that profession. Only the worker assigned through ProfessionSites services it.
+            if (isDeclaredBuildingSite(def.jobSites(), rawType, effectiveType)) continue;
+            buildings.add(building);
         }
         buildings.sort(Comparator
                 .comparingInt((Building b) -> center(b).getY())
@@ -111,6 +107,19 @@ public final class ProfessionWorksites {
             out.add(new Assignment(building, site, referenceOf(building, villager)));
         }
         return List.copyOf(out);
+    }
+
+    static boolean isDeclaredBuildingSite(
+                                          List<com.aetherianartificer.townstead.profession.def.JobSiteProvider> jobSites,
+                                          @Nullable String rawType,
+                                          @Nullable String effectiveType) {
+        for (var provider : jobSites) {
+            if (provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building building
+                    && (building.matches(rawType) || building.matches(effectiveType))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Primary employment first, followed by the compatible secondary sites. */
@@ -154,60 +163,9 @@ public final class ProfessionWorksites {
         return false;
     }
 
-    /** The def's building-type prefixes in declaration order — most specific claim first. */
-    private static List<String> prefixOrder(ProfessionDef def) {
-        List<String> out = new ArrayList<>();
-        for (var provider : def.jobSites()) {
-            if (provider instanceof com.aetherianartificer.townstead.profession.def
-                    .JobSiteProvider.Building building) {
-                out.addAll(building.typePrefixes());
-            }
-        }
-        return out;
-    }
-
-    private static int prefixRank(List<String> prefixes, Building building) {
-        String type = building.getType();
-        if (type == null) return Integer.MAX_VALUE;
-        for (int i = 0; i < prefixes.size(); i++) {
-            String prefix = prefixes.get(i);
-            if (!prefix.isEmpty() && type.startsWith(prefix)) return i;
-        }
-        return Integer.MAX_VALUE;
-    }
-
     /** The assignment's extent through the register's cached path; empty when unresolvable. */
     public static Set<Long> extentOf(ServerLevel level, Assignment assignment) {
         return Worksites.extentOf(level, assignment.site(), assignment.building(), null);
-    }
-
-    /**
-     * This villager's stable position among the village's workers of the same profession,
-     * ordered by UUID exactly as the cook and barista assignments order theirs. Same
-     * PROFESSION, not same task types: trades may share the craft/smelt vocabulary while
-     * making entirely different things, and a weaponsmith's existence must not shift which
-     * building the armorer gets — each trade distributes its own people over its own claimed
-     * buildings, which is what lets a shared building seat one of each. A non-resident (fresh
-     * arrival, carried villager) sorts in by the same key rather than being refused a
-     * workplace.
-     */
-    private static int workerIndex(ServerLevel level, Village village, ProfessionDef def,
-                                   VillagerEntityMCA villager) {
-        List<UUID> workers = new ArrayList<>();
-        boolean seen = false;
-        for (VillagerEntityMCA resident : village.getResidents(level)) {
-            if (!sameDef(resident, def)) continue;
-            workers.add(resident.getUUID());
-            if (resident.getUUID().equals(villager.getUUID())) seen = true;
-        }
-        if (!seen) workers.add(villager.getUUID());
-        workers.sort(Comparator.comparing(UUID::toString));
-        return workers.indexOf(villager.getUUID());
-    }
-
-    private static boolean sameDef(VillagerEntityMCA resident, ProfessionDef def) {
-        ProfessionDef other = defOf(resident);
-        return other != null && other.id().equals(def.id());
     }
 
     @Nullable

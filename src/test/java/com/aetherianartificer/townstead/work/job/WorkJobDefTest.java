@@ -120,12 +120,13 @@ class WorkJobDefTest {
                   "task":"townstead_work:interact",
                   "type":"townstead:block_interaction",
                   "target":{
-                    "block":"minecraft:beehive",
+                    "block":"#minecraft:beehives",
                     "condition":{"type":"pheno:block_state","property":"honey_level","value":"5"},
                     "xp":4,
                     "interactions":[{
                       "item":"minecraft:shears",
-                      "output":"minecraft:honeycomb"
+                      "output":"minecraft:honeycomb",
+                      "expected_count":3
                     }]
                   }
                 }
@@ -136,11 +137,12 @@ class WorkJobDefTest {
         WorkJobDef.BlockTarget target = def.target();
         assertNotNull(target);
         assertNotNull(target.condition());
-        assertEquals(id("minecraft:beehive"), target.blocks().iterator().next());
-        assertTrue(target.blockTags().isEmpty());
+        assertTrue(target.blocks().isEmpty());
+        assertEquals(List.of(id("minecraft:beehives")), target.blockTags());
         assertEquals("minecraft:shears", target.interactions().get(0).item());
         assertEquals(id("minecraft:honeycomb"),
                 target.interactions().get(0).outputs().iterator().next());
+        assertEquals(3, target.interactions().get(0).expectedCount());
         assertEquals(4, target.interactions().get(0).xp());
         assertEquals("test:hive", def.activityKey(),
                 "the Job resource id is its automatic Chronicle activity");
@@ -167,6 +169,8 @@ class WorkJobDefTest {
         assertNotNull(def);
         assertEquals(List.of(id("example:spills")), def.target().blockTags());
         assertTrue(def.target().interactions().get(0).outputs().isEmpty());
+        assertEquals(1, def.target().interactions().get(0).expectedCount(),
+                "one remains the concise default for ordinary interactions");
         assertNotNull(def.target().interactions().get(0).condition());
     }
 

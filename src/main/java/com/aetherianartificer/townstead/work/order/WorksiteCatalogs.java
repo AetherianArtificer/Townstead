@@ -38,6 +38,15 @@ public final class WorksiteCatalogs {
         List<Option> optionsFor(ServerLevel level, Worksite site);
 
         /**
+         * Preferred initial stock boundary for a newly added item line, or null for the ordinary
+         * worksite-local default.  The player can still change the line afterwards.
+         */
+        default Order.CountScope defaultScopeFor(ServerLevel level, Worksite site,
+                                                 net.minecraft.resources.ResourceLocation output) {
+            return null;
+        }
+
+        /**
          * The kinds of workstation this engine cares about, and whether this worksite has one.
          * Default empty so an engine that has nothing to say about stations says nothing.
          */
@@ -89,7 +98,7 @@ public final class WorksiteCatalogs {
                 diagnostic.append(", ").append(catalog.getClass().getSimpleName())
                         .append('=').append(offered.size());
                 for (Option option : offered) {
-                    if (option == null || !seen.add(option.output())) continue;
+                    if (option == null || !seen.add(option.product())) continue;
                     // Gated here, once, so no catalogue has to remember: what counts as cannibal
                     // fare is a tag, and whether it is served is a setting.
                     if (!option.activity() && !OrderTags.permitted(option.output())) continue;
@@ -110,6 +119,21 @@ public final class WorksiteCatalogs {
         return List.copyOf(out);
     }
 
+    /** The first relevant engine which asks for a wider initial stock boundary. */
+    public static Order.CountScope defaultScopeFor(
+            ServerLevel level, Worksite site, net.minecraft.resources.ResourceLocation output) {
+        for (Catalog catalog : CATALOGS) {
+            try {
+                Order.CountScope scope = catalog.defaultScopeFor(level, site, output);
+                if (scope != null) return scope;
+            } catch (Throwable failure) {
+                Townstead.LOGGER.error("Order Sheet scope provider {} failed for worksite {}",
+                        catalog.getClass().getSimpleName(), site.id(), failure);
+            }
+        }
+        return Order.CountScope.HERE;
+    }
+
     private static Option withDriverAvailability(Worksite site, Option option,
                                                  boolean driverAvailable) {
         if (option.activity() || option.tag()) return option;
@@ -122,7 +146,7 @@ public final class WorksiteCatalogs {
         return new Option(option.output(), option.stationLabel(), option.stationIcon(),
                 false, blocker, option.makes(), option.needs(), option.missing(),
                 option.activity(), option.tag(), option.label(), option.commission(),
-                option.operated());
+                option.operated(), option.product());
     }
 
     /**

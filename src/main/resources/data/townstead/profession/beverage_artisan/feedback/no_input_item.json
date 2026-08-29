@@ -1,0 +1,4 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "dialogue": { "translate": "dialogue.chat.beverage_artisan_request.no_ingredients_item" }
+}

@@ -21,13 +21,17 @@ import java.util.function.Predicate;
 public final class ProducerWorkSupport {
     private ProducerWorkSupport() {}
 
-    public static boolean beveragesOnly(ProducerRole role) {
-        return role == ProducerRole.BARISTA;
+    public static boolean restrictToBeverages(ProducerRole role) {
+        // A career name is not a recipe classifier. Beverage Artisan includes preparatory work
+        // such as roasting coffee beans, and the profession's task declarations already say
+        // exactly which recipes it may perform. Keep this false unless a future producer spec
+        // explicitly introduces a recipe-scope policy independent of its career.
+        return false;
     }
 
     public static boolean excludeBeverages(ProducerRole role, ServerLevel level, VillagerEntityMCA villager) {
         // Recipe ownership belongs to the role, not to whoever happens to be on shift nearby.
-        // Cooks must never consume the barista's production inputs just because no barista is
+        // Cooks must never consume beverage-production inputs just because no Beverage Artisan is
         // currently considered "working" by the assignment scanner.
         return role == ProducerRole.COOK;
     }
@@ -51,7 +55,7 @@ public final class ProducerWorkSupport {
                 worksiteBounds,
                 recipeCooldownUntil,
                 excludeBeverages(role, level, villager),
-                beveragesOnly(role),
+                restrictToBeverages(role),
                 outputAllowed,
                 taskTypes
         );
@@ -68,9 +72,6 @@ public final class ProducerWorkSupport {
     }
 
     static List<DiscoveredRecipe> recipesForRole(ServerLevel level, ProducerRole role, StationType stationType) {
-        if (beveragesOnly(role)) {
-            return WorkRecipeRegistry.getBeverageRecipesForStation(level, stationType);
-        }
         return WorkRecipeRegistry.getRecipesForStation(level, stationType);
     }
 

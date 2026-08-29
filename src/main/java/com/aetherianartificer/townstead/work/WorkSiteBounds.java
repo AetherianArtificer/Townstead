@@ -31,9 +31,10 @@ public final class WorkSiteBounds {
     public static Set<Long> workArea(ServerLevel level, Building building) {
         if (level == null || building == null) return Set.of();
 
-        // Floor-system MCA has already partitioned this Structure Floor into the exact semantic
-        // Room. Trust that footprint; a second rectangular/range-bounded flood is both less exact
-        // and capable of crossing into an adjacent room.
+        // Floor-system MCA has already partitioned this place into an exact semantic footprint.
+        // That includes external/open buildings such as Apiaries: "open" describes construction,
+        // not an invitation to flood through the neighbourhood. Trust the recorded footprint; a
+        // second range-bounded flood is both less exact and capable of crossing into another site.
         Set<Long> exact = com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
                 .exactWorkArea(building);
         if (!exact.isEmpty()) return exact;

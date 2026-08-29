@@ -64,7 +64,7 @@ public final class ProfessionCapacity {
     /**
      * Residents occupying this career's sites. A def declaring work tasks is occupied by every
      * profession sharing one of those task types (a Baker works the kitchen a Cook would;
-     * a Barista, declaring only brew, does not) — the same rule kitchen slot assignment uses.
+     * a Beverage Artisan, declaring only brew, does not) — the same rule kitchen slot assignment uses.
      * A def without work tasks falls back to canonical-career identity.
      */
     public static int employed(ServerLevel level, Village village, ProfessionDef def) {

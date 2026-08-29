@@ -53,7 +53,6 @@ public final class StationCleanup {
 
     private static void route(ServerLevel level, VillagerEntityMCA villager, ItemStack stack,
                               BlockPos anchor, Set<Long> storageBounds) {
-        WorkIngredients.storeOutputInWorksiteStorage(level, villager, stack, anchor, storageBounds);
         if (stack.isEmpty()) return;
         ItemStack remainder = villager.getInventory().addItem(stack);
         if (remainder.isEmpty()) return;

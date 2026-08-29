@@ -4,6 +4,14 @@
     "minecraft:cookie",
     "minecraft:pumpkin_pie",
 
+    { "id": "#c:cookies", "required": false },
+    { "id": "#c:cakes", "required": false },
+    { "id": "#c:pies", "required": false },
+    { "id": "#c:pastries", "required": false },
+    { "id": "#forge:cookies", "required": false },
+    { "id": "#forge:cakes", "required": false },
+    { "id": "#forge:pies", "required": false },
+
     { "id": "farmersdelight:cake_slice", "required": false },
     { "id": "farmersdelight:apple_pie_slice", "required": false },
     { "id": "farmersdelight:sweet_berry_cheesecake_slice", "required": false },

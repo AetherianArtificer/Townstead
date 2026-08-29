@@ -50,6 +50,12 @@ class NeedDefinitionResourcesTest {
         JsonObject sugaryTag = resource("data/townstead/tags/item/sugary_snacks.json");
         assertTrue(sugaryTag.getAsJsonArray("values").asList().stream()
                 .anyMatch(value -> value.isJsonPrimitive() && "minecraft:cookie".equals(value.getAsString())));
+        for (String selector : new String[]{"#c:cookies", "#c:cakes", "#c:pies", "#c:pastries"}) {
+            assertTrue(sugaryTag.getAsJsonArray("values").asList().stream()
+                    .anyMatch(value -> value.isJsonObject()
+                            && selector.equals(value.getAsJsonObject().get("id").getAsString())
+                            && !value.getAsJsonObject().get("required").getAsBoolean()), selector);
+        }
     }
 
     @Test

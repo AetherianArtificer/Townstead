@@ -9,6 +9,9 @@ import com.aetherianartificer.townstead.work.order.Order;
 import com.aetherianartificer.townstead.work.order.OrderContext;
 import com.aetherianartificer.townstead.work.order.OrderList;
 import com.aetherianartificer.townstead.work.site.Worksite;
+import com.aetherianartificer.townstead.storage.PhysicalStorageDelivery;
+import com.aetherianartificer.townstead.storage.StorageUse;
+import com.aetherianartificer.townstead.work.recipe.WorkIngredients;
 
 import java.util.List;
 import com.aetherianartificer.townstead.work.WorkTarget;
@@ -34,7 +37,9 @@ import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> implements WorkTaskAdapter {
@@ -66,7 +71,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     public enum ProducerState {
         PATH_TO_WORKSITE, PATH_TO_STATION, RECONCILE_STATION,
-        SELECT_RECIPE, GATHER, PRODUCE, COLLECT, COLLECT_WAIT
+        SELECT_RECIPE, ACQUIRE_SUPPLIES, GATHER, PRODUCE, COLLECT, COLLECT_WAIT,
+        DELIVER
     }
 
     public record GatherResult(boolean success, @Nullable String detail) {
@@ -114,6 +120,14 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected ProducerBlockedReason blocked = ProducerBlockedReason.NONE;
     /** A scheduler/activity pause must not erase a batch already handed to a physical station. */
     private boolean resumeCommittedCycle;
+    /** A shelf visit currently being walked, kept stable while the worker paths to it. */
+    private @Nullable WorkIngredients.PhysicalPull physicalPull;
+    /** Reusable tools fetched for this cycle; pre-existing tools are deliberately not recorded. */
+    private final Set<ResourceLocation> borrowedToolIds = new HashSet<>();
+    /** Storage destinations which refused this delivery during the current pass. */
+    private final Set<Long> rejectedDeliveryStorage = new HashSet<>();
+    private @Nullable BlockPos deliveryTarget;
+    private boolean deliveryFinalized;
 
     protected final Map<ResourceLocation, Integer> stagedInputs = new HashMap<>();
     protected final Map<ResourceLocation, Long> recipeCooldownUntil = new HashMap<>();
@@ -185,6 +199,24 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     protected abstract void storeOutputs(
             ServerLevel level, VillagerEntityMCA villager, long gameTime);
+
+    /** The next storage block this recipe must physically visit, or null when hands are stocked. */
+    protected @Nullable WorkIngredients.PhysicalPull nextPhysicalPull(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        return null;
+    }
+
+    /** Worksite cells used when choosing storage for finished goods and returned tools. */
+    protected Set<Long> transferWorksiteBounds(ServerLevel level, VillagerEntityMCA villager) {
+        return Set.of();
+    }
+
+    /** Whether this carried stack is finished work belonging to the active cycle. */
+    protected boolean isCycleOutput(ServerLevel level, ItemStack stack) {
+        if (stack == null || stack.isEmpty() || activeRecipe == null) return false;
+        return activeRecipe.output().equals(
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()));
+    }
 
     // ── XP ──
 
@@ -319,9 +351,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     protected int stateTimeoutTicks(ProducerState state) {
         return switch (state) {
+            case ACQUIRE_SUPPLIES -> MAX_DURATION;
             case GATHER -> GATHER_STATE_TIMEOUT_TICKS;
             case PRODUCE -> PRODUCE_STATE_TIMEOUT_TICKS;
             case COLLECT, COLLECT_WAIT -> COLLECT_STATE_TIMEOUT_TICKS;
+            case DELIVER -> MAX_DURATION;
             default -> DEFAULT_STATE_TIMEOUT_TICKS;
         };
     }
@@ -337,7 +371,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (!gate(level, villager, !brain.isPanicking() && villager.getLastHurtByMob() == null,
                 "panicking or recently hurt")) return false;
-        boolean committed = hasResumableStationSession(level, villager, stationAnchor, level.getGameTime());
+        boolean committed = hasResumableStationSession(level, villager, stationAnchor, level.getGameTime())
+                || hasPendingPhysicalTransfer(level, villager);
         if (!gate(level, villager, currentActivity(villager) == Activity.WORK || committed,
                 "off shift — schedule is not WORK")) return false;
         lastGateReported = null;
@@ -346,7 +381,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!isEligibleVillager(level, villager)) return;
+        if (!isEligibleVillager(level, villager) && !hasPendingPhysicalTransfer(level, villager)) return;
+        if (resumeCommittedCycle && hasPendingPhysicalTransfer(level, villager)) {
+            resumeCommittedCycle = false;
+            transition(ProducerState.DELIVER, gameTime);
+            return;
+        }
         if (resumeCommittedCycle
                 && hasResumableStationSession(level, villager, stationAnchor, gameTime)) {
             resumeCommittedCycle = false;
@@ -361,6 +401,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         stateEnteredTick = gameTime;
         recipeAttempts = 0;
         abandonedUntilByStation.clear();
+        physicalPull = null;
+        borrowedToolIds.clear();
+        rejectedDeliveryStorage.clear();
+        deliveryTarget = null;
+        deliveryFinalized = false;
         resetWorksiteTargeting();
         com.aetherianartificer.townstead.reaction.trigger.event.TaskEventBridge.onStart(level, villager);
     }
@@ -368,11 +413,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (!isTaskEnabled()) return false;
-        if (!isEligibleVillager(level, villager)) return false;
+        if (!isEligibleVillager(level, villager) && !hasPendingPhysicalTransfer(level, villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         return currentActivity(villager) == Activity.WORK
-                || hasResumableStationSession(level, villager, stationAnchor, gameTime);
+                || hasResumableStationSession(level, villager, stationAnchor, gameTime)
+                || hasPendingPhysicalTransfer(level, villager);
     }
 
     @Override
@@ -384,11 +430,13 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         // already-committed physical cycle; completion, abandonment, job loss and disablement
         // release it explicitly.
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        boolean resumeCommitted = isTaskEnabled()
-                && isEligibleVillager(level, villager)
+        boolean pendingTransfer = hasPendingPhysicalTransfer(level, villager);
+        boolean resumeCommitted = pendingTransfer || (isTaskEnabled()
+                && (isEligibleVillager(level, villager) || hasPendingPhysicalTransfer(level, villager))
                 && !brain.isPanicking()
                 && villager.getLastHurtByMob() == null
-                && hasResumableStationSession(level, villager, stationAnchor, gameTime);
+                && (hasResumableStationSession(level, villager, stationAnchor, gameTime)
+                || pendingTransfer));
         releaseStationClaim(level, villager, stationAnchor);
         if (resumeCommitted) {
             // The same Behavior instance will be restarted by WORK. Keep its recipe, station,
@@ -409,7 +457,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!isEligibleVillager(level, villager)) {
+        if (!isEligibleVillager(level, villager) && !hasPendingPhysicalTransfer(level, villager)) {
             clearAll(level, villager, gameTime);
             return;
         }
@@ -429,8 +477,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                 && state != ProducerState.PATH_TO_WORKSITE
                 && state != ProducerState.PATH_TO_STATION
                 && state != ProducerState.RECONCILE_STATION
+                && state != ProducerState.ACQUIRE_SUPPLIES
                 && state != ProducerState.PRODUCE
-                && state != ProducerState.COLLECT_WAIT) {
+                && state != ProducerState.COLLECT_WAIT
+                && state != ProducerState.DELIVER) {
             debugChat(level, villager, "STATE:timeout in " + state.name() + ", resetting");
             transitionToNavigationState(level, villager, gameTime);
             onStationAbandoned(level, villager, stationAnchor, gameTime);
@@ -453,10 +503,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             case PATH_TO_STATION -> tickPathToStation(level, villager, gameTime);
             case RECONCILE_STATION -> tickReconcileStation(level, villager, gameTime);
             case SELECT_RECIPE -> tickSelectRecipe(level, villager, gameTime);
+            case ACQUIRE_SUPPLIES -> tickAcquireSupplies(level, villager, gameTime);
             case GATHER -> tickGather(level, villager, gameTime);
             case PRODUCE -> tickProduce(level, villager, gameTime);
             case COLLECT -> tickCollect(level, villager, gameTime);
             case COLLECT_WAIT -> tickCollectWait(level, villager, gameTime);
+            case DELIVER -> tickDeliver(level, villager, gameTime);
         }
     }
 
@@ -728,7 +780,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         }
         // Standing down is checked last and needs no context: reading the list is a question about
         // the world, but "stop" is a flat instruction about the place. Gating it behind a context
-        // made it a cook-only setting, since no other engine had one — a barista told to stand down
+        // made it a cook-only setting, since no other engine had one — a Beverage Artisan told to stand down
         // carried on brewing. It binds every producer at this worksite, list or no list, engine or
         // no engine.
         if (orders != null && orders.listOnly()) return null;
@@ -767,7 +819,56 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
         activeRecipe = recipe;
         recipeAttempts = 0;
-        transition(ProducerState.GATHER, gameTime);
+        physicalPull = null;
+        rejectedDeliveryStorage.clear();
+        deliveryTarget = null;
+        deliveryFinalized = false;
+        transition(ProducerState.ACQUIRE_SUPPLIES, gameTime);
+    }
+
+    // ── State: ACQUIRE_SUPPLIES ──
+
+    private void tickAcquireSupplies(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (activeRecipe == null) {
+            physicalPull = null;
+            transition(ProducerState.SELECT_RECIPE, gameTime);
+            return;
+        }
+        if (physicalPull == null) {
+            physicalPull = nextPhysicalPull(level, villager, gameTime);
+            if (physicalPull == null) {
+                transition(ProducerState.GATHER, gameTime);
+                return;
+            }
+        }
+        BlockPos source = physicalPull.source();
+        if (source == null) {
+            physicalPull = null;
+            return;
+        }
+        BehaviorUtils.setWalkAndLookTargetMemories(villager, source, WALK_SPEED, 1);
+        villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(source));
+        if (villager.distanceToSqr(
+                source.getX() + 0.5, source.getY() + 0.5, source.getZ() + 0.5) > 5.0d) {
+            return;
+        }
+
+        WorkIngredients.PhysicalPull request = physicalPull;
+        WorkIngredients.PhysicalPullResult pulled = WorkIngredients.executePhysicalPull(
+                level, villager, request);
+        physicalPull = null;
+        if (pulled.count() <= 0) {
+            // A stale slot is ordinary contention, not a recipe failure. Re-plan against the
+            // freshly invalidated index on the next tick.
+            debugChat(level, villager, "ACQUIRE:source changed for " + request.detail());
+            stateEnteredTick = gameTime;
+            return;
+        }
+        if (request.reusable()) borrowedToolIds.addAll(pulled.itemIds());
+        villager.swing(villager.getDominantHand());
+        debugChat(level, villager, "ACQUIRE:" + pulled.count() + " " + request.detail()
+                + " from " + source.toShortString());
+        stateEnteredTick = gameTime;
     }
 
     // ── State: GATHER ──
@@ -915,6 +1016,62 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     private void finishCollect(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         storeOutputs(level, villager, gameTime);
+        onSessionRelease(level, villager, stationAnchor, gameTime);
+        releaseStationClaim(level, villager, stationAnchor);
+        rejectedDeliveryStorage.clear();
+        deliveryTarget = null;
+        deliveryFinalized = false;
+        if (hasPendingPhysicalTransfer(level, villager)) {
+            transition(ProducerState.DELIVER, gameTime);
+            return;
+        }
+        finishDelivery(level, villager, gameTime);
+    }
+
+    // ── State: DELIVER ──
+
+    private void tickDeliver(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        boolean deliveringOutput = hasCarriedCycleOutput(level, villager);
+        Predicate<ItemStack> matcher = deliveringOutput
+                ? stack -> isCycleOutput(level, stack)
+                : this::isBorrowedTool;
+        StorageUse storageUse = deliveringOutput ? StorageUse.OUTPUT : StorageUse.TOOL_RETURN;
+        if (!hasMatching(villager, matcher)) {
+            finishDelivery(level, villager, gameTime);
+            return;
+        }
+
+        Set<Long> bounds = transferWorksiteBounds(level, villager);
+        if (deliveryTarget == null) {
+            deliveryTarget = PhysicalStorageDelivery.findDestination(
+                    level, villager, bounds, matcher, rejectedDeliveryStorage, storageUse);
+            if (deliveryTarget == null) {
+                setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_STORAGE,
+                        hasCarriedCycleOutput(level, villager) ? "finished goods" : "borrowed tools");
+                idleUntilTick = gameTime + 40L;
+                return;
+            }
+        }
+
+        BehaviorUtils.setWalkAndLookTargetMemories(villager, deliveryTarget, WALK_SPEED, 1);
+        villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET,
+                new BlockPosTracker(deliveryTarget));
+        if (villager.distanceToSqr(deliveryTarget.getX() + 0.5,
+                deliveryTarget.getY() + 0.5, deliveryTarget.getZ() + 0.5) > 5.0d) return;
+
+        int moved = PhysicalStorageDelivery.depositMatchingAt(
+                level, villager, deliveryTarget, matcher, storageUse);
+        villager.swing(villager.getDominantHand());
+        if (moved <= 0) rejectedDeliveryStorage.add(deliveryTarget.asLong());
+        deliveryTarget = null;
+        stateEnteredTick = gameTime;
+        if (!hasPendingPhysicalTransfer(level, villager)) finishDelivery(level, villager, gameTime);
+    }
+
+    /** Completes accounting only after the real stacks have reached storage. */
+    private void finishDelivery(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (deliveryFinalized) return;
+        deliveryFinalized = true;
         boolean completedOrder = creditOrderClaim(level, villager, activeRecipe == null ? 1
                 : Math.max(1, activeRecipe.outputCount()) * activeBatchOperations());
         pendingOutput = ItemStack.EMPTY;
@@ -923,7 +1080,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         debugChat(level, villager, "COLLECT:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
         activeRecipe = null;
         stagedInputs.clear();
-        onSessionRelease(level, villager, stationAnchor, gameTime);
+        physicalPull = null;
+        borrowedToolIds.clear();
+        rejectedDeliveryStorage.clear();
+        deliveryTarget = null;
         if (completedOrder) {
             onOrderCompleted(level, villager, stationAnchor, gameTime);
         }
@@ -933,7 +1093,6 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         // after it consumed the roasted beans protected by the higher skillet line. The station
         // and recipe indexes are cached, so this is one cheap global decision on the next tick;
         // when the same station is still correct there is no extra walk.
-        releaseStationClaim(level, villager, stationAnchor);
         stationAnchor = null;
         standPos = null;
         // Re-resolve the worksite after every delivery. Usually this is the same room and costs
@@ -948,6 +1107,30 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         if (scheduled != Activity.WORK) {
             villager.getBrain().setActiveActivityIfPossible(scheduled);
         }
+    }
+
+    private boolean hasPendingPhysicalTransfer(ServerLevel level, VillagerEntityMCA villager) {
+        return hasCarriedCycleOutput(level, villager) || hasMatching(villager, this::isBorrowedTool);
+    }
+
+    private boolean hasCarriedCycleOutput(@Nullable ServerLevel level, VillagerEntityMCA villager) {
+        return hasMatching(villager, stack -> isCycleOutput(level, stack));
+    }
+
+    private boolean isBorrowedTool(ItemStack stack) {
+        if (stack == null || stack.isEmpty() || borrowedToolIds.isEmpty()) return false;
+        ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getKey(stack.getItem());
+        return id != null && borrowedToolIds.contains(id);
+    }
+
+    private static boolean hasMatching(VillagerEntityMCA villager, Predicate<ItemStack> matcher) {
+        if (villager == null || matcher == null) return false;
+        net.minecraft.world.SimpleContainer inventory = villager.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (matcher.test(inventory.getItem(slot))) return true;
+        }
+        return false;
     }
 
     // ── Navigation helpers ──
@@ -965,10 +1148,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         BehaviorUtils.setWalkAndLookTargetMemories(villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
         villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(stationAnchor));
         double distSq = villager.distanceToSqr(standPos.getX() + 0.5, standPos.getY() + 0.5, standPos.getZ() + 0.5);
-        double anchorDistSq = villager.distanceToSqr(
-                stationAnchor.getX() + 0.5, stationAnchor.getY() + 0.5, stationAnchor.getZ() + 0.5);
-
-        if (distSq > ARRIVAL_DISTANCE_SQ && anchorDistSq > NEAR_STATION_DISTANCE_SQ) {
+        // Being close to the station block is not enough: a wall can be between the two.
+        // The selected stand is the navigable side of the station, so work starts only there.
+        if (!isAtStationStand(distSq)) {
             if (gameTime >= nextStandReacquireTick) {
                 nextStandReacquireTick = gameTime + STAND_REACQUIRE_INTERVAL_TICKS;
                 BlockPos refreshed = refreshStandPosition(level, villager, stationAnchor);
@@ -978,6 +1160,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         }
         nextStandReacquireTick = 0L;
         return true;
+    }
+
+    static boolean isAtStationStand(double distanceSq) {
+        return distanceSq <= ARRIVAL_DISTANCE_SQ;
     }
 
     /**
@@ -1009,7 +1195,15 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         stationAnchor = null;
         standPos = null;
         activeRecipe = null;
+        physicalPull = null;
         stagedInputs.clear();
+        if (hasMatching(villager, this::isBorrowedTool)) {
+            rejectedDeliveryStorage.clear();
+            deliveryTarget = null;
+            deliveryFinalized = false;
+            transition(ProducerState.DELIVER, gameTime);
+            return;
+        }
         transitionToNavigationState(level, villager, gameTime);
     }
 
@@ -1033,6 +1227,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         standPos = null;
         activeRecipe = null;
         pendingOutput = ItemStack.EMPTY;
+        physicalPull = null;
+        borrowedToolIds.clear();
+        rejectedDeliveryStorage.clear();
+        deliveryTarget = null;
+        deliveryFinalized = false;
         stagedInputs.clear();
         recipeCooldownUntil.clear();
         abandonedUntilByStation.clear();

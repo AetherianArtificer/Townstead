@@ -145,6 +145,18 @@ public final class FrameRenderer {
         blitMapSlice(g, x + f, y + f, dstInnerW, dstInnerH, f, f, srcInner, srcInner);
     }
 
+    /**
+     * A clean rectangular sheet cut from the map's parchment interior. Use this for deeds and
+     * forms that sit inside an existing frame; unlike {@link #drawMapParchment}, it contributes
+     * no second ragged frame, and unlike {@link #drawParchmentPanel}, it has no wood grain.
+     */
+    public static void drawPaperSheet(GuiGraphics g, int x, int y, int w, int h) {
+        blitMapSlice(g, x, y, w, h, MAP_FRAME, MAP_FRAME,
+                MAP_TEX_SIZE - MAP_FRAME * 2, MAP_TEX_SIZE - MAP_FRAME * 2);
+        Palette.drawOutline(g, x, y, x + w, y + h, Palette.BRASS_DEEP);
+        g.fill(x + 1, y + 1, x + w - 1, y + 2, 0x66FFF0C8);
+    }
+
     private static void blitMapSlice(GuiGraphics g, int x, int y, int dw, int dh,
                                      int u, int v, int sw, int sh) {
         g.blit(MAP_TEXTURE, x, y, dw, dh, (float) u, (float) v, sw, sh, MAP_TEX_SIZE, MAP_TEX_SIZE);

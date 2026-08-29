@@ -1,6 +1,8 @@
 {
   "replace": false,
   "values": [
+    { "id": "#c:storage_blocks/copper", "required": false },
+    { "id": "#forge:storage_blocks/copper", "required": false },
     "minecraft:copper_block",
     "minecraft:exposed_copper",
     "minecraft:weathered_copper",

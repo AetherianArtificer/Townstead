@@ -62,6 +62,22 @@ public final class McaBuildingCompat {
         return null;
     }
 
+    /** Exact room first, then registered external-site containment, across all villages. */
+    public static @Nullable Building buildingAt(ServerLevel level, BlockPos pos) {
+        if (level == null || pos == null) return null;
+        Building room = functionalRoomAt(level, pos);
+        if (room != null) return room;
+        for (Village village : VillageManager.get(level)) {
+            for (Building building : McaBuildings.all(village)) {
+                //? if >=1.21 {
+                if (building.isFunctionalRoom()) continue;
+                //?}
+                if (McaBuildings.contains(level, village, building, pos)) return building;
+            }
+        }
+        return null;
+    }
+
     /**
      * Whether a position belongs to this building according to MCA. Floor rooms use exact room
      * ownership; legacy rooms and MCA external buildings retain MCA's own containment method.
@@ -122,13 +138,15 @@ public final class McaBuildingCompat {
     }
 
     /**
-     * Exact MCA floor footprint plus MCA-recorded POIs. Empty means this MCA generation (or this
-     * external building) has no exact floor model and callers should use their legacy fallback.
+     * Exact MCA floor footprint plus MCA-recorded POIs. Floor-system external buildings may own a
+     * floor region too: an open Apiary is still a registered place with a finite footprint. Empty
+     * means this MCA generation or building has no exact floor model and callers should use their
+     * legacy fallback.
      */
     public static Set<Long> exactWorkArea(Building building) {
         if (building == null) return Set.of();
         //? if >=1.21 {
-        if (!building.isFunctionalRoom() || building.getFloorRegions().isEmpty()) return Set.of();
+        if (building.getFloorRegions().isEmpty()) return Set.of();
         Set<Long> cells = new HashSet<>();
         building.getFloorRegions().forEach(region ->
                 region.cells().forEach(pos -> cells.add(pos.asLong())));
@@ -143,5 +161,32 @@ public final class McaBuildingCompat {
         if (building == null) return BlockPos.ZERO;
         BlockPos source = building.getSourceBlock();
         return source == null ? building.getCenter() : source;
+    }
+
+    /** Whether this functional room belongs to a structure containing another room. */
+    public static boolean hasWholeBuildingScope(Village village, Building building) {
+        if (village == null || building == null) return false;
+        //? if >=1.21 {
+        if (!building.isFunctionalRoom()) return false;
+        var structure = village.getStructureFor(building);
+        if (structure.isEmpty()) return false;
+        int structureId = structure.get().getId();
+        return village.getRooms().filter(room -> room.getStructureId() == structureId)
+                .limit(2).count() > 1;
+        //?} else {
+        /*return false;
+        *///?}
+    }
+
+    /** Whether two functional rooms are floors/parts of the same MCA structure. */
+    public static boolean sameWholeBuilding(Village village, Building first, Building second) {
+        if (village == null || first == null || second == null) return false;
+        //? if >=1.21 {
+        if (!first.isFunctionalRoom() || !second.isFunctionalRoom()) return false;
+        var structure = village.getStructureFor(first);
+        return structure.isPresent() && second.getStructureId() == structure.get().getId();
+        //?} else {
+        /*return first.getId() == second.getId();
+        *///?}
     }
 }

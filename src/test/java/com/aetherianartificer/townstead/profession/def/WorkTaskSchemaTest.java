@@ -131,6 +131,24 @@ class WorkTaskSchemaTest {
                 "every shipped Baker task must parse");
 
         assertFalse(baker.has("mods"), "the Baker must exist in a vanilla-only installation");
+        assertNull(WorkTaskSchemaTest.class.getResource(
+                        "/data/townstead/profession/baker/path/boulanger/path.json"),
+                "Boulanger is simply French for Baker, not a specialization");
+        assertFalse(work.has("path_worksites"),
+                "mod-gated Baker paths must own their stations so skipped paths leave no stale work links");
+        JsonObject jamMaker = resourceJson(
+                "/data/townstead/profession/baker/path/confiturier/path.json");
+        assertEquals("Jam Maker", jamMaker.getAsJsonObject("name").get("text").getAsString());
+        assertEquals("bakery", jamMaker.getAsJsonArray("mods").get(0).getAsString());
+        assertEquals("bakery:small_cooking_pot",
+                jamMaker.getAsJsonArray("worksites").get(0).getAsString());
+        JsonObject pastryChef = resourceJson(
+                "/data/townstead/profession/baker/path/patissier/path.json");
+        assertEquals("Pastry Chef",
+                pastryChef.getAsJsonObject("name").get("text").getAsString());
+        assertEquals("bakery", pastryChef.getAsJsonArray("mods").get(0).getAsString());
+        assertEquals("bakery:baker_station",
+                pastryChef.getAsJsonArray("worksites").get(0).getAsString());
         assertTrue(work.getAsJsonArray("poi").asList().stream().anyMatch(entry -> {
                     JsonObject site = entry.getAsJsonObject();
                     return "townstead:building".equals(site.get("type").getAsString())
@@ -347,6 +365,60 @@ class WorkTaskSchemaTest {
                             .anyMatch(value -> "townstead:baker".equals(value.getAsString())),
                     type + " explicitly accepts Bakers");
         }
+    }
+
+    @Test
+    void pizzeriaHasThreeDistinctTiersAndScalesItsCookCapacity() {
+        JsonObject work = resourceJson("/data/townstead/profession/cook/work.json");
+        var sites = work.getAsJsonArray("poi").asList().stream()
+                .map(element -> JobSiteProviders.parse(element.getAsJsonObject()))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        assertTrue(sites.stream().anyMatch(site ->
+                        site instanceof JobSiteProvider.Building building
+                                && building.slotsFor("compat/pizzadelight/pizzeria_l1") == 1
+                                && building.slotsFor("compat/pizzadelight/pizzeria_l2") == 2
+                                && building.slotsFor("compat/pizzadelight/pizzeria_l3") == 3
+                                && building.hasPathAffinity("pizzaiolo")),
+                "Pizza Counter, Neighborhood Pizzeria, and Ristorante Pizzeria seat one, two, and three Cooks");
+        assertFalse(work.getAsJsonObject("path_worksites")
+                        .getAsJsonArray("pizzaiolo").asList().stream()
+                        .anyMatch(value -> "farmersdelight:stove".equals(value.getAsString())),
+                "a generic Kitchen stove must not identify Pizzaiolo station work");
+
+        JsonObject counter = resourceJson(
+                "/townstead_compat/building_types/compat/pizzadelight/pizzeria_l1.json")
+                .getAsJsonObject("blocks");
+        assertEquals(1, counter.get("pizzadelight:pizza_station").getAsInt());
+        assertFalse(counter.has("pizzadelight:basin"),
+                "the outdoor counter does not demand a cheese room");
+
+        JsonObject neighborhood = resourceJson(
+                "/townstead_compat/building_types/compat/pizzadelight/pizzeria_l2.json")
+                .getAsJsonObject("blocks");
+        assertEquals(1, neighborhood.get("pizzadelight:basin").getAsInt());
+        assertFalse(neighborhood.has("#townstead:pizzeria/service_counters"));
+        assertFalse(neighborhood.has("#townstead:pizzeria/dining_tables"));
+        assertFalse(neighborhood.has("#townstead:pizzeria/dining_seats"));
+
+        JsonObject ristorante = resourceJson(
+                "/townstead_compat/building_types/compat/pizzadelight/pizzeria_l3.json")
+                .getAsJsonObject("blocks");
+        assertEquals(2, ristorante.get("pizzadelight:pizza_station").getAsInt());
+        assertEquals(2, ristorante.get("pizzadelight:basin").getAsInt());
+        assertEquals(4, ristorante.get("#townstead:pizzeria/ambience").getAsInt());
+
+        for (String type : new String[]{"pizzeria_l1", "pizzeria_l2", "pizzeria_l3"}) {
+            JsonObject extension = resourceJson(
+                    "/data/townstead/extended_buildings/compat/pizzadelight/" + type + ".json");
+            assertTrue(extension.getAsJsonArray("workers").asList().stream()
+                            .anyMatch(value -> "townstead:cook".equals(value.getAsString())),
+                    type + " explicitly accepts Cooks");
+        }
+        assertNull(WorkTaskSchemaTest.class.getResource(
+                "/townstead_compat/building_types/compat/pizzadelight/pizzeria_l4.json"));
+        assertNull(WorkTaskSchemaTest.class.getResource(
+                "/data/townstead/extended_buildings/compat/pizzadelight/pizzeria_l4.json"));
     }
 
     @Test

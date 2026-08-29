@@ -26,6 +26,14 @@ public abstract class VillagerServerTickMixin {
     private void townstead$beforeServerAiStep(CallbackInfo ci) {
         VillagerEntityMCA villager = (VillagerEntityMCA) (Object) this;
         if (!villager.level().isClientSide) {
+            if (villager.isSleeping() && villager.level() instanceof net.minecraft.server.level.ServerLevel level) {
+                villager.getSleepingPos().ifPresent(bed -> {
+                    if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess
+                            .maySleep(level, villager, bed)) {
+                        villager.stopSleeping();
+                    }
+                });
+            }
             com.aetherianartificer.townstead.tick.FatigueVillagerTicker.preAiStep(villager);
         }
     }

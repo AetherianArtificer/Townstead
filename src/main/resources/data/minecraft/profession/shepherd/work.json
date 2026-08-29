@@ -4,7 +4,14 @@
     { "type": "townstead:job_block", "block": "minecraft:loom" }
   ],
   "tasks": [
-    { "type": "townstead_work:shear", "weight": 10 },
+    {
+      "type": "townstead_work:shear",
+      "weight": 10,
+      "order": {
+        "name": "Shear sheep",
+        "icon": "minecraft:shears"
+      }
+    },
     { "type": "townstead_work:store", "weight": 9 }
   ]
 }

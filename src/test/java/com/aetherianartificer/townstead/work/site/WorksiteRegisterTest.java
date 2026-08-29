@@ -1,5 +1,8 @@
 package com.aetherianartificer.townstead.work.site;
 
+import com.aetherianartificer.townstead.storage.RoomOwner;
+import com.aetherianartificer.townstead.storage.OwnershipScope;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
@@ -128,6 +131,37 @@ class WorksiteRegisterTest {
 
         site.setDriver(null);
         assertNull(site.driver(), "null is the explicit automatic-nearest policy");
+    }
+
+    @Test
+    void roomOwnershipBelongsToThePlaceAndClearsWithItsTag() {
+        WorksiteRegister register = new WorksiteRegister();
+        Worksite site = register.register(new WorksiteKey(ROOM, OVERWORLD, 47), "Home", 1, 0L);
+        java.util.UUID villager = java.util.UUID.randomUUID();
+        java.util.UUID player = java.util.UUID.randomUUID();
+
+        site.setOwnership(new BlockPos(4, 70, 9), OwnershipScope.BUILDING, java.util.List.of(
+                new RoomOwner(villager, "Mia", RoomOwner.Kind.VILLAGER),
+                new RoomOwner(player, "Builder", RoomOwner.Kind.PLAYER)));
+
+        assertEquals(BlockPos.asLong(4, 70, 9), register.byId(site.id()).ownershipTag().asLong());
+        assertEquals(OwnershipScope.BUILDING, site.ownershipScope(),
+                "the deed must remember whether it governs one room or the whole structure");
+        assertEquals(java.util.Set.of(villager, player), site.owners().stream()
+                .map(RoomOwner::uuid).collect(java.util.stream.Collectors.toSet()));
+        assertTrue(site.ownershipPrivate());
+
+        site.setOwnership(new BlockPos(4, 70, 9), OwnershipScope.BUILDING, true,
+                java.util.List.of());
+        assertTrue(site.ownershipPrivate(),
+                "private with no named people is the residents-only policy");
+        assertTrue(site.owners().isEmpty());
+
+        site.clearOwnership();
+        assertNull(site.ownershipTag());
+        assertEquals(OwnershipScope.ROOM, site.ownershipScope());
+        assertFalse(site.ownershipPrivate());
+        assertTrue(site.owners().isEmpty(), "breaking the physical tag makes the room public");
     }
 
     @Test

@@ -39,7 +39,7 @@ public final class WorkOutputTags {
 
     /** Things a cook may be ordered to make. */
     public static final TagKey<Item> COOK = tag("cook_output");
-    /** Things a barista may be ordered to make. */
+    /** Things a Beverage Artisan may be ordered to make. */
     public static final TagKey<Item> BREW = tag("brew_output");
     private static TagKey<Item> tag(String path) {
         //? if >=1.21 {

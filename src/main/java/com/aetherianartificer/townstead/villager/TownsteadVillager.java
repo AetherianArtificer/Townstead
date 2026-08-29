@@ -1144,7 +1144,6 @@ public final class TownsteadVillager {
 
     public final class ProfessionMemory implements ProfessionXpStore {
         private static final String LEGACY_COOK_TRADES_LEVEL = "townsteadCookTradesLevel";
-        private static final String LEGACY_BARISTA_TRADES_LEVEL = "townsteadBaristaTradesLevel";
         private String lastProfession = "";
         private final Map<String, Progress> progressByProfession = new HashMap<>();
         private final ProfessionOfferMemory tradeOffersByProfession = new ProfessionOfferMemory();
@@ -1437,8 +1436,6 @@ public final class TownsteadVillager {
             }
             int cookLevel = Math.max(0, hunger.getInt(LEGACY_COOK_TRADES_LEVEL));
             if (cookLevel > 0) tradeBackfillLevels.put("cook", cookLevel);
-            int baristaLevel = Math.max(0, hunger.getInt(LEGACY_BARISTA_TRADES_LEVEL));
-            if (baristaLevel > 0) tradeBackfillLevels.put("barista", baristaLevel);
             // The slaughter work throttle was piggybacked in townstead_hunger.
             // Work-feedback cooldowns use provider ids in the new store.
             cooldowns.clear();
@@ -1459,10 +1456,6 @@ public final class TownsteadVillager {
             if (tradeBackfillLevel("cook") == 0) {
                 int cookLevel = Math.max(0, hunger.getInt(LEGACY_COOK_TRADES_LEVEL));
                 if (cookLevel > 0) tradeBackfillLevels.put("cook", cookLevel);
-            }
-            if (tradeBackfillLevel("barista") == 0) {
-                int baristaLevel = Math.max(0, hunger.getInt(LEGACY_BARISTA_TRADES_LEVEL));
-                if (baristaLevel > 0) tradeBackfillLevels.put("barista", baristaLevel);
             }
             mergeLegacyCooldown(hunger, "townstead_lastSlaughterTick");
             mergeLegacyProfessionXp(hunger, "farmer");

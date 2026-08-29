@@ -1,5 +1,6 @@
 {
   "schema": "townstead:extended_building/v1",
+  "workers": ["minecraft:armorer", "minecraft:toolsmith", "minecraft:weaponsmith"],
   "spirit": {
     "industrious": 5,
     "martial": 2

@@ -65,6 +65,56 @@ class BuildingEnclosurePoliciesTest {
                 "the outdoor form should retain its real footprint; Townstead overlays its item icon");
     }
 
+    @Test
+    void pizzaCounterIsACompactOptionalOutdoorBuilding() throws Exception {
+        JsonObject extended = resource(
+                "/data/townstead/extended_buildings/compat/pizzadelight/pizzeria_l1.json");
+        assertEquals("optional", extended.get("enclosure").getAsString());
+
+        JsonObject mca = resource(
+                "/townstead_compat/building_types/compat/pizzadelight/pizzeria_l1.json");
+        assertTrue(mca.get("margin").getAsInt() > 0);
+        assertTrue(mca.get("mergeRange").getAsInt() > 0);
+        assertTrue(mca.get("mergeRange").getAsInt() < mca.get("margin").getAsInt(),
+                "the counter must not absorb furniture from a neighboring restaurant");
+        assertFalse(mca.has("grouped"),
+                "the Pizza Counter may be built either outside or as a small room");
+        assertFalse(mca.get("icon").getAsBoolean(),
+                "the outdoor form should retain its footprint beneath the item icon");
+    }
+
+    @Test
+    void masonsYardIsAnOutdoorMaterialsStore() throws Exception {
+        JsonObject extended = resource(
+                "/data/townstead/extended_buildings/masons_yard.json");
+        assertEquals("none", extended.get("enclosure").getAsString());
+        assertFalse(extended.has("workers"),
+                "the materials yard must not compete with the Mason's actual worksite");
+        assertTrue(extended.getAsJsonArray("storage_roles").asList().stream()
+                .anyMatch(value -> "townstead:materials".equals(value.getAsString())));
+
+        JsonObject mca = resource("/data/mca/building_types/masons_yard.json");
+        JsonObject blocks = mca.getAsJsonObject("blocks");
+        assertFalse(blocks.has("minecraft:stonecutter"));
+        assertTrue(blocks.get("#townstead:storage").getAsInt() >= 4,
+                "a storage yard must require substantial storage capacity");
+        assertTrue(blocks.get("#townstead:masonry_materials").getAsInt() >= 4);
+        assertTrue(mca.get("mergeRange").getAsInt() < mca.get("margin").getAsInt(),
+                "nearby yards must remain separate sites");
+
+        JsonObject materials = resource(
+                "/data/townstead/tags/block/masonry_materials.json");
+        var values = materials.getAsJsonArray("values");
+        assertTrue(values.asList().stream().anyMatch(value -> value.isJsonObject()
+                        && "#c:stones".equals(value.getAsJsonObject().get("id").getAsString())
+                        && !value.getAsJsonObject().get("required").getAsBoolean()),
+                "modded common-tag stone must count as Mason's Yard material");
+        assertTrue(values.asList().stream().anyMatch(value -> value.isJsonObject()
+                        && "#c:concretes".equals(value.getAsJsonObject().get("id").getAsString())
+                        && !value.getAsJsonObject().get("required").getAsBoolean()),
+                "modded common-tag concrete must count as Mason's Yard material");
+    }
+
     private static JsonObject resource(String path) throws Exception {
         var stream = BuildingEnclosurePoliciesTest.class.getResourceAsStream(path);
         if (stream == null) throw new IllegalStateException("Missing test resource " + path);

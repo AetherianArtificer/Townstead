@@ -37,6 +37,6 @@ class AttachmentPhysicsConfigTest {
     }
 
     private static AttachmentDef.PhysicsChain parseChain(String json) {
-        return AttachmentServerLoader.parsePhysics(JsonParser.parseString(json).getAsJsonObject()).getFirst();
+        return AttachmentServerLoader.parsePhysics(JsonParser.parseString(json).getAsJsonObject()).get(0);
     }
 }

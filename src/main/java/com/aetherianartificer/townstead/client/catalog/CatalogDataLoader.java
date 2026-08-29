@@ -34,11 +34,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 
 public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/CatalogDataLoader");
@@ -73,6 +75,14 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     private static final List<GroupDef> GROUPS = new CopyOnWriteArrayList<>();
     private static final Map<String, BuildingOverride> OVERRIDES = new LinkedHashMap<>();
     /**
+     * Building definitions seen by Townstead's own data scan. MCA normally mirrors the same
+     * definitions into {@link BuildingTypes#getBuildingTypes()}, but add-on and newly introduced
+     * definitions can be absent from that client mirror for one reload. The catalog may safely
+     * use these parsed definitions as a presentation fallback; recognition remains MCA-owned.
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<String, BuildingType>
+            SCANNED_BUILDING_TYPES = new java.util.concurrent.ConcurrentHashMap<>();
+    /**
      * Per-buildingType cache of {@link #matchGroup} results. Cleared whenever
      * {@code GROUPS} is repopulated (data-pack reload). Negative results are
      * cached as {@link Optional#empty()}.
@@ -95,6 +105,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         synchronized (OVERRIDES) {
             OVERRIDES.clear();
         }
+        SCANNED_BUILDING_TYPES.clear();
         THEME = Theme.DEFAULT;
         BuildingSpiritIndex.clear();
         EnclosureTypeIndex.clear();
@@ -130,15 +141,20 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         Map<String, Integer> priorityByType = new HashMap<>();
         Map<String, BuildingSpawnPolicy> spawnPolicies = new HashMap<>();
         Map<String, List<ResourceLocation>> workersByType = new HashMap<>();
+        Map<String, Set<ResourceLocation>> storageRolesByType = new HashMap<>();
+        Map<String, Set<String>> recipeNamespacesByType = new HashMap<>();
         Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies = new HashMap<>();
         Map<String, Set<String>> dialogueTopicsByType = new HashMap<>();
         scanLegacyBuildingTypes(resourceManager, blocksByType, priorityByType);
         scanSpiritCompanions(resourceManager);
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
         scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies, workersByType,
-                enclosurePolicies, dialogueTopicsByType);
+                storageRolesByType, recipeNamespacesByType, enclosurePolicies, dialogueTopicsByType);
         BuildingSpawnPolicies.replaceAll(spawnPolicies);
         com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex.replaceAll(workersByType);
+        com.aetherianartificer.townstead.storage.BuildingStorageRoles.replaceAll(storageRolesByType);
+        com.aetherianartificer.townstead.work.order.BuildingRecipeScopes
+                .replaceAll(recipeNamespacesByType);
         BuildingEnclosurePolicies.replaceAll(enclosurePolicies);
         com.aetherianartificer.townstead.work.feedback.BuildingDialogueTopics
                 .replaceAll(dialogueTopicsByType);
@@ -288,6 +304,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
                 JsonObject json = GSON.fromJson(reader, JsonObject.class);
                 if (json == null) continue;
+                SCANNED_BUILDING_TYPES.put(buildingType, new BuildingType(buildingType, json));
                 int iconU = GsonHelper.getAsInt(json, "iconU", 0);
                 int iconV = GsonHelper.getAsInt(json, "iconV", 0);
                 if (GsonHelper.getAsBoolean(json, "icon", false) || iconU != 0 || iconV != 0) {
@@ -431,6 +448,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
             Map<String, Map<String, Integer>> blocksByType, Map<String, Integer> priorityByType,
             Map<String, BuildingSpawnPolicy> spawnPolicies,
             Map<String, List<ResourceLocation>> workersByType,
+            Map<String, Set<ResourceLocation>> storageRolesByType,
+            Map<String, Set<String>> recipeNamespacesByType,
             Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies,
             Map<String, Set<String>> dialogueTopicsByType) {
         Map<ResourceLocation, Resource> resources = resourceManager.listResources("extended_buildings",
@@ -480,26 +499,25 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     }
                     workersByType.put(buildingType, List.copyOf(workers));
                 }
-                if (json.has("dialogue")) {
-                    if (!json.get("dialogue").isJsonObject()) {
-                        throw new IllegalArgumentException("'dialogue' must be an object");
+                if (json.has("storage_roles")) {
+                    storageRolesByType.put(buildingType, readStringSet(
+                            json, "storage_roles", "resource ids", CatalogDataLoader::parseStorageRole));
+                }
+                if (json.has("orders")) {
+                    JsonObject orders = requireObject(json, "orders");
+                    if (orders.has("recipe_namespaces")) {
+                        recipeNamespacesByType.put(buildingType, readStringSet(
+                                orders, "recipe_namespaces", "orders.recipe_namespaces", "strings",
+                                CatalogDataLoader::parseRecipeNamespace));
                     }
-                    JsonObject dialogue = json.getAsJsonObject("dialogue");
+                }
+                if (json.has("dialogue")) {
+                    JsonObject dialogue = requireObject(json, "dialogue");
                     if (dialogue.has("topics")) {
-                        if (!dialogue.get("topics").isJsonArray()) {
-                            throw new IllegalArgumentException("'dialogue.topics' must be an array");
-                        }
-                        Set<String> topics = new java.util.LinkedHashSet<>();
-                        for (JsonElement element : dialogue.getAsJsonArray("topics")) {
-                            if (!element.isJsonPrimitive()
-                                    || !element.getAsJsonPrimitive().isString()
-                                    || element.getAsString().isBlank()) {
-                                throw new IllegalArgumentException(
-                                        "'dialogue.topics' entries must be non-empty strings");
-                            }
-                            topics.add(element.getAsString());
-                        }
-                        if (!topics.isEmpty()) dialogueTopicsByType.put(buildingType, Set.copyOf(topics));
+                        Set<String> topics = readStringSet(
+                                dialogue, "topics", "dialogue.topics", "non-empty strings",
+                                CatalogDataLoader::requireNonBlankTopic);
+                        if (!topics.isEmpty()) dialogueTopicsByType.put(buildingType, topics);
                     }
                 }
                 if (json.has("enclosure")) {
@@ -526,6 +544,59 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 LOGGER.warn("Rejected extended_buildings entry '{}': {}", location, ex.getMessage());
             }
         }
+    }
+
+    private static JsonObject requireObject(JsonObject parent, String key) {
+        JsonElement value = parent.get(key);
+        if (!value.isJsonObject()) {
+            throw new IllegalArgumentException("'" + key + "' must be an object");
+        }
+        return value.getAsJsonObject();
+    }
+
+    private static ResourceLocation parseStorageRole(String value) {
+        ResourceLocation role = ResourceLocation.tryParse(value);
+        if (role == null) {
+            throw new IllegalArgumentException("Invalid storage role '" + value + "'");
+        }
+        return role;
+    }
+
+    private static String parseRecipeNamespace(String value) {
+        String namespace = value.trim();
+        if (!namespace.matches("[a-z0-9_.-]+")) {
+            throw new IllegalArgumentException("Invalid recipe namespace '" + namespace + "'");
+        }
+        return namespace;
+    }
+
+    private static String requireNonBlankTopic(String value) {
+        if (value.isBlank()) {
+            throw new IllegalArgumentException("'dialogue.topics' entries must be non-empty strings");
+        }
+        return value;
+    }
+
+    private static <T> Set<T> readStringSet(JsonObject parent, String key, String entryType,
+            Function<String, T> parser) {
+        return readStringSet(parent, key, key, entryType, parser);
+    }
+
+    private static <T> Set<T> readStringSet(JsonObject parent, String key, String path, String entryType,
+            Function<String, T> parser) {
+        JsonElement value = parent.get(key);
+        if (!value.isJsonArray()) {
+            throw new IllegalArgumentException("'" + path + "' must be an array");
+        }
+
+        Set<T> result = new LinkedHashSet<>();
+        for (JsonElement element : value.getAsJsonArray()) {
+            if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+                throw new IllegalArgumentException("'" + path + "' entries must be " + entryType);
+            }
+            result.add(parser.apply(element.getAsString()));
+        }
+        return Set.copyOf(result);
     }
 
     /**
@@ -567,6 +638,11 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         synchronized (OVERRIDES) {
             return new LinkedHashMap<>(OVERRIDES);
         }
+    }
+
+    /** Data-scanned building definitions missing from MCA's current client mirror. */
+    public static Map<String, BuildingType> scannedBuildingTypes() {
+        return Map.copyOf(SCANNED_BUILDING_TYPES);
     }
 
     /** The datapack-provided theme, before any client resource-pack theme is merged in. */

@@ -4,6 +4,7 @@
     { "type": "townstead:job_block", "block": "minecraft:cartography_table" },
     { "type": "townstead:building", "type_prefix": "cartographer" }
   ],
+  "storage": { "preferred_roles": ["townstead:documents"] },
   "tasks": [
     {
       "type": "townstead_work:craft",

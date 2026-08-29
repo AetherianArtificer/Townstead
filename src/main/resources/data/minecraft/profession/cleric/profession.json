@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Cleric"
+  },
+  "icon": "minecraft:brewing_stand",
+  "work_sound": "minecraft:entity.villager.work_cleric",
+  "description": {
+    "text": "Brew remedies and other potions while building a history of clerical practice."
+  },
+  "unlock_model": "experiential"
+}

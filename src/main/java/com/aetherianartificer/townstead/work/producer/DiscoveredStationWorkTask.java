@@ -58,6 +58,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * The producer engine for trades whose recipes are DISCOVERED — read out of installed mods'
@@ -321,7 +322,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 .viableRecipes(level, villager, stationType, stationAnchor, worksiteBoundsLocal,
                         recipeCooldownUntil,
                         ProducerWorkSupport.excludeBeverages(spec.role(), level, villager),
-                        ProducerWorkSupport.beveragesOnly(spec.role()),
+                        ProducerWorkSupport.restrictToBeverages(spec.role()),
                         taskTypes)
                 .stream()
                 .map(com.aetherianartificer.townstead.work.recipe.RecipeSelector.ScoredRecipe::recipe)
@@ -364,13 +365,45 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     }
 
     @Override
+    protected @Nullable WorkIngredients.PhysicalPull nextPhysicalPull(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (activeRecipe == null || stationAnchor == null) return null;
+        Set<Long> bounds = activeWorksiteBounds(level, villager);
+        DiscoveredRecipe recipe = fdRecipe();
+        WorkIngredients.PhysicalPull pull = WorkIngredients.nextPhysicalRecipePull(
+                level, villager, recipe, stationAnchor, bounds, activeBatchOperations());
+        if (pull != null) return pull;
+        var def = com.aetherianartificer.townstead.work.station.StationProtocols
+                .defAt(level, stationAnchor);
+        if (def == null || def.harvestTools().isEmpty()
+                || com.aetherianartificer.townstead.work.station.StationProtocols
+                .hasHarvestTool(villager, def)) return null;
+        Predicate<ItemStack> matcher = stack -> !stack.isEmpty()
+                && def.harvestTools().contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+        return WorkIngredients.nextPhysicalPull(level, villager, matcher, 1, true,
+                "harvest tool", bounds);
+    }
+
+    @Override
+    protected Set<Long> transferWorksiteBounds(ServerLevel level, VillagerEntityMCA villager) {
+        return activeWorksiteBounds(level, villager);
+    }
+
+    @Override
+    protected boolean isCycleOutput(ServerLevel level, ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        return id != null && WorkRecipeRegistry.allOutputIds(level).contains(id);
+    }
+
+    @Override
     protected GatherResult gatherInputs(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (activeRecipe == null || stationAnchor == null || stationType == null) return GatherResult.fail(null);
         DiscoveredRecipe recipe = fdRecipe();
         Set<Long> worksiteBoundsLocal = activeWorksiteBounds(level, villager);
         WorkIngredients.PullResult pullResult = WorkIngredients.pullAndConsumeDetailed(
                 level, villager, recipe, stationAnchor, stationType, stagedInputs,
-                worksiteBoundsLocal, activeBatchOperations());
+                worksiteBoundsLocal, activeBatchOperations(), false);
         if (!pullResult.success()) {
             String recipeName = townstead$itemDisplayName(level, recipe.output());
             String missing = WorkIngredients.describeMissingRequirements(level, villager, recipe, stationAnchor, worksiteBoundsLocal);
@@ -520,7 +553,12 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                     level, villager, stationAnchor, fdRecipe(), worksiteBoundsLocal);
             // Harvest throws the product into the world (the peel lift); sweep it up.
             collected |= ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, worksiteBoundsLocal, outputIds);
+            boolean carriedOutput = countInventoryItem(villager.getInventory(), fdRecipe().output())
+                    >= Math.max(1, fdRecipe().outputCount());
             if (harvested || collected || sweptAndDrained) {
+                if (!collected && !carriedOutput && !sweptAndDrained) {
+                    return CollectResult.waiting(false);
+                }
                 rememberAppraisal(villager);
                 return CollectResult.ofCollected();
             }
@@ -650,18 +688,12 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
             Set<Long> worksiteBoundsLocal = activeWorksiteBounds(level, villager);
             List<ItemStack> drops = com.aetherianartificer.townstead.work.station.StationDropOutputs.collectWithinWorksite(
                     level, stationAnchor, outputIds, worksiteBoundsLocal);
-            if (!drops.isEmpty()) sweptProducedOutput = true;
+            boolean carriedAll = !drops.isEmpty();
             for (ItemStack drop : drops) {
-                WorkIngredients.storeOutputInWorksiteStorage(level, villager, drop, stationAnchor, worksiteBoundsLocal);
-                if (!drop.isEmpty()) {
-                    ItemStack remainder = villager.getInventory().addItem(drop);
-                    if (!remainder.isEmpty()) {
-                        ItemEntity entity = new ItemEntity(level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder);
-                        entity.setPickUpDelay(0);
-                        level.addFreshEntity(entity);
-                    }
-                }
+                carriedAll &= ProducerOutputHelper.storeOutput(
+                        level, villager, drop, stationAnchor, worksiteBoundsLocal);
             }
+            if (carriedAll) sweptProducedOutput = true;
         }
     }
 
@@ -766,11 +798,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         List<ItemStack> drops = com.aetherianartificer.townstead.work.station.StationDropOutputs
                 .collectWithinWorksite(level, stationAnchor, recoverable, bounds);
         for (ItemStack drop : drops) {
-            WorkIngredients.storeOutputInWorksiteStorage(level, villager, drop, stationAnchor, bounds);
-            if (!drop.isEmpty()) {
-                ItemStack remainder = villager.getInventory().addItem(drop);
-                if (!remainder.isEmpty()) villager.spawnAtLocation(remainder);
-            }
+            ProducerOutputHelper.storeOutput(level, villager, drop, stationAnchor, bounds);
         }
     }
 
@@ -950,6 +978,18 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     /** Typed downcast — base stores {@code activeRecipe} as {@link ProducerRecipe}. */
     private @Nullable DiscoveredRecipe fdRecipe() {
         return (DiscoveredRecipe) activeRecipe;
+    }
+
+    private static int countInventoryItem(SimpleContainer inventory, ResourceLocation itemId) {
+        int count = 0;
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (!stack.isEmpty()
+                    && itemId.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+                count += stack.getCount();
+            }
+        }
+        return count;
     }
 
     /**

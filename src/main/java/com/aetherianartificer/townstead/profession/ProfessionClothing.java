@@ -42,7 +42,8 @@ public final class ProfessionClothing {
         if (def == null) return;
 
         Collection<Clothing> catalogue = catalogue();
-        if (def.clothing().isEmpty()) {
+        List<ClothingChoice> choices = choicesFor(villager, def);
+        if (choices.isEmpty()) {
             // A direct MCA wardrobe is already specialized and MCA just selected from it. Only
             // undo MCA's generic civilian fallback when the custom Profession has no wardrobe.
             if (compatible(catalogue, villager, professionId).isEmpty()) {
@@ -51,7 +52,7 @@ public final class ProfessionClothing {
             return;
         }
 
-        for (ClothingChoice choice : def.clothing()) {
+        for (ClothingChoice choice : choices) {
             List<Clothing> options = compatible(catalogue, villager, choice.id());
             if (options.isEmpty()) continue;
             Optional<String> selected = SkinSelection.pickWeightedId(options);
@@ -66,6 +67,33 @@ public final class ProfessionClothing {
     static Collection<Clothing> catalogue() {
         ClothingList list = ClothingList.getInstance();
         return list == null ? List.of() : list.clothing.values();
+    }
+
+    /** Path workwear takes precedence over root workwear once the villager enters that path. */
+    public static List<ClothingChoice> choicesFor(VillagerEntityMCA villager, ProfessionDef def) {
+        if (villager != null && def != null) {
+            var path = ProfessionIdentity.path(villager, def.id());
+            if (path != null && !path.clothing().isEmpty()) return path.clothing();
+        }
+        return def == null ? List.of() : def.clothing();
+    }
+
+    /** Re-evaluate workwear after a path choice changes without pretending the profession changed. */
+    public static void afterPathChange(VillagerEntityMCA villager) {
+        if (villager == null || villager.level().isClientSide || villager.isClothingLocked()) return;
+        ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION
+                .getKey(villager.getVillagerData().getProfession());
+        ProfessionDef def = professionId == null ? null : ProfessionDefs.all().get(professionId);
+        if (def == null) return;
+        List<ClothingChoice> choices = choicesFor(villager, def);
+        for (ClothingChoice choice : choices) {
+            Optional<String> selected = SkinSelection.pickWeightedId(
+                    compatible(catalogue(), villager, choice.id()));
+            if (selected.isPresent()) {
+                villager.setClothes(selected.get());
+                return;
+            }
+        }
     }
 
     static List<Clothing> compatible(Collection<Clothing> catalogue,
@@ -119,9 +147,10 @@ public final class ProfessionClothing {
         ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION
                 .getKey(villager.getVillagerData().getProfession());
         ProfessionDef def = professionId == null ? null : ProfessionDefs.all().get(professionId);
-        if (def == null || def.clothing().isEmpty()) return ClothingChoice.HairPolicy.NORMAL;
+        List<ClothingChoice> choices = choicesFor(villager, def);
+        if (choices.isEmpty()) return ClothingChoice.HairPolicy.NORMAL;
         return hairPolicy(catalogue(), villager.getGenetics().getGender(),
-                def.clothing(), villager.getClothes());
+                choices, villager.getClothes());
     }
 
     static ClothingChoice.HairPolicy hairPolicy(Collection<Clothing> catalogue,

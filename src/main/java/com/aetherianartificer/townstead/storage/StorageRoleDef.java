@@ -46,12 +46,27 @@ public record StorageRoleDef(
     public enum Role {
         /** A shelf: villagers may read from it and deposit into it. */
         STORAGE,
+        /** Ingredients and consumable supplies. Preferred over an unlabelled shelf. */
+        INPUTS,
+        /** Completed products. Workers deposit here, but never treat its contents as ingredients. */
+        OUTPUTS,
+        /** Reusable work implements. */
+        TOOLS,
+        /** Emergency ingredients/tools, consulted only after ordinary stores. */
+        RESERVES,
+        /** Private belongings, deliberately outside profession automation. */
+        PERSONAL,
         /** A machine, or simply off limits. */
         NOT_STORAGE;
 
         static @Nullable Role parse(String raw) {
             return switch (raw.toLowerCase(Locale.ROOT)) {
                 case "storage" -> STORAGE;
+                case "input", "inputs" -> INPUTS;
+                case "output", "outputs", "finished_goods" -> OUTPUTS;
+                case "tool", "tools" -> TOOLS;
+                case "reserve", "reserves" -> RESERVES;
+                case "personal", "personal_storage" -> PERSONAL;
                 case "not_storage" -> NOT_STORAGE;
                 default -> null;
             };

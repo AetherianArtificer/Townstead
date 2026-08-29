@@ -13,7 +13,8 @@ import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Binds a worksite to an MCA room, so a kitchen or a smithy is found by the building it occupies.
+ * Binds a worksite to an MCA building, so a kitchen, smithy, or registered open-air workplace is
+ * found by the place it occupies.
  *
  * <p>Building ids are stable across rescans — MCA reconciles rooms rather than regenerating them,
  * keeps the existing id, and only ever increments its counter — and they are unique per world, since
@@ -45,9 +46,9 @@ public final class McaRoomBinding implements WorksiteBindings.Binding {
     }
 
     /**
-     * A room outranks a block. A station standing inside a recognised building belongs to that
+     * A building outranks a block. A station standing inside a recognised building belongs to that
      * building, so a kitchen with three appliances is one place with one order list rather than
-     * three — and the villager and the player's board resolve to the same record.
+     * three.
      */
     @Override
     public int priority() {
@@ -118,6 +119,6 @@ public final class McaRoomBinding implements WorksiteBindings.Binding {
 
     @Nullable
     private static Building buildingAt(ServerLevel level, BlockPos pos) {
-        return McaBuildingCompat.functionalRoomAt(level, pos);
+        return McaBuildingCompat.buildingAt(level, pos);
     }
 }

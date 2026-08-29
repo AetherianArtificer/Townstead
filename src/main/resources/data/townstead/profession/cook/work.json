@@ -6,6 +6,12 @@
       "type": "townstead:building",
       "type_prefix": "compat/farmersdelight/kitchen_l",
       "slots_per_tier": [1, 1, 2, 2, 3]
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/pizzadelight/pizzeria_l",
+      "slots_per_tier": [1, 2, 3],
+      "path_affinity": ["pizzaiolo"]
     }
   ],
   "tasks": [
@@ -20,6 +26,7 @@
         "kaleidoscope_cookery:stockpot",
         "kaleidoscope_cookery:steamer",
         "pizzadelight:basin",
+        "pizzadelight:pizza_station",
         "pizzadelight:raw_pizza",
         "pizzadelight:pizza"
       ],
@@ -62,9 +69,9 @@
   "path_worksites": {
     "pizzaiolo": [
       "pizzadelight:basin",
+      "pizzadelight:pizza_station",
       "pizzadelight:raw_pizza",
-      "pizzadelight:pizza",
-      "farmersdelight:stove"
+      "pizzadelight:pizza"
     ]
   }
 }

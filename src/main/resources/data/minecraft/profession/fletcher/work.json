@@ -4,6 +4,7 @@
     { "type": "townstead:job_block", "block": "minecraft:fletching_table" },
     { "type": "townstead:building", "type_prefix": "fletcher" }
   ],
+  "storage": { "preferred_roles": ["townstead:equipment"] },
   "tasks": [
     {
       "type": "townstead_work:craft",

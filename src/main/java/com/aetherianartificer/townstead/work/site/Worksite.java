@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.work.site;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -168,6 +169,71 @@ public final class Worksite {
     /** Selects one animal; null restores automatic selection. */
     public void setDriver(@Nullable UUID value) {
         driver = value;
+    }
+
+    // ── Room ownership ──
+    //
+    // Ownership is place state, not villager residency. MCA continues to own HOME; this list only
+    // records the people a player explicitly selected on the room's ownership tag.
+
+    @Nullable
+    private net.minecraft.core.BlockPos ownershipTag;
+    private com.aetherianartificer.townstead.storage.OwnershipScope ownershipScope =
+            com.aetherianartificer.townstead.storage.OwnershipScope.ROOM;
+    private boolean ownershipPrivate;
+    private List<com.aetherianartificer.townstead.storage.RoomOwner> owners = List.of();
+
+    /** The physical deed governing this place, or null when no local policy is written here. */
+    @Nullable
+    public net.minecraft.core.BlockPos ownershipTag() {
+        return ownershipTag;
+    }
+
+    public List<com.aetherianartificer.townstead.storage.RoomOwner> owners() {
+        return owners;
+    }
+
+    /** Whether this deed limits storage use to residents and the explicitly named people. */
+    public boolean ownershipPrivate() {
+        return ownershipPrivate;
+    }
+
+    public com.aetherianartificer.townstead.storage.OwnershipScope ownershipScope() {
+        return ownershipScope;
+    }
+
+    /**
+     * Selects explicit owners using the legacy rule where at least one named person means private.
+     * Kept for callers and old tests which predate the separate open/private state.
+     */
+    public void setOwnership(@Nullable net.minecraft.core.BlockPos tag,
+                             List<com.aetherianartificer.townstead.storage.RoomOwner> selected) {
+        setOwnership(tag, com.aetherianartificer.townstead.storage.OwnershipScope.ROOM, selected);
+    }
+
+    public void setOwnership(@Nullable net.minecraft.core.BlockPos tag,
+                             com.aetherianartificer.townstead.storage.OwnershipScope scope,
+                             List<com.aetherianartificer.townstead.storage.RoomOwner> selected) {
+        setOwnership(tag, scope, selected != null && !selected.isEmpty(), selected);
+    }
+
+    public void setOwnership(@Nullable net.minecraft.core.BlockPos tag,
+                             com.aetherianartificer.townstead.storage.OwnershipScope scope,
+                             boolean privateAccess,
+                             List<com.aetherianartificer.townstead.storage.RoomOwner> selected) {
+        ownershipTag = tag == null ? null : net.minecraft.core.BlockPos.of(tag.asLong());
+        ownershipScope = scope == null
+                ? com.aetherianartificer.townstead.storage.OwnershipScope.ROOM : scope;
+        ownershipPrivate = ownershipTag != null && privateAccess;
+        owners = selected == null ? List.of() : List.copyOf(selected);
+    }
+
+    /** Removing the tag makes the room public without affecting MCA HOME or village residency. */
+    public void clearOwnership() {
+        ownershipTag = null;
+        ownershipScope = com.aetherianartificer.townstead.storage.OwnershipScope.ROOM;
+        ownershipPrivate = false;
+        owners = List.of();
     }
 
     // ── Extent ──

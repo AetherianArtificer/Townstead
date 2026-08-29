@@ -198,7 +198,7 @@ public final class ProfessionScanner {
         com.aetherianartificer.townstead.profession.def.ProfessionDef def =
                 com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(
                         net.minecraft.resources.ResourceLocation.tryParse(professionId));
-        // One def-driven answer for every trade with building sites. The cook and barista used
+        // One def-driven answer for every trade with building sites. Cooking and beverage work used
         // to have branches here holding a slot ladder and an occupancy rule; both are data now
         // (slots_per_tier on the def) and the occupancy rule was already generic — employed()
         // counts by shared work task, which is what made a Baker fill a kitchen seat.
@@ -220,7 +220,6 @@ public final class ProfessionScanner {
      */
     private static boolean isTradeUnavailable(String professionId) {
         if ("townstead:cook".equals(professionId)) return !ModCompat.hasKitchenProvider();
-        if ("townstead:barista".equals(professionId)) return !ModCompat.isLoaded("rusticdelight");
         return false;
     }
 

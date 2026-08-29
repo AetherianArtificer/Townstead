@@ -31,10 +31,8 @@ public final class VillagerServerTickDispatcher {
     }
 
     private static void tickUnprofiled(VillagerEntityMCA villager, long gameTime) {
-        CookAutoAssignTicker.tick(villager);
-        BaristaAutoAssignTicker.tick(villager);
-        CookTradeBackfillTicker.tick(villager);
-        BaristaTradeBackfillTicker.tick(villager);
+        ProfessionAutoAssignTicker.tick(villager);
+        ProfessionTradeBackfillTicker.tick(villager);
         HungerVillagerTicker.tick(villager);
         if (ThirstBridgeResolver.isActive()) ThirstVillagerTicker.tick(villager);
         FatigueVillagerTicker.tick(villager);
@@ -59,10 +57,8 @@ public final class VillagerServerTickDispatcher {
 
     private static void tickProfiled(VillagerEntityMCA villager, long gameTime) {
 
-        profile("villager.cook_auto_assign", () -> CookAutoAssignTicker.tick(villager));
-        profile("villager.barista_auto_assign", () -> BaristaAutoAssignTicker.tick(villager));
-        profile("villager.cook_trade_backfill", () -> CookTradeBackfillTicker.tick(villager));
-        profile("villager.barista_trade_backfill", () -> BaristaTradeBackfillTicker.tick(villager));
+        profile("villager.profession_auto_assign", () -> ProfessionAutoAssignTicker.tick(villager));
+        profile("villager.profession_trade_backfill", () -> ProfessionTradeBackfillTicker.tick(villager));
         profile("villager.hunger", () -> HungerVillagerTicker.tick(villager));
         if (ThirstBridgeResolver.isActive()) {
             profile("villager.thirst", () -> ThirstVillagerTicker.tick(villager));

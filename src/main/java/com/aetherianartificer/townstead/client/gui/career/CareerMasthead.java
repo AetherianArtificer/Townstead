@@ -227,18 +227,12 @@ final class CareerMasthead {
     /** The evidence bar's top edge. The one line everything on the band's second row agrees on. */
     private int barY(int y) { return y + ROW_2 + (font.lineHeight - BAR_H) / 2; }
 
-    /** Unspent points, glowing only while you actually have something to spend. */
+    /** Unspent points */
     private void drawPointsToken(GuiGraphics g, CareerGraphS2CPayload.Node career, int x, int y,
                                  int w) {
         int points = career == null ? 0 : career.points();
         boolean spendable = career != null
                 && career.state() == CareerGraphS2CPayload.STATE_ACQUIRED && points > 0;
-        if (spendable) {
-            float pulse = Accessibility.isReduceMotion() ? 0.5f
-                    : 0.5f + 0.5f * Mth.sin((Util.getMillis() % 120000L) / 700f);
-            NodeArt.drawBead(g, x + w / 2, y + TOKEN_H / 2, 16,
-                    Palette.fade(Palette.BRASS, 0.14f + pulse * 0.12f));
-        }
         g.fill(x, y, x + w, y + TOKEN_H, 0xFF2E1F0C);
         Palette.drawOutline(g, x, y, x + w, y + TOKEN_H, spendable ? 0xFF8A6A30 : 0xFF4A3218);
         // Bead and numeral share one centre line, and the numeral is centred in the room LEFT OVER

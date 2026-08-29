@@ -223,6 +223,19 @@ public class Townstead {
     public static final Supplier<Item> ORDER_SHEET_ITEM = ITEMS.register("order_sheet",
             () -> new BlockItem(ORDER_SHEET.get(), new Item.Properties()));
 
+    // ── Ownership Deed (who may use one MCA room or structure) ──
+
+    public static final Supplier<Block> ROOM_OWNERSHIP_TAG = BLOCKS.register("room_ownership_tag",
+            () -> new com.aetherianartificer.townstead.block.RoomOwnershipTagBlock(
+                    BlockBehaviour.Properties.of()
+                            .strength(0.5f)
+                            .sound(SoundType.WOOD)
+                            .noCollission()
+                            .noOcclusion()));
+
+    public static final Supplier<Item> ROOM_OWNERSHIP_TAG_ITEM = ITEMS.register("room_ownership_tag",
+            () -> new BlockItem(ROOM_OWNERSHIP_TAG.get(), new Item.Properties()));
+
     private static final String[] FIELD_POST_WOOD_VARIANTS = {
             "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove",
             "cherry", "bamboo", "crimson", "warped"
@@ -325,6 +338,7 @@ public class Townstead {
                             .displayItems((params, output) -> {
                                 output.accept(FIELD_POST_ITEM.get());
                                 output.accept(ORDER_SHEET_ITEM.get());
+                                output.accept(ROOM_OWNERSHIP_TAG_ITEM.get());
                                 for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
                                     output.accept(variant.get());
                                 }
@@ -624,6 +638,10 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.PowersDiagnosticCommand.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.RoomOwnershipPreviewCommand.register(
+                                e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.GlideDiagnosticCommand.register(e.getDispatcher()));
@@ -1023,6 +1041,10 @@ public class Townstead {
                         com.aetherianartificer.townstead.commands.PowersDiagnosticCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.RoomOwnershipPreviewCommand.register(
+                                e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.GlideDiagnosticCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
@@ -1235,14 +1257,24 @@ public class Townstead {
             com.aetherianartificer.townstead.compat.brewinandchewin.BrewinFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaPotAdapter.bootstrap();
-            com.aetherianartificer.townstead.work.order.CookOrderCatalog.bootstrap();
-            com.aetherianartificer.townstead.work.order.BaristaOrderCatalog.bootstrap();
+            com.aetherianartificer.townstead.work.order.RecipeOrderCatalog.bootstrap();
             com.aetherianartificer.townstead.work.WorkActivities.bootstrap();
             com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.bootstrap();
             com.aetherianartificer.townstead.work.order.ActivityCatalog.bootstrap();
+            com.aetherianartificer.townstead.work.order.BlockInteractionOrderCatalog.bootstrap();
             // After the trade-specific catalogues so their richer entries win the output dedup.
             com.aetherianartificer.townstead.work.order.StationProduceCatalog.bootstrap();
             com.aetherianartificer.townstead.compat.pizzadelight.PizzaDelightCompat.bootstrap();
+            // Building-level Path affinity is independent of any particular kitchen provider:
+            // a Profession's own building declaration relates the assigned room to its Path.
+            com.aetherianartificer.townstead.profession.career.PathAffinity
+                    .registerWorksitePathProbe((entity, professionId, pathId) -> entity
+                            instanceof net.conczin.mca.entity.VillagerEntityMCA villager
+                            && entity.level() instanceof net.minecraft.server.level.ServerLevel server
+                            && com.aetherianartificer.townstead.profession.ProfessionSites
+                                    .worksiteHasPathAffinity(server, villager,
+                                            com.aetherianartificer.townstead.profession.def
+                                                    .ProfessionDefs.byId(professionId), pathId));
             if (ModCompat.hasKitchenProvider()) {
                 // Specialization paths read worksite contents through the cook-assignment model.
                 com.aetherianartificer.townstead.profession.career.PathAffinity.registerWorksiteProbe(
@@ -2508,6 +2540,16 @@ public class Townstead {
                 com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.STREAM_CODEC,
                 this::handleOrdersSnapshot
         );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.storage.net.RoomOwnershipSnapshotS2CPayload.TYPE,
+                com.aetherianartificer.townstead.storage.net.RoomOwnershipSnapshotS2CPayload.STREAM_CODEC,
+                this::handleRoomOwnershipSnapshot
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.storage.net.RoomOwnershipSetC2SPayload.TYPE,
+                com.aetherianartificer.townstead.storage.net.RoomOwnershipSetC2SPayload.STREAM_CODEC,
+                this::handleRoomOwnershipSet
+        );
         registrar.playToServer(
                 com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload.TYPE,
                 com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload.STREAM_CODEC,
@@ -3297,7 +3339,8 @@ public class Townstead {
                 payload.farmerXpToNext(),
                 payload.cookTier(),
                 payload.cookXp(),
-                payload.cookXpToNext()
+                payload.cookXpToNext(),
+                payload.careerTier()
         ));
     }
 
@@ -3358,6 +3401,24 @@ public class Townstead {
                                       IPayloadContext context) {
         context.enqueueWork(() ->
                 com.aetherianartificer.townstead.client.gui.orders.OrdersScreen.openOrUpdate(payload));
+    }
+
+    private void handleRoomOwnershipSnapshot(
+            com.aetherianartificer.townstead.storage.net.RoomOwnershipSnapshotS2CPayload payload,
+            IPayloadContext context) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.client.gui.storage.RoomOwnershipScreenOpener
+                        .open(payload));
+    }
+
+    private void handleRoomOwnershipSet(
+            com.aetherianartificer.townstead.storage.net.RoomOwnershipSetC2SPayload payload,
+            IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                com.aetherianartificer.townstead.storage.RoomOwnershipService.apply(player, payload);
+            }
+        });
     }
 
     private void handleOrderEdit(com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload payload, IPayloadContext context) {
@@ -4263,6 +4324,15 @@ public class Townstead {
 
     public static HungerSyncPayload townstead$hungerSync(VillagerEntityMCA villager, CompoundTag hunger) {
         TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
+        net.minecraft.resources.ResourceLocation currentCareer =
+                net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION
+                        .getKey(villager.getVillagerData().getProfession());
+        currentCareer = com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                .canonicalId(currentCareer);
+        int currentCareerTier = currentCareer == null
+                || com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(currentCareer) == null
+                ? 0
+                : ProfessionProgress.getTier(mem, currentCareer);
         return new HungerSyncPayload(
                 villager.getId(),
                 HungerData.getHunger(hunger),
@@ -4271,7 +4341,8 @@ public class Townstead {
                 ProfessionProgress.getXpToNextTier(mem, com.aetherianartificer.townstead.profession.career.Careers.FARMER),
                 ProfessionProgress.getTier(mem, com.aetherianartificer.townstead.profession.career.Careers.COOK),
                 ProfessionProgress.getXp(mem, com.aetherianartificer.townstead.profession.career.Careers.COOK),
-                ProfessionProgress.getXpToNextTier(mem, com.aetherianartificer.townstead.profession.career.Careers.COOK)
+                ProfessionProgress.getXpToNextTier(mem, com.aetherianartificer.townstead.profession.career.Careers.COOK),
+                currentCareerTier
         );
     }
 

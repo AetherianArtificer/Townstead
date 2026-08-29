@@ -50,6 +50,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     @Nullable private Sheep target;
+    @Nullable private BlockPos orderAnchor;
     private Phase phase = Phase.PATH;
     private long startedTick;
     private long lastPathTick;
@@ -71,7 +72,10 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
         // If the villager has no room for more wool, yield to ShepherdDepositTask
         // so they walk to the Wool Shed and unload before continuing.
         if (!ShepherdInventory.hasRoomForWool(villager)) return false;
-        return ShepherdPenScanner.pickShearable(level, villager) != null;
+        ShepherdPenScanner.Pick pick = ShepherdPenScanner.pickShearable(level, villager);
+        if (pick == null) return false;
+        BlockPos anchor = orderAnchor(level, villager);
+        return anchor == null || orderAllowsShearing(level, villager, anchor);
     }
 
     @Override
@@ -79,6 +83,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
         ShepherdPenScanner.Pick pick = ShepherdPenScanner.pickShearable(level, villager);
         if (pick == null) return;
         target = pick.sheep();
+        orderAnchor = orderAnchor(level, villager);
         phase = Phase.PATH;
         startedTick = gameTime;
         lastPathTick = gameTime;
@@ -92,6 +97,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
         if (gameTime - startedTick > MAX_DURATION) return false;
         if (target == null || !target.isAlive()) return false;
         if (!ShepherdPenScanner.isShearable(target)) return false;
+        if (orderAnchor != null && !orderAllowsShearing(level, villager, orderAnchor)) return false;
         if (phase == Phase.PATH && gameTime - lastPathTick > PATH_TIMEOUT_TICKS) return false;
         return true;
     }
@@ -128,6 +134,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         target = null;
+        orderAnchor = null;
         phase = Phase.PATH;
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
         restorePreWorkHand(villager);
@@ -187,6 +194,39 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
     private static void setWalkTarget(VillagerEntityMCA villager, BlockPos pos) {
         villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET,
                 new WalkTarget(Vec3.atBottomCenterOf(pos), WALK_SPEED, 1));
+    }
+
+    /**
+     * The Wool Shed is the shepherd's existing control/worksite surface; Pens remain spatial
+     * flock definitions. With no shed, legacy Pen work remains autonomous because there is no
+     * Order Sheet to consult.
+     */
+    @Nullable
+    private static BlockPos orderAnchor(ServerLevel level, VillagerEntityMCA villager) {
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (net.conczin.mca.server.world.data.Building shed
+                : ShepherdPenScanner.woolSheds(level, villager)) {
+            BlockPos center = shed.getCenter();
+            if (center == null) center = shed.getPos0();
+            if (center == null) continue;
+            double distance = villager.distanceToSqr(
+                    center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = center;
+            }
+        }
+        return best;
+    }
+
+    private static boolean orderAllowsShearing(ServerLevel level,
+                                                VillagerEntityMCA villager,
+                                                BlockPos anchor) {
+        return com.aetherianartificer.townstead.work.order.WorksiteOrders.allows(
+                        level, anchor, WorkTaskTypes.SHEAR)
+                && !com.aetherianartificer.townstead.work.order.WorksiteOrders.outranked(
+                        level, villager, anchor, WorkTaskTypes.SHEAR);
     }
 
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {

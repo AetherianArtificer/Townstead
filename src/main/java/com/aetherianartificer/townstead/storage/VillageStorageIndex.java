@@ -95,6 +95,8 @@ public final class VillageStorageIndex {
                 BlockEntity be = observed.blockEntity();
                 if (be == null) continue;
                 if (NearbyItemSources.isProcessingContainer(observed.state(), be)) continue;
+                // Private-room contents are personal property, not village communal stock.
+                if (RoomOwnershipAccess.isPrivate(level, observed.pos())) continue;
 
                 List<SlotView> slots = new ArrayList<>();
                 if (be instanceof Container container) {
@@ -105,13 +107,15 @@ public final class VillageStorageIndex {
                     }
                 }
 
-                searchContext.forEachUniqueItemHandler(observed.pos(), (side, handler) -> {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.getStackInSlot(i);
-                        if (stack.isEmpty()) continue;
-                        slots.add(new SlotView(observed.pos(), null, true, i, side, stack.copy()));
-                    }
-                });
+                if (StorageInventoryPolicy.useItemHandlerView(be)) {
+                    searchContext.forEachUniqueItemHandler(observed.pos(), (side, handler) -> {
+                        for (int i = 0; i < handler.getSlots(); i++) {
+                            ItemStack stack = handler.getStackInSlot(i);
+                            if (stack.isEmpty()) continue;
+                            slots.add(new SlotView(observed.pos(), null, true, i, side, stack.copy()));
+                        }
+                    });
+                }
 
                 if (!slots.isEmpty()) {
                     entries.add(new Entry(observed.pos(), List.copyOf(slots)));

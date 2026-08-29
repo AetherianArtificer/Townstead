@@ -26,8 +26,8 @@ public final class ProfessionAliases {
             "villagerclothingaddition:cook"
     };
 
-    /** Professions that mean "barista". */
-    public static final String[] BARISTA = { "townstead:barista" };
+    /** Professions that mean "beverage artisan". Paths and compatibility aliases resolve through data. */
+    public static final String[] BEVERAGE_ARTISAN = { "townstead:beverage_artisan" };
 
     private ProfessionAliases() {}
 

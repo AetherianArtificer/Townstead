@@ -27,6 +27,7 @@
     "GetVillageResponseSlimPayloadMixin",
     "ReportBuildingMessageMixin",
     "ServerLevelBuildingDiscoveryMixin",
+    "SleepInBedOwnershipMixin",
     "EntityStuckImmunityMixin",
     "ServerLocaleChangeMixin",
     "TombstoneRevivalMixin",

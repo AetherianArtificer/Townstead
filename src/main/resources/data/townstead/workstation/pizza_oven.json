@@ -16,9 +16,7 @@
   ],
   "produces": [
     {
-      "inputs": ["pizzadelight:raw_pizza", "farmersdelight:tomato_sauce"],
-      "extras": "#pizzadelight:ingredients",
-      "extras_max": 9,
+      "inputs": ["pizzadelight:raw_pizza"],
       "output": "pizzadelight:pizza",
       "time": 900
     }

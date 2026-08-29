@@ -12,6 +12,7 @@ import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
 import com.aetherianartificer.townstead.work.order.StationCatalogs;
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
+import com.aetherianartificer.townstead.work.recipe.WorkIngredients;
 import com.aetherianartificer.townstead.work.site.ProfessionWorksites;
 import com.aetherianartificer.townstead.work.station.ProtocolRecipes;
 import com.aetherianartificer.townstead.work.station.StationProtocols;
@@ -27,6 +28,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
+import net.minecraft.tags.TagKey;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -106,13 +109,8 @@ public class StationWorkTask extends ProducerWorkTask {
     protected boolean isVillagerAtWorksite(ServerLevel level, VillagerEntityMCA villager) {
         ProfessionWorksites.Assignment assignment = assignment(level, villager);
         if (assignment == null) return false;
-        BlockPos pos = villager.blockPosition();
-        if (assignment.building().containsPos(pos)
-                || assignment.building().containsPos(pos.below())
-                || assignment.building().containsPos(pos.above())) {
-            return true;
-        }
-        return WorkBuildingNav.isInsideOrOnStationStand(snapshot(level, villager), pos);
+        return WorkBuildingNav.isInsideOrOnStationStand(
+                snapshot(level, villager), villager.blockPosition());
     }
 
     @Override
@@ -258,10 +256,14 @@ public class StationWorkTask extends ProducerWorkTask {
         WorkstationDef def = StationProtocols.defAt(level, stationAnchor);
         if (def == null || !servesDef(villager, def, blockIdAt(level, stationAnchor))) return List.of();
         WorkTaskDef declared = declarationFor(villager, def, blockIdAt(level, stationAnchor));
+        Set<Long> bounds = worksiteBounds(level, villager);
+        Map<ResourceLocation, Integer> stock = StationCatalogs.stockIn(level, bounds);
+        Map<ResourceLocation, Integer> lineStock = new java.util.HashMap<>();
         List<DiscoveredRecipe> out = new ArrayList<>();
         for (DiscoveredRecipe recipe : recipesFor(level, def)) {
             if (declared != null && !declared.allowsRecipe(
                     recipe.id(), recipe.output(), recipe.inputs())) continue;
+            if (!inputsAvailable(level, villager, recipe, stock, bounds, lineStock)) continue;
             out.add(recipe);
         }
         return out;
@@ -274,17 +276,25 @@ public class StationWorkTask extends ProducerWorkTask {
         if (stationAnchor == null) return null;
         WorkstationDef def = StationProtocols.defAt(level, stationAnchor);
         if (def == null || !servesDef(villager, def, blockIdAt(level, stationAnchor))) return null;
+        // Potion outputs are component-bearing products which share only three physical item ids.
+        // A brewing station therefore follows an exact Order Sheet line rather than selecting a
+        // random registered mix autonomously.
+        if (com.aetherianartificer.townstead.work.station.BrewingStandStationAdapter.NAME
+                .equals(def.adapter())) {
+            return null;
+        }
         WorkTaskDef declared = declarationFor(villager, def, blockIdAt(level, stationAnchor));
 
         Set<Long> bounds = worksiteBounds(level, villager);
         Map<ResourceLocation, Integer> stock = StationCatalogs.stockIn(level, bounds);
+        Map<ResourceLocation, Integer> lineStock = new java.util.HashMap<>();
         for (DiscoveredRecipe recipe : recipesFor(level, def)) {
             if (!outputAllowed.test(recipe.output())) continue;
             Long cooldown = recipeCooldownUntil.get(recipe.output());
             if (cooldown != null && gameTime < cooldown) continue;
             if (declared != null && !declared.allowsRecipe(
                     recipe.id(), recipe.output(), recipe.inputs())) continue;
-            if (!inputsAvailable(level, villager, recipe, stock)) continue;
+            if (!inputsAvailable(level, villager, recipe, stock, bounds, lineStock)) continue;
             return recipe;
         }
         return null;
@@ -296,11 +306,14 @@ public class StationWorkTask extends ProducerWorkTask {
      * the stocked ids against the line's own predicate, which is exactly the test staging uses.
      */
     private boolean inputsAvailable(ServerLevel level, VillagerEntityMCA villager,
-                                    DiscoveredRecipe recipe, Map<ResourceLocation, Integer> stock) {
+                                    DiscoveredRecipe recipe, Map<ResourceLocation, Integer> stock,
+                                    Set<Long> bounds,
+                                    Map<ResourceLocation, Integer> lineStock) {
         for (RecipeIngredient input : requiredInputs(level, recipe)) {
             int needed = Math.max(1, input.count());
             if (SupplyLines.isLineId(input.primaryId())) {
-                if (!lineAvailable(level, villager, input.primaryId(), stock)) return false;
+                if (!lineAvailable(level, villager, input.primaryId(), needed, bounds,
+                        lineStock)) return false;
                 continue;
             }
             int have = 0;
@@ -319,17 +332,85 @@ public class StationWorkTask extends ProducerWorkTask {
     }
 
     private boolean lineAvailable(ServerLevel level, VillagerEntityMCA villager,
-                                  ResourceLocation lineId, Map<ResourceLocation, Integer> stock) {
-        Predicate<ItemStack> matcher = SupplyLines.matcher(level, lineId);
-        SimpleContainer inv = villager.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (matcher.test(inv.getItem(i))) return true;
+                                  ResourceLocation lineId, int needed, Set<Long> bounds,
+                                  Map<ResourceLocation, Integer> lineStock) {
+        int available = lineStock.computeIfAbsent(lineId, ignored -> {
+            Predicate<ItemStack> matcher = SupplyLines.matcher(level, lineId);
+            int count = inventoryCountMatching(villager, matcher);
+            return count + StationCatalogs.countMatching(level, bounds, matcher);
+        });
+        return available >= needed;
+    }
+
+    @Override
+    protected @Nullable WorkIngredients.PhysicalPull nextPhysicalPull(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        DiscoveredRecipe recipe = recipe();
+        if (recipe == null || stationAnchor == null) return null;
+        takeEscrowWorkpiece(level, villager);
+        Set<Long> bounds = worksiteBounds(level, villager);
+
+        WorkIngredients.PhysicalPull tool = WorkIngredients.nextPhysicalRecipeToolPull(
+                level, villager, recipe, bounds);
+        if (tool != null) return tool;
+        WorkstationDef def = StationProtocols.defAt(level, stationAnchor);
+        if (def != null && !def.harvestTools().isEmpty()
+                && !StationProtocols.hasHarvestTool(villager, def)) {
+            Predicate<ItemStack> matcher = stack -> !stack.isEmpty()
+                    && def.harvestTools().contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+            tool = WorkIngredients.nextPhysicalPull(level, villager, matcher, 1, true,
+                    "harvest tool", bounds);
+            if (tool != null) return tool;
         }
-        for (ResourceLocation id : stock.keySet()) {
-            if (!BuiltInRegistries.ITEM.containsKey(id)) continue;
-            if (matcher.test(new ItemStack(BuiltInRegistries.ITEM.get(id)))) return true;
+
+        boolean plainOnly = def != null
+                && def.role() == com.aetherianartificer.townstead.work.recipe.StationType.CRAFT_SURFACE;
+        for (RecipeIngredient input : requiredInputs(level, recipe)) {
+            int needed = Math.max(1, input.count());
+            WorkIngredients.PhysicalPull pull;
+            if (SupplyLines.isLineId(input.primaryId())) {
+                pull = WorkIngredients.nextPhysicalPull(level, villager,
+                        SupplyLines.matcher(level, input.primaryId()), needed, false,
+                        input.primaryId().getPath().replace('_', ' '), bounds);
+            } else {
+                pull = WorkIngredients.nextPhysicalIngredientPull(level, villager, input, needed,
+                        plainOnly, itemName(input.primaryId()), bounds);
+            }
+            if (pull != null) return pull;
         }
-        return false;
+        if (def != null) {
+            WorkstationDef.Produce produce = StationProtocols.produceFor(def, recipe);
+            if (produce != null && produce.extrasTag() != null && produce.extrasMax() > 0) {
+                TagKey<Item> tag = TagKey.create(net.minecraft.core.registries.Registries.ITEM,
+                        produce.extrasTag());
+                WorkIngredients.PhysicalPull extra = WorkIngredients.nextPhysicalPull(
+                        level, villager, stack -> !stack.isEmpty() && stack.is(tag),
+                        produce.extrasMax(), false, "optional extras", bounds);
+                if (extra != null) return extra;
+            }
+        }
+        ResourceLocation vessel = recipe.containerItemId();
+        if (vessel != null && BuiltInRegistries.ITEM.containsKey(vessel)) {
+            Predicate<ItemStack> matcher = stack -> !stack.isEmpty()
+                    && vessel.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+            return WorkIngredients.nextPhysicalPull(level, villager, matcher,
+                    Math.max(1, recipe.containerCount()), false, itemName(vessel), bounds);
+        }
+        return null;
+    }
+
+    @Override
+    protected Set<Long> transferWorksiteBounds(ServerLevel level, VillagerEntityMCA villager) {
+        return worksiteBounds(level, villager);
+    }
+
+    @Override
+    protected boolean isCycleOutput(ServerLevel level, ItemStack stack) {
+        DiscoveredRecipe recipe = recipe();
+        return recipe != null && stack != null && !stack.isEmpty()
+                && recipe.output().equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                && com.aetherianartificer.townstead.work.order.OrderProducts.matches(
+                com.aetherianartificer.townstead.work.order.OrderProducts.key(recipe), stack);
     }
 
     @Override
@@ -347,21 +428,7 @@ public class StationWorkTask extends ProducerWorkTask {
         // A commission's workpiece comes out of the line's own escrow, not off a shelf: the
         // player handed the shop this exact stack. Collected once — from then on it travels
         // the ordinary flow, and everything it becomes lands back in storage.
-        com.aetherianartificer.townstead.work.order.Order line = claimedOrder();
-        if (line != null && line.workpiece() != null) {
-            net.minecraft.nbt.CompoundTag escrow = line.takeWorkpiece();
-            if (escrow != null) {
-                //? if >=1.21 {
-                ItemStack held = ItemStack.parse(level.registryAccess(), escrow)
-                        .orElse(ItemStack.EMPTY);
-                //?} else {
-                /*ItemStack held = ItemStack.of(escrow);
-                *///?}
-                if (!held.isEmpty()) StationProtocols.giveBack(villager, held);
-                com.aetherianartificer.townstead.work.site.WorksiteRegister
-                        .get(level.getServer()).setDirty();
-            }
-        }
+        takeEscrowWorkpiece(level, villager);
 
         for (RecipeIngredient input : requiredInputs(level, recipe)) {
             int needed = Math.max(1, input.count());
@@ -402,22 +469,45 @@ public class StationWorkTask extends ProducerWorkTask {
         if (stationAnchor == null) return RecipeIngredient.merge(recipe.inputs());
         ResourceLocation block = blockIdAt(level, stationAnchor);
         var def = Workstations.v2ByBlockId(block);
-        if (def == null || def.catalystSlots().isEmpty()) return RecipeIngredient.merge(recipe.inputs());
+        WorkstationDef stationDef = StationProtocols.defAt(level, stationAnchor);
+        List<RecipeIngredient> additional = stationDef == null ? List.of()
+                : java.util.Optional.ofNullable(
+                        com.aetherianartificer.townstead.work.station.StationAdapters.forDef(stationDef))
+                .map(adapter -> adapter.additionalInputs(level, stationAnchor, stationDef, recipe))
+                .orElse(List.of());
+        if (def == null || def.catalystSlots().isEmpty()) {
+            List<RecipeIngredient> all = new ArrayList<>(recipe.inputs());
+            all.addAll(additional);
+            return RecipeIngredient.merge(all);
+        }
         List<RecipeIngredient> required = new ArrayList<>();
         for (int i = 0; i < recipe.inputs().size(); i++) {
             if (com.aetherianartificer.townstead.work.station.DataDrivenStationAdapter
                     .hasStagedCatalyst(level, stationAnchor, def, recipe, i)) continue;
             required.add(recipe.inputs().get(i));
         }
+        required.addAll(additional);
         return RecipeIngredient.merge(required);
     }
 
     private boolean ensureOnHand(ServerLevel level, VillagerEntityMCA villager,
                                  Predicate<ItemStack> matcher, int needed, Set<Long> bounds) {
-        int have = inventoryCountMatching(villager, matcher);
-        if (have >= needed) return true;
-        StationSupplies.pullMatching(level, villager, matcher, needed - have, stationAnchor, bounds);
         return inventoryCountMatching(villager, matcher) >= needed;
+    }
+
+    private void takeEscrowWorkpiece(ServerLevel level, VillagerEntityMCA villager) {
+        com.aetherianartificer.townstead.work.order.Order line = claimedOrder();
+        if (line == null || line.workpiece() == null) return;
+        net.minecraft.nbt.CompoundTag escrow = line.takeWorkpiece();
+        if (escrow == null) return;
+        //? if >=1.21 {
+        ItemStack held = ItemStack.parse(level.registryAccess(), escrow).orElse(ItemStack.EMPTY);
+        //?} else {
+        /*ItemStack held = ItemStack.of(escrow);
+        *///?}
+        if (!held.isEmpty()) StationProtocols.giveBack(villager, held);
+        com.aetherianartificer.townstead.work.site.WorksiteRegister
+                .get(level.getServer()).setDirty();
     }
 
     @Override
@@ -447,33 +537,23 @@ public class StationWorkTask extends ProducerWorkTask {
     protected CollectResult collectFromStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null) return CollectResult.none();
         Set<Long> bounds = worksiteBounds(level, villager);
-        boolean collected = StationProtocols.collect(level, villager, stationAnchor, recipe(), bounds);
-        return collected ? CollectResult.ofCollected() : CollectResult.none();
+        DiscoveredRecipe recipe = recipe();
+        if (recipe == null) return CollectResult.none();
+        Set<ResourceLocation> outputs = Set.of(recipe.output());
+        boolean carried = ProducerOutputHelper.collectSurfaceDrops(
+                level, villager, stationAnchor, bounds, outputs);
+        boolean harvested = StationProtocols.collect(level, villager, stationAnchor, recipe, bounds);
+        carried |= ProducerOutputHelper.collectSurfaceDrops(
+                level, villager, stationAnchor, bounds, outputs);
+        carried |= inventoryCount(villager, recipe.output()) >= Math.max(1, recipe.outputCount());
+        if (carried) return CollectResult.ofCollected();
+        return harvested ? CollectResult.waiting(false) : CollectResult.none();
     }
 
     @Override
     protected void storeOutputs(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        DiscoveredRecipe recipe = recipe();
-        Set<ResourceLocation> outputs;
-        if (recipe != null) {
-            outputs = Set.of(recipe.output());
-        } else {
-            WorkstationDef def = stationAnchor == null ? null : StationProtocols.defAt(level, stationAnchor);
-            if (def == null) return;
-            outputs = recipesFor(level, def).stream()
-                    .map(DiscoveredRecipe::output)
-                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
-        }
-        if (outputs.isEmpty()) return;
-        Set<Long> bounds = worksiteBounds(level, villager);
-        SimpleContainer inv = villager.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty()) continue;
-            if (!outputs.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()))) continue;
-            int stored = StationSupplies.storeOutput(level, villager, stack, stationAnchor, bounds);
-            if (stored > 0) stack.shrink(stored);
-        }
+        // Collection leaves real stacks in the worker's inventory. ProducerWorkTask walks them
+        // to storage in DELIVER; this hook intentionally performs no remote inventory mutation.
     }
 
 
@@ -605,26 +685,7 @@ public class StationWorkTask extends ProducerWorkTask {
     }
 
     private List<DiscoveredRecipe> recipesFor(ServerLevel level, WorkstationDef def) {
-        List<DiscoveredRecipe> recipes = new ArrayList<>(ProtocolRecipes.discoverFor(def));
-        recipes.addAll(ProtocolRecipes.discoverByType(level, def));
-        // V2 recipe families are attached to the exact block, not copied into the workstation
-        // document or its temporary V1 compatibility view.
-        java.util.LinkedHashSet<ResourceLocation> attached = new java.util.LinkedHashSet<>();
-        for (ResourceLocation block : def.blocks()) {
-            if (Workstations.v2ByBlockId(block) != null) {
-                attached.addAll(com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes
-                        .forBlock(block));
-            }
-        }
-        if (!attached.isEmpty()) {
-            for (DiscoveredRecipe recipe : com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry
-                    .getRecipes(level)) {
-                ResourceLocation type = com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry
-                        .recipeTypeId(recipe);
-                if (type != null && attached.contains(type)) recipes.add(recipe);
-            }
-        }
-        return recipes;
+        return ProtocolRecipes.discover(level, def);
     }
 
     private @Nullable DiscoveredRecipe recipeById(ServerLevel level, WorkstationDef def,

@@ -16,10 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class BundledProfessionFeedbackTest {
     private static final List<String> SETTINGS = List.of(
             "/data/minecraft/profession/butcher/feedback.json",
+            "/data/minecraft/profession/cleric/feedback.json",
             "/data/minecraft/profession/farmer/feedback.json",
             "/data/minecraft/profession/fisherman/feedback.json",
             "/data/minecraft/profession/leatherworker/feedback.json",
-            "/data/townstead/profession/barista/feedback.json",
+            "/data/townstead/profession/beverage_artisan/feedback.json",
             "/data/townstead/profession/cook/feedback.json");
     private static final List<String> RULES = List.of(
             "/data/minecraft/profession/butcher/feedback/no_worksite.json",
@@ -34,10 +35,15 @@ class BundledProfessionFeedbackTest {
             "/data/minecraft/profession/butcher/feedback/shop_promoted_to_tier_2.json",
             "/data/minecraft/profession/butcher/feedback/shop_promoted_to_tier_3.json",
             "/data/minecraft/profession/butcher/feedback/slaughter_disabled.json",
+            "/data/minecraft/profession/cleric/feedback/no_worksite.json",
+            "/data/minecraft/profession/cleric/feedback/no_input.json",
+            "/data/minecraft/profession/cleric/feedback/no_fuel.json",
+            "/data/minecraft/profession/cleric/feedback/no_storage.json",
+            "/data/minecraft/profession/cleric/feedback/unreachable.json",
             "/data/minecraft/profession/farmer/feedback/no_seeds.json",
             "/data/minecraft/profession/fisherman/feedback/no_rod.json",
             "/data/minecraft/profession/leatherworker/feedback/no_hide.json",
-            "/data/townstead/profession/barista/feedback/no_worksite.json",
+            "/data/townstead/profession/beverage_artisan/feedback/no_worksite.json",
             "/data/townstead/profession/cook/feedback/no_worksite.json");
 
     @BeforeAll

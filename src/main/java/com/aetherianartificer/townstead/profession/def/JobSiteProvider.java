@@ -54,16 +54,28 @@ public interface JobSiteProvider {
      * <p>{@code slotsPerTier} seats more workers in a better building: the entry after the
      * matched prefix is read as the tier ({@code compat/…/kitchen_l} + {@code 3}), and the list
      * gives one count per tier. Empty means one worker per building, which is what an untiered
-     * workplace wants. This is the only thing tiered workplaces ever needed over the generic
-     * path — it exists so no trade has to hardcode its own slot ladder in Java.</p>
+     * workplace wants.</p>
+     *
+     * <p>{@code pathAffinities} relates this building family to specialization Paths without
+     * making either exclusive: working here steers an unspecialized villager toward those Paths,
+     * while villagers already on one of them prefer this family's available seats. It does not
+     * replace a Path's station-level worksite preferences.</p>
      */
-    record Building(List<String> typePrefixes, List<Integer> slotsPerTier) implements JobSiteProvider {
+    record Building(List<String> typePrefixes, List<Integer> slotsPerTier,
+                    List<String> pathAffinities) implements JobSiteProvider {
         public Building {
             typePrefixes = List.copyOf(typePrefixes);
             slotsPerTier = List.copyOf(slotsPerTier);
+            pathAffinities = List.copyOf(pathAffinities);
         }
 
-        public Building(List<String> typePrefixes) { this(typePrefixes, List.of()); }
+        public Building(List<String> typePrefixes, List<Integer> slotsPerTier) {
+            this(typePrefixes, slotsPerTier, List.of());
+        }
+
+        public Building(List<String> typePrefixes) {
+            this(typePrefixes, List.of(), List.of());
+        }
 
         public static final String KEY = "townstead:building";
         @Override public String typeKey() { return KEY; }
@@ -75,6 +87,11 @@ public interface JobSiteProvider {
                 if (buildingTypeId.startsWith(prefix)) return true;
             }
             return false;
+        }
+
+        /** Whether this building family and the named local Path favour one another. */
+        public boolean hasPathAffinity(@Nullable String pathId) {
+            return pathId != null && pathAffinities.contains(pathId);
         }
 
         /** How many workers this building seats; 0 when it is not one of ours. */

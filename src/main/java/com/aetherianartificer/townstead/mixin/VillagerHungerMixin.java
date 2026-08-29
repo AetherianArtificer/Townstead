@@ -102,11 +102,11 @@ public abstract class VillagerHungerMixin extends Villager {
                                         com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled))),
                         Pair.of(72, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
-                                        "Barista",
+                                        "Beverage Artisan",
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW,
                                         null,
-                                        com.aetherianartificer.townstead.work.producer.ProducerRole.BARISTA,
-                                        com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled))),
+                                        com.aetherianartificer.townstead.work.producer.ProducerRole.BEVERAGE_ARTISAN,
+                                        () -> true))),
                         Pair.of(75, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
                                         "Smoker",

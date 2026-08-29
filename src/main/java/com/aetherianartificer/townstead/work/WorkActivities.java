@@ -40,8 +40,27 @@ public final class WorkActivities {
 
     /** Register the live probes owned by bespoke task engines. Job executors register through data. */
     public static void bootstrap() {
-        // Intentionally empty today. Code-owned engines may still register probes here; both
-        // generic Job executors are discovered and dispatched below from the loaded documents.
+        // Fishing is an indefinitely available trade rather than a targetable recipe: its catch
+        // remains the vanilla loot roll, while the activity line decides whether the fisherman
+        // should cast at all. The worksite itself proves the barrel/dock exists.
+        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.FISH,
+                (level, villager) -> com.aetherianartificer.townstead.work.WorkTaskDeclarations
+                        .permitsTask(villager,
+                                com.aetherianartificer.townstead.profession.def.WorkTaskTypes.FISH));
+
+        // Shearing has a precise, read-only availability question already owned by the Pen task.
+        // Storage is deliberately absent: carrying wool to its shed is mandatory pipeline work,
+        // not something an Order Sheet may pause and strand in a villager's pockets.
+        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.SHEAR,
+                (level, villager) -> com.aetherianartificer.townstead.work.WorkTaskDeclarations
+                        .permitsTask(villager,
+                                com.aetherianartificer.townstead.profession.def.WorkTaskTypes.SHEAR)
+                        && com.aetherianartificer.townstead.shepherd.ShepherdToolDamage
+                                .hasShears(villager)
+                        && com.aetherianartificer.townstead.shepherd.ShepherdInventory
+                                .hasRoomForWool(villager)
+                        && com.aetherianartificer.townstead.shepherd.ShepherdPenScanner
+                                .pickShearable(level, villager) != null);
     }
 
     /**

@@ -98,11 +98,16 @@ public final class Controls {
 
     /** One rect per option, laid left to right. Width follows the labels, so nothing is clipped. */
     public static Rect[] segmentLayout(Font font, int x, int y, String... labels) {
+        return segmentLayout(font, x, y, SEG_H, labels);
+    }
+
+    /** A segmented picker using a caller-selected plate height, including full vanilla buttons. */
+    public static Rect[] segmentLayout(Font font, int x, int y, int height, String... labels) {
         Rect[] out = new Rect[labels.length];
         int cursor = x;
         for (int i = 0; i < labels.length; i++) {
             int w = font.width(labels[i]) + SEG_PAD * 2;
-            out[i] = new Rect(cursor, y, w, SEG_H);
+            out[i] = new Rect(cursor, y, w, height);
             cursor += w;
         }
         return out;
@@ -114,9 +119,18 @@ public final class Controls {
      */
     public static void drawSegments(GuiGraphics g, Font font, Rect[] rects, String[] labels,
                                     int selected, int hovered) {
-        boolean enabled = selected >= 0;
+        boolean[] enabled = new boolean[rects.length];
+        java.util.Arrays.fill(enabled, selected >= 0);
+        drawSegments(g, font, rects, labels, selected, hovered, enabled);
+    }
+
+    /** A segmented picker whose individual choices can be unavailable. */
+    public static void drawSegments(GuiGraphics g, Font font, Rect[] rects, String[] labels,
+                                    int selected, int hovered, boolean[] enabled) {
         for (int i = 0; i < rects.length; i++) {
-            drawButton(g, font, rects[i], labels[i], i == selected, i == hovered, enabled);
+            boolean optionEnabled = i < enabled.length && enabled[i];
+            drawButton(g, font, rects[i], labels[i], i == selected,
+                    i == hovered && optionEnabled, optionEnabled);
         }
     }
 
@@ -295,6 +309,16 @@ public final class Controls {
     public static void drawSlot(GuiGraphics g, int x, int y) {
         g.fill(x, y, x + SLOT, y + SLOT, Palette.SLOT);
         Palette.drawOutline(g, x, y, x + SLOT, y + SLOT, Palette.SLOT_EDGE);
+    }
+
+    // ── Deed marks ──
+
+    /** The matching wax lozenge used as a compact person/list mark on a deed. */
+    public static void drawWaxDiamond(GuiGraphics g, int x, int y) {
+        g.fill(x + 2, y, x + 4, y + 6, Palette.WAX_RIM);
+        g.fill(x, y + 2, x + 6, y + 4, Palette.WAX_RIM);
+        g.fill(x + 2, y + 1, x + 4, y + 5, Palette.WAX_SEAL);
+        g.fill(x + 1, y + 2, x + 5, y + 4, Palette.WAX_SEAL);
     }
 
     /**

@@ -1,12 +1,16 @@
 {
   "schema": "townstead:profession_path/v1",
+  "mods": ["bakery"],
   "name": {
-    "text": "Confiturier"
+    "text": "Jam Maker"
   },
   "title": {
-    "text": "Confiturier"
+    "text": "Jam Maker"
   },
   "color": "#8E3B46",
+  "worksites": [
+    "bakery:small_cooking_pot"
+  ],
   "skills": [
     "setting_point",
     "clean_jar",

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.work.order;
 
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
+import com.aetherianartificer.townstead.work.producer.ProducerRecipe;
 
 import java.util.UUID;
 
@@ -112,6 +113,9 @@ public final class Order {
     }
 
     private final ResourceLocation output;
+    /** Exact product identity; ordinary items use {@link #output}. */
+    private ResourceLocation product;
+    private String productName = "";
     private Mode mode;
     private int target;
     private CountScope scope;
@@ -149,6 +153,7 @@ public final class Order {
 
     public Order(ResourceLocation output, Kind kind, Mode mode, int target) {
         this.output = output;
+        this.product = output;
         this.kind = kind == null ? Kind.ITEM : kind;
         // An activity has nothing to count, so it is standing whatever it was asked to be.
         this.mode = this.kind == Kind.ACTIVITY ? Mode.STANDING : (mode == null ? Mode.STANDING : mode);
@@ -167,6 +172,20 @@ public final class Order {
     /** The item this line orders, the tag it draws from, or the id of the job it permits. */
     public ResourceLocation output() { return output; }
 
+    /** Exact identity used for component-bearing products such as registered potions. */
+    public ResourceLocation product() { return product; }
+
+    public String productName() { return productName; }
+
+    public void setProduct(@Nullable ResourceLocation value, @Nullable String name) {
+        product = value == null ? output : value;
+        productName = name == null ? "" : name;
+    }
+
+    public boolean exactProduct() {
+        return OrderProducts.exact(product, output);
+    }
+
     /**
      * Whether a candidate's output satisfies this line: equality for an item, membership for a
      * tag. Every place that used to compare outputs directly must ask this instead, or tag lines
@@ -175,7 +194,15 @@ public final class Order {
     public boolean matches(@Nullable ResourceLocation candidateOutput) {
         if (candidateOutput == null) return false;
         if (kind == Kind.TAG) return OrderTags.contains(output, candidateOutput);
+        if (exactProduct()) return false;
         return output.equals(candidateOutput);
+    }
+
+    /** Recipe-aware match preserving exact stack-bearing product identity. */
+    public boolean matches(@Nullable ProducerRecipe candidate) {
+        if (candidate == null || candidate.output() == null) return false;
+        if (kind == Kind.TAG) return OrderTags.contains(output, candidate.output());
+        return output.equals(candidate.output()) && product.equals(OrderProducts.key(candidate));
     }
 
     public Mode mode() { return mode; }
@@ -285,9 +312,7 @@ public final class Order {
         int want = mode == Mode.PER_VILLAGER
                 ? target * Math.max(0, context.villagerCount())
                 : target;
-        int have = mode.countsProduction() ? produced
-                : kind == Kind.TAG ? context.stockOfTag(output, scope)
-                : context.stockOf(output, scope);
+        int have = mode.countsProduction() ? produced : context.stockOf(this, scope);
         return have >= want;
     }
 
@@ -300,9 +325,7 @@ public final class Order {
         int want = mode == Mode.PER_VILLAGER
                 ? target * Math.max(0, context.villagerCount())
                 : target;
-        int have = mode.countsProduction() ? produced
-                : kind == Kind.TAG ? context.stockOfTag(output, scope)
-                : context.stockOf(output, scope);
+        int have = mode.countsProduction() ? produced : context.stockOf(this, scope);
         return Math.max(0, want - have - inProgress);
     }
 

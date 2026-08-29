@@ -32,6 +32,43 @@ class StorageRoleDefTest {
                 JsonParser.parseString("{\"role\":\"storage\"}").getAsJsonObject()));
     }
 
+    @Test
+    void semanticRoleNamesAndCompatibilityAliasesParse() {
+        assertEquals(StorageRoleDef.Role.INPUTS, parseRole("inputs"));
+        assertEquals(StorageRoleDef.Role.OUTPUTS, parseRole("finished_goods"));
+        assertEquals(StorageRoleDef.Role.TOOLS, parseRole("tools"));
+        assertEquals(StorageRoleDef.Role.RESERVES, parseRole("reserves"));
+        assertEquals(StorageRoleDef.Role.PERSONAL, parseRole("personal_storage"));
+    }
+
+    @Test
+    void roleRoutingKeepsSourcesDestinationsAndPersonalStorageSeparate() {
+        assertEquals(0, StorageRoles.useRank(java.util.Set.of(StorageRoleDef.Role.INPUTS),
+                StorageUse.INGREDIENT));
+        assertEquals(Integer.MAX_VALUE, StorageRoles.useRank(
+                java.util.Set.of(StorageRoleDef.Role.INPUTS), StorageUse.OUTPUT));
+        assertEquals(0, StorageRoles.useRank(java.util.Set.of(StorageRoleDef.Role.OUTPUTS),
+                StorageUse.OUTPUT));
+        assertEquals(Integer.MAX_VALUE, StorageRoles.useRank(
+                java.util.Set.of(StorageRoleDef.Role.OUTPUTS), StorageUse.INGREDIENT));
+        assertEquals(0, StorageRoles.useRank(java.util.Set.of(StorageRoleDef.Role.TOOLS),
+                StorageUse.TOOL));
+        assertEquals(2, StorageRoles.useRank(java.util.Set.of(StorageRoleDef.Role.RESERVES),
+                StorageUse.INGREDIENT));
+        assertEquals(Integer.MAX_VALUE, StorageRoles.useRank(
+                java.util.Set.of(StorageRoleDef.Role.PERSONAL), StorageUse.INGREDIENT));
+        assertEquals(0, StorageRoles.useRank(java.util.Set.of(StorageRoleDef.Role.PERSONAL),
+                StorageUse.PERSONAL));
+    }
+
+    private static StorageRoleDef.Role parseRole(String role) {
+        StorageRoleDef def = StorageRoleDef.parse(id("test:" + role),
+                JsonParser.parseString("{\"role\":\"" + role
+                        + "\",\"blocks\":[\"minecraft:chest\"]}").getAsJsonObject());
+        assertNotNull(def);
+        return def.role();
+    }
+
     private static ResourceLocation id(String value) {
         //? if >=1.21 {
         return ResourceLocation.parse(value);

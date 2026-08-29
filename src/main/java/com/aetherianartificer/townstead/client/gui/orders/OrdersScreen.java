@@ -117,6 +117,7 @@ public class OrdersScreen extends Screen {
 
     private static final class Draft {
         final ResourceLocation output;
+        final ResourceLocation product;
         /** A job has no item, so it carries its own name and icon rather than resolving one. */
         final boolean activity;
         /** A category names a tag, so it commits with a marker and borrows a member's sprite. */
@@ -129,12 +130,13 @@ public class OrdersScreen extends Screen {
 
         Draft(Option option) {
             this.output = option.output();
+            this.product = option.product();
             this.activity = option.activity();
             this.tag = option.tag();
             this.label = option.label();
             this.icon = option.activity() ? option.stationIcon()
                     : option.tag() ? tagIcon(option.output())
-                    : option.output();
+                    : option.product();
             if (this.activity) this.mode = Order.Mode.STANDING;
         }
 
@@ -177,7 +179,7 @@ public class OrdersScreen extends Screen {
     private String catalogueSignature() {
         StringBuilder out = new StringBuilder();
         for (Option option : data.options()) {
-            out.append(option.output()).append(option.available() ? '+' : '-');
+            out.append(option.product()).append(option.available() ? '+' : '-');
         }
         return out.toString();
     }
@@ -303,9 +305,9 @@ public class OrdersScreen extends Screen {
                 // every food sprite from rendering.
                 ResourceLocation sprite = option.activity() ? option.stationIcon()
                         : option.tag() ? tagIcon(option.output())
-                        : option.output();
+                        : option.product();
                 PaletteList.ToolEntry row = new PaletteList.ToolEntry(
-                        option.output().toString(), shown,
+                        option.product().toString(), shown,
                         displayStack(sprite), group.getKey());
                 row.dim = !option.available();
                 row.tooltip = shown
@@ -668,7 +670,7 @@ public class OrdersScreen extends Screen {
      */
     private String displayedReason(Row row) {
         if (row.status() != OrdersSnapshotS2CPayload.Status.WAITING) return row.reason();
-        Option option = optionFor(row.output());
+        Option option = optionFor(row.product());
         if (option == null || option.missing().isEmpty()) return row.reason();
         long phase = net.minecraft.Util.getMillis() / 1200L;
         StringBuilder out = new StringBuilder("Missing: ");
@@ -893,7 +895,7 @@ public class OrdersScreen extends Screen {
     private String addLabel() {
         Draft d = draft;
         if (d != null) {
-            Option option = optionFor(d.output);
+            Option option = optionFor(d.product);
             if (option != null && option.commission()) return "Add held item";
         }
         return "Add to list";
@@ -1101,7 +1103,7 @@ public class OrdersScreen extends Screen {
             List<ItemStack> members = setMembers(row.output());
             return members.isEmpty() ? null : members;
         }
-        Option option = optionFor(row.output());
+        Option option = optionFor(row.product());
         List<OrdersSnapshotS2CPayload.Need> shown = shownNeeds(row, option);
         return shown.isEmpty() ? null : needStacks(shown);
     }
@@ -1151,7 +1153,7 @@ public class OrdersScreen extends Screen {
     private void drawFactsColumn(GuiGraphics g, Row row, int x, int top, int bottom) {
         Rect box = new Rect(x, top, factsWidth(), bottom - top);
         Controls.drawBox(g, this.font, box, "This recipe");
-        Option option = optionFor(row.output());
+        Option option = optionFor(row.product());
         if (option == null) {
             g.drawString(this.font, "Nothing here makes this.", x + 6, top + 9,
                     Palette.LABEL_DIM, false);
@@ -1363,8 +1365,8 @@ public class OrdersScreen extends Screen {
     /** What sprite a line shows: itself for a thing, a member's for a set, a job's own icon. */
     private ResourceLocation iconFor(Row row) {
         if (row.tag()) return tagIcon(row.output());
-        if (!row.activity()) return row.output();
-        Option option = optionFor(row.output());
+        if (!row.activity()) return row.product();
+        Option option = optionFor(row.product());
         return option == null ? row.output() : option.stationIcon();
     }
 
@@ -1382,9 +1384,9 @@ public class OrdersScreen extends Screen {
     }
 
     /** The catalogue entry for this output, which is where the recipe's own facts live. */
-    private @Nullable Option optionFor(ResourceLocation output) {
+    private @Nullable Option optionFor(ResourceLocation product) {
         for (Option option : data.options()) {
-            if (option.output().equals(output)) return option;
+            if (option.product().equals(product)) return option;
         }
         return null;
     }
@@ -1668,7 +1670,7 @@ public class OrdersScreen extends Screen {
         int index = data.rows().size();
         // A commission carries no item over the wire — only which of the player's slots the
         // server should take the workpiece from. The held slot is the hand-over gesture.
-        Option commissioned = optionFor(d.output);
+        Option commissioned = optionFor(d.product);
         if (commissioned != null && commissioned.commission()) {
             int slot = this.minecraft != null && this.minecraft.player != null
                     ? this.minecraft.player.getInventory().selected : 0;
@@ -1679,7 +1681,7 @@ public class OrdersScreen extends Screen {
         }
         // A category commits with the tag marker, which is how the server knows to add a set line.
         send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.ADD, 0,
-                (d.tag ? "#" : "") + d.output));
+                d.tag ? "#" + d.output : d.product.toString()));
         if (d.activity) {
             // The server already knows a job is standing and has no target; sending settings for
             // one would only be refused.
@@ -1921,6 +1923,12 @@ public class OrdersScreen extends Screen {
      * shown as what it will actually be.
      */
     private static ItemStack displayStack(ResourceLocation id) {
+        ResourceLocation fallback = com.aetherianartificer.townstead.work.order.OrderProducts
+                .fallbackItem(id);
+        if (fallback != null) {
+            return com.aetherianartificer.townstead.work.order.OrderProducts.displayStack(
+                    id, fallback);
+        }
         // Supply lines have no item behind them; furnace fuel is shown as the fuel everyone
         // reaches for, named for what the line actually accepts.
         if (com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL.equals(id)) {

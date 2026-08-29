@@ -6,45 +6,34 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
-/**
- * A profession's ordered choice of otherwise-valid storage blocks.
- *
- * <p>This does not decide whether a block is storage; {@link StorageRoles} owns that safety
- * question. It only orders the usable shelves in a worker's current worksite. If none of the
- * preferred selectors are present, every ordinary storage candidate remains available.</p>
- */
-public record StoragePreference(List<String> buildings, List<Selector> preferred) {
-    public static final StoragePreference NONE = new StoragePreference(List.of(), List.of());
+/** A profession's optional ordering of semantic external storage-building roles. */
+public record StoragePreference(List<ResourceLocation> preferredRoles) {
+    public static final StoragePreference NONE = new StoragePreference(List.of());
+    public static final int LOCAL_RANK = 0;
+    public static final int EXTERNAL_BASE_RANK = 1;
     public static final int FALLBACK_RANK = Integer.MAX_VALUE;
 
     public StoragePreference {
-        buildings = List.copyOf(buildings);
-        preferred = List.copyOf(preferred);
+        preferredRoles = List.copyOf(preferredRoles);
     }
 
-    /** Zero is the first preferred building type; fallback storage has no building rank. */
+    /**
+     * Local worksite storage is always rank zero. A matching preferred role ranks next, followed
+     * by a general store. Buildings with neither are not part of the external storage route.
+     */
     public int buildingRank(String buildingType) {
-        if (buildingType == null) return FALLBACK_RANK;
-        for (int i = 0; i < buildings.size(); i++) {
-            if (buildings.get(i).equals(buildingType)) return i;
+        Set<ResourceLocation> roles = BuildingStorageRoles.rolesFor(buildingType);
+        for (int i = 0; i < preferredRoles.size(); i++) {
+            if (roles.contains(preferredRoles.get(i))) return EXTERNAL_BASE_RANK + i;
         }
-        return FALLBACK_RANK;
-    }
-
-    /** Zero is the first preference; {@link #FALLBACK_RANK} is ordinary worksite storage. */
-    public int rank(BlockState state) {
-        if (state == null) return FALLBACK_RANK;
-        for (int i = 0; i < preferred.size(); i++) {
-            if (preferred.get(i).matches(state)) return i;
+        if (roles.contains(BuildingStorageRoles.GENERAL)) {
+            return EXTERNAL_BASE_RANK + preferredRoles.size();
         }
         return FALLBACK_RANK;
     }
@@ -57,56 +46,33 @@ public record StoragePreference(List<String> buildings, List<Selector> preferred
         return def == null ? NONE : def.storage();
     }
 
-    /** Parses the concise {@code "storage":{"preferred":[...]}} work-sidecar shape. */
+    /** Parses {@code "storage":{"preferred_roles":["townstead:materials"]}}. */
     public static StoragePreference parse(JsonElement element) {
         if (element == null || !element.isJsonObject()) {
             throw new IllegalArgumentException("'storage' must be an object");
         }
         JsonObject object = element.getAsJsonObject();
-        List<String> buildings = new ArrayList<>();
-        if (object.has("buildings")) {
-            if (!object.get("buildings").isJsonArray()) {
-                throw new IllegalArgumentException("'storage.buildings' must be an array");
-            }
-            for (JsonElement entry : object.getAsJsonArray("buildings")) {
-                if (!entry.isJsonPrimitive() || !entry.getAsJsonPrimitive().isString()
-                        || entry.getAsString().isBlank()) {
-                    throw new IllegalArgumentException(
-                            "'storage.buildings' entries must be non-empty building type ids");
-                }
-                String type = entry.getAsString();
-                if (!buildings.contains(type)) buildings.add(type);
-            }
+        if (object.has("buildings") || object.has("preferred")) {
+            throw new IllegalArgumentException(
+                    "Container blocks/building names are not storage preferences; use 'preferred_roles'");
         }
-        List<Selector> selectors = new ArrayList<>();
-        if (object.has("preferred")) {
-            if (!object.get("preferred").isJsonArray()) {
-                throw new IllegalArgumentException("'storage.preferred' must be an array");
+        List<ResourceLocation> roles = new ArrayList<>();
+        if (object.has("preferred_roles")) {
+            if (!object.get("preferred_roles").isJsonArray()) {
+                throw new IllegalArgumentException("'storage.preferred_roles' must be an array");
             }
-            for (JsonElement entry : object.getAsJsonArray("preferred")) {
+            for (JsonElement entry : object.getAsJsonArray("preferred_roles")) {
                 if (!entry.isJsonPrimitive() || !entry.getAsJsonPrimitive().isString()) {
                     throw new IllegalArgumentException(
-                            "'storage.preferred' entries must be block ids or #block tags");
+                            "'storage.preferred_roles' entries must be resource ids");
                 }
-                String raw = entry.getAsString();
-                boolean tag = raw.startsWith("#");
-                ResourceLocation id = ResourceLocation.tryParse(tag ? raw.substring(1) : raw);
-                if (id == null) {
-                    throw new IllegalArgumentException("Invalid storage selector '" + raw + "'");
+                ResourceLocation role = ResourceLocation.tryParse(entry.getAsString());
+                if (role == null) {
+                    throw new IllegalArgumentException("Invalid storage role '" + entry.getAsString() + "'");
                 }
-                Selector selector = new Selector(id, tag);
-                if (!selectors.contains(selector)) selectors.add(selector);
+                if (!roles.contains(role)) roles.add(role);
             }
         }
-        return buildings.isEmpty() && selectors.isEmpty()
-                ? NONE : new StoragePreference(buildings, selectors);
-    }
-
-    public record Selector(ResourceLocation id, boolean tag) {
-        public boolean matches(BlockState state) {
-            if (tag) return state.is(TagKey.create(Registries.BLOCK, id));
-            Block block = BuiltInRegistries.BLOCK.get(id);
-            return block != null && state.is(block);
-        }
+        return roles.isEmpty() ? NONE : new StoragePreference(roles);
     }
 }

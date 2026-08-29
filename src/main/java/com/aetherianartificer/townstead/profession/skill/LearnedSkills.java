@@ -69,7 +69,11 @@ public final class LearnedSkills {
     }
 
     public static Result learn(LivingEntity entity, ResourceLocation skillId) {
-        return learnInto(backing(entity), skillId);
+        Result result = learnInto(backing(entity), skillId);
+        if (result.ok() && entity instanceof VillagerEntityMCA villager) {
+            com.aetherianartificer.townstead.profession.ProfessionClothing.afterPathChange(villager);
+        }
+        return result;
     }
 
     public static Result learn(UUID uuid, ResourceLocation skillId) {
@@ -77,7 +81,11 @@ public final class LearnedSkills {
     }
 
     public static Result forceLearn(LivingEntity entity, ResourceLocation skillId) {
-        return forceLearnInto(backing(entity), skillId);
+        Result result = forceLearnInto(backing(entity), skillId);
+        if (result.ok() && entity instanceof VillagerEntityMCA villager) {
+            com.aetherianartificer.townstead.profession.ProfessionClothing.afterPathChange(villager);
+        }
+        return result;
     }
 
     public static Result forceLearn(UUID uuid, ResourceLocation skillId) {

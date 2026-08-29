@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.work.recipe;
 
 
 import com.aetherianartificer.townstead.storage.StorageRoles;
+import com.aetherianartificer.townstead.storage.StorageInventoryPolicy;
+import com.aetherianartificer.townstead.storage.StorageUse;
 
 import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
 
@@ -34,6 +36,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -497,6 +500,236 @@ public final class WorkIngredients {
         return true;
     }
 
+    // ── Physical producer acquisition ──
+
+    /**
+     * Plans the next real container visit for a predicate-based requirement.
+     * Inventory already on the worker is counted first; storage is only named when a deficit
+     * remains. The returned request does not mutate either inventory.
+     */
+    public static @Nullable PhysicalPull nextPhysicalPull(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            Predicate<ItemStack> matcher,
+            int needed,
+            boolean reusable,
+            String detail,
+            Set<Long> worksiteBounds
+    ) {
+        return nextPhysicalPull(level, villager, matcher, needed, reusable, detail,
+                worksiteBounds, reusable ? StorageUse.TOOL : StorageUse.INGREDIENT);
+    }
+
+    public static @Nullable PhysicalPull nextPhysicalPull(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            Predicate<ItemStack> matcher,
+            int needed,
+            boolean reusable,
+            String detail,
+            Set<Long> worksiteBounds,
+            StorageUse use
+    ) {
+        int missing = Math.max(0, needed - countMatching(villager.getInventory(), matcher));
+        if (missing <= 0) return null;
+        NearbyItemSources.ContainerSlot slot = findWorksiteStorageSlot(
+                level, villager, matcher, worksiteBounds, use);
+        if (slot == null) return null;
+        return new PhysicalPull(slot, matcher, missing, reusable, detail);
+    }
+
+    /** Plans one ingredient group, retaining variant and optional plain-stack semantics. */
+    public static @Nullable PhysicalPull nextPhysicalIngredientPull(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            RecipeIngredient ingredient,
+            int needed,
+            boolean plainOnly,
+            String detail,
+            Set<Long> worksiteBounds
+    ) {
+        if (ingredient == null) return null;
+        List<ResourceLocation> ids = ingredient.itemIds();
+        Predicate<ItemStack> matcher = stack -> !stack.isEmpty()
+                && ids.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                && (!plainOnly
+                || com.aetherianartificer.townstead.work.station.CraftSurfaceAdapter.isPlain(stack));
+        return nextPhysicalPull(level, villager, matcher, Math.max(1, needed), false,
+                detail == null ? ingredientDisplayName(ingredient, null) : detail,
+                worksiteBounds);
+    }
+
+    /** Plans the reusable utensil declared by a discovered recipe. */
+    public static @Nullable PhysicalPull nextPhysicalRecipeToolPull(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            DiscoveredRecipe recipe,
+            Set<Long> worksiteBounds
+    ) {
+        if (recipe == null || !recipe.requiresTool() || villagerHasRecipeTool(villager, recipe)) {
+            return null;
+        }
+        Predicate<ItemStack> matcher = stack -> WorkRecipeRegistry.recipeToolMatches(recipe, stack);
+        return nextPhysicalPull(level, villager, matcher, 1, true,
+                WorkRecipeRegistry.recipeToolName(recipe), worksiteBounds);
+    }
+
+    /** Plans the next shelf visit for the requirements consumed by the discovered-recipe engine. */
+    public static @Nullable PhysicalPull nextPhysicalRecipePull(
+            ServerLevel level, VillagerEntityMCA villager, DiscoveredRecipe recipe,
+            @Nullable BlockPos stationAnchor, Set<Long> worksiteBounds, int batchOperations) {
+        if (recipe == null) return null;
+        PhysicalPull tool = nextPhysicalRecipeToolPull(level, villager, recipe, worksiteBounds);
+        if (tool != null) return tool;
+
+        if (recipe.purification()) {
+            ThirstCompatBridge bridge = ThirstBridgeResolver.get();
+            if (bridge == null) return null;
+            Predicate<ItemStack> impure = stack -> WaterPurificationItems.impurityScore(stack, bridge) > 0;
+            return nextPhysicalPull(level, villager, impure, 1, false,
+                    "impure water", worksiteBounds);
+        }
+
+        batchOperations = Math.max(1, batchOperations);
+        Item container = recipe.containerItemId() == null
+                ? Items.AIR : BuiltInRegistries.ITEM.get(recipe.containerItemId());
+        if (container != Items.AIR && recipe.containerCount() > 0) {
+            int staged = stationAnchor == null ? 0
+                    : StationContents.containerCount(level, stationAnchor, container);
+            int needed = Math.max(0, recipe.containerCount() * batchOperations - staged);
+            Predicate<ItemStack> matches = stack -> !stack.isEmpty() && stack.is(container);
+            PhysicalPull pull = nextPhysicalPull(level, villager, matches, needed, false,
+                    itemDisplayName(container), worksiteBounds);
+            if (pull != null) return pull;
+        }
+
+        WorkstationV2Def v2 = stationAnchor == null ? null
+                : com.aetherianartificer.townstead.work.station.Workstations
+                .v2ByState(level.getBlockState(stationAnchor));
+        int scalableInputs = v2 == null ? recipe.inputs().size()
+                : v2.ordinaryInputs(recipe.inputs()).size();
+        for (int index = 0; index < recipe.inputs().size(); index++) {
+            RecipeIngredient ingredient = recipe.inputs().get(index);
+            int needed = requiredIngredientCount(ingredient, index, scalableInputs, batchOperations);
+            ResourceLocation line = supplyLineOf(ingredient);
+            if (line != null) {
+                Predicate<ItemStack> matcher = SupplyLines.matcher(level, line);
+                PhysicalPull pull = nextPhysicalPull(level, villager, matcher, needed, false,
+                        ingredientDisplayName(ingredient, null), worksiteBounds);
+                if (pull != null) return pull;
+            } else {
+                PhysicalPull pull = nextPhysicalIngredientPull(level, villager, ingredient, needed,
+                        false, ingredientDisplayName(ingredient, null), worksiteBounds);
+                if (pull != null) return pull;
+            }
+        }
+
+        if (stationAnchor != null
+                && com.aetherianartificer.townstead.work.station.DataDrivenStationAdapter
+                .acceptsFuel(level, stationAnchor)
+                && !com.aetherianartificer.townstead.work.station.DataDrivenStationAdapter
+                .hasFuel(level, stationAnchor)) {
+            Predicate<ItemStack> fuel = SupplyLines.matcher(level,
+                    com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL);
+            return nextPhysicalPull(level, villager, fuel, 1, false, "fuel", worksiteBounds);
+        }
+        return null;
+    }
+
+    /**
+     * Extracts an already-planned slot after the worker has reached it.
+     *
+     * <p>Inventory capacity is transactional: anything which does not fit is restored to the
+     * exact slot it came from. This is the failure boundary that prevents a full worker inventory
+     * from duplicating or dropping worksite supplies.</p>
+     */
+    public static PhysicalPullResult executePhysicalPull(
+            ServerLevel level, VillagerEntityMCA villager, PhysicalPull request) {
+        if (level == null || villager == null || request == null || request.slot() == null) {
+            return PhysicalPullResult.none();
+        }
+        ItemStack extracted = extractMatchingUpTo(level, request.slot(), request.matcher(), request.count());
+        if (extracted.isEmpty()) return PhysicalPullResult.none();
+
+        int extractedCount = extracted.getCount();
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(extracted.getItem());
+        ItemStack remainder = villager.getInventory().addItem(extracted);
+        int accepted = extractedCount - remainder.getCount();
+        if (!remainder.isEmpty()) restoreToPlannedSlot(level, request.slot(), remainder);
+        if (!remainder.isEmpty()) {
+            ItemEntity dropped = new ItemEntity(level,
+                    request.slot().pos().getX() + 0.5,
+                    request.slot().pos().getY() + 0.75,
+                    request.slot().pos().getZ() + 0.5, remainder.copy());
+            dropped.setPickUpDelay(0);
+            level.addFreshEntity(dropped);
+            remainder.setCount(0);
+        }
+        WorksiteStorageIndex.invalidate(level, request.slot().pos());
+        return accepted <= 0 || itemId == null
+                ? PhysicalPullResult.none()
+                : new PhysicalPullResult(accepted, Set.of(itemId));
+    }
+
+    private static ItemStack extractMatchingUpTo(
+            ServerLevel level, NearbyItemSources.ContainerSlot slotRef,
+            Predicate<ItemStack> matcher, int count) {
+        if (slotRef == null || slotRef.pos() == null || slotRef.slot() < 0 || count <= 0) {
+            return ItemStack.EMPTY;
+        }
+        if (slotRef.isItemHandler()) {
+            BlockEntity be = level.getBlockEntity(slotRef.pos());
+            if (be == null) return ItemStack.EMPTY;
+            IItemHandler handler = slotRef.side() == null
+                    ? BlockInventories.itemHandler(be, level, slotRef.pos(), null)
+                    : BlockInventories.itemHandler(be, level, slotRef.pos(), slotRef.side());
+            if (handler == null || slotRef.slot() >= handler.getSlots()) return ItemStack.EMPTY;
+            ItemStack present = handler.getStackInSlot(slotRef.slot());
+            if (!matcher.test(present)) return ItemStack.EMPTY;
+            return handler.extractItem(slotRef.slot(), Math.min(count, present.getCount()), false);
+        }
+        Container container = slotRef.container();
+        if (container == null || slotRef.slot() >= container.getContainerSize()) return ItemStack.EMPTY;
+        ItemStack present = container.getItem(slotRef.slot());
+        if (!matcher.test(present)) return ItemStack.EMPTY;
+        int moved = Math.min(count, present.getCount());
+        ItemStack extracted = StationInventoryOps.copyWithCount(present, moved);
+        present.shrink(moved);
+        container.setChanged();
+        return extracted;
+    }
+
+    private static void restoreToPlannedSlot(
+            ServerLevel level, NearbyItemSources.ContainerSlot slotRef, ItemStack remainder) {
+        if (remainder.isEmpty() || slotRef == null || slotRef.pos() == null) return;
+        if (slotRef.isItemHandler()) {
+            BlockEntity be = level.getBlockEntity(slotRef.pos());
+            if (be == null) return;
+            IItemHandler handler = slotRef.side() == null
+                    ? BlockInventories.itemHandler(be, level, slotRef.pos(), null)
+                    : BlockInventories.itemHandler(be, level, slotRef.pos(), slotRef.side());
+            if (handler == null || slotRef.slot() >= handler.getSlots()) return;
+            ItemStack still = handler.insertItem(slotRef.slot(), remainder, false);
+            if (still.getCount() < remainder.getCount()) remainder.shrink(
+                    remainder.getCount() - still.getCount());
+            return;
+        }
+        Container container = slotRef.container();
+        if (container == null || slotRef.slot() >= container.getContainerSize()) return;
+        ItemStack present = container.getItem(slotRef.slot());
+        if (present.isEmpty()) {
+            container.setItem(slotRef.slot(), remainder.copy());
+            remainder.setCount(0);
+        } else if (StationInventoryOps.sameItemAndComponents(present, remainder)) {
+            int room = Math.max(0, Math.min(container.getMaxStackSize(), present.getMaxStackSize())
+                    - present.getCount());
+            int moved = Math.min(room, remainder.getCount());
+            present.grow(moved);
+            remainder.shrink(moved);
+        }
+        container.setChanged();
+    }
+
     // ── Pull and consume ──
 
     public static boolean pullAndConsume(
@@ -521,7 +754,7 @@ public final class WorkIngredients {
             Set<Long> kitchenBounds
     ) {
         return pullAndConsumeDetailed(level, villager, recipe, stationAnchor, stationType,
-                stagedInputs, kitchenBounds, 1);
+                stagedInputs, kitchenBounds, 1, true);
     }
 
     public static PullResult pullAndConsumeDetailed(
@@ -533,6 +766,27 @@ public final class WorkIngredients {
             Map<ResourceLocation, Integer> stagedInputs,
             Set<Long> kitchenBounds,
             int batchOperations
+    ) {
+        return pullAndConsumeDetailed(level, villager, recipe, stationAnchor, stationType,
+                stagedInputs, kitchenBounds, batchOperations, true);
+    }
+
+    /**
+     * Producer-state-machine entry point. When {@code allowIndexedPulls} is false, every item must
+     * already be in the worker's inventory; this method may stage it into the adjacent station but
+     * can no longer reach into a remote container. Legacy callers retain the old best-effort pull
+     * through the overloads above.
+     */
+    public static PullResult pullAndConsumeDetailed(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            DiscoveredRecipe recipe,
+            @Nullable BlockPos stationAnchor,
+            StationType stationType,
+            Map<ResourceLocation, Integer> stagedInputs,
+            Set<Long> kitchenBounds,
+            int batchOperations,
+            boolean allowIndexedPulls
     ) {
         batchOperations = Math.max(1, batchOperations);
         BlockPos center = stationAnchor != null ? stationAnchor : villager.blockPosition();
@@ -552,7 +806,7 @@ public final class WorkIngredients {
             // Pull impure water from nearby/kitchen storage into inventory
             java.util.function.Predicate<ItemStack> impureMatcher = stack ->
                     WaterPurificationItems.impurityScore(stack, bridge) > 0;
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; allowIndexedPulls && i < 8; i++) {
                 if (!pullSingleTool(level, villager, impureMatcher, center, kitchenBounds)) break;
             }
             if (StationProtocols.insertPurification(level, villager, stationAnchor, bridge)) {
@@ -563,7 +817,8 @@ public final class WorkIngredients {
 
         // Reusable recipe tool (knife, kitchen shovel, whisk, or any data-declared utensil).
         if (recipe.requiresTool() && !villagerHasRecipeTool(villager, recipe)) {
-            if (!pullSingleTool(level, villager, stack -> WorkRecipeRegistry.recipeToolMatches(recipe, stack), center, kitchenBounds)) {
+            if (!allowIndexedPulls || !pullSingleTool(level, villager,
+                    stack -> WorkRecipeRegistry.recipeToolMatches(recipe, stack), center, kitchenBounds)) {
                 return PullResult.failure(WorkRecipeRegistry.recipeToolName(recipe));
             }
         }
@@ -576,7 +831,8 @@ public final class WorkIngredients {
             containersNeededForStage = Math.max(0,
                     recipe.containerCount() * batchOperations - containersAlreadyStaged);
             while (StationInventoryOps.count(villager.getInventory(), recipeContainerItem) < containersNeededForStage) {
-                if (!pullSingleIngredient(level, villager, recipeContainerItem, center, kitchenBounds)) {
+                if (!allowIndexedPulls
+                        || !pullSingleIngredient(level, villager, recipeContainerItem, center, kitchenBounds)) {
                     return PullResult.failure(itemDisplayName(recipeContainerItem));
                 }
             }
@@ -599,14 +855,15 @@ public final class WorkIngredients {
                 Predicate<ItemStack> preferred = stack -> matcher.test(stack)
                         && SupplyLines.preference(level, supplyLine, stack) > 0;
                 int available = countMatching(inv, preferred);
-                while (available < required
+                while (allowIndexedPulls && available < required
                         && pullSingleTool(level, villager, preferred, center, kitchenBounds)) {
                     available = countMatching(inv, preferred);
                 }
                 // If no preferred stack exists, all valid supplies remain usable as a fallback.
                 available = countMatching(inv, matcher);
                 while (available < required) {
-                    if (!pullSingleTool(level, villager, matcher, center, kitchenBounds)) {
+                    if (!allowIndexedPulls
+                            || !pullSingleTool(level, villager, matcher, center, kitchenBounds)) {
                         return PullResult.failure(ingredientDisplayName(ingredient, null), diagnostics);
                     }
                     available = countMatching(inv, matcher);
@@ -621,7 +878,8 @@ public final class WorkIngredients {
             RecipeIngredient ingredient = entry.getKey();
             int needed = entry.getValue();
             while (countIngredientInInventory(inv, ingredient) < needed) {
-                if (!pullSingleIngredientVariant(level, villager, ingredient, center, kitchenBounds)) {
+                if (!allowIndexedPulls
+                        || !pullSingleIngredientVariant(level, villager, ingredient, center, kitchenBounds)) {
                     return PullResult.failure(ingredientDisplayName(ingredient, null), diagnostics);
                 }
             }
@@ -640,7 +898,8 @@ public final class WorkIngredients {
                 java.util.function.Predicate<ItemStack> fuel = SupplyLines.matcher(
                         level, com.aetherianartificer.townstead.supply.TownsteadSupplyLines.FURNACE_FUEL);
                 if (countMatching(villager.getInventory(), fuel) <= 0
-                        && !pullSingleTool(level, villager, fuel, center, kitchenBounds)) {
+                        && (!allowIndexedPulls
+                        || !pullSingleTool(level, villager, fuel, center, kitchenBounds))) {
                     return PullResult.failure("fuel", diagnostics);
                 }
             }
@@ -669,7 +928,7 @@ public final class WorkIngredients {
             int ingredientPerLoad = Math.max(1, input.count());
             int freeSlots = StationCapacities.capacity(level, stationAnchor, StationType.FIRE_STATION);
             int target = freeSlots * ingredientPerLoad;
-            while (StationInventoryOps.count(inv, item) < target) {
+            while (allowIndexedPulls && StationInventoryOps.count(inv, item) < target) {
                 if (!pullSingleIngredient(level, villager, item, center, kitchenBounds)) break;
             }
             if (StationProtocols.insert(level, villager, stationAnchor, recipe, kitchenBounds)) {
@@ -694,8 +953,12 @@ public final class WorkIngredients {
                         + " x" + ingredient.count()
                         + " inv=" + countIngredientInInventory(inv, ingredient)
                         + " plan=" + describeExtractionPlan(plan));
-                int staged = stageIngredientDirect(level, villager, stationAnchor, ingredient, ingredient.count(),
-                        stagedInputs, kitchenBounds, center, kitchenSnapshot, diagnostics);
+                int staged = allowIndexedPulls
+                        ? stageIngredientDirect(level, villager, stationAnchor, ingredient,
+                        ingredient.count(), stagedInputs, kitchenBounds, center, kitchenSnapshot,
+                        diagnostics)
+                        : stageIngredientFromInventory(level, villager, stationAnchor,
+                        StationType.HOT_STATION, ingredient, ingredient.count(), stagedInputs);
                 if (staged < ingredient.count()) {
                     rollbackStagedInputs(level, villager, stationAnchor, stagedInputs);
                     return PullResult.failure(ingredientDisplayName(ingredient, null), diagnostics);
@@ -707,8 +970,11 @@ public final class WorkIngredients {
                         + " x" + containersNeededForStage
                         + " inv=" + StationInventoryOps.count(villager.getInventory(), recipeContainerItem)
                         + " plan=" + describeExtractionPlan(plan));
-                int stagedContainers = stageContainerDirect(level, villager, stationAnchor, recipeContainerItem,
-                        containersNeededForStage, kitchenBounds, center, kitchenSnapshot, diagnostics);
+                int stagedContainers = allowIndexedPulls
+                        ? stageContainerDirect(level, villager, stationAnchor, recipeContainerItem,
+                        containersNeededForStage, kitchenBounds, center, kitchenSnapshot, diagnostics)
+                        : stageContainerFromInventory(level, villager, stationAnchor,
+                        recipeContainerItem, containersNeededForStage);
                 if (stagedContainers < containersNeededForStage) {
                     rollbackStagedInputs(level, villager, stationAnchor, stagedInputs);
                     return PullResult.failure(itemDisplayName(recipeContainerItem), diagnostics);
@@ -740,8 +1006,8 @@ public final class WorkIngredients {
     }
 
     /** Ordinary recipe inputs repeat per operation; appended station setup supplies do not. */
-    static int requiredIngredientCount(RecipeIngredient ingredient, int inputIndex,
-                                       int scalableInputCount, int batchOperations) {
+    public static int requiredIngredientCount(RecipeIngredient ingredient, int inputIndex,
+                                              int scalableInputCount, int batchOperations) {
         int operations = inputIndex < Math.max(0, scalableInputCount)
                 ? Math.max(1, batchOperations) : 1;
         return Math.max(1, ingredient.count()) * operations;
@@ -1116,6 +1382,43 @@ public final class WorkIngredients {
         return pullSingleTool(level, villager, matcher, center, kitchenBounds);
     }
 
+    /**
+     * One concrete shelf visit needed before a producer can hand a recipe to its station.
+     *
+     * <p>The slot is deliberately retained, rather than merely its block position: after the
+     * worker arrives we re-check and extract that exact live slot. If another worker got there
+     * first, the pull fails harmlessly and the producer plans another source instead of taking a
+     * different item from the same container.</p>
+     */
+    public record PhysicalPull(
+            NearbyItemSources.ContainerSlot slot,
+            Predicate<ItemStack> matcher,
+            int count,
+            boolean reusable,
+            String detail
+    ) {
+        public PhysicalPull {
+            count = Math.max(1, count);
+            detail = detail == null ? "supplies" : detail;
+        }
+
+        public BlockPos source() {
+            return slot == null ? null : slot.pos();
+        }
+    }
+
+    /** What actually reached the worker's inventory during one physical shelf visit. */
+    public record PhysicalPullResult(int count, Set<ResourceLocation> itemIds) {
+        public static PhysicalPullResult none() {
+            return new PhysicalPullResult(0, Set.of());
+        }
+
+        public PhysicalPullResult {
+            count = Math.max(0, count);
+            itemIds = itemIds == null ? Set.of() : Set.copyOf(itemIds);
+        }
+    }
+
     /** Read-only counterpart to {@link #pullToolMatching}; used by Job feedback probes. */
     public static boolean matchingToolAvailable(
             ServerLevel level,
@@ -1128,8 +1431,8 @@ public final class WorkIngredients {
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             if (matcher.test(inventory.getItem(slot))) return true;
         }
-        return findWorksiteStorageSlot(level, villager, matcher, kitchenBounds) != null
-                || findWorksiteStorageSlotLive(level, villager, matcher, kitchenBounds) != null;
+        return findWorksiteStorageSlot(level, villager, matcher, kitchenBounds, StorageUse.TOOL) != null
+                || findWorksiteStorageSlotLive(level, villager, matcher, kitchenBounds, StorageUse.TOOL) != null;
     }
 
     /**
@@ -1208,15 +1511,16 @@ public final class WorkIngredients {
             BlockPos center,
             Set<Long> kitchenBounds
     ) {
-        NearbyItemSources.ContainerSlot slot = findClaimedKitchenStorageSlot(level, villager, matcher, kitchenBounds);
+        NearbyItemSources.ContainerSlot slot = findClaimedKitchenStorageSlot(
+                level, villager, matcher, kitchenBounds, StorageUse.TOOL);
         if (slot == null) {
-            slot = findWorksiteStorageSlotLive(level, villager, matcher, kitchenBounds);
+            slot = findWorksiteStorageSlotLive(level, villager, matcher, kitchenBounds, StorageUse.TOOL);
             if (slot == null) return false;
         }
         ItemStack extracted = NearbyItemSources.extractOne(level, slot);
         ConsumableTargetClaims.releaseSlot(level, villager.getUUID(), WORKSITE_SLOT_CLAIM_CATEGORY, slot);
         if (extracted.isEmpty()) {
-            slot = findWorksiteStorageSlotLive(level, villager, matcher, kitchenBounds);
+            slot = findWorksiteStorageSlotLive(level, villager, matcher, kitchenBounds, StorageUse.TOOL);
             if (slot == null) return false;
             extracted = NearbyItemSources.extractOne(level, slot);
         }
@@ -1235,13 +1539,13 @@ public final class WorkIngredients {
             Set<Long> kitchenBounds
     ) {
         if (stack.isEmpty()) return 0;
-        int totalInserted = com.aetherianartificer.townstead.storage.PreferredStorageBuildings
-                .insert(level, villager, stack);
-        if (stack.isEmpty() || kitchenBounds.isEmpty()) return totalInserted;
+        int totalInserted = 0;
+        if (kitchenBounds.isEmpty()) {
+            return com.aetherianartificer.townstead.storage.PreferredStorageBuildings
+                    .insert(level, villager, stack);
+        }
         BlockPos origin = center != null ? center : villager.blockPosition();
         StorageSearchContext searchContext = new StorageSearchContext(level);
-        com.aetherianartificer.townstead.storage.StoragePreference storagePreference =
-                com.aetherianartificer.townstead.storage.StoragePreference.forVillager(villager);
         // Use the same worksite-adjacent candidates as ingredient collection. Outdoor worksites
         // such as an Apiary do not ordinarily contain a chest in their MCA block membership, but
         // a barrel beside a hive is still plainly storage for that workplace. Named profession
@@ -1249,7 +1553,8 @@ public final class WorkIngredients {
         List<BlockPos> storageOrder = new ArrayList<>(
                 WorksiteStorageIndex.candidateStoragePositions(level, kitchenBounds));
         storageOrder.sort(java.util.Comparator
-                .comparingInt((BlockPos pos) -> storagePreference.rank(level.getBlockState(pos)))
+                .comparingInt((BlockPos pos) -> StorageRoles.useRank(
+                        level.getBlockState(pos), StorageUse.OUTPUT))
                 .thenComparingLong(pos -> {
                     long dx = (long) pos.getX() - origin.getX();
                     long dy = (long) pos.getY() - origin.getY();
@@ -1261,7 +1566,8 @@ public final class WorkIngredients {
             if (stack.isEmpty()) break;
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
             BlockEntity be = observed.blockEntity();
-            if (!StorageRoles.isStorageCandidate(level, pos, be)) continue;
+            if (!StorageRoles.isStorageCandidate(
+                    level, pos, be, villager, StorageUse.OUTPUT)) continue;
 
             int before = stack.getCount();
             ResourceLocation storedItemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
@@ -1270,7 +1576,7 @@ public final class WorkIngredients {
                 insertIntoContainer(container, stack);
                 mutated |= stack.getCount() != before;
             }
-            if (!stack.isEmpty()) {
+            if (!stack.isEmpty() && StorageInventoryPolicy.useItemHandlerView(be)) {
                 final ItemStack[] remainingRef = new ItemStack[]{stack};
                 searchContext.forEachUniqueItemHandler(observed.pos(), (side, handler) -> {
                     if (remainingRef[0].isEmpty()) return;
@@ -1289,6 +1595,10 @@ public final class WorkIngredients {
                         observed.pos().toShortString());
             }
         }
+        if (!stack.isEmpty()) {
+            totalInserted += com.aetherianartificer.townstead.storage.PreferredStorageBuildings
+                    .insert(level, villager, stack);
+        }
         return totalInserted;
     }
 
@@ -1301,6 +1611,17 @@ public final class WorkIngredients {
             Set<Long> kitchenBounds
     ) {
         return WorksiteStorageIndex.snapshot(level, villager, kitchenBounds).findBestSlot(villager, matcher);
+    }
+
+    public static @Nullable NearbyItemSources.ContainerSlot findWorksiteStorageSlot(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            java.util.function.Predicate<ItemStack> matcher,
+            Set<Long> kitchenBounds,
+            StorageUse use
+    ) {
+        return WorksiteStorageIndex.snapshot(level, villager, kitchenBounds)
+                .findBestSlot(villager, matcher, use);
     }
 
     public static String describeWorksiteStorage(
@@ -1316,6 +1637,8 @@ public final class WorkIngredients {
             BlockPos pos = BlockPos.of(key);
             BlockEntity be = level.getBlockEntity(pos);
             if (!StorageRoles.isStorageCandidate(level, pos, be)) continue;
+            if (StorageRoles.useRank(level.getBlockState(pos), StorageUse.INGREDIENT)
+                    == Integer.MAX_VALUE) continue;
 
             List<String> contents = new ArrayList<>();
             if (be instanceof Container container) {
@@ -1345,6 +1668,17 @@ public final class WorkIngredients {
             java.util.function.Predicate<ItemStack> matcher,
             Set<Long> kitchenBounds
     ) {
+        return findWorksiteStorageSlotLive(
+                level, villager, matcher, kitchenBounds, StorageUse.INGREDIENT);
+    }
+
+    private static @Nullable NearbyItemSources.ContainerSlot findWorksiteStorageSlotLive(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            java.util.function.Predicate<ItemStack> matcher,
+            Set<Long> kitchenBounds,
+            StorageUse use
+    ) {
         NearbyItemSources.ContainerSlot[] bestRef = new NearbyItemSources.ContainerSlot[1];
         StorageSearchContext searchContext = new StorageSearchContext(level);
         Set<Long> visited = new HashSet<>();
@@ -1353,7 +1687,7 @@ public final class WorkIngredients {
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
             BlockEntity be = observed.blockEntity();
             if (be == null) continue;
-            if (!StorageRoles.isStorageCandidate(level, observed.pos(), be)) continue;
+            if (!StorageRoles.isStorageCandidate(level, observed.pos(), be, villager, use)) continue;
 
             if (be instanceof Container container) {
                 for (int i = 0; i < container.getContainerSize(); i++) {
@@ -1401,7 +1735,8 @@ public final class WorkIngredients {
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
             BlockEntity be = observed.blockEntity();
             if (be == null) continue;
-            if (!StorageRoles.isStorageCandidate(level, observed.pos(), be)) continue;
+            if (!StorageRoles.isStorageCandidate(
+                    level, observed.pos(), be, villager, StorageUse.INGREDIENT)) continue;
 
             if (be instanceof Container container) {
                 for (int i = 0; i < container.getContainerSize(); i++) {
@@ -1453,7 +1788,19 @@ public final class WorkIngredients {
             java.util.function.Predicate<ItemStack> matcher,
             Set<Long> kitchenBounds
     ) {
-        NearbyItemSources.ContainerSlot slot = findWorksiteStorageSlot(level, villager, matcher, kitchenBounds);
+        return findClaimedKitchenStorageSlot(
+                level, villager, matcher, kitchenBounds, StorageUse.INGREDIENT);
+    }
+
+    private static @Nullable NearbyItemSources.ContainerSlot findClaimedKitchenStorageSlot(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            java.util.function.Predicate<ItemStack> matcher,
+            Set<Long> kitchenBounds,
+            StorageUse use
+    ) {
+        NearbyItemSources.ContainerSlot slot = findWorksiteStorageSlot(
+                level, villager, matcher, kitchenBounds, use);
         if (slot == null) return null;
         if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), WORKSITE_SLOT_CLAIM_CATEGORY, slot)) {
             return null;
@@ -1481,9 +1828,10 @@ public final class WorkIngredients {
     ) {
         if (villagerHasRecipeTool(villager, recipe)) return true;
         java.util.function.Predicate<ItemStack> matcher = stack -> WorkRecipeRegistry.recipeToolMatches(recipe, stack);
-        if (kitchenSnapshot.findBestSlot(villager, matcher) != null) return true;
+        if (kitchenSnapshot.findBestSlot(villager, matcher, StorageUse.TOOL) != null) return true;
         if (!includeLiveFallback) return false;
-        return findWorksiteStorageSlotLive(level, villager, matcher, kitchenBounds) != null;
+        return findWorksiteStorageSlotLive(
+                level, villager, matcher, kitchenBounds, StorageUse.TOOL) != null;
     }
 
     private static boolean villagerHasRecipeTool(VillagerEntityMCA villager, DiscoveredRecipe recipe) {

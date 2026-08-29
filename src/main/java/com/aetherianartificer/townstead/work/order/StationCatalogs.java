@@ -120,6 +120,20 @@ public final class StationCatalogs {
     }
 
     /**
+     * How much of a component-sensitive supply, such as one exact potion, the shelves contain.
+     * The ordinary stock map intentionally collapses stacks to item ids, so it cannot answer this
+     * question without losing the state that distinguishes Healing from Strength.
+     */
+    public static int countMatching(ServerLevel level, Set<Long> extent,
+                                    java.util.function.Predicate<ItemStack> matcher) {
+        int[] count = {0};
+        WorksiteStock.eachStack(level, extent, stack -> {
+            if (matcher.test(stack)) count[0] += stack.getCount();
+        });
+        return count[0];
+    }
+
+    /**
      * Catalogue view of a worksite's stock, including its assigned workers' live inventories.
      * This is deliberately separate from the execution view: another cook's pockets satisfy the
      * worksite's order total, but are not an ingredient source the acting cook may reach into.
@@ -177,6 +191,12 @@ public final class StationCatalogs {
         List<Need> needs = needsOf(recipe);
         List<Need> missing = missingOf(recipe, onHand);
         String blocker = describeMissing(missing);
+        ResourceLocation product = OrderProducts.key(recipe);
+        if (OrderProducts.exact(product, recipe.output())) {
+            return Option.exactItem(recipe.output(), product, stationLabel, stationIcon,
+                    missing.isEmpty(), blocker, Math.max(1, recipe.outputCount()), needs, missing,
+                    OrderProducts.label(product, recipe.output()));
+        }
         return Option.item(recipe.output(), stationLabel, stationIcon,
                 missing.isEmpty(), blocker,
                 Math.max(1, recipe.outputCount()), needs, missing);

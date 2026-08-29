@@ -20,6 +20,12 @@ public interface OrderContext {
      */
     int stockOfTag(ResourceLocation tagId, Order.CountScope scope);
 
+    /** Exact-product-aware stock count; ordinary contexts retain their existing behavior. */
+    default int stockOf(Order order, Order.CountScope scope) {
+        return order.isTag() ? stockOfTag(order.output(), scope)
+                : stockOf(order.output(), scope);
+    }
+
     /** Villagers the per-villager targets scale against. */
     int villagerCount();
 

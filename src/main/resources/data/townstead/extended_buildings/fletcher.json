@@ -1,5 +1,6 @@
 {
   "schema": "townstead:extended_building/v1",
+  "workers": ["minecraft:fletcher"],
   "spirit": {
     "martial": 5,
     "industrious": 2

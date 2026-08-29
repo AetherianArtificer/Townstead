@@ -17,9 +17,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * What villagers may treat as a shelf, stated in data.
@@ -78,6 +80,7 @@ public final class StorageRoles {
                                              net.minecraft.world.level.block.entity.BlockEntity be) {
         BlockState state = level.getBlockState(pos);
         if (com.aetherianartificer.townstead.TownsteadConfig.isProtectedStorage(state)) return false;
+        if (denied(state)) return false;
         if (com.aetherianartificer.townstead.hunger.NearbyItemSources
                 .isProcessingContainer(level, pos, be)) return false;
         if (allowed(state)) return true;
@@ -93,6 +96,70 @@ public final class StorageRoles {
         return false;
     }
 
+    /** Storage eligibility plus the room-level permission for this particular villager. */
+    public static boolean isStorageCandidate(net.minecraft.server.level.ServerLevel level,
+                                             net.minecraft.core.BlockPos pos,
+                                             net.minecraft.world.level.block.entity.BlockEntity be,
+                                             net.conczin.mca.entity.VillagerEntityMCA villager) {
+        return isStorageCandidate(level, pos, be)
+                && RoomOwnershipAccess.mayAccess(level, villager, pos);
+    }
+
+    /** Storage eligibility plus its semantic suitability for the operation being planned. */
+    public static boolean isStorageCandidate(net.minecraft.server.level.ServerLevel level,
+                                             net.minecraft.core.BlockPos pos,
+                                             net.minecraft.world.level.block.entity.BlockEntity be,
+                                             net.conczin.mca.entity.VillagerEntityMCA villager,
+                                             StorageUse use) {
+        return isStorageCandidate(level, pos, be, villager)
+                && (use != StorageUse.PERSONAL || RoomOwnershipAccess.isPrivate(level, pos))
+                && useRank(level.getBlockState(pos), use) != Integer.MAX_VALUE;
+    }
+
+    /**
+     * Lower is preferred. A semantic label overrides generic {@code storage}; this lets a chest
+     * remain in the broad mod-compatible storage tag while a narrower datapack tag gives it a
+     * predictable job. Personal storage is intentionally unavailable to profession automation.
+     */
+    public static int useRank(BlockState state, StorageUse use) {
+        if (state == null || use == null || denied(state)) return Integer.MAX_VALUE;
+        Set<StorageRoleDef.Role> semantic = semanticRoles(state);
+        if (semantic.isEmpty()) return use == StorageUse.PERSONAL ? Integer.MAX_VALUE : 1;
+        return useRank(semantic, use);
+    }
+
+    public static int useRank(Set<StorageRoleDef.Role> roles, StorageUse use) {
+        if (roles == null || roles.isEmpty() || use == null) return Integer.MAX_VALUE;
+        int best = Integer.MAX_VALUE;
+        for (StorageRoleDef.Role role : roles) {
+            int rank = switch (role) {
+                case INPUTS -> use == StorageUse.INGREDIENT ? 0 : Integer.MAX_VALUE;
+                case OUTPUTS -> use == StorageUse.OUTPUT ? 0 : Integer.MAX_VALUE;
+                case TOOLS -> (use == StorageUse.TOOL || use == StorageUse.TOOL_RETURN)
+                        ? 0 : Integer.MAX_VALUE;
+                case RESERVES -> (use == StorageUse.INGREDIENT || use == StorageUse.TOOL)
+                        ? 2 : Integer.MAX_VALUE;
+                case PERSONAL -> use == StorageUse.PERSONAL ? 0 : Integer.MAX_VALUE;
+                case STORAGE -> use == StorageUse.PERSONAL ? Integer.MAX_VALUE : 1;
+                case NOT_STORAGE -> Integer.MAX_VALUE;
+            };
+            best = Math.min(best, rank);
+        }
+        return best;
+    }
+
+    public static Set<StorageRoleDef.Role> semanticRoles(BlockState state) {
+        if (state == null) return Set.of();
+        EnumSet<StorageRoleDef.Role> roles = EnumSet.noneOf(StorageRoleDef.Role.class);
+        for (StorageRoleDef def : DEFS) {
+            if (def.matches(state) && def.role() != StorageRoleDef.Role.STORAGE
+                    && def.role() != StorageRoleDef.Role.NOT_STORAGE) {
+                roles.add(def.role());
+            }
+        }
+        return roles.isEmpty() ? Set.of() : Set.copyOf(roles);
+    }
+
     /** Whether data explicitly refuses this block as storage. */
     public static boolean denied(BlockState state) {
         return matches(state, StorageRoleDef.Role.NOT_STORAGE);
@@ -100,7 +167,11 @@ public final class StorageRoles {
 
     /** Whether data explicitly offers this block as storage. */
     public static boolean allowed(BlockState state) {
-        return matches(state, StorageRoleDef.Role.STORAGE);
+        if (state == null) return false;
+        for (StorageRoleDef def : DEFS) {
+            if (def.role() != StorageRoleDef.Role.NOT_STORAGE && def.matches(state)) return true;
+        }
+        return false;
     }
 
     private static boolean matches(BlockState state, StorageRoleDef.Role role) {
@@ -155,7 +226,7 @@ public final class StorageRoles {
                 }
                 StorageRoleDef def = StorageRoleDef.parse(e.getKey(), obj);
                 if (def == null) {
-                    LOGGER.warn("Invalid storage role {} (needs \"role\": storage|not_storage and"
+                    LOGGER.warn("Invalid storage role {} (unknown \"role\" or missing"
                             + " non-empty \"blocks\" and/or \"namespaces\")", e.getKey());
                     continue;
                 }

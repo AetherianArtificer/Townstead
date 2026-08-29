@@ -1,5 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
+  "workers": ["minecraft:armorer"],
+  "storage_roles": ["townstead:equipment"],
   "spirit": {
     "martial": 5
   }

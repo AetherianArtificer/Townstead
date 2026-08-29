@@ -1,0 +1,22 @@
+{
+  "name": "townstead.guide.entry.professions.beverage_artisan",
+  "category": "townstead:professions",
+  "icon": "minecraft:brewing_stand",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.beverage_artisan.page1.title",
+      "text": "townstead.guide.entry.professions.beverage_artisan.page1.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.beverage_artisan.page2.title",
+      "text": "townstead.guide.entry.professions.beverage_artisan.page2.body"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "townstead.guide.entry.professions.beverage_artisan.page3.title",
+      "text": "townstead.guide.entry.professions.beverage_artisan.page3.body"
+    }
+  ]
+}

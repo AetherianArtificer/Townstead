@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The server side of the orders screen: turn a worksite into something the screen can draw, and
@@ -41,7 +42,7 @@ public final class OrdersService {
         OrdersSnapshotS2CPayload.DriverControl drivers = driverControl(level, site);
         List<Row> rows = new ArrayList<>(orders.size());
         for (Order order : orders.orders()) {
-            rows.add(row(level, site, order, context, options));
+            rows.add(row(level, site, order, context, options, stations));
         }
         return new OrdersSnapshotS2CPayload(
                 site.id(),
@@ -116,7 +117,7 @@ public final class OrdersService {
             if (option == null || option.activity() || option.tag()) continue;
             boolean requested = order.isTag()
                     ? OrderTags.contains(order.output(), option.output())
-                    : order.output().equals(option.output());
+                    : order.product().equals(option.product());
             if (!requested) continue;
             for (var task : profession.workTasks()) {
                 if (!task.allowsBlock(option.stationIcon())) continue;
@@ -145,24 +146,43 @@ public final class OrdersService {
     }
 
     private static Row row(ServerLevel level, Worksite site, Order order, OrderContext context,
-                           List<Option> options) {
+                           List<Option> options,
+                           List<OrdersSnapshotS2CPayload.Station> stations) {
         int want = order.mode() == Order.Mode.PER_VILLAGER
                 ? order.target() * Math.max(0, context.villagerCount())
                 : order.target();
         int have = order.mode().countsProduction()
                 ? order.produced()
-                : order.isTag()
-                        ? context.stockOfTag(order.output(), order.scope())
-                        : context.stockOf(order.output(), order.scope());
+                : context.stockOf(order, order.scope());
 
         OrdersSnapshotS2CPayload.Status status = statusOf(order, context);
         String reason = "";
         if (status == OrdersSnapshotS2CPayload.Status.BLOCKED) {
             reason = "Nobody working here is allowed to take this.";
         } else if (status == OrdersSnapshotS2CPayload.Status.WAITING && !order.isActivity()) {
-            Option option = optionFor(order.output(), options);
+            Option option = optionFor(order.product(), options);
             if (option == null) {
-                reason = "No installed station here can make this.";
+                // An option can disappear because the profession's recipe declaration does not
+                // admit it, even while its physical station is plainly standing in the room.
+                // Calling that a missing station sent players looking for a block they already
+                // had (most visibly the Cafe skillet). Keep the diagnosis as specific as the
+                // evidence actually permits.
+                Set<net.minecraft.resources.ResourceLocation> worked =
+                        com.aetherianartificer.townstead.work.site.WorksiteWork.typesAt(
+                                level, site,
+                                com.aetherianartificer.townstead.work.site.Worksites.extentOf(
+                                        level, site));
+                if (worked.isEmpty()) {
+                    reason = "Nobody working here can produce this.";
+                } else if (isBlockInteractionOutput(order.product())) {
+                    reason = "No available job here can produce this.";
+                } else {
+                    boolean hasInstalledStation = stations != null && stations.stream()
+                            .anyMatch(OrdersSnapshotS2CPayload.Station::present);
+                    reason = hasInstalledStation
+                            ? "No available recipe here can make this."
+                            : "No installed station here can make this.";
+                }
             } else if (!option.missing().isEmpty()) {
                 reason = StationCatalogs.describeMissing(option.missing());
             } else if (!option.available() && !option.blocker().isBlank()) {
@@ -170,7 +190,7 @@ public final class OrdersService {
             }
         }
 
-        Option option = optionFor(order.output(), options);
+        Option option = optionFor(order.product(), options);
         boolean operated = option != null && option.operated();
         boolean workerFallback = operated
                 && com.aetherianartificer.townstead.work.site.WorksiteDrivers
@@ -188,9 +208,11 @@ public final class OrdersService {
                 order.isActivity()
                         ? com.aetherianartificer.townstead.work.WorkActivities.labelOf(order.output())
                         : order.isTag() ? categoryLabel(order.output())
-                        : !order.workpieceName().isEmpty() ? "Copy " + order.workpieceName() : "",
+                        : !order.workpieceName().isEmpty() ? "Copy " + order.workpieceName()
+                        : order.productName(),
                 worker, order.operation(), operator,
-                workLabel(order, workers, operators), operated, workerFallback, workers, operators);
+                workLabel(order, workers, operators), operated, workerFallback, workers, operators,
+                order.product());
     }
 
     private static String workerValue(Order order) {
@@ -235,10 +257,10 @@ public final class OrdersService {
         return List.copyOf(out);
     }
 
-    private static @Nullable Option optionFor(ResourceLocation output, List<Option> options) {
-        if (output == null || options == null) return null;
+    private static @Nullable Option optionFor(ResourceLocation product, List<Option> options) {
+        if (product == null || options == null) return null;
         for (Option option : options) {
-            if (option != null && output.equals(option.output())) return option;
+            if (option != null && product.equals(option.product())) return option;
         }
         return null;
     }
@@ -324,7 +346,7 @@ public final class OrdersService {
         OrderList orders = site.orders();
 
         boolean changed = switch (edit.action()) {
-            case ADD -> add(orders, edit.value());
+            case ADD -> add(level, site, orders, edit.value());
             case COMMISSION -> commission(level, player, orders, edit);
             case COPY -> copy(orders, edit.index());
             case REMOVE -> {
@@ -468,7 +490,7 @@ public final class OrdersService {
     private static boolean setOperator(ServerLevel level, Worksite site, @Nullable Order order,
                                        @Nullable String raw) {
         if (order == null) return false;
-        Option option = optionFor(order.output(), WorksiteCatalogs.optionsFor(level, site));
+        Option option = optionFor(order.product(), WorksiteCatalogs.optionsFor(level, site));
         if (option == null || !option.operated()) return false;
         String value = raw == null ? "automatic" : raw.trim();
         if (value.isEmpty() || "automatic".equalsIgnoreCase(value)) {
@@ -506,7 +528,8 @@ public final class OrdersService {
      * and two stock-reading lines read the same shelf and go quiet together, with position deciding
      * which is worked first.
      */
-    private static boolean add(OrderList orders, @Nullable String itemId) {
+    private static boolean add(ServerLevel level, Worksite site, OrderList orders,
+                               @Nullable String itemId) {
         if (itemId == null || itemId.isBlank()) return false;
         // A "#" marks a tag line. Verified against the loaded tags, not just parsed: an order for
         // a set with nothing in it would be a line no candidate can ever satisfy.
@@ -518,6 +541,16 @@ public final class OrdersService {
         }
         ResourceLocation id = tryParse(itemId);
         if (id == null) return false;
+        // Exact products are admitted only when the live server catalogue offers them. Their
+        // synthetic id is never trusted as an item id and never needs registry registration.
+        for (Option option : WorksiteCatalogs.optionsFor(level, site)) {
+            if (option.activity() || option.tag() || !id.equals(option.product())) continue;
+            Order order = new Order(option.output(), Order.Mode.KEEP_STOCKED, 10);
+            order.setProduct(option.product(), option.label());
+            order.setScope(WorksiteCatalogs.defaultScopeFor(level, site, option.output()));
+            orders.add(order);
+            return true;
+        }
         // A job and a thing arrive through the same door, and which one it is is not the client's
         // to assert: the server recognises a declared job by its id, and everything else has to be
         // a registered item or it is not added at all.
@@ -526,8 +559,23 @@ public final class OrdersService {
             return true;
         }
         if (!BuiltInRegistries.ITEM.containsKey(id)) return false;
-        orders.add(new Order(id, Order.Mode.KEEP_STOCKED, 10));
+        Order order = new Order(id, Order.Mode.KEEP_STOCKED, 10);
+        order.setScope(WorksiteCatalogs.defaultScopeFor(level, site, id));
+        orders.add(order);
         return true;
+    }
+
+    /** Harvested outputs belong to data-authored block interactions, not recipe catalogues. */
+    private static boolean isBlockInteractionOutput(ResourceLocation output) {
+        if (output == null) return false;
+        for (var job : com.aetherianartificer.townstead.work.job.WorkJobs.forType(
+                com.aetherianartificer.townstead.work.job.WorkJobDef.BLOCK_INTERACTION)) {
+            if (job.target() == null) continue;
+            for (var interaction : job.target().interactions()) {
+                if (interaction.outputIds().contains(output)) return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -583,6 +631,7 @@ public final class OrdersService {
         // Kind travels with the copy — dropping it turned a copied job or category into an item
         // line named after an id that is not an item.
         Order twin = new Order(source.output(), source.kind(), source.mode(), source.target());
+        twin.setProduct(source.product(), source.productName());
         twin.setScope(source.scope());
         twin.setProfession(source.profession());
         twin.setMinRank(source.minRank());

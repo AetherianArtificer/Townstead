@@ -47,6 +47,22 @@ public final class VillageStores {
         return total;
     }
 
+    /** Exact-product counterpart for potion/component-aware orders. */
+    public static int countProduct(ServerLevel level, int villageId, ResourceLocation product,
+                                   Set<Long> alreadyCounted) {
+        if (product == null) return 0;
+        int total = 0;
+        for (VillageStorageIndex.Entry entry : entries(level, villageId)) {
+            if (alreadyCounted.contains(entry.pos().asLong())) continue;
+            if (WorksiteStock.aggregator(level.getBlockState(entry.pos()))) continue;
+            for (VillageStorageIndex.SlotView slot : countableSlots(entry)) {
+                ItemStack stack = slot.stack();
+                if (OrderProducts.matches(product, stack)) total += stack.getCount();
+            }
+        }
+        return total;
+    }
+
     /** The same over a tag, skipping members the settings forbid, exactly as the shelves do. */
     public static int countTag(ServerLevel level, int villageId, ResourceLocation tagId,
                                Set<Long> alreadyCounted) {

@@ -17,6 +17,7 @@ public final class HungerClientStore {
     private static final Map<Integer, Integer> COOK_TIER_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> COOK_XP_MAP = new ConcurrentHashMap<>();
     private static final Map<Integer, Integer> COOK_XP_TO_NEXT_MAP = new ConcurrentHashMap<>();
+    private static final Map<Integer, Integer> CAREER_TIER_MAP = new ConcurrentHashMap<>();
     private static Runnable onChange;
 
     private HungerClientStore() {}
@@ -37,7 +38,8 @@ public final class HungerClientStore {
             int farmerXpToNext,
             int cookTier,
             int cookXp,
-            int cookXpToNext
+            int cookXpToNext,
+            int careerTier
     ) {
         HUNGER_MAP.put(entityId, hunger);
         FARMER_TIER_MAP.put(entityId, farmerTier);
@@ -46,6 +48,7 @@ public final class HungerClientStore {
         COOK_TIER_MAP.put(entityId, cookTier);
         COOK_XP_MAP.put(entityId, cookXp);
         COOK_XP_TO_NEXT_MAP.put(entityId, cookXpToNext);
+        CAREER_TIER_MAP.put(entityId, Math.max(0, careerTier));
         if (onChange != null) onChange.run();
     }
 
@@ -63,6 +66,7 @@ public final class HungerClientStore {
         COOK_TIER_MAP.remove(entityId);
         COOK_XP_MAP.remove(entityId);
         COOK_XP_TO_NEXT_MAP.remove(entityId);
+        CAREER_TIER_MAP.remove(entityId);
     }
 
     public static void setFarmBlockedReason(int entityId, String reasonId) {
@@ -107,6 +111,11 @@ public final class HungerClientStore {
         return COOK_XP_TO_NEXT_MAP.getOrDefault(entityId, 0);
     }
 
+    /** Townstead rank for the villager's current profession, independent of trade level. */
+    public static int getCareerTier(int entityId) {
+        return CAREER_TIER_MAP.getOrDefault(entityId, 0);
+    }
+
     public static void clear() {
         HUNGER_MAP.clear();
         FARM_BLOCKED_MAP.clear();
@@ -117,5 +126,6 @@ public final class HungerClientStore {
         COOK_TIER_MAP.clear();
         COOK_XP_MAP.clear();
         COOK_XP_TO_NEXT_MAP.clear();
+        CAREER_TIER_MAP.clear();
     }
 }

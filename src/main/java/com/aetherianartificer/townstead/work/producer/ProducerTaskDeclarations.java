@@ -44,7 +44,7 @@ public final class ProducerTaskDeclarations {
         return buckets(villager, COOK, CHOP);
     }
 
-    /** Same contract as {@link #cookBuckets} for the barista beverage engine. */
+    /** Same contract as {@link #cookBuckets} for the beverage-production engine. */
     public static List<List<WorkTaskDef>> brewBuckets(VillagerEntityMCA villager) {
         return buckets(villager, BREW, null);
     }

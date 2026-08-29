@@ -5,6 +5,8 @@ import com.aetherianartificer.townstead.pheno.condition.block.BlockConditions;
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
+import com.aetherianartificer.townstead.work.recipe.WaterPurificationItems;
+import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
@@ -65,6 +67,39 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         ResourceLocation type = WorkRecipeRegistry.recipeTypeId(recipe);
         if (type != null && WorkstationRecipeTypes.forBlock(block).contains(type)) return true;
         return false;
+    }
+
+    @Override
+    public boolean supportsPurification(ServerLevel level, BlockPos anchor, WorkstationDef ignored) {
+        WorkstationV2Def def = v2(level, anchor);
+        if (def == null || !def.behaviorUses("ingredient") || !def.isOperational(level, anchor)) {
+            return false;
+        }
+        ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
+        return def.schedulingRole(WorkstationRecipeTypes.forBlock(block))
+                == com.aetherianartificer.townstead.work.recipe.StationType.FIRE_STATION
+                && capacity(level, anchor, ignored) > 0;
+    }
+
+    @Override
+    public boolean insertPurification(ServerLevel level, VillagerEntityMCA villager,
+                                      BlockPos anchor, WorkstationDef ignored,
+                                      ThirstCompatBridge bridge) {
+        if (!supportsPurification(level, anchor, ignored)) return false;
+        WorkstationV2Def def = v2(level, anchor);
+        if (def == null) return false;
+        JsonObject ingredientAction = actions(def.behavior()).stream()
+                .filter(action -> "ingredient".equals(role(action)))
+                .findFirst().orElse(null);
+        if (ingredientAction == null) return false;
+        int slot = WaterPurificationItems.bestSlot(villager.getInventory(), bridge,
+                stack -> !stack.isEmpty());
+        if (slot < 0) return false;
+        ItemStack source = villager.getInventory().getItem(slot);
+        ItemStack one = source.copyWithCount(1);
+        if (!useBlock(level, villager, anchor, ingredientAction, one)) return false;
+        source.shrink(1);
+        return true;
     }
 
     @Override

@@ -53,9 +53,11 @@ public final class ProtocolRecipes {
             boolean unresolvable = false;
             for (String raw : produce.inputs()) {
                 List<ResourceLocation> ids = new ArrayList<>();
+                ResourceLocation sourceTag = null;
                 if (raw.startsWith("#")) {
                     ResourceLocation tagId = ResourceLocation.tryParse(raw.substring(1));
                     if (tagId != null) {
+                        sourceTag = tagId;
                         var tag = net.minecraft.tags.TagKey.create(Registries.ITEM, tagId);
                         for (var holder : BuiltInRegistries.ITEM.getTagOrEmpty(tag)) {
                             ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(holder.value());
@@ -70,7 +72,7 @@ public final class ProtocolRecipes {
                     unresolvable = true;
                     break;
                 }
-                inputs.add(new RecipeIngredient(List.copyOf(ids), 1));
+                inputs.add(new RecipeIngredient(List.copyOf(ids), 1, sourceTag));
             }
             if (unresolvable || inputs.isEmpty()) continue;
             if (!BuiltInRegistries.ITEM.containsKey(produce.output())) continue;
@@ -91,6 +93,36 @@ public final class ProtocolRecipes {
             ));
         }
         return out;
+    }
+
+    /**
+     * Every recipe one station definition exposes to both execution and Order Sheets.
+     * Data-authored lines, ordinary recipe types, attached V2 families, and station-native
+     * registries all converge here so adding a profession never needs its own catalogue.
+     */
+    public static List<DiscoveredRecipe> discover(ServerLevel level, WorkstationDef def) {
+        List<DiscoveredRecipe> out = new ArrayList<>();
+        if (BrewingStandStationAdapter.NAME.equals(def.adapter())) {
+            out.addAll(com.aetherianartificer.townstead.work.recipe.PotionBrewingRecipes
+                    .discover(level));
+        } else {
+            out.addAll(discoverFor(def));
+        }
+        out.addAll(discoverByType(level, def));
+
+        Set<ResourceLocation> attached = new LinkedHashSet<>();
+        for (ResourceLocation block : def.blocks()) {
+            if (Workstations.v2ByBlockId(block) != null) {
+                attached.addAll(WorkstationRecipeTypes.forBlock(block));
+            }
+        }
+        if (!attached.isEmpty()) {
+            for (DiscoveredRecipe recipe : WorkRecipeRegistry.getRecipes(level)) {
+                ResourceLocation type = WorkRecipeRegistry.recipeTypeId(recipe);
+                if (type != null && attached.contains(type)) out.add(recipe);
+            }
+        }
+        return List.copyOf(out);
     }
 
     /**

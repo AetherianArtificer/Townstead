@@ -1,12 +1,16 @@
 {
   "schema": "townstead:profession_path/v1",
+  "mods": ["bakery"],
   "name": {
-    "text": "Pâtissier"
+    "text": "Pastry Chef"
   },
   "title": {
-    "text": "Pâtissier"
+    "text": "Pastry Chef"
   },
   "color": "#D98CA8",
+  "worksites": [
+    "bakery:baker_station"
+  ],
   "skills": [
     "fine_crumb",
     "piping_hand",

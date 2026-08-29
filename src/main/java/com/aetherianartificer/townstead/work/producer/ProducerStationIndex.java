@@ -88,7 +88,7 @@ public final class ProducerStationIndex {
                 abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter);
     }
 
-    public static @Nullable Selection chooseBaristaSelection(
+    public static @Nullable Selection chooseBeverageArtisanSelection(
             ServerLevel level,
             VillagerEntityMCA villager,
             WorkBuildingNav.Snapshot snapshot,
@@ -97,11 +97,11 @@ public final class ProducerStationIndex {
             long gameTime,
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil
     ) {
-        return chooseBaristaSelection(level, villager, snapshot, worksiteBounds,
+        return chooseBeverageArtisanSelection(level, villager, snapshot, worksiteBounds,
                 abandonedUntilByStation, gameTime, recipeCooldownUntil, null);
     }
 
-    public static @Nullable Selection chooseBaristaSelection(
+    public static @Nullable Selection chooseBeverageArtisanSelection(
             ServerLevel level,
             VillagerEntityMCA villager,
             WorkBuildingNav.Snapshot snapshot,
@@ -111,7 +111,7 @@ public final class ProducerStationIndex {
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
             @Nullable java.util.function.Predicate<StationSlot> stationFilter
     ) {
-        return chooseForRole(ProducerRole.BARISTA, level, villager, snapshot, worksiteBounds,
+        return chooseForRole(ProducerRole.BEVERAGE_ARTISAN, level, villager, snapshot, worksiteBounds,
                 abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter);
     }
 
@@ -126,7 +126,7 @@ public final class ProducerStationIndex {
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
             @Nullable java.util.function.Predicate<StationSlot> stationFilter
     ) {
-        net.minecraft.resources.ResourceLocation[] taskTypes = role == ProducerRole.BARISTA
+        net.minecraft.resources.ResourceLocation[] taskTypes = role == ProducerRole.BEVERAGE_ARTISAN
                 ? new net.minecraft.resources.ResourceLocation[]{com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW}
                 : new net.minecraft.resources.ResourceLocation[]{com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK,
                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP};
@@ -202,7 +202,7 @@ public final class ProducerStationIndex {
                             worksiteBounds,
                             recipeCooldownUntil,
                             ProducerWorkSupport.excludeBeverages(role, level, villager),
-                            ProducerWorkSupport.beveragesOnly(role),
+                            ProducerWorkSupport.restrictToBeverages(role),
                             taskTypes));
 
             if (state == ProducerStationState.BLOCKED) {

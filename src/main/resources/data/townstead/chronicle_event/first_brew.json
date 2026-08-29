@@ -16,14 +16,14 @@
   "news_value": 4.0,
   "roles": [
     {
-      "id": "brewer",
+      "id": "artisan",
       "kind": "villager",
       "when": {
         "type": "pheno:and",
         "conditions": [
           {
             "type": "pheno:profession",
-            "profession": "townstead:barista"
+            "profession": "townstead:beverage_artisan"
           },
           {
             "type": "pheno:chronicle_count",
@@ -44,11 +44,11 @@
       "translate": "chronicle.townstead.first_brew"
     },
     "params": [
-      "brewer"
+      "artisan"
     ]
   },
   "impact": {
-    "brewer": {
+    "artisan": {
       "mood": 5.0,
       "memory": {
         "valence": 0.9,

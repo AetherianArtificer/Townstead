@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PGP",
+    "SSS"
+  ],
+  "key": {
+    "G": { "item": "minecraft:gold_nugget" },
+    "P": { "item": "minecraft:paper" },
+    "S": { "tag": "minecraft:planks" }
+  },
+  "result": {
+    "id": "townstead:room_ownership_tag",
+    "count": 1
+  }
+}

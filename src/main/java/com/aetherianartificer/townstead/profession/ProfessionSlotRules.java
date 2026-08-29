@@ -11,7 +11,7 @@ public final class ProfessionSlotRules {
     private static final String GUARD_ID = "mca:guard";
     private static final String ARCHER_ID = "mca:archer";
     private static final String COOK_ID = "townstead:cook";
-    private static final String BARISTA_ID = "townstead:barista";
+    private static final String BEVERAGE_ARTISAN_ID = "townstead:beverage_artisan";
 
     private ProfessionSlotRules() {}
 
@@ -33,7 +33,7 @@ public final class ProfessionSlotRules {
         }
         SlotPolicy declared = declaredPolicy(professionId);
         if (declared != null) return declared;
-        if (COOK_ID.equals(professionId) || BARISTA_ID.equals(professionId)) {
+        if (COOK_ID.equals(professionId) || BEVERAGE_ARTISAN_ID.equals(professionId)) {
             return SlotPolicy.CUSTOM_BUILDING_SLOTS;
         }
         if (GUARD_ID.equals(professionId) || ARCHER_ID.equals(professionId)) {

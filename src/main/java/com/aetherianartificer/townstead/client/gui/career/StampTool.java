@@ -267,7 +267,6 @@ final class StampTool {
         g.drawString(font, place, left + (w - font.width(place)) / 2, top + 5, INK, false);
         int ruleY = top + 6 + font.lineHeight;
         g.fill(left + 6, ruleY, left + w - 6, ruleY + 1, INK_LIGHT);
-        g.fill(-2, ruleY - 1, 2, ruleY, INK);
         g.drawString(font, sub, left + (w - font.width(sub)) / 2, ruleY + 3, INK, false);
         g.pose().popPose();
     }

@@ -244,7 +244,11 @@ public final class CareerTreeOpener {
                             titleFor(viewer, target), scribeNameFor(viewer), inspect, notice,
                             authorityFor(viewer), todayFor(server, viewer),
                             CareerGraphBuilder.build(server, target, moments,
+                                    //? if >=1.21 {
                                     viewer.clientInformation().language()));
+                                    //?} else {
+                                    /*viewer.getLanguage()));
+                                    *///?}
                     //? if neoforge {
                     net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(viewer, payload);
                     //?} else {

@@ -109,7 +109,12 @@ public final class Worksites {
         int villageId = McaRoomBinding.ID.equals(key.binding())
                 ? McaRoomBinding.villageOf(level, key)
                 : Worksite.NO_VILLAGE;
-        return register.register(key, name, villageId, level.getGameTime());
+        Worksite created = register.register(key, name, villageId, level.getGameTime());
+        // Canonical ownership can improve after an update or datapack reload (notably when a
+        // registered open building used to resolve as a standalone post). Reconcile on first
+        // creation too; waiting for a second lookup would leave the player's existing list behind.
+        if (created != null) absorbStrayPosts(level, register, created);
+        return created;
     }
 
     @Nullable

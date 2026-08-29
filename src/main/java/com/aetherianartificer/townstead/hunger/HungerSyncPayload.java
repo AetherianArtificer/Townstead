@@ -16,7 +16,8 @@ public record HungerSyncPayload(
         int farmerXpToNext,
         int cookTier,
         int cookXp,
-        int cookXpToNext
+        int cookXpToNext,
+        int careerTier
 //? if neoforge {
 ) implements CustomPacketPayload {
 //?} else {
@@ -37,8 +38,10 @@ public record HungerSyncPayload(
                 buf.writeVarInt(payload.cookTier());
                 buf.writeVarInt(payload.cookXp());
                 buf.writeVarInt(payload.cookXpToNext());
+                buf.writeVarInt(payload.careerTier());
             },
             buf -> new HungerSyncPayload(
+                    buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt(),
@@ -72,10 +75,12 @@ public record HungerSyncPayload(
         buf.writeVarInt(cookTier);
         buf.writeVarInt(cookXp);
         buf.writeVarInt(cookXpToNext);
+        buf.writeVarInt(careerTier);
     }
 
     public static HungerSyncPayload read(FriendlyByteBuf buf) {
         return new HungerSyncPayload(
+                buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),

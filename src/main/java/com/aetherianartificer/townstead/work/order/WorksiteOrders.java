@@ -11,8 +11,10 @@ import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Asking a worksite's order list what to do next, from any task at all.
@@ -25,6 +27,10 @@ import java.util.function.Function;
  * per candidate.</p>
  */
 public final class WorksiteOrders {
+
+    /** A chosen operation, and the exact line/output which gave it priority when ordered. */
+    public record OutputChoice<T>(T candidate, @Nullable Order order,
+                                  @Nullable ResourceLocation output) {}
 
     private WorksiteOrders() {}
 
@@ -51,6 +57,14 @@ public final class WorksiteOrders {
                 int total = WorksiteStock.countTag(level, site, tagId, scope);
                 return WorksiteStock.isAssociated(level, site, villager)
                         ? total : total + WorksiteStock.carriedTag(villager, tagId);
+            }
+
+            @Override
+            public int stockOf(Order order, Order.CountScope scope) {
+                if (!order.exactProduct()) return OrderContext.super.stockOf(order, scope);
+                int total = WorksiteStock.countProduct(level, site, order, scope);
+                return WorksiteStock.isAssociated(level, site, villager)
+                        ? total : total + WorksiteStock.carriedProduct(villager, order.product());
             }
 
             @Override
@@ -228,6 +242,63 @@ public final class WorksiteOrders {
             if (!orders.governs(output) && !out.contains(candidate)) out.add(candidate);
         }
         return List.copyOf(out);
+    }
+
+    /**
+     * Chooses among general output-producing operations at one worksite.
+     *
+     * <p>Recipes already have their own strongly typed selection path.  Harvests, taps and other
+     * block interactions do not: one target may offer several player-like operations, each with
+     * one or more declared results.  This gives those engines the same contract as recipes:</p>
+     *
+     * <ul>
+     *   <li>active lines win in sheet order;</li>
+     *   <li>satisfied and paused outputs remain governed rather than leaking into autonomy;</li>
+     *   <li>list-only means an unrequested operation does not run;</li>
+     *   <li>without an applicable order, authored candidate order remains the fallback.</li>
+     * </ul>
+     *
+     * <p>{@code workable} may gather the one input needed by the chosen operation.  It is called
+     * only as candidates are genuinely attempted, never as a broad availability probe.</p>
+     */
+    @Nullable
+    public static <T> OutputChoice<T> chooseOutput(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            @Nullable BlockPos worksiteAnchor,
+            List<T> candidates,
+            Function<T, ? extends Collection<ResourceLocation>> outputsOf,
+            Predicate<T> workable) {
+        if (candidates == null || candidates.isEmpty()) return null;
+        Worksite site = worksiteAnchor == null ? null : Worksites.of(level, worksiteAnchor);
+        OrderList orders = site == null ? null : site.orders();
+
+        if (orders != null && !orders.isEmpty()) {
+            OrderList.OutputPick<T> ordered = orders.firstWorkableOutputs(
+                    candidates, outputsOf, workable, contextFor(level, site, villager));
+            if (ordered != null) {
+                return new OutputChoice<>(ordered.candidate(), ordered.order(), ordered.output());
+            }
+
+        }
+        if (orders != null && orders.listOnly()) return null;
+
+        for (T candidate : candidates) {
+            Collection<ResourceLocation> outputs = outputsOf.apply(candidate);
+            boolean governed = false;
+            if (orders != null && outputs != null) {
+                for (ResourceLocation output : outputs) {
+                    if (orders.governs(output)) {
+                        governed = true;
+                        break;
+                    }
+                }
+            }
+            if (!governed && workable.test(candidate)) {
+                return new OutputChoice<>(candidate, null, null);
+            }
+        }
+        return null;
     }
 
     /**

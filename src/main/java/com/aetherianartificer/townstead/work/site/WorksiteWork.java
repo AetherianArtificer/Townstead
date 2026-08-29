@@ -70,7 +70,7 @@ public final class WorksiteWork {
     /**
      * The trades that claim this place. A trade that names this building TYPE owns the place,
      * and owners outrank visitors: a cafe holds a skillet, the skillet is the cook's job block,
-     * and without this rule the cook's whole menu landed on the barista's sheet. Job-block
+     * and without this rule the cook's whole menu landed on the beverage sheet. Job-block
      * claims only speak where no trade owns the type — a lone smoker in an unclassified room
      * is still a butcher's corner.
      */
@@ -125,7 +125,7 @@ public final class WorksiteWork {
         return false;
     }
 
-    private static String buildingTypeOf(ServerLevel level, Worksite site) {
+    public static String buildingTypeOf(ServerLevel level, Worksite site) {
         Building building = McaRoomBinding.byId(level, site.key());
         return building == null ? null : building.getType();
     }

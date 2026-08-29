@@ -270,6 +270,60 @@ class OrderListTest {
     }
 
     @Test
+    void outputOperationsFollowSheetOrderInsteadOfAuthoredToolOrder() {
+        OrderList list = new OrderList();
+        list.add(new Order(STEW, Order.Mode.MAKE, 1));
+        list.add(new Order(BREAD, Order.Mode.MAKE, 1));
+
+        record Operation(String name, List<ResourceLocation> outputs) {}
+        Operation shears = new Operation("shears", List.of(BREAD));
+        Operation bottle = new Operation("bottle", List.of(STEW));
+
+        OrderList.OutputPick<Operation> pick = list.firstWorkableOutputs(
+                List.of(shears, bottle), Operation::outputs, ignored -> true, new Ctx());
+
+        assertNotNull(pick);
+        assertSame(bottle, pick.candidate(),
+                "the first order must override the interaction's authored fallback order");
+        assertEquals(STEW, pick.output());
+        assertSame(list.at(0), pick.order());
+    }
+
+    @Test
+    void outputOperationSkipsAnUnavailableHigherLine() {
+        OrderList list = new OrderList();
+        list.add(new Order(STEW, Order.Mode.MAKE, 1));
+        list.add(new Order(BREAD, Order.Mode.MAKE, 1));
+
+        record Operation(String name, List<ResourceLocation> outputs) {}
+        Operation shears = new Operation("shears", List.of(BREAD));
+        Operation bottle = new Operation("bottle", List.of(STEW));
+
+        OrderList.OutputPick<Operation> pick = list.firstWorkableOutputs(
+                List.of(shears, bottle), Operation::outputs,
+                operation -> operation != bottle, new Ctx());
+
+        assertNotNull(pick);
+        assertSame(shears, pick.candidate(), "a missing bottle must not block the shears line");
+        assertSame(list.at(1), pick.order());
+    }
+
+    @Test
+    void multiOutputOperationRemembersWhichResultMatchedTheLine() {
+        OrderList list = new OrderList();
+        list.add(new Order(PIE, Order.Mode.MAKE, 1));
+
+        record Operation(List<ResourceLocation> outputs) {}
+        Operation harvest = new Operation(List.of(BREAD, PIE));
+        OrderList.OutputPick<Operation> pick = list.firstWorkableOutputs(
+                List.of(harvest), Operation::outputs, ignored -> true, new Ctx());
+
+        assertNotNull(pick);
+        assertEquals(PIE, pick.output(),
+                "credit must follow the matching output, not the first declared byproduct");
+    }
+
+    @Test
     void sweepingRetiredLinesLeavesTheRest() {
         OrderList list = new OrderList();
         Order done = new Order(BREAD, Order.Mode.MAKE, 2);

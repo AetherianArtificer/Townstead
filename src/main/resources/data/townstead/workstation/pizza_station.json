@@ -1,0 +1,19 @@
+{
+  "type": "passive_station",
+  "block": "pizzadelight:pizza_station",
+  "mods": "pizzadelight",
+  "adapter": "townstead:pizzadelight_station",
+  "work_task": "townstead_work:cook",
+  "orderable": "all",
+  "produces": [
+    {
+      "inputs": [
+        "#townstead:pizza_bases",
+        "#pizzadelight:sauce",
+        "#pizzadelight:ingredients"
+      ],
+      "output": "pizzadelight:raw_pizza",
+      "time": 120
+    }
+  ]
+}

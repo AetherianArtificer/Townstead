@@ -91,13 +91,14 @@ public final class WorksiteStorageIndex {
         StoragePreference preference = StoragePreference.forVillager(villager);
 
         List<CandidatePosition> candidates = new ArrayList<>();
+        // The worksite's own shelves are the predictable first stop. External stores are fallback.
+        for (BlockPos pos : candidateStoragePositions(level, kitchenBounds)) {
+            candidates.add(new CandidatePosition(pos, StoragePreference.LOCAL_RANK));
+        }
         for (var building : PreferredStorageBuildings.resolve(level, villager)) {
             int buildingRank = preference.buildingRank(building.getType());
             building.getBlockPosStream().forEach(pos ->
                     candidates.add(new CandidatePosition(pos.immutable(), buildingRank)));
-        }
-        for (BlockPos pos : candidateStoragePositions(level, kitchenBounds)) {
-            candidates.add(new CandidatePosition(pos, StoragePreference.FALLBACK_RANK));
         }
         if (candidates.isEmpty()) {
             return new Snapshot(List.of(), Map.of(), gameTime + SNAPSHOT_TTL_TICKS);
@@ -109,8 +110,10 @@ public final class WorksiteStorageIndex {
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
             BlockEntity be = observed.blockEntity();
             if (be == null) continue;
-            if (!StorageRoles.isStorageCandidate(level, observed.pos(), be)) continue;
+            if (!StorageRoles.isStorageCandidate(level, observed.pos(), be, villager)) continue;
+            Set<StorageRoleDef.Role> roles = StorageRoles.semanticRoles(observed.state());
             List<SlotView> slots = new ArrayList<>();
+            boolean useHandlers = StorageInventoryPolicy.useItemHandlerView(be);
             if (be instanceof Container container) {
                 for (int i = 0; i < container.getContainerSize(); i++) {
                     ItemStack stack = container.getItem(i);
@@ -118,26 +121,26 @@ public final class WorksiteStorageIndex {
                     slots.add(new SlotView(observed.pos(), container, false, i, null, stack.copy()));
                 }
             }
-            boolean hasContainerSlots = !slots.isEmpty();
-            searchContext.forEachUniqueItemHandler(observed.pos(), (side, handler) -> {
-                if (hasContainerSlots) return;
-                for (int i = 0; i < handler.getSlots(); i++) {
-                    ItemStack stack = handler.getStackInSlot(i);
-                    if (stack.isEmpty()) continue;
-                    slots.add(new SlotView(observed.pos(), null, true, i, side, stack.copy()));
-                }
-            });
-            for (SlotView slot : slots) {
-                accumulate(itemCounts, slot.stack());
+            if (useHandlers) {
+                searchContext.forEachUniqueItemHandler(observed.pos(), (side, handler) -> {
+                    for (int i = 0; i < handler.getSlots(); i++) {
+                        ItemStack stack = handler.getStackInSlot(i);
+                        if (stack.isEmpty()) continue;
+                        slots.add(new SlotView(observed.pos(), null, true, i, side, stack.copy()));
+                    }
+                });
+            }
+            if (StorageRoles.useRank(roles.isEmpty()
+                    ? Set.of(StorageRoleDef.Role.STORAGE) : roles, StorageUse.INGREDIENT)
+                    != Integer.MAX_VALUE) {
+                for (SlotView slot : slots) accumulate(itemCounts, slot.stack());
             }
             if (!slots.isEmpty()) {
-                entries.add(new Entry(observed.pos(), List.copyOf(slots), candidate.buildingRank(),
-                        preference.rank(observed.state())));
+                entries.add(new Entry(observed.pos(), List.copyOf(slots), candidate.buildingRank(), roles));
             }
         }
 
-        entries.sort(Comparator.comparingInt(Entry::buildingRank)
-                .thenComparingInt(Entry::storageRank));
+        entries.sort(Comparator.comparingInt(Entry::buildingRank));
 
         return new Snapshot(List.copyOf(entries), Map.copyOf(itemCounts), gameTime + SNAPSHOT_TTL_TICKS);
     }
@@ -171,6 +174,7 @@ public final class WorksiteStorageIndex {
             List<SupplyLines.Line> lines = SupplyLines.activeLinesAmong(trackedIds);
             if (lines.isEmpty()) return supply;
             for (Entry entry : entries) {
+                if (roleRank(entry.roles(), StorageUse.INGREDIENT) == Integer.MAX_VALUE) continue;
                 for (SlotView slot : entry.slots()) {
                     ItemStack stack = slot.stack();
                     if (stack.isEmpty()) continue;
@@ -185,20 +189,33 @@ public final class WorksiteStorageIndex {
         }
 
         public @Nullable NearbyItemSources.ContainerSlot findBestSlot(VillagerEntityMCA villager, Predicate<ItemStack> matcher) {
-            return findBestSlot(villager, matcher, ItemStack::getCount);
+            return findBestSlot(villager, matcher, ItemStack::getCount, StorageUse.INGREDIENT);
         }
 
         public @Nullable NearbyItemSources.ContainerSlot findBestSlot(
                 VillagerEntityMCA villager, Predicate<ItemStack> matcher, ToIntFunction<ItemStack> scorer) {
+            return findBestSlot(villager, matcher, scorer, StorageUse.INGREDIENT);
+        }
+
+        public @Nullable NearbyItemSources.ContainerSlot findBestSlot(
+                VillagerEntityMCA villager, Predicate<ItemStack> matcher, StorageUse use) {
+            return findBestSlot(villager, matcher, ItemStack::getCount, use);
+        }
+
+        public @Nullable NearbyItemSources.ContainerSlot findBestSlot(
+                VillagerEntityMCA villager, Predicate<ItemStack> matcher,
+                ToIntFunction<ItemStack> scorer, StorageUse use) {
             NearbyItemSources.ContainerSlot best = null;
             int bestBuildingRank = StoragePreference.FALLBACK_RANK;
             int bestStorageRank = StoragePreference.FALLBACK_RANK;
             for (Entry entry : entries) {
+                int storageRank = roleRank(entry.roles(), use);
+                if (storageRank == Integer.MAX_VALUE) continue;
                 for (SlotView slot : entry.slots()) {
                     if (!matcher.test(slot.stack())) continue;
                     if (entry.buildingRank() > bestBuildingRank
                             || (entry.buildingRank() == bestBuildingRank
-                            && entry.storageRank() > bestStorageRank)) continue;
+                            && storageRank > bestStorageRank)) continue;
                     int score = scorer.applyAsInt(slot.stack());
                     double dist = villager.distanceToSqr(
                             slot.pos().getX() + 0.5,
@@ -207,10 +224,10 @@ public final class WorksiteStorageIndex {
                     );
                     boolean betterPlace = entry.buildingRank() < bestBuildingRank
                             || (entry.buildingRank() == bestBuildingRank
-                            && entry.storageRank() < bestStorageRank);
+                            && storageRank < bestStorageRank);
                     if (betterPlace || isBetter(best, dist, score)) {
                         bestBuildingRank = entry.buildingRank();
-                        bestStorageRank = entry.storageRank();
+                        bestStorageRank = storageRank;
                         best = new NearbyItemSources.ContainerSlot(
                                 slot.pos(),
                                 slot.container(),
@@ -230,6 +247,7 @@ public final class WorksiteStorageIndex {
             if (itemIds == null || itemIds.isEmpty()) return List.of();
             List<SlotView> matching = new ArrayList<>();
             for (Entry entry : entries) {
+                if (roleRank(entry.roles(), StorageUse.INGREDIENT) == Integer.MAX_VALUE) continue;
                 for (SlotView slot : entry.slots()) {
                     ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(slot.stack().getItem());
                     if (itemId == null || !itemIds.contains(itemId)) continue;
@@ -270,7 +288,8 @@ public final class WorksiteStorageIndex {
 
     private record CandidatePosition(BlockPos pos, int buildingRank) {}
 
-    private record Entry(BlockPos pos, List<SlotView> slots, int buildingRank, int storageRank) {}
+    private record Entry(BlockPos pos, List<SlotView> slots, int buildingRank,
+                         Set<StorageRoleDef.Role> roles) {}
 
     record SlotView(BlockPos pos, @Nullable Container container, boolean itemHandler, int slot,
                             @Nullable Direction side, ItemStack stack) {}
@@ -279,13 +298,15 @@ public final class WorksiteStorageIndex {
 
     public record ExtractionPlan(List<PlannedExtraction> slots, int totalAvailable) {}
 
-    private record SnapshotKey(String dimensionId, String professionId, BoundsKey boundsKey) {
+    private record SnapshotKey(String dimensionId, String professionId, java.util.UUID villagerId,
+                               BoundsKey boundsKey) {
         static SnapshotKey create(ServerLevel level, VillagerEntityMCA villager, Set<Long> kitchenBounds) {
             ResourceLocation profession = BuiltInRegistries.VILLAGER_PROFESSION
                     .getKey(villager.getVillagerData().getProfession());
             return new SnapshotKey(
                     level.dimension().location().toString(),
                     profession == null ? "minecraft:none" : profession.toString(),
+                    villager.getUUID(),
                     BoundsKey.of(kitchenBounds)
             );
         }
@@ -345,6 +366,11 @@ public final class WorksiteStorageIndex {
         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (itemId == null) return;
         itemCounts.merge(itemId, stack.getCount(), Integer::sum);
+    }
+
+    private static int roleRank(Set<StorageRoleDef.Role> roles, StorageUse use) {
+        return StorageRoles.useRank(roles == null || roles.isEmpty()
+                ? Set.of(StorageRoleDef.Role.STORAGE) : roles, use);
     }
 
     private static NearbyItemSources.ContainerSlot toContainerSlot(SlotView slot) {

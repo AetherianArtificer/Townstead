@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:storage_role/v1",
+  "role": "finished_goods",
+  "blocks": [
+    "#townstead:storage_roles/finished_goods"
+  ]
+}

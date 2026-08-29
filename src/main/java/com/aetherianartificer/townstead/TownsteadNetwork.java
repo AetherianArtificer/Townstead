@@ -83,7 +83,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "5";
+    private static final String PROTOCOL_VERSION = "7";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -133,6 +133,14 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload::read,
                 TownsteadNetwork::handleOrdersSnapshot);
+        registerS2C(com.aetherianartificer.townstead.storage.net.RoomOwnershipSnapshotS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.storage.net.RoomOwnershipSnapshotS2CPayload::read,
+                TownsteadNetwork::handleRoomOwnershipSnapshot);
+        registerC2S(com.aetherianartificer.townstead.storage.net.RoomOwnershipSetC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.storage.net.RoomOwnershipSetC2SPayload::read,
+                TownsteadNetwork::handleRoomOwnershipSet);
         registerC2S(com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload::read,
@@ -722,7 +730,8 @@ public final class TownsteadNetwork {
         HungerClientStore.set(
                 payload.entityId(), payload.hunger(),
                 payload.farmerTier(), payload.farmerXp(), payload.farmerXpToNext(),
-                payload.cookTier(), payload.cookXp(), payload.cookXpToNext()
+                payload.cookTier(), payload.cookXp(), payload.cookXpToNext(),
+                payload.careerTier()
         );
     }
 
@@ -777,6 +786,17 @@ public final class TownsteadNetwork {
     private static void handleOrdersSnapshot(
             com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload payload) {
         com.aetherianartificer.townstead.client.gui.orders.OrdersScreen.openOrUpdate(payload);
+    }
+
+    private static void handleRoomOwnershipSnapshot(
+            com.aetherianartificer.townstead.storage.net.RoomOwnershipSnapshotS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.storage.RoomOwnershipScreenOpener.open(payload);
+    }
+
+    private static void handleRoomOwnershipSet(
+            com.aetherianartificer.townstead.storage.net.RoomOwnershipSetC2SPayload payload,
+            ServerPlayer player) {
+        com.aetherianartificer.townstead.storage.RoomOwnershipService.apply(player, payload);
     }
 
     private static void handleOrderEdit(

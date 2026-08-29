@@ -48,20 +48,5 @@
       "recipes": ["#townstead:orders/baker_goods"],
       "weight": 10
     }
-  ],
-  "path_worksites": {
-    "boulanger": [
-      "minecraft:crafting_table",
-      "minecraft:furnace",
-      "minecraft:smoker",
-      "farm_and_charm:crafting_bowl",
-      "farm_and_charm:stove"
-    ],
-    "patissier": [
-      "bakery:baker_station"
-    ],
-    "confiturier": [
-      "bakery:small_cooking_pot"
-    ]
-  }
+  ]
 }

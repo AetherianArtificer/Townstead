@@ -1,37 +1,57 @@
 package com.aetherianartificer.townstead.storage;
 
 import com.google.gson.JsonParser;
+import net.minecraft.resources.ResourceLocation;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StoragePreferenceTest {
 
+    @AfterEach
+    void resetBuildingRoles() {
+        BuildingStorageRoles.replaceAll(Map.of());
+    }
+
     @Test
-    void parsesOrderedBlocksAndTags() {
+    void parsesAndRanksSemanticBuildingRoles() {
+        ResourceLocation materials = ResourceLocation.tryParse("townstead:materials");
+        BuildingStorageRoles.replaceAll(Map.of(
+                "warehouse", Set.of(materials),
+                "storage", Set.of(BuildingStorageRoles.GENERAL)));
         StoragePreference preference = StoragePreference.parse(JsonParser.parseString("""
-                {"buildings":["example:honey_house"],
-                 "preferred":["#example:apiary_storage","minecraft:barrel"]}
+                {"preferred_roles":["townstead:materials"]}
                 """));
 
-        assertEquals(List.of("example:honey_house"), preference.buildings());
-        assertEquals(0, preference.buildingRank("example:honey_house"));
+        assertEquals(List.of(materials), preference.preferredRoles());
+        assertEquals(StoragePreference.EXTERNAL_BASE_RANK,
+                preference.buildingRank("warehouse"));
+        assertEquals(StoragePreference.EXTERNAL_BASE_RANK + 1,
+                preference.buildingRank("storage"));
         assertEquals(StoragePreference.FALLBACK_RANK,
                 preference.buildingRank("example:apiary"));
-        assertEquals(2, preference.preferred().size());
-        assertTrue(preference.preferred().get(0).tag());
-        assertEquals("example:apiary_storage",
-                preference.preferred().get(0).id().toString());
-        assertEquals("minecraft:barrel", preference.preferred().get(1).id().toString());
+    }
+
+    @Test
+    void noProfessionPreferenceStillFindsGeneralStorage() {
+        BuildingStorageRoles.replaceAll(Map.of(
+                "storage", Set.of(BuildingStorageRoles.GENERAL)));
+
+        assertEquals(StoragePreference.EXTERNAL_BASE_RANK,
+                StoragePreference.NONE.buildingRank("storage"));
     }
 
     @Test
     void rejectsAmbiguousShorthand() {
         assertThrows(IllegalArgumentException.class, () -> StoragePreference.parse(
                 JsonParser.parseString("[\"minecraft:barrel\"]")));
+        assertThrows(IllegalArgumentException.class, () -> StoragePreference.parse(
+                JsonParser.parseString("{\"preferred\":[\"minecraft:barrel\"]}")));
     }
 }

@@ -53,6 +53,7 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
         if (extent.isEmpty()) return List.of();
         Set<ResourceLocation> worked = WorksiteWork.typesAt(level, site, extent);
         if (worked.isEmpty()) return List.of();
+        String buildingType = WorksiteWork.buildingTypeOf(level, site);
 
         Map<ResourceLocation, BlockState> present = blocksIn(level, extent);
         Map<ResourceLocation, Integer> onHand = null;
@@ -63,6 +64,8 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
                     declarationsForDef(level, site, extent, worked, def);
             if (declared.isEmpty()) continue;
             if (!isPresent(def, present)) continue;
+            BlockPos anchor = firstPresentPos(level, extent, def);
+            if (anchor == null) continue;
             ResourceLocation icon = iconOf(def);
             String label = blockName(icon, def);
             if (onHand == null) onHand = StationCatalogs.stockIn(level, site, extent);
@@ -71,15 +74,18 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             // because the armorer's declaration says so, not because the bench could make boats.
             // A declaration also names its stations, and that is part of the claim: the mason's
             // craft is stonecutter-only, so a crafting table in the mason's room drives nothing.
-            for (DiscoveredRecipe recipe : ProtocolRecipes.discoverFor(def)) {
+            for (DiscoveredRecipe recipe : ProtocolRecipes.discover(level, def)) {
+                if (!BuildingRecipeScopes.allows(buildingType, recipe.id())) continue;
                 if (!allowedByAny(declared, recipe)) continue;
-                if (!seen.add(recipe.output())) continue;
+                if (!seen.add(OrderProducts.key(recipe))) continue;
                 // A duplicating line is a service, not production: the option says so, and the
                 // screen asks for the workpiece instead of adding a plain line.
                 var produce = com.aetherianartificer.townstead.work.station.StationProtocols
                         .produceFor(def, recipe);
+                DiscoveredRecipe catalogueRecipe = withLiveRequirements(
+                        level, anchor, def, recipe);
                 if (produce != null && produce.copies() != null) {
-                    var plain = StationCatalogs.option(recipe, label, icon, onHand);
+                    var plain = StationCatalogs.option(catalogueRecipe, label, icon, onHand);
                     out.add(com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload
                             .Option.commissioned(plain.output(), plain.stationLabel(),
                                     plain.stationIcon(), plain.available(), plain.blocker(),
@@ -87,19 +93,7 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
                                     "Copy " + StationCatalogs.itemNameOf(produce.copies())));
                     continue;
                 }
-                out.add(StationCatalogs.option(recipe, label, icon, onHand));
-            }
-            // A def whose outputs come from a recipe family rather than inline lines (the smoker's
-            // smoking recipes) offers that family, which is exactly what the station will do.
-            for (DiscoveredRecipe recipe : ProtocolRecipes.discoverByType(level, def)) {
-                if (!allowedByAny(declared, recipe)) continue;
-                if (!seen.add(recipe.output())) continue;
-                out.add(StationCatalogs.option(recipe, label, icon, onHand));
-            }
-            for (DiscoveredRecipe recipe : v2Recipes(level, def)) {
-                if (!allowedByAny(declared, recipe)) continue;
-                if (!seen.add(recipe.output())) continue;
-                out.add(StationCatalogs.option(recipe, label, icon, onHand));
+                out.add(StationCatalogs.option(catalogueRecipe, label, icon, onHand));
             }
         }
         return out;
@@ -164,25 +158,6 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
                 || com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW.equals(type);
     }
 
-    private static List<DiscoveredRecipe> v2Recipes(ServerLevel level, WorkstationDef def) {
-        Set<ResourceLocation> attached = new LinkedHashSet<>();
-        for (ResourceLocation block : def.blocks()) {
-            if (Workstations.v2ByBlockId(block) != null) {
-                attached.addAll(com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes
-                        .forBlock(block));
-            }
-        }
-        if (attached.isEmpty()) return List.of();
-        List<DiscoveredRecipe> out = new ArrayList<>();
-        for (DiscoveredRecipe recipe : com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry
-                .getRecipes(level)) {
-            ResourceLocation type = com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry
-                    .recipeTypeId(recipe);
-            if (type != null && attached.contains(type)) out.add(recipe);
-        }
-        return List.copyOf(out);
-    }
-
     /** Whether this declaration's workstation filter admits any block this def can be. */
     private static boolean taskDrivesDef(
             com.aetherianartificer.townstead.profession.def.WorkTaskDef task, WorkstationDef def) {
@@ -232,6 +207,37 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             }
         }
         return false;
+    }
+
+    private static BlockPos firstPresentPos(ServerLevel level, Set<Long> extent,
+                                            WorkstationDef def) {
+        for (long packed : extent) {
+            BlockPos pos = BlockPos.of(packed);
+            BlockState state = level.getBlockState(pos);
+            ResourceLocation block = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+            if (def.blocks().contains(block)) return pos;
+            for (ResourceLocation tagId : def.blockTags()) {
+                if (state.is(TagKey.create(Registries.BLOCK, tagId))) return pos;
+            }
+        }
+        return null;
+    }
+
+    /** Adds adapter-owned live requirements for display without mutating the executable recipe. */
+    private static DiscoveredRecipe withLiveRequirements(
+            ServerLevel level, BlockPos anchor, WorkstationDef def, DiscoveredRecipe recipe) {
+        var adapter = com.aetherianartificer.townstead.work.station.StationAdapters.forDef(def);
+        if (adapter == null) return recipe;
+        var additional = adapter.additionalInputs(level, anchor, def, recipe);
+        if (additional == null || additional.isEmpty()) return recipe;
+        List<com.aetherianartificer.townstead.work.recipe.RecipeIngredient> inputs =
+                new ArrayList<>(recipe.inputs());
+        inputs.addAll(additional);
+        inputs = com.aetherianartificer.townstead.work.recipe.RecipeIngredient.merge(inputs);
+        return new DiscoveredRecipe(recipe.id(), recipe.stationType(), recipe.tier(),
+                recipe.output(), recipe.outputCount(), recipe.cookTimeTicks(),
+                recipe.requiresTool(), recipe.containerItemId(), recipe.containerCount(),
+                List.copyOf(inputs), recipe.purification(), recipe.beverage(), recipe.source());
     }
 
     private static final ResourceLocation NO_ICON =

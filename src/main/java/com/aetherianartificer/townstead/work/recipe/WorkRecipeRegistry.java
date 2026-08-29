@@ -717,7 +717,7 @@ public final class WorkRecipeRegistry {
                 0,
                 List.of(new RecipeIngredient(List.of(TOWNSTEAD_IMPURE_WATER_INPUT), 1)),
                 true,
-                ModCompat.isLoaded("rusticdelight"),
+                true,
                 null
         );
     }

@@ -122,6 +122,13 @@ public final class OrdersOpener {
             }
 
             @Override
+            public int stockOf(Order order, Order.CountScope scope) {
+                return order.exactProduct()
+                        ? WorksiteStock.countProduct(level, site, order, scope)
+                        : OrderContext.super.stockOf(order, scope);
+            }
+
+            @Override
             public int villagerCount() {
                 return WorksiteStock.villagers(level, site);
             }

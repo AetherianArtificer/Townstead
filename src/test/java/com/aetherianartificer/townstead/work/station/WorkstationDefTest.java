@@ -6,6 +6,8 @@ import com.google.gson.JsonParser;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -274,8 +276,18 @@ class WorkstationDefTest {
         assertTrue(oven.harvestTools().contains(id("pizzadelight:iron_pizza_peel")),
                 "harvest requires a peel, like a player");
         WorkstationDef.Produce pizza = oven.produces().get(0);
-        assertEquals(id("pizzadelight:ingredients"), pizza.extrasTag());
-        assertEquals(9, pizza.extrasMax(), "up to nine distinct toppings drive the taste tier");
+        assertEquals(List.of("pizzadelight:raw_pizza"), pizza.inputs(),
+                "the oven bakes the component-bearing pizza assembled at the station");
+
+        WorkstationDef station = parseResource("/data/townstead/workstation/pizza_station.json");
+        assertEquals(StationType.PASSIVE_STATION, station.role());
+        assertEquals("townstead:pizzadelight_station", station.adapter());
+        assertEquals(id("townstead_work:cook"), station.workTask());
+        assertTrue(station.orderable().all());
+        WorkstationDef.Produce assembled = station.produces().get(0);
+        assertEquals(List.of("#townstead:pizza_bases", "#pizzadelight:sauce",
+                "#pizzadelight:ingredients"), assembled.inputs());
+        assertEquals(id("pizzadelight:raw_pizza"), assembled.output());
     }
 
     @Test

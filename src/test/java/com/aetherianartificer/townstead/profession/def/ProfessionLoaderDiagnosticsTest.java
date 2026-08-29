@@ -75,6 +75,22 @@ class ProfessionLoaderDiagnosticsTest {
     }
 
     @Test
+    void invalidStoragePreferenceDoesNotEraseProfessionWork() {
+        WorkTaskTypes.register(rl("townstead_work:interact"));
+        Diagnostics diag = new Diagnostics();
+        ProfessionDef profession = ProfessionDataLoader.parseProfession(rl("t:beekeeper"),
+                obj("{ 'storage':{'buildings':['t:honey_house']},"
+                        + " 'work_tasks':[{'type':'townstead_work:interact'}] }"),
+                Map.of(), diag);
+
+        assertNotNull(profession);
+        assertEquals(com.aetherianartificer.townstead.storage.StoragePreference.NONE,
+                profession.storage());
+        assertEquals(1, profession.workTasks().size());
+        assertTrue(has(diag, "$.storage", "Invalid profession storage preference"));
+    }
+
+    @Test
     void skillMissingProfessionErrorsAndReturnsNull() {
         Diagnostics diag = new Diagnostics();
         SkillDef skill = ProfessionDataLoader.parseSkill(rl("t:s"), obj("{ 'tier':1 }"), Map.of(), diag);

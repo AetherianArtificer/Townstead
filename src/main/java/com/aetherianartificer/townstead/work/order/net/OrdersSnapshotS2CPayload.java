@@ -52,10 +52,12 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                       boolean activity, boolean tag, String label,
                       String worker, Order.Operation operation, String operator,
                       String workLabel, boolean operated, boolean workerFallback,
-                      List<Worker> workers, List<Driver> operators) {
+                      List<Worker> workers, List<Driver> operators,
+                      ResourceLocation product) {
         public Row {
             workers = workers == null ? List.of() : List.copyOf(workers);
             operators = operators == null ? List.of() : List.copyOf(operators);
+            product = product == null ? output : product;
         }
     }
 
@@ -91,7 +93,20 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                          boolean available, String blocker, int makes, List<Need> needs,
                          List<Need> missing,
                          boolean activity, boolean tag, String label, boolean commission,
-                         boolean operated) {
+                         boolean operated, ResourceLocation product) {
+
+        public Option {
+            product = product == null ? output : product;
+        }
+
+        /** Compatibility constructor for ordinary item/activity/category options. */
+        public Option(ResourceLocation output, String stationLabel, ResourceLocation stationIcon,
+                      boolean available, String blocker, int makes, List<Need> needs,
+                      List<Need> missing, boolean activity, boolean tag, String label,
+                      boolean commission, boolean operated) {
+            this(output, stationLabel, stationIcon, available, blocker, makes, needs, missing,
+                    activity, tag, label, commission, operated, output);
+        }
 
         /** Something this place can make. */
         public static Option item(ResourceLocation output, String stationLabel,
@@ -99,7 +114,16 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                                   int makes, List<Need> needs, List<Need> missing) {
             return new Option(output, stationLabel, stationIcon, available, blocker, makes, needs,
                     missing,
-                    false, false, "", false, false);
+                    false, false, "", false, false, output);
+        }
+
+        /** A component-bearing item such as one registered potion variant. */
+        public static Option exactItem(ResourceLocation output, ResourceLocation product,
+                                       String stationLabel, ResourceLocation stationIcon,
+                                       boolean available, String blocker, int makes,
+                                       List<Need> needs, List<Need> missing, String label) {
+            return new Option(output, stationLabel, stationIcon, available, blocker, makes,
+                    needs, missing, false, false, label, false, false, product);
         }
 
         /**
@@ -112,25 +136,25 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                                           List<Need> missing, String label) {
             return new Option(output, stationLabel, stationIcon, available, blocker, makes, needs,
                     missing,
-                    false, false, label, true, false);
+                    false, false, label, true, false, output);
         }
 
         /** A job this place can be told to prefer. It makes nothing, so it counts nothing. */
         public static Option job(ResourceLocation id, String label, ResourceLocation icon) {
             return new Option(id, "Job", icon, true, "", 0, List.of(), List.of(),
-                    true, false, label, false, false);
+                    true, false, label, false, false, id);
         }
 
         /** A set of things this place can make some of: "any cooked meat". */
         public static Option category(ResourceLocation tagId, String label, ResourceLocation icon,
                                       boolean available, String blocker, List<Need> missing) {
             return new Option(tagId, "Kind", icon, available, blocker, 1, List.of(), missing,
-                    false, true, label, false, false);
+                    false, true, label, false, false, tagId);
         }
 
         public Option withOperated(boolean value) {
             return new Option(output, stationLabel, stationIcon, available, blocker, makes,
-                    needs, missing, activity, tag, label, commission, value);
+                    needs, missing, activity, tag, label, commission, value, product);
         }
     }
 
@@ -167,6 +191,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
         buf.writeVarInt(rows.size());
         for (Row row : rows) {
             buf.writeResourceLocation(row.output());
+            buf.writeResourceLocation(row.product());
             buf.writeEnum(row.mode());
             buf.writeVarInt(row.target());
             buf.writeEnum(row.scope());
@@ -204,6 +229,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
         buf.writeVarInt(options.size());
         for (Option option : options) {
             buf.writeResourceLocation(option.output());
+            buf.writeResourceLocation(option.product());
             buf.writeUtf(option.stationLabel());
             buf.writeResourceLocation(option.stationIcon());
             buf.writeBoolean(option.available());
@@ -262,6 +288,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
         List<Row> rows = new ArrayList<>(rowCount);
         for (int i = 0; i < rowCount; i++) {
             ResourceLocation output = buf.readResourceLocation();
+            ResourceLocation product = buf.readResourceLocation();
             Order.Mode mode = buf.readEnum(Order.Mode.class);
             int target = buf.readVarInt();
             Order.CountScope scope = buf.readEnum(Order.CountScope.class);
@@ -296,12 +323,13 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             rows.add(new Row(output, mode, target, scope, paused,
                     modeLabel, scopeLabel, whoLabel, have, want, inProgress, status, reason,
                     activity, tag, label, worker, operation, operator, workLabel,
-                    operated, workerFallback, rowWorkers, operators));
+                    operated, workerFallback, rowWorkers, operators, product));
         }
         int optionCount = buf.readVarInt();
         List<Option> options = new ArrayList<>(optionCount);
         for (int i = 0; i < optionCount; i++) {
             ResourceLocation output = buf.readResourceLocation();
+            ResourceLocation product = buf.readResourceLocation();
             String stationLabel = buf.readUtf();
             ResourceLocation stationIcon = buf.readResourceLocation();
             boolean available = buf.readBoolean();
@@ -330,7 +358,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             boolean operated = buf.readBoolean();
             options.add(new Option(output, stationLabel, stationIcon, available, blocker,
                     makes, List.copyOf(needs), List.copyOf(missing),
-                    activity, tag, label, commission, operated));
+                    activity, tag, label, commission, operated, product));
         }
         int stationCount = buf.readVarInt();
         List<Station> stations = new ArrayList<>(stationCount);

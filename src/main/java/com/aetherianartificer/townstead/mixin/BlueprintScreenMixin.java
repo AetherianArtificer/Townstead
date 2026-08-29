@@ -1046,7 +1046,15 @@ public abstract class BlueprintScreenMixin extends Screen {
 
     @Unique
     private void townstead$buildCatalogEntries() {
-        List<BuildingType> all = new ArrayList<>(BuildingTypes.getInstance().getBuildingTypes().values());
+        // MCA's client mirror is authoritative when present. Townstead scans the same data files
+        // for catalog metadata and retains parsed definitions as a narrow fallback, so a freshly
+        // added data-only type (such as Mason's Yard) cannot disappear for one client reload even
+        // though its JSON and extended-building entry both loaded successfully.
+        Map<String, BuildingType> catalogTypes = new LinkedHashMap<>(
+                BuildingTypes.getInstance().getBuildingTypes());
+        com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.scannedBuildingTypes()
+                .forEach(catalogTypes::putIfAbsent);
+        List<BuildingType> all = new ArrayList<>(catalogTypes.values());
         townstead$catalogIconCache.clear();
         townstead$catalogDetailCache.clear();
         townstead$builtTypes.clear();
@@ -1867,21 +1875,13 @@ public abstract class BlueprintScreenMixin extends Screen {
         if ("minecraft:none".equals(professionId)) {
             return Component.translatable("townstead.profession.none").getString();
         }
-        // Try standard villager profession translation key patterns
         //? if >=1.21 {
         ResourceLocation id = ResourceLocation.parse(professionId);
         //?} else {
         /*ResourceLocation id = new ResourceLocation(professionId);
         *///?}
-        // Vanilla: "entity.minecraft.villager.farmer"
-        // Modded: "entity.mca.villager.guard"
-        String key = "entity." + id.getNamespace() + ".villager." + id.getPath();
-        String translated = Component.translatable(key).getString();
-        if (!translated.equals(key)) return translated;
-        // Fallback: capitalize the path
-        String path = id.getPath();
-        if (path.isEmpty()) return professionId;
-        return path.substring(0, 1).toUpperCase(Locale.ROOT) + path.substring(1);
+        return com.aetherianartificer.townstead.profession.ProfessionDisplayNames
+                .component(id).getString();
     }
 
     @Unique
@@ -3411,10 +3411,11 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private net.minecraft.world.item.ItemStack townstead$catalogIconFor(String buildingTypeName) {
         if (buildingTypeName == null || buildingTypeName.isEmpty()) return net.minecraft.world.item.ItemStack.EMPTY;
-        if (!BuildingTypes.getInstance().getBuildingTypes().containsKey(buildingTypeName)) {
-            return net.minecraft.world.item.ItemStack.EMPTY;
+        BuildingType bt = BuildingTypes.getInstance().getBuildingTypes().get(buildingTypeName);
+        if (bt == null) {
+            bt = com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
+                    .scannedBuildingTypes().get(buildingTypeName);
         }
-        BuildingType bt = BuildingTypes.getInstance().getBuildingType(buildingTypeName);
         if (bt == null) return net.minecraft.world.item.ItemStack.EMPTY;
         return townstead$resolveNodeIcon(bt);
     }
