@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "taboo.cannibalism",
+  "weight": 8,
+  "rarity": "rare",
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "taboo",
+    "key": "townstead:ate_sapient_flesh"
+  },
+  "cooldown_days": 1,
+  "reach": "witnesses",
+  "news_value": 6.0,
+  "roles": [
+    {
+      "id": "eater",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 10.0,
+    "max": 4
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.ate_sapient_flesh"
+    },
+    "params": [
+      "eater"
+    ]
+  },
+  "impact": {
+    "eater": {
+      "memory": {
+        "valence": -0.2,
+        "strength": 0.9
+      }
+    }
+  }
+}

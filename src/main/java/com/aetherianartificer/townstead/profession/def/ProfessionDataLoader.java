@@ -19,6 +19,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,21 +31,179 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Loads data-driven professions ({@code data/<ns>/profession/*.json}) and skills
- * ({@code data/<ns>/skill/*.json}) together, so the cross-references between them are populated
- * and validated atomically each reload. Validation findings (unreachable tiers, dangling refs,
- * cycles) are stored under the "profession" source for {@code /pheno validate}.
+ * Loads data-driven professions and skills together, so the cross-references between them are
+ * populated and validated atomically each reload. The canonical layout is a directory per
+ * profession: {@code data/<ns>/profession/<name>/profession.json} (reserved filename) with its
+ * Profession-wide skills live beside it in
+ * {@code data/<ns>/profession/<name>/skill/<skill>.json}. A specialization owns a directory at
+ * {@code path/<path>/}: {@code path.json} declares its ordered skill levels and sibling
+ * {@code skill/<skill>.json} files register as {@code <ns>:<name>/<path>/<skill>}. Shared Career
+ * pacing lives in {@code progression.json}; position in the Path's {@code skills} array owns
+ * skill tier.
+ * Villager composition lives in {@code work.json}; general merchant-offer contributions live in
+ * the Profession's {@code trade/}, while Path contributions live in the Path's {@code trade/}.
+ * Optional-mod meanings live in {@code compatibility/*.json}: root aliases and foreign
+ * professions that imply a particular Path. Path documents may carry their own {@code mods}
+ * gate, in which case their skills and trades disappear with the Path.
+ * Legacy {@code levels.json}, aggregate
+ * {@code paths.json}, and inline fields remain readable. The flat forms
+ * ({@code profession/<name>.json}, {@code data/<ns>/skill/*.json} with an explicit
+ * {@code profession} field) still load for older packs. Validation findings (unreachable tiers,
+ * dangling refs, cycles) are stored under the "profession" source for {@code /pheno validate}.
  */
 public final class ProfessionDataLoader extends SimplePreparableReloadListener<ProfessionDataLoader.Prepared> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/ProfessionDataLoader");
 
+    public record TradeDocument(@Nullable String path, JsonObject document) {}
+
     public record Prepared(Map<ResourceLocation, JsonObject> professions,
-                           Map<ResourceLocation, JsonObject> skills) {}
+                           Map<ResourceLocation, JsonObject> skills,
+                           Map<ResourceLocation, JsonObject> levelOverlays,
+                           Map<ResourceLocation, JsonObject> progressionOverlays,
+                           Map<ResourceLocation, JsonObject> pathOverlays,
+                           Map<ResourceLocation, Map<String, JsonObject>> pathDocuments,
+                           Map<ResourceLocation, Map<ResourceLocation, JsonObject>> compatibilityDocuments,
+                           Map<ResourceLocation, JsonObject> workOverlays,
+                           Map<ResourceLocation, Map<ResourceLocation, TradeDocument>> tradeDocuments) {}
 
     @Override
     protected Prepared prepare(ResourceManager resourceManager, ProfilerFiller profiler) {
-        return new Prepared(read(resourceManager, "profession"), read(resourceManager, "skill"));
+        Map<ResourceLocation, JsonObject> skills = read(resourceManager, "skill");
+        Map<ResourceLocation, JsonObject> professions = new LinkedHashMap<>();
+        Map<ResourceLocation, JsonObject> levelOverlays = new LinkedHashMap<>();
+        Map<ResourceLocation, JsonObject> progressionOverlays = new LinkedHashMap<>();
+        Map<ResourceLocation, JsonObject> pathOverlays = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<String, JsonObject>> pathDocuments = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<ResourceLocation, JsonObject>> compatibilityDocuments =
+                new LinkedHashMap<>();
+        Map<ResourceLocation, JsonObject> workOverlays = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<ResourceLocation, TradeDocument>> tradeDocuments =
+                new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, Resource> e : resourceManager
+                .listResources("profession", loc -> loc.getPath().endsWith(".json")).entrySet()) {
+            ResourceLocation file = e.getKey();
+            String subpath = file.getPath().substring("profession/".length(),
+                    file.getPath().length() - ".json".length());
+            JsonObject json = readJson(e.getValue(), file);
+            if (json == null) continue;
+            int pathDir = subpath.indexOf("/path/");
+            int compatibilityDir = subpath.indexOf("/compatibility/");
+            int pathSkillDir = pathDir > 0
+                    ? subpath.indexOf("/skill/", pathDir + "/path/".length()) : -1;
+            int pathTradeDir = pathDir > 0
+                    ? subpath.indexOf("/trade/", pathDir + "/path/".length()) : -1;
+            int skillDir = subpath.indexOf("/skill/");
+            int tradeDir = subpath.lastIndexOf("/trade/");
+            if (pathDir > 0 && pathSkillDir > pathDir) {
+                String professionPath = subpath.substring(0, pathDir);
+                String pathId = subpath.substring(pathDir + "/path/".length(), pathSkillDir);
+                String skillName = subpath.substring(pathSkillDir + "/skill/".length());
+                ResourceLocation skillId = ResourceLocation.tryParse(file.getNamespace() + ":"
+                        + professionPath + "/" + pathId + "/" + skillName);
+                if (skillId == null || pathId.isBlank() || pathId.contains("/")
+                        || skillName.isBlank()) continue;
+                if (!json.has("profession")) {
+                    json.addProperty("profession", file.getNamespace() + ":" + professionPath);
+                }
+                json.addProperty("__townstead_path", pathId);
+                skills.put(skillId, json);
+            } else if (pathDir > 0 && pathTradeDir > pathDir) {
+                String professionPath = subpath.substring(0, pathDir);
+                String pathId = subpath.substring(pathDir + "/path/".length(), pathTradeDir);
+                String contributionName = subpath.substring(pathTradeDir + "/trade/".length());
+                ResourceLocation professionId = ResourceLocation.tryParse(
+                        file.getNamespace() + ":" + professionPath);
+                if (professionId == null || pathId.isBlank() || pathId.contains("/")
+                        || contributionName.isBlank()) continue;
+                tradeDocuments.computeIfAbsent(professionId,
+                                ignored -> new LinkedHashMap<>())
+                        .put(file, new TradeDocument(pathId, json));
+            } else if (skillDir > 0 && pathDir < 0) {
+                String professionPath = subpath.substring(0, skillDir);
+                String skillName = subpath.substring(skillDir + "/skill/".length());
+                ResourceLocation skillId = ResourceLocation.tryParse(
+                        file.getNamespace() + ":" + professionPath + "/" + skillName);
+                if (skillId == null) continue;
+                if (!json.has("profession")) {
+                    json.addProperty("profession", file.getNamespace() + ":" + professionPath);
+                }
+                skills.put(skillId, json);
+            } else if (pathDir > 0 && subpath.endsWith("/path")) {
+                String professionPath = subpath.substring(0, pathDir);
+                String pathId = subpath.substring(pathDir + "/path/".length(),
+                        subpath.length() - "/path".length());
+                ResourceLocation professionId = ResourceLocation.tryParse(
+                        file.getNamespace() + ":" + professionPath);
+                if (professionId != null && !pathId.isBlank() && !pathId.contains("/")) {
+                    pathDocuments.computeIfAbsent(professionId, ignored -> new LinkedHashMap<>())
+                            .put(pathId, json);
+                }
+            } else if (pathDir > 0) {
+                // Only path/<id>/path.json and its skill/ and trade/ children are resources.
+                continue;
+            } else if (compatibilityDir > 0) {
+                String professionPath = subpath.substring(0, compatibilityDir);
+                String contributionName = subpath.substring(
+                        compatibilityDir + "/compatibility/".length());
+                ResourceLocation professionId = ResourceLocation.tryParse(
+                        file.getNamespace() + ":" + professionPath);
+                if (professionId != null && !contributionName.isBlank()) {
+                    compatibilityDocuments.computeIfAbsent(professionId,
+                                    ignored -> new LinkedHashMap<>())
+                            .put(file, json);
+                }
+            } else if (tradeDir > 0) {
+                String professionPath = subpath.substring(0, tradeDir);
+                ResourceLocation professionId = ResourceLocation.tryParse(
+                        file.getNamespace() + ":" + professionPath);
+                if (professionId != null) {
+                    tradeDocuments.computeIfAbsent(professionId, ignored -> new LinkedHashMap<>())
+                            .put(file, new TradeDocument(null, json));
+                }
+            } else if (isFeedbackSidecar(subpath)) {
+                // Feedback has its own reload listener. It shares the Profession directory so
+                // related files stay together, but it is not a Profession document or overlay.
+                continue;
+            } else if (subpath.endsWith("/profession")) {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":"
+                        + subpath.substring(0, subpath.length() - "/profession".length()));
+                if (id != null) professions.put(id, json);
+            } else if (subpath.endsWith("/levels")) {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":"
+                        + subpath.substring(0, subpath.length() - "/levels".length()));
+                if (id != null) levelOverlays.put(id, json);
+            } else if (subpath.endsWith("/progression")) {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":"
+                        + subpath.substring(0, subpath.length() - "/progression".length()));
+                if (id != null) progressionOverlays.put(id, json);
+            } else if (subpath.endsWith("/paths")) {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":"
+                        + subpath.substring(0, subpath.length() - "/paths".length()));
+                if (id != null) pathOverlays.put(id, json);
+            } else if (subpath.endsWith("/work")) {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":"
+                        + subpath.substring(0, subpath.length() - "/work".length()));
+                if (id != null) workOverlays.put(id, json);
+            } else if (subpath.endsWith("/trades")) {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":"
+                        + subpath.substring(0, subpath.length() - "/trades".length()));
+                if (id != null) {
+                    tradeDocuments.computeIfAbsent(id, ignored -> new LinkedHashMap<>())
+                            .put(file, new TradeDocument(null, json));
+                }
+            } else {
+                ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":" + subpath);
+                if (id != null) professions.put(id, json);
+            }
+        }
+        return new Prepared(professions, skills, levelOverlays, progressionOverlays,
+                pathOverlays, pathDocuments, compatibilityDocuments, workOverlays, tradeDocuments);
+    }
+
+    static boolean isFeedbackSidecar(String professionSubpath) {
+        return professionSubpath.indexOf("/feedback/") > 0
+                || professionSubpath.endsWith("/feedback");
     }
 
     @Override
@@ -52,19 +211,220 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Diagnostics diagnostics = new Diagnostics();
 
-        Map<ResourceLocation, ProfessionDef> professions = new LinkedHashMap<>();
+        // Mod gates first: a def whose "mods" expression is unmet simply does not exist this
+        // session (nor do its levels overlay or skills). A malformed gate refuses to load too,
+        // with a diagnostic: broken gates must never read as satisfied.
+        Map<ResourceLocation, JsonObject> activeDefs = new LinkedHashMap<>();
+        Set<ResourceLocation> gated = new java.util.LinkedHashSet<>();
         for (Map.Entry<ResourceLocation, JsonObject> e : prepared.professions().entrySet()) {
+            JsonObject obj = e.getValue();
+            if (obj.has("mods")) {
+                Boolean met = com.aetherianartificer.townstead.data.ModGate.evaluate(obj.get("mods"));
+                if (met == null) {
+                    diagnostics.forResource(e.getKey());
+                    diagnostics.error(JsonPath.ROOT.field("mods"),
+                            "Invalid mods gate expression.",
+                            "Use a mod id, an array (all required), or {\"all\"/\"any\"/\"not\"} objects.");
+                    gated.add(e.getKey());
+                    continue;
+                }
+                if (!met) {
+                    LOGGER.debug("Profession {} skipped: mods gate unmet", e.getKey());
+                    gated.add(e.getKey());
+                    continue;
+                }
+            }
+            activeDefs.put(e.getKey(), obj);
+        }
+
+        for (Map.Entry<ResourceLocation, JsonObject> e : prepared.levelOverlays().entrySet()) {
+            if (gated.contains(e.getKey())) continue;
+            JsonObject def = activeDefs.get(e.getKey());
+            diagnostics.forResource(e.getKey());
+            if (def == null) {
+                diagnostics.warning(JsonPath.ROOT,
+                        "levels.json has no matching profession.json in this directory; ignored.",
+                        "Add profession.json beside it (or remove the orphan).");
+                continue;
+            }
+            applyLevelsOverlay(def, e.getValue());
+        }
+
+        for (Map.Entry<ResourceLocation, JsonObject> e : prepared.progressionOverlays().entrySet()) {
+            if (gated.contains(e.getKey())) continue;
+            JsonObject def = activeDefs.get(e.getKey());
+            diagnostics.forResource(e.getKey());
+            if (def == null) {
+                diagnostics.warning(JsonPath.ROOT,
+                        "progression.json has no matching profession.json in this directory; ignored.",
+                        "Add profession.json beside it (or remove the orphan).");
+                continue;
+            }
+            try {
+                ProfessionProgressionOverlay.apply(def, e.getValue());
+            } catch (IllegalArgumentException error) {
+                diagnostics.error(JsonPath.ROOT,
+                        "Invalid progression.json: " + error.getMessage(),
+                        "Use schema '" + ProfessionProgressionOverlay.SCHEMA
+                                + "' with a ranks array.");
+            }
+        }
+
+        for (Map.Entry<ResourceLocation, JsonObject> e : prepared.pathOverlays().entrySet()) {
+            if (gated.contains(e.getKey())) continue;
+            JsonObject def = activeDefs.get(e.getKey());
+            diagnostics.forResource(e.getKey());
+            if (def == null) {
+                diagnostics.warning(JsonPath.ROOT,
+                        "paths.json has no matching profession.json in this directory; ignored.",
+                        "Add profession.json beside it (or remove the orphan).");
+                continue;
+            }
+            try {
+                ProfessionPathsOverlay.apply(def, e.getValue());
+            } catch (IllegalArgumentException error) {
+                diagnostics.error(JsonPath.ROOT, "Invalid paths.json: " + error.getMessage(),
+                        "Use schema '" + ProfessionPathsOverlay.SCHEMA
+                                + "' with a paths array.");
+            }
+        }
+
+        for (Map.Entry<ResourceLocation, Map<String, JsonObject>> owner
+                : prepared.pathDocuments().entrySet()) {
+            if (gated.contains(owner.getKey())) continue;
+            JsonObject def = activeDefs.get(owner.getKey());
+            diagnostics.forResource(owner.getKey());
+            if (def == null) {
+                diagnostics.warning(JsonPath.ROOT,
+                        "path/*/path.json has no matching profession.json in this directory; ignored.",
+                        "Add profession.json above the path directory (or remove the orphan paths).");
+                continue;
+            }
+            for (Map.Entry<String, JsonObject> path : owner.getValue().entrySet()) {
+                JsonObject document = path.getValue();
+                if (document.has("mods")) {
+                    Boolean met = com.aetherianartificer.townstead.data.ModGate.evaluate(
+                            document.get("mods"));
+                    if (met == null) {
+                        diagnostics.error(JsonPath.ROOT.field("mods"),
+                                "Invalid mods gate expression on Path '" + path.getKey() + "'.",
+                                "Use a mod id, an array, or an all/any/not object.");
+                        continue;
+                    }
+                    if (!met) {
+                        LOGGER.debug("Path {}/{} skipped: mods gate unmet",
+                                owner.getKey(), path.getKey());
+                        continue;
+                    }
+                }
+                try {
+                    ProfessionPathDocument.Applied applied = ProfessionPathDocument.apply(
+                            def, path.getKey(), document);
+                    for (Map.Entry<String, Integer> skillTier : applied.skillTiers().entrySet()) {
+                        ResourceLocation skillId = resolveSkillRef(owner.getKey(), skillTier.getKey());
+                        if (skillId == null) continue;
+                        JsonObject skill = prepared.skills().get(skillId);
+                        if (skill != null) skill.addProperty("tier", skillTier.getValue());
+                    }
+                } catch (IllegalArgumentException error) {
+                    diagnostics.error(JsonPath.ROOT,
+                            "Invalid path/" + path.getKey() + "/path.json: " + error.getMessage(),
+                            "Use schema '" + ProfessionPathDocument.SCHEMA
+                                    + "' with a positional skills array.");
+                }
+            }
+        }
+
+        for (Map.Entry<ResourceLocation, JsonObject> e : prepared.workOverlays().entrySet()) {
+            if (gated.contains(e.getKey())) continue;
+            JsonObject def = activeDefs.get(e.getKey());
+            diagnostics.forResource(e.getKey());
+            if (def == null) {
+                diagnostics.warning(JsonPath.ROOT,
+                        "work.json has no matching profession.json in this directory; ignored.",
+                        "Add profession.json beside it (or remove the orphan).");
+                continue;
+            }
+            try {
+                ProfessionWorkOverlay.apply(def, e.getValue());
+            } catch (IllegalArgumentException error) {
+                diagnostics.error(JsonPath.ROOT, "Invalid work.json: " + error.getMessage(),
+                        "Use schema '" + ProfessionWorkOverlay.SCHEMA
+                                + "' and refer only to declared path ids.");
+            }
+        }
+
+        for (Map.Entry<ResourceLocation, Map<ResourceLocation, TradeDocument>> owner
+                : prepared.tradeDocuments().entrySet()) {
+            if (gated.contains(owner.getKey())) continue;
+            JsonObject def = activeDefs.get(owner.getKey());
+            diagnostics.forResource(owner.getKey());
+            if (def == null) {
+                diagnostics.warning(JsonPath.ROOT,
+                        "trade/*.json has no matching profession.json in this directory; ignored.",
+                        "Add profession.json above the trade directory (or remove the orphan).");
+                continue;
+            }
+            for (Map.Entry<ResourceLocation, TradeDocument> contribution
+                    : owner.getValue().entrySet()
+                    .stream().sorted(Map.Entry.comparingByKey()).toList()) {
+                try {
+                    JsonObject document = contribution.getValue().document();
+                    String path = contribution.getValue().path();
+                    if (path != null && !declaredPathIds(def).contains(path)) {
+                        LOGGER.debug("Path trade contribution {} skipped: Path {} is not active",
+                                contribution.getKey(), path);
+                        continue;
+                    }
+                    if (document.has("mods")) {
+                        Boolean met = com.aetherianartificer.townstead.data.ModGate.evaluate(
+                                document.get("mods"));
+                        if (met == null) {
+                            throw new IllegalArgumentException("Invalid mods gate expression");
+                        }
+                        if (!met) {
+                            LOGGER.debug("Trade contribution {} skipped: mods gate unmet",
+                                    contribution.getKey());
+                            continue;
+                        }
+                    }
+                    ProfessionTradeDocument.apply(def, document,
+                            contribution.getValue().path());
+                } catch (IllegalArgumentException error) {
+                    diagnostics.error(JsonPath.ROOT,
+                            "Invalid trade contribution '" + contribution.getKey() + "': "
+                                    + error.getMessage(),
+                            "Use schema '" + ProfessionTradeDocument.SCHEMA
+                                    + "' with merchant-level keys \"1\" through \"5\".");
+                }
+            }
+        }
+
+        Map<ResourceLocation, ProfessionDef> professions = new LinkedHashMap<>();
+        Map<ResourceLocation, SkillDef> skills = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, JsonObject> e : activeDefs.entrySet()) {
             diagnostics.forResource(e.getKey());
             try {
-                professions.put(e.getKey(), parseProfession(e.getKey(), e.getValue(), lang, diagnostics));
+                // Inline level skills land in the same registry; a sidecar with the same id
+                // overrides them, which is how packs extend or retune another def's pool.
+                ProfessionDef profession = parseProfession(e.getKey(), e.getValue(), lang,
+                        diagnostics, skills);
+                if (profession != null) professions.put(e.getKey(), profession);
             } catch (Exception ex) {
                 diagnostics.error(JsonPath.ROOT, "Failed to parse profession: " + ex.getMessage(),
                         "Fix the JSON structure.");
             }
         }
 
-        Map<ResourceLocation, SkillDef> skills = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonObject> e : prepared.skills().entrySet()) {
+            ResourceLocation skillProfession = ResourceLocation.tryParse(
+                    GsonHelper.getAsString(e.getValue(), "profession", ""));
+            if (skillProfession != null && gated.contains(skillProfession)) continue;
+            String path = GsonHelper.getAsString(e.getValue(), "__townstead_path", "");
+            if (skillProfession != null && !path.isBlank()) {
+                JsonObject profession = activeDefs.get(skillProfession);
+                if (profession == null || !declaredPathIds(profession).contains(path)) continue;
+            }
             diagnostics.forResource(e.getKey());
             try {
                 SkillDef skill = parseSkill(e.getKey(), e.getValue(), lang, diagnostics);
@@ -75,8 +435,13 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             }
         }
 
-        ProfessionDefs.replaceAll(professions);
+        validateAliases(professions, diagnostics);
+        Map<ResourceLocation, ProfessionDefs.Resolution> compatibility = parseCompatibility(
+                prepared.compatibilityDocuments(), activeDefs, professions.keySet(), diagnostics);
+        ProfessionDefs.replaceAll(professions, compatibility);
         SkillDefs.replaceAll(skills);
+        ProfessionTitles.replaceAll(parseAllTitles(activeDefs, professions.keySet(), lang, diagnostics));
+        ProfessionPaths.replaceAll(parseAllPaths(activeDefs, professions.keySet(), lang, diagnostics));
 
         SkillGraphValidator.validate(professions, skills, diagnostics);
         PhenoDiagnostics.replace("profession", diagnostics.all());
@@ -94,7 +459,15 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
 
     static ProfessionDef parseProfession(ResourceLocation id, JsonObject obj, Map<String, String> lang,
                                                  Diagnostics diag) {
-        TownsteadSchema.validate(obj, "townstead:profession/v1");
+        return parseProfession(id, obj, lang, diag, new LinkedHashMap<>());
+    }
+
+    static ProfessionDef parseProfession(ResourceLocation id, JsonObject obj, Map<String, String> lang,
+                                                 Diagnostics diag,
+                                                 Map<ResourceLocation, SkillDef> inlineSkillsOut) {
+        boolean v2 = "townstead:profession/v2".equals(GsonHelper.getAsString(obj, "schema", ""))
+                || obj.has("levels");
+        TownsteadSchema.validate(obj, v2 ? "townstead:profession/v2" : "townstead:profession/v1");
         Component name = obj.has("display_name")
                 ? DataPackLang.parseComponent(obj.get("display_name"), id.toString(), lang)
                 : Component.literal(id.getPath());
@@ -129,17 +502,371 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     "Use free, costly, or locked.");
         }
 
+        if (obj.has("history_counters")) {
+            diag.error(JsonPath.ROOT.field("history_counters"),
+                    "history_counters is not a profession field.",
+                    "Completed Jobs and task engines record their own Chronicle activity automatically.");
+            return null;
+        }
+
+        // A present-but-unparseable requirements condition drops the def: a broken gate must
+        // never read as "always eligible".
+        com.aetherianartificer.townstead.pheno.condition.Condition requirements =
+                com.aetherianartificer.townstead.pheno.condition.Conditions.ALWAYS;
+        if (obj.has("requirements")) {
+            requirements = com.aetherianartificer.townstead.pheno.condition.Conditions.parse(obj.get("requirements"));
+            if (requirements == null) {
+                diag.error(JsonPath.ROOT.field("requirements"),
+                        "Invalid requirements condition (unknown or malformed type).",
+                        "Use registered pheno conditions, e.g. pheno:chronicle_count, pheno:career_xp.");
+                return null;
+            }
+        }
+
+        List<String> routes = new ArrayList<>();
+        if (obj.has("acquisition_routes") && obj.get("acquisition_routes").isJsonArray()) {
+            for (JsonElement e : obj.getAsJsonArray("acquisition_routes")) {
+                if (e.isJsonPrimitive()) routes.add(e.getAsString());
+            }
+        }
+
+        List<JobSiteProvider> jobSites = new ArrayList<>();
+        if (obj.has("poi") && obj.get("poi").isJsonArray()) {
+            JsonArray poiArray = obj.getAsJsonArray("poi");
+            for (int i = 0; i < poiArray.size(); i++) {
+                if (!poiArray.get(i).isJsonObject()) continue;
+                JsonObject entry = poiArray.get(i).getAsJsonObject();
+                String type = GsonHelper.getAsString(entry, "type", "");
+                if (!JobSiteProviders.knows(type)) {
+                    diag.error(JsonPath.ROOT.field("poi").index(i).field("type"),
+                            "Unknown job-site provider type '" + type + "'.",
+                            "Use townstead:job_block, townstead:building, or townstead:always.");
+                    continue;
+                }
+                JobSiteProvider provider = JobSiteProviders.parse(entry);
+                if (provider == null) {
+                    diag.error(JsonPath.ROOT.field("poi").index(i),
+                            "Invalid config for job-site provider '" + type + "'.",
+                            "Fix the fields this provider requires.");
+                    continue;
+                }
+                jobSites.add(provider);
+            }
+        }
+
+        List<WorkTaskDef> workTasks = new ArrayList<>();
+        if (obj.has("work_tasks") && obj.get("work_tasks").isJsonArray()) {
+            JsonArray taskArray = obj.getAsJsonArray("work_tasks");
+            for (int i = 0; i < taskArray.size(); i++) {
+                if (!taskArray.get(i).isJsonObject()) continue;
+                WorkTaskDef task = WorkTaskDef.parse(taskArray.get(i).getAsJsonObject());
+                if (task == null) {
+                    diag.error(JsonPath.ROOT.field("work_tasks").index(i),
+                            "Invalid work task (missing type, bad workstation entry, or broken requirements).",
+                            "Give each entry a type and valid workstation block ids or #tags.");
+                    continue;
+                }
+                if (!WorkTaskTypes.knows(task.type())) {
+                    diag.error(JsonPath.ROOT.field("work_tasks").index(i).field("type"),
+                            "Unknown work task type '" + task.type() + "'.",
+                            "Use a registered type, e.g. townstead_work:cook, townstead_work:chop,"
+                                    + " townstead_work:brew (bare ids resolve to townstead_work).");
+                    continue;
+                }
+                workTasks.add(task);
+            }
+        }
+
+        List<LevelDef> levels = new ArrayList<>();
+        Map<Integer, List<TradeDef>> levelTrades = new LinkedHashMap<>();
+        List<ResourceLocation> inlineSkillIds = new ArrayList<>();
+        if (obj.has("levels") && obj.get("levels").isJsonArray()) {
+            JsonArray levelArray = obj.getAsJsonArray("levels");
+            for (int i = 0; i < levelArray.size(); i++) {
+                if (!levelArray.get(i).isJsonObject()) continue;
+                JsonObject entry = levelArray.get(i).getAsJsonObject();
+                int levelNumber = i + 1;
+                Component levelName = entry.has("name")
+                        ? DataPackLang.parseComponent(entry.get("name"),
+                                id + ".level." + levelNumber, lang) : null;
+                List<TradeDef> tradeList = new ArrayList<>();
+                if (entry.has("trades") && entry.get("trades").isJsonArray()) {
+                    JsonArray tradeArray = entry.getAsJsonArray("trades");
+                    for (int j = 0; j < tradeArray.size(); j++) {
+                        if (!tradeArray.get(j).isJsonObject()) continue;
+                        TradeDef trade = TradeDef.parse(
+                                tradeArray.get(j).getAsJsonObject(), id, levelNumber);
+                        if (trade == null) {
+                            diag.warning(JsonPath.ROOT.field("levels").index(i)
+                                            .field("trades").index(j),
+                                    "Trade needs compact string 'cost' and 'result' item ids; entry ignored.",
+                                    "Use cost/result ids and optional cost_count/result_count fields.");
+                            continue;
+                        }
+                        tradeList.add(trade);
+                    }
+                }
+                if (!tradeList.isEmpty()) levelTrades.put(levelNumber, List.copyOf(tradeList));
+                List<ResourceLocation> levelSkills = new ArrayList<>();
+                if (entry.has("skills") && entry.get("skills").isJsonArray()) {
+                    JsonArray skillArray = entry.getAsJsonArray("skills");
+                    for (int j = 0; j < skillArray.size(); j++) {
+                        if (skillArray.get(j).isJsonPrimitive()) {
+                            // Bare id: a reference to a skill in the profession's own directory
+                            // (<ns>:<profession>/<name>); the graph validator flags dangling refs.
+                            String rawRef = skillArray.get(j).getAsString();
+                            ResourceLocation refId = resolveSkillRef(id, rawRef);
+                            if (refId == null) {
+                                diag.error(JsonPath.ROOT.field("levels").index(i)
+                                                .field("skills").index(j),
+                                        "Invalid skill reference '" + rawRef + "'.",
+                                        "Use a bare path (namespaced to the profession) or a full id.");
+                                continue;
+                            }
+                            levelSkills.add(refId);
+                            inlineSkillIds.add(refId);
+                            continue;
+                        }
+                        if (!skillArray.get(j).isJsonObject()) continue;
+                        JsonObject skillJson = skillArray.get(j).getAsJsonObject().deepCopy();
+                        String rawId = GsonHelper.getAsString(skillJson, "id", "");
+                        ResourceLocation skillId = resolveSkillRef(id, rawId);
+                        if (skillId == null) {
+                            diag.error(JsonPath.ROOT.field("levels").index(i)
+                                            .field("skills").index(j).field("id"),
+                                    "Missing or invalid inline skill id.",
+                                    "Use a bare path (scoped to the profession) or a full id.");
+                            continue;
+                        }
+                        skillJson.remove("schema");
+                        skillJson.addProperty("profession", id.toString());
+                        if (!skillJson.has("tier") && !skillJson.has("level")) {
+                            skillJson.addProperty("tier", levelNumber);
+                        }
+                        SkillDef skill = parseSkill(skillId, skillJson, lang, diag);
+                        if (skill == null) continue;
+                        inlineSkillsOut.put(skillId, skill);
+                        levelSkills.add(skillId);
+                        inlineSkillIds.add(skillId);
+                    }
+                }
+                levels.add(new LevelDef(levelName,
+                        GsonHelper.getAsInt(entry, "xp", 0),
+                        GsonHelper.getAsInt(entry, "skill_points", 1),
+                        List.copyOf(tradeList), List.copyOf(levelSkills)));
+            }
+        }
+        if (!levels.isEmpty()) {
+            // Thresholds derive from per-level xp spans; the final level's span is open-ended.
+            tiers = new ArrayList<>();
+            int accumulated = 0;
+            tiers.add(0);
+            for (int i = 0; i < levels.size() - 1; i++) {
+                accumulated += Math.max(0, levels.get(i).xp());
+                tiers.add(accumulated);
+            }
+            dailyCap = GsonHelper.getAsInt(obj, "daily_cap", dailyCap);
+            maxXp = GsonHelper.getAsInt(obj, "max_xp", maxXp);
+        }
+
+        Map<Integer, List<TradeDef>> trades = new LinkedHashMap<>(parseTrades(obj, id, diag));
+        levelTrades.forEach((level, list) -> trades.merge(level, list, (a, b) -> {
+            List<TradeDef> merged = new ArrayList<>(a);
+            merged.addAll(b);
+            return List.copyOf(merged);
+        }));
+        List<ResourceLocation> skillIds = new ArrayList<>(
+                parseSkillRefList(obj, "skills", id, null));
+        for (ResourceLocation inline : inlineSkillIds) {
+            if (!skillIds.contains(inline)) skillIds.add(inline);
+        }
+        ResourceLocation workSound = null;
+        if (obj.has("work_sound")) {
+            workSound = ResourceLocation.tryParse(GsonHelper.getAsString(obj, "work_sound", ""));
+            if (workSound == null) {
+                diag.warning(JsonPath.ROOT.field("work_sound"),
+                        "work_sound must be a valid sound event id; ignoring it.",
+                        "Use a full resource id such as minecraft:entity.villager.work_butcher.");
+            }
+        }
+
+        com.aetherianartificer.townstead.storage.StoragePreference storage =
+                com.aetherianartificer.townstead.storage.StoragePreference.NONE;
+        if (obj.has("storage")) {
+            try {
+                storage = com.aetherianartificer.townstead.storage.StoragePreference
+                        .parse(obj.get("storage"));
+            } catch (IllegalArgumentException error) {
+                // Storage routing supplements a profession; it must never erase the profession's
+                // work, trades and paths because one optional preference is stale or malformed.
+                // Keep the default local/general route and make the pack error visible.
+                diag.warning(JsonPath.ROOT.field("storage"),
+                        "Invalid profession storage preference: " + error.getMessage(),
+                        "Use {\"preferred_roles\":[\"townstead:materials\"]}, or omit storage "
+                                + "to use local shelves and general stores.");
+            }
+        }
+
         return new ProfessionDef(id, name, description,
                 new ProgressionTrack(List.copyOf(tiers), dailyCap, maxXp),
                 UnlockModel.fromString(unlock),
                 GsonHelper.getAsInt(obj, "points_per_tier", 1),
                 RetrainingPolicy.fromString(retraining),
-                parseIdList(obj, "skills"));
+                List.copyOf(skillIds),
+                GsonHelper.getAsBoolean(obj, "hidden", false),
+                requirements,
+                List.copyOf(routes),
+                List.copyOf(jobSites),
+                parseIdList(obj, "aliases"),
+                parseClothing(obj, diag),
+                storage,
+                Map.copyOf(trades),
+                obj.has("requirements") ? RequirementHint.extract(obj.get("requirements")) : List.of(),
+                obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null,
+                workSound,
+                List.copyOf(levels),
+                List.copyOf(workTasks));
+    }
+
+    /** {@code trades} maps merchant level ("1".."5") to a list of {@link TradeDef}s. */
+    private static Map<Integer, List<TradeDef>> parseTrades(
+            JsonObject obj, ResourceLocation profession, Diagnostics diag) {
+        if (!obj.has("trades") || !obj.get("trades").isJsonObject()) return Map.of();
+        Map<Integer, List<TradeDef>> out = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> level : obj.getAsJsonObject("trades").entrySet()) {
+            int merchantLevel;
+            try {
+                merchantLevel = Integer.parseInt(level.getKey());
+            } catch (NumberFormatException ignored) {
+                diag.warning(JsonPath.ROOT.field("trades"),
+                        "Trade level '" + level.getKey() + "' is not a number; entry ignored.",
+                        "Use merchant levels \"1\" through \"5\".");
+                continue;
+            }
+            if (!level.getValue().isJsonArray()) continue;
+            List<TradeDef> defs = new ArrayList<>();
+            JsonArray entries = level.getValue().getAsJsonArray();
+            for (int i = 0; i < entries.size(); i++) {
+                if (!entries.get(i).isJsonObject()) continue;
+                TradeDef trade = TradeDef.parse(
+                        entries.get(i).getAsJsonObject(), profession, merchantLevel);
+                if (trade == null) {
+                    diag.warning(JsonPath.ROOT.field("trades").field(level.getKey()).index(i),
+                            "Trade needs compact string 'cost' and 'result' item ids; entry ignored.",
+                            "Use optional cost_count/result_count fields for stack sizes.");
+                    continue;
+                }
+                defs.add(trade);
+            }
+            if (!defs.isEmpty()) out.put(merchantLevel, List.copyOf(defs));
+        }
+        return Map.copyOf(out);
+    }
+
+    /** Alias hygiene: an alias may not shadow a primary def id or be claimed by two defs. */
+    private static void validateAliases(Map<ResourceLocation, ProfessionDef> professions,
+                                        Diagnostics diagnostics) {
+        Map<ResourceLocation, ResourceLocation> claimed = new LinkedHashMap<>();
+        for (ProfessionDef def : professions.values()) {
+            diagnostics.forResource(def.id());
+            for (ResourceLocation alias : def.aliases()) {
+                if (professions.containsKey(alias)) {
+                    diagnostics.warning(JsonPath.ROOT.field("aliases"),
+                            "Alias '" + alias + "' shadows a primary profession def and is ignored.",
+                            "Remove the alias or the conflicting def.");
+                    continue;
+                }
+                ResourceLocation first = claimed.putIfAbsent(alias, def.id());
+                if (first != null && !first.equals(def.id())) {
+                    diagnostics.warning(JsonPath.ROOT.field("aliases"),
+                            "Alias '" + alias + "' is already claimed by '" + first + "'; first claim wins.",
+                            "Give each alias exactly one owning profession.");
+                }
+            }
+        }
+    }
+
+    private static Map<ResourceLocation, ProfessionDefs.Resolution> parseCompatibility(
+            Map<ResourceLocation, Map<ResourceLocation, JsonObject>> documents,
+            Map<ResourceLocation, JsonObject> activeDefs,
+            Set<ResourceLocation> loaded,
+            Diagnostics diagnostics) {
+        Map<ResourceLocation, ProfessionDefs.Resolution> mappings = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, Map<ResourceLocation, JsonObject>> owner
+                : documents.entrySet()) {
+            if (!loaded.contains(owner.getKey())) continue;
+            JsonObject profession = activeDefs.get(owner.getKey());
+            if (profession == null) continue;
+            Set<String> paths = declaredPathIds(profession);
+            for (Map.Entry<ResourceLocation, JsonObject> contribution : owner.getValue().entrySet()
+                    .stream().sorted(Map.Entry.comparingByKey()).toList()) {
+                diagnostics.forResource(contribution.getKey());
+                JsonObject document = contribution.getValue();
+                try {
+                    if (document.has("mods")) {
+                        Boolean met = com.aetherianartificer.townstead.data.ModGate.evaluate(
+                                document.get("mods"));
+                        if (met == null) {
+                            throw new IllegalArgumentException("Invalid mods gate expression");
+                        }
+                        if (!met) {
+                            LOGGER.debug("Profession compatibility contribution {} skipped: "
+                                    + "mods gate unmet", contribution.getKey());
+                            continue;
+                        }
+                    }
+                    for (Map.Entry<ResourceLocation, ProfessionDefs.Resolution> mapping
+                            : ProfessionCompatibilityDocument.parse(
+                                    owner.getKey(), document, paths).entrySet()) {
+                        if (loaded.contains(mapping.getKey())) {
+                            diagnostics.warning(JsonPath.ROOT,
+                                    "Compatibility profession '" + mapping.getKey()
+                                            + "' shadows a primary Career and is ignored.",
+                                    "Remove the mapping or the conflicting profession definition.");
+                            continue;
+                        }
+                        ProfessionDefs.Resolution previous = mappings.putIfAbsent(
+                                mapping.getKey(), mapping.getValue());
+                        if (previous != null && !previous.equals(mapping.getValue())) {
+                            diagnostics.warning(JsonPath.ROOT,
+                                    "Compatibility profession '" + mapping.getKey()
+                                            + "' already means '" + previous.professionId()
+                                            + "'; first contribution wins.",
+                                    "Give each external profession one canonical Career meaning.");
+                        }
+                    }
+                } catch (IllegalArgumentException error) {
+                    diagnostics.error(JsonPath.ROOT,
+                            "Invalid compatibility contribution: " + error.getMessage(),
+                            "Use schema '" + ProfessionCompatibilityDocument.SCHEMA
+                                    + "' with aliases and/or path_aliases.");
+                }
+            }
+        }
+        return Map.copyOf(mappings);
+    }
+
+    private static Set<String> declaredPathIds(JsonObject profession) {
+        Set<String> paths = new java.util.LinkedHashSet<>();
+        if (profession == null || !profession.has("paths")
+                || !profession.get("paths").isJsonArray()) return paths;
+        for (JsonElement element : profession.getAsJsonArray("paths")) {
+            if (!element.isJsonObject()) continue;
+            String id = GsonHelper.getAsString(element.getAsJsonObject(), "id", "");
+            if (!id.isBlank()) paths.add(id);
+        }
+        return paths;
     }
 
     static SkillDef parseSkill(ResourceLocation id, JsonObject obj, Map<String, String> lang,
                                        Diagnostics diag) {
         TownsteadSchema.validate(obj, "townstead:skill/v1");
+        // A mods gate on a skill works like one on a profession: unmet means the skill
+        // silently does not exist this session (mod-specific branches of a tree).
+        if (obj.has("mods") && !Boolean.TRUE.equals(
+                com.aetherianartificer.townstead.data.ModGate.evaluate(obj.get("mods")))) {
+            return null;
+        }
         String professionRaw = GsonHelper.getAsString(obj, "profession", "");
         ResourceLocation profession = professionRaw.isBlank() ? null : ResourceLocation.tryParse(professionRaw);
         if (profession == null) {
@@ -153,6 +880,166 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         Component description = obj.has("description")
                 ? DataPackLang.parseComponent(obj.get("description"), id + ".description", lang) : null;
 
+        List<SkillGrant> grants = parseGrants(obj, diag);
+        ResourceLocation animation = obj.has("animation")
+                ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "animation", "")) : null;
+        ResourceLocation skillGroup = obj.has("skill_group")
+                ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "skill_group", "")) : null;
+
+        String scope = skillScope(id, profession);
+        return new SkillDef(id, name, description, profession,
+                GsonHelper.getAsInt(obj, "tier", GsonHelper.getAsInt(obj, "level", 1)),
+                // Bare requirements name siblings in the same Path or root skill directory.
+                parseSkillRefList(obj, "requires", profession, scope),
+                parseSkillRefList(obj, "exclusive_with", profession, scope),
+                GsonHelper.getAsInt(obj, "cost", 1),
+                List.copyOf(grants),
+                animation,
+                skillGroup,
+                parsePower(obj, lang, diag),
+                obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null);
+    }
+
+    /**
+     * Build titles from each def's {@code titles} array. {@code skills} are all required;
+     * {@code skill_groups} are one-of-many requirements, used by Paths with several choices at
+     * each level. Bare refs resolve to the owning profession's path-scoped ids. A title is flavour
+     * over the base profession ("Rotisseur (Cook)"), earned by completing the named skill build.
+     */
+    private static Map<ResourceLocation, List<ProfessionTitles.Title>> parseAllTitles(
+            Map<ResourceLocation, JsonObject> activeDefs, Set<ResourceLocation> loaded,
+            Map<String, String> lang, Diagnostics diagnostics) {
+        Map<ResourceLocation, List<ProfessionTitles.Title>> out = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, JsonObject> e : activeDefs.entrySet()) {
+            if (!loaded.contains(e.getKey())) continue;
+            JsonObject obj = e.getValue();
+            if (!obj.has("titles") || !obj.get("titles").isJsonArray()) continue;
+            diagnostics.forResource(e.getKey());
+            List<ProfessionTitles.Title> titles = new ArrayList<>();
+            JsonArray arr = obj.getAsJsonArray("titles");
+            for (int i = 0; i < arr.size(); i++) {
+                if (!arr.get(i).isJsonObject()) continue;
+                JsonObject t = arr.get(i).getAsJsonObject();
+                String titleId = GsonHelper.getAsString(t, "id", "");
+                List<ResourceLocation> skillIds = new ArrayList<>();
+                for (JsonElement raw : GsonHelper.getAsJsonArray(t, "skills", new JsonArray())) {
+                    if (!raw.isJsonPrimitive()) continue;
+                    ResourceLocation skillId = resolveSkillRef(e.getKey(), raw.getAsString());
+                    if (skillId != null) skillIds.add(skillId);
+                }
+                List<List<ResourceLocation>> skillGroups = new ArrayList<>();
+                for (JsonElement rawGroup : GsonHelper.getAsJsonArray(t, "skill_groups", new JsonArray())) {
+                    if (!rawGroup.isJsonArray()) continue;
+                    List<ResourceLocation> group = new ArrayList<>();
+                    for (JsonElement raw : rawGroup.getAsJsonArray()) {
+                        if (!raw.isJsonPrimitive()) continue;
+                        ResourceLocation skillId = resolveSkillRef(e.getKey(), raw.getAsString());
+                        if (skillId != null) group.add(skillId);
+                    }
+                    if (!group.isEmpty()) skillGroups.add(List.copyOf(group));
+                }
+                if (titleId.isBlank() || (skillIds.isEmpty() && skillGroups.isEmpty())) {
+                    diagnostics.warning(JsonPath.ROOT.field("titles").index(i),
+                            "A title needs an id and at least one skill requirement; ignored.",
+                            "Use 'skills' for all-of requirements or 'skill_groups' for one-of requirements.");
+                    continue;
+                }
+                Component name = t.has("name")
+                        ? DataPackLang.parseComponent(t.get("name"),
+                                e.getKey() + ".title." + titleId, lang)
+                        : Component.literal(titleId);
+                titles.add(new ProfessionTitles.Title(e.getKey(), titleId, name,
+                        skillIds, skillGroups));
+            }
+            if (!titles.isEmpty()) out.put(e.getKey(), List.copyOf(titles));
+        }
+        return out;
+    }
+
+    /**
+     * A def's normalized {@code paths} block: specialization branches entered by learning any
+     * member option. The retained gateway field is the first flattened option, not a separate pick.
+     * Skill refs resolve path-scoped like title refs; worksites are full block ids because
+     * they usually belong to other mods.
+     */
+    private static Map<ResourceLocation, List<ProfessionPaths.Path>> parseAllPaths(
+            Map<ResourceLocation, JsonObject> activeDefs, Set<ResourceLocation> loaded,
+            Map<String, String> lang, Diagnostics diagnostics) {
+        Map<ResourceLocation, List<ProfessionPaths.Path>> out = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, JsonObject> e : activeDefs.entrySet()) {
+            if (!loaded.contains(e.getKey())) continue;
+            JsonObject obj = e.getValue();
+            if (!obj.has("paths") || !obj.get("paths").isJsonArray()) continue;
+            diagnostics.forResource(e.getKey());
+            List<ProfessionPaths.Path> paths = new ArrayList<>();
+            JsonArray arr = obj.getAsJsonArray("paths");
+            for (int i = 0; i < arr.size(); i++) {
+                if (!arr.get(i).isJsonObject()) continue;
+                JsonObject p = arr.get(i).getAsJsonObject();
+                String pathId = GsonHelper.getAsString(p, "id", "");
+                ResourceLocation gateway = resolveSkillRef(e.getKey(),
+                        GsonHelper.getAsString(p, "gateway", ""));
+                if (pathId.isBlank() || gateway == null) {
+                    diagnostics.warning(JsonPath.ROOT.field("paths").index(i),
+                            "A path needs an id and at least one first-level skill; ignored.",
+                            "Use {\"id\": ..., \"gateway\": ..., \"skills\": [...], \"worksites\": [...]}.");
+                    continue;
+                }
+                List<ResourceLocation> skillIds = new ArrayList<>();
+                for (JsonElement raw : GsonHelper.getAsJsonArray(p, "skills", new JsonArray())) {
+                    if (!raw.isJsonPrimitive()) continue;
+                    ResourceLocation skillId = resolveSkillRef(e.getKey(), raw.getAsString());
+                    if (skillId != null) skillIds.add(skillId);
+                }
+                List<ResourceLocation> worksites = parseIdList(p, "worksites");
+                Component name = p.has("name")
+                        ? DataPackLang.parseComponent(p.get("name"),
+                                e.getKey() + ".path." + pathId, lang)
+                        : Component.literal(pathId);
+                // How the path presents itself on the board: a colour wash over its section, or a
+                // texture in place of the wash. Both optional; the board falls back to a palette.
+                int color = parseHexColor(p, "color", diagnostics,
+                        JsonPath.ROOT.field("paths").index(i));
+                ResourceLocation backdrop = p.has("backdrop")
+                        ? DataPackLang.parseId(GsonHelper.getAsString(p, "backdrop", "")) : null;
+                List<com.aetherianartificer.townstead.pheno.power.PowerComponent> powers =
+                        new ArrayList<>();
+                for (JsonElement raw : GsonHelper.getAsJsonArray(p, "powers", new JsonArray())) {
+                    if (!raw.isJsonObject()) continue;
+                    JsonObject holder = new JsonObject();
+                    holder.add("power", raw.deepCopy());
+                    var power = parsePower(holder, lang, diagnostics);
+                    if (power != null) powers.add(power);
+                }
+                paths.add(new ProfessionPaths.Path(e.getKey(), pathId, name, gateway,
+                        skillIds, worksites, color, backdrop, powers,
+                        parseClothing(p, diagnostics)));
+            }
+            if (!paths.isEmpty()) out.put(e.getKey(), List.copyOf(paths));
+        }
+        return out;
+    }
+
+    /**
+     * An authored {@code "#RRGGBB"} colour, or 0 when absent. Returns 0 and warns rather than
+     * throwing on a malformed value, so one bad colour costs a path its tint and not its
+     * existence.
+     */
+    private static int parseHexColor(JsonObject obj, String field, Diagnostics diag, JsonPath at) {
+        if (!obj.has(field)) return 0;
+        String raw = GsonHelper.getAsString(obj, field, "").trim();
+        if (raw.startsWith("#")) raw = raw.substring(1);
+        try {
+            return 0xFF000000 | (Integer.parseInt(raw, 16) & 0xFFFFFF);
+        } catch (NumberFormatException malformed) {
+            diag.warning(at.field(field), "Not a colour: '" + raw + "'.",
+                    "Use \"#RRGGBB\", for example \"#E8A33C\".");
+            return 0;
+        }
+    }
+
+    /** Shared grants block parser: ordinary skills and Combo Skills carry identical grants. */
+    static List<SkillGrant> parseGrants(JsonObject obj, Diagnostics diag) {
         List<SkillGrant> grants = new ArrayList<>();
         if (obj.has("grants") && obj.get("grants").isJsonArray()) {
             JsonArray arr = obj.getAsJsonArray("grants");
@@ -175,16 +1062,91 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 if (grant != null) grants.add(grant);
             }
         }
-        ResourceLocation animation = obj.has("animation")
-                ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "animation", "")) : null;
+        return List.copyOf(grants);
+    }
 
-        return new SkillDef(id, name, description, profession,
-                GsonHelper.getAsInt(obj, "tier", 1),
-                parseIdList(obj, "requires"),
-                parseIdList(obj, "exclusive_with"),
-                GsonHelper.getAsInt(obj, "cost", 1),
-                List.copyOf(grants),
-                animation);
+    /**
+     * A skill's optional {@code "power"} block is a full pheno component parsed through the same
+     * type registry genes use, so skills draw on the whole power vocabulary. A bad block drops
+     * only the power (with a diagnostic), never the skill: learned history must keep resolving.
+     */
+    @org.jetbrains.annotations.Nullable
+    private static com.aetherianartificer.townstead.pheno.power.PowerComponent parsePower(
+            JsonObject obj, Map<String, String> lang, Diagnostics diag) {
+        if (!obj.has("power")) return null;
+        JsonPath path = JsonPath.ROOT.field("power");
+        if (!obj.get("power").isJsonObject()) {
+            diag.error(path, "'power' must be an object.", "Use { \"type\": \"pheno:...\", ... }.");
+            return null;
+        }
+        JsonObject powerJson = obj.getAsJsonObject("power");
+        String type = GsonHelper.getAsString(powerJson, "type", "");
+        var geneType = com.aetherianartificer.townstead.root.gene.GeneTypes.get(type);
+        if (geneType.isEmpty()) {
+            diag.error(path.field("type"), "Unknown power type '" + type + "'.",
+                    "Use a registered pheno component type (see /pheno dump).");
+            return null;
+        }
+        var instance = geneType.get().parse(powerJson, lang);
+        if (instance == null) {
+            diag.error(path, "Invalid config for power type '" + type + "'.",
+                    "Fix the fields this type requires.");
+        }
+        return instance;
+    }
+
+    /**
+     * Overlays a {@code levels.json} sidecar onto its profession def. Only the progression keys
+     * cross over, so a sidecar can never mutate identity or hooks.
+     */
+    static void applyLevelsOverlay(JsonObject def, JsonObject overlay) {
+        if (overlay.has("levels")) def.add("levels", overlay.get("levels"));
+        if (overlay.has("daily_cap")) def.add("daily_cap", overlay.get("daily_cap"));
+        if (overlay.has("max_xp")) def.add("max_xp", overlay.get("max_xp"));
+    }
+
+    /**
+     * A skill reference: a full {@code ns:path} id passes through; a bare path is scoped to the
+     * owner's directory ({@code <owner ns>:<owner path>/<raw>}). Null when blank or malformed.
+     */
+    private static ResourceLocation resolveSkillRef(ResourceLocation owner, String raw) {
+        return resolveSkillRef(owner, null, raw);
+    }
+
+    /** A bare Path-local reference is scoped beneath the Path before becoming a skill id. */
+    private static ResourceLocation resolveSkillRef(ResourceLocation owner,
+                                                    @Nullable String scope, String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        return raw.contains(":")
+                ? ResourceLocation.tryParse(raw)
+                : ResourceLocation.tryParse(owner.getNamespace() + ":" + owner.getPath() + "/"
+                        + (scope == null || scope.isBlank() ? "" : scope + "/") + raw);
+    }
+
+    /** Directory portion between the owning Profession and this Skill's filename. */
+    private static @Nullable String skillScope(ResourceLocation skill,
+                                               ResourceLocation profession) {
+        if (!skill.getNamespace().equals(profession.getNamespace())) return null;
+        String prefix = profession.getPath() + "/";
+        if (!skill.getPath().startsWith(prefix)) return null;
+        String relative = skill.getPath().substring(prefix.length());
+        int slash = relative.lastIndexOf('/');
+        return slash < 0 ? null : relative.substring(0, slash);
+    }
+
+    /** Like {@link #parseIdList} but bare entries resolve through {@link #resolveSkillRef}. */
+    private static List<ResourceLocation> parseSkillRefList(JsonObject obj, String key,
+                                                            ResourceLocation owner,
+                                                            @Nullable String scope) {
+        List<ResourceLocation> out = new ArrayList<>();
+        if (obj.has(key) && obj.get(key).isJsonArray()) {
+            for (JsonElement e : obj.getAsJsonArray(key)) {
+                if (!e.isJsonPrimitive()) continue;
+                ResourceLocation id = resolveSkillRef(owner, scope, e.getAsString());
+                if (id != null) out.add(id);
+            }
+        }
+        return List.copyOf(out);
     }
 
     private static List<ResourceLocation> parseIdList(JsonObject obj, String key) {
@@ -200,6 +1162,63 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         return List.copyOf(out);
     }
 
+    /** Ordered clothing chain; strings use normal hair and objects may declare headwear policy. */
+    private static List<ClothingChoice> parseClothing(JsonObject obj, Diagnostics diag) {
+        String key = "clothing";
+        if (!obj.has(key)) return List.of();
+        JsonElement value = obj.get(key);
+        List<ClothingChoice> out = new ArrayList<>();
+        if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
+            ResourceLocation id = ResourceLocation.tryParse(value.getAsString());
+            if (id != null) out.add(new ClothingChoice(id));
+            else diag.warning(JsonPath.ROOT.field(key),
+                    "Invalid clothing identity '" + value.getAsString() + "'; entry ignored.",
+                    "Use a resource id such as minecraft:farmer.");
+        } else if (value.isJsonArray()) {
+            for (int i = 0; i < value.getAsJsonArray().size(); i++) {
+                JsonElement entry = value.getAsJsonArray().get(i);
+                JsonPath path = JsonPath.ROOT.field(key).index(i);
+                if (entry.isJsonPrimitive() && entry.getAsJsonPrimitive().isString()) {
+                    ResourceLocation id = ResourceLocation.tryParse(entry.getAsString());
+                    if (id != null) out.add(new ClothingChoice(id));
+                    else diag.warning(path,
+                            "Invalid clothing identity '" + entry.getAsString() + "'; entry ignored.",
+                            "Use a resource id such as minecraft:farmer.");
+                    continue;
+                }
+                if (!entry.isJsonObject()) {
+                    diag.warning(JsonPath.ROOT.field(key).index(i),
+                            "Clothing entries must be resource-id strings or objects; entry ignored.",
+                            "Use minecraft:farmer or {\"id\":\"minecraft:farmer\",\"hair\":\"covered\"}.");
+                    continue;
+                }
+                JsonObject choice = entry.getAsJsonObject();
+                ResourceLocation id = choice.has("id") && choice.get("id").isJsonPrimitive()
+                        ? ResourceLocation.tryParse(choice.get("id").getAsString()) : null;
+                if (id == null) {
+                    diag.warning(path.field("id"),
+                            "Clothing object needs a valid id; entry ignored.",
+                        "Use a resource id such as minecraft:farmer.");
+                    continue;
+                }
+                try {
+                    String hair = choice.has("hair") && choice.get("hair").isJsonPrimitive()
+                            ? choice.get("hair").getAsString() : "normal";
+                    out.add(new ClothingChoice(id, ClothingChoice.HairPolicy.fromString(hair)));
+                } catch (IllegalArgumentException error) {
+                    diag.warning(path.field("hair"), error.getMessage() + "; using normal hair.",
+                            "Use normal, covered, or hidden.");
+                    out.add(new ClothingChoice(id));
+                }
+            }
+        } else {
+            diag.warning(JsonPath.ROOT.field(key),
+                    "clothing must be a resource-id string or ordered list; ignoring it.",
+                    "Use clothing: minecraft:farmer or an array of fallback identities.");
+        }
+        return List.copyOf(out);
+    }
+
     private static Map<ResourceLocation, JsonObject> read(ResourceManager resourceManager, String dir) {
         Map<ResourceLocation, JsonObject> out = new LinkedHashMap<>();
         String prefix = dir + "/";
@@ -210,13 +1229,19 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             String idPath = path.substring(prefix.length(), path.length() - ".json".length());
             ResourceLocation id = ResourceLocation.tryParse(file.getNamespace() + ":" + idPath);
             if (id == null) continue;
-            try (Reader reader = e.getValue().openAsReader()) {
-                JsonElement parsed = JsonParser.parseReader(reader);
-                if (parsed.isJsonObject()) out.put(id, parsed.getAsJsonObject());
-            } catch (Exception ex) {
-                LOGGER.warn("Failed to read {} {}: {}", dir, file, ex.getMessage());
-            }
+            JsonObject json = readJson(e.getValue(), file);
+            if (json != null) out.put(id, json);
         }
         return out;
+    }
+
+    private static JsonObject readJson(Resource resource, ResourceLocation file) {
+        try (Reader reader = resource.openAsReader()) {
+            JsonElement parsed = JsonParser.parseReader(reader);
+            return parsed.isJsonObject() ? parsed.getAsJsonObject() : null;
+        } catch (Exception ex) {
+            LOGGER.warn("Failed to read {}: {}", file, ex.getMessage());
+            return null;
+        }
     }
 }

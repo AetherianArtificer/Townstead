@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "register_profession": true,
+  "poi": [
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/rusticdelight/cafe_l",
+      "slots_per_tier": [1, 1, 2, 2, 3]
+    }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:brew",
+      "workstations": ["farmersdelight:cooking_pot"],
+      "recipes": ["#townstead:brew_output"],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:brew",
+      "workstations": ["farmersdelight:skillet", "farmersdelight:stove", "#minecraft:campfires"],
+      "recipes": ["townstead:purification", "rusticdelight:roasted_coffee_beans"],
+      "weight": 10
+    }
+  ],
+  "path_worksites": {
+    "barista": ["farmersdelight:cooking_pot", "farmersdelight:skillet"]
+  }
+}

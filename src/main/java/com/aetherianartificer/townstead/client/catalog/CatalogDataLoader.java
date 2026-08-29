@@ -3,21 +3,26 @@ package com.aetherianartificer.townstead.client.catalog;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.data.ModGate;
 import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import com.aetherianartificer.townstead.root.building.BuildingSpawnPolicies;
 import com.aetherianartificer.townstead.root.building.BuildingSpawnPolicy;
+import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
 import com.aetherianartificer.townstead.spirit.BuildingSpiritIndex;
 import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.conczin.mca.resources.BuildingTypes;
+import net.conczin.mca.resources.data.BuildingType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,12 +30,17 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 
 public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/CatalogDataLoader");
@@ -39,7 +49,11 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     private static final ResourceLocation CLIENT_THEME =
             ResourceLocation.tryParse(Townstead.MOD_ID + ":" + DIRECTORY + "/theme.json");
 
-    public record GroupDef(String id, String label, String matchPrefix, String layout, String tierPrefix, int priority) {
+    public record GroupDef(String id, String label, String matchPrefix, String layout, String tierPrefix,
+                           int priority, List<String> supersedes) {
+        public GroupDef {
+            supersedes = supersedes == null ? List.of() : List.copyOf(supersedes);
+        }
     }
 
     public record BuildingOverride(Optional<ResourceLocation> nodeItem, boolean hide) {
@@ -60,6 +74,14 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
 
     private static final List<GroupDef> GROUPS = new CopyOnWriteArrayList<>();
     private static final Map<String, BuildingOverride> OVERRIDES = new LinkedHashMap<>();
+    /**
+     * Building definitions seen by Townstead's own data scan. MCA normally mirrors the same
+     * definitions into {@link BuildingTypes#getBuildingTypes()}, but add-on and newly introduced
+     * definitions can be absent from that client mirror for one reload. The catalog may safely
+     * use these parsed definitions as a presentation fallback; recognition remains MCA-owned.
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<String, BuildingType>
+            SCANNED_BUILDING_TYPES = new java.util.concurrent.ConcurrentHashMap<>();
     /**
      * Per-buildingType cache of {@link #matchGroup} results. Cleared whenever
      * {@code GROUPS} is repopulated (data-pack reload). Negative results are
@@ -83,6 +105,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         synchronized (OVERRIDES) {
             OVERRIDES.clear();
         }
+        SCANNED_BUILDING_TYPES.clear();
         THEME = Theme.DEFAULT;
         BuildingSpiritIndex.clear();
         EnclosureTypeIndex.clear();
@@ -117,14 +140,28 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         Map<String, Map<String, Integer>> blocksByType = new HashMap<>();
         Map<String, Integer> priorityByType = new HashMap<>();
         Map<String, BuildingSpawnPolicy> spawnPolicies = new HashMap<>();
+        Map<String, List<ResourceLocation>> workersByType = new HashMap<>();
+        Map<String, Set<ResourceLocation>> storageRolesByType = new HashMap<>();
+        Map<String, Set<String>> recipeNamespacesByType = new HashMap<>();
+        Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies = new HashMap<>();
+        Map<String, Set<String>> dialogueTopicsByType = new HashMap<>();
         scanLegacyBuildingTypes(resourceManager, blocksByType, priorityByType);
         scanSpiritCompanions(resourceManager);
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
-        scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies);
+        scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies, workersByType,
+                storageRolesByType, recipeNamespacesByType, enclosurePolicies, dialogueTopicsByType);
         BuildingSpawnPolicies.replaceAll(spawnPolicies);
+        com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex.replaceAll(workersByType);
+        com.aetherianartificer.townstead.storage.BuildingStorageRoles.replaceAll(storageRolesByType);
+        com.aetherianartificer.townstead.work.order.BuildingRecipeScopes
+                .replaceAll(recipeNamespacesByType);
+        BuildingEnclosurePolicies.replaceAll(enclosurePolicies);
+        com.aetherianartificer.townstead.work.feedback.BuildingDialogueTopics
+                .replaceAll(dialogueTopicsByType);
         // The icon-to-type index and node-item overrides are now both complete.
         // Clear any negative result cached while parallel reload listeners ran.
         BuildingIconResolver.invalidate();
+        com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
         DATA_THEME = THEME;
         CLIENT_THEME_RESOURCE_MANAGER = null;
 
@@ -150,22 +187,43 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         String layout = GsonHelper.getAsString(json, "layout", "grid");
         String tierPrefix = GsonHelper.getAsString(json, "tier_prefix", matchPrefix);
         int priority = GsonHelper.getAsInt(json, "priority", 0);
-        GROUPS.add(new GroupDef(id, label, matchPrefix, layout, tierPrefix, priority));
+        List<String> supersedes = new java.util.ArrayList<>();
+        if (json.has("supersedes") && json.get("supersedes").isJsonArray()) {
+            for (JsonElement element : json.getAsJsonArray("supersedes")) {
+                if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) continue;
+                String buildingType = element.getAsString().trim();
+                if (!buildingType.isEmpty() && !supersedes.contains(buildingType)) supersedes.add(buildingType);
+            }
+        }
+        GROUPS.add(new GroupDef(id, label, matchPrefix, layout, tierPrefix, priority, supersedes));
     }
 
     private static void loadOverride(String buildingType, JsonObject json) {
-        Optional<ResourceLocation> nodeItem = Optional.empty();
-        if (json.has("node_item")) {
-            ResourceLocation parsed = ResourceLocation.tryParse(GsonHelper.getAsString(json, "node_item"));
-            if (parsed != null)
-                nodeItem = Optional.of(parsed);
-        }
-        boolean hide = GsonHelper.getAsBoolean(json, "hide", false);
+        Optional<ResourceLocation> nodeItem = json.has("node_item")
+                ? resolveNodeItem(json.get("node_item")) : Optional.empty();
+        boolean hide = GsonHelper.getAsBoolean(json, "hide", false)
+                || (json.has("node_item") && nodeItem.isEmpty());
         putOverride(buildingType, new BuildingOverride(nodeItem, hide), true);
         if (json.has("townsteadSpirit")) {
             Map<String, Integer> spirit = parseSpiritMap(json.getAsJsonObject("townsteadSpirit"), null);
             if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
         }
+    }
+
+    /**
+     * Resolves {@code node_item}: a single item id or a list of candidates, first one present
+     * in the item registry wins (so per-mod icon variants degrade gracefully). Empty when
+     * nothing resolves — callers treat a specified-but-unresolvable icon as {@code hide},
+     * since a building whose signature item doesn't exist shouldn't be offered.
+     */
+    private static Optional<ResourceLocation> resolveNodeItem(JsonElement element) {
+        List<JsonElement> candidates = element.isJsonArray()
+                ? element.getAsJsonArray().asList() : List.of(element);
+        for (JsonElement candidate : candidates) {
+            ResourceLocation id = ResourceLocation.tryParse(GsonHelper.convertToString(candidate, "node_item"));
+            if (id != null && BuiltInRegistries.ITEM.containsKey(id)) return Optional.of(id);
+        }
+        return Optional.empty();
     }
 
     private static void loadTheme(JsonObject json) {
@@ -246,6 +304,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
                 JsonObject json = GSON.fromJson(reader, JsonObject.class);
                 if (json == null) continue;
+                SCANNED_BUILDING_TYPES.put(buildingType, new BuildingType(buildingType, json));
                 int iconU = GsonHelper.getAsInt(json, "iconU", 0);
                 int iconV = GsonHelper.getAsInt(json, "iconV", 0);
                 if (GsonHelper.getAsBoolean(json, "icon", false) || iconU != 0 || iconV != 0) {
@@ -379,13 +438,20 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     /**
      * Canonical {@code data/<ns>/extended_buildings/<building_type>.json}: all Townstead per-building
      * data in one file, keyed by MCA building-type id, so MCA's own {@code building_types} JSON stays
-     * vanilla. Blocks: {@code catalog} (node_item/hide), {@code spirit}, {@code spawn}, {@code enclosure}.
-     * Runs after the legacy readers and overrides them. The {@code enclosure} block derives its
-     * perimeter/interior from the building's MCA {@code blocks} map (cached in {@code blocksByType}).
+     * vanilla. Blocks: {@code catalog} (node_item/hide), {@code spirit}, {@code spawn}; the concise
+     * {@code enclosure} string selects required/optional/none physical enclosure, and
+     * {@code dialogue.topics} declares the village-life subjects this place makes available. The legacy object
+     * form of {@code enclosure} remains the fenced-area classifier and derives perimeter/interior
+     * from the MCA {@code blocks} map cached in {@code blocksByType}.
      */
     private static void scanExtendedBuildings(ResourceManager resourceManager,
             Map<String, Map<String, Integer>> blocksByType, Map<String, Integer> priorityByType,
-            Map<String, BuildingSpawnPolicy> spawnPolicies) {
+            Map<String, BuildingSpawnPolicy> spawnPolicies,
+            Map<String, List<ResourceLocation>> workersByType,
+            Map<String, Set<ResourceLocation>> storageRolesByType,
+            Map<String, Set<String>> recipeNamespacesByType,
+            Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies,
+            Map<String, Set<String>> dialogueTopicsByType) {
         Map<ResourceLocation, Resource> resources = resourceManager.listResources("extended_buildings",
                 id -> id.getPath().endsWith(".json"));
         for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
@@ -402,15 +468,19 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 JsonObject json = GSON.fromJson(reader, JsonObject.class);
                 if (json == null) continue;
                 TownsteadSchema.validate(json, "townstead:extended_building/v1");
+                if (json.has("mods") && !Boolean.TRUE.equals(ModGate.evaluate(json.get("mods")))) {
+                    // The MCA building type can still exist with optional/empty block tags, but it
+                    // must not leak into Townstead's catalog or workforce when its provider is absent.
+                    putOverride(buildingType, new BuildingOverride(Optional.empty(), true), true);
+                    continue;
+                }
 
                 if (json.has("catalog") && json.get("catalog").isJsonObject()) {
                     JsonObject cat = json.getAsJsonObject("catalog");
-                    Optional<ResourceLocation> nodeItem = Optional.empty();
-                    if (cat.has("node_item")) {
-                        ResourceLocation parsed = ResourceLocation.tryParse(GsonHelper.getAsString(cat, "node_item"));
-                        if (parsed != null) nodeItem = Optional.of(parsed);
-                    }
-                    boolean hide = GsonHelper.getAsBoolean(cat, "hide", false);
+                    Optional<ResourceLocation> nodeItem = cat.has("node_item")
+                            ? resolveNodeItem(cat.get("node_item")) : Optional.empty();
+                    boolean hide = GsonHelper.getAsBoolean(cat, "hide", false)
+                            || (cat.has("node_item") && nodeItem.isEmpty());
                     putOverride(buildingType, new BuildingOverride(nodeItem, hide), true);
                 }
                 if (json.has("spirit") && json.get("spirit").isJsonObject()) {
@@ -420,16 +490,113 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 if (json.has("spawn") && json.get("spawn").isJsonObject()) {
                     spawnPolicies.put(buildingType, BuildingSpawnPolicy.parse(json.getAsJsonObject("spawn")));
                 }
-                if (json.has("enclosure") && json.get("enclosure").isJsonObject()) {
-                    JsonObject enc = json.getAsJsonObject("enclosure");
-                    Map<String, Integer> blocks = blocksByType.getOrDefault(buildingType, Map.of());
-                    registerEnclosure(buildingType, blocks, priorityByType.getOrDefault(buildingType, 0),
-                            GsonHelper.getAsInt(enc, "minInterior", 4), GsonHelper.getAsInt(enc, "maxInterior", 1024));
+                if (json.has("workers") && json.get("workers").isJsonArray()) {
+                    List<ResourceLocation> workers = new java.util.ArrayList<>();
+                    for (JsonElement element : json.getAsJsonArray("workers")) {
+                        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) continue;
+                        ResourceLocation profession = ResourceLocation.tryParse(element.getAsString());
+                        if (profession != null && !workers.contains(profession)) workers.add(profession);
+                    }
+                    workersByType.put(buildingType, List.copyOf(workers));
+                }
+                if (json.has("storage_roles")) {
+                    storageRolesByType.put(buildingType, readStringSet(
+                            json, "storage_roles", "resource ids", CatalogDataLoader::parseStorageRole));
+                }
+                if (json.has("orders")) {
+                    JsonObject orders = requireObject(json, "orders");
+                    if (orders.has("recipe_namespaces")) {
+                        recipeNamespacesByType.put(buildingType, readStringSet(
+                                orders, "recipe_namespaces", "orders.recipe_namespaces", "strings",
+                                CatalogDataLoader::parseRecipeNamespace));
+                    }
+                }
+                if (json.has("dialogue")) {
+                    JsonObject dialogue = requireObject(json, "dialogue");
+                    if (dialogue.has("topics")) {
+                        Set<String> topics = readStringSet(
+                                dialogue, "topics", "dialogue.topics", "non-empty strings",
+                                CatalogDataLoader::requireNonBlankTopic);
+                        if (!topics.isEmpty()) dialogueTopicsByType.put(buildingType, topics);
+                    }
+                }
+                if (json.has("enclosure")) {
+                    JsonElement enclosure = json.get("enclosure");
+                    if (enclosure.isJsonPrimitive() && enclosure.getAsJsonPrimitive().isString()) {
+                        BuildingEnclosurePolicies.Mode mode = BuildingEnclosurePolicies.Mode.parse(
+                                enclosure.getAsString());
+                        if (mode != BuildingEnclosurePolicies.Mode.REQUIRED) {
+                            enclosurePolicies.put(buildingType, mode);
+                        }
+                    } else if (enclosure.isJsonObject()) {
+                        // Legacy fenced-enclosure classifier. Its object shape remains supported;
+                        // the new physical-form policy is intentionally the concise string form.
+                        JsonObject enc = enclosure.getAsJsonObject();
+                        Map<String, Integer> blocks = blocksByType.getOrDefault(buildingType, Map.of());
+                        registerEnclosure(buildingType, blocks, priorityByType.getOrDefault(buildingType, 0),
+                                GsonHelper.getAsInt(enc, "minInterior", 4),
+                                GsonHelper.getAsInt(enc, "maxInterior", 1024));
+                    } else {
+                        throw new IllegalArgumentException("'enclosure' must be a policy string or an object");
+                    }
                 }
             } catch (Exception ex) {
                 LOGGER.warn("Rejected extended_buildings entry '{}': {}", location, ex.getMessage());
             }
         }
+    }
+
+    private static JsonObject requireObject(JsonObject parent, String key) {
+        JsonElement value = parent.get(key);
+        if (!value.isJsonObject()) {
+            throw new IllegalArgumentException("'" + key + "' must be an object");
+        }
+        return value.getAsJsonObject();
+    }
+
+    private static ResourceLocation parseStorageRole(String value) {
+        ResourceLocation role = ResourceLocation.tryParse(value);
+        if (role == null) {
+            throw new IllegalArgumentException("Invalid storage role '" + value + "'");
+        }
+        return role;
+    }
+
+    private static String parseRecipeNamespace(String value) {
+        String namespace = value.trim();
+        if (!namespace.matches("[a-z0-9_.-]+")) {
+            throw new IllegalArgumentException("Invalid recipe namespace '" + namespace + "'");
+        }
+        return namespace;
+    }
+
+    private static String requireNonBlankTopic(String value) {
+        if (value.isBlank()) {
+            throw new IllegalArgumentException("'dialogue.topics' entries must be non-empty strings");
+        }
+        return value;
+    }
+
+    private static <T> Set<T> readStringSet(JsonObject parent, String key, String entryType,
+            Function<String, T> parser) {
+        return readStringSet(parent, key, key, entryType, parser);
+    }
+
+    private static <T> Set<T> readStringSet(JsonObject parent, String key, String path, String entryType,
+            Function<String, T> parser) {
+        JsonElement value = parent.get(key);
+        if (!value.isJsonArray()) {
+            throw new IllegalArgumentException("'" + path + "' must be an array");
+        }
+
+        Set<T> result = new LinkedHashSet<>();
+        for (JsonElement element : value.getAsJsonArray()) {
+            if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+                throw new IllegalArgumentException("'" + path + "' entries must be " + entryType);
+            }
+            result.add(parser.apply(element.getAsString()));
+        }
+        return Set.copyOf(result);
     }
 
     /**
@@ -473,6 +640,11 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         }
     }
 
+    /** Data-scanned building definitions missing from MCA's current client mirror. */
+    public static Map<String, BuildingType> scannedBuildingTypes() {
+        return Map.copyOf(SCANNED_BUILDING_TYPES);
+    }
+
     /** The datapack-provided theme, before any client resource-pack theme is merged in. */
     public static Theme dataTheme() {
         return DATA_THEME;
@@ -496,6 +668,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         CLIENT_THEME_RESOURCE_MANAGER = null;
         BuildingSpiritIndex.replaceAll(payload.spirits());
         BuildingIconResolver.invalidate();
+        com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
     }
 
     public static Theme theme() {
@@ -533,5 +706,98 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         }
         MATCH_CACHE.put(buildingType, resolved);
         return resolved;
+    }
+
+    /**
+     * Fallback building types hidden by groups that actually have at least one available member.
+     * Recognition and saved village buildings are deliberately unaffected; this is presentation
+     * substitution, not destructive migration.
+     */
+    public static Set<String> activeSupersededBuildingTypes(Collection<String> availableBuildingTypes) {
+        return activeSupersededBuildingTypes(availableBuildingTypes, GROUPS);
+    }
+
+    /** True when an installed provider currently replaces this fallback building type. */
+    public static boolean isActiveSupersededBuildingType(String buildingType) {
+        return buildingType != null && activeSupersededBuildingTypes(availableBuildingTypeNames())
+                .contains(buildingType);
+    }
+
+    /**
+     * Removes building types superseded by an installed provider while preserving MCA's
+     * original candidate order. This is shared by MCA surfaces outside Townstead's catalog,
+     * such as the building-polymorph chooser.
+     */
+    public static List<String> withoutActiveSupersededBuildingTypes(Collection<String> candidates) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        List<String> available = availableBuildingTypeNames();
+        return withoutActiveSupersededBuildingTypes(candidates, available, GROUPS);
+    }
+
+    /**
+     * Authoritative recognition filter. Unlike the polymorph-screen helper, this deliberately
+     * permits an empty result: if only a superseded fallback matches the room, MCA must reject
+     * the room instead of silently creating the obsolete building type.
+     */
+    public static List<String> withoutActiveSupersededBuildingTypesForRecognition(
+            Collection<String> candidates) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        return withoutActiveSupersededBuildingTypesStrict(candidates, availableBuildingTypeNames(), GROUPS);
+    }
+
+    private static List<String> availableBuildingTypeNames() {
+        return BuildingTypes.getInstance().getBuildingTypes().values().stream()
+                .filter(BuildingType::visible)
+                .filter(type -> ModCompat.isCompatAvailable(type.name()))
+                .filter(type -> !overrideFor(type.name()).hide())
+                .map(BuildingType::name)
+                .toList();
+    }
+
+    static List<String> withoutActiveSupersededBuildingTypes(
+            Collection<String> candidates,
+            Collection<String> availableBuildingTypes,
+            Collection<GroupDef> groups) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        Set<String> superseded = activeSupersededBuildingTypes(availableBuildingTypes, groups);
+        if (superseded.isEmpty()) return List.copyOf(candidates);
+        List<String> filtered = candidates.stream()
+                .filter(type -> !superseded.contains(type))
+                .toList();
+        // Never turn MCA's chooser into an unusable empty screen if a malformed data pack
+        // declares every matching type superseded.
+        return filtered.isEmpty() ? List.copyOf(candidates) : filtered;
+    }
+
+    static List<String> withoutActiveSupersededBuildingTypesStrict(
+            Collection<String> candidates,
+            Collection<String> availableBuildingTypes,
+            Collection<GroupDef> groups) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        Set<String> superseded = activeSupersededBuildingTypes(availableBuildingTypes, groups);
+        if (superseded.isEmpty()) return List.copyOf(candidates);
+        return candidates.stream()
+                .filter(type -> !superseded.contains(type))
+                .toList();
+    }
+
+    static Set<String> activeSupersededBuildingTypes(
+            Collection<String> availableBuildingTypes,
+            Collection<GroupDef> groups) {
+        if (availableBuildingTypes == null || availableBuildingTypes.isEmpty()
+                || groups == null || groups.isEmpty()) return Set.of();
+        Set<String> superseded = new HashSet<>();
+        for (GroupDef group : groups) {
+            if (group.supersedes().isEmpty() || group.matchPrefix().isEmpty()) continue;
+            boolean active = false;
+            for (String buildingType : availableBuildingTypes) {
+                if (buildingType != null && buildingType.startsWith(group.matchPrefix())) {
+                    active = true;
+                    break;
+                }
+            }
+            if (active) superseded.addAll(group.supersedes());
+        }
+        return superseded.isEmpty() ? Set.of() : Set.copyOf(superseded);
     }
 }

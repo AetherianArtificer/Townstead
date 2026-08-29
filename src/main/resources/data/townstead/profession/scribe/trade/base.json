@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:profession_trade/v1",
+  "replace": true,
+  "1": [
+    {
+      "cost": "minecraft:paper",
+      "cost_count": 24,
+      "result": "minecraft:emerald"
+    },
+    {
+      "cost": "minecraft:emerald",
+      "result": "minecraft:book",
+      "max_uses": 12
+    }
+  ]
+}

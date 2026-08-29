@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
+import com.aetherianartificer.townstead.work.WorkPathing;
 import com.aetherianartificer.townstead.dock.DockScanner;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Scans around a barrel anchor for fishable water source blocks, each paired with
  * a precomputed safe stand position. Results are cached per (dim, anchor, radius)
- * with a short TTL, matching the ButcherWorkIndex cadence pattern.
+ * with a short TTL, matching the other worksite spatial indexes.
  */
 public final class FishingWaterIndex {
     private static final long SNAPSHOT_TTL_TICKS = 60L;

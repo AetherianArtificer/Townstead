@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Mason"
+  },
+  "icon": "minecraft:stonecutter",
+  "description": {
+    "text": "Cut stone and fire brick to build a history of masonry mastery."
+  },
+  "unlock_model": "experiential"
+}

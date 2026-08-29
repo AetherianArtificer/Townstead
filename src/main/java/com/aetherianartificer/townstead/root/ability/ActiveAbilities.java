@@ -17,7 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Server-side activation of {@code active_ability} genes: resolves an entity's
@@ -28,9 +27,25 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ActiveAbilities {
 
-    public static final int POOL_SIZE = 8;
+    /**
+     * Prepared slots. Twenty-four, drawn as THREE LAYERS of eight on one dial: the wheel shows 1-8,
+     * shift shows 9-16, and control shows 17-24, all in the same eight positions.
+     *
+     * <p>Layers rather than modes. Switching sets would mean slot 3 quietly meaning something else
+     * until you switched back, and an arrangement you have built muscle memory for must never move
+     * under your fingers. Held, it cannot: let go and you are on the first eight again.</p>
+     *
+     * <p>Three is where this stops. A fourth would need a modifier nobody has a spare finger for,
+     * and twenty-four prepared is already well past the working set the whole idea of preparing
+     * exists to keep small.</p>
+     *
+     * <p>Only the first eight have keys ({@code TownsteadKeybinds.ABILITY_KEYS}); the upper layers
+     * are reachable through the wheel. That asymmetry is deliberate rather than an oversight.</p>
+     */
+    public static final int POOL_SIZE = 24;
+    /** How many slots one turn of the dial shows. */
+    public static final int LAYER_SIZE = 8;
 
-    private static final Map<UUID, Map<ResourceLocation, Long>> READY_AT = new ConcurrentHashMap<>();
     private static final int AI_INTERVAL = 10;
 
     private ActiveAbilities() {}
@@ -73,12 +88,78 @@ public final class ActiveAbilities {
     }
 
     /**
+     * What a player may ARRANGE, as opposed to everything that can occupy a slot.
+     *
+     * <p>{@link #slottables} stays complete because the co-bound pairing in {@link #fireSlotted}
+     * has to find the partner. But a counter-cast like vanish's unveil is fired by its parent's
+     * press and its condition only passes while the parent's effect is up, so offering it a slot of
+     * its own let a player bind a key to something that could never run from that key.</p>
+     */
+    public static List<Slotted> arrangeable(LivingEntity entity) {
+        List<Slotted> out = new ArrayList<>();
+        for (Slotted slotted : slottables(entity)) {
+            if (com.aetherianartificer.townstead.root.gene.GeneRegistry.isCompanion(slotted.geneId())) {
+                continue;
+            }
+            out.add(slotted);
+        }
+        return out;
+    }
+
+    /**
      * Map of key slot (1..POOL_SIZE) to the primary thing (active or toggle) bound there.
      * Two ACTIVEs may declare the same slot (a cast and its counter-cast gated by mutually
      * exclusive conditions): the extras stay co-bound to the declared slot rather than
      * auto-filling elsewhere, and {@link #activate} fires all of them.
      */
     public static Map<Integer, Slotted> slotMap(LivingEntity entity) {
+        Map<Integer, ResourceLocation> prepared = preparedLoadout(entity);
+        if (!prepared.isEmpty()) return preparedMap(entity, prepared);
+        return declaredMap(entity);
+    }
+
+    /**
+     * The player's own arrangement, slot by slot.
+     *
+     * <p>Root abilities and career skills share one id space (a skill's power is keyed by its skill
+     * id, a gene's by its gene id), so one map covers both without knowing the difference. A
+     * prepared ability the entity no longer owns leaves its slot EMPTY rather than closing the gap:
+     * a respec must not move the other seven abilities under the player's fingers.</p>
+     */
+    private static Map<Integer, Slotted> preparedMap(LivingEntity entity,
+                                                     Map<Integer, ResourceLocation> prepared) {
+        List<Slotted> slottables = slottables(entity);
+        Map<Integer, Slotted> map = new LinkedHashMap<>();
+        for (int slot = 1; slot <= POOL_SIZE; slot++) {
+            ResourceLocation id = prepared.get(slot);
+            if (id == null) continue;
+            for (Slotted slotted : slottables) {
+                if (slotted.geneId().equals(id)) {
+                    map.put(slot, slotted);
+                    break;
+                }
+            }
+        }
+        return map;
+    }
+
+    /** What a player has prepared, or empty for anyone who cannot prepare (villagers use AI). */
+    private static Map<Integer, ResourceLocation> preparedLoadout(LivingEntity entity) {
+        if (!(entity instanceof net.minecraft.world.entity.player.Player)) return Map.of();
+        com.aetherianartificer.townstead.profession.career.CareerProfile profile =
+                com.aetherianartificer.townstead.profession.career.CareerProfiles.of(entity);
+        return profile == null ? Map.of() : profile.activeLoadout();
+    }
+
+    /**
+     * The pre-preparation default: declared slots first, then auto-fill.
+     *
+     * <p>Kept as the bootstrap so a player who has never opened the loadout still has their first
+     * few abilities on keys. It TRUNCATES past {@link #POOL_SIZE}, which is the whole reason
+     * preparing exists: with hundreds owned this can only ever reach the first eight, and it cannot
+     * tell the player which eight it picked.</p>
+     */
+    private static Map<Integer, Slotted> declaredMap(LivingEntity entity) {
         Map<Integer, Slotted> map = new LinkedHashMap<>();
         List<Slotted> auto = new ArrayList<>();
         for (Slotted slotted : slottables(entity)) {
@@ -104,11 +185,53 @@ public final class ActiveAbilities {
         return map;
     }
 
-    /** The player pressed the key bound to {@code slot} (1-based): fire an active, or flip a toggle. */
+    /**
+     * Records the player's prepared order, keeping only what they actually own.
+     *
+     * <p>Validated against {@link #arrangeable} rather than against a learned-skill list, because
+     * that is the same source the picker offers from: anything the player could not have been shown
+     * has no business being stored as though they picked it. Duplicates and unknown ids are dropped
+     * rather than refused, so a stale client sending an ability you have since respecced out of
+     * costs you that entry and nothing else.</p>
+     */
+    public static void prepare(ServerPlayer player, Map<Integer, ResourceLocation> bySlot) {
+        java.util.Set<ResourceLocation> owned = new java.util.LinkedHashSet<>();
+        for (Slotted slotted : arrangeable(player)) owned.add(slotted.geneId());
+        Map<Integer, ResourceLocation> valid = new LinkedHashMap<>();
+        for (Map.Entry<Integer, ResourceLocation> entry : bySlot.entrySet()) {
+            ResourceLocation id = entry.getValue();
+            if (id != null && (owned.contains(id) || isClientBinding(id))) {
+                valid.put(entry.getKey(), id);
+            }
+        }
+        com.aetherianartificer.townstead.profession.career.PlayerCareers.mutate(player,
+                profile -> profile.setActiveLoadout(valid, POOL_SIZE));
+        // Echo the arrangement the server actually kept, not the one that was asked for: dropped
+        // entries have to show up on the wheel or the player is editing a fiction.
+        syncView(player);
+    }
+
+    /**
+     * The player pressed the key or wedge for {@code slot} (1-based).
+     *
+     * <p>Dispatch, not action. A slot holds an id, and what that id means belongs to whichever
+     * provider owns it, so this resolves the id and hands it over. Our own abilities go through the
+     * same door a datapack action does; giving them a shortcut here is exactly how the extension
+     * path would rot without anyone noticing.</p>
+     */
     public static boolean activate(ServerPlayer player, int slot) {
+        ResourceLocation id = slotMap(player).containsKey(slot)
+                ? slotMap(player).get(slot).geneId()
+                : preparedLoadout(player).get(slot);
+        if (id == null) return false;
+        boolean acted = com.aetherianartificer.townstead.assign.Assignables.invoke(player, id);
+        if (acted) syncView(player);
+        return acted;
+    }
+
+    /** Fires one of OUR slotted things: an active, a toggle flip, or an inventory. */
+    public static boolean fireSlotted(ServerPlayer player, Slotted slotted) {
         Map<Integer, Slotted> map = slotMap(player);
-        Slotted slotted = map.get(slot);
-        if (slotted == null) return false;
         if (slotted.kind() == GeneInstanceKind.TOGGLE) {
             AbilityToggles.flip(player, slotted.geneId());
             AbilityToggles.syncTo(player);
@@ -125,9 +248,16 @@ public final class ActiveAbilities {
         // the first success, or a cast that flips state (vanish) hands the very same press to
         // its counter-cast (unveil), whose condition now passes against the mutated state, and
         // the pair self-cancels within one tick.
+        // Pairs are matched on the FIRED ABILITY's declared slot, not on the key that was pressed.
+        // Those were only ever the same number while nothing moved: auto-fill could already place an
+        // ability on a key other than the one it declared, and a prepared loadout makes the two
+        // axes independent by design. Comparing against the key slot co-fired whichever unrelated
+        // ability happened to declare that number.
+        int pairSlot = slotted.declaredSlot();
         for (Slotted candidate : slottables(player)) {
-            if (fired) break;
-            if (candidate.kind() != GeneInstanceKind.ACTIVE || candidate.declaredSlot() != slot) continue;
+            if (fired || pairSlot < 1) break;
+            if (candidate.kind() != GeneInstanceKind.ACTIVE) continue;
+            if (candidate.equals(slotted) || candidate.declaredSlot() != pairSlot) continue;
             if (map.containsValue(candidate)) continue;
             fired = fire(player, new Resolved(candidate.geneId(), (ActiveAbilityGeneType.Instance) candidate.instance()));
         }
@@ -209,15 +339,136 @@ public final class ActiveAbilities {
     }
 
     private static boolean isReady(LivingEntity entity, ResourceLocation geneId, long now) {
-        Map<ResourceLocation, Long> map = READY_AT.get(entity.getUUID());
-        return map == null || map.getOrDefault(geneId, 0L) <= now;
+        return com.aetherianartificer.townstead.assign.AssignCooldowns.isReady(entity, geneId, now);
     }
 
     private static void setCooldown(LivingEntity entity, ResourceLocation geneId, long readyAt) {
-        READY_AT.computeIfAbsent(entity.getUUID(), k -> new ConcurrentHashMap<>()).put(geneId, readyAt);
+        com.aetherianartificer.townstead.assign.AssignCooldowns.set(entity, geneId, readyAt);
     }
 
     public static void clear(UUID uuid) {
-        READY_AT.remove(uuid);
+        com.aetherianartificer.townstead.assign.AssignCooldowns.clear(uuid);
+    }
+
+    // ── The wheel's view ───────────────────────────────────────────────────
+
+    /** When this is next usable, as a game time; 0 when it is ready now. Any provider's, not ours. */
+    private static long readyAt(LivingEntity entity, ResourceLocation id) {
+        return com.aetherianartificer.townstead.assign.AssignCooldowns.readyAt(entity, id);
+    }
+
+    /**
+     * The slots as the wheel needs them: resolved, named, and with cooldowns already answered.
+     *
+     * <p>Built server-side because every input is: the power layer decides what is slottable, the
+     * cooldown table is transient server state, and a skill's name lives in its def. Shipping the
+     * answer keeps the client from needing a second copy of any of it.</p>
+     */
+    public static AbilityLoadoutS2CPayload view(ServerPlayer player) {
+        // Built from the PROVIDERS, so a datapack action in a slot draws exactly like one of ours.
+        java.util.Map<ResourceLocation, com.aetherianartificer.townstead.assign.Assignable> catalogue =
+                new LinkedHashMap<>();
+        for (com.aetherianartificer.townstead.assign.Assignable assignable
+                : com.aetherianartificer.townstead.assign.Assignables.collect(player)) {
+            catalogue.put(assignable.id(), assignable);
+        }
+
+        // Which id sits in which slot: the player's arrangement, or the declared-slot bootstrap for
+        // anyone who has never prepared one.
+        Map<Integer, ResourceLocation> slots = new LinkedHashMap<>(preparedLoadout(player));
+        if (slots.isEmpty()) {
+            for (Map.Entry<Integer, Slotted> entry : declaredMap(player).entrySet()) {
+                slots.put(entry.getKey(), entry.getValue().geneId());
+            }
+        }
+
+        List<AbilityLoadoutS2CPayload.Entry> entries = new ArrayList<>();
+        for (Map.Entry<Integer, ResourceLocation> slot : slots.entrySet()) {
+            ResourceLocation id = slot.getValue();
+            com.aetherianartificer.townstead.assign.Assignable assignable = catalogue.get(id);
+            if (assignable == null) {
+                // A client binding: passed straight back so the slot survives the round trip. We
+                // cannot name it, because only a client knows which keys exist, and we never
+                // perform it. The client fills in the name and does the pressing.
+                if (isClientBinding(id)) {
+                    entries.add(new AbilityLoadoutS2CPayload.Entry(slot.getKey(), id.toString(),
+                            "", "", false, false, 0, 0L, 0, "",
+                            com.aetherianartificer.townstead.assign.Assignable.Kind.KEYBIND.ordinal(),
+                            id.getPath(), "", 0, 0));
+                }
+                continue;
+            }
+            boolean toggle = isToggle(player, id);
+            entries.add(new AbilityLoadoutS2CPayload.Entry(slot.getKey(), id.toString(),
+                    assignable.name().getString(), assignable.icon(), toggle,
+                    toggle && AbilityToggles.isOn(player, id),
+                    assignable.cooldownTicks(), readyAt(player, id),
+                    assignable.costAmount(), assignable.costLabel(),
+                    assignable.kind().ordinal(), assignable.clientValue(),
+                    assignable.source().getString(), assignable.costColor(),
+                    costHave(player, assignable)));
+        }
+
+        List<AbilityLoadoutS2CPayload.Option> available = new ArrayList<>();
+        for (com.aetherianartificer.townstead.assign.Assignable assignable : catalogue.values()) {
+            available.add(new AbilityLoadoutS2CPayload.Option(assignable.id().toString(),
+                    assignable.name().getString(), assignable.icon(),
+                    assignable.source().getString(), isToggle(player, assignable.id()),
+                    assignable.cooldownTicks(), assignable.costAmount(), assignable.costLabel(),
+                    assignable.kind().ordinal(), assignable.costColor(),
+                    costHave(player, assignable)));
+        }
+        return new AbilityLoadoutS2CPayload(List.copyOf(entries), List.copyOf(available));
+    }
+
+    /**
+     * A slot holding one of the client's own keybinds.
+     *
+     * <p>Stored but never resolved. The server has no way to enumerate a client's bindings, so it
+     * keeps the id so the arrangement survives a relog and hands it back untouched. It cannot be
+     * used to reach anything server-side: {@link #activate} dispatches through the providers, none
+     * of which claims this namespace, so a forged press does nothing.</p>
+     */
+    private static boolean isClientBinding(ResourceLocation id) {
+        return id != null && com.aetherianartificer.townstead.Townstead.MOD_ID.equals(id.getNamespace())
+                && id.getPath().startsWith("key.");
+    }
+
+    /**
+     * How much of the cost resource the player is holding right now.
+     *
+     * <p>Sent as an AMOUNT rather than an affordable flag, so the wheel can say how short you
+     * are instead of only that you are. It goes stale the moment a resource ticks, which is
+     * survivable: the wheel is open for a second or two and the server refuses the press
+     * regardless of what the client believed.</p>
+     */
+    private static int costHave(ServerPlayer player,
+                                com.aetherianartificer.townstead.assign.Assignable assignable) {
+        if (assignable.costAmount() <= 0) return 0;
+        for (Slotted slotted : slottables(player)) {
+            if (!slotted.geneId().equals(assignable.id())) continue;
+            if (slotted.instance() instanceof ActiveAbilityGeneType.Instance active
+                    && active.costResource() != null) {
+                return ResourceValues.get(player, active.costResource());
+            }
+        }
+        return 0;
+    }
+
+    /** Only OUR things can be toggles; a datapack action is always a one-shot. */
+    private static boolean isToggle(ServerPlayer player, ResourceLocation id) {
+        for (Slotted slotted : slottables(player)) {
+            if (slotted.geneId().equals(id)) return slotted.kind() == GeneInstanceKind.TOGGLE;
+        }
+        return false;
+    }
+
+    /** Pushes the wheel's view after anything that could change it. */
+    public static void syncView(ServerPlayer player) {
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, view(player));
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, view(player));
+        *///?}
     }
 }

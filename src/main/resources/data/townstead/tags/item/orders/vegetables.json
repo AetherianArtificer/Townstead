@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:carrot",
+    "minecraft:potato",
+    "minecraft:beetroot",
+    "minecraft:pumpkin",
+    { "id": "#forge:vegetables", "required": false },
+    { "id": "#c:vegetables", "required": false },
+    { "id": "#c:foods/vegetable", "required": false }
+  ]
+}

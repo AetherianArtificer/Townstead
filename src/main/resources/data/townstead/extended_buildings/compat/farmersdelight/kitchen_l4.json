@@ -1,7 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
   "catalog": {
-    "node_item": "farmersdelight:stove"
+    "node_item": ["farmersdelight:stove", "farm_and_charm:stove", "kaleidoscope_cookery:stove"]
   },
   "spirit": {
     "pastoral": 18,

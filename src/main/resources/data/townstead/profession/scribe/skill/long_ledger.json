@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "text": "[PLACEHOLDER] SCRIBE SKILL 01"
+  },
+  "icon": "minecraft:barrier",
+  "description": {
+    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for scribe/long_ledger."
+  },
+  "tier": 3,
+  "cost": 2,
+  "grants": [
+    {
+      "capability": "townstead:scribe_xp_per_tier",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

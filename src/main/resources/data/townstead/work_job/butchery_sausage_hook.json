@@ -1,0 +1,129 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": [
+    "butchery"
+  ],
+  "task": "townstead_work:cure",
+  "type": "townstead:block_interaction",
+  "target": {
+    "block": "butchery:hook",
+    "interactions": [
+      {
+        "item": "butchery:cooked_sausage",
+        "condition": {
+          "type": "pheno:offset",
+          "y": -1,
+          "condition": {
+            "type": "pheno:or",
+            "conditions": [
+              { "type": "pheno:air" },
+              {
+                "type": "pheno:and",
+                "conditions": [
+                  { "type": "pheno:block", "block": "butchery:cooked_sausages" },
+                  {
+                    "type": "pheno:or",
+                    "conditions": [
+                      { "type": "pheno:block_state", "property": "blockstate", "value": "0" },
+                      { "type": "pheno:block_state", "property": "blockstate", "value": "1" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "action": [
+          {
+            "type": "pheno:offset",
+            "y": -1,
+            "block_action": {
+              "type": "pheno:if_else",
+              "if": { "type": "pheno:air" },
+              "then": {
+                "type": "pheno:set_block",
+                "block": "butchery:cooked_sausages",
+                "copy_from": [0, 1, 0],
+                "copy_properties": ["facing"]
+              },
+              "else": {
+                "type": "pheno:modify_block_state",
+                "property": "blockstate",
+                "operation": "add",
+                "amount": 1
+              }
+            }
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.chain.hit",
+            "volume": 1
+          },
+          {
+            "type": "pheno:item_action",
+            "action": { "type": "pheno:consume", "amount": 1 }
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "butchery:cooked_blood_sausage",
+        "condition": {
+          "type": "pheno:offset",
+          "y": -1,
+          "condition": {
+            "type": "pheno:or",
+            "conditions": [
+              { "type": "pheno:air" },
+              {
+                "type": "pheno:and",
+                "conditions": [
+                  { "type": "pheno:block", "block": "butchery:cooked_blood_sausages" },
+                  {
+                    "type": "pheno:or",
+                    "conditions": [
+                      { "type": "pheno:block_state", "property": "blockstate", "value": "0" },
+                      { "type": "pheno:block_state", "property": "blockstate", "value": "1" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "action": [
+          {
+            "type": "pheno:offset",
+            "y": -1,
+            "block_action": {
+              "type": "pheno:if_else",
+              "if": { "type": "pheno:air" },
+              "then": {
+                "type": "pheno:set_block",
+                "block": "butchery:cooked_blood_sausages",
+                "copy_from": [0, 1, 0],
+                "copy_properties": ["facing"]
+              },
+              "else": {
+                "type": "pheno:modify_block_state",
+                "property": "blockstate",
+                "operation": "add",
+                "amount": 1
+              }
+            }
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.chain.hit",
+            "volume": 1
+          },
+          {
+            "type": "pheno:item_action",
+            "action": { "type": "pheno:consume", "amount": 1 }
+          }
+        ],
+        "xp": 1
+      }
+    ]
+  }
+}

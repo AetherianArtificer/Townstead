@@ -26,6 +26,8 @@ class ProfessionProgressionsTest {
         @Override public void setProfessionXp(String id, ProfessionXp v) { m.put(id, v); }
     }
 
+    private static final ResourceLocation FARMER = ResourceLocation.tryParse("minecraft:farmer");
+
     @BeforeEach
     void clearDefs() {
         ProfessionDefs.replaceAll(Map.of());
@@ -36,32 +38,37 @@ class ProfessionProgressionsTest {
         ProfessionDefs.replaceAll(Map.of());
     }
 
-    @Test
-    void builtinFallbackMatchesEnumWhenNoDefRegistered() {
-        ProgressionSpec spec = ProfessionProgressions.spec("farmer");
-        assertArrayEquals(new int[]{0, 120, 320, 700, 1300}, spec.tierThresholds());
-        assertEquals(240, spec.dailyXpCap());
-        assertEquals(200000, spec.maxXp());
+    private static void registerFarmer(ProgressionTrack track) {
+        Map<ResourceLocation, ProfessionDef> defs = new HashMap<>();
+        defs.put(FARMER, new ProfessionDef(FARMER, null, null, track,
+                UnlockModel.EXPERIENTIAL, 1, RetrainingPolicy.FREE, List.of()));
+        ProfessionDefs.replaceAll(defs);
     }
 
     @Test
-    void specMatchesBuiltinTierCurveAcrossRange() {
-        ProgressionSpec spec = ProfessionProgressions.spec(ProfessionXpType.FARMER);
-        for (int xp : new int[]{0, 119, 120, 319, 320, 700, 1299, 1300, 5000}) {
-            assertEquals(ProfessionXpType.FARMER.tierForXp(xp), spec.tierForXp(xp), "xp=" + xp);
+    void missingDefResolvesInert() {
+        ProgressionSpec spec = ProfessionProgressions.spec("minecraft:farmer");
+        assertArrayEquals(new int[]{0}, spec.tierThresholds(), "no def means no invented numbers");
+        assertEquals(0, spec.dailyXpCap());
+    }
+
+    @Test
+    void defProvidesSpecByFullIdAndByLegacyBareName() {
+        registerFarmer(new ProgressionTrack(List.of(0, 120, 320, 700, 1300), 240, 200000));
+
+        for (String key : new String[]{"minecraft:farmer", "farmer"}) {
+            ProgressionSpec spec = ProfessionProgressions.spec(key);
+            assertArrayEquals(new int[]{0, 120, 320, 700, 1300}, spec.tierThresholds(), key);
+            assertEquals(240, spec.dailyXpCap(), key);
+            assertEquals(200000, spec.maxXp(), key);
         }
     }
 
     @Test
-    void datapackDefOverridesBuiltinById() {
-        Map<ResourceLocation, ProfessionDef> defs = new HashMap<>();
-        ResourceLocation id = ResourceLocation.tryParse("minecraft:farmer");
-        defs.put(id, new ProfessionDef(id, null, null,
-                new ProgressionTrack(List.of(0, 50), 10, 99),
-                UnlockModel.EXPERIENTIAL, 1, RetrainingPolicy.FREE, List.of()));
-        ProfessionDefs.replaceAll(defs);
+    void defOverrideReplacesNumbers() {
+        registerFarmer(new ProgressionTrack(List.of(0, 50), 10, 99));
 
-        ProgressionSpec spec = ProfessionProgressions.spec("farmer");
+        ProgressionSpec spec = ProfessionProgressions.spec(FARMER);
         assertArrayEquals(new int[]{0, 50}, spec.tierThresholds());
         assertEquals(10, spec.dailyXpCap());
         assertEquals(99, spec.maxXp());
@@ -70,19 +77,20 @@ class ProfessionProgressionsTest {
 
     @Test
     void addXpRespectsDailyCapAndTiersUp() {
+        registerFarmer(new ProgressionTrack(List.of(0, 120, 320, 700, 1300), 240, 200000));
         MapStore store = new MapStore();
         // Farmer: daily cap 240, tier 2 at 120 xp. Request 1000 in one day -> only 240 applied.
-        ProfessionProgress.GainResult r1 = ProfessionProgress.addXp(store, ProfessionXpType.FARMER, 1000, 0L);
+        ProfessionProgress.GainResult r1 = ProfessionProgress.addXp(store, FARMER, 1000, 0L);
         assertEquals(240, r1.appliedXp(), "daily cap clamps the gain");
         assertTrue(r1.tierUp(), "240 xp crosses the tier-2 threshold");
         assertEquals(2, r1.tierAfter());
 
         // Same day: no further gain.
-        ProfessionProgress.GainResult r2 = ProfessionProgress.addXp(store, ProfessionXpType.FARMER, 100, 0L);
+        ProfessionProgress.GainResult r2 = ProfessionProgress.addXp(store, FARMER, 100, 0L);
         assertEquals(0, r2.appliedXp());
 
         // Next day: cap resets.
-        ProfessionProgress.GainResult r3 = ProfessionProgress.addXp(store, ProfessionXpType.FARMER, 100, 24000L);
+        ProfessionProgress.GainResult r3 = ProfessionProgress.addXp(store, FARMER, 100, 24000L);
         assertEquals(100, r3.appliedXp());
     }
 }

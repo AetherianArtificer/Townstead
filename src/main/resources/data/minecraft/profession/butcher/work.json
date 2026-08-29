@@ -1,0 +1,63 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "poi": [
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/butchery/butcher_shop_l",
+      "slots_per_tier": [1, 1, 2]
+    },
+    { "type": "townstead:job_block", "block": "minecraft:smoker" }
+  ],
+  "tasks": [
+    { "type": "townstead_work:butcher", "weight": 10 },
+    {
+      "type": "townstead_work:dismantle",
+      "weight": 10,
+      "order": {
+        "name": "Dismantle golems",
+        "icon": "minecraft:shears"
+      }
+    },
+    {
+      "type": "townstead_work:grind",
+      "workstations": ["butchery:meat_grinder", "butchery:pestle_and_mortar"],
+      "weight": 9
+    },
+    {
+      "type": "townstead_work:taxidermy",
+      "workstations": ["butchery:taxidermy_table"],
+      "weight": 9
+    },
+    {
+      "type": "townstead_work:smoke",
+      "workstations": ["#townstead:smoker_stations"],
+      "recipe_inputs": ["#townstead:butcher_smoker_input"],
+      "weight": 8
+    },
+    { "type": "townstead_work:cure", "weight": 6 },
+    {
+      "type": "townstead_work:clean",
+      "weight": 5,
+      "order": {
+        "name": "Clean blood",
+        "icon": "minecraft:sponge"
+      }
+    },
+    {
+      "type": "townstead_work:hammer",
+      "weight": 4,
+      "order": {
+        "name": "Break heads",
+        "icon": "minecraft:iron_pickaxe"
+      }
+    },
+    {
+      "type": "townstead_work:slaughter",
+      "weight": 3,
+      "order": {
+        "name": "Slaughter",
+        "icon": "minecraft:iron_sword"
+      }
+    }
+  ]
+}

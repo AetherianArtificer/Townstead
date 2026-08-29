@@ -376,7 +376,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
     }
 
     /** The {@code physics.chains} list: root-to-tip bone runs with spring parameters. */
-    private static List<AttachmentDef.PhysicsChain> parsePhysics(JsonObject json) {
+    static List<AttachmentDef.PhysicsChain> parsePhysics(JsonObject json) {
         if (!json.has("physics") || !json.get("physics").isJsonObject()) return List.of();
         JsonObject physics = json.getAsJsonObject("physics");
         if (!physics.has("chains") || !physics.get("chains").isJsonArray()) return List.of();
@@ -394,11 +394,15 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
                 response[2] = GsonHelper.getAsFloat(r, "lateral", 1f);
                 response[3] = GsonHelper.getAsFloat(r, "turn", 1f);
             }
+            float maxAngle = GsonHelper.getAsFloat(chain, "max_angle", 60f);
             out.add(new AttachmentDef.PhysicsChain(chainBones,
                     GsonHelper.getAsFloat(chain, "stiffness", 0.4f),
                     GsonHelper.getAsFloat(chain, "damping", 0.8f),
                     GsonHelper.getAsFloat(chain, "gravity", 0.3f),
-                    GsonHelper.getAsFloat(chain, "max_angle", 60f),
+                    maxAngle,
+                    GsonHelper.getAsFloat(chain, "min_pitch", -maxAngle),
+                    GsonHelper.getAsFloat(chain, "max_pitch", maxAngle),
+                    GsonHelper.getAsFloat(chain, "rest_pitch", 0f),
                     GsonHelper.getAsFloat(chain, "sway", 0f),
                     GsonHelper.getAsFloat(chain, "follow", 0.55f),
                     GsonHelper.getAsFloat(chain, "droop_angle", 40f),

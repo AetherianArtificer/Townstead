@@ -1,0 +1,102 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "lifecycle.marriage",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live",
+    "pregen"
+  ],
+  "trigger": {
+    "type": "lifecycle",
+    "key": "townstead:marriage"
+  },
+  "reach": "village",
+  "news_value": 5.0,
+  "roles": [
+    {
+      "id": "partner",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:life_stage",
+            "stage": "adult"
+          },
+          {
+            "type": "pheno:bond_count",
+            "kind": "townstead:marriage",
+            "comparison": "<",
+            "compare_to": {
+              "type": "pheno:bond_max",
+              "kind": "townstead:marriage"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "spouse",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      }
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 12
+  },
+  "pregen": {
+    "bond": {
+      "kind": "townstead:marriage",
+      "with": "spouse"
+    },
+    "magnitude": [
+      0.9,
+      1.1
+    ]
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.wedding"
+    },
+    "params": [
+      "partner",
+      "spouse"
+    ]
+  },
+  "impact": {
+    "partner": {
+      "mood": 8.0,
+      "memory": {
+        "valence": 1.0,
+        "strength": 3.0
+      }
+    },
+    "spouse": {
+      "mood": 8.0,
+      "memory": {
+        "valence": 1.0,
+        "strength": 3.0
+      }
+    },
+    "witness": {
+      "mood": 2.0,
+      "memory": {
+        "valence": 0.7,
+        "strength": 1.0
+      }
+    },
+    "on_learn": {
+      "mood": 1.0,
+      "memory": {
+        "valence": 0.6,
+        "strength": 0.8
+      }
+    }
+  }
+}

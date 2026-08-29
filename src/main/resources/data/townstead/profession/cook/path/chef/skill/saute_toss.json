@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.saute_toss" },
+  "icon": "farmersdelight:skillet",
+  "description": { "translate": "skill.townstead.cook.chef.saute_toss.description" },
+  "cost": 1,
+  "requires": ["precision_cut"],
+  "skill_group": "townstead:chef_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 220,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": { "resource": "townstead:flow", "amount": 30 },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": { "type": "pheno:ingredient", "tag": "townstead:kitchen_skillets" }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4.0,
+          "target": "hostile",
+          "bientity_condition": { "type": "pheno:relative_rotation", "max_angle": 85 },
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              { "type": "pheno:damage", "source": "other", "amount": 5.0 },
+              { "type": "pheno:add_velocity", "y": 0.45, "away_from_other": 1.1 }
+            ]
+          }
+        },
+        { "type": "pheno:swing_hand", "hand": "mainhand" },
+        { "type": "pheno:play_sound", "sound": "minecraft:entity.player.attack.sweep", "volume": 1.2, "pitch": 0.75 },
+        { "type": "pheno:spawn_particles", "particle": "minecraft:cloud", "count": 24, "spread": 1.2, "speed": 0.1 }
+      ]
+    }
+  }
+}

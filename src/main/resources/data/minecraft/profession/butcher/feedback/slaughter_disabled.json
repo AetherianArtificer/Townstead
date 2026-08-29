@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "periodic",
+  "priority": 100,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "townstead:worksite",
+        "scope": "profession",
+        "buildings": ["compat/butchery/butcher_shop_l*"]
+      },
+      {
+        "type": "pheno:config",
+        "scope": "server",
+        "file": "townstead-server.toml",
+        "path": ["professionWork", "allowLethalWork"],
+        "equals": false,
+        "default": true
+      }
+    ]
+  },
+  "dialogue": {
+    "translate": "dialogue.chat.butcher_request.slaughter_disabled"
+  },
+  "variants": 3
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Fisherman"
+  },
+  "icon": "minecraft:cod",
+  "description": {
+    "text": "Cast the line to build a history of the catch."
+  },
+  "unlock_model": "experiential"
+}

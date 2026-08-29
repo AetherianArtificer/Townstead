@@ -1,0 +1,77 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "register_profession": true,
+  "poi": [
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/farmersdelight/kitchen_l",
+      "slots_per_tier": [1, 1, 2, 2, 3]
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/pizzadelight/pizzeria_l",
+      "slots_per_tier": [1, 2, 3],
+      "path_affinity": ["pizzaiolo"]
+    }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "farmersdelight:cooking_pot",
+        "farmersdelight:skillet",
+        "farmersdelight:stove",
+        "#minecraft:campfires",
+        "kaleidoscope_cookery:pot",
+        "kaleidoscope_cookery:stockpot",
+        "kaleidoscope_cookery:steamer",
+        "pizzadelight:basin",
+        "pizzadelight:pizza_station",
+        "pizzadelight:raw_pizza",
+        "pizzadelight:pizza"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": ["kaleidoscope_cookery:millstone"],
+      "weight": 9
+    },
+    {
+      "type": "townstead_work:chop",
+      "workstations": ["farmersdelight:cutting_board", "kaleidoscope_cookery:chopping_board"],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": ["minecraft:furnace", "minecraft:smoker", "minecraft:blast_furnace"],
+      "recipes": ["edible", "#townstead:cook_smeltable"],
+      "scope": "village",
+      "weight": 4
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "farm_and_charm:cooking_pot",
+        "farm_and_charm:stove",
+        "farm_and_charm:roaster",
+        "farm_and_charm:crafting_bowl",
+        "farm_and_charm:mincer"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:cook",
+      "workstations": ["caupona:stew_pot", "caupona:lead_stew_pot"],
+      "weight": 10
+    }
+  ],
+  "path_worksites": {
+    "pizzaiolo": [
+      "pizzadelight:basin",
+      "pizzadelight:pizza_station",
+      "pizzadelight:raw_pizza",
+      "pizzadelight:pizza"
+    ]
+  }
+}

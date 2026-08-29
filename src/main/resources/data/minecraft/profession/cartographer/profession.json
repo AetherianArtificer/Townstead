@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Cartographer"
+  },
+  "icon": "minecraft:map",
+  "description": {
+    "text": "Craft maps and wayfinding tools to build a history of cartography mastery."
+  },
+  "unlock_model": "experiential"
+}

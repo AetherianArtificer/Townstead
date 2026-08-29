@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Leatherworker"
+  },
+  "icon": "minecraft:leather",
+  "description": {
+    "text": "Cure and craft hides to build a history of leatherwork."
+  },
+  "unlock_model": "experiential"
+}

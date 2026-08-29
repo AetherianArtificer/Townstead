@@ -209,7 +209,9 @@ public final class GridScanner {
         net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1);
         for (net.minecraft.world.entity.Entity entity : level.getEntities((net.minecraft.world.entity.Entity) null, area, e -> true)) {
             if (entity instanceof net.minecraft.world.entity.npc.Villager villager
-                    && villager.getVillagerData().getProfession() == net.minecraft.world.entity.npc.VillagerProfession.FARMER) {
+                    && com.aetherianartificer.townstead.work.WorkTaskDeclarations.professionDeclares(
+                            villager.getVillagerData().getProfession(),
+                            com.aetherianartificer.townstead.profession.def.WorkTaskTypes.HARVEST)) {
                 net.minecraft.world.SimpleContainer inv = villager.getInventory();
                 for (int i = 0; i < inv.getContainerSize(); i++) {
                     countSeed(inv.getItem(i), counts);

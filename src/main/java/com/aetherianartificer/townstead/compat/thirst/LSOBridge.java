@@ -213,6 +213,27 @@ public final class LSOBridge implements ThirstCompatBridge {
         return true;
     }
 
+    //? if >=1.21 {
+    private static final ResourceLocation LSO_CANTEEN =
+            ResourceLocation.fromNamespaceAndPath("legendarysurvivaloverhaul", "canteen");
+    private static final ResourceLocation LSO_LARGE_CANTEEN =
+            ResourceLocation.fromNamespaceAndPath("legendarysurvivaloverhaul", "large_canteen");
+    //?} else {
+    /*private static final ResourceLocation LSO_CANTEEN =
+            new ResourceLocation("legendarysurvivaloverhaul", "canteen");
+    private static final ResourceLocation LSO_LARGE_CANTEEN =
+            new ResourceLocation("legendarysurvivaloverhaul", "large_canteen");
+    *///?}
+
+    @Override
+    public ResourceLocation purificationOutput() {
+        initIfNeeded();
+        if (!active) return null;
+        var items = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        if (items.containsKey(LSO_CANTEEN)) return LSO_CANTEEN;
+        return items.containsKey(LSO_LARGE_CANTEEN) ? LSO_LARGE_CANTEEN : null;
+    }
+
     @Override
     public void purifyResult(ItemStack input, ItemStack output) {
         if (input.isEmpty() || output.isEmpty()) return;

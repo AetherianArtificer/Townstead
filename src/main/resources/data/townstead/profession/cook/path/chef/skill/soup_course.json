@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.soup_course" },
+  "icon": "minecraft:mushroom_stew",
+  "description": { "translate": "skill.townstead.cook.chef.soup_course.description" },
+  "cost": 1,
+  "requires": ["appetizer_menu"],
+  "skill_group": "townstead:chef_menu",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 1,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": { "resource": "townstead:stamina", "amount": 30 },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:regeneration",
+            "duration": 160,
+            "amplifier": 0
+          }
+        },
+        { "type": "pheno:play_sound", "sound": "minecraft:entity.generic.drink", "volume": 0.9, "pitch": 0.9 }
+      ]
+    }
+  }
+}

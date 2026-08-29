@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Farmer"
+  },
+  "icon": "minecraft:wheat",
+  "description": {
+    "text": "Work the fields to build a history of agricultural mastery."
+  },
+  "unlock_model": "experiential"
+}

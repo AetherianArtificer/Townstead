@@ -2,6 +2,7 @@
   "lazy.dialogue.chat.butcher_request.no_livestock/1": "<sleepy>No animals. Guess I'll just... not work then.</sleepy>",
   "lazy.dialogue.chat.butcher_request.no_hook/1": "<sleepy>Hook would be nice. Or, y'know, whatever.</sleepy>",
   "lazy.dialogue.chat.butcher_request.no_basin/1": "<sleepy>Basin, basin... I'll just wait for one to show up.</sleepy>",
+  "lazy.dialogue.chat.butcher_request.no_blood_grate/1": "<sleepy>Blood grate, blood grate... I'll just wait for one to show up.</sleepy>",
   "lazy.dialogue.chat.village_life.butcher_shop/1": "<sleepy>The butcher works harder than me. Most people do.</sleepy>",
   "lazy.dialogue.chat.village_life.smokehouse/1": "<sleepy>Smokehouse does all the cooking for me. Love that about it.</sleepy>",
   "lazy.dialogue.chat.village_life.slaughterhouse/1": "<sleepy>Slaughterhouse work is too much effort. Glad I'm not doing it.</sleepy>",

@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "workers": [
+    "townstead:baker"
+  ],
+  "catalog": {
+    "node_item": "bakery:breadbox"
+  },
+  "spirit": {
+    "pastoral": 7,
+    "commercial": 7
+  }
+}

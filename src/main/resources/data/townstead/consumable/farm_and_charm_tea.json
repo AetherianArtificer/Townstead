@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:consumable/v1",
+  "mods": ["farm_and_charm"],
+  "fallback": true,
+  "items": [
+    "farm_and_charm:strawberry_tea",
+    "farm_and_charm:strawberry_tea_cup",
+    "farm_and_charm:nettle_tea",
+    "farm_and_charm:nettle_tea_cup",
+    "farm_and_charm:ribwort_tea",
+    "farm_and_charm:ribwort_tea_cup"
+  ],
+  "effects": {
+    "type": "pheno:hydrate",
+    "immediate": 3,
+    "lasting": 1
+  }
+}

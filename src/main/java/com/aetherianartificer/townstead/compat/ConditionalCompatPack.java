@@ -18,6 +18,8 @@ import net.minecraft.network.chat.Component;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -30,35 +32,25 @@ import java.util.*;
  */
 public final class ConditionalCompatPack {
 
-    /** Each entry maps a mod ID to the classpath paths it gates. */
-    private static final Map<String, List<CompatEntry>> COMPAT_ENTRIES = new LinkedHashMap<>();
+    /** Build-generated inventory; adding a compat building JSON never requires a Java edit. */
+    private static final List<CompatEntry> COMPAT_ENTRIES = loadCompatEntries();
 
-    static {
-        addCompat("farmersdelight",
-                "building_types/compat/farmersdelight/kitchen_l1.json",
-                "building_types/compat/farmersdelight/kitchen_l2.json",
-                "building_types/compat/farmersdelight/kitchen_l3.json",
-                "building_types/compat/farmersdelight/kitchen_l4.json",
-                "building_types/compat/farmersdelight/kitchen_l5.json");
-        addCompat("rusticdelight",
-                "building_types/compat/rusticdelight/cafe_l1.json",
-                "building_types/compat/rusticdelight/cafe_l2.json",
-                "building_types/compat/rusticdelight/cafe_l3.json",
-                "building_types/compat/rusticdelight/cafe_l4.json",
-                "building_types/compat/rusticdelight/cafe_l5.json");
-        addCompat("butchery",
-                "building_types/compat/butchery/butcher_shop_l1.json",
-                "building_types/compat/butchery/butcher_shop_l2.json",
-                "building_types/compat/butchery/butcher_shop_l3.json",
-                "building_types/compat/butchery/slaughterhouse.json",
-                "building_types/compat/butchery/smokehouse.json",
-                "building_types/compat/butchery/tannery.json",
-                "building_types/compat/butchery/slaughter_pen.json");
+    private static List<CompatEntry> loadCompatEntries() {
+        List<CompatEntry> entries = new ArrayList<>();
+        InputStream input = ConditionalCompatPack.class.getClassLoader()
+                .getResourceAsStream("townstead_compat/index.txt");
+        if (input == null) return List.of();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            reader.lines().map(String::trim).filter(path -> !path.isEmpty())
+                    .forEach(path -> addCompat(entries, path));
+        } catch (IOException ignored) {
+            return List.of();
+        }
+        return List.copyOf(entries);
     }
 
-    private static void addCompat(String modId, String... paths) {
-        List<CompatEntry> entries = new ArrayList<>();
-        for (String path : paths) {
+    private static void addCompat(List<CompatEntry> entries, String path) {
             // Building types live under data/mca/
             //? if >=1.21 {
             ResourceLocation servePath = ResourceLocation.fromNamespaceAndPath("mca", path);
@@ -66,12 +58,11 @@ public final class ConditionalCompatPack {
             /*ResourceLocation servePath = new ResourceLocation("mca", path);
             *///?}
             String classpathPath = "townstead_compat/" + path;
-            entries.add(new CompatEntry(servePath, classpathPath));
-        }
-        COMPAT_ENTRIES.put(modId, entries);
+            String typePath = path.substring("building_types/".length(), path.length() - ".json".length());
+            entries.add(new CompatEntry(servePath, classpathPath, typePath));
     }
 
-    private record CompatEntry(ResourceLocation servePath, String classpathPath) {}
+    private record CompatEntry(ResourceLocation servePath, String classpathPath, String typePath) {}
 
     private ConditionalCompatPack() {}
 
@@ -116,9 +107,9 @@ public final class ConditionalCompatPack {
 
     private static List<CompatEntry> getActiveEntries() {
         List<CompatEntry> active = new ArrayList<>();
-        for (Map.Entry<String, List<CompatEntry>> entry : COMPAT_ENTRIES.entrySet()) {
-            if (ModCompat.isLoaded(entry.getKey())) {
-                active.addAll(entry.getValue());
+        for (CompatEntry entry : COMPAT_ENTRIES) {
+            if (ModCompat.isCompatAvailable(entry.typePath())) {
+                active.add(entry);
             }
         }
         return active;
@@ -196,7 +187,7 @@ public final class ConditionalCompatPack {
             if (serializer == PackMetadataSection.TYPE) {
                 //? if >=1.21 {
                 return (T) new PackMetadataSection(
-                        Component.literal("Townstead compat building types"), 34);
+                        Component.literal("Townstead compat building types"), 48);
                 //?} else {
                 /*return (T) new PackMetadataSection(
                         Component.literal("Townstead compat building types"), 15);

@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Tracks active {@link Cloud} fields and advances them each server tick, dropping those that have
  * dissipated. Single-threaded (spawned and ticked on the server thread), so no synchronization is
- * needed. Cleared on server stop, matching the transient lifetime of cooldowns and resources.
+ * needed. Cleared on server stop, matching the transient lifetime of ability cooldowns.
  */
 public final class CloudManager {
 

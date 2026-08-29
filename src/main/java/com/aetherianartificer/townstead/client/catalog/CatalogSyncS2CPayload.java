@@ -67,6 +67,8 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
             buf.writeUtf(g.layout());
             buf.writeUtf(g.tierPrefix());
             buf.writeInt(g.priority());
+            buf.writeVarInt(g.supersedes().size());
+            for (String buildingType : g.supersedes()) buf.writeUtf(buildingType);
         }
         buf.writeVarInt(overrides.size());
         for (Map.Entry<String, BuildingOverride> e : overrides.entrySet()) {
@@ -110,8 +112,16 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
         int gn = buf.readVarInt();
         List<GroupDef> groups = new ArrayList<>(gn);
         for (int i = 0; i < gn; i++) {
-            groups.add(new GroupDef(buf.readUtf(), buf.readUtf(), buf.readUtf(),
-                    buf.readUtf(), buf.readUtf(), buf.readInt()));
+            String id = buf.readUtf();
+            String label = buf.readUtf();
+            String matchPrefix = buf.readUtf();
+            String layout = buf.readUtf();
+            String tierPrefix = buf.readUtf();
+            int priority = buf.readInt();
+            int supersedesCount = buf.readVarInt();
+            List<String> supersedes = new ArrayList<>(supersedesCount);
+            for (int j = 0; j < supersedesCount; j++) supersedes.add(buf.readUtf());
+            groups.add(new GroupDef(id, label, matchPrefix, layout, tierPrefix, priority, supersedes));
         }
         int on = buf.readVarInt();
         Map<String, BuildingOverride> overrides = new LinkedHashMap<>();

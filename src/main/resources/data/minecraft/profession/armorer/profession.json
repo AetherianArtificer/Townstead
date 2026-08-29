@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Armorer"
+  },
+  "icon": "minecraft:iron_chestplate",
+  "description": {
+    "text": "Smelt metal and forge protective equipment to build a history of armoring mastery."
+  },
+  "unlock_model": "experiential"
+}

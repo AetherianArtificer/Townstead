@@ -112,6 +112,8 @@ public final class PhenoSchemas {
                 .field(required("action", PhenoType.ACTION))
                 .field(of("interval", PhenoType.DURATION))
                 .field(of("condition", PhenoType.CONDITION))
+                .field(of("resource_cost", PhenoType.OBJECT)
+                        .doc("Optional {resource, amount}; amount 0 declares a HUD reference without spending."))
                 .primaryChild("action").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:resource", NodeDomain.GENE)
@@ -123,11 +125,22 @@ public final class PhenoSchemas {
                 .field(of("start", PhenoType.INT))
                 .field(of("regen", PhenoType.INT))
                 .field(of("regen_interval", PhenoType.INT))
-                .field(of("color", PhenoType.COLOR))
+                .field(of("color", PhenoType.COLOR)
+                        .doc("The resource bar's fill colour. Frame primary and secondary colours come from display.color_theme."))
+                .field(of("persist_on_death", PhenoType.BOOL))
+                .field(of("display", PhenoType.OBJECT)
+                        .doc("Optional HUD shape, fill mode, pip art, frame geometry, frame colour theme, ordered bar-effect stack, authored anchor, visibility and ordering."))
                 .field(of("on_reach", PhenoType.OBJECT).asList()
                         .doc("Edge-triggered { at|every, do, then } when the meter crosses a threshold upward.")).build());
 
         // --- Action wrappers (the context transitions and meta combinators) ---
+        NodeSchemas.register(NodeSchema.of("pheno:reserve", NodeDomain.ACTION)
+                .doc("Exclusively reserves each entity selected by on for this execution scope.")
+                .field(required("on", PhenoType.ANY))
+                .field(of("action", PhenoType.ACTION))
+                .primaryChild("action").build());
+        NodeSchemas.register(NodeSchema.of("pheno:release", NodeDomain.ACTION)
+                .doc("Releases every entity reserved by this execution scope early.").build());
         NodeSchemas.register(NodeSchema.of("pheno:actor_action", NodeDomain.ACTION)
                 .doc("Runs the inner action on the actor (self).")
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
@@ -160,6 +173,15 @@ public final class PhenoSchemas {
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
 
         // --- Leaf actions with normalizable units ---
+        NodeSchemas.register(NodeSchema.of("pheno:hydrate", NodeDomain.ACTION)
+                .doc("Restores a Townstead villager's active thirst and slower hydration reserve.")
+                .field(of("immediate", PhenoType.ANY).doc("Active thirst restored; number or Pheno value."))
+                .field(of("lasting", PhenoType.ANY).doc("Hydration reserve restored; number or Pheno value."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:energize", NodeDomain.ACTION)
+                .doc("Reduces a Townstead villager's fatigue.")
+                .field(of("amount", PhenoType.ANY).doc("Fatigue removed; number or Pheno value."))
+                .build());
         NodeSchemas.register(NodeSchema.of("pheno:apply_effect", NodeDomain.ACTION)
                 .doc("Applies a status effect.")
                 .field(required("effect", PhenoType.ID))
@@ -177,6 +199,27 @@ public final class PhenoSchemas {
                 .doc("Makes the entity jump (the vanilla impulse, respecting Jump Boost), scaled by "
                         + "strength; clears fall distance so a mid-air jump banks no fall damage.")
                 .field(of("strength", PhenoType.FLOAT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:add_velocity", NodeDomain.ACTION)
+                .doc("Adds a one-off velocity impulse to the actor.")
+                .field(of("x", PhenoType.FLOAT))
+                .field(of("y", PhenoType.FLOAT))
+                .field(of("z", PhenoType.FLOAT))
+                .field(of("relative", PhenoType.BOOL)
+                        .doc("Rotates x/z to the actor's facing; z is forward."))
+                .field(of("away_from_other", PhenoType.FLOAT)
+                        .doc("Adds a horizontal impulse away from the context's other entity."))
+                .build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:area_of_effect", NodeDomain.ACTION)
+                .doc("Runs an action on nearby living entities.")
+                .field(of("radius", PhenoType.FLOAT))
+                .field(of("include_self", PhenoType.BOOL))
+                .field(of("target", PhenoType.STRING)
+                        .doc("all (default), hostile, or non_hostile."))
+                .field(of("bientity_condition", PhenoType.BIENTITY_CONDITION)
+                        .doc("Optional actor-to-candidate filter."))
+                .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:teleport", NodeDomain.ACTION)
                 .doc("Teleports the entities selected by on to a place, role, or entity selection; "
@@ -241,7 +284,53 @@ public final class PhenoSchemas {
                 .field(of("z", PhenoType.INT))
                 .field(required("block_action", PhenoType.BLOCK_ACTION)).primaryChild("block_action").build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:set_block", NodeDomain.BLOCK_ACTION)
+                .doc("Replaces the focused block; the id may be literal or derived from the current block.")
+                .field(required("block", PhenoType.ANY))
+                .field(of("properties", PhenoType.OBJECT))
+                .field(of("copy_from", PhenoType.INT).asList()
+                        .doc("Relative [x,y,z] source for copied properties; defaults to the replaced block."))
+                .field(of("copy_properties", PhenoType.STRING).asList()).build());
+        NodeSchemas.register(NodeSchema.of("pheno:modify_block_state", NodeDomain.BLOCK_ACTION)
+                .doc("Sets, cycles, or numerically changes one block-state property.")
+                .field(required("property", PhenoType.STRING))
+                .field(of("value", PhenoType.STRING))
+                .field(of("operation", PhenoType.STRING))
+                .field(of("amount", PhenoType.INT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:change_block_data", NodeDomain.BLOCK_ACTION)
+                .doc("Sets, adds to, or removes a scalar persistent-data key on the focused block entity.")
+                .field(required("key", PhenoType.STRING))
+                .field(of("operation", PhenoType.STRING))
+                .field(of("value", PhenoType.ANY))
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:item_action", NodeDomain.BLOCK_ACTION)
+                .doc("Runs an item action on a named item role in the block transaction.")
+                .field(of("item", PhenoType.STRING))
+                .field(required("action", PhenoType.ITEM_ACTION)).primaryChild("action").build());
+        NodeSchemas.register(NodeSchema.of("pheno:loot_table", NodeDomain.BLOCK_ACTION)
+                .doc("Rolls a literal or block-derived loot table and returns its products to the transaction.")
+                .field(required("table", PhenoType.ANY)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:return_item", NodeDomain.BLOCK_ACTION)
+                .doc("Returns a literal or block-derived item to the surrounding transaction.")
+                .field(required("item", PhenoType.ANY))
+                .field(of("count", PhenoType.INT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:level_event", NodeDomain.BLOCK_ACTION)
+                .doc("Emits a vanilla level event at the focused block.")
+                .field(required("event", PhenoType.INT))
+                .field(of("data", PhenoType.STRING)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:change_data", NodeDomain.ITEM_ACTION)
+                .doc("Sets, adds to, or removes a scalar custom-data key on the focused item stack.")
+                .field(required("key", PhenoType.STRING))
+                .field(of("operation", PhenoType.STRING))
+                .field(of("value", PhenoType.ANY))
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
+
         // --- Consolidated condition ---
+        NodeSchemas.register(NodeSchema.of("pheno:reserved", NodeDomain.CONDITION)
+                .doc("Tests whether the current entity is held by any live Pheno reservation.").build());
         NodeSchemas.register(NodeSchema.of("pheno:environment", NodeDomain.CONDITION)
                 .doc("One block of weather/exposure/time/biome/dimension/effects (AND across, OR within).")
                 .field(of("weather", PhenoType.STRING).asList())
@@ -255,6 +344,9 @@ public final class PhenoSchemas {
                 .doc("Tests the Townstead/MCA building at the entity's position.")
                 .field(of("building", PhenoType.STRING).doc("Building type id or slug, such as mca:tavern or tavern."))
                 .field(of("building_type", PhenoType.STRING).doc("Alias for building."))
+                .field(of("building_prefix", PhenoType.STRING)
+                        .doc("Matches the start of the full building type id."))
+                .field(of("type_prefix", PhenoType.STRING).doc("Alias for building_prefix."))
                 .field(of("id", PhenoType.INT).doc("Specific MCA building id."))
                 .field(of("village", PhenoType.INT).doc("Specific MCA village id."))
                 .field(of("village_id", PhenoType.INT).doc("Alias for village."))
@@ -273,6 +365,40 @@ public final class PhenoSchemas {
                 .field(of("max_buildings", PhenoType.INT))
                 .field(of("min_population", PhenoType.INT))
                 .field(of("max_population", PhenoType.INT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:config", NodeDomain.CONDITION)
+                .doc("Tests a value in an ordinary global or per-world TOML config file.")
+                .field(required("file", PhenoType.STRING))
+                .field(required("path", PhenoType.STRING).asList())
+                .field(required("equals", PhenoType.ANY))
+                .field(of("default", PhenoType.ANY))
+                .field(of("scope", PhenoType.STRING).doc("global (default) or server."))
+                .build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:inventory", NodeDomain.CONDITION)
+                .doc("Counts matching items carried by a player, villager, or other inventory carrier.")
+                .field(required("item_condition", PhenoType.OBJECT))
+                .field(of("min", PhenoType.INT))
+                .field(of("max", PhenoType.INT)).build());
+
+        NodeSchemas.register(NodeSchema.of("townstead:worksite", NodeDomain.CONDITION)
+                .doc("Counts matching workplaces, blocks, or living entities without domain-specific Java.")
+                .field(of("scope", PhenoType.STRING)
+                        .doc("assigned (default), profession, or village."))
+                .field(of("buildings", PhenoType.STRING).asList()
+                        .doc("Exact building types or trailing-* prefixes."))
+                .field(of("block_condition", PhenoType.OBJECT))
+                .field(of("entity_condition", PhenoType.CONDITION))
+                .field(of("comparison", PhenoType.STRING))
+                .field(of("compare_to", PhenoType.INT)).build());
+
+        NodeSchemas.register(NodeSchema.of("townstead:work_requirement", NodeDomain.CONDITION)
+                .doc("Tests one named managed requirement on a data-authored block-interaction Job.")
+                .field(required("job", PhenoType.ID))
+                .field(required("requirement", PhenoType.STRING))
+                .field(of("state", PhenoType.STRING)
+                        .doc("satisfied, unsatisfied, provisionable, missing_source, or missing_input."))
+                .build());
 
         NodeSchemas.register(NodeSchema.of("pheno:movement", NodeDomain.CONDITION)
                 .doc("Entity movement, pose, flight, and collision state.")

@@ -84,8 +84,17 @@ dependencies {
     implementation(jarJar("io.github.llamalad7:mixinextras-forge:${property("mixin_extras_version")}")) {
         jarJar.ranged(this, "[0.5.4,0.6)")
     }
+    // Pure-Java Chronicle archive backend. minecraftLibrary supplies dev runs;
+    // jarJar embeds the small MVStore artifact in distributions.
+    "minecraftLibrary"("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+    "jarJar"("com.h2database:h2-mvstore:[${property("h2_mvstore_version")},2.5.0)") {
+        jarJar.pin(this, property("h2_mvstore_version") as String)
+    }
     compileOnly("dev.architectury:architectury-forge:9.2.14")
     compileOnly(fg.deobf("vazkii.patchouli:Patchouli:1.20.1-85-FORGE:api"))
+    // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
+    compileOnly(fg.deobf("mezz.jei:jei-1.20.1-common-api:15.20.0.135"))
+    compileOnly(fg.deobf("mezz.jei:jei-1.20.1-forge-api:15.20.0.135"))
     // No Sponge Mixin annotation processor: this build ships no refmap (targets
     // are hand-written SRG with remap=false). MixinExtras' own processor is kept
     // only because its supported ForgeGradle setup requires it.
@@ -93,6 +102,28 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     // Pheno unit tests touch Minecraft types; surface the main compile classpath to tests.
     testImplementation(files(sourceSets.main.get().compileClasspath))
+}
+
+// Offline Chronicles harness; see the neoforge script for why it is not in src/test.
+val sim by sourceSets.creating {
+    java.setSrcDirs(listOf(rootProject.file("src/sim/java")))
+    resources.setSrcDirs(emptyList<File>())
+}
+
+dependencies {
+    "simImplementation"(files(sourceSets.main.get().compileClasspath))
+    "simImplementation"(sourceSets.main.get().output)
+}
+
+// Only the active version registers it; see the neoforge script.
+if (stonecutter.current.isActive) {
+    tasks.register<JavaExec>("chronicleSim") {
+        group = "verification"
+        description = "Fabricate chronicles offline and print them (no Minecraft launch)."
+        mainClass.set("com.aetherianartificer.townstead.chronicle.sim.ChronicleSimMain")
+        classpath = sim.runtimeClasspath
+        workingDir = rootProject.projectDir
+    }
 }
 
 layout.buildDirectory.set(file(
@@ -154,6 +185,17 @@ tasks.withType<ProcessResources> {
             it.replace("\"neoforge:conditions\"", "\"conditions\"")
               .replace("\"neoforge:mod_loaded\"", "\"forge:mod_loaded\"")
         }
+    }
+    doLast {
+        val compatRoot = destinationDir.resolve("townstead_compat/building_types/compat")
+        val index = destinationDir.resolve("townstead_compat/index.txt")
+        val entries = if (compatRoot.isDirectory) compatRoot.walkTopDown()
+            .filter { it.isFile && it.extension == "json" }
+            .map { it.relativeTo(destinationDir.resolve("townstead_compat")).invariantSeparatorsPath }
+            .sorted()
+            .toList() else emptyList()
+        index.parentFile.mkdirs()
+        index.writeText(entries.joinToString("\n", postfix = if (entries.isEmpty()) "" else "\n"))
     }
 }
 

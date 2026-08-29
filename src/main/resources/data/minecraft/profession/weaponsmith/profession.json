@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Weaponsmith"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "text": "Keep the village armed to build a history of weaponsmithing mastery."
+  },
+  "unlock_model": "experiential"
+}

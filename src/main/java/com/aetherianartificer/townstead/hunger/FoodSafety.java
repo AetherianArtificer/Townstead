@@ -24,8 +24,7 @@ import net.minecraft.world.item.ItemStack;
  * Used by every pick-path that decides what a villager is about to eat:
  * {@code SeekFoodTask} (inventory, ground, storage, crop drops),
  * {@code CareForYoungTask} (feeding children), {@code HungerVillagerTicker}
- * (passive hunger), {@code HarvestWorkTask} (farmer self-feed), and
- * {@code ButcherSupplyManager} (reserved food slot). Further defended by
+ * (passive hunger), and {@code HarvestWorkTask} (farmer self-feed). Further defended by
  * {@code VillagerEatSafetyMixin}, which blocks the final {@code eat()}
  * call as a backstop for any third-party code path we don't control.
  */
@@ -38,7 +37,20 @@ public final class FoodSafety {
      * single-point check callers can use without also testing edibility.
      */
     public static boolean isSafeToEat(ItemStack stack) {
+        return isSafeToEat(stack, null);
+    }
+
+    /** The same check for a known mouth, so a cannibal or a predator root gets its own answer. */
+    public static boolean isSafeToEat(ItemStack stack,
+                                      @org.jetbrains.annotations.Nullable net.minecraft.world.entity.LivingEntity eater) {
         if (stack == null || stack.isEmpty()) return false;
+        if (isCannibalFare(stack) && !CannibalismPolicy.mayEat(eater, stack)) {
+            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+                Townstead.LOGGER.info("[FoodSafety] rejected {} (cannibal fare)",
+                        BuiltInRegistries.ITEM.getKey(stack.getItem()));
+            }
+            return false;
+        }
         FoodProperties food = foodPropertiesOf(stack);
         if (food == null) return false;
         String harmful = firstHarmfulEffectName(food);
@@ -58,7 +70,13 @@ public final class FoodSafety {
      * filter by nutrition.
      */
     public static boolean isSafeNutritiousFood(ItemStack stack) {
+        return isSafeNutritiousFood(stack, null);
+    }
+
+    public static boolean isSafeNutritiousFood(ItemStack stack,
+                                               @org.jetbrains.annotations.Nullable net.minecraft.world.entity.LivingEntity eater) {
         if (stack == null || stack.isEmpty()) return false;
+        if (isCannibalFare(stack) && !CannibalismPolicy.mayEat(eater, stack)) return false;
         FoodProperties food = foodPropertiesOf(stack);
         //? if >=1.21 {
         if (food == null || food.nutrition() <= 0) return false;
@@ -66,6 +84,17 @@ public final class FoodSafety {
         /*if (food == null || food.getNutrition() <= 0) return false;
         *///?}
         return firstHarmfulEffectName(food) == null;
+    }
+
+    /**
+     * Meat from people: the {@code townstead:cannibal_meats} tag. Whether a particular mouth may
+     * eat it is {@link CannibalismPolicy#mayEat}'s question; this only says what the meat is.
+     */
+    public static boolean isCannibalFare(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        return stack.is(net.minecraft.tags.TagKey.create(
+                net.minecraft.core.registries.Registries.ITEM,
+                com.aetherianartificer.townstead.work.order.OrderTags.CANNIBAL_MEATS));
     }
 
     private static FoodProperties foodPropertiesOf(ItemStack stack) {

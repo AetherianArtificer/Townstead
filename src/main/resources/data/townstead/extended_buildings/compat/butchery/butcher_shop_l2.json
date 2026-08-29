@@ -1,7 +1,11 @@
 {
   "schema": "townstead:extended_building/v1",
+  "workers": ["minecraft:butcher"],
   "catalog": {
     "node_item": "butchery:basin"
+  },
+  "dialogue": {
+    "topics": ["butchery", "butcher_shop"]
   },
   "spirit": {
     "pastoral": 8,

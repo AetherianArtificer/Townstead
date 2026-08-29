@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession.skill;
 
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
+import com.aetherianartificer.townstead.profession.def.RetrainingPolicy;
 import com.aetherianartificer.townstead.profession.def.SkillDef;
 import com.aetherianartificer.townstead.profession.def.SkillDefs;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
@@ -9,6 +10,7 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -20,12 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Per-entity set of learned skills, the runtime state professions grant capabilities from.
- * {@link #learn} enforces the declared model that is checkable from the skill graph today
- * (prerequisites and exclusivity); tier, point cost, unlock model, and XP gating are enforced
+ * {@link #learn} enforces prerequisites. Legacy pairwise exclusions no longer erase or block
+ * learned history; the Career schema equips one learned option per skill group. XP gating is enforced
  * once progression-driven unlock state is wired (the next slice) and are noted on each method.
- * {@link #forget} respects the profession's retraining policy and cascades, so dropping a
- * prerequisite also drops everything that depended on it; LOCKED is permanent and COSTLY is
- * rejected until its payment mechanism exists (never silently free). {@link #forceLearn} and
+ * {@link #forget} always rejects normal removal because learned history is permanent. {@link #forceLearn} and
  * {@link #forceForget} are explicit admin bypasses.
  *
  * <p>For MCA villagers the state is durable: it lives in
@@ -41,7 +41,10 @@ public final class LearnedSkills {
 
     public static Set<ResourceLocation> learned(LivingEntity entity) {
         if (entity instanceof VillagerEntityMCA villager) {
-            return TownsteadVillagers.get(villager).professionMemory().learnedSkills();
+            return TownsteadVillagers.get(villager).professionMemory().careerProfile().learnedChoices();
+        }
+        if (entity instanceof Player player) {
+            return com.aetherianartificer.townstead.profession.career.PlayerCareers.get(player).learnedChoices();
         }
         return learned(entity.getUUID());
     }
@@ -60,13 +63,17 @@ public final class LearnedSkills {
         return set != null && set.contains(skill);
     }
 
-    /** Drop a transient entity's learned set. Wired to player logout so the fallback map stays bounded. */
+    /** Drop only the non-player transient fallback. Persistent player Career history is untouched. */
     public static void clear(UUID uuid) {
         STATE.remove(uuid);
     }
 
     public static Result learn(LivingEntity entity, ResourceLocation skillId) {
-        return learnInto(backing(entity), skillId);
+        Result result = learnInto(backing(entity), skillId);
+        if (result.ok() && entity instanceof VillagerEntityMCA villager) {
+            com.aetherianartificer.townstead.profession.ProfessionClothing.afterPathChange(villager);
+        }
+        return result;
     }
 
     public static Result learn(UUID uuid, ResourceLocation skillId) {
@@ -74,7 +81,11 @@ public final class LearnedSkills {
     }
 
     public static Result forceLearn(LivingEntity entity, ResourceLocation skillId) {
-        return forceLearnInto(backing(entity), skillId);
+        Result result = forceLearnInto(backing(entity), skillId);
+        if (result.ok() && entity instanceof VillagerEntityMCA villager) {
+            com.aetherianartificer.townstead.profession.ProfessionClothing.afterPathChange(villager);
+        }
+        return result;
     }
 
     public static Result forceLearn(UUID uuid, ResourceLocation skillId) {
@@ -98,7 +109,7 @@ public final class LearnedSkills {
     }
 
     /**
-     * Learn a skill, enforcing prerequisites and exclusivity. Tier / points / unlock model / XP
+     * Learn a skill, enforcing prerequisites. Tier / unlock model / XP
      * gating is enforced once progression-driven unlock state lands; use {@link #forceLearn} to
      * bypass for admin setup.
      */
@@ -110,8 +121,6 @@ public final class LearnedSkills {
         for (ResourceLocation req : skill.requires()) {
             if (!set.contains(req)) return Result.fail("missing prerequisite '" + req + "'");
         }
-        ResourceLocation conflict = exclusivityConflict(skill, set);
-        if (conflict != null) return Result.fail("excluded by learned skill '" + conflict + "'");
         backing.add(skillId);
         return Result.success();
     }
@@ -126,25 +135,24 @@ public final class LearnedSkills {
     /**
      * Forget a skill, honoring the profession's retraining policy and cascading to every learned
      * skill that (transitively) required it, so the learned set never becomes graph-invalid.
+     *
+     * <p>This used to refuse outright, on the reasoning that a career is history and history does
+     * not un-happen. That held while skills were bought with banked points and nothing was ever
+     * truly closed off. It does not hold now: a level offers several options and taking one shuts
+     * the others, so retraining is the ONLY way to revisit a choice, and refusing it would make
+     * every pick permanent for the life of the character. A profession can still forbid it with
+     * {@code "retraining": "locked"}, which is now a deliberate statement about that career
+     * rather than the silent default it was.</p>
      */
     private static ForgetResult forgetFrom(Backing backing, ResourceLocation skillId) {
         if (!backing.contains(skillId)) return ForgetResult.fail("not learned");
         SkillDef skill = SkillDefs.byId(skillId);
-        if (skill != null) {
-            ProfessionDef profession = ProfessionDefs.byId(skill.profession());
-            if (profession != null) {
-                switch (profession.retraining()) {
-                    case LOCKED -> {
-                        return ForgetResult.fail("retraining is locked for this profession");
-                    }
-                    // The cost (resources/time) is Townstead-owned and not built yet; until it is,
-                    // costly retraining is rejected rather than silently treated as free.
-                    case COSTLY -> {
-                        return ForgetResult.fail("costly retraining is not available yet");
-                    }
-                    default -> { }
-                }
-            }
+        ProfessionDef owner = skill == null ? null : ProfessionDefs.byId(skill.profession());
+        if (owner != null && owner.retraining() == RetrainingPolicy.LOCKED) {
+            // Name may be absent on a def built in code rather than parsed from a pack.
+            String who = owner.displayName() == null
+                    ? owner.id().toString() : owner.displayName().getString();
+            return ForgetResult.fail("'" + who + "' does not allow retraining");
         }
         return ForgetResult.removed(cascadeRemove(backing, skillId));
     }
@@ -191,6 +199,7 @@ public final class LearnedSkills {
         if (entity instanceof VillagerEntityMCA villager) {
             return new MemoryBacking(TownsteadVillagers.get(villager).professionMemory());
         }
+        if (entity instanceof Player player) return new PlayerBacking(player);
         return new TransientBacking(entity.getUUID());
     }
 
@@ -204,10 +213,25 @@ public final class LearnedSkills {
 
     /** Durable backing: the villager's persisted {@link TownsteadVillager.ProfessionMemory}. */
     private record MemoryBacking(TownsteadVillager.ProfessionMemory memory) implements Backing {
-        @Override public Set<ResourceLocation> view() { return memory.learnedSkills(); }
+        @Override public Set<ResourceLocation> view() { return memory.careerProfile().learnedChoices(); }
         @Override public boolean contains(ResourceLocation id) { return memory.hasSkill(id); }
         @Override public void add(ResourceLocation id) { memory.addSkill(id); }
         @Override public void remove(ResourceLocation id) { memory.removeSkill(id); }
+    }
+
+    private record PlayerBacking(Player player) implements Backing {
+        @Override public Set<ResourceLocation> view() {
+            return com.aetherianartificer.townstead.profession.career.PlayerCareers.get(player).learnedChoices();
+        }
+        @Override public boolean contains(ResourceLocation id) { return view().contains(id); }
+        @Override public void add(ResourceLocation id) {
+            com.aetherianartificer.townstead.profession.career.PlayerCareers.mutate(
+                    player, profile -> profile.learnChoice(id));
+        }
+        @Override public void remove(ResourceLocation id) {
+            com.aetherianartificer.townstead.profession.career.PlayerCareers.mutate(
+                    player, profile -> profile.adminForgetChoice(id));
+        }
     }
 
     /** Transient fallback for players and other non-villager entities. */

@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.running_the_pass" },
+  "icon": "farmersdelight:cutting_board",
+  "description": { "translate": "skill.townstead.cook.chef.running_the_pass.description" },
+  "cost": 1,
+  "requires": ["kitchen_flow"],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": { "resource": "townstead:flow", "amount": 0 },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:building", "building_prefix": "compat/farmersdelight/kitchen_l" },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 8,
+          "comparison": ">=",
+          "compare_to": 1,
+          "condition": { "type": "pheno:profession", "profession": "townstead:cook" }
+        }
+      ]
+    },
+    "action": { "type": "pheno:change_resource", "resource": "townstead:flow", "amount": 4 }
+  }
+}

@@ -2,19 +2,18 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.WorkBuildingNav;
-import com.aetherianartificer.townstead.ai.work.WorkMovement;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.WorkTarget;
-import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
-import com.aetherianartificer.townstead.ai.work.WorkTargetFailures;
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
+import com.aetherianartificer.townstead.work.WorkBuildingNav;
+import com.aetherianartificer.townstead.work.WorkMovement;
+import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.work.WorkNavigationResult;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.WorkTarget;
+import com.aetherianartificer.townstead.work.WorkTaskAdapter;
+import com.aetherianartificer.townstead.work.WorkTargetFailures;
+import com.aetherianartificer.townstead.work.WorkPathing;
+import com.aetherianartificer.townstead.work.WorkTargetProgress;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 //? if forge {
@@ -27,6 +26,13 @@ import com.aetherianartificer.townstead.compat.farming.FarmerStockDroppableCompa
 import com.aetherianartificer.townstead.farming.cellplan.PlannedCell;
 import com.aetherianartificer.townstead.hunger.farm.FarmBlueprint;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
+import com.aetherianartificer.townstead.profession.ProfessionSites;
+import com.aetherianartificer.townstead.storage.PhysicalStorageDelivery;
+import com.aetherianartificer.townstead.storage.StorageRoles;
+import com.aetherianartificer.townstead.storage.StorageUse;
+import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
@@ -147,7 +153,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         BlockPos anchor = townstead$findWorkAnchor(level, villager);
@@ -156,7 +162,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return;
         actionType = ActionType.NONE;
         targetPos = null;
         farmAnchor = townstead$findWorkAnchor(level, villager);
@@ -218,7 +224,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             }
         }
 
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) {
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) {
             townstead$clearMovementIntent(villager);
             return;
         }
@@ -308,7 +314,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FARMER) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         if (farmAnchor != null && level.getBlockState(farmAnchor).getBlock() instanceof ComposterBlock) {
@@ -346,8 +352,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     @Override
-    public WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
-        return farmAnchor == null ? null : WorkSiteRef.zone(farmAnchor, townstead$farmRadius(), VERTICAL_RADIUS);
+    public WorkSiteView activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
+        return farmAnchor == null ? null : WorkSiteView.zone(
+                farmAnchor, townstead$farmRadius(), VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.work.site.Worksites.of(level, farmAnchor));
     }
 
     @Override
@@ -494,10 +502,12 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         if (townstead$isInventoryMostlyFull(villager.getInventory())
                 || (townstead$hasStockableOutput(villager.getInventory()) && (gameTime - lastStockTick) >= STOCK_MIN_INTERVAL_TICKS)) {
             actionType = ActionType.STOCK;
-            // Stocking uses nearby insertion and should not pull villager onto the composter.
-            targetPos = villager.blockPosition().immutable();
-            townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
-            return;
+            BlockPos destination = townstead$stockDestination(level, villager, false);
+            if (destination != null) {
+                targetPos = destination;
+                townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NONE);
+                return;
+            }
         }
 
         BlockPos nextAnchor = townstead$findAlternateWorkAnchor(level, villager, farmAnchor);
@@ -633,7 +643,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             case FETCH_WATER -> level.getFluidState(targetPos).is(FluidTags.WATER)
                     && townstead$findEmptyBucketSlot(villager.getInventory()) >= 0;
             case PLACE_WATER -> townstead$canPlaceWaterAt(level, targetPos);
-            case STOCK -> townstead$isInsideFarmRadius(targetPos);
+            case STOCK -> StorageRoles.isStorageCandidate(
+                    level, targetPos, level.getBlockEntity(targetPos), villager, StorageUse.OUTPUT)
+                    && townstead$hasStockableOutput(villager.getInventory());
             default -> false;
         };
     }
@@ -1023,28 +1035,35 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private boolean townstead$doStock(ServerLevel level, VillagerEntityMCA villager, boolean endOfWork) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || farmAnchor == null) return false;
-        SimpleContainer inv = villager.getInventory();
-        int keepFood = townstead$findBestFoodSlot(inv);
-        boolean movedAny = false;
+        java.util.function.Predicate<ItemStack> matcher = townstead$stockMatcher(villager, endOfWork);
+        BlockPos destination = endOfWork
+                ? townstead$stockDestination(level, villager, true)
+                : targetPos;
+        if (destination == null) return false;
+        return PhysicalStorageDelivery.depositMatchingAt(
+                level, villager, destination, matcher, StorageUse.OUTPUT) > 0;
+    }
 
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty()) continue;
-            boolean forceStock = townstead$isAlwaysStockOutput(stack);
-            if (!endOfWork && i == keepFood && !forceStock) continue;
+    private BlockPos townstead$stockDestination(ServerLevel level, VillagerEntityMCA villager,
+                                                boolean endOfWork) {
+        return PhysicalStorageDelivery.findDestination(
+                level, villager, townstead$storageBounds(level, villager),
+                townstead$stockMatcher(villager, endOfWork), Set.of(), StorageUse.OUTPUT);
+    }
 
-            if (!endOfWork) {
-                if (stack.getItem() instanceof HoeItem) continue;
-                if (townstead$isSeed(stack) && !forceStock) continue;
-            }
-
-            ItemStack moving = stack.copy();
-            boolean stored = NearbyItemSources.insertIntoNearbyStorage(level, villager, moving, townstead$farmRadius(), VERTICAL_RADIUS, farmAnchor);
-            if (!stored && moving.getCount() == stack.getCount()) continue;
-            stack.setCount(moving.getCount());
-            movedAny = true;
-        }
-        return movedAny;
+    private java.util.function.Predicate<ItemStack> townstead$stockMatcher(
+            VillagerEntityMCA villager, boolean endOfWork) {
+        SimpleContainer inventory = villager.getInventory();
+        int foodSlot = townstead$findBestFoodSlot(inventory);
+        ItemStack keptFood = foodSlot >= 0 ? inventory.getItem(foodSlot) : ItemStack.EMPTY;
+        return stack -> {
+            if (stack == null || stack.isEmpty()) return false;
+            boolean forced = townstead$isAlwaysStockOutput(stack);
+            if (endOfWork) return true;
+            if (stack == keptFood && !forced) return false;
+            if (stack.getItem() instanceof HoeItem) return false;
+            return !townstead$isSeed(stack) || forced;
+        };
     }
 
     private int townstead$findSeedSlot(SimpleContainer inv, VillagerEntityMCA villager, ServerLevel level, BlockPos plantPos) {
@@ -1283,14 +1302,13 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private void townstead$restockBasics(ServerLevel level, VillagerEntityMCA villager) {
         if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || farmAnchor == null) return;
         SimpleContainer inv = villager.getInventory();
-        int farmRadius = townstead$farmRadius();
         if (!townstead$hasHoe(inv)) {
-            NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
-                    s -> s.getItem() instanceof HoeItem, s -> 1, farmAnchor);
+            townstead$pullFromStorage(level, villager,
+                    s -> s.getItem() instanceof HoeItem, s -> 1, StorageUse.TOOL);
         }
         if (townstead$countSeeds(inv) < 1) {
-            NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
-                    this::townstead$isSeed, ItemStack::getCount, farmAnchor);
+            townstead$pullFromStorage(level, villager,
+                    this::townstead$isSeed, ItemStack::getCount, StorageUse.INGREDIENT);
         }
         // Plan-driven restocking: for each *specific* seed ID the blueprint requires, pull at least one
         // from chests if the inventory has none. Without this, a farmer who runs out of one specific
@@ -1307,8 +1325,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             }
             for (String seedId : requiredSeeds) {
                 if (townstead$countSpecificSeed(inv, seedId) > 0) continue;
-                NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
-                        s -> townstead$matchesSeedId(s, seedId), ItemStack::getCount, farmAnchor);
+                townstead$pullFromStorage(level, villager,
+                        s -> townstead$matchesSeedId(s, seedId), ItemStack::getCount,
+                        StorageUse.INGREDIENT);
             }
 
             // Soil creation items (e.g., FD organic_compost for rich soil). Pull one of each required
@@ -1321,22 +1340,57 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             }
             for (net.minecraft.world.item.Item item : requiredSoilItems) {
                 if (townstead$findItemSlot(inv, item) >= 0) continue;
-                NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
-                        s -> !s.isEmpty() && s.getItem() == item, ItemStack::getCount, farmAnchor);
+                townstead$pullFromStorage(level, villager,
+                        s -> !s.isEmpty() && s.getItem() == item, ItemStack::getCount,
+                        StorageUse.INGREDIENT);
             }
         }
         if (!townstead$hasHarvestTool(inv)) {
-            NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
-                    this::townstead$isHarvestTool, ItemStack::getCount, farmAnchor);
+            townstead$pullFromStorage(level, villager,
+                    this::townstead$isHarvestTool, ItemStack::getCount, StorageUse.TOOL);
         }
         if (TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get() && townstead$findWaterBucketSlot(inv) < 0) {
-            NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
-                    s -> s.is(Items.WATER_BUCKET), s -> 1, farmAnchor);
+            townstead$pullFromStorage(level, villager,
+                    s -> s.is(Items.WATER_BUCKET), s -> 1, StorageUse.TOOL);
             if (townstead$findWaterBucketSlot(inv) < 0 && townstead$findEmptyBucketSlot(inv) < 0) {
-                NearbyItemSources.pullSingleToInventory(level, villager, farmRadius, VERTICAL_RADIUS,
-                        s -> s.is(Items.BUCKET), s -> 1, farmAnchor);
+                townstead$pullFromStorage(level, villager,
+                        s -> s.is(Items.BUCKET), s -> 1, StorageUse.TOOL);
             }
         }
+    }
+
+    private boolean townstead$pullFromStorage(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            java.util.function.Predicate<ItemStack> matcher,
+            java.util.function.ToIntFunction<ItemStack> scorer,
+            StorageUse use
+    ) {
+        WorksiteStorageIndex.Snapshot storage = WorksiteStorageIndex.snapshot(
+                level, villager, townstead$storageBounds(level, villager));
+        NearbyItemSources.ContainerSlot slot = storage.findBestSlot(villager, matcher, scorer, use);
+        if (slot == null) return false;
+        ItemStack extracted = NearbyItemSources.extractOne(level, slot);
+        if (extracted.isEmpty()) return false;
+        ItemStack remainder = villager.getInventory().addItem(extracted);
+        if (!remainder.isEmpty()) {
+            NearbyItemSources.insertIntoNearbyStorage(
+                    level, villager, remainder, 0, 0, slot.pos(), use);
+            if (!remainder.isEmpty()) {
+                net.minecraft.world.entity.item.ItemEntity drop = new net.minecraft.world.entity.item.ItemEntity(
+                        level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
+                drop.setPickUpDelay(0);
+                level.addFreshEntity(drop);
+            }
+        }
+        WorksiteStorageIndex.invalidate(level, slot.pos());
+        return remainder.isEmpty();
+    }
+
+    private Set<Long> townstead$storageBounds(ServerLevel level, VillagerEntityMCA villager) {
+        Set<Long> assigned = ProfessionSites.extentOf(
+                level, villager, ProfessionSites.defForTask(WorkTaskTypes.HARVEST));
+        return assigned.isEmpty() && farmAnchor != null ? Set.of(farmAnchor.asLong()) : assigned;
     }
 
     private BlockPos townstead$findNearestWaterSource(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -1565,10 +1619,23 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         };
     }
 
+    private static String townstead$chronicleFarmVerb(String source) {
+        return switch (source) {
+            case "harvest" -> "townstead:harvested";
+            case "plant" -> "townstead:planted";
+            case "till" -> "townstead:tilled";
+            case "groom" -> "townstead:groomed";
+            case "irrigate" -> "townstead:irrigated";
+            default -> "townstead:farmed";
+        };
+    }
+
     private void townstead$awardFarmerXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
         if (amount <= 0) return;
         TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
-        ProfessionProgress.GainResult result = ProfessionProgress.addXp(mem, ProfessionXpType.FARMER, amount, gameTime);
+        ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
+                .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.FARMER,
+                        amount, gameTime, townstead$chronicleFarmVerb(source), null, null, amount);
         if (result.appliedXp() <= 0) return;
         CompoundTag hungerTag = TownsteadVillagers.get(villager).needs().hungerTag();
         //? if neoforge {
@@ -1591,8 +1658,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                         result.tierBefore(),
                         result.tierAfter(),
                         source,
-                        ProfessionProgress.getXp(mem, ProfessionXpType.FARMER),
-                        ProfessionProgress.getXpToNextTier(mem, ProfessionXpType.FARMER)
+                        ProfessionProgress.getXp(mem, com.aetherianartificer.townstead.profession.career.Careers.FARMER),
+                        ProfessionProgress.getXpToNextTier(mem, com.aetherianartificer.townstead.profession.career.Careers.FARMER)
                 );
             }
         }
@@ -1648,7 +1715,6 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return townstead$scaleInt(base, townstead$profile(villager).idleBackoffScale(), 10, 200);
     }
 
-
     private String townstead$detectCropPatternHint(SimpleContainer inv) {
         if (!FarmerCropCompatRegistry.hasAnyLoadedProvider()) return null;
         for (int i = 0; i < inv.getContainerSize(); i++) {
@@ -1683,7 +1749,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FARMER_REQUEST_CHAT.get()) return;
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .repeatedRequestsEnabled()) return;
         if (blockedReason == HungerData.FarmBlockedReason.NONE) return;
         if (gameTime < nextRequestTick) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) {
@@ -1691,28 +1758,30 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             return;
         }
 
-        String key = switch (blockedReason) {
-            case NO_FIELD_POST -> "dialogue.chat.farm_request.no_field_post/" + (1 + level.random.nextInt(6));
-            case NO_SEEDS -> "dialogue.chat.farm_request.no_seeds/" + (1 + level.random.nextInt(6));
-            case NO_TOOL -> "dialogue.chat.farm_request.no_tool/" + (1 + level.random.nextInt(6));
-            case NO_WATER_PLAN -> "dialogue.chat.farm_request.no_water_plan/" + (1 + level.random.nextInt(4));
-            case UNREACHABLE -> "dialogue.chat.farm_request.unreachable/" + (1 + level.random.nextInt(6));
-            case OUT_OF_SCOPE -> "dialogue.chat.farm_request.out_of_scope/" + (1 + level.random.nextInt(4));
+        String rule = switch (blockedReason) {
+            case NO_FIELD_POST -> "no_field_post";
+            case NO_SEEDS -> "no_seeds";
+            case NO_TOOL -> "no_tool";
+            case NO_WATER_PLAN -> "no_water_plan";
+            case UNREACHABLE -> "unreachable";
+            case OUT_OF_SCOPE -> "out_of_scope";
             case NO_VALID_TARGET, UNSUPPORTED_CROP -> null;
             default -> null;
         };
-        if (key == null) return;
+        if (rule == null) return;
 
-        villager.sendChatToAllAround(key);
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager,
+                com.aetherianartificer.townstead.profession.career.Careers.FARMER,
+                rule, gameTime)) return;
         // Hook for MCA ChatAI/LLM context and future prompt conditioning.
         villager.getLongTermMemory().remember("townstead.farm_request.any");
         villager.getLongTermMemory().remember("townstead.farm_request." + blockedReason.id());
-        int interval = townstead$scaleInt(
-                TownsteadConfig.FARMER_REQUEST_INTERVAL_TICKS.get(),
-                townstead$profile(villager).requestIntervalScale(),
-                100,
-                72000
-        );
+        long baseInterval = com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .effectiveInterval(com.aetherianartificer.townstead.profession.career.Careers.FARMER);
+        long personalityInterval = Math.round(baseInterval
+                * townstead$profile(villager).requestIntervalScale());
+        long interval = Math.max(baseInterval, Math.min(72000L, personalityInterval));
         nextRequestTick = gameTime + interval;
     }
 
@@ -1732,7 +1801,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         String name = villager.getName().getString();
         String id = villager.getUUID().toString();
         if (id.length() > 8) id = id.substring(0, 8);
-        WorkSiteRef site = activeWorkSite(level, villager);
+        WorkSiteView site = activeWorkSite(level, villager);
         WorkTarget target = activeWorkTarget(level, villager);
         WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         String anchor = farmAnchor == null ? "none" : farmAnchor.getX() + "," + farmAnchor.getY() + "," + farmAnchor.getZ();

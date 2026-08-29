@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.pheno.condition;
 
-import com.aetherianartificer.townstead.Townstead;
+import com.mojang.logging.LogUtils;
+import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -14,6 +15,7 @@ import java.util.Optional;
  * of {@code GeneTypes}.
  */
 public final class ConditionTypes {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, ConditionType> TYPES = new LinkedHashMap<>();
 
     private ConditionTypes() {}
@@ -23,7 +25,7 @@ public final class ConditionTypes {
         String key = type.key().toLowerCase(Locale.ROOT);
         ConditionType existing = TYPES.put(key, type);
         if (existing != null) {
-            Townstead.LOGGER.warn("Condition type '{}' overwritten (was {}, now {})", key,
+            LOGGER.warn("Condition type '{}' overwritten (was {}, now {})", key,
                     existing.getClass().getName(), type.getClass().getName());
         }
     }

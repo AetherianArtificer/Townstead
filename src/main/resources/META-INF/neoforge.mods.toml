@@ -57,7 +57,7 @@ side = "CLIENT"
 [[dependencies.townstead]]
 modId = "butchery"
 type = "optional"
-versionRange = "[4.8,)"
+versionRange = "[4.9,)"
 ordering = "AFTER"
 side = "BOTH"
 

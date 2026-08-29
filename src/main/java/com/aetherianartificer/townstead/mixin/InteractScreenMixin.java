@@ -10,8 +10,6 @@ import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.shift.ShiftClientStore;
 import com.aetherianartificer.townstead.shift.ShiftData;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightBaristaAssignment;
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightCookAssignment;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.mixin.accessor.AbstractDynamicScreenAccessor;
@@ -36,7 +34,6 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -192,16 +189,8 @@ public abstract class InteractScreenMixin extends Screen {
     private MutableComponent townstead$professionWithTier(VillagerLike<?> villagerLike) {
         MutableComponent base = villagerLike.getProfessionText().copy();
         if (!(villagerLike.asEntity() instanceof VillagerEntityMCA mca)) return base;
-        int tier;
-        if (mca.getVillagerData().getProfession() == VillagerProfession.FARMER) {
-            tier = Math.max(1, HungerClientStore.getFarmerTier(mca.getId()));
-        } else if (FarmersDelightCookAssignment.isExternalCookProfession(mca.getVillagerData().getProfession())) {
-            tier = Math.max(1, HungerClientStore.getCookTier(mca.getId()));
-        } else if (FarmersDelightBaristaAssignment.isBaristaProfession(mca.getVillagerData().getProfession())) {
-            tier = Math.max(1, mca.getVillagerData().getLevel());
-        } else {
-            return base;
-        }
+        int tier = HungerClientStore.getCareerTier(mca.getId());
+        if (tier <= 0) return base;
         String levelKey = "townstead.profession.level." + Math.min(tier, 5);
         return base.append(Component.literal(" "))
                 .append(Component.translatable(levelKey)

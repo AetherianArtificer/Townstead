@@ -1,10 +1,77 @@
 package com.aetherianartificer.townstead.profession;
 
+import com.aetherianartificer.townstead.profession.def.JobSiteProvider;
+import com.aetherianartificer.townstead.profession.def.ProfessionDef;
+import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
+import com.aetherianartificer.townstead.profession.def.ProgressionTrack;
+import com.aetherianartificer.townstead.profession.def.RetrainingPolicy;
+import com.aetherianartificer.townstead.profession.def.UnlockModel;
+import net.minecraft.resources.ResourceLocation;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ProfessionSlotRulesTest {
+
+    @AfterEach
+    void clearDefs() {
+        ProfessionDefs.replaceAll(Map.of());
+    }
+
+    private static void registerDef(String id, List<JobSiteProvider> jobSites) {
+        ResourceLocation rl = ResourceLocation.tryParse(id);
+        ProfessionDefs.replaceAll(Map.of(rl, new ProfessionDef(rl, null, null,
+                new ProgressionTrack(List.of(0), 0, 0), UnlockModel.EXPERIENTIAL, 1,
+                RetrainingPolicy.FREE, List.of(), false,
+                Conditions.ALWAYS, List.of(), jobSites)));
+    }
+
+    @Test
+    void defDeclaredBuildingSiteDrivesBuildingSlots() {
+        registerDef("somepack:alchemist", List.of(
+                new JobSiteProvider.Building(List.of("compat/somepack/lab_l"))));
+        assertEquals(ProfessionSlotRules.SlotPolicy.CUSTOM_BUILDING_SLOTS,
+                ProfessionSlotRules.classify("somepack:alchemist", false),
+                "a building provider in data classifies without any Java rule");
+    }
+
+    @Test
+    void semanticAliasKeepsItsOwnPhysicalPoiPolicy() {
+        ResourceLocation cook = ResourceLocation.tryParse("townstead:cook");
+        ResourceLocation chef = ResourceLocation.tryParse("somepack:chef");
+        ProfessionDef def = new ProfessionDef(cook, null, null,
+                new ProgressionTrack(List.of(0), 0, 0), UnlockModel.EXPERIENTIAL, 1,
+                RetrainingPolicy.FREE, List.of(), false, Conditions.ALWAYS, List.of(),
+                List.of(new JobSiteProvider.Building(List.of("compat/somepack/kitchen"))));
+        ProfessionDefs.replaceAll(Map.of(cook, def), Map.of(
+                chef, new ProfessionDefs.Resolution(cook, "chef")));
+
+        assertEquals(ProfessionSlotRules.SlotPolicy.POI_LIMITED,
+                ProfessionSlotRules.classify("somepack:chef", true),
+                "semantic compatibility must not replace the foreign profession's POI");
+    }
+
+    @Test
+    void defDeclaredJobBlockDrivesPoiLimit() {
+        registerDef("somepack:scribe", List.of(
+                new JobSiteProvider.JobBlock(Set.of(ResourceLocation.tryParse("minecraft:lectern")))));
+        assertEquals(ProfessionSlotRules.SlotPolicy.POI_LIMITED,
+                ProfessionSlotRules.classify("somepack:scribe", false));
+    }
+
+    @Test
+    void defDeclaredAlwaysIsUnlimited() {
+        registerDef("somepack:wanderer", List.of(new JobSiteProvider.Always()));
+        assertEquals(ProfessionSlotRules.SlotPolicy.UNLIMITED,
+                ProfessionSlotRules.classify("somepack:wanderer", true),
+                "an always provider wins even when a job block is held");
+    }
     @Test
     void classifiesUnlimitedRoles() {
         assertEquals(ProfessionSlotRules.SlotPolicy.UNLIMITED,
@@ -22,7 +89,7 @@ class ProfessionSlotRulesTest {
         assertEquals(ProfessionSlotRules.SlotPolicy.CUSTOM_BUILDING_SLOTS,
                 ProfessionSlotRules.classify("townstead:cook", false));
         assertEquals(ProfessionSlotRules.SlotPolicy.CUSTOM_BUILDING_SLOTS,
-                ProfessionSlotRules.classify("townstead:barista", false));
+                ProfessionSlotRules.classify("townstead:beverage_artisan", false));
     }
 
     @Test

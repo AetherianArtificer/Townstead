@@ -69,20 +69,26 @@ class LearnedSkillsTest {
     }
 
     @Test
-    void learnRejectsExclusiveSibling() {
+    void legacyExclusiveSiblingsRemainLearnableHistory() {
         assertTrue(LearnedSkills.learn(ENTITY, rl("t:ex_a")).ok());
-        assertFalse(LearnedSkills.learn(ENTITY, rl("t:ex_b")).ok(), "ex_b is exclusive with ex_a");
+        assertTrue(LearnedSkills.learn(ENTITY, rl("t:ex_b")).ok(),
+                "skill-group activation, not learning, provides exclusivity");
     }
 
+    /**
+     * Retraining is ordinary gameplay now, not an admin bypass. Under levels-and-options a level
+     * offers several choices and taking one closes the rest, so if forgetting were refused every
+     * pick would be permanent for the life of the character and the model would not work at all.
+     */
     @Test
-    void forgetCascadesToDependents() {
+    void retrainingForgetsAndCascadesToDependents() {
         LearnedSkills.learn(ENTITY, rl("t:base"));
         LearnedSkills.learn(ENTITY, rl("t:adv"));
         LearnedSkills.ForgetResult result = LearnedSkills.forget(ENTITY, rl("t:base"));
-        assertTrue(result.ok());
-        assertTrue(result.removed().contains(rl("t:base")));
-        assertTrue(result.removed().contains(rl("t:adv")), "forgetting base must cascade to adv");
-        assertTrue(LearnedSkills.learned(ENTITY).isEmpty());
+        assertTrue(result.ok(), "a career you can never revise is not a choice");
+        assertFalse(LearnedSkills.has(ENTITY, rl("t:base")));
+        assertFalse(LearnedSkills.has(ENTITY, rl("t:adv")),
+                "anything that required it goes with it, so the learned set stays graph-valid");
     }
 
     @Test
@@ -93,11 +99,12 @@ class LearnedSkillsTest {
     }
 
     @Test
-    void costlyRetrainingIsNotYetFunctionalButForceWorks() {
+    void costlyRetrainingIsAllowedAndForceStillWorks() {
         LearnedSkills.forceLearn(ENTITY, rl("t:costly_skill"));
-        LearnedSkills.ForgetResult denied = LearnedSkills.forget(ENTITY, rl("t:costly_skill"));
-        assertFalse(denied.ok(), "costly retraining is rejected until its payment mechanism exists");
-        assertTrue(denied.error() != null && denied.error().contains("not available"));
-        assertTrue(LearnedSkills.forceForget(ENTITY, rl("t:costly_skill")).ok(), "force bypasses the policy");
+        assertTrue(LearnedSkills.forget(ENTITY, rl("t:costly_skill")).ok(),
+                "COSTLY gates the price, not the act; only LOCKED refuses outright");
+        LearnedSkills.forceLearn(ENTITY, rl("t:costly_skill"));
+        assertTrue(LearnedSkills.forceForget(ENTITY, rl("t:costly_skill")).ok(),
+                "the admin bypass still works regardless of policy");
     }
 }

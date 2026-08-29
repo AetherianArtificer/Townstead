@@ -1,0 +1,18 @@
+{
+  "type": "pheno:resource",
+  "min": 0,
+  "max": 100,
+  "start": 100,
+  "regen": 2,
+  "regen_interval": 20,
+  "color": "#E8A33C",
+  "display": {
+    "shape": "horizontal",
+    "fill_mode": "segmented",
+    "segments": 10,
+    "frame": "townstead:gauge",
+    "color_theme": "townstead:mechanical",
+    "visibility": "when_referenced",
+    "priority": 10
+  }
+}

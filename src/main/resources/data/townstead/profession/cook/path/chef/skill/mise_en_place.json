@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.chef.mise_en_place"
+  },
+  "icon": "farmersdelight:cutting_board",
+  "description": {
+    "translate": "skill.townstead.cook.chef.mise_en_place.description"
+  },
+  "cost": 1,
+  "requires": ["kitchen_pace"],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": { "resource": "townstead:stamina", "amount": 0 },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:building", "building_prefix": "compat/farmersdelight/kitchen_l" },
+        {
+          "type": "pheno:block_in_radius",
+          "radius": 8,
+          "block_condition": { "type": "pheno:in_tag", "tag": "townstead:kitchen/storage" }
+        }
+      ]
+    },
+    "action": { "type": "pheno:change_resource", "resource": "townstead:stamina", "amount": 3 }
+  }
+}

@@ -231,7 +231,12 @@ public final class GeneAbilityTicker {
             // tickCount advances ~INTERVAL between passes, so this fires once per the gene's period.
             if (entity.tickCount % aot.interval() >= INTERVAL) continue;
             if (aot.condition() != null && !aot.condition().test(ctx)) continue;
+            if (aot.costResource() != null
+                    && ResourceValues.get(entity, aot.costResource()) < aot.costAmount()) continue;
             aot.action().run(new ActionContext(entity));
+            if (aot.costResource() != null && aot.costAmount() > 0) {
+                ResourceValues.change(entity, aot.costResource(), -aot.costAmount());
+            }
         }
     }
 

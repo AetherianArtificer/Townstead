@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["butchery"],
+  "blocks": ["butchery:meat_grinder"],
+
+  "inventory": {
+    "slots": {
+      "ingredients": [0, 1, 3],
+      "catalysts": [2],
+      "outputs": [4],
+      "returns": [5]
+    }
+  },
+
+  "recipe_layout": [
+    "ingredient",
+    "ingredient",
+    "catalyst",
+    "ingredient",
+    "return"
+  ],
+
+  "recipe_corrections": [
+    {
+      "mods": ["farmersdelight"],
+      "config": {
+        "file": "Butchery.toml",
+        "path": ["Farmers Delight Compatibility", "Farmers Delight"],
+        "equals": true
+      },
+      "recipe": "butchery:beefmincerecipe",
+      "output": "farmersdelight:minced_beef"
+    }
+  ]
+}

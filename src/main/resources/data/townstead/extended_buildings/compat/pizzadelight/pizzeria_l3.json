@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "workers": ["townstead:cook"],
+  "orders": { "recipe_namespaces": ["pizzadelight"] },
+  "catalog": { "node_item": "pizzadelight:pizza" },
+  "spirit": { "commercial": 22, "pastoral": 8, "industrious": 5 }
+}

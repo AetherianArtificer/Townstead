@@ -1,0 +1,66 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "world.omen",
+  "weight": 10,
+  "rarity": "rare",
+  "keep": true,
+  "contexts": [
+    "live",
+    "pregen"
+  ],
+  "trigger": {
+    "type": "game",
+    "key": "minecraft:lightning_strike"
+  },
+  "cooldown_days": 3,
+  "reach": "village",
+  "news_value": 3.0,
+  "roles": [
+    {
+      "id": "witness_of_the_strike",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      },
+      "involvement": "witness"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.lightning_witnessed"
+    },
+    "params": [
+      "witness_of_the_strike"
+    ]
+  },
+  "impact": {
+    "witness_of_the_strike": {
+      "mood": -2.0,
+      "memory": {
+        "valence": -0.3,
+        "strength": 2.5
+      }
+    },
+    "witness": {
+      "mood": -1.0,
+      "memory": {
+        "valence": -0.3,
+        "strength": 1.25
+      }
+    },
+    "on_learn": {
+      "memory": {
+        "valence": -0.15,
+        "strength": 0.8
+      }
+    }
+  },
+  "pregen": {
+    "max_per_life": 1
+  }
+}

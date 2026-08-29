@@ -24,7 +24,19 @@ public record Root(
         @Nullable Demonym demonym,
         @Nullable Component backstory,
         Genome genome,
-        SpawnBias spawnBias
+        SpawnBias spawnBias,
+        /**
+         * The item tag this root's own body counts as ({@code kin_flesh}), so a predator root
+         * never eats its own kind. Null means human, which is what every humanoid is without
+         * writing anything.
+         */
+        @Nullable ResourceLocation kinFlesh,
+        /**
+         * Whether eating other sapients is ordinary predation for this root ({@code
+         * eats_sapients}) — a spider-folk taking human meat is hunting, not transgression.
+         * Only consulted when the cannibalism setting reaches the predators tier.
+         */
+        boolean eatsSapients
 ) {
     public Root {
         genome = genome == null ? Genome.EMPTY : genome;

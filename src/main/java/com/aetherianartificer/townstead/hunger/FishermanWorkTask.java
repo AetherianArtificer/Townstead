@@ -7,15 +7,15 @@ import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
 import com.aetherianartificer.townstead.dock.DockLocationIndex;
 import com.aetherianartificer.townstead.recognition.RecognitionEffects;
-import com.aetherianartificer.townstead.ai.work.WorkMovement;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.WorkTarget;
-import com.aetherianartificer.townstead.ai.work.WorkTargetFailures;
-import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
-import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
+import com.aetherianartificer.townstead.work.WorkMovement;
+import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.work.WorkNavigationResult;
+import com.aetherianartificer.townstead.work.WorkPathing;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.WorkTarget;
+import com.aetherianartificer.townstead.work.WorkTargetFailures;
+import com.aetherianartificer.townstead.work.WorkTargetProgress;
+import com.aetherianartificer.townstead.work.WorkTaskAdapter;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -24,11 +24,14 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 *///?}
 import com.google.common.collect.ImmutableMap;
 import com.mojang.authlib.GameProfile;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -103,7 +106,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int IDLE_BACKOFF_TICKS = 60;
     private static final int REQUEST_RANGE = 24;
     private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
-    private static final int FETCH_ROD_TIMEOUT_TICKS = 200;
+    //? if >=1.21 {
+    private static final ResourceLocation PROFESSION = ResourceLocation.parse("minecraft:fisherman");
+    //?} else {
+    /*private static final ResourceLocation PROFESSION = new ResourceLocation("minecraft", "fisherman");
+    *///?}
     private static final int GO_TO_WATER_TIMEOUT_TICKS = 300;
     private static final int CAST_COOLDOWN_TICKS = 40;
     //? if forge {
@@ -138,10 +145,9 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int STORAGE_DEPOSIT_RADIUS = 16;
     private static final int STORAGE_DEPOSIT_VERTICAL = 3;
     // Close-enough radius to consider the villager arrived at the barrel for
-    // deposit purposes. Wider than ARRIVAL_DISTANCE_SQ because the deposit
-    // code uses a 16-block storage radius — we don't need to be precisely on
-    // the nav-chosen stand block, just in the neighborhood of the barrel.
-    private static final double RETURN_TO_BARREL_ARRIVAL_RADIUS_SQ = 9.0; // 3 blocks
+    // Wider than ARRIVAL_DISTANCE_SQ so a worker beside a large modded container does not jitter
+    // while trying to occupy one exact stand block.
+    private static final double RETURN_TO_STORAGE_ARRIVAL_RADIUS_SQ = 9.0; // 3 blocks
 
     // Derive a stable FakePlayer UUID from the villager's UUID so each fisherman gets
     // their own owner (prevents multi-fisherman state collisions) and the FakePlayer
@@ -166,6 +172,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
     // ── Task state ──
     private Phase phase = Phase.IDLE;
+    /** While the clock reads earlier than this, the fisherman is at ease and ticks do nothing. */
+    private long restUntilTick;
     private long phaseEnteredTick;
     private @Nullable BlockPos stationAnchor;
     private @Nullable FishingWaterIndex.FishingSpot currentWaterSpot;
@@ -178,6 +186,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private long nextCastReadyTick;
     private @Nullable WeakReference<FishingHook> currentHook;
     private @Nullable ItemStack currentRod;
+    private @Nullable BlockPos storageTarget;
     private long nextHookLinkSyncTick;
     // Set once per bite when NIBBLE_LEAD_TICKS remain — triggers the lean-in
     // look and plays a splash cue.
@@ -221,11 +230,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FISHERMAN) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.FISH)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         BlockPos anchor = townstead$resolveBarrelAnchor(level, villager);
-        return anchor != null;
+        return anchor != null && townstead$orderAllowsFishing(level, villager, anchor);
     }
 
     @Override
@@ -239,6 +248,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         nextCastReadyTick = 0L;
         currentHook = null;
         currentRod = FishermanSupplyManager.findRodInInventory(villager.getInventory());
+        storageTarget = null;
+        restUntilTick = 0L;
         targetProgress.reset();
         nextRequestTick = 0L;
         nibbleTriggered = false;
@@ -251,7 +262,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FISHERMAN) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.FISH)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         if (stationAnchor == null) {
@@ -270,6 +281,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         phase = Phase.IDLE;
         currentDock = null;
         currentRod = null;
+        storageTarget = null;
         biteDeadline = Long.MAX_VALUE;
         nextCastReadyTick = 0L;
         targetProgress.reset();
@@ -281,6 +293,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         debugTick(level, villager, gameTime);
+
+        // At ease: hopelessly blocked (no rod anywhere, no water) means rest on your feet and
+        // let the brain wander, not re-ask the world the same question every tick.
+        if (gameTime < restUntilTick) return;
 
         if (stationAnchor == null) {
             stationAnchor = townstead$resolveBarrelAnchor(level, villager);
@@ -329,6 +345,17 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private void tickIdle(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         int threshold = Math.max(1, TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD.get());
         int nonRodCount = countNonRodItems(villager.getInventory());
+        // An activity line governs future casts, never a catch already in flight. Pausing while
+        // the bobber is out therefore lets that cast finish; once idle, the fisherman carries
+        // any result home before standing down instead of abandoning it in their pockets.
+        if (stationAnchor != null && !townstead$orderAllowsFishing(level, villager, stationAnchor)) {
+            if (nonRodCount > 0) {
+                enterPhase(Phase.RETURN_TO_BARREL, gameTime);
+            } else {
+                restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
+            }
+            return;
+        }
         if (nonRodCount >= threshold) {
             enterPhase(Phase.RETURN_TO_BARREL, gameTime);
             return;
@@ -349,12 +376,25 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (currentWaterSpot == null) {
             if (!acquireUnclaimedWaterSpot(level, villager, gameTime)) {
                 townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_WATER);
+                // Same at-ease rest as a missing rod: the water scan is not cheap, and the
+                // pond does not refill mid-stare.
+                restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
                 return;
             }
         }
 
         townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NONE);
         enterPhase(Phase.GO_TO_WATER, gameTime);
+    }
+
+    /** The Dock/Hut Order Sheet is an activity switch; the vanilla loot roll stays untouched. */
+    private static boolean townstead$orderAllowsFishing(ServerLevel level,
+                                                         VillagerEntityMCA villager,
+                                                         BlockPos anchor) {
+        return com.aetherianartificer.townstead.work.order.WorksiteOrders.allows(
+                        level, anchor, WorkTaskTypes.FISH)
+                && !com.aetherianartificer.townstead.work.order.WorksiteOrders.outranked(
+                        level, villager, anchor, WorkTaskTypes.FISH);
     }
 
     private void tickFetchRod(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -377,11 +417,12 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             }
         }
 
-        if (gameTime - phaseEnteredTick >= FETCH_ROD_TIMEOUT_TICKS) {
-            townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_ROD);
-            // Stay in FETCH_ROD but reset timer so we retry periodically.
-            phaseEnteredTick = gameTime;
-        }
+        // No rod on them and none in storage: at ease. Retrying every tick pinned the
+        // fisherman to the barrel and hammered the storage search; a rod does not appear by
+        // being stared at. The rest expires on its own and this asks again.
+        townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_ROD);
+        restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
+        enterPhase(Phase.IDLE, gameTime);
     }
 
     private void tickGoToWater(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -896,18 +937,26 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             return;
         }
 
-        BlockPos stand = WorkPathing.nearestStandCandidate(level, villager, stationAnchor, null);
-        BlockPos target = stand != null ? stand : stationAnchor;
+        if (storageTarget == null) {
+            storageTarget = FishermanSupplyManager.findCatchDestination(level, villager, stationAnchor);
+        }
+        if (storageTarget == null) {
+            townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_STORAGE);
+            enterPhase(Phase.IDLE, gameTime);
+            return;
+        }
 
-        // Fast path: deposit has a wide radius (STORAGE_DEPOSIT_RADIUS = 16),
-        // so we only need to be "near the barrel" — not precisely on the
-        // nav-chosen stand block. Checking against the ANCHOR (the actual
-        // barrel) with a generous radius rescues the villager from limbo
+        BlockPos stand = WorkPathing.nearestStandCandidate(level, villager, storageTarget, null);
+        BlockPos target = stand != null ? stand : storageTarget;
+
+        // We only need to be beside the chosen container, not precisely on the
+        // nav-chosen stand block. Checking against the storage block with a generous radius
+        // rescues the villager from limbo
         // when they're standing at a not-quite-on-the-stand spot and the
         // pathfinder can't plot a tiny path from there to the stand.
-        double axd = villager.getX() - (stationAnchor.getX() + 0.5);
-        double azd = villager.getZ() - (stationAnchor.getZ() + 0.5);
-        if (axd * axd + azd * azd <= RETURN_TO_BARREL_ARRIVAL_RADIUS_SQ) {
+        double axd = villager.getX() - (storageTarget.getX() + 0.5);
+        double azd = villager.getZ() - (storageTarget.getZ() + 0.5);
+        if (axd * axd + azd * azd <= RETURN_TO_STORAGE_ARRIVAL_RADIUS_SQ) {
             targetProgress.reset();
             townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NONE);
             enterPhase(Phase.DEPOSIT, gameTime);
@@ -916,7 +965,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
         WorkNavigationResult result = WorkMovement.tickMoveToTarget(
                 villager,
-                WorkTarget.zonePoint(target, stationAnchor, "barrel"),
+                WorkTarget.zonePoint(target, storageTarget, "storage"),
                 WALK_SPEED,
                 CLOSE_ENOUGH,
                 ARRIVAL_DISTANCE_SQ,
@@ -938,9 +987,9 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 double ddy = villager.getY() - target.getY();
                 double ddz = villager.getZ() - (target.getZ() + 0.5);
                 double dist = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
-                LOGGER.info("[Fisherman] RETURN_TO_BARREL blocked: villager@({},{},{}) stand={} anchor={} distToTarget={}",
+                LOGGER.info("[Fisherman] RETURN_TO_STORAGE blocked: villager@({},{},{}) stand={} storage={} distToTarget={}",
                         villager.getX(), villager.getY(), villager.getZ(),
-                        stand, stationAnchor, dist);
+                        stand, storageTarget, dist);
             }
             targetProgress.reset();
             townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.UNREACHABLE);
@@ -953,11 +1002,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             enterPhase(Phase.IDLE, gameTime);
             return;
         }
-        boolean moved = FishermanSupplyManager.depositCatches(
-                level, villager, stationAnchor,
-                STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
+        boolean moved = storageTarget != null
+                && FishermanSupplyManager.depositCatchesAt(level, villager, storageTarget);
         if (countNonRodItems(villager.getInventory()) == 0) {
             townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NONE);
+            storageTarget = null;
             enterPhase(Phase.IDLE, gameTime);
             return;
         }
@@ -968,6 +1017,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 enterPhase(Phase.IDLE, gameTime);
             }
         } else {
+            storageTarget = null;
             enterPhase(Phase.IDLE, gameTime);
         }
     }
@@ -977,6 +1027,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private void enterPhase(Phase next, long gameTime) {
         this.phase = next;
         this.phaseEnteredTick = gameTime;
+        if (next == Phase.IDLE) storageTarget = null;
     }
 
     private void discardHook(ServerLevel level) {
@@ -1168,6 +1219,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             if (level.getBlockState(cachedBarrelAnchor).is(Blocks.BARREL)) return cachedBarrelAnchor;
             cachedBarrelAnchor = null;
         }
+        // "No barrel anywhere" is an answer worth remembering too. This resolver runs from the
+        // brain's start checks every tick, and the scan below reads ~21k block states — the TTL
+        // was being written and never consulted, so a fisherman with no barrel paid that cost
+        // every single tick. That was the villager everyone's frame time was going to.
+        if (gameTime < cachedBarrelUntilTick) return null;
         BlockPos center = villager.blockPosition();
         BlockPos best = null;
         double bestDistSq = Double.MAX_VALUE;
@@ -1282,10 +1338,16 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             ItemStack copy = item.copy();
             ItemStack remainder = inv.addItem(copy);
             if (!remainder.isEmpty() && stationAnchor != null) {
-                NearbyItemSources.insertIntoNearbyStorage(
-                        level, villager, remainder,
-                        STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL,
-                        stationAnchor);
+                FishermanSupplyManager.depositCatches(
+                        level, villager, stationAnchor,
+                        STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
+                remainder = inv.addItem(remainder);
+            }
+            if (!remainder.isEmpty()) {
+                net.minecraft.world.entity.item.ItemEntity drop = new net.minecraft.world.entity.item.ItemEntity(
+                        level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
+                drop.setPickUpDelay(0);
+                level.addFreshEntity(drop);
             }
         }
     }
@@ -1367,7 +1429,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     }
 
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FISHERMAN_REQUEST_CHAT.get()) return;
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .repeatedRequestsEnabled()) return;
         if (blockedReason == HungerData.FishermanBlockedReason.NONE) return;
         if (townstead$suppressStaleRequest(level, villager, gameTime)) return;
         if (gameTime < nextRequestTick) return;
@@ -1388,14 +1451,14 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             case NO_BARREL, NONE -> null;
         };
         if (state == null) return;
-        String key = FishermanRequestDialogue.pickKey(villager, state, level.random);
-
-        villager.sendChatToAllAround(key);
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager, PROFESSION, state, gameTime)) return;
         villager.getLongTermMemory().remember("townstead.fisherman_request.any");
         villager.getLongTermMemory().remember("townstead.fisherman_request." + blockedReason.id());
 
-        int interval = Math.max(200, TownsteadConfig.FISHERMAN_REQUEST_INTERVAL_TICKS.get());
-        nextRequestTick = gameTime + interval;
+        nextRequestTick = gameTime
+                + com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .effectiveInterval(PROFESSION);
     }
 
     private boolean townstead$suppressStaleRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -1416,12 +1479,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private boolean townstead$rodAvailable(ServerLevel level, VillagerEntityMCA villager) {
         if (FishermanSupplyManager.findRodInInventory(villager.getInventory()) != null) return true;
         if (stationAnchor == null) return false;
-        return NearbyItemSources.findBestNearbySlot(
-                level, villager,
-                STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL,
-                FishermanSupplyManager::isFishingRod,
-                FishermanSupplyManager::scoreRod,
-                stationAnchor) != null;
+        return FishermanSupplyManager.rodAvailableInStorage(
+                level, villager, stationAnchor);
     }
 
     private boolean townstead$waterAvailable(ServerLevel level, VillagerEntityMCA villager) {
@@ -1436,10 +1495,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
     private boolean townstead$storageAvailable(ServerLevel level, VillagerEntityMCA villager) {
         if (stationAnchor == null || countNonRodItems(villager.getInventory()) <= 0) return true;
-        FishermanSupplyManager.depositCatches(
-                level, villager, stationAnchor,
-                STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
-        return countNonRodItems(villager.getInventory()) == 0;
+        return FishermanSupplyManager.catchStorageAvailable(level, villager, stationAnchor);
     }
 
     private void townstead$depositCatchAtShiftEnd(ServerLevel level, VillagerEntityMCA villager) {
@@ -1455,7 +1511,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (stationAnchor == null) return false;
         double dx = villager.getX() - (stationAnchor.getX() + 0.5);
         double dz = villager.getZ() - (stationAnchor.getZ() + 0.5);
-        return dx * dx + dz * dz <= RETURN_TO_BARREL_ARRIVAL_RADIUS_SQ;
+        return dx * dx + dz * dz <= RETURN_TO_STORAGE_ARRIVAL_RADIUS_SQ;
     }
 
     /**
@@ -1469,16 +1525,15 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     /**
      * One-shot "first time ever" chat on successful cast from inside a dock.
      * Gated by {@link #townstead$dockBonusActive} so shoreline fallbacks don't
-     * consume the milestone, and by the request-chat config + player-proximity
+     * consume the milestone, and by the universal feedback policy + player-proximity
      * check so we don't send translation keys into an empty scene.
      */
     private void townstead$maybeAnnounceFirstDockUse(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.ENABLE_FISHERMAN_REQUEST_CHAT.get()) return;
         if (!townstead$dockBonusActive()) return;
         if (villager.getLongTermMemory().hasMemory(MEMORY_FIRST_DOCK_USE)) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
-        String key = FishermanRequestDialogue.pickKey(villager, "dock_first_use", level.random);
-        villager.sendChatToAllAround(key);
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager, PROFESSION, "dock_first_use", level.getGameTime())) return;
         villager.getLongTermMemory().remember(MEMORY_FIRST_DOCK_USE);
         // Small, personal ack effect on the villager — MAJOR/GRAND are reserved
         // for structural dock milestones and fire from DockScanner instead.
@@ -1495,7 +1550,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         String name = villager.getName().getString();
         String id = villager.getUUID().toString();
         if (id.length() > 8) id = id.substring(0, 8);
-        WorkSiteRef site = activeWorkSite(level, villager);
+        WorkSiteView site = activeWorkSite(level, villager);
         WorkTarget target = activeWorkTarget(level, villager);
         WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();
@@ -1543,8 +1598,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     // ── WorkTaskAdapter ──
 
     @Override
-    public @Nullable WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
-        return stationAnchor == null ? null : WorkSiteRef.zone(stationAnchor, townstead$waterSearchRadius(), VERTICAL_RADIUS);
+    public @Nullable WorkSiteView activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
+        return stationAnchor == null ? null : WorkSiteView.zone(
+                stationAnchor, townstead$waterSearchRadius(), VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.work.site.Worksites.of(level, stationAnchor));
     }
 
     @Override
@@ -1553,7 +1610,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         return switch (phase) {
             case GO_TO_WATER -> currentWaterSpot == null ? null
                     : WorkTarget.zonePoint(currentWaterSpot.standPos(), stationAnchor, "water");
-            case RETURN_TO_BARREL -> WorkTarget.zonePoint(stationAnchor, stationAnchor, "barrel");
+            case RETURN_TO_BARREL -> storageTarget == null ? null
+                    : WorkTarget.zonePoint(storageTarget, storageTarget, "storage");
             default -> null;
         };
     }

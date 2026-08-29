@@ -1,0 +1,17 @@
+{
+  "color": "ffc96f45",
+  "visible": true,
+  "priority": 2,
+  "margin": 8,
+  "mergeRange": 6,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 208,
+  "noBeds": true,
+  "blocks": {
+    "pizzadelight:pizza_station": 1,
+    "#townstead:kitchen/heat_sources": 1,
+    "#townstead:kitchen/preparation": 1,
+    "#townstead:kitchen/storage": 1
+  }
+}

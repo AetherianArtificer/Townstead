@@ -1,0 +1,147 @@
+package com.aetherianartificer.townstead.profession.career;
+
+import com.aetherianartificer.townstead.profession.def.ProfessionDef;
+import com.aetherianartificer.townstead.profession.def.SkillDef;
+import com.aetherianartificer.townstead.profession.def.SkillDefs;
+import com.aetherianartificer.townstead.profession.skill.LearnedSkills;
+import com.aetherianartificer.townstead.villager.ProfessionProgress;
+import com.aetherianartificer.townstead.villager.ProfessionXpStore;
+import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.LivingEntity;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * The skill-point economy, fully derived so it can never drift from the save: points earned are
+ * the sum of {@code skill_points} across levels reached (v1 defs fall back to
+ * {@code points_per_tier}), points spent are the summed costs of the learned skills belonging to
+ * the profession, and the balance is the difference. Banking is implicit; there is no ledger.
+ */
+public final class SkillPoints {
+
+    private SkillPoints() {}
+
+    public static int earned(LivingEntity entity, ProfessionDef def) {
+        ProfessionXpStore store = CareerTreeRows.storeOf(entity);
+        if (store == null) return 0;
+        return def.skillPointsThrough(ProfessionProgress.getTier(store, def.id()));
+    }
+
+    public static int spent(LivingEntity entity, ProfessionDef def) {
+        Set<ResourceLocation> learned = LearnedSkills.learned(entity);
+        int total = 0;
+        for (ResourceLocation skillId : def.skills()) {
+            if (!learned.contains(skillId)) continue;
+            SkillDef skill = SkillDefs.byId(skillId);
+            if (skill != null) total += Math.max(0, skill.cost());
+        }
+        return total;
+    }
+
+    public static int available(LivingEntity entity, ProfessionDef def) {
+        return Math.max(0, earned(entity, def) - spent(entity, def));
+    }
+
+    /** Null when the skill is learnable now; otherwise a short human-readable reason. */
+    @Nullable
+    public static String blocker(LivingEntity entity, ProfessionDef def, SkillDef skill) {
+        ProfessionXpStore store = CareerTreeRows.storeOf(entity);
+        if (store == null) return "no progression state";
+        if (ProfessionProgress.getTier(store, def.id()) < skill.tier()) {
+            return "requires " + def.levelName(skill.tier()).getString();
+        }
+        Set<ResourceLocation> learned = LearnedSkills.learned(entity);
+        for (ResourceLocation required : skill.requires()) {
+            if (!learned.contains(required)) {
+                return "missing prerequisite '" + required + "'";
+            }
+        }
+        for (ResourceLocation other : skill.exclusiveWith()) {
+            if (learned.contains(other)) return "exclusive with '" + other + "'";
+        }
+        for (ResourceLocation learnedId : learned) {
+            SkillDef learnedSkill = SkillDefs.byId(learnedId);
+            if (learnedSkill != null && learnedSkill.exclusiveWith().contains(skill.id())) {
+                return "exclusive with '" + learnedId + "'";
+            }
+        }
+        // PATHS DO NOT LOCK EACH OTHER. Taking a skill from one path never closes another: you
+        // enter a path simply by buying its first ability, and you may buy from as many paths as
+        // your picks allow. The exclusivity rule that used to live here was solving a problem the
+        // pick budget already solves — five picks against thirty options means you cannot have
+        // everything regardless — so all it added was a board that refused you. Scarcity shapes
+        // the build; a lock on top of scarcity just makes the screen hostile.
+        //
+        // ONE OPTION PER LEVEL. This is what makes a five-level career five real choices rather
+        // than a shopping list you eventually clear: reaching a level asks you a question, and
+        // answering it closes the alternatives until you retrain.
+        //
+        // Scoped to the CAREER, not the path, so that skills belonging to no path compete for the
+        // same pick as the path's own options. Scoped per-path it would leave a hole where a
+        // character takes a path option and a trunk skill at the same level and gets two picks
+        // for one level; and career-wide it also makes the trunk a real alternative, "stay a
+        // generalist this level" rather than a freebie.
+        for (ResourceLocation other : def.skills()) {
+            if (other.equals(skill.id()) || !learned.contains(other)) continue;
+            SkillDef taken = SkillDefs.byId(other);
+            if (taken != null && taken.tier() == skill.tier()) {
+                return "already chose " + taken.displayName().getString() + " at this level";
+            }
+        }
+        if (Math.max(0, skill.cost()) > available(entity, def)) {
+            return "needs " + skill.cost() + " skill point" + (skill.cost() == 1 ? "" : "s");
+        }
+        return null;
+    }
+
+    public static boolean canLearn(LivingEntity entity, ProfessionDef def, SkillDef skill) {
+        return blocker(entity, def, skill) == null;
+    }
+
+    /**
+     * Villagers spend their own points: after a tier-up, learn random affordable skills from the
+     * newly available pools until nothing is learnable. Players always choose for themselves.
+     * Candidates are weighted by {@link PathAffinity}: specialization-path skills only enter
+     * the pool when the villager's worksite justifies them, and a specced villager leans into
+     * finishing the build.
+     */
+    public static void autoSpend(LivingEntity villager, Collection<ResourceLocation> careers) {
+        if (!(villager instanceof VillagerEntityMCA)) return;
+        for (ResourceLocation careerId : careers) {
+            ProfessionDef def =
+                    com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(careerId);
+            if (def == null) continue;
+            for (int guard = 0; guard < 64; guard++) {
+                List<ResourceLocation> candidates = new ArrayList<>();
+                List<Integer> weights = new ArrayList<>();
+                int totalWeight = 0;
+                for (ResourceLocation skillId : def.skills()) {
+                    SkillDef skill = SkillDefs.byId(skillId);
+                    if (skill == null || LearnedSkills.has(villager, skillId)) continue;
+                    if (!canLearn(villager, def, skill)) continue;
+                    int weight = PathAffinity.autoSpendWeight(villager, def, skill);
+                    if (weight <= 0) continue;
+                    candidates.add(skillId);
+                    weights.add(weight);
+                    totalWeight += weight;
+                }
+                if (candidates.isEmpty()) break;
+                int roll = villager.getRandom().nextInt(totalWeight);
+                ResourceLocation pick = candidates.get(candidates.size() - 1);
+                for (int i = 0; i < candidates.size(); i++) {
+                    roll -= weights.get(i);
+                    if (roll < 0) {
+                        pick = candidates.get(i);
+                        break;
+                    }
+                }
+                if (!CareerChoices.learn(villager, pick).ok()) break;
+            }
+        }
+    }
+}

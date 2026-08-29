@@ -6,6 +6,8 @@ import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.FishermanLineRenderer;
 import com.aetherianartificer.townstead.hunger.FishingRodCastPredicates;
+import com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore;
+import com.aetherianartificer.townstead.needs.NeedEffectProjection;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
 import com.aetherianartificer.townstead.fatigue.EnergyTooltipComponent;
@@ -47,22 +49,7 @@ public final class TownsteadClient {
     public static void registerConfigScreen(ModContainer modContainer) {
         //? if neoforge {
         modContainer.registerExtensionPoint(IConfigScreenFactory.class,
-                (IConfigScreenFactory) (container, parent) -> new ConfigurationScreen(container, parent,
-                        (screen, type, config, title) -> new ConfigurationScreen.ConfigurationSectionScreen(
-                                screen, type, config, title) {
-                            @Override
-                            protected Element createSection(String key,
-                                    com.electronwill.nightconfig.core.UnmodifiableConfig subconfig,
-                                    com.electronwill.nightconfig.core.UnmodifiableConfig subsection) {
-                                // The roots blocklists are server-admin lists of
-                                // resource-location ids, managed in the config file;
-                                // the GUI list editor is not a usable surface for them.
-                                if ("roots".equals(key)) {
-                                    return null;
-                                }
-                                return super.createSection(key, subconfig, subsection);
-                            }
-                        }));
+                (IConfigScreenFactory) (container, parent) -> townstead$configScreen(container, parent));
         if (!hooksRegistered) {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientConnect);
@@ -102,6 +89,42 @@ public final class TownsteadClient {
         }
         *///?}
     }
+
+    //? if neoforge {
+    private static net.minecraft.client.gui.screens.Screen townstead$configScreen(
+            ModContainer container, net.minecraft.client.gui.screens.Screen parent) {
+        return new ConfigurationScreen(container, parent,
+                (screen, type, config, title) -> new ConfigurationScreen.ConfigurationSectionScreen(
+                        screen, type, config, title) {
+                    @Override
+                    protected Element createSection(String key,
+                            com.electronwill.nightconfig.core.UnmodifiableConfig subconfig,
+                            com.electronwill.nightconfig.core.UnmodifiableConfig subsection) {
+                        if ("resource_hud".equals(key)) {
+                            net.minecraft.network.chat.Component name = net.minecraft.network.chat.Component
+                                    .translatable("townstead.configuration.resource_hud");
+                            net.minecraft.network.chat.Component tooltip = net.minecraft.network.chat.Component
+                                    .translatable("townstead.configuration.resource_hud.tooltip");
+                            net.minecraft.client.gui.components.Button button =
+                                    net.minecraft.client.gui.components.Button.builder(
+                                            net.minecraft.network.chat.Component.translatable(
+                                                    "townstead.resource_hud.config.open"),
+                                            pressed -> minecraft.setScreen(
+                                                    com.aetherianartificer.townstead.client.root.ResourceHudConfigScreen
+                                                            .create(this)))
+                                            .tooltip(net.minecraft.client.gui.components.Tooltip.create(tooltip))
+                                            .width(net.minecraft.client.gui.components.Button.DEFAULT_WIDTH)
+                                            .build();
+                            return new Element(name, tooltip, button, false);
+                        }
+                        // The roots blocklists are server-admin lists of resource-location ids,
+                        // managed in the config file; the GUI list editor is not useful for them.
+                        if ("roots".equals(key)) return null;
+                        return super.createSection(key, subconfig, subsection);
+                    }
+                });
+    }
+    //?}
 
     //? if neoforge {
     private static void onClientConnect(ClientPlayerNetworkEvent.LoggingIn event) {
@@ -156,6 +179,7 @@ public final class TownsteadClient {
         clearClientStore("com.aetherianartificer.townstead.profession.ProfessionClientStore");
         clearClientStore("com.aetherianartificer.townstead.village.VillageResidentClientStore");
         clearClientStore("com.aetherianartificer.townstead.calendar.CalendarStampClientStore");
+        clearClientStore("com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.species.InvisFade");
     }
 
@@ -216,9 +240,14 @@ public final class TownsteadClient {
     //? if neoforge {
 
     private static void onGatherTooltipComponents(RenderTooltipEvent.GatherComponents event) {
-        if (FatigueData.isEnergyRestoring(event.getItemStack())) {
+        NeedEffectProjection configured = ConsumableEffectsClientStore.projection(event.getItemStack());
+        int energy = configured.energy();
+        if (energy <= 0 && event.getItemStack().is(FatigueData.ENERGY_RESTORING_TAG)) {
+            energy = FatigueData.ENERGY_RESTORE_AMOUNT;
+        }
+        if (energy > 0) {
             event.getTooltipElements().add(Either.right(
-                    new EnergyTooltipComponent(FatigueData.ENERGY_RESTORE_AMOUNT)));
+                    new EnergyTooltipComponent(energy)));
         }
     }
     //?}
@@ -273,6 +302,13 @@ public final class TownsteadClient {
 
         @Override
         protected void init() {
+            addRenderableWidget(Button.builder(
+                            Component.translatable("townstead.resource_hud.config.open"),
+                            btn -> minecraft.setScreen(
+                                    com.aetherianartificer.townstead.client.root.ResourceHudConfigScreen
+                                            .create(this)))
+                    .bounds(width / 2 - 100, 90, 200, 20)
+                    .build());
             addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, btn -> minecraft.setScreen(parent))
                     .bounds(width / 2 - 100, height - 28, 200, 20)
                     .build());
@@ -282,10 +318,10 @@ public final class TownsteadClient {
         public void render(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             renderBackground(graphics);
             graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFF);
-            int y = 50;
+            int y = 38;
             graphics.drawCenteredString(font, "Server config: <world>/serverconfig/townstead-server.toml", width / 2, y, 0xAAAAAA);
             graphics.drawCenteredString(font, "Client config: config/townstead-client.toml", width / 2, y + 14, 0xAAAAAA);
-            graphics.drawCenteredString(font, "Edit these files with a text editor.", width / 2, y + 36, 0xCCCCCC);
+            graphics.drawCenteredString(font, "Feature settings", width / 2, y + 38, 0xCCCCCC);
             super.render(graphics, mouseX, mouseY, partialTick);
         }
     }

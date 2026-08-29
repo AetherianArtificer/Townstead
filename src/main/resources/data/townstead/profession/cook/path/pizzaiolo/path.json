@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "text": "Pizzaiolo"
+  },
+  "title": {
+    "text": "Pizzaiolo"
+  },
+  "color": "#C8873E",
+  "skills": [
+    [
+      "pizza_craft",
+      "starter_culture"
+    ],
+    [
+      "kitchen_rhythm",
+      "pizza_spin"
+    ],
+    [
+      "stone_oven",
+      "peel_vault"
+    ],
+    [
+      "stone_heat",
+      "blistered_crust"
+    ],
+    [
+      "peel_sweep",
+      "stone_wisdom"
+    ]
+  ]
+}

@@ -7,9 +7,10 @@
   "iconV": 184,
   "noBeds": true,
   "blocks": {
+    "#townstead:kitchen/heat_sources": 1,
     "farmersdelight:cooking_pot": 1,
     "rusticdelight:roasted_coffee_beans_bag": 1,
     "#townstead:flower_pot": 1,
-    "#townstead:compat/farmersdelight/kitchen_storage": 1
+    "#townstead:kitchen/storage": 1
   }
 }

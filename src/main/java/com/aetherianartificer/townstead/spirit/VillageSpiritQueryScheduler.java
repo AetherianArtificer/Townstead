@@ -46,7 +46,7 @@ public final class VillageSpiritQueryScheduler {
         String key = keyOf(level, village.getId(), player.getUUID());
         if (!PENDING_KEYS.add(key)) return;
         QUEUE.add(new Job(key, level, village.getId(), player.getUUID(),
-                new ArrayList<>(village.getBuildings().values())));
+                new ArrayList<>(com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village))));
     }
 
     public static void tick(MinecraftServer server) {

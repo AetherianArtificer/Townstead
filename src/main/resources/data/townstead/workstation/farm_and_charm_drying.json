@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["farm_and_charm"],
+  "blocks": ["farm_and_charm:silo_wood", "farm_and_charm:silo_copper"],
+  "structure": { "type": "pheno:connected" },
+  "capacity": { "type": "pheno:count", "of": "structure" },
+  "behavior": [
+    {
+      "type": "pheno:use_block",
+      "condition": { "type": "pheno:block_state", "property": "open", "value": "false" }
+    },
+    { "type": "pheno:use_block", "item": "ingredient" }
+  ]
+}

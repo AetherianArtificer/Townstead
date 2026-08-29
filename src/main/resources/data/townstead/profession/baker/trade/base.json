@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:profession_trade/v1",
+  "replace": true,
+  "1": [
+    {
+      "cost": "minecraft:emerald",
+      "result": "minecraft:bread",
+      "result_count": 6
+    },
+    {
+      "cost": "minecraft:wheat",
+      "cost_count": 20,
+      "result": "minecraft:emerald"
+    }
+  ],
+  "2": [
+    {
+      "cost": "minecraft:emerald",
+      "result": "minecraft:cookie",
+      "result_count": 10
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 2,
+      "result": "minecraft:pumpkin_pie",
+      "result_count": 3
+    }
+  ],
+  "3": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 3,
+      "secondary_cost": "minecraft:egg",
+      "secondary_cost_count": 2,
+      "result": "minecraft:cake",
+      "max_uses": 8
+    }
+  ]
+}

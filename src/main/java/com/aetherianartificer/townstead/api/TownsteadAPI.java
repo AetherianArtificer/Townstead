@@ -52,7 +52,12 @@ public final class TownsteadAPI {
         TownsteadVillager.ScheduleState schedule = state.schedule();
         ResourceLocation professionKey = BuiltInRegistries.VILLAGER_PROFESSION.getKey(
                 villager.getVillagerData().getProfession());
-        String professionId = professionKey == null ? "" : professionKey.toString();
+        ResourceLocation canonicalProfession = com.aetherianartificer.townstead.profession.def
+                .ProfessionDefs.canonicalId(professionKey);
+        String professionId = canonicalProfession == null ? "" : canonicalProfession.toString();
+        var professionPath = canonicalProfession == null ? null
+                : com.aetherianartificer.townstead.profession.ProfessionIdentity
+                .path(villager, canonicalProfession);
         ProfessionXp xp = state.professionMemory().professionXp(professionId);
         MinecraftServer server = villager.getServer();
         long ageDays = 0L;
@@ -74,6 +79,7 @@ public final class TownsteadAPI {
                 life.isSenior(),
                 life.personalityId(),
                 professionId,
+                professionPath == null ? "" : professionPath.id(),
                 xp.tier(),
                 xp.xp(),
                 life.fertility(),
@@ -116,6 +122,7 @@ public final class TownsteadAPI {
                 false,
                 "",
                 "",
+                "",
                 0,
                 0,
                 0f,
@@ -151,15 +158,17 @@ public final class TownsteadAPI {
         java.util.Optional<Village> villageOpt = manager.findNearestVillage(pos, Village.MERGE_MARGIN);
         if (villageOpt.isEmpty()) return null;
         Village village = villageOpt.get();
-        for (Building building : village.getBuildings().values()) {
-            if (!building.containsPos(pos)) continue;
+        Building building = com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
+                .buildingAt(level, village, pos);
+        if (building != null) {
             BlockPos center = building.getCenter();
             BlockPos p0 = building.getPos0();
             BlockPos p1 = building.getPos1();
             return new TownsteadBuildingSnapshot(
                     building.getId(),
                     village.getId(),
-                    building.getType(),
+                    com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
+                            .effectiveType(village, building),
                     building.getSize(),
                     center.getX(),
                     center.getY(),

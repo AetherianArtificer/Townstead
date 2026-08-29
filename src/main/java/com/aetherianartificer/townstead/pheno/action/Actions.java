@@ -27,6 +27,25 @@ public final class Actions {
 
     @Nullable
     public static Action parse(@Nullable JsonElement element) {
+        Action parsed = parseNode(element);
+        if (parsed == null) return null;
+        return ctx -> {
+            boolean owns = ctx.reservations() == null;
+            var scope = owns
+                    ? new com.aetherianartificer.townstead.pheno.reservation.ReservationScope()
+                    : ctx.reservations();
+            ActionContext execution = owns ? ctx.withReservations(scope) : ctx;
+            try {
+                parsed.run(execution);
+                if (!execution.succeeded()) ctx.fail();
+            } finally {
+                if (owns) scope.closeReference();
+            }
+        };
+    }
+
+    @Nullable
+    private static Action parseNode(@Nullable JsonElement element) {
         if (element == null) return null;
         if (element.isJsonArray()) {
             List<Action> actions = new ArrayList<>();
@@ -54,7 +73,7 @@ public final class Actions {
         Action core = inner;
         return ctx -> {
             for (LivingEntity target : selector.select(SelectorContext.of(ctx))) {
-                ActionContext selected = new ActionContext(target, ctx.entity(), ctx.origin());
+                ActionContext selected = ctx.retarget(target, ctx.entity());
                 core.run(selected);
                 if (!selected.succeeded()) ctx.fail();
             }

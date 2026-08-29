@@ -48,7 +48,8 @@ public final class ActiveAbilityGeneType implements GeneType {
 
     public record Instance(Action action, int cooldownTicks, @Nullable Condition condition,
                            int slot, AiTrigger aiTrigger,
-                           @Nullable ResourceLocation costResource, int costAmount) implements GeneInstance {
+                           @Nullable ResourceLocation costResource, int costAmount)
+            implements GeneInstance, com.aetherianartificer.townstead.root.ability.ResourceConsumer {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
     }

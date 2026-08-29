@@ -115,7 +115,8 @@ public final class TownsteadQueryCommands {
                                         .suggests(pathSuggest(TownsteadGeneSnapshot.class))
                                         .executes(c -> query(c.getSource(),
                                                 TownsteadAPI.gene(parseId(StringArgumentType.getString(c, "id"))),
-                                                StringArgumentType.getString(c, "path"))))))));
+                                        StringArgumentType.getString(c, "path"))))))));
+        BuildingDiagnosticsCommands.register(dispatcher, ctx);
     }
 
     private static int query(CommandSourceStack source, Object snapshot, String path) {

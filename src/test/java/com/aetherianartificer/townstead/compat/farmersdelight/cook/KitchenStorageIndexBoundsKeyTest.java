@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.compat.farmersdelight.cook;
 
+import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashSet;
@@ -23,8 +25,8 @@ class KitchenStorageIndexBoundsKeyTest {
         second.add(30L);
         second.add(10L);
 
-        KitchenStorageIndex.BoundsKey firstKey = KitchenStorageIndex.BoundsKey.of(first);
-        KitchenStorageIndex.BoundsKey secondKey = KitchenStorageIndex.BoundsKey.of(second);
+        WorksiteStorageIndex.BoundsKey firstKey = WorksiteStorageIndex.BoundsKey.of(first);
+        WorksiteStorageIndex.BoundsKey secondKey = WorksiteStorageIndex.BoundsKey.of(second);
 
         assertEquals(firstKey, secondKey);
         assertEquals(firstKey.hashCode(), secondKey.hashCode());
@@ -32,7 +34,7 @@ class KitchenStorageIndexBoundsKeyTest {
 
     @Test
     void boundsKeyCanCheckContainedPositions() {
-        KitchenStorageIndex.BoundsKey key = KitchenStorageIndex.BoundsKey.of(Set.of(11L, 22L, 33L));
+        WorksiteStorageIndex.BoundsKey key = WorksiteStorageIndex.BoundsKey.of(Set.of(11L, 22L, 33L));
 
         assertTrue(key.positionsContain(22L));
         assertFalse(key.positionsContain(44L));

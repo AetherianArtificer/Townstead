@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Shepherd"
+  },
+  "icon": "minecraft:white_wool",
+  "description": {
+    "text": "Tend the flock to build a history of animal husbandry."
+  },
+  "unlock_model": "experiential"
+}

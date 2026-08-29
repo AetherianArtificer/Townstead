@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#c:dough", "required": false },
+    { "id": "#c:flour", "required": false },
+    { "id": "#c:butter", "required": false },
+    { "id": "#c:pasta", "required": false },
+    { "id": "farmersdelight:wheat_dough", "required": false },
+    { "id": "farmersdelight:pie_crust", "required": false },
+    { "id": "farm_and_charm:dough", "required": false },
+    { "id": "farm_and_charm:flour", "required": false },
+    { "id": "farm_and_charm:butter", "required": false },
+    { "id": "farm_and_charm:raw_pasta", "required": false },
+    { "id": "farm_and_charm:yeast", "required": false }
+  ]
+}

@@ -70,6 +70,11 @@ public class RpgDialogueScreen extends Screen {
         super(Component.literal("Dialogue"));
         this.villager = villager;
         this.villagerUUID = villager.asEntity().getUUID();
+        if (villager.asEntity() instanceof VillagerEntityMCA mca
+                && com.aetherianartificer.townstead.profession.career.CareerTreeOpener.isScribe(mca)
+                && com.aetherianartificer.townstead.profession.career.CareerTreeOpener.isOnDuty(mca)) {
+            choicePanel.setShowCareersEntry(true);
+        }
     }
 
     @Override
@@ -88,6 +93,7 @@ public class RpgDialogueScreen extends Screen {
             //?} else {
             /*NetworkHandler.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
             *///?}
+            askAboutOrders();
             sendDialogueState(true);
         }
     }
@@ -152,7 +158,6 @@ public class RpgDialogueScreen extends Screen {
             graphics.drawString(font, label, 4, 4, 0xFFFF8800);
         }
     }
-
 
     private void renderHearts(GuiGraphics graphics) {
         Memories memory = villager.getVillagerBrain().getMemoriesForPlayer(
@@ -476,8 +481,62 @@ public class RpgDialogueScreen extends Screen {
         }
     }
 
+    // ── Orders ──
+
+    /**
+     * Whether this worker can be asked about orders is a question only the server can answer, so it
+     * is asked as the conversation opens and the option appears when the answer comes back. That is
+     * within a tick or two, while the first line is still typing itself out.
+     */
+    private void askAboutOrders() {
+        com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload ask =
+                new com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload(
+                        villager.asEntity().getId(),
+                        com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload.Ask.OFFER);
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(ask);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(ask);
+        *///?}
+    }
+
+    /** The server's answer. Ignored unless this is still the villager being spoken to. */
+    public static void onOrdersOffer(int villagerId, boolean available) {
+        if (!available) return;
+        if (!(Minecraft.getInstance().screen instanceof RpgDialogueScreen screen)) return;
+        if (screen.villager.asEntity().getId() != villagerId) return;
+        screen.choicePanel.setShowOrdersEntry(true);
+        screen.choicePanel.refreshHub(screen.font);
+    }
+
     private void selectChoice(String choice) {
         if (choice == null || dialogQuestionId == null) return;
+        if (ChoicePanel.ORDERS_ANSWER.equals(choice)) {
+            int workerId = villager.asEntity().getId();
+            onClose();
+            com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload open =
+                    new com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload(
+                            workerId,
+                            com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload.Ask.OPEN);
+            //? if neoforge {
+            net.neoforged.neoforge.network.PacketDistributor.sendToServer(open);
+            //?} else {
+            /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(open);
+            *///?}
+            return;
+        }
+        if (ChoicePanel.CAREERS_ANSWER.equals(choice)) {
+            int counsellorId = villager.asEntity().getId();
+            onClose();
+            com.aetherianartificer.townstead.profession.career.CareerTreeRequestC2SPayload request =
+                    new com.aetherianartificer.townstead.profession.career.CareerTreeRequestC2SPayload(counsellorId);
+            //? if neoforge {
+            net.neoforged.neoforge.network.PacketDistributor.sendToServer(request);
+            //?} else {
+            /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(request);
+            *///?}
+            return;
+        }
         //? if neoforge {
         Network.sendToServer(new InteractionDialogueMessage(villagerUUID, dialogQuestionId, choice));
         //?} else {

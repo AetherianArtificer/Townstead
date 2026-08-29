@@ -2,9 +2,10 @@ package com.aetherianartificer.townstead.shepherd;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
-import com.aetherianartificer.townstead.villager.ProfessionXpType;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -49,6 +50,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
     }
 
     @Nullable private Sheep target;
+    @Nullable private BlockPos orderAnchor;
     private Phase phase = Phase.PATH;
     private long startedTick;
     private long lastPathTick;
@@ -65,12 +67,15 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (villager.getVillagerData().getProfession() != VillagerProfession.SHEPHERD) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.SHEAR)) return false;
         if (!ShepherdToolDamage.hasShears(villager)) return false;
         // If the villager has no room for more wool, yield to ShepherdDepositTask
         // so they walk to the Wool Shed and unload before continuing.
         if (!ShepherdInventory.hasRoomForWool(villager)) return false;
-        return ShepherdPenScanner.pickShearable(level, villager) != null;
+        ShepherdPenScanner.Pick pick = ShepherdPenScanner.pickShearable(level, villager);
+        if (pick == null) return false;
+        BlockPos anchor = orderAnchor(level, villager);
+        return anchor == null || orderAllowsShearing(level, villager, anchor);
     }
 
     @Override
@@ -78,6 +83,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
         ShepherdPenScanner.Pick pick = ShepherdPenScanner.pickShearable(level, villager);
         if (pick == null) return;
         target = pick.sheep();
+        orderAnchor = orderAnchor(level, villager);
         phase = Phase.PATH;
         startedTick = gameTime;
         lastPathTick = gameTime;
@@ -91,6 +97,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
         if (gameTime - startedTick > MAX_DURATION) return false;
         if (target == null || !target.isAlive()) return false;
         if (!ShepherdPenScanner.isShearable(target)) return false;
+        if (orderAnchor != null && !orderAllowsShearing(level, villager, orderAnchor)) return false;
         if (phase == Phase.PATH && gameTime - lastPathTick > PATH_TIMEOUT_TICKS) return false;
         return true;
     }
@@ -127,6 +134,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         target = null;
+        orderAnchor = null;
         phase = Phase.PATH;
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
         restorePreWorkHand(villager);
@@ -188,8 +196,43 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
                 new WalkTarget(Vec3.atBottomCenterOf(pos), WALK_SPEED, 1));
     }
 
+    /**
+     * The Wool Shed is the shepherd's existing control/worksite surface; Pens remain spatial
+     * flock definitions. With no shed, legacy Pen work remains autonomous because there is no
+     * Order Sheet to consult.
+     */
+    @Nullable
+    private static BlockPos orderAnchor(ServerLevel level, VillagerEntityMCA villager) {
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (net.conczin.mca.server.world.data.Building shed
+                : ShepherdPenScanner.woolSheds(level, villager)) {
+            BlockPos center = shed.getCenter();
+            if (center == null) center = shed.getPos0();
+            if (center == null) continue;
+            double distance = villager.distanceToSqr(
+                    center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = center;
+            }
+        }
+        return best;
+    }
+
+    private static boolean orderAllowsShearing(ServerLevel level,
+                                                VillagerEntityMCA villager,
+                                                BlockPos anchor) {
+        return com.aetherianartificer.townstead.work.order.WorksiteOrders.allows(
+                        level, anchor, WorkTaskTypes.SHEAR)
+                && !com.aetherianartificer.townstead.work.order.WorksiteOrders.outranked(
+                        level, villager, anchor, WorkTaskTypes.SHEAR);
+    }
+
     private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
         if (amount <= 0) return;
-        ProfessionProgress.addXp(TownsteadVillagers.get(villager).professionMemory(), ProfessionXpType.SHEPHERD, amount, gameTime);
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.SHEPHERD, amount, gameTime,
+                "townstead:tended", null, null, amount);
     }
 }

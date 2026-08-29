@@ -1,0 +1,5 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "dialogue": { "translate": "dialogue.chat.toolsmith_request.no_worksite" },
+  "variants": 4
+}

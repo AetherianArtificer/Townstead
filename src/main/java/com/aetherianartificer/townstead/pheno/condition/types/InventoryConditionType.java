@@ -6,12 +6,13 @@ import com.aetherianartificer.townstead.pheno.condition.item.ItemCondition;
 import com.aetherianartificer.townstead.pheno.condition.item.ItemConditions;
 import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.npc.InventoryCarrier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * True when the player carries {@code [min, max]} items matching an {@code item_condition}
- * (Apoli's {@code inventory}). Player-only; counts every matching stack's size.
+ * True when an inventory-bearing entity carries {@code [min, max]} matching items.
  *
  * <p>JSON: {@code { "type":"pheno:inventory", "min":8,
  * "item_condition":{ "type":"pheno:ingredient", "tag":"minecraft:coals" } }}</p>
@@ -32,10 +33,13 @@ public final class InventoryConditionType implements ConditionType {
         int min = GsonHelper.getAsInt(json, "min", 1);
         int max = GsonHelper.getAsInt(json, "max", Integer.MAX_VALUE);
         return ctx -> {
-            if (!(ctx.entity() instanceof Player player)) return false;
+            Container inventory;
+            if (ctx.entity() instanceof Player player) inventory = player.getInventory();
+            else if (ctx.entity() instanceof InventoryCarrier carrier) inventory = carrier.getInventory();
+            else return false;
             int count = 0;
-            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-                ItemStack stack = player.getInventory().getItem(i);
+            for (int i = 0; i < inventory.getContainerSize(); i++) {
+                ItemStack stack = inventory.getItem(i);
                 if (!stack.isEmpty() && item.test(ctx.level(), stack)) count += stack.getCount();
             }
             return count >= min && count <= max;
