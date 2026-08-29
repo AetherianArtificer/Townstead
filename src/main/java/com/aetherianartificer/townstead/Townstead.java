@@ -513,13 +513,6 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickItem e) -> {
             if (e.getLevel().isClientSide) return;
-            if (e.getEntity() instanceof net.minecraft.server.level.ServerPlayer player
-                    && com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess
-                    .tryOpen(player, e.getItemStack())) {
-                e.setCanceled(true);
-                e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
-                return;
-            }
             if (com.aetherianartificer.townstead.root.Edibles.tryEat(e.getEntity(), e.getItemStack(), e.getHand())) {
                 e.setCanceled(true);
                 e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
@@ -914,13 +907,6 @@ public class Townstead {
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickItem e) -> {
             if (e.getLevel().isClientSide) return;
-            if (e.getEntity() instanceof net.minecraft.server.level.ServerPlayer player
-                    && com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess
-                    .tryOpen(player, e.getItemStack())) {
-                e.setCanceled(true);
-                e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
-                return;
-            }
             if (com.aetherianartificer.townstead.root.Edibles.tryEat(e.getEntity(), e.getItemStack(), e.getHand())) {
                 e.setCanceled(true);
                 e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);

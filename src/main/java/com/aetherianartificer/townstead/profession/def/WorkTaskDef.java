@@ -44,7 +44,8 @@ public record WorkTaskDef(
         int weight,
         Scope scope,
         Condition requirements,
-        @Nullable OrderOption order) {
+        @Nullable OrderOption order,
+        @Nullable String requiredPath) {
 
     /** Presentation for a task that players may place on a worksite order sheet. */
     public record OrderOption(String name, ResourceLocation icon) {}
@@ -53,7 +54,7 @@ public record WorkTaskDef(
                        TargetSet recipes, TargetSet recipesDenied, int weight, Scope scope,
                        Condition requirements) {
         this(type, workstations, entities, recipes, recipesDenied,
-                TargetSet.EMPTY, TargetSet.EMPTY, weight, scope, requirements, null);
+                TargetSet.EMPTY, TargetSet.EMPTY, weight, scope, requirements, null, null);
     }
 
     public WorkTaskDef(ResourceLocation type, TargetSet workstations, TargetSet entities,
@@ -61,7 +62,16 @@ public record WorkTaskDef(
                        TargetSet recipeInputsDenied, int weight, Scope scope,
                        Condition requirements) {
         this(type, workstations, entities, recipes, recipesDenied, recipeInputs,
-                recipeInputsDenied, weight, scope, requirements, null);
+                recipeInputsDenied, weight, scope, requirements, null, null);
+    }
+
+    /** Source-compatible constructor for code-owned task declarations. */
+    public WorkTaskDef(ResourceLocation type, TargetSet workstations, TargetSet entities,
+                       TargetSet recipes, TargetSet recipesDenied, TargetSet recipeInputs,
+                       TargetSet recipeInputsDenied, int weight, Scope scope,
+                       Condition requirements, @Nullable OrderOption order) {
+        this(type, workstations, entities, recipes, recipesDenied, recipeInputs,
+                recipeInputsDenied, weight, scope, requirements, order, null);
     }
 
     /**
@@ -280,6 +290,15 @@ public record WorkTaskDef(
     // ── Gate ──
 
     public boolean available(LivingEntity entity) {
+        if (requiredPath != null) {
+            ResourceLocation raw = com.aetherianartificer.townstead.profession
+                    .ProfessionIdentity.rawId(entity);
+            if (raw == null) return false;
+            ResourceLocation career = ProfessionDefs.canonicalId(raw);
+            var active = com.aetherianartificer.townstead.profession
+                    .ProfessionIdentity.path(entity, career);
+            if (active == null || !requiredPath.equals(active.id())) return false;
+        }
         return requirements.test(new ConditionContext(entity));
     }
 
@@ -326,9 +345,18 @@ public record WorkTaskDef(
             order = parseOrder(obj.get("order"));
             if (order == null) return null;
         }
+        String requiredPath = null;
+        if (obj.has(ProfessionPathDocument.REQUIRED_PATH)) {
+            JsonElement path = obj.get(ProfessionPathDocument.REQUIRED_PATH);
+            if (!path.isJsonPrimitive() || !path.getAsJsonPrimitive().isString()) return null;
+            requiredPath = path.getAsString().trim();
+            if (requiredPath.isEmpty() || requiredPath.contains("/") || requiredPath.contains(":")) {
+                return null;
+            }
+        }
         return new WorkTaskDef(type, workstations, entities, recipes, denied,
                 recipeInputs, deniedInputs,
-                GsonHelper.getAsInt(obj, "weight", 1), scope, requirements, order);
+                GsonHelper.getAsInt(obj, "weight", 1), scope, requirements, order, requiredPath);
     }
 
     private static @Nullable OrderOption parseOrder(JsonElement element) {

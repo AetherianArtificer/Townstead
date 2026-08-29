@@ -38,13 +38,14 @@ public final class LifeStageTicker {
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
 
-        boolean reconcile = villager.tickCount % BODY_SYNC_INTERVAL_TICKS == 0;
+        long staggeredTime = villager.level().getGameTime() + villager.getId();
+        boolean reconcile = Math.floorMod(staggeredTime, BODY_SYNC_INTERVAL_TICKS) == 0;
         if (reconcile) {
             LifeStageProgression.syncMcaAgeToStage(villager);
             reconcileNoAgingTrait(villager);
         }
 
-        if (villager.tickCount % RESOLVE_INTERVAL_TICKS == 0) {
+        if (Math.floorMod(staggeredTime, RESOLVE_INTERVAL_TICKS) == 0) {
             boolean seniorChanged = LifeStageProgression.tickResolveStage(villager);
             if (seniorChanged) {
                 broadcastLifeSync(villager);

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.profession.def;
 
 import com.aetherianartificer.townstead.data.TownsteadSchema;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -28,12 +29,28 @@ public final class ProfessionWorkOverlay {
         copy(work, profession, "poi", "poi");
         copy(work, profession, "storage", "storage");
         if (work.has("tasks")) {
-            copy(work, profession, "tasks", "work_tasks");
+            mergeTasks(work, profession, "tasks");
         } else {
             // Accept the internal spelling too, so extracting an old inline block is painless.
-            copy(work, profession, "work_tasks", "work_tasks");
+            mergeTasks(work, profession, "work_tasks");
         }
         applyPathWorksites(profession, work);
+    }
+
+    /** Base work remains authoritative, followed by active Path-authored contributions. */
+    private static void mergeTasks(JsonObject work, JsonObject profession, String source) {
+        if (!work.has(source)) return;
+        JsonArray merged = work.getAsJsonArray(source).deepCopy();
+        if (profession.has("work_tasks") && profession.get("work_tasks").isJsonArray()) {
+            for (JsonElement existing : profession.getAsJsonArray("work_tasks")) {
+                if (!existing.isJsonObject()) continue;
+                JsonObject task = existing.getAsJsonObject();
+                if (task.has(ProfessionPathDocument.CONTRIBUTION_ORIGIN)) {
+                    merged.add(task.deepCopy());
+                }
+            }
+        }
+        profession.add("work_tasks", merged);
     }
 
     private static void applyPathWorksites(JsonObject profession, JsonObject work) {

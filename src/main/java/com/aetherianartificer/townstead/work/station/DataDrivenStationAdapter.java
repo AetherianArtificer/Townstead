@@ -716,11 +716,15 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                     return;
                 }
             }
+            // A non-sided item handler does not publish which of its permissive slots is fuel.
+            // If the block also exposes a sided-container fuel lane, use only those exact slot
+            // numbers through the sided capability. Treating the first slot that accepts coal as
+            // fuel feeds coal to cutting boards, trays and other ordinary item surfaces.
             for (Direction side : new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST}) {
                 IItemHandler handler = BlockInventories.itemHandler(level, anchor, side);
                 if (handler == null) continue;
-                int target = firstAcceptingSlotOutsideContainers(handler, def, one);
-                if (target >= 0) {
+                for (int target : slots) {
+                    if (target >= handler.getSlots() || !handler.insertItem(target, one, true).isEmpty()) continue;
                     handler.insertItem(target, one, false);
                     source.shrink(1);
                     return;
@@ -731,33 +735,11 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
 
     /** Whether the block's public sided inventory exposes a slot that accepts ordinary fuel. */
     public static boolean acceptsFuel(ServerLevel level, BlockPos anchor) {
-        WorkstationV2Def def = v2(level, anchor);
         for (ItemStack probe : List.of(new ItemStack(net.minecraft.world.item.Items.COAL),
                 new ItemStack(net.minecraft.world.item.Items.OAK_PLANKS))) {
             if (fuelSlots(level, anchor, probe).length > 0) return true;
-            if (level.getBlockEntity(anchor) instanceof WorldlyContainer) continue;
-            for (Direction side : new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST}) {
-                IItemHandler handler = BlockInventories.itemHandler(level, anchor, side);
-                if (handler == null) continue;
-                if (firstAcceptingSlotOutsideContainers(handler, def, probe) >= 0) return true;
-            }
         }
         return false;
-    }
-
-    /**
-     * Finds a public slot that accepts the probe without confusing a permissive vessel slot for
-     * a fuel slot. Some machines accept any item into their declared container position and
-     * enforce bowl/bottle correctness only when serving the result.
-     */
-    private static int firstAcceptingSlotOutsideContainers(IItemHandler handler,
-                                                           @Nullable WorkstationV2Def def,
-                                                           ItemStack probe) {
-        for (int slot = 0; slot < handler.getSlots(); slot++) {
-            if (def != null && def.containerSlots().contains(slot)) continue;
-            if (handler.insertItem(slot, probe, true).isEmpty()) return slot;
-        }
-        return -1;
     }
 
     public static boolean hasFuel(ServerLevel level, BlockPos anchor) {

@@ -74,6 +74,29 @@ class ProfessionWorkOverlayTest {
                         + "\"path_worksites\":{\"field_keeper\":[\"minecraft:beehive\"]}}")));
     }
 
+    @Test
+    void baseWorkKeepsPathAuthoredContributions() {
+        JsonObject profession = object("""
+                {"work_tasks":[
+                  {"type":"townstead_work:chop",
+                   "__townstead_path_contribution":"pizzaiolo"}
+                ]}
+                """);
+        ProfessionWorkOverlay.apply(profession, object("""
+                {"schema":"townstead:profession_work/v1",
+                 "tasks":[{"type":"townstead_work:cook"}]}
+                """));
+
+        var tasks = profession.getAsJsonArray("work_tasks");
+        assertEquals(2, tasks.size());
+        assertEquals("townstead_work:cook",
+                tasks.get(0).getAsJsonObject().get("type").getAsString());
+        assertEquals("townstead_work:chop",
+                tasks.get(1).getAsJsonObject().get("type").getAsString());
+        assertEquals("pizzaiolo", tasks.get(1).getAsJsonObject()
+                .get(ProfessionPathDocument.CONTRIBUTION_ORIGIN).getAsString());
+    }
+
     private static JsonObject object(String json) {
         return JsonParser.parseString(json).getAsJsonObject();
     }

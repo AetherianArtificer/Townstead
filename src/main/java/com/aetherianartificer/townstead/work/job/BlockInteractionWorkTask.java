@@ -56,6 +56,8 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     private static final double USE_RANGE_SQ = 5.0;
     private static final float WALK_SPEED = 0.55f;
     private static final int WORK_DELAY = 16;
+    /** Expensive world discovery is availability polling, not animation-critical AI. */
+    private static final int START_SCAN_INTERVAL_TICKS = 10;
 
     private @Nullable Candidate target;
     private @Nullable WorkJobDef.Interaction interaction;
@@ -72,6 +74,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     private @Nullable BlockPos deliveryTarget;
     private long startedAt;
     private long useAt;
+    private long nextStartScanTick = Long.MIN_VALUE;
 
     public BlockInteractionWorkTask() {
         super(ImmutableMap.of(
@@ -126,6 +129,16 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
+        long gameTime = level.getGameTime();
+        if (nextStartScanTick == Long.MIN_VALUE) {
+            int stagger = Math.floorMod(villager.getId(), START_SCAN_INTERVAL_TICKS);
+            nextStartScanTick = gameTime + stagger;
+            if (stagger != 0) return false;
+        } else if (gameTime < nextStartScanTick) {
+            return false;
+        }
+        nextStartScanTick = gameTime + START_SCAN_INTERVAL_TICKS;
+
         Set<ResourceLocation> carried = declaredOutputIds(villager);
         Set<Long> assigned = ProfessionSites.extentOf(level, villager, profession(villager));
         if (hasCarriedOutput(villager, carried)) {
@@ -134,7 +147,8 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
             return PhysicalStorageDelivery.findDestination(level, villager, assigned,
                     outputMatcher(carried), Set.of()) != null;
         }
-        for (Candidate candidate : findTargets(level, villager, null, true, true, false, true)) {
+        for (Candidate candidate : findTargets(
+                level, villager, null, true, true, false, true, assigned)) {
             if (chooseInteraction(level, villager, candidate, false) != null
                     && requirementsAvailable(level, villager, candidate)) return true;
         }
@@ -167,7 +181,8 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                 return;
             }
         }
-        for (Candidate candidate : findTargets(level, villager, null, true, true, false, true)) {
+        for (Candidate candidate : findTargets(
+                level, villager, null, true, true, false, true, assigned)) {
             WorksiteOrders.OutputChoice<WorkJobDef.Interaction> selected =
                     chooseInteraction(level, villager, candidate, true);
             if (selected == null) continue;
@@ -276,6 +291,17 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                                                boolean requireInteractionReady,
                                                boolean requireInput,
                                                boolean respectOrders) {
+        return findTargets(level, villager, onlyTask, requireTargetReady, requireInteractionReady,
+                requireInput, respectOrders, null);
+    }
+
+    private static List<Candidate> findTargets(ServerLevel level, VillagerEntityMCA villager,
+                                               @Nullable ResourceLocation onlyTask,
+                                               boolean requireTargetReady,
+                                               boolean requireInteractionReady,
+                                               boolean requireInput,
+                                               boolean respectOrders,
+                                               @Nullable Set<Long> assignedExtent) {
         ProfessionDef profession = profession(villager);
         List<WorkTaskDef> declarations = WorkTaskDeclarations.all(villager);
         if (declarations.isEmpty()) return List.of();
@@ -295,7 +321,8 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                         .anyMatch(option -> !option.outputIds().isEmpty());
                 if (respectOrders && !outputProducing
                         && !WorksiteOrders.mayStart(level, villager, task.type())) continue;
-                for (Set<Long> extent : targetExtents(level, villager, profession, target)) {
+                for (Set<Long> extent : targetExtents(
+                        level, villager, profession, target, assignedExtent)) {
                     for (long packed : extent) {
                         BlockPos pos = BlockPos.of(packed);
                         ResourceLocation block = blockId(level, pos);
@@ -802,9 +829,12 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     /** Work areas explicitly named by a Job, or the worker's assigned site when none are named. */
     private static List<Set<Long>> targetExtents(ServerLevel level, VillagerEntityMCA villager,
                                                   @Nullable ProfessionDef profession,
-                                                  WorkJobDef.BlockTarget target) {
+                                                  WorkJobDef.BlockTarget target,
+                                                  @Nullable Set<Long> assignedExtent) {
         if (target.buildings().isEmpty()) {
-            Set<Long> assigned = ProfessionSites.extentOf(level, villager, profession);
+            Set<Long> assigned = assignedExtent != null
+                    ? assignedExtent
+                    : ProfessionSites.extentOf(level, villager, profession);
             return assigned.isEmpty() ? List.of() : List.of(assigned);
         }
         var village = ProfessionCapacity.resolveVillage(villager);

@@ -13,10 +13,14 @@ import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Every place a career can be worked in one village, in a stable order.
@@ -41,6 +45,28 @@ import java.util.Set;
  * villager into your kitchen at home. Only stations standing outside every building are posts.</p>
  */
 public final class ProfessionSites {
+
+    /**
+     * Site assignment is village metadata, not a per-brain-tick calculation. Keep its lifetime
+     * aligned with the shared worksite extent cache: changes still settle quickly, while a row of
+     * villagers no longer rebuilds and re-sorts the same village on every Behavior probe.
+     */
+    private static final long SITE_FRESH_TICKS =
+            com.aetherianartificer.townstead.work.site.Worksites.EXTENT_FRESH_TICKS;
+    private static final Map<VillagerEntityMCA, CachedAssignment> ASSIGNMENTS =
+            Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Map<net.minecraft.server.MinecraftServer, Map<SiteCacheKey, CachedSites>> SITE_LISTS =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
+    private record CachedAssignment(net.minecraft.resources.ResourceLocation dimension,
+                                    net.minecraft.resources.ResourceLocation profession,
+                                    int villageId, long expiresAt, Optional<Site> site) {}
+
+    private record SiteCacheKey(net.minecraft.resources.ResourceLocation dimension,
+                                int villageId,
+                                net.minecraft.resources.ResourceLocation profession) {}
+
+    private record CachedSites(long expiresAt, List<Site> sites) {}
 
     private ProfessionSites() {}
 
@@ -122,10 +148,26 @@ public final class ProfessionSites {
         Optional<Village> villageOpt = ProfessionCapacity.resolveVillage(villager);
         if (villageOpt.isEmpty()) return Optional.empty();
         Village village = villageOpt.get();
-        if (!isMember(village, villager)) return Optional.empty();
+        long gameTime = level.getGameTime();
+        net.minecraft.resources.ResourceLocation dimension = level.dimension().location();
+        CachedAssignment cached = ASSIGNMENTS.get(villager);
+        if (cached != null
+                && cached.dimension().equals(dimension)
+                && cached.profession().equals(def.id())
+                && cached.villageId() == village.getId()
+                && gameTime <= cached.expiresAt()) {
+            return cached.site();
+        }
+        if (!isMember(village, villager)) {
+            return cacheAssignment(villager, dimension, def.id(), village.getId(), gameTime,
+                    Optional.empty());
+        }
 
         List<Site> sites = sites(level, village, def);
-        if (sites.isEmpty()) return Optional.empty();
+        if (sites.isEmpty()) {
+            return cacheAssignment(villager, dimension, def.id(), village.getId(), gameTime,
+                    Optional.empty());
+        }
 
         List<VillagerEntityMCA> workers = workers(level, village, def, villager);
         int workerIndex = -1;
@@ -137,9 +179,25 @@ public final class ProfessionSites {
                     ProfessionIdentity.path(worker, def.id());
             paths.add(path == null ? null : path.id());
         }
-        if (workerIndex < 0) return Optional.empty();
+        if (workerIndex < 0) {
+            return cacheAssignment(villager, dimension, def.id(), village.getId(), gameTime,
+                    Optional.empty());
+        }
         int siteIndex = assignedSiteIndex(paths, sites, def.jobSites(), workerIndex);
-        return siteIndex < 0 ? Optional.empty() : Optional.of(sites.get(siteIndex));
+        Optional<Site> result = siteIndex < 0 ? Optional.empty() : Optional.of(sites.get(siteIndex));
+        return cacheAssignment(villager, dimension, def.id(), village.getId(), gameTime, result);
+    }
+
+    private static Optional<Site> cacheAssignment(
+            VillagerEntityMCA villager,
+            net.minecraft.resources.ResourceLocation dimension,
+            net.minecraft.resources.ResourceLocation profession,
+            int villageId,
+            long gameTime,
+            Optional<Site> result) {
+        ASSIGNMENTS.put(villager, new CachedAssignment(
+                dimension, profession, villageId, gameTime + SITE_FRESH_TICKS, result));
+        return result;
     }
 
     /**
@@ -173,16 +231,23 @@ public final class ProfessionSites {
             if (def != null && memory.isPresent()
                     && memory.get().dimension().equals(level.dimension())
                     && matchesDirectJobBlock(level, memory.get().pos(), def)) {
-                return com.aetherianartificer.townstead.work.WorkSiteBounds
-                        .workAreaAround(level, memory.get().pos());
+                com.aetherianartificer.townstead.work.site.Worksite record =
+                        com.aetherianartificer.townstead.work.site.Worksites.of(
+                                level, memory.get().pos());
+                return record != null
+                        ? com.aetherianartificer.townstead.work.site.Worksites.extentOf(level, record)
+                        : com.aetherianartificer.townstead.work.WorkSiteBounds
+                                .workAreaAround(level, memory.get().pos());
             }
             return Set.of();
         }
         Building building = site.get().building();
-        return building != null
-                ? com.aetherianartificer.townstead.work.WorkSiteBounds.workArea(level, building)
-                : com.aetherianartificer.townstead.work.WorkSiteBounds
-                        .workAreaAround(level, site.get().post());
+        BlockPos post = site.get().post();
+        com.aetherianartificer.townstead.work.site.Worksite record = building != null
+                ? com.aetherianartificer.townstead.work.site.Worksites.of(level, building)
+                : com.aetherianartificer.townstead.work.site.Worksites.of(level, post);
+        return com.aetherianartificer.townstead.work.site.Worksites.extentOf(
+                level, record, building, post);
     }
 
     private static boolean matchesDirectJobBlock(ServerLevel level, BlockPos pos,
@@ -345,6 +410,29 @@ public final class ProfessionSites {
      */
     public static List<Site> sites(ServerLevel level, Village village, @Nullable ProfessionDef def) {
         if (def == null || def.jobSites().isEmpty()) return List.of();
+        net.minecraft.server.MinecraftServer server = level.getServer();
+        SiteCacheKey key = new SiteCacheKey(
+                level.dimension().location(), village.getId(), def.id());
+        long gameTime = level.getGameTime();
+        if (server != null) {
+            synchronized (SITE_LISTS) {
+                Map<SiteCacheKey, CachedSites> byServer = SITE_LISTS.get(server);
+                CachedSites cached = byServer == null ? null : byServer.get(key);
+                if (cached != null && gameTime <= cached.expiresAt()) return cached.sites();
+            }
+        }
+
+        List<Site> result = buildSites(level, village, def);
+        if (server != null) {
+            synchronized (SITE_LISTS) {
+                SITE_LISTS.computeIfAbsent(server, ignored -> new HashMap<>())
+                        .put(key, new CachedSites(gameTime + SITE_FRESH_TICKS, result));
+            }
+        }
+        return result;
+    }
+
+    private static List<Site> buildSites(ServerLevel level, Village village, ProfessionDef def) {
         List<Site> sites = new ArrayList<>();
         List<Building> claimed = new ArrayList<>();
         java.util.Map<Integer, String> effectiveTypes = McaBuildingCompat.effectiveTypes(village);
@@ -378,6 +466,28 @@ public final class ProfessionSites {
             }
         }
         return List.copyOf(sites);
+    }
+
+    /** Forget one unloaded villager without retaining its last assignment. */
+    public static void forget(VillagerEntityMCA villager) {
+        if (villager != null) ASSIGNMENTS.remove(villager);
+    }
+
+    /** Room/village topology changed; discard the short-lived derived assignment data now. */
+    public static void invalidate(ServerLevel level) {
+        if (level == null) return;
+        net.minecraft.resources.ResourceLocation dimension = level.dimension().location();
+        net.minecraft.server.MinecraftServer server = level.getServer();
+        if (server != null) {
+            synchronized (SITE_LISTS) {
+                Map<SiteCacheKey, CachedSites> byServer = SITE_LISTS.get(server);
+                if (byServer != null) byServer.keySet().removeIf(key -> key.dimension().equals(dimension));
+            }
+        }
+        synchronized (ASSIGNMENTS) {
+            ASSIGNMENTS.entrySet().removeIf(entry ->
+                    entry.getValue().dimension().equals(dimension));
+        }
     }
 
     /** The entry posts are attributed to: the first that can produce one, or -1 if none can. */

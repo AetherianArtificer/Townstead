@@ -66,12 +66,14 @@ class WorkTaskSchemaTest {
     @Test
     void cookDeclaresItsWorkTasks() {
         ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook");
-        assertEquals(6, cook.workTasks().size());
+        assertEquals(8, cook.workTasks().size());
 
         WorkTaskDef cookTask = cook.workTasks().get(0);
         assertEquals(id("townstead_work:cook"), cookTask.type());
         assertFalse(cookTask.anyWorkstation(), "stations are declared explicitly");
         assertTrue(cookTask.allowsBlock(id("farmersdelight:cooking_pot")));
+        assertFalse(cookTask.workstations().ids().contains(id("pizzadelight:pizza_station")),
+                "Pizza Delight integration is authored by Pizzaiolo, not duplicated in base work");
         assertTrue(cookTask.recipes().isEmpty() && cookTask.recipesDenied().isEmpty(),
                 "the village cook may produce every recipe");
 
@@ -118,6 +120,16 @@ class WorkTaskSchemaTest {
         assertTrue(potTask.allowsBlock(id("caupona:stew_pot")),
                 "Caupona's pots need a task of their own or the recipe gate refuses them");
         assertFalse(potTask.allowsBlock(id("minecraft:furnace")));
+
+        WorkTaskDef pizzaTask = cook.workTasks().get(6);
+        WorkTaskDef rawPizzaTask = cook.workTasks().get(7);
+        assertTrue(pizzaTask.allowsBlock(id("pizzadelight:pizza_station")));
+        assertTrue(rawPizzaTask.allowsBlock(id("farmersdelight:cutting_board")));
+        assertTrue(rawPizzaTask.recipes().ids().contains(id("pizzadelight:raw_pizza")));
+        assertNull(pizzaTask.requiredPath(),
+                "Pizzaiolo-authored work defaults to every Cook");
+        assertNull(rawPizzaTask.requiredPath(),
+                "the raw-pizza preparation chain is profession-wide too");
     }
 
     @Test

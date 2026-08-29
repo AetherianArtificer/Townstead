@@ -97,6 +97,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private static final int REQUEST_RANGE = 24;
     private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
     private static final long ROOM_BOUNDS_CACHE_TICKS = 80L;
+    private static final long SERVICE_SITE_CACHE_TICKS = 20L;
 
     // Subclass-only state
     private @Nullable StationType stationType;
@@ -127,7 +128,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private long cachedWorksiteWorkUntil = 0L;
     private WorkBuildingNav.Snapshot cachedWorksiteSnapshotNav = WorkBuildingNav.Snapshot.EMPTY;
     private @Nullable com.aetherianartificer.townstead.profession.ProfessionSites.Site cachedServiceSite;
-    private long serviceSiteDecisionTick = Long.MIN_VALUE;
+    private long cachedServiceSiteUntil = Long.MIN_VALUE;
     /** Wider-scope station searches, kept apart from the worksite snapshot and on the same TTL. */
     private final java.util.EnumMap<com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope, ScopedSnapshot>
             scopedSnapshots = new java.util.EnumMap<>(com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope.class);
@@ -148,7 +149,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 villager, taskTypes)) return false;
         if (com.aetherianartificer.townstead.work.WorkActivities.hasHigherPriorityWork(
                 level, villager, spec.taskType())) return false;
-        return com.aetherianartificer.townstead.profession.ProfessionSites.serviceSite(level, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(spec.taskType())).isPresent();
+        return resolveAssignedSite(level, villager) != null;
     }
 
     // ── Worksite ──
@@ -174,7 +175,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     @Override
     protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteView site) {
         WorkBuildingNav.Snapshot worksiteSnapshotLocal = activeWorksiteSnapshot(level, villager);
-        return currentOrNewWorksiteTarget(villager, gameTime, worksiteSnapshotLocal);
+        return currentOrNewWorksiteTarget(level, villager, gameTime, worksiteSnapshotLocal);
     }
 
     @Override
@@ -185,9 +186,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     @Override
     protected @Nullable BlockPos refreshStandPosition(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos stationAnchor) {
         if (stationAnchor == null) return null;
-        BlockPos refreshed = WorkBuildingNav.nearestStationStand(activeWorksiteSnapshot(level, villager), villager, stationAnchor);
-        if (refreshed == null) refreshed = Stations.findStandingPosition(level, villager, stationAnchor);
-        return refreshed;
+        return WorkBuildingNav.nearestReachableStationStand(
+                level, activeWorksiteSnapshot(level, villager), villager, stationAnchor);
     }
 
     // ── Station acquisition ──
@@ -230,17 +230,11 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
             }
             // Ingredients still come from the villager's own kitchen: a wider scope lets a cook
             // walk to a shared station, not raid the whole village's pantries.
-            if (!pathWorksites.isEmpty()) {
-                best = ProducerStationIndex.chooseForRole(
-                        spec.role(), level, villager, snapshot, worksiteBoundsLocal, abandonedUntilByStation,
-                        gameTime, recipeCooldownUntil,
-                        filter.and(slot -> pathWorksites.contains(slot.blockId())),
-                        orderPriority, taskTypes);
-                if (best != null) break;
-            }
             best = ProducerStationIndex.chooseForRole(
                     spec.role(), level, villager, snapshot, worksiteBoundsLocal, abandonedUntilByStation,
-                    gameTime, recipeCooldownUntil, filter, orderPriority, taskTypes);
+                    gameTime, recipeCooldownUntil, filter,
+                    slot -> pathWorksites.isEmpty() || pathWorksites.contains(slot.blockId()) ? 0 : 1,
+                    orderPriority, taskTypes);
             if (best != null) break;
         }
         if (!sawAnyStation) {
@@ -842,7 +836,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         cachedWorksiteWorkUntil = 0L;
         cachedWorksiteSnapshotNav = WorkBuildingNav.Snapshot.EMPTY;
         cachedServiceSite = null;
-        serviceSiteDecisionTick = Long.MIN_VALUE;
+        cachedServiceSiteUntil = Long.MIN_VALUE;
         scopedSnapshots.clear();
     }
 
@@ -859,7 +853,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         cachedWorksiteWorkUntil = 0L;
         cachedWorksiteSnapshotNav = WorkBuildingNav.Snapshot.EMPTY;
         cachedServiceSite = null;
-        serviceSiteDecisionTick = Long.MIN_VALUE;
+        cachedServiceSiteUntil = Long.MIN_VALUE;
         scopedSnapshots.clear();
     }
 
@@ -943,6 +937,10 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         if (cookId.length() > 8) cookId = cookId.substring(0, 8);
         String recipe = activeRecipe == null ? "none" : activeRecipe.output().toString();
         String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();
+        String here = villager.blockPosition().toShortString();
+        String stand = standPos == null ? "none" : standPos.toShortString();
+        String interaction = stationAnchor == null ? "n/a"
+                : Boolean.toString(canInteractWithStation(level, villager, stationAnchor));
         String station = stationType == null ? "none" : stationType.name().toLowerCase();
         String idleInfo = gameTime < idleUntilTick ? " idle=" + (idleUntilTick - gameTime) : "";
         StorageSearchContext.Snapshot storageSnapshot = StorageSearchContext.Profiler.snapshot();
@@ -957,7 +955,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 .orElse("none");
         String navMode = townstead$navigationMode();
         player.sendSystemMessage(Component.literal("[" + spec.label() + "DBG:" + cookName + "#" + cookId + "] state=" + state.name()
-                + " station=" + station + " anchor=" + anchor + " recipe=" + recipe
+                + " station=" + station + " anchor=" + anchor + " here=" + here
+                + " stand=" + stand + " interact=" + interaction + " recipe=" + recipe
                 + " doneAt=" + produceDoneTick + " blocked=" + blocked.name()
                 + " mode=" + navMode + " site=" + assignedSiteDesc + " stations=" + worksiteSnapshotLocal.stations().size()
                 + " storage=" + storageSnapshot.observedBlocks()
@@ -993,22 +992,20 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     }
 
     /**
-     * The cook's assigned site, resolved once. Every step below used to ask for this twice — once
-     * to find the reference block and again to find the bounds — and each ask rebuilds the village's
-     * whole cook-site list and re-sorts its residents. Threading one resolution through halves that
-     * with no caching involved.
+     * The cook's active service site, kept briefly across eligibility and worksite probes. Secondary
+     * order sheets can still redirect the worker within one second, while a waiting producer no
+     * longer re-resolves every compatible building and its effective MCA type every brain tick.
      */
     private @Nullable com.aetherianartificer.townstead.profession.ProfessionSites.Site resolveAssignedSite(
             ServerLevel level, VillagerEntityMCA villager) {
         long now = level.getGameTime();
-        boolean deciding = state == ProducerState.PATH_TO_WORKSITE && stationAnchor == null;
-        if (cachedServiceSite == null || (deciding && serviceSiteDecisionTick != now)) {
+        if (now > cachedServiceSiteUntil) {
             cachedServiceSite = com.aetherianartificer.townstead.profession.ProfessionSites
                     .serviceSite(level, villager,
                             com.aetherianartificer.townstead.profession.ProfessionSites
                                     .defForTask(spec.taskType()))
                     .orElse(null);
-            serviceSiteDecisionTick = now;
+            cachedServiceSiteUntil = now + SERVICE_SITE_CACHE_TICKS;
         }
         return cachedServiceSite;
     }
@@ -1204,7 +1201,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
 
     /** Re-use the existing worksite target if still valid, otherwise pick a nearest non-blacklisted stand/approach. */
     private @Nullable BlockPos currentOrNewWorksiteTarget(
-            VillagerEntityMCA villager, long gameTime, WorkBuildingNav.Snapshot worksiteSnapshotLocal) {
+            ServerLevel level, VillagerEntityMCA villager, long gameTime,
+            WorkBuildingNav.Snapshot worksiteSnapshotLocal) {
         if (currentWorksiteTarget != null
                 && !worksiteTargetFailures.isBlacklisted(currentWorksiteTarget, gameTime)) {
             return currentWorksiteTarget;
@@ -1217,9 +1215,11 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 .sorted(Comparator.comparingDouble(pos ->
                         villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)))
                 .toList();
-        if (!standCandidates.isEmpty()) {
+        BlockPos reachableStand = WorkBuildingNav.chooseReachableTarget(
+                level, villager, standCandidates, CLOSE_ENOUGH, false);
+        if (reachableStand != null) {
             currentWorksiteTargetKind = "stand";
-            currentWorksiteTarget = standCandidates.get(0);
+            currentWorksiteTarget = reachableStand;
             return currentWorksiteTarget;
         }
 
@@ -1228,12 +1228,22 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 .sorted(Comparator.comparingDouble(pos ->
                         villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)))
                 .toList();
-        if (fallbackCandidates.isEmpty()) {
+        BlockPos reachableFallback = WorkBuildingNav.chooseReachableTarget(
+                level, villager, fallbackCandidates, CLOSE_ENOUGH, false);
+        if (reachableFallback == null) {
+            List<BlockPos> intermediateCandidates = WorkBuildingNav
+                    .intermediateApproachTargets(level, villager, worksiteSnapshotLocal).stream()
+                    .filter(pos -> !worksiteTargetFailures.isBlacklisted(pos, gameTime))
+                    .toList();
+            reachableFallback = WorkBuildingNav.chooseReachableTarget(
+                    level, villager, intermediateCandidates, CLOSE_ENOUGH, false);
+        }
+        if (reachableFallback == null) {
             currentWorksiteTarget = null;
             return null;
         }
         currentWorksiteTargetKind = "fallback";
-        currentWorksiteTarget = fallbackCandidates.get(0);
+        currentWorksiteTarget = reachableFallback;
         return currentWorksiteTarget;
     }
 

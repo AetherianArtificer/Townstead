@@ -161,8 +161,8 @@ public class StationWorkTask extends ProducerWorkTask {
     protected @Nullable BlockPos refreshStandPosition(
             ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos stationAnchor) {
         if (stationAnchor == null) return null;
-        BlockPos stand = WorkBuildingNav.nearestStationStand(snapshot(level, villager), villager, stationAnchor);
-        return stand != null ? stand : Stations.findStandingPosition(level, villager, stationAnchor);
+        return WorkBuildingNav.nearestReachableStationStand(
+                level, snapshot(level, villager), villager, stationAnchor);
     }
 
     // ── Station acquisition ──
@@ -182,8 +182,8 @@ public class StationWorkTask extends ProducerWorkTask {
             Long abandonedUntil = abandonedUntilByStation.get(packed);
             if (abandonedUntil != null && gameTime < abandonedUntil) continue;
             if (ProducerStationClaims.isClaimedByOther(level, villager.getUUID(), slot.pos())) continue;
-            BlockPos stand = WorkBuildingNav.nearestStationStand(snapshot, villager, slot.pos());
-            if (stand == null) stand = Stations.findStandingPosition(level, villager, slot.pos());
+            BlockPos stand = WorkBuildingNav.nearestReachableStationStand(
+                    level, snapshot, villager, slot.pos());
             if (stand == null) continue;
 
             ProducerStationState state = StationProtocols.classify(level, villager, slot.pos(),

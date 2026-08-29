@@ -85,7 +85,7 @@ public final class EmptyContainerDropoff {
      */
     public static void tick(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel level)) return;
-        if (villager.tickCount % CADENCE_TICKS != 0) return;
+        if (Math.floorMod(level.getGameTime() + villager.getId(), CADENCE_TICKS) != 0) return;
         if (!TownsteadConfig.isEmptyContainerDropoffEnabled()) return;
         long dayTime = level.getDayTime() % 24000L;
         if (villager.getBrain().getSchedule().getActivityAt((int) dayTime) == Activity.WORK) return;

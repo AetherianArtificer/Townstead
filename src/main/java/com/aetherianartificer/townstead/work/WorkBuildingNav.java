@@ -105,6 +105,31 @@ public final class WorkBuildingNav {
         return best;
     }
 
+    /**
+     * Chooses the nearest station stand the villager can actually path to.
+     *
+     * <p>Straight-line proximity is not enough inside a furnished room: after visiting storage,
+     * the geometrically nearest side of a counter may be separated from the villager by that
+     * counter. Returning an unreachable stand here leaves an otherwise healthy producer staring
+     * at the station after a few successful cycles.</p>
+     */
+    public static @Nullable BlockPos nearestReachableStationStand(
+            ServerLevel level, Snapshot snapshot, VillagerEntityMCA villager, BlockPos anchor) {
+        if (level == null || snapshot == null || villager == null || anchor == null) return null;
+        List<BlockPos> stands = snapshot.stationStandPositions().get(anchor.asLong());
+        if (stands == null || stands.isEmpty()) return null;
+        for (BlockPos stand : stands) {
+            if (villager.distanceToSqr(stand.getX() + 0.5, stand.getY() + 0.5,
+                    stand.getZ() + 0.5) <= 0.36d) {
+                return stand;
+            }
+        }
+        // Failed stand probes are stable enough to share the normal short reachability backoff.
+        // Successful probes are not retained, so moving furniture or the villager never pins a
+        // stale route; the important saving is avoiding repeated failures while a station ranks.
+        return chooseReachableTarget(level, villager, stands, 0, true);
+    }
+
     public static @Nullable BlockPos chooseEntryTarget(ServerLevel level, VillagerEntityMCA villager, Snapshot snapshot, int closeEnough) {
         return chooseReachableTarget(level, villager, snapshot.entryTargets(), closeEnough, true);
     }

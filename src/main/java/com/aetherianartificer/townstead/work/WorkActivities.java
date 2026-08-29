@@ -6,8 +6,11 @@ import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -34,7 +37,12 @@ public final class WorkActivities {
 
     private record Entry(ResourceLocation id, Probe probe) {}
 
+    private record CachedAvailability(long expiresAt, boolean available) {}
+
     private static final Map<ResourceLocation, Entry> ENTRIES = new ConcurrentHashMap<>();
+    private static final long AVAILABILITY_FRESH_TICKS = 10L;
+    private static final Map<VillagerEntityMCA, Map<ResourceLocation, CachedAvailability>> AVAILABILITY =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     private WorkActivities() {}
 
@@ -159,6 +167,25 @@ public final class WorkActivities {
 
     /** Whether this job has work waiting. Unknown jobs report none, so they never outrank anything. */
     public static boolean hasWork(ServerLevel level, VillagerEntityMCA villager, @Nullable ResourceLocation id) {
+        if (level == null || villager == null || id == null) return false;
+        long gameTime = level.getGameTime();
+        synchronized (AVAILABILITY) {
+            Map<ResourceLocation, CachedAvailability> byTask = AVAILABILITY.get(villager);
+            CachedAvailability cached = byTask == null ? null : byTask.get(id);
+            if (cached != null && gameTime <= cached.expiresAt()) return cached.available();
+        }
+
+        boolean available = hasWorkUncached(level, villager, id);
+        synchronized (AVAILABILITY) {
+            AVAILABILITY.computeIfAbsent(villager, ignored -> new HashMap<>())
+                    .put(id, new CachedAvailability(
+                            gameTime + AVAILABILITY_FRESH_TICKS, available));
+        }
+        return available;
+    }
+
+    private static boolean hasWorkUncached(
+            ServerLevel level, VillagerEntityMCA villager, ResourceLocation id) {
         Entry entry = id == null ? null : ENTRIES.get(id);
         try {
             if (entry != null && entry.probe().hasWork(level, villager)) return true;
@@ -175,6 +202,11 @@ public final class WorkActivities {
             // A probe throwing must not take out the eligibility check that asked it.
             return false;
         }
+    }
+
+    /** Explicit lifecycle cleanup; the weak keys are only a fallback for unusual unload paths. */
+    public static void forget(VillagerEntityMCA villager) {
+        if (villager != null) AVAILABILITY.remove(villager);
     }
 
     private static boolean isExecutable(@Nullable ResourceLocation id) {

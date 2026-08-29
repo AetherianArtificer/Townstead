@@ -10,6 +10,8 @@ import net.minecraft.world.entity.schedule.Activity;
 
 /** Schedules and delivers data-authored profession feedback. */
 public final class WorkFeedbackTicker {
+    private static final int OBSERVATION_INTERVAL_TICKS = 20;
+
     private WorkFeedbackTicker() {}
 
     public static void bootstrap() {
@@ -19,12 +21,13 @@ public final class WorkFeedbackTicker {
     public static void tick(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (!TownsteadConfig.isWorkFeedbackEnabled()) return;
+        long gameTime = level.getGameTime();
+        if (Math.floorMod(gameTime + villager.getId(), OBSERVATION_INTERVAL_TICKS) != 0) return;
         if (!onWorkShift(villager, level)) return;
 
         if (observeRisingRules(level, villager)) return;
 
         if (!TownsteadConfig.isRepeatedWorkRequestsEnabled()) return;
-        long gameTime = level.getGameTime();
         for (ProfessionFeedbackRegistry.Channel channel : ProfessionFeedbackRegistry.all()) {
             if (!ProfessionFeedbackRegistry.matchesProfession(channel.profession(), villager)) continue;
             if (level.getNearestPlayer(villager, channel.range()) == null) continue;

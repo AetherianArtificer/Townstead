@@ -34,6 +34,10 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -48,6 +52,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected static final int CLOSE_ENOUGH = 0;
     protected static final int BUILDING_CLOSE_ENOUGH = 2;
     protected static final double ARRIVAL_DISTANCE_SQ = 0.36d;
+    protected static final double STATION_INTERACTION_REACH_SQ = 9.0d;
     protected static final double NEAR_STATION_DISTANCE_SQ = 9.0d;
     protected static final float WALK_SPEED = 0.52f;
     protected static final int IDLE_BACKOFF = 80;
@@ -549,7 +554,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         currentWorksiteTarget = target;
 
         WorkNavigationResult move = WorkMovement.tickMoveToTarget(
-                villager, target, WALK_SPEED, BUILDING_CLOSE_ENOUGH, ARRIVAL_DISTANCE_SQ,
+                // The target is a real walkable stand, not merely the outside of a building.
+                // Stopping within two blocks leaves an outdoor worker staring across a counter
+                // while isVillagerAtWorksite correctly waits for the actual stand forever.
+                villager, target, WALK_SPEED, CLOSE_ENOUGH, ARRIVAL_DISTANCE_SQ,
                 worksiteTargetProgress, worksiteTargetFailures,
                 gameTime, stateTimeoutTicks(state),
                 WORKSITE_MAX_RETRIES, (int) WORKSITE_TARGET_RETRY_COOLDOWN_TICKS);
@@ -1150,7 +1158,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         double distSq = villager.distanceToSqr(standPos.getX() + 0.5, standPos.getY() + 0.5, standPos.getZ() + 0.5);
         // Being close to the station block is not enough: a wall can be between the two.
         // The selected stand is the navigable side of the station, so work starts only there.
-        if (!isAtStationStand(distSq)) {
+        if (!isAtStationStand(distSq)
+                && !canInteractWithStation(level, villager, stationAnchor)) {
             if (gameTime >= nextStandReacquireTick) {
                 nextStandReacquireTick = gameTime + STAND_REACQUIRE_INTERVAL_TICKS;
                 BlockPos refreshed = refreshStandPosition(level, villager, stationAnchor);
@@ -1164,6 +1173,28 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     static boolean isAtStationStand(double distanceSq) {
         return distanceSq <= ARRIVAL_DISTANCE_SQ;
+    }
+
+    static boolean isWithinStationInteractionReach(double distanceSq) {
+        return distanceSq <= STATION_INTERACTION_REACH_SQ;
+    }
+
+    /**
+     * Minecraft pathing does not promise to place a mob at the exact centre requested by a
+     * {@link net.minecraft.world.entity.ai.memory.WalkTarget}. Interaction needs a much simpler
+     * truth: the station is within ordinary working reach and no wall stands between it and the
+     * worker. This keeps counters usable without restoring the old work-through-walls bug.
+     */
+    protected final boolean canInteractWithStation(
+            ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos anchor) {
+        if (level == null || villager == null || anchor == null) return false;
+        Vec3 eye = villager.getEyePosition();
+        Vec3 target = new Vec3(anchor.getX() + 0.5d,
+                anchor.getY() + 0.5d, anchor.getZ() + 0.5d);
+        if (!isWithinStationInteractionReach(eye.distanceToSqr(target))) return false;
+        BlockHitResult hit = level.clip(new ClipContext(
+                eye, target, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, villager));
+        return hit.getType() == HitResult.Type.MISS || anchor.equals(hit.getBlockPos());
     }
 
     /**

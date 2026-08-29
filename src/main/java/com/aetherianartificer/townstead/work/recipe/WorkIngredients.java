@@ -200,7 +200,12 @@ public final class WorkIngredients {
             boolean toolAvailable = toolAvailableByRecipe != null
                     ? toolAvailableByRecipe.computeIfAbsent(
                             recipe.id(),
-                            unused -> recipeToolAvailable(level, villager, recipe, kitchenBounds, kitchenSnapshot, false))
+                            // An indexed snapshot is deliberately cheap and may be one tick behind
+                            // a player-edited chest. Ingredients already fall back to the live
+                            // worksite view below; reusable tools must do the same or a visible
+                            // rolling pin can make the whole recipe disappear until planning gives
+                            // up. Cache the complete answer for the rest of this selection pass.
+                            unused -> recipeToolAvailable(level, villager, recipe, kitchenBounds, kitchenSnapshot, true))
                     : recipeToolAvailable(level, villager, recipe, kitchenBounds);
             if (!toolAvailable) return false;
         }

@@ -53,6 +53,7 @@ public final class BuildingReportReconciler {
         for (Building building : McaBuildings.all(village)) {
             com.aetherianartificer.townstead.work.site.Worksites.invalidateExtent(level, building);
         }
+        com.aetherianartificer.townstead.profession.ProfessionSites.invalidate(level);
         // A rescan is also the moment we can tell a demolished worksite from an unloaded one, so
         // it is where retired places leave the register instead of accumulating for the life of
         // the world. Ids are never reused, so a pruned site can only be replaced by a new one.
