@@ -166,7 +166,7 @@ public final class RecipeSelector {
             boolean candidatePlanable = WorkIngredients.canPlanWithVirtual(
                     recipe,
                     outputStock,
-                    toolAvailable(level, villager, recipe, kitchenBounds, toolAvailableByRecipe),
+                    toolAvailable(villager, recipe, kitchenSnapshot, toolAvailableByRecipe),
                     waterAvailable
             );
             double chainOpportunity = 0.0d;
@@ -178,9 +178,8 @@ public final class RecipeSelector {
                         recipe,
                         outputStock,
                         scratchSupply,
-                        level,
                         villager,
-                        kitchenBounds,
+                        kitchenSnapshot,
                         toolAvailableByRecipe,
                         waterAvailable
                 );
@@ -356,9 +355,8 @@ public final class RecipeSelector {
             DiscoveredRecipe rootRecipe,
             Map<ResourceLocation, Integer> baseSupply,
             Map<ResourceLocation, Integer> afterSupply,
-            ServerLevel level,
             VillagerEntityMCA villager,
-            Set<Long> kitchenBounds,
+            WorksiteStorageIndex.Snapshot kitchenSnapshot,
             Map<ResourceLocation, Boolean> toolAvailableByRecipe,
             boolean waterAvailable
     ) {
@@ -366,7 +364,8 @@ public final class RecipeSelector {
         for (DiscoveredRecipe followup : planning.consumersByItem()
                 .getOrDefault(rootRecipe.output(), List.of())) {
             if (followup.id().equals(rootRecipe.id())) continue;
-            boolean toolAvailable = toolAvailable(level, villager, followup, kitchenBounds, toolAvailableByRecipe);
+            boolean toolAvailable = toolAvailable(
+                    villager, followup, kitchenSnapshot, toolAvailableByRecipe);
             boolean before = WorkIngredients.canPlanWithVirtual(followup, baseSupply, toolAvailable, waterAvailable);
             boolean after = WorkIngredients.canPlanWithVirtual(followup, afterSupply, toolAvailable, waterAvailable);
             if (!before && after) {
@@ -488,16 +487,15 @@ public final class RecipeSelector {
     }
 
     private static boolean toolAvailable(
-            ServerLevel level,
             VillagerEntityMCA villager,
             DiscoveredRecipe recipe,
-            Set<Long> kitchenBounds,
+            WorksiteStorageIndex.Snapshot kitchenSnapshot,
             Map<ResourceLocation, Boolean> toolAvailableByRecipe
     ) {
         if (!recipe.requiresTool()) return true;
         return toolAvailableByRecipe.computeIfAbsent(
                 recipe.id(),
-                unused -> WorkIngredients.recipeToolAvailable(level, villager, recipe, kitchenBounds)
+                unused -> WorkIngredients.recipeToolAvailable(villager, recipe, kitchenSnapshot)
         );
     }
 

@@ -115,6 +115,25 @@ public final class OrderList {
     }
 
     /**
+     * Recipe-aware station priority. Component-bearing products can share an item id while still
+     * being different things to an order (a blank raw pizza and a prepared raw pizza, or two
+     * potion contents). Passing only {@link ProducerRecipe#output()} through the item overload
+     * deliberately cannot match those lines; station selection must retain the recipe identity.
+     */
+    public int priority(@Nullable ProducerRecipe candidate, OrderContext context) {
+        if (candidate == null || candidate.output() == null) return Integer.MAX_VALUE;
+        boolean governed = false;
+        for (int index = 0; index < orders.size(); index++) {
+            Order order = orders.get(index);
+            if (!order.matches(candidate)) continue;
+            governed = true;
+            if (order.wantsWork(context) && context.mayWork(order)) return index;
+        }
+        if (governed || listOnly) return Integer.MAX_VALUE;
+        return orders.size();
+    }
+
+    /**
      * Takes over another list's lines, keeping this one authoritative, and reports how many moved.
      *
      * <p>Used when two records turn out to be the same place. A line is only taken when nothing

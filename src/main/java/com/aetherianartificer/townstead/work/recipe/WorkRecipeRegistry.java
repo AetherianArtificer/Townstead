@@ -487,6 +487,8 @@ public final class WorkRecipeRegistry {
      * must retain that fact long enough to choose the owner that actually stands in the worksite.</p>
      */
     public static List<WorkstationDef> defsFor(DiscoveredRecipe recipe) {
+        WorkstationDef protocol = protocolDefFor(recipe);
+        if (protocol != null) return List.of(protocol);
         ResourceLocation typeId = recipeTypeId(recipe);
         if (typeId == null) return List.of();
         LinkedHashMap<ResourceLocation, WorkstationDef> found = new LinkedHashMap<>();
@@ -512,6 +514,18 @@ public final class WorkRecipeRegistry {
             if (typeId.equals(def.recipeType())) found.putIfAbsent(def.id(), def);
         }
         return List.copyOf(found.values());
+    }
+
+    /** Owner of an inline protocol recipe, which has no vanilla Recipe source to point back to. */
+    private static @Nullable WorkstationDef protocolDefFor(DiscoveredRecipe recipe) {
+        if (recipe == null || recipe.id() == null) return null;
+        for (WorkstationDef def : Workstations.all()) {
+            for (int index = 0; index < def.produces().size(); index++) {
+                if (recipe.id().equals(com.aetherianartificer.townstead.work.station.ProtocolRecipes
+                        .recipeId(def, index))) return def;
+            }
+        }
+        return null;
     }
 
     /** First declaring workstation, retained for callers that do not have a physical worksite. */
@@ -797,6 +811,11 @@ public final class WorkRecipeRegistry {
         if (recipe == null || !recipe.requiresTool() || stack == null || stack.isEmpty()) return false;
         boolean declared = false;
         for (WorkstationDef workstation : defsFor(recipe)) {
+            if (!workstation.harvestTools().isEmpty()) {
+                declared = true;
+                ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                if (workstation.harvestTools().contains(itemId)) return true;
+            }
             WorkstationV2Def v2 = Workstations.v2ByBlockId(
                     workstation.blocks().stream().findFirst().orElse(null));
             if (v2 == null || !v2.hasDeclaredTool()) continue;
@@ -839,6 +858,13 @@ public final class WorkRecipeRegistry {
         LinkedHashSet<ResourceLocation> matches = new LinkedHashSet<>();
         boolean declared = false;
         for (WorkstationDef workstation : defsFor(recipe)) {
+            if (!workstation.harvestTools().isEmpty()) {
+                declared = true;
+                for (ResourceLocation id : workstation.harvestTools()) {
+                    if (BuiltInRegistries.ITEM.containsKey(id)
+                            && BuiltInRegistries.ITEM.get(id) != Items.AIR) matches.add(id);
+                }
+            }
             WorkstationV2Def v2 = Workstations.v2ByBlockId(
                     workstation.blocks().stream().findFirst().orElse(null));
             if (v2 == null || !v2.hasDeclaredTool()) continue;
@@ -884,6 +910,9 @@ public final class WorkRecipeRegistry {
     public static String recipeToolRequirementName(DiscoveredRecipe recipe) {
         if (recipe == null) return "Tool";
         for (WorkstationDef workstation : defsFor(recipe)) {
+            if (!workstation.harvestTools().isEmpty()) {
+                return harvestToolRequirementName(workstation);
+            }
             WorkstationV2Def v2 = Workstations.v2ByBlockId(
                     workstation.blocks().stream().findFirst().orElse(null));
             if (v2 == null) continue;
@@ -900,6 +929,31 @@ public final class WorkRecipeRegistry {
             }
         }
         return "Tool";
+    }
+
+    public static String harvestToolRequirementName(WorkstationDef workstation) {
+        return workstation == null ? "Tool"
+                : commonItemSuffix(workstation.harvestTools(), "Tool");
+    }
+
+    /** "Stone Pizza Peel", "Iron Pizza Peel", ... becomes the useful group name "Pizza Peel". */
+    private static String commonItemSuffix(Collection<ResourceLocation> ids, String fallback) {
+        List<String[]> names = ids.stream()
+                .filter(BuiltInRegistries.ITEM::containsKey)
+                .map(BuiltInRegistries.ITEM::get)
+                .filter(item -> item != Items.AIR)
+                .map(item -> new ItemStack(item).getHoverName().getString().split(" "))
+                .toList();
+        if (names.isEmpty()) return fallback;
+        List<String> suffix = new ArrayList<>();
+        for (int offset = 1; ; offset++) {
+            final int at = offset;
+            if (names.stream().anyMatch(parts -> parts.length < at)) break;
+            String word = names.get(0)[names.get(0).length - at];
+            if (names.stream().anyMatch(parts -> !word.equals(parts[parts.length - at]))) break;
+            suffix.add(0, word);
+        }
+        return suffix.isEmpty() ? fallback : String.join(" ", suffix);
     }
 
     public static List<RecipeIngredient> extractIngredients(Recipe<?> recipe) {

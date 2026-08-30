@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.work.producer;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.work.WorkMovement;
+import com.aetherianartificer.townstead.work.WorkBuildingNav;
 import com.aetherianartificer.townstead.work.WorkNavigationResult;
 import com.aetherianartificer.townstead.work.WorkSiteView;
 import com.aetherianartificer.townstead.work.order.Order;
@@ -34,10 +35,6 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -216,6 +213,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         return Set.of();
     }
 
+    /** Records a reusable item acquired outside the ordinary pre-production supply phase. */
+    protected final void rememberBorrowedTools(Set<ResourceLocation> itemIds) {
+        if (itemIds != null) borrowedToolIds.addAll(itemIds);
+    }
+
     /** Whether this carried stack is finished work belonging to the active cycle. */
     protected boolean isCycleOutput(ServerLevel level, ItemStack stack) {
         if (stack == null || stack.isEmpty() || activeRecipe == null) return false;
@@ -280,6 +282,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     /** No actionable station/recipe remains at this worksite. */
     protected void onNoWork(ServerLevel level, VillagerEntityMCA villager, long gameTime) {}
+
+    /** Specific missing prerequisite when recipe selection otherwise has nothing to say. */
+    protected @Nullable String noRecipeMissingRequirement(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        return null;
+    }
 
     /**
      * A physical station cycle was abandoned before delivery.  This is distinct from releasing
@@ -819,8 +827,13 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                 abandonCurrentStation(level, villager, gameTime, false);
                 return;
             }
-            debugChat(level, villager, "SELECT:no recipe, rotating");
-            setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_RECIPE, null);
+            String missing = noRecipeMissingRequirement(level, villager, gameTime);
+            debugChat(level, villager, "SELECT:no recipe, rotating"
+                    + (missing == null ? "" : " (missing " + missing + ")"));
+            setBlocked(level, villager, gameTime,
+                    missing == null ? ProducerBlockedReason.NO_RECIPE
+                            : ProducerBlockedReason.NO_INGREDIENTS,
+                    missing);
             abandonCurrentStation(level, villager, gameTime, true);
             return;
         }
@@ -1051,8 +1064,17 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
         Set<Long> bounds = transferWorksiteBounds(level, villager);
         if (deliveryTarget == null) {
-            deliveryTarget = PhysicalStorageDelivery.findDestination(
-                    level, villager, bounds, matcher, rejectedDeliveryStorage, storageUse);
+            // A prepared dish is useful in the room before it is useful on a shelf. Each plate
+            // accepts only one dish, so surplus from the same batch naturally continues to
+            // finished-goods storage on the next pass.
+            if (deliveringOutput) {
+                deliveryTarget = com.aetherianartificer.townstead.food.ServingPlateService.findEmpty(
+                        level, villager, bounds, matcher, rejectedDeliveryStorage);
+            }
+            if (deliveryTarget == null) {
+                deliveryTarget = PhysicalStorageDelivery.findDestination(
+                        level, villager, bounds, matcher, rejectedDeliveryStorage, storageUse);
+            }
             if (deliveryTarget == null) {
                 setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_STORAGE,
                         hasCarriedCycleOutput(level, villager) ? "finished goods" : "borrowed tools");
@@ -1067,8 +1089,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         if (villager.distanceToSqr(deliveryTarget.getX() + 0.5,
                 deliveryTarget.getY() + 0.5, deliveryTarget.getZ() + 0.5) > 5.0d) return;
 
-        int moved = PhysicalStorageDelivery.depositMatchingAt(
-                level, villager, deliveryTarget, matcher, storageUse);
+        int moved = com.aetherianartificer.townstead.food.ServingPlateService
+                .isServingSurface(level, deliveryTarget)
+                ? com.aetherianartificer.townstead.food.ServingPlateService.depositMatchingAt(
+                        level, villager, deliveryTarget, matcher)
+                : PhysicalStorageDelivery.depositMatchingAt(
+                        level, villager, deliveryTarget, matcher, storageUse);
         villager.swing(villager.getDominantHand());
         if (moved <= 0) rejectedDeliveryStorage.add(deliveryTarget.asLong());
         deliveryTarget = null;
@@ -1187,14 +1213,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
      */
     protected final boolean canInteractWithStation(
             ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos anchor) {
-        if (level == null || villager == null || anchor == null) return false;
-        Vec3 eye = villager.getEyePosition();
-        Vec3 target = new Vec3(anchor.getX() + 0.5d,
-                anchor.getY() + 0.5d, anchor.getZ() + 0.5d);
-        if (!isWithinStationInteractionReach(eye.distanceToSqr(target))) return false;
-        BlockHitResult hit = level.clip(new ClipContext(
-                eye, target, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, villager));
-        return hit.getType() == HitResult.Type.MISS || anchor.equals(hit.getBlockPos());
+        return WorkBuildingNav.canInteractWithStation(level, villager, anchor);
     }
 
     /**

@@ -211,7 +211,8 @@ public final class StationProtocols {
         if (def == null || adapter == null) return false;
 
         if (def.role() == StationType.PLACE_SURFACE) {
-            if (level.getBlockState(anchor).isAir() && !placeWorkBlock(level, villager, anchor, def)) {
+            if (level.getBlockState(anchor).isAir()
+                    && !placeWorkBlock(level, villager, anchor, def, recipe)) {
                 return false;
             }
             // The placed item is already committed; compose the block with the remaining
@@ -252,12 +253,10 @@ public final class StationProtocols {
     }
 
     public static ItemStack takeMatchingIngredient(VillagerEntityMCA villager,
-                                            RecipeIngredient ingredient) {
+                                                   RecipeIngredient ingredient) {
         for (int i = 0; i < villager.getInventory().getContainerSize(); i++) {
             ItemStack stack = villager.getInventory().getItem(i);
-            if (stack.isEmpty()) continue;
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (id != null && ingredient.itemIds().contains(id)) {
+            if (ingredient.matches(stack)) {
                 return stack.split(1);
             }
         }
@@ -265,11 +264,21 @@ public final class StationProtocols {
     }
 
     private static boolean placeWorkBlock(ServerLevel level, VillagerEntityMCA villager,
-                                          BlockPos anchor, WorkstationDef def) {
+                                          BlockPos anchor, WorkstationDef def,
+                                          DiscoveredRecipe recipe) {
         if (def.places() == null) return false;
         Item placedItem = BuiltInRegistries.ITEM.get(def.places());
         if (!(placedItem instanceof BlockItem blockItem)) return false;
-        ItemStack held = takeOne(villager, placedItem);
+        RecipeIngredient placedIngredient = null;
+        for (RecipeIngredient ingredient : recipe.inputs()) {
+            if (ingredient.itemIds().contains(def.places())) {
+                placedIngredient = ingredient;
+                break;
+            }
+        }
+        ItemStack held = placedIngredient == null
+                ? takeOne(villager, placedItem)
+                : takeMatchingIngredient(villager, placedIngredient);
         if (held.isEmpty()) return false;
 
         BlockPos surface = anchor.below();
@@ -320,12 +329,32 @@ public final class StationProtocols {
         WorkstationDef def = defAt(level, anchor);
         Adapter adapter = resolveAdapter(level, def);
         if (def == null || adapter == null) return false;
-        if (recipe == null) return adapter.collectAvailable(level, villager, anchor, def);
         if (def.role() == StationType.PLACE_SURFACE
                 && !ensureHarvestTool(level, villager, anchor, def, storageBounds)) {
             return false;
         }
-        return adapter.collect(level, villager, anchor, def, recipe);
+        if (def.role() != StationType.PLACE_SURFACE || def.harvestTools().isEmpty()) {
+            return recipe == null
+                    ? adapter.collectAvailable(level, villager, anchor, def)
+                    : adapter.collect(level, villager, anchor, def, recipe);
+        }
+        // Mirror the player's harvest interaction: show the declared utensil in hand while the
+        // adapter lifts the finished block. The real stack remains in inventory and is returned
+        // to tool storage after delivery; Pizza Delight does not damage a peel when picking up.
+        ItemStack tool = harvestTool(villager, def);
+        if (tool.isEmpty()) return false;
+        InteractionHand hand = villager.getDominantHand();
+        ItemStack previous = villager.getItemInHand(hand).copy();
+        villager.setItemInHand(hand, tool.copyWithCount(1));
+        try {
+            boolean collected = recipe == null
+                    ? adapter.collectAvailable(level, villager, anchor, def)
+                    : adapter.collect(level, villager, anchor, def, recipe);
+            if (collected) villager.swing(hand);
+            return collected;
+        } finally {
+            villager.setItemInHand(hand, previous);
+        }
     }
 
     public static boolean hasPendingInputs(ServerLevel level, BlockPos anchor,
@@ -375,6 +404,14 @@ public final class StationProtocols {
             if (matchesHarvestTool(def, villager.getInventory().getItem(i))) return true;
         }
         return false;
+    }
+
+    private static ItemStack harvestTool(VillagerEntityMCA villager, WorkstationDef def) {
+        for (int i = 0; i < villager.getInventory().getContainerSize(); i++) {
+            ItemStack stack = villager.getInventory().getItem(i);
+            if (matchesHarvestTool(def, stack)) return stack;
+        }
+        return ItemStack.EMPTY;
     }
 
     private static boolean matchesHarvestTool(WorkstationDef def, ItemStack stack) {

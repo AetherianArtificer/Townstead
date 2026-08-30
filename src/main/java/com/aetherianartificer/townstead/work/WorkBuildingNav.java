@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.work;
 import com.aetherianartificer.townstead.work.station.StationCapacities;
 
 import com.aetherianartificer.townstead.work.station.Stations;
+import com.aetherianartificer.townstead.work.station.StationProtocols;
+import com.aetherianartificer.townstead.work.station.WorkstationDef;
 
 import com.aetherianartificer.townstead.work.recipe.StationType;
 
@@ -13,7 +15,11 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.pathfinder.Path;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
 import java.util.ArrayDeque;
@@ -35,6 +41,13 @@ public final class WorkBuildingNav {
     private static final int MAX_APPROACH_BASES = 4;
     private static final int MAX_INTERMEDIATE_APPROACH_TARGETS = 24;
     private static final int INTERMEDIATE_STEP_DISTANCE = 12;
+    private static final double STATION_INTERACTION_REACH_SQ = 9.0d;
+    /**
+     * A player may click any exposed part of a station, not only its geometric centre. Sampling
+     * the upper face matters for counters: the centre ray can hit the counter in front even though
+     * the station's top is plainly reachable. A full wall still blocks every sample.
+     */
+    private static final double[] STATION_TARGET_Y = {0.5d, 0.875d};
     private static final Map<SnapshotKey, Snapshot> SNAPSHOTS = new ConcurrentHashMap<>();
 
     private WorkBuildingNav() {}
@@ -120,14 +133,52 @@ public final class WorkBuildingNav {
         if (stands == null || stands.isEmpty()) return null;
         for (BlockPos stand : stands) {
             if (villager.distanceToSqr(stand.getX() + 0.5, stand.getY() + 0.5,
-                    stand.getZ() + 0.5) <= 0.36d) {
+                    stand.getZ() + 0.5) <= 0.36d
+                    && canInteractFromStand(level, villager, stand, anchor)) {
                 return stand;
             }
         }
         // Failed stand probes are stable enough to share the normal short reachability backoff.
         // Successful probes are not retained, so moving furniture or the villager never pins a
         // stale route; the important saving is avoiding repeated failures while a station ranks.
-        return chooseReachableTarget(level, villager, stands, 0, true);
+        List<BlockPos> usableStands = stands.stream()
+                .filter(stand -> canInteractFromStand(level, villager, stand, anchor))
+                .toList();
+        return chooseReachableTarget(level, villager, usableStands, 0, true);
+    }
+
+    /** Ordinary player-like reach and visibility from the worker's current eye position. */
+    public static boolean canInteractWithStation(
+            ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos anchor) {
+        return level != null && villager != null && anchor != null
+                && hasStationLineOfSight(level, villager, villager.getEyePosition(), anchor);
+    }
+
+    /**
+     * Tests the interaction the villager will have after reaching a proposed stand. Pathfinding
+     * alone only proves that the floor tile is reachable; it does not prove that a wall or counter
+     * does not separate that tile from the station.
+     */
+    private static boolean canInteractFromStand(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos stand, BlockPos anchor) {
+        Vec3 eye = new Vec3(stand.getX() + 0.5d,
+                stand.getY() + villager.getEyeHeight(), stand.getZ() + 0.5d);
+        return hasStationLineOfSight(level, villager, eye, anchor);
+    }
+
+    private static boolean hasStationLineOfSight(
+            ServerLevel level, VillagerEntityMCA villager, Vec3 eye, BlockPos anchor) {
+        for (double yOffset : STATION_TARGET_Y) {
+            Vec3 target = new Vec3(anchor.getX() + 0.5d,
+                    anchor.getY() + yOffset, anchor.getZ() + 0.5d);
+            if (eye.distanceToSqr(target) > STATION_INTERACTION_REACH_SQ) continue;
+            BlockHitResult hit = level.clip(new ClipContext(
+                    eye, target, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, villager));
+            if (hit.getType() == HitResult.Type.MISS || anchor.equals(hit.getBlockPos())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static @Nullable BlockPos chooseEntryTarget(ServerLevel level, VillagerEntityMCA villager, Snapshot snapshot, int closeEnough) {
@@ -317,16 +368,14 @@ public final class WorkBuildingNav {
             BlockPos pos = StationCapacities.anchor(level, rawPos);
             addStationSlot(level, pos, seenStationAnchors, standableTiles,
                     stations, stationStands, authoredStands);
-            // A free cell above a declared place-surface (an empty stove top) is also a
-            // station: the villager creates it by placing the work block there. Bounds hold
-            // the surface block, so the anchor above must be probed explicitly.
-            BlockPos above = rawPos.above();
-            if (level.getBlockState(above).isAir()
-                    && Stations.stationType(level, above)
-                            == StationType.PLACE_SURFACE) {
-                addStationSlot(level, above, seenStationAnchors, standableTiles,
-                        stations, stationStands, authoredStands);
-            }
+        }
+        // Placement stations do not have a block at their anchor yet: the worker creates that
+        // block as the first operation. Index them in their own pass from the declared surface,
+        // rather than hoping an ordinary block probe rediscovers an empty cell. Besides being
+        // deterministic, this prevents a failed/normalised probe from hiding the placement slot.
+        for (long key : ownedBounds) {
+            addPlaceSurfaceSlot(level, BlockPos.of(key), seenStationAnchors, standableTiles,
+                    stations, stationStands, authoredStands);
         }
 
         Set<Long> walkable = floodWalkable(bounds, standableTiles, stationStands, reference);
@@ -356,7 +405,7 @@ public final class WorkBuildingNav {
             Map<Long, List<BlockPos>> stationStands,
             Set<Long> authoredStands
     ) {
-        if (!seenStationAnchors.add(pos.asLong())) return;
+        if (seenStationAnchors.contains(pos.asLong())) return;
         StationType type = Stations.stationType(level, pos);
         if (type == null) return;
         int capacity = StationCapacities.capacity(level, pos, type);
@@ -370,9 +419,44 @@ public final class WorkBuildingNav {
             authoredStands.add(authored.asLong());
         }
         stations.add(new StationSlot(pos.immutable(), type,
-                net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()),
+                Stations.slotBlockId(level, pos, type),
                 capacity));
         stationStands.put(pos.asLong(), stands);
+        seenStationAnchors.add(pos.asLong());
+    }
+
+    /** Adds the empty cell above one declared place-and-process surface. */
+    private static void addPlaceSurfaceSlot(
+            net.minecraft.server.level.ServerLevel level,
+            BlockPos surface,
+            Set<Long> seenStationAnchors,
+            Set<Long> standableTiles,
+            List<StationSlot> stations,
+            Map<Long, List<BlockPos>> stationStands,
+            Set<Long> authoredStands
+    ) {
+        BlockPos anchor = surface.above();
+        if (!level.getBlockState(anchor).isAir() || seenStationAnchors.contains(anchor.asLong())) return;
+        WorkstationDef def = StationProtocols.surfaceDefBelow(level, anchor);
+        if (def == null || def.role() != StationType.PLACE_SURFACE) return;
+
+        List<BlockPos> preferredStands = new ArrayList<>();
+        for (net.minecraft.core.Vec3i offset : def.stands()) {
+            BlockPos stand = anchor.offset(offset);
+            if (WorkPathing.isSafeStandPosition(level, stand)) {
+                preferredStands.add(stand.immutable());
+            }
+        }
+        List<BlockPos> stands = preferredStands.isEmpty()
+                ? WorkPathing.standCandidatesAround(level, anchor, standableTiles)
+                : List.copyOf(preferredStands);
+        if (stands.isEmpty()) return;
+
+        for (BlockPos authored : preferredStands) authoredStands.add(authored.asLong());
+        stations.add(new StationSlot(anchor.immutable(), StationType.PLACE_SURFACE,
+                Stations.slotBlockId(level, anchor, StationType.PLACE_SURFACE), 1));
+        stationStands.put(anchor.asLong(), stands);
+        seenStationAnchors.add(anchor.asLong());
     }
 
     private static String formatPos(BlockPos pos) {

@@ -339,6 +339,17 @@ final class PizzaDelightStationAdapters {
         @Override
         public boolean collect(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                                WorkstationDef def, DiscoveredRecipe recipe) {
+            return liftFinishedPizza(level, villager, anchor, def);
+        }
+
+        @Override
+        public boolean collectAvailable(ServerLevel level, VillagerEntityMCA villager,
+                                        BlockPos anchor, WorkstationDef def) {
+            return liftFinishedPizza(level, villager, anchor, def);
+        }
+
+        private boolean liftFinishedPizza(ServerLevel level, VillagerEntityMCA villager,
+                                          BlockPos anchor, WorkstationDef def) {
             BlockState state = level.getBlockState(anchor);
             ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
             if (!blockId.equals(def.doneBlock())) return false;

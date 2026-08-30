@@ -314,4 +314,14 @@ public final class WorksiteOrders {
         OrderContext context = contextFor(level, site, villager);
         return orders.priority(output, context);
     }
+
+    /** Exact-product counterpart used while choosing among station recipes. */
+    public static int recipePriority(ServerLevel level, VillagerEntityMCA villager,
+                                     @Nullable Worksite site,
+                                     com.aetherianartificer.townstead.work.producer.ProducerRecipe recipe) {
+        if (site == null || recipe == null) return 0;
+        OrderList orders = site.orders();
+        if (orders.isEmpty()) return orders.listOnly() ? Integer.MAX_VALUE : 0;
+        return orders.priority(recipe, contextFor(level, site, villager));
+    }
 }

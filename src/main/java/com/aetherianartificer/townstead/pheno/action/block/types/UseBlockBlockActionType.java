@@ -11,9 +11,11 @@ import net.minecraft.world.InteractionResult;
 //? if >=1.21 {
 import net.minecraft.world.ItemInteractionResult;
 //?}
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 //? if neoforge {
@@ -22,6 +24,8 @@ import net.neoforged.neoforge.common.util.FakePlayerFactory;
 /*import net.minecraftforge.common.util.FakePlayerFactory;
 *///?}
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /** Executes the target block's real player interaction using a transactional context item role. */
@@ -57,6 +61,17 @@ public final class UseBlockBlockActionType implements BlockActionType {
                         Direction.UP, context.pos(), false);
                 BlockState beforeBlock = context.level().getBlockState(context.pos());
                 ItemStack beforeItem = actor.getMainHandItem().copy();
+                // Some public block interactions return their result by spawning it beside the
+                // block rather than placing it in the player's inventory (Farmer's Delight's
+                // cutting board is the canonical example). Snapshot the tight interaction area
+                // so those synchronous products belong to this transaction instead of racing a
+                // later worksite sweep or another entity's pickup AI.
+                AABB interactionArea = new AABB(context.pos()).inflate(2.0);
+                Set<UUID> existingDrops = new HashSet<>();
+                for (ItemEntity drop : context.level().getEntitiesOfClass(
+                        ItemEntity.class, interactionArea)) {
+                    existingDrops.add(drop.getUUID());
+                }
                 // Use the server's complete player-interaction path. Optional mods commonly
                 // implement machines through RightClickBlock listeners rather than Block methods;
                 // bypassing ServerPlayerGameMode would make those machines impossible to port
@@ -68,8 +83,19 @@ public final class UseBlockBlockActionType implements BlockActionType {
                 // Event-driven integrations do not always claim the vanilla interaction result,
                 // even after mutating the block or item. A real transaction is still successful
                 // when one of those observable values changed.
-                if (!result.consumesAction() && !changed) context.fail();
                 context.setItemRole(role, actor.getMainHandItem().copy());
+
+                boolean spawnedProduct = false;
+                for (ItemEntity drop : context.level().getEntitiesOfClass(
+                        ItemEntity.class, interactionArea,
+                        candidate -> !existingDrops.contains(candidate.getUUID()))) {
+                    ItemStack product = drop.getItem().copy();
+                    if (product.isEmpty()) continue;
+                    drop.discard();
+                    context.returnItem(product);
+                    spawnedProduct = true;
+                }
+                if (!result.consumesAction() && !changed && !spawnedProduct) context.fail();
 
                 // The held remainder already lives in the role. Empty the selected slot before
                 // collecting inventory returns, or the same remainder is handed back twice.

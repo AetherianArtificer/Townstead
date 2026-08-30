@@ -242,6 +242,13 @@ public final class WorkIngredients {
         // Check if total supply covers all ingredient needs (with proper claim tracking)
         Map<ResourceLocation, Integer> claimed = new HashMap<>();
         for (RecipeIngredient ingredient : recipe.inputs()) {
+            if (ingredient.exactProduct() != null) {
+                int available = countIngredientAvailable(
+                        level, villager, ingredient, stationPos, kitchenBounds,
+                        ingredient.count());
+                if (available < ingredient.count()) return false;
+                continue;
+            }
             boolean foundAny = false;
             for (ResourceLocation id : ingredient.itemIds()) {
                 int available = totalSupply.getOrDefault(id, 0) - claimed.getOrDefault(id, 0);
@@ -368,6 +375,16 @@ public final class WorkIngredients {
 
         Map<ResourceLocation, Integer> claimed = new HashMap<>();
         for (RecipeIngredient ingredient : recipe.inputs()) {
+            if (ingredient.exactProduct() != null) {
+                int available = countIngredientAvailable(
+                        level, villager, ingredient, stationPos, kitchenBounds,
+                        ingredient.count());
+                if (available < ingredient.count()) {
+                    missing.merge(ingredientDisplayName(ingredient, null),
+                            ingredient.count() - available, Integer::sum);
+                }
+                continue;
+            }
             int bestAvailable = 0;
             ResourceLocation bestId = null;
             boolean foundAny = false;
@@ -554,9 +571,7 @@ public final class WorkIngredients {
             Set<Long> worksiteBounds
     ) {
         if (ingredient == null) return null;
-        List<ResourceLocation> ids = ingredient.itemIds();
-        Predicate<ItemStack> matcher = stack -> !stack.isEmpty()
-                && ids.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()))
+        Predicate<ItemStack> matcher = stack -> ingredient.matches(stack)
                 && (!plainOnly
                 || com.aetherianartificer.townstead.work.station.CraftSurfaceAdapter.isPlain(stack));
         return nextPhysicalPull(level, villager, matcher, Math.max(1, needed), false,
@@ -613,6 +628,8 @@ public final class WorkIngredients {
                 .v2ByState(level.getBlockState(stationAnchor));
         int scalableInputs = v2 == null ? recipe.inputs().size()
                 : v2.ordinaryInputs(recipe.inputs()).size();
+        Map<RecipeIngredient, Integer> inventoryDeficits = ingredientDeficits(
+                villager.getInventory(), recipe.inputs(), scalableInputs, batchOperations);
         for (int index = 0; index < recipe.inputs().size(); index++) {
             RecipeIngredient ingredient = recipe.inputs().get(index);
             int needed = requiredIngredientCount(ingredient, index, scalableInputs, batchOperations);
@@ -623,9 +640,16 @@ public final class WorkIngredients {
                         ingredientDisplayName(ingredient, null), worksiteBounds);
                 if (pull != null) return pull;
             } else {
-                PhysicalPull pull = nextPhysicalIngredientPull(level, villager, ingredient, needed,
-                        false, ingredientDisplayName(ingredient, null), worksiteBounds);
-                if (pull != null) return pull;
+                int deficit = inventoryDeficits.getOrDefault(ingredient, 0);
+                if (deficit > 0) {
+                    Predicate<ItemStack> matcher = ingredient::matches;
+                    NearbyItemSources.ContainerSlot slot = findWorksiteStorageSlot(
+                            level, villager, matcher, worksiteBounds, StorageUse.INGREDIENT);
+                    if (slot != null) {
+                        return new PhysicalPull(slot, matcher, deficit, false,
+                                ingredientDisplayName(ingredient, null));
+                    }
+                }
             }
         }
 
@@ -879,14 +903,26 @@ public final class WorkIngredients {
             }
             totalNeededByIngredient.merge(ingredient, required, Integer::sum);
         }
-        for (Map.Entry<RecipeIngredient, Integer> entry : totalNeededByIngredient.entrySet()) {
-            RecipeIngredient ingredient = entry.getKey();
-            int needed = entry.getValue();
-            while (countIngredientInInventory(inv, ingredient) < needed) {
-                if (!allowIndexedPulls
-                        || !pullSingleIngredientVariant(level, villager, ingredient, center, kitchenBounds)) {
-                    return PullResult.failure(ingredientDisplayName(ingredient, null), diagnostics);
+        // Allocate actual carried stacks across every input together. Ingredient alternatives can
+        // overlap — Pizza Delight's tomato sauce is both a sauce and a topping — and checking each
+        // row independently lets one item satisfy two promises. Recompute after each indexed pull
+        // until every required unit has one unique stack behind it.
+        int sharedPullAttempts = 0;
+        while (true) {
+            Map<RecipeIngredient, Integer> deficits = ingredientDeficits(
+                    inv, recipe.inputs(), scalableInputCount, batchOperations);
+            if (deficits.isEmpty()) break;
+            RecipeIngredient missing = null;
+            for (RecipeIngredient input : recipe.inputs()) {
+                if (deficits.getOrDefault(input, 0) > 0) {
+                    missing = input;
+                    break;
                 }
+            }
+            if (missing == null) break;
+            if (!allowIndexedPulls || sharedPullAttempts++ >= 32
+                    || !pullSingleIngredientVariant(level, villager, missing, center, kitchenBounds)) {
+                return PullResult.failure(ingredientDisplayName(missing, null), diagnostics);
             }
         }
 
@@ -1501,6 +1537,21 @@ public final class WorkIngredients {
             BlockPos center,
             Set<Long> kitchenBounds
     ) {
+        if (ingredient.exactProduct() != null) {
+            NearbyItemSources.ContainerSlot slot = findClaimedKitchenStorageSlot(
+                    level, villager, ingredient::matches, kitchenBounds, StorageUse.INGREDIENT);
+            if (slot == null) {
+                slot = findWorksiteStorageSlotLive(
+                        level, villager, ingredient::matches, kitchenBounds, StorageUse.INGREDIENT);
+                if (slot == null) return false;
+            }
+            ItemStack extracted = NearbyItemSources.extractOne(level, slot);
+            ConsumableTargetClaims.releaseSlot(
+                    level, villager.getUUID(), WORKSITE_SLOT_CLAIM_CATEGORY, slot);
+            if (extracted.isEmpty() || !ingredient.matches(extracted)) return false;
+            WorksiteStorageIndex.invalidate(level, slot.pos());
+            return addToInventoryOrWorksiteStorage(level, villager, extracted, center, kitchenBounds);
+        }
         for (ResourceLocation id : ingredient.itemIds()) {
             Item item = BuiltInRegistries.ITEM.get(id);
             if (item == Items.AIR) continue;
@@ -1787,6 +1838,92 @@ public final class WorkIngredients {
         return total;
     }
 
+    /**
+     * Counts a component-sensitive ingredient without collapsing it to its registry item id.
+     * Indexed supply intentionally groups by item for speed, so exact products take this small
+     * live path only when a recipe explicitly asks for one.
+     */
+    private static int countIngredientAvailable(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            RecipeIngredient ingredient,
+            @Nullable BlockPos stationPos,
+            Set<Long> kitchenBounds,
+            int needed
+    ) {
+        int total = countMatching(villager.getInventory(), ingredient::matches);
+        if (total >= needed) return total;
+        if (stationPos != null) {
+            var handler = com.aetherianartificer.townstead.work.station.BlockInventories
+                    .itemHandler(level, stationPos, null);
+            if (handler != null) {
+                for (int slot = 0; slot < handler.getSlots() && total < needed; slot++) {
+                    ItemStack stack = handler.getStackInSlot(slot);
+                    if (ingredient.matches(stack)) total += stack.getCount();
+                }
+            }
+        }
+        if (total >= needed) return total;
+        return total + countKitchenStorageLive(
+                level, villager, ingredient::matches, kitchenBounds, needed - total);
+    }
+
+    /** Assigns every carried item unit to at most one recipe input and reports what is short. */
+    private static Map<RecipeIngredient, Integer> ingredientDeficits(
+            SimpleContainer inventory,
+            List<RecipeIngredient> inputs,
+            int scalableInputCount,
+            int batchOperations
+    ) {
+        record Need(RecipeIngredient ingredient, int count, int order) {}
+        List<Need> needs = new ArrayList<>();
+        for (int index = 0; index < inputs.size(); index++) {
+            RecipeIngredient ingredient = inputs.get(index);
+            if (supplyLineOf(ingredient) != null) continue;
+            needs.add(new Need(ingredient,
+                    requiredIngredientCount(ingredient, index, scalableInputCount, batchOperations),
+                    index));
+        }
+        // Exact products and narrow alternative sets reserve first. Within a group, prefer a
+        // stack useful to fewer groups (water for the sauce slot before tomato sauce, which can
+        // also be the topping).
+        needs.sort(Comparator
+                .comparingInt((Need need) -> need.ingredient().exactProduct() == null ? 1 : 0)
+                .thenComparingInt(need -> need.ingredient().itemIds().size())
+                .thenComparingInt(Need::order));
+
+        int[] remaining = new int[inventory.getContainerSize()];
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            remaining[slot] = inventory.getItem(slot).getCount();
+        }
+        Map<RecipeIngredient, Integer> deficits = new LinkedHashMap<>();
+        for (Need need : needs) {
+            int missing = need.count();
+            while (missing > 0) {
+                int bestSlot = -1;
+                int bestFlexibility = Integer.MAX_VALUE;
+                for (int slot = 0; slot < remaining.length; slot++) {
+                    if (remaining[slot] <= 0) continue;
+                    ItemStack stack = inventory.getItem(slot);
+                    if (!need.ingredient().matches(stack)) continue;
+                    int flexibility = 0;
+                    for (Need other : needs) {
+                        if (other.ingredient().matches(stack)) flexibility++;
+                    }
+                    if (flexibility < bestFlexibility) {
+                        bestFlexibility = flexibility;
+                        bestSlot = slot;
+                    }
+                }
+                if (bestSlot < 0) break;
+                remaining[bestSlot]--;
+                missing--;
+            }
+            if (missing > 0) deficits.merge(need.ingredient(), missing, Integer::sum);
+        }
+        return deficits;
+    }
+
     private static @Nullable NearbyItemSources.ContainerSlot findClaimedKitchenStorageSlot(
             ServerLevel level,
             VillagerEntityMCA villager,
@@ -1821,6 +1958,23 @@ public final class WorkIngredients {
 
     public static boolean recipeToolAvailable(ServerLevel level, VillagerEntityMCA villager, DiscoveredRecipe recipe, Set<Long> kitchenBounds) {
         return recipeToolAvailable(level, villager, recipe, kitchenBounds, WorksiteStorageIndex.snapshot(level, villager, kitchenBounds), true);
+    }
+
+    /**
+     * Cheap planning-time tool check against the caller's already-built storage snapshot.
+     * Execution paths use {@link #recipeToolAvailable(ServerLevel, VillagerEntityMCA,
+     * DiscoveredRecipe, Set)} and retain their live fallback; speculative recipe scoring must not
+     * rescan every storage block once for every recipe that declares the same utensil.
+     */
+    public static boolean recipeToolAvailable(
+            VillagerEntityMCA villager,
+            DiscoveredRecipe recipe,
+            WorksiteStorageIndex.Snapshot kitchenSnapshot
+    ) {
+        if (villagerHasRecipeTool(villager, recipe)) return true;
+        java.util.function.Predicate<ItemStack> matcher =
+                stack -> WorkRecipeRegistry.recipeToolMatches(recipe, stack);
+        return kitchenSnapshot.findBestSlot(villager, matcher, StorageUse.TOOL) != null;
     }
 
     private static boolean recipeToolAvailable(
@@ -1888,6 +2042,9 @@ public final class WorkIngredients {
 
     static int countIngredientInInventory(SimpleContainer inv, RecipeIngredient ingredient) {
         if (ingredient == null) return 0;
+        if (ingredient.exactProduct() != null) {
+            return countMatching(inv, ingredient::matches);
+        }
         int total = 0;
         for (ResourceLocation id : ingredient.itemIds()) {
             Item item = BuiltInRegistries.ITEM.get(id);
@@ -1910,6 +2067,17 @@ public final class WorkIngredients {
 
     private static boolean consumeIngredient(SimpleContainer inv, RecipeIngredient ingredient, int needed) {
         if (needed <= 0) return true;
+        if (ingredient.exactProduct() != null) {
+            int remaining = needed;
+            for (int slot = 0; slot < inv.getContainerSize() && remaining > 0; slot++) {
+                ItemStack stack = inv.getItem(slot);
+                if (!ingredient.matches(stack)) continue;
+                int removed = Math.min(remaining, stack.getCount());
+                stack.shrink(removed);
+                remaining -= removed;
+            }
+            return remaining <= 0;
+        }
         int remaining = needed;
         for (ResourceLocation id : ingredient.itemIds()) {
             if (remaining <= 0) break;
@@ -1922,6 +2090,12 @@ public final class WorkIngredients {
     }
 
     private static Item resolveItem(RecipeIngredient ingredient, SimpleContainer inv) {
+        if (ingredient.exactProduct() != null) {
+            for (int slot = 0; slot < inv.getContainerSize(); slot++) {
+                ItemStack stack = inv.getItem(slot);
+                if (ingredient.matches(stack)) return stack.getItem();
+            }
+        }
         for (ResourceLocation id : ingredient.itemIds()) {
             Item item = BuiltInRegistries.ITEM.get(id);
             if (item != Items.AIR && StationInventoryOps.count(inv, item) > 0) return item;
@@ -1948,6 +2122,12 @@ public final class WorkIngredients {
     }
 
     private static String ingredientDisplayName(RecipeIngredient ingredient, @Nullable ResourceLocation preferredId) {
+        if (ingredient.exactProduct() != null) {
+            ResourceLocation fallback = ingredient.itemIds().isEmpty()
+                    ? ingredient.exactProduct() : ingredient.itemIds().get(0);
+            return com.aetherianartificer.townstead.work.order.OrderProducts
+                    .label(ingredient.exactProduct(), fallback);
+        }
         if (preferredId != null) {
             Item preferred = BuiltInRegistries.ITEM.get(preferredId);
             if (preferred != Items.AIR) return itemDisplayName(preferred);

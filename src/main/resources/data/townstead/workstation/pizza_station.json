@@ -8,7 +8,7 @@
   "produces": [
     {
       "inputs": [
-        "#townstead:pizza_bases",
+        "product:pizzadelight:raw_pizza",
         "#pizzadelight:sauce",
         "#pizzadelight:ingredients"
       ],

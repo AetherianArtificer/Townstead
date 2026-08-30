@@ -46,15 +46,31 @@ public final class ProtocolRecipes {
         List<DiscoveredRecipe> out = new ArrayList<>();
         int index = 0;
         for (WorkstationDef.Produce produce : def.produces()) {
-            ResourceLocation recipeId = ResourceLocation.tryParse(
-                    "townstead:protocol/" + def.id().getNamespace() + "/" + def.id().getPath() + "/" + index++);
+            ResourceLocation recipeId = recipeId(def, index++);
             if (recipeId == null) continue;
             List<RecipeIngredient> inputs = new ArrayList<>();
             boolean unresolvable = false;
             for (String raw : produce.inputs()) {
                 List<ResourceLocation> ids = new ArrayList<>();
                 ResourceLocation sourceTag = null;
-                if (raw.startsWith("#")) {
+                ResourceLocation exactProduct = null;
+                if (raw.startsWith("product:")) {
+                    exactProduct = ResourceLocation.tryParse(raw.substring("product:".length()));
+                    ResourceLocation physical = com.aetherianartificer.townstead.work.order
+                            .OrderProducts.fallbackItem(exactProduct);
+                    // A product key may also be an ordinary item id whose component-less form
+                    // is meaningful. Pizza Delight uses one raw_pizza item for both a blank base
+                    // and an assembled pizza; product:pizzadelight:raw_pizza deliberately means
+                    // the former because OrderProducts.key(component-bearing stacks) returns the
+                    // synthetic assembled-pizza key instead.
+                    if (physical == null && exactProduct != null
+                            && BuiltInRegistries.ITEM.containsKey(exactProduct)) {
+                        physical = exactProduct;
+                    }
+                    if (physical != null && BuiltInRegistries.ITEM.containsKey(physical)) {
+                        ids.add(physical);
+                    }
+                } else if (raw.startsWith("#")) {
                     ResourceLocation tagId = ResourceLocation.tryParse(raw.substring(1));
                     if (tagId != null) {
                         sourceTag = tagId;
@@ -72,7 +88,7 @@ public final class ProtocolRecipes {
                     unresolvable = true;
                     break;
                 }
-                inputs.add(new RecipeIngredient(List.copyOf(ids), 1, sourceTag));
+                inputs.add(new RecipeIngredient(List.copyOf(ids), 1, sourceTag, exactProduct));
             }
             if (unresolvable || inputs.isEmpty()) continue;
             if (!BuiltInRegistries.ITEM.containsKey(produce.output())) continue;
@@ -83,7 +99,7 @@ public final class ProtocolRecipes {
                     produce.output(),
                     Math.max(1, produce.outputCount()),
                     Math.max(1, produce.timeTicks()),
-                    false,
+                    requiresReusableTool(def),
                     null,
                     0,
                     List.copyOf(inputs),
@@ -93,6 +109,17 @@ public final class ProtocolRecipes {
             ));
         }
         return out;
+    }
+
+    /** Stable identity shared by discovery and the tool-contract resolver. */
+    public static ResourceLocation recipeId(WorkstationDef def, int produceIndex) {
+        if (def == null || produceIndex < 0) return null;
+        return ResourceLocation.tryParse("townstead:protocol/" + def.id().getNamespace()
+                + "/" + def.id().getPath() + "/" + produceIndex);
+    }
+
+    static boolean requiresReusableTool(WorkstationDef def) {
+        return def != null && !def.harvestTools().isEmpty();
     }
 
     /**

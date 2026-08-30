@@ -271,6 +271,18 @@ public class Townstead {
     public static final Supplier<Item> CALENDAR_ITEM = ITEMS.register("calendar",
             () -> new BlockItem(CALENDAR_BLOCK.get(), new Item.Properties()));
 
+    // ── Serving Plate (one visible prepared dish; no menu) ──
+
+    public static final Supplier<Block> SERVING_PLATE = BLOCKS.register("serving_plate",
+            () -> new com.aetherianartificer.townstead.block.ServingPlateBlock(
+                    BlockBehaviour.Properties.of()
+                            .strength(0.4f)
+                            .sound(SoundType.STONE)
+                            .noOcclusion()));
+
+    public static final Supplier<Item> SERVING_PLATE_ITEM = ITEMS.register("serving_plate",
+            () -> new BlockItem(SERVING_PLATE.get(), new Item.Properties()));
+
     // ── Scarf (wearable, dyeable cosmetic; head slot, or a Curios slot when present) ──
 
     public static final Supplier<Item> SCARF = ITEMS.register("scarf",
@@ -330,6 +342,12 @@ public class Townstead {
                             com.aetherianartificer.townstead.block.CalendarBlockEntity::new,
                             CALENDAR_BLOCK.get()).build(null));
 
+    public static final Supplier<BlockEntityType<com.aetherianartificer.townstead.block.ServingPlateBlockEntity>> SERVING_PLATE_BE =
+            BLOCK_ENTITY_TYPES.register("serving_plate",
+                    () -> BlockEntityType.Builder.of(
+                            com.aetherianartificer.townstead.block.ServingPlateBlockEntity::new,
+                            SERVING_PLATE.get()).build(null));
+
     public static final Supplier<net.minecraft.world.item.CreativeModeTab> TOWNSTEAD_TAB =
             CREATIVE_MODE_TABS.register("main",
                     () -> net.minecraft.world.item.CreativeModeTab.builder()
@@ -343,6 +361,7 @@ public class Townstead {
                                     output.accept(variant.get());
                                 }
                                 output.accept(CALENDAR_ITEM.get());
+                                output.accept(SERVING_PLATE_ITEM.get());
                                 output.accept(SCARF.get());
                                 townstead$addLifePotions(output);
                             })
@@ -1250,6 +1269,7 @@ public class Townstead {
             com.aetherianartificer.townstead.work.order.BlockInteractionOrderCatalog.bootstrap();
             // After the trade-specific catalogues so their richer entries win the output dedup.
             com.aetherianartificer.townstead.work.order.StationProduceCatalog.bootstrap();
+            com.aetherianartificer.townstead.food.ServingPlateService.bootstrap();
             com.aetherianartificer.townstead.compat.pizzadelight.PizzaDelightCompat.bootstrap();
             // Building-level Path affinity is independent of any particular kitchen provider:
             // a Profession's own building declaration relates the assigned room to its Path.
@@ -2095,6 +2115,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.chronicle.pregen.ChronicleWorkHistoryLoader());
         event.addListener(new com.aetherianartificer.townstead.needs.Consumables.Loader());
         event.addListener(new com.aetherianartificer.townstead.needs.Amenities.Loader());
+        event.addListener(new com.aetherianartificer.townstead.food.ServingSurfaces.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.station.Workstations.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes.Loader());
         event.addListener(new com.aetherianartificer.townstead.storage.StorageRoles.Loader());
@@ -2374,10 +2395,14 @@ public class Townstead {
         try {
             Class.forName("net.minecraft.client.Minecraft");
             modBus.addListener(
-                    (net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) ->
+                    (net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) -> {
                             event.registerBlockEntityRenderer(
                                     CALENDAR_BE.get(),
-                                    com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new)
+                                    com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new);
+                            event.registerBlockEntityRenderer(
+                                    SERVING_PLATE_BE.get(),
+                                    com.aetherianartificer.townstead.client.render.block.ServingPlateBlockEntityRenderer::new);
+                    }
             );
         } catch (Exception ignored) {
             // Dedicated server: no renderers to register.
@@ -2388,10 +2413,14 @@ public class Townstead {
         try {
             Class.forName("net.minecraft.client.Minecraft");
             modBus.addListener(
-                    (net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) ->
+                    (net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) -> {
                             event.registerBlockEntityRenderer(
                                     CALENDAR_BE.get(),
-                                    com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new)
+                                    com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new);
+                            event.registerBlockEntityRenderer(
+                                    SERVING_PLATE_BE.get(),
+                                    com.aetherianartificer.townstead.client.render.block.ServingPlateBlockEntityRenderer::new);
+                    }
             );
         } catch (Exception ignored) {
             // Dedicated server: no renderers to register.

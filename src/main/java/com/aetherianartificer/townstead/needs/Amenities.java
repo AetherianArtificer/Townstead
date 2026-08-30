@@ -19,6 +19,7 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -29,6 +30,7 @@ import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +55,7 @@ public final class Amenities {
     public static final String SCHEMA = "townstead:amenity/v1";
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/Amenities");
     private static volatile List<Definition> DEFINITIONS = List.of();
+    private static final Map<ResourceLocation, WorldSource> WORLD_SOURCES = new LinkedHashMap<>();
 
     private Amenities() {}
 
@@ -75,12 +78,46 @@ public final class Amenities {
         }
     }
 
-    public record Candidate(Definition definition, BlockPos pos) {}
+    /**
+     * Runtime-backed amenity whose benefit comes from live block contents rather than a constant
+     * Pheno effect. Placed meals are the motivating case: their nutrition and effects belong to
+     * the actual serving in the block entity, so flattening them into JSON would discard data.
+     */
+    public interface WorldSource {
+        ResourceLocation id();
+        Set<ResourceLocation> blocks();
+        boolean available(ServerLevel level, BlockPos pos);
+        boolean feeds(ServerLevel level, BlockPos pos);
+        boolean hydrates(ServerLevel level, BlockPos pos);
+        boolean use(ServerLevel level, VillagerEntityMCA villager, BlockPos pos);
+    }
 
-    /** Uses MCA's recognized-building block snapshots as the amenity index; no world-volume scan. */
+    public record Candidate(@Nullable Definition definition, @Nullable WorldSource worldSource,
+                            BlockPos pos) {
+        public boolean feeds(ServerLevel level) {
+            return worldSource != null && worldSource.feeds(level, pos);
+        }
+
+        public boolean hydrates(ServerLevel level) {
+            return definition != null ? definition.projection().hydrates()
+                    : worldSource != null && worldSource.hydrates(level, pos);
+        }
+    }
+
+    /** Registers one optional-mod or code-backed world service by stable id. */
+    public static synchronized void registerWorldSource(WorldSource source) {
+        if (source == null || source.id() == null || source.blocks().isEmpty()) return;
+        WORLD_SOURCES.put(source.id(), source);
+    }
+
+    /**
+     * Uses MCA's recognized-building block snapshots as the ordinary amenity index. Runtime
+     * sources also inspect the building's loaded block entities, so a meal placed after the room
+     * was scanned is immediately discoverable without scanning every block in its volume.
+     */
     public static List<Candidate> candidates(ServerLevel level, VillagerEntityMCA villager) {
         Optional<Village> village = resolveVillage(villager);
-        if (village.isEmpty() || DEFINITIONS.isEmpty()) return List.of();
+        if (village.isEmpty() || (DEFINITIONS.isEmpty() && WORLD_SOURCES.isEmpty())) return List.of();
         Collection<Building> buildings = McaBuildings.all(village.get());
         List<Candidate> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();
@@ -97,6 +134,44 @@ public final class Amenities {
                         for (BlockPos pos : block.getValue()) addIfUsable(level, definition, block.getKey(), pos, seen, out);
                     }
                 }
+                for (WorldSource source : WORLD_SOURCES.values()) {
+                    if (!source.blocks().contains(block.getKey())) continue;
+                    for (BlockPos pos : block.getValue()) {
+                        addWorldIfUsable(level, source, block.getKey(), pos, seen, out);
+                    }
+                }
+            }
+            for (BlockPos pos : liveBlockEntities(level, village.get(), building)) {
+                ResourceLocation liveId = BuiltInRegistries.BLOCK.getKey(
+                        level.getBlockState(pos).getBlock());
+                for (WorldSource source : WORLD_SOURCES.values()) {
+                    if (source.blocks().contains(liveId)) {
+                        addWorldIfUsable(level, source, liveId, pos, seen, out);
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    private static List<BlockPos> liveBlockEntities(ServerLevel level, Village village,
+                                                    Building building) {
+        BlockPos p0 = building.getPos0();
+        BlockPos p1 = building.getPos1();
+        int minX = Math.min(p0.getX(), p1.getX());
+        int maxX = Math.max(p0.getX(), p1.getX());
+        int minZ = Math.min(p0.getZ(), p1.getZ());
+        int maxZ = Math.max(p0.getZ(), p1.getZ());
+        List<BlockPos> out = new ArrayList<>();
+        for (int chunkX = SectionPos.blockToSectionCoord(minX);
+             chunkX <= SectionPos.blockToSectionCoord(maxX); chunkX++) {
+            for (int chunkZ = SectionPos.blockToSectionCoord(minZ);
+                 chunkZ <= SectionPos.blockToSectionCoord(maxZ); chunkZ++) {
+                if (!level.hasChunk(chunkX, chunkZ)) continue;
+                LevelChunk chunk = level.getChunk(chunkX, chunkZ);
+                for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+                    if (McaBuildings.contains(level, village, building, pos)) out.add(pos.immutable());
+                }
             }
         }
         return out;
@@ -109,12 +184,31 @@ public final class Amenities {
         ResourceLocation liveId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (!indexedId.equals(liveId) || !definition.matches(liveId, state) || !definition.available(level, pos)) return;
         String key = definition.id() + "@" + pos.asLong();
-        if (seen.add(key)) out.add(new Candidate(definition, pos.immutable()));
+        if (seen.add(key)) out.add(new Candidate(definition, null, pos.immutable()));
+    }
+
+    private static void addWorldIfUsable(ServerLevel level, WorldSource source,
+                                         ResourceLocation indexedId, BlockPos pos,
+                                         Set<String> seen, List<Candidate> out) {
+        if (!level.isLoaded(pos)) return;
+        ResourceLocation liveId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+        if (!indexedId.equals(liveId) || !source.blocks().contains(liveId)
+                || !source.available(level, pos)) return;
+        String key = source.id() + "@" + pos.asLong();
+        if (seen.add(key)) out.add(new Candidate(null, source, pos.immutable()));
     }
 
     public static boolean use(ServerLevel level, VillagerEntityMCA villager, Candidate candidate) {
         if (candidate == null || !level.isLoaded(candidate.pos())) return false;
+        if (candidate.worldSource() != null) {
+            WorldSource source = candidate.worldSource();
+            ResourceLocation liveId = BuiltInRegistries.BLOCK.getKey(
+                    level.getBlockState(candidate.pos()).getBlock());
+            return source.blocks().contains(liveId) && source.available(level, candidate.pos())
+                    && source.use(level, villager, candidate.pos());
+        }
         Definition definition = candidate.definition();
+        if (definition == null) return false;
         BlockState state = level.getBlockState(candidate.pos());
         if (!definition.matches(BuiltInRegistries.BLOCK.getKey(state.getBlock()), state)) return false;
         if (definition.anchor() != null && !definition.anchor().test(level, candidate.pos())) return false;

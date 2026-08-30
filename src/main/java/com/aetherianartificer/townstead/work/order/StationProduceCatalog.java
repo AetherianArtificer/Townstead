@@ -7,8 +7,10 @@ import com.aetherianartificer.townstead.work.site.Worksite;
 import com.aetherianartificer.townstead.work.site.WorksiteWork;
 import com.aetherianartificer.townstead.work.site.Worksites;
 import com.aetherianartificer.townstead.work.station.ProtocolRecipes;
+import com.aetherianartificer.townstead.work.station.StationProtocols;
 import com.aetherianartificer.townstead.work.station.WorkstationDef;
 import com.aetherianartificer.townstead.work.station.Workstations;
+import com.aetherianartificer.townstead.work.recipe.StationType;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -55,7 +57,6 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
         if (worked.isEmpty()) return List.of();
         String buildingType = WorksiteWork.buildingTypeOf(level, site);
 
-        Map<ResourceLocation, BlockState> present = blocksIn(level, extent);
         Map<ResourceLocation, Integer> onHand = null;
         Set<ResourceLocation> seen = new LinkedHashSet<>();
         List<Option> out = new ArrayList<>();
@@ -63,7 +64,6 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declared =
                     declarationsForDef(level, site, extent, worked, def);
             if (declared.isEmpty()) continue;
-            if (!isPresent(def, present)) continue;
             BlockPos anchor = firstPresentPos(level, extent, def);
             if (anchor == null) continue;
             ResourceLocation icon = iconOf(def);
@@ -118,7 +118,8 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             if (NO_ICON.equals(icon)) continue;
             // Absent stations stay listed: a butchery without its grinder should read as a
             // butchery missing a grinder, exactly as a kitchen reads its missing pot.
-            out.add(new Station(blockName(icon, def), icon, isPresent(def, present)));
+            out.add(new Station(blockName(icon, def), icon,
+                    isPresent(level, extent, def, present)));
         }
         return out;
     }
@@ -196,7 +197,8 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
         return out;
     }
 
-    private static boolean isPresent(WorkstationDef def, Map<ResourceLocation, BlockState> present) {
+    private static boolean isPresent(ServerLevel level, Set<Long> extent, WorkstationDef def,
+                                     Map<ResourceLocation, BlockState> present) {
         for (ResourceLocation block : def.blocks()) {
             if (present.containsKey(block)) return true;
         }
@@ -204,6 +206,15 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             TagKey<Block> tag = TagKey.create(Registries.BLOCK, tagId);
             for (BlockState state : present.values()) {
                 if (state.is(tag)) return true;
+            }
+        }
+        if (def.role() == StationType.PLACE_SURFACE) {
+            for (long packed : extent) {
+                BlockPos surface = BlockPos.of(packed);
+                if (!StationProtocols.matchesSurface(def, level.getBlockState(surface))) continue;
+                BlockState above = level.getBlockState(surface.above());
+                ResourceLocation aboveId = BuiltInRegistries.BLOCK.getKey(above.getBlock());
+                if (above.isAir() || def.blocks().contains(aboveId)) return true;
             }
         }
         return false;
@@ -218,6 +229,19 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             if (def.blocks().contains(block)) return pos;
             for (ResourceLocation tagId : def.blockTags()) {
                 if (state.is(TagKey.create(Registries.BLOCK, tagId))) return pos;
+            }
+        }
+        // A place-surface station exists before its workpiece does. The station anchor is the
+        // empty block above a declared heat surface; waiting for a raw pizza block to appear here
+        // made the final bake impossible to order until a worker had somehow begun it already.
+        if (def.role() == StationType.PLACE_SURFACE) {
+            for (long packed : extent) {
+                BlockPos surface = BlockPos.of(packed);
+                if (!StationProtocols.matchesSurface(def, level.getBlockState(surface))) continue;
+                BlockPos anchor = surface.above();
+                BlockState state = level.getBlockState(anchor);
+                ResourceLocation block = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+                if (state.isAir() || def.blocks().contains(block)) return anchor;
             }
         }
         return null;

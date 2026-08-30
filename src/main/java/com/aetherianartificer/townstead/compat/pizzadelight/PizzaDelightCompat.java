@@ -1,16 +1,30 @@
 package com.aetherianartificer.townstead.compat.pizzadelight;
 
 import com.aetherianartificer.townstead.work.OutputAppraisal;
+import com.aetherianartificer.townstead.hunger.FoodSafety;
+import com.aetherianartificer.townstead.hunger.HungerData;
+import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
+import com.aetherianartificer.townstead.needs.Amenities;
 import com.aetherianartificer.townstead.profession.career.CareerProgression;
 import com.aetherianartificer.townstead.profession.career.Careers;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
+import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.block.state.properties.Property;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -37,6 +51,133 @@ public final class PizzaDelightCompat {
     public static void bootstrap() {
         OutputAppraisal.register(PizzaDelightCompat::appraisePizza);
         PizzaDelightStationAdapters.bootstrap();
+        Amenities.registerWorldSource(new PlacedPizzaSource());
+    }
+
+    /** A cooked pizza in the world is four real, component-preserving meals. */
+    private static final class PlacedPizzaSource implements Amenities.WorldSource {
+        private static final ResourceLocation ID = Objects.requireNonNull(
+                ResourceLocation.tryParse("townstead:pizzadelight_pizza"));
+        private static final ResourceLocation PIZZA = Objects.requireNonNull(
+                ResourceLocation.tryParse("pizzadelight:pizza"));
+
+        @Override public ResourceLocation id() { return ID; }
+        @Override public Set<ResourceLocation> blocks() { return Set.of(PIZZA); }
+
+        @Override
+        public boolean available(ServerLevel level, BlockPos pos) {
+            return sliceAt(level, pos) != null;
+        }
+
+        @Override public boolean feeds(ServerLevel level, BlockPos pos) { return true; }
+        @Override public boolean hydrates(ServerLevel level, BlockPos pos) { return false; }
+
+        @Override
+        public boolean use(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
+            ItemStack slice = sliceAt(level, pos);
+            if (slice == null || !FoodSafety.isSafeNutritiousFood(slice, villager)) return false;
+            var needs = TownsteadVillagers.get(villager).needs();
+            if (needs.hunger() >= HungerData.MAX_HUNGER) return false;
+            if (!consumeSlice(level, pos)) return false;
+            VillagerConsumptionManager.applyConsumption(villager, villager, slice, needs, pos);
+            villager.swing(villager.getDominantHand());
+            level.playSound(null, pos, SoundEvents.GENERIC_EAT, SoundSource.NEUTRAL, 0.8F, 0.8F);
+            return true;
+        }
+    }
+
+    /** Ask Pizza Delight for the exact slice represented by this placed pizza. */
+    private static ItemStack sliceAt(ServerLevel level, BlockPos pos) {
+        try {
+            BlockState state = level.getBlockState(pos);
+            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+            if (blockId == null || !"pizzadelight:pizza".equals(blockId.toString())) return null;
+            Object result = state.getBlock().getClass()
+                    .getMethod("getPizzaSliceItem", net.minecraft.world.level.Level.class, BlockPos.class)
+                    .invoke(state.getBlock(), level, pos);
+            return result instanceof ItemStack stack && !stack.isEmpty() ? stack : null;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /** Builds Pizza Delight's real dynamic slice from a component-bearing whole pizza item. */
+    public static ItemStack sliceFromPizzaItem(ItemStack pizza) {
+        if (pizza == null || pizza.isEmpty()) return ItemStack.EMPTY;
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(pizza.getItem());
+        if (id == null || !"pizzadelight:pizza".equals(id.toString())) return ItemStack.EMPTY;
+        //? if >=1.21 {
+        try {
+            // 1.21 Pizza Delight stores its ten ingredients in a data component. Keeping this
+            // reflective makes Townstead load normally when the optional mod is absent.
+            ResourceLocation componentId = ResourceLocation.tryParse("pizzadelight:pizza_ingredients");
+            Object componentType = BuiltInRegistries.DATA_COMPONENT_TYPE.get(componentId);
+            if (!(componentType instanceof net.minecraft.core.component.DataComponentType<?> type)) {
+                return fallbackSlice(pizza);
+            }
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            Object ingredients = pizza.get((net.minecraft.core.component.DataComponentType) type);
+            if (ingredients == null) return fallbackSlice(pizza);
+            Object list = ingredients.getClass().getMethod("getIngredients").invoke(ingredients);
+            Class<?> handlerClass;
+            try { handlerClass = Class.forName("net.neoforged.neoforge.items.ItemStackHandler"); }
+            catch (ClassNotFoundException absent) {
+                handlerClass = Class.forName("net.minecraftforge.items.ItemStackHandler");
+            }
+            Object handler = handlerClass.getConstructor(net.minecraft.core.NonNullList.class)
+                    .newInstance(list);
+            java.util.List<?> stacks = (java.util.List<?>) list;
+            ItemStack base = stacks.isEmpty() ? ItemStack.EMPTY : ((ItemStack) stacks.get(0)).copy();
+            ItemStack sauce = stacks.size() <= 9 ? ItemStack.EMPTY : ((ItemStack) stacks.get(9)).copy();
+            Class<?> calculatorClass = Class.forName("com.tiviacz.pizzadelight.common.PizzaCalculator");
+            Object calculator = calculatorClass.getConstructor(
+                    ItemStack.class, ItemStack.class, handlerClass).newInstance(base, sauce, handler);
+            ItemStack slice = new ItemStack(BuiltInRegistries.ITEM.get(
+                    ResourceLocation.tryParse("pizzadelight:pizza_slice")));
+            Object calculated = calculatorClass.getMethod("getResultSlice", ItemStack.class)
+                    .invoke(calculator, slice);
+            if (calculated instanceof ItemStack result && !result.isEmpty()) {
+                //? if >=1.21 {
+                if (pizza.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+                    result.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                            pizza.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME));
+                }
+                //?}
+                return result;
+            }
+        } catch (Throwable ignored) {
+            // Older Pizza Delight revisions use NBT rather than the component calculator.
+        }
+        //?}
+        return fallbackSlice(pizza);
+    }
+
+    private static ItemStack fallbackSlice(ItemStack pizza) {
+        // Some revisions attach food directly to the whole item; retain that safe fallback.
+        //? if >=1.21 {
+        return pizza.get(net.minecraft.core.component.DataComponents.FOOD) != null
+                ? pizza.copyWithCount(1) : ItemStack.EMPTY;
+        //?} else {
+        /*return pizza.getFoodProperties(null) != null ? pizza.copyWithCount(1) : ItemStack.EMPTY;
+        *///?}
+    }
+
+    /** Mirror PizzaBlock.consumeSlice: advance its slice counter, removing the fourth serving. */
+    private static boolean consumeSlice(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        IntegerProperty slices = null;
+        for (Property<?> property : state.getProperties()) {
+            if (property instanceof IntegerProperty integer && "slices".equals(integer.getName())) {
+                slices = integer;
+                break;
+            }
+        }
+        if (slices == null) return false;
+        int used = state.getValue(slices);
+        int max = slices.getPossibleValues().stream().mapToInt(Integer::intValue).max().orElse(used);
+        return used < max
+                ? level.setBlock(pos, state.setValue(slices, used + 1), 3)
+                : level.removeBlock(pos, false);
     }
 
     /** Player assembled a pizza at the pizza station (result slot take). */

@@ -114,7 +114,10 @@ public final class StationCatalogs {
         Map<ResourceLocation, Integer> counts = new HashMap<>();
         WorksiteStock.eachStack(level, extent, stack -> {
             if (stack.isEmpty()) return;
-            counts.merge(BuiltInRegistries.ITEM.getKey(stack.getItem()), stack.getCount(), Integer::sum);
+            ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            counts.merge(item, stack.getCount(), Integer::sum);
+            ResourceLocation product = OrderProducts.key(stack);
+            if (!product.equals(item)) counts.merge(product, stack.getCount(), Integer::sum);
         });
         return counts;
     }
@@ -143,7 +146,10 @@ public final class StationCatalogs {
         Map<ResourceLocation, Integer> counts = stockIn(level, extent);
         WorksiteStock.eachAssociatedStack(level, site, stack -> {
             if (stack.isEmpty()) return;
-            counts.merge(BuiltInRegistries.ITEM.getKey(stack.getItem()), stack.getCount(), Integer::sum);
+            ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            counts.merge(item, stack.getCount(), Integer::sum);
+            ResourceLocation product = OrderProducts.key(stack);
+            if (!product.equals(item)) counts.merge(product, stack.getCount(), Integer::sum);
         });
         return counts;
     }
@@ -270,6 +276,21 @@ public final class StationCatalogs {
         Map<ResourceLocation, Integer> claimed = new HashMap<>();
         for (RecipeIngredient input : recipe.inputs()) {
             List<ResourceLocation> alternatives = registered(input.itemIds());
+            if (input.exactProduct() != null) {
+                int needed = Math.max(1, input.count());
+                int available = Math.max(0, onHand.getOrDefault(input.exactProduct(), 0)
+                        - claimed.getOrDefault(input.exactProduct(), 0));
+                int used = Math.min(needed, available);
+                if (used > 0) claimed.merge(input.exactProduct(), used, Integer::sum);
+                if (used < needed) {
+                    ResourceLocation fallback = alternatives.isEmpty()
+                            ? OrderProducts.fallbackItem(input.exactProduct()) : alternatives.get(0);
+                    String label = fallback == null ? input.exactProduct().toString()
+                            : OrderProducts.label(input.exactProduct(), fallback);
+                    missing.merge(new NeedKey(alternatives, label), needed - used, Integer::sum);
+                }
+                continue;
+            }
             ResourceLocation best = null;
             int bestAvailable = 0;
             for (ResourceLocation id : alternatives) {
@@ -339,6 +360,13 @@ public final class StationCatalogs {
         Map<NeedKey, Integer> counts = new java.util.LinkedHashMap<>();
         for (RecipeIngredient input : recipe.inputs()) {
             List<ResourceLocation> alternatives = registered(input.itemIds());
+            String exactLabel = "";
+            if (input.exactProduct() != null) {
+                ResourceLocation fallback = alternatives.isEmpty()
+                        ? OrderProducts.fallbackItem(input.exactProduct()) : alternatives.get(0);
+                exactLabel = fallback == null ? input.exactProduct().toString()
+                        : OrderProducts.label(input.exactProduct(), fallback);
+            }
             // A group with no item behind it can still be a real need: a supply line (furnace
             // fuel) is fetched off the shelves like anything else, so hiding it read one thing
             // short of what the work takes. The line id rides the packet; the screen owns how
@@ -348,7 +376,8 @@ public final class StationCatalogs {
                 alternatives = List.of(input.primaryId());
             }
             if (!alternatives.isEmpty()) counts.merge(new NeedKey(alternatives,
-                            input.sourceTag() == null ? ""
+                            !exactLabel.isEmpty() ? exactLabel
+                                    : input.sourceTag() == null ? ""
                                     : RequirementLabels.tagName(input.sourceTag())),
                     Math.max(1, input.count()), Integer::sum);
         }
