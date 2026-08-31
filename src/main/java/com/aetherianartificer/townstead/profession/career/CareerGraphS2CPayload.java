@@ -63,8 +63,8 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
      * rather than resolved at render time, so a renamed village does not rewrite old records.</p>
      */
     public record Stamp(boolean present, int x, int y, float rotation, String authority,
-                        String date) {
-        public static final Stamp NONE = new Stamp(false, 0, 0, 0f, "", "");
+                         String date, String textureId, String sourcePack, String label) {
+        public static final Stamp NONE = new Stamp(false, 0, 0, 0f, "", "", "", "", "");
     }
 
     /**
@@ -186,6 +186,9 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
                 buf.writeFloat(node.stamp().rotation());
                 buf.writeUtf(node.stamp().authority());
                 buf.writeUtf(node.stamp().date());
+                buf.writeUtf(node.stamp().textureId());
+                buf.writeUtf(node.stamp().sourcePack());
+                buf.writeUtf(node.stamp().label());
             }
             buf.writeBoolean(node.ability().present());
             if (node.ability().present()) {
@@ -256,7 +259,7 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
             Stamp stamp = Stamp.NONE;
             if (buf.readBoolean()) {
                 stamp = new Stamp(true, buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
-                        buf.readUtf(), buf.readUtf());
+                        buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf());
             }
             Ability ability = Ability.NONE;
             if (buf.readBoolean()) {

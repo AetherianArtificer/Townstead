@@ -864,7 +864,8 @@ public final class TownsteadNetwork {
             com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload payload,
             ServerPlayer sp) {
         com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleStamp(
-                sp, payload.skillId(), payload.x(), payload.y(), payload.rotation());
+                sp, payload.skillId(), payload.x(), payload.y(), payload.rotation(),
+                payload.textureId(), payload.sourcePack(), payload.label());
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {

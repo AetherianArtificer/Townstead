@@ -34,12 +34,8 @@ final class CareerLayout {
     static final int COL_PITCH = COL_W + COL_GAP;
 
     static final int BAND_H = 88;
-    /**
-     * Room above the first band, which has to clear the sticky banner AND leave the first cluster
-     * looking placed rather than jammed under it. The banner is only about twelve pixels tall, but
-     * matching that exactly left the first rank's marks touching it.
-     */
-    static final int TOP_PAD = 44;
+    /** Room for the sticky path banner; rank one begins immediately beneath it. */
+    static final int TOP_PAD = 26;
     private static final int BOTTOM_PAD = 16;
     /** Clearance inside a band so a mark never touches its divider. */
     private static final int BAND_INSET = 15;
@@ -152,22 +148,7 @@ final class CareerLayout {
     private static String rankName(int rank) {
         String key = "townstead.profession.level." + rank;
         return Language.getInstance().has(key)
-                ? Component.translatable(key).getString() : roman(rank);
-    }
-
-    static String roman(int value) {
-        if (value <= 0) return String.valueOf(value);
-        String[] numerals = {"X", "IX", "V", "IV", "I"};
-        int[] weights = {10, 9, 5, 4, 1};
-        StringBuilder out = new StringBuilder();
-        int left = value;
-        for (int i = 0; i < weights.length && left > 0; i++) {
-            while (left >= weights[i]) {
-                out.append(numerals[i]);
-                left -= weights[i];
-            }
-        }
-        return out.toString();
+                ? Component.translatable(key).getString() : String.valueOf(rank);
     }
 
     /**

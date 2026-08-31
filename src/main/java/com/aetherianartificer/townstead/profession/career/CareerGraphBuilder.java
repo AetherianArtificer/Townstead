@@ -22,9 +22,9 @@ import java.util.Map;
 
 /**
  * Renders a character's career registry record server-side: node states, progress, routes,
- * evidence, and chronicle moments resolved, localized, and masked before anything reaches
- * the wire. Skill nodes appear only under acquired careers; a hidden unmet specialization is
- * sent as a masked silhouette so discovering it stays gameplay.
+ * evidence, and chronicle moments resolved and localized before anything reaches the wire.
+ * Every career sends its complete skill tree: an unregistered career is still useful as a map,
+ * while server-side acquisition checks keep its preview nodes from becoming learnable.
  */
 public final class CareerGraphBuilder {
     private CareerGraphBuilder() {}
@@ -167,7 +167,7 @@ public final class CareerGraphBuilder {
                 primary, false, profile.trackedCareers().contains(careerId),
                 routesLine, "", evidence, moments,
                 masked ? "" : def.levelName(currentTier).getString(),
-                acquired ? SkillPoints.available(entity, def) : 0,
+                SkillPoints.available(entity),
                 "",
                 masked || currentTier >= maxTier ? "" : def.levelName(currentTier + 1).getString(),
                 List.of(), List.of(), CareerGraphS2CPayload.PathTag.NONE,
@@ -176,36 +176,53 @@ public final class CareerGraphBuilder {
                 // are returning to from one you have never held.
                 stampOf(profile, careerId)));
 
-        if (acquired) {
-            for (ResourceLocation choice : def.skills()) {
-                SkillDef skill = SkillDefs.byId(choice);
-                if (skill == null) continue;
-                boolean learned = com.aetherianartificer.townstead.profession.skill.LearnedSkills
-                        .has(entity, choice);
-                boolean equipped = CareerChoices.isActive(entity, choice);
-                boolean learnable = !learned && SkillPoints.canLearn(entity, def, skill);
-                byte skillState = learned ? CareerGraphS2CPayload.STATE_ACQUIRED
-                        : learnable ? CareerGraphS2CPayload.STATE_READY
-                        : CareerGraphS2CPayload.STATE_LOCKED;
-                nodes.add(new CareerGraphS2CPayload.Node(
-                        choice.toString(), rootId.toString(), careerId.toString(),
-                        CareerGraphS2CPayload.KIND_SKILL,
-                        skillState,
-                        localized(skill.displayName(), locale),
-                        skill.description() == null ? "" : localized(skill.description(), locale),
-                        skill.icon() == null ? "" : skill.icon().toString(),
-                        skill.tier(), 0, 0, 0, 0, 0, false, equipped, false,
-                        "", equipped || (!learned && !learnable)
-                                ? "" : replacedSkillName(entity, def, skill, locale),
-                        List.of(), List.of(),
-                        def.levelName(skill.tier()).getString(), Math.max(0, skill.cost()),
-                        skill.skillGroup() == null ? "" : skill.skillGroup().toString(),
-                        "", effectLines(skill),
-                        prerequisitesWithin(def, skill), pathTag(def, choice, locale),
-                        stampOf(profile, choice), abilityOf(skill)));
-            }
+        for (ResourceLocation choice : def.skills()) {
+            SkillDef skill = SkillDefs.byId(choice);
+            if (skill == null) continue;
+            boolean learned = com.aetherianartificer.townstead.profession.skill.LearnedSkills
+                    .has(entity, choice);
+            boolean equipped = CareerChoices.isActive(entity, choice);
+            boolean learnable = acquired && !learned && SkillPoints.canLearn(entity, def, skill);
+            byte skillState = learned ? CareerGraphS2CPayload.STATE_ACQUIRED
+                    : learnable ? CareerGraphS2CPayload.STATE_READY
+                    : CareerGraphS2CPayload.STATE_LOCKED;
+            String fullDescription = skill.description() == null
+                    ? "" : localized(skill.description(), locale);
+            SkillCopy copy = splitSkillCopy(fullDescription, effectLines(skill));
+            nodes.add(new CareerGraphS2CPayload.Node(
+                    choice.toString(), rootId.toString(), careerId.toString(),
+                    CareerGraphS2CPayload.KIND_SKILL,
+                    skillState,
+                    localized(skill.displayName(), locale),
+                    copy.about(),
+                    skill.icon() == null ? "" : skill.icon().toString(),
+                    skill.tier(), 0, 0, 0, 0, 0, false, equipped, false,
+                    "", equipped || (!learned && !learnable)
+                            ? "" : replacedSkillName(entity, def, skill, locale),
+                    List.of(), List.of(),
+                    def.levelName(skill.tier()).getString(), Math.max(0, skill.cost()),
+                    skill.skillGroup() == null ? "" : skill.skillGroup().toString(),
+                    "", copy.effects(),
+                    prerequisitesWithin(def, skill), pathTag(def, choice, locale),
+                    stampOf(profile, choice), abilityOf(skill)));
         }
 
+    }
+
+    /** Flavor leads the first sentence; the mechanical sentence belongs under What it does. */
+    record SkillCopy(String about, List<String> effects) {}
+
+    static SkillCopy splitSkillCopy(String description, List<String> authoredEffects) {
+        List<String> effects = new ArrayList<>(authoredEffects);
+        if (description == null || description.isBlank()) {
+            return new SkillCopy("", List.copyOf(effects));
+        }
+        int sentence = description.indexOf(". ");
+        if (sentence < 0) return new SkillCopy(description, List.copyOf(effects));
+        String about = description.substring(0, sentence + 1).trim();
+        String mechanics = description.substring(sentence + 2).trim();
+        if (!mechanics.isEmpty()) effects.add(0, mechanics);
+        return new SkillCopy(about, List.copyOf(effects));
     }
 
     /** The mark this subject pressed when they registered the skill, if they have. */
@@ -214,7 +231,8 @@ public final class CareerGraphBuilder {
         CareerStamp mark = profile == null ? null : profile.stamp(skill);
         return mark == null ? CareerGraphS2CPayload.Stamp.NONE
                 : new CareerGraphS2CPayload.Stamp(true, mark.x(), mark.y(), mark.rotation(),
-                        mark.authority(), mark.date());
+                        mark.authority(), mark.date(), mark.textureId(), mark.sourcePack(),
+                        mark.label());
     }
 
     /**
@@ -242,9 +260,9 @@ public final class CareerGraphBuilder {
     }
 
     /**
-     * Honest mechanical lines derived from a skill's grants, so descriptions can stay
-     * flavorful without hiding the numbers. Pheno power blocks are described by the
-     * authored description; grants are machine-readable and rendered here.
+     * Honest mechanical lines derived from a skill's grants. The authored description's first
+     * sentence is About copy; its remaining sentence is prepended to this list by
+     * {@link #splitSkillCopy(String, List)} so Pheno powers do not hide their behavior in About.
      */
     private static List<String> effectLines(SkillDef skill) {
         return effectLines(skill.grants());

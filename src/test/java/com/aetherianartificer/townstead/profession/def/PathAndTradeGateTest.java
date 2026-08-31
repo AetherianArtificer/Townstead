@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,8 +14,8 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Specialization paths: a branch inside a profession opened by buying its gateway skill,
- * plus the trade gate that keeps a path's wares hidden until the merchant specs in.
+ * Specialization paths: groupings inside a profession whose hierarchy comes from authored
+ * parent relations, plus the trade gate that keeps a path's wares hidden until investment.
  */
 class PathAndTradeGateTest {
 
@@ -42,8 +43,8 @@ class PathAndTradeGateTest {
         assertNull(ProfessionPaths.pathOwning(COOK, id("townstead:cook/open_flame")),
                 "trunk skills belong to no path");
 
-        // Any option on the path commits you to it: your first pick IS the path choice, so
-        // there is no designated opening skill left for a member to be measured against.
+        // Any member marks the path as invested; a normal purchase still reaches later members
+        // through their authored parents, while this remains robust to imported/legacy saves.
         Set<ResourceLocation> viaMember = Set.of(
                 id("townstead:cook/pizzaiolo/kitchen_rhythm"));
         assertEquals(List.of(path), ProfessionPaths.speccedPaths(viaMember::contains));
@@ -111,6 +112,7 @@ class PathAndTradeGateTest {
                     in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
             String pathId = "pizzaiolo";
             int pathLevel = 0;
+            List<String> previousLane = List.of();
             for (var authoredLevel : path.getAsJsonArray("skills")) {
                 pathLevel++;
                 var members = authoredLevel.isJsonArray()
@@ -118,15 +120,34 @@ class PathAndTradeGateTest {
                         : JsonParser.parseString("[" + authoredLevel + "]").getAsJsonArray();
                 assertTrue(members.size() >= 2, pathId + ": level " + pathLevel
                         + " must offer a real choice");
-                for (var member : members) {
-                    String skillId = member.getAsString();
+                List<String> currentLane = new ArrayList<>();
+                for (int memberIndex = 0; memberIndex < members.size(); memberIndex++) {
+                    String skillId = members.get(memberIndex).getAsString();
+                    currentLane.add(skillId);
                     JsonObject skill = readSkill(pathId, skillId);
-                    assertFalse(skill.has("requires"),
-                            pathId + ": " + skillId
-                                    + " must not declare prerequisites; its level is the gate");
+                    assertFalse(skill.getAsJsonObject("display_name").toString()
+                                    .contains("PLACEHOLDER"),
+                            skillId + ": must ship player-facing copy");
+                    assertNotEquals("minecraft:barrier", skill.get("icon").getAsString(),
+                            skillId + ": must ship a readable icon");
+                    assertFalse(skill.getAsJsonObject("description").toString()
+                                    .contains("PLACEHOLDER"),
+                            skillId + ": must ship a player-facing description");
+                    if (pathLevel == 1) {
+                        assertFalse(skill.has("requires"),
+                                skillId + ": a lane root must have no parent");
+                    } else {
+                        assertTrue(skill.has("requires"),
+                                skillId + ": hierarchy must be authored as a parent relation");
+                        assertEquals(List.of(previousLane.get(memberIndex)),
+                                skill.getAsJsonArray("requires").asList().stream()
+                                        .map(element -> element.getAsString()).toList(),
+                                skillId + ": must continue its authored lane");
+                    }
                     assertFalse(skill.has("tier"),
-                            skillId + ": path position, not the Skill file, owns its level");
+                            skillId + ": path position still owns its rank gate and board band");
                 }
+                previousLane = List.copyOf(currentLane);
             }
             JsonObject work;
             try (var workIn = PathAndTradeGateTest.class.getResourceAsStream(

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.profession.career;
 
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
+import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
 import com.aetherianartificer.townstead.profession.def.SkillDef;
 import com.aetherianartificer.townstead.profession.def.SkillDefs;
 import com.aetherianartificer.townstead.profession.skill.LearnedSkills;
@@ -17,10 +18,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * The skill-point economy, fully derived so it can never drift from the save: points earned are
- * the sum of {@code skill_points} across levels reached (v1 defs fall back to
- * {@code points_per_tier}), points spent are the summed costs of the learned skills belonging to
- * the profession, and the balance is the difference. Banking is implicit; there is no ledger.
+ * Insight is one shared, derived budget. Advancing any registered career earns it; learning a
+ * skill in any registered career spends it. Because both sides are rebuilt from career progress
+ * and learned skills, the balance cannot drift from the save and needs no separate ledger.
  */
 public final class SkillPoints {
 
@@ -30,6 +30,36 @@ public final class SkillPoints {
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
         if (store == null) return 0;
         return def.skillPointsThrough(ProfessionProgress.getTier(store, def.id()));
+    }
+
+    /** Insight earned across every career in which the character has actual standing. */
+    public static int earned(LivingEntity entity) {
+        ProfessionXpStore store = CareerTreeRows.storeOf(entity);
+        CareerProfile profile = CareerProfiles.of(entity);
+        return store == null || profile == null ? 0 : earned(profile, store);
+    }
+
+    static int earned(CareerProfile profile, ProfessionXpStore store) {
+        int total = 0;
+        for (ProfessionDef def : ProfessionDefs.all().values()) {
+            if (!hasStanding(profile, store, def)) continue;
+            total += Math.max(0,
+                    def.skillPointsThrough(ProfessionProgress.getTier(store, def.id())));
+        }
+        return total;
+    }
+
+    /**
+     * Tier one is the progression engine's baseline even for untouched careers, so registry
+     * membership—not tier alone—decides whether a career contributes Insight.
+     */
+    static boolean hasStanding(CareerProfile profile, ProfessionXpStore store, ProfessionDef def) {
+        int xp = ProfessionProgress.getXp(store, def.id());
+        if (def.isRoot()) {
+            return xp > 0 || def.id().equals(profile.primaryVocation())
+                    || profile.careerHistory().contains(def.id());
+        }
+        return xp > 0 || profile.acquiredCareers().contains(def.id());
     }
 
     public static int spent(LivingEntity entity, ProfessionDef def) {
@@ -43,8 +73,31 @@ public final class SkillPoints {
         return total;
     }
 
+    /** Insight spent across the complete learned-skill set, regardless of owning career. */
+    public static int spent(LivingEntity entity) {
+        return spent(LearnedSkills.learned(entity));
+    }
+
+    static int spent(Set<ResourceLocation> learned) {
+        int total = 0;
+        for (ResourceLocation skillId : learned) {
+            SkillDef skill = SkillDefs.byId(skillId);
+            if (skill != null) total += Math.max(0, skill.cost());
+        }
+        return total;
+    }
+
+    public static int available(LivingEntity entity) {
+        return Math.max(0, earned(entity) - spent(entity));
+    }
+
+    static int available(CareerProfile profile, ProfessionXpStore store,
+                         Set<ResourceLocation> learned) {
+        return Math.max(0, earned(profile, store) - spent(learned));
+    }
+
     public static int available(LivingEntity entity, ProfessionDef def) {
-        return Math.max(0, earned(entity, def) - spent(entity, def));
+        return available(entity);
     }
 
     /** Null when the skill is learnable now; otherwise a short human-readable reason. */
@@ -56,6 +109,20 @@ public final class SkillPoints {
             return "requires " + def.levelName(skill.tier()).getString();
         }
         Set<ResourceLocation> learned = LearnedSkills.learned(entity);
+        String relationshipBlocker = relationshipBlocker(learned, skill);
+        if (relationshipBlocker != null) return relationshipBlocker;
+        if (Math.max(0, skill.cost()) > available(entity)) {
+            return "needs " + skill.cost() + " Insight";
+        }
+        return null;
+    }
+
+    /**
+     * The authored graph owns progression order. Rank decides whether a node is eligible, but
+     * neither a matching rank nor membership in another path creates a relationship.
+     */
+    @Nullable
+    static String relationshipBlocker(Set<ResourceLocation> learned, SkillDef skill) {
         for (ResourceLocation required : skill.requires()) {
             if (!learned.contains(required)) {
                 return "missing prerequisite '" + required + "'";
@@ -69,32 +136,6 @@ public final class SkillPoints {
             if (learnedSkill != null && learnedSkill.exclusiveWith().contains(skill.id())) {
                 return "exclusive with '" + learnedId + "'";
             }
-        }
-        // PATHS DO NOT LOCK EACH OTHER. Taking a skill from one path never closes another: you
-        // enter a path simply by buying its first ability, and you may buy from as many paths as
-        // your picks allow. The exclusivity rule that used to live here was solving a problem the
-        // pick budget already solves — five picks against thirty options means you cannot have
-        // everything regardless — so all it added was a board that refused you. Scarcity shapes
-        // the build; a lock on top of scarcity just makes the screen hostile.
-        //
-        // ONE OPTION PER LEVEL. This is what makes a five-level career five real choices rather
-        // than a shopping list you eventually clear: reaching a level asks you a question, and
-        // answering it closes the alternatives until you retrain.
-        //
-        // Scoped to the CAREER, not the path, so that skills belonging to no path compete for the
-        // same pick as the path's own options. Scoped per-path it would leave a hole where a
-        // character takes a path option and a trunk skill at the same level and gets two picks
-        // for one level; and career-wide it also makes the trunk a real alternative, "stay a
-        // generalist this level" rather than a freebie.
-        for (ResourceLocation other : def.skills()) {
-            if (other.equals(skill.id()) || !learned.contains(other)) continue;
-            SkillDef taken = SkillDefs.byId(other);
-            if (taken != null && taken.tier() == skill.tier()) {
-                return "already chose " + taken.displayName().getString() + " at this level";
-            }
-        }
-        if (Math.max(0, skill.cost()) > available(entity, def)) {
-            return "needs " + skill.cost() + " skill point" + (skill.cost() == 1 ? "" : "s");
         }
         return null;
     }

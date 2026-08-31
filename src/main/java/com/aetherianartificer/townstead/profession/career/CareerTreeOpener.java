@@ -143,7 +143,8 @@ public final class CareerTreeOpener {
      * why a failed learn returns before the profile is touched.</p>
      */
     public static void handleStamp(ServerPlayer player, String skillIdRaw, int x, int y,
-                                   float rotation) {
+                                    float rotation, String textureId, String sourcePack,
+                                    String label) {
         net.minecraft.resources.ResourceLocation parsed =
                 net.minecraft.resources.ResourceLocation.tryParse(skillIdRaw);
         // The press is one gesture over two kinds of record. Which one it is comes from the
@@ -174,7 +175,7 @@ public final class CareerTreeOpener {
         }
         net.minecraft.server.MinecraftServer server = player.getServer();
         CareerStamp mark = CareerStamp.sanitized(x, y, rotation, authorityFor(player),
-                server == null ? "" : todayFor(server, player));
+                server == null ? "" : todayFor(server, player), textureId, sourcePack, label);
         PlayerCareers.mutate(player, stored -> stored.stamp(canonical, mark));
         player.playNotifySound(net.minecraft.sounds.SoundEvents.WOODEN_BUTTON_CLICK_ON,
                 net.minecraft.sounds.SoundSource.PLAYERS, 0.7f, 0.7f);

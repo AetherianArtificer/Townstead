@@ -8,6 +8,7 @@
     "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/clean_jar."
   },
   "cost": 1,
+  "requires": ["setting_point"],
   "grants": [
     {
       "capability": "townstead:baker_xp_flat",

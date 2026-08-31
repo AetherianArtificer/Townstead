@@ -16,19 +16,35 @@ import net.minecraft.nbt.CompoundTag;
  * reference, and why it will keep working unchanged when the issuing authority becomes a faction
  * rather than a village.</p>
  */
-public record CareerStamp(int x, int y, float rotation, String authority, String date) {
+public record CareerStamp(int x, int y, float rotation, String authority, String date,
+                          String textureId, String sourcePack, String label) {
 
-    /** How far a mark may sit from the panel's origin before it is refused as out of bounds. */
-    public static final int MAX_X = 512;
-    public static final int MAX_Y = 512;
+    /** Centre bounds of the pinned registry field, in record-panel coordinates. */
+    public static final int MIN_X = 7;
+    public static final int MAX_X = 183;
+    public static final int MIN_Y = 5;
+    public static final int MAX_Y = 36;
+
+    /** Compatibility constructor for records written before selectable career stamp heads. */
+    public CareerStamp(int x, int y, float rotation, String authority, String date) {
+        this(x, y, rotation, authority, date, "", "", "");
+    }
 
     public static CareerStamp sanitized(int x, int y, float rotation, String authority, String date) {
+        return sanitized(x, y, rotation, authority, date, "", "", "");
+    }
+
+    public static CareerStamp sanitized(int x, int y, float rotation, String authority, String date,
+                                        String textureId, String sourcePack, String label) {
         return new CareerStamp(
-                Math.max(0, Math.min(MAX_X, x)),
-                Math.max(0, Math.min(MAX_Y, y)),
+                Math.max(MIN_X, Math.min(MAX_X, x)),
+                Math.max(MIN_Y, Math.min(MAX_Y, y)),
                 Math.max(-0.6f, Math.min(0.6f, rotation)),
                 authority == null ? "" : authority,
-                date == null ? "" : date);
+                date == null ? "" : date,
+                sanitizeTexture(textureId),
+                truncate(sourcePack, 80),
+                truncate(label, 48));
     }
 
     public CompoundTag toTag() {
@@ -38,11 +54,37 @@ public record CareerStamp(int x, int y, float rotation, String authority, String
         tag.putFloat("rot", rotation);
         if (!authority.isEmpty()) tag.putString("authority", authority);
         if (!date.isEmpty()) tag.putString("date", date);
+        if (!textureId.isEmpty()) tag.putString("texture", textureId);
+        if (!sourcePack.isEmpty()) tag.putString("source_pack", sourcePack);
+        if (!label.isEmpty()) tag.putString("label", label);
         return tag;
     }
 
     public static CareerStamp fromTag(CompoundTag tag) {
         return sanitized(tag.getInt("x"), tag.getInt("y"), tag.getFloat("rot"),
-                tag.getString("authority"), tag.getString("date"));
+                tag.getString("authority"), tag.getString("date"),
+                tag.getString("texture"), tag.getString("source_pack"), tag.getString("label"));
+    }
+
+    /** Career art is deliberately separate from the Calendar's unrestricted decorative stamps. */
+    private static String sanitizeTexture(String raw) {
+        if (raw == null || raw.isEmpty()) return "";
+        //? if >=1.21 {
+        net.minecraft.resources.ResourceLocation id =
+                net.minecraft.resources.ResourceLocation.tryParse(raw);
+        //?} else {
+        /*net.minecraft.resources.ResourceLocation id;
+        try { id = new net.minecraft.resources.ResourceLocation(raw); }
+        catch (Exception ex) { id = null; }
+        *///?}
+        if (id == null) return "";
+        String path = id.getPath();
+        return path.startsWith("textures/stamps/career/") && path.endsWith(".png")
+                ? id.toString() : "";
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null) return "";
+        return value.length() <= max ? value : value.substring(0, max);
     }
 }

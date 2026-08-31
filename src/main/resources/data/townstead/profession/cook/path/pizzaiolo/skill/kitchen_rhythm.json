@@ -1,13 +1,14 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "[PLACEHOLDER] COOK SKILL 02"
+    "text": "Kitchen Rhythm"
   },
-  "icon": "minecraft:barrier",
+  "icon": "minecraft:note_block",
   "description": {
-    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/kitchen_rhythm."
+    "text": "Dough, peel, and oven settle into a practiced rhythm. Gain 1 additional Cook XP whenever work is completed."
   },
   "cost": 1,
+  "requires": ["pizza_craft"],
   "mods": [
     "pizzadelight",
     "farmersdelight"

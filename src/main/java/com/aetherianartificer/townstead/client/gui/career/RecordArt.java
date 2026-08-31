@@ -68,6 +68,16 @@ final class RecordArt {
     /** The header strip's own height including its shadow, so callers place the first row under it. */
     static int stripHeight() { return 15; }
 
+    /** A quiet bordered field beneath an external section label, as used by the prototype. */
+    static void plainCard(GuiGraphics g, int x, int y, int w, int h, int accent) {
+        g.fill(x + 2, y + 2, x + w + 2, y + h + 2, 0x285A452A);
+        g.fill(x, y, x + w, y + h, CARD);
+        g.fill(x, y, x + w, y + 1, 0x8CFFFFFF);
+        g.fill(x, y, x + 1, y + h, accent);
+        g.fill(x + w - 1, y, x + w, y + h, CARD_EDGE);
+        g.fill(x, y + h - 1, x + w, y + h, CARD_EDGE);
+    }
+
     /**
      * A progress meter with quarter ticks and an end marker.
      *
@@ -86,7 +96,7 @@ final class RecordArt {
         g.fill(x + w - 1, y - 2, x + w, y + 6, met ? GOOD : 0xFF8A7654);
     }
 
-    /** A skill point. Solid when you can spend it, a hollow ring when you are saving for it. */
+    /** One Insight. Solid when it can be spent, hollow when the choice is still out of reach. */
     static void token(GuiGraphics g, int x, int y, boolean filled) {
         if (filled) {
             g.fill(x + 1, y, x + 5, y + 6, BAR);

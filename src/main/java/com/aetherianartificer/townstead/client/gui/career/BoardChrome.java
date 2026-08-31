@@ -93,12 +93,15 @@ final class BoardChrome {
             boolean isHovered = node.id().equals(hoveredId);
             if (isHovered) hovered = node;
             drawNode(g, node, x, y, isHovered, node.id().equals(selectedId));
-            if (!labelled(node, hoveredId, selectedId)) continue;
-            String label = node.name();
+            if (!labelled(node, hoveredId, selectedId, tabNodes)) continue;
+            int column = layout.columnIndexOf(node);
+            int labelRoom = Math.max(18, Math.round(CareerLayout.COL_W * zoom()) - 8);
+            String label = ellipsize(node.name(), labelRoom);
+            int labelX = sx(layout.columnX(column) + CareerLayout.COL_W / 2);
             int labelY = y + NodeArt.markEdge(node, zoom()) + unit + 2;
             // Ink on a dark alcove needs a shadow to hold its edge, which is the one place the old
             // board's dark-on-light logic inverts.
-            g.drawString(font, label, x - font.width(label) / 2, labelY,
+            g.drawString(font, label, labelX - font.width(label) / 2, labelY,
                     node.state() <= CareerGraphS2CPayload.STATE_LOCKED
                             ? 0xFF9A8A70 : 0xFFF0E2C0, true);
         }
@@ -260,7 +263,7 @@ final class BoardChrome {
     }
 
     /**
-     * The rank rail: the numeral for every band, in a strip the board never scrolls under.
+     * The rank rail: number and name for every band, in a strip the board never scrolls under.
      *
      * <p>Drawn by the screen into its own reserved column rather than over the board, so it cannot
      * cover the leftmost alcove the way a floating overlay would.</p>
@@ -277,7 +280,8 @@ final class BoardChrome {
             if (visibleBottom <= visibleTop) continue;
             if (i % 2 == 1) g.fill(x + 1, visibleTop, x + width - 1, visibleBottom, 0xFF211710);
 
-            String numeral = CareerLayout.roman(bands.get(i).rank());
+            String numeral = String.valueOf(bands.get(i).rank());
+            String rankName = RecordArt.abbreviate(font, bands.get(i).name(), width - 6);
             boolean reached = layout.careerTier() >= bands.get(i).rank();
             // The numeral STICKS to the top of its own band's visible stretch. Drawn only at the
             // band boundary it scrolled away, which is what the floating rank chip existed to
@@ -287,6 +291,11 @@ final class BoardChrome {
             if (numeralY + font.lineHeight <= visibleBottom) {
                 g.drawString(font, numeral, x + (width - font.width(numeral)) / 2, numeralY,
                         reached ? Palette.BRASS : Palette.COLD, false);
+                int nameY = numeralY + font.lineHeight + 2;
+                if (nameY + font.lineHeight <= visibleBottom) {
+                    g.drawString(font, rankName, x + (width - font.width(rankName)) / 2, nameY,
+                            reached ? 0xFFB79A6C : Palette.COLD_DEEP, false);
+                }
             }
         }
     }
@@ -378,11 +387,28 @@ final class BoardChrome {
      * over answer on hover, where the question is actually being asked. Naming all three options at
      * a rank puts three captions in one cluster and they collide.
      */
-    private static boolean labelled(CareerGraphS2CPayload.Node node, String hoveredId,
-                                    String selectedId) {
-        if (node.kind() != CareerGraphS2CPayload.KIND_SKILL) return true;
-        if (node.state() == CareerGraphS2CPayload.STATE_ACQUIRED) return true;
-        return node.id().equals(hoveredId) || node.id().equals(selectedId);
+    private boolean labelled(CareerGraphS2CPayload.Node node, String hoveredId,
+                             String selectedId,
+                             List<CareerGraphS2CPayload.Node> tabNodes) {
+        if (node.id().equals(hoveredId) || node.id().equals(selectedId)) return true;
+        int peers = 0;
+        int column = layout.columnIndexOf(node);
+        for (CareerGraphS2CPayload.Node other : tabNodes) {
+            if (other.kind() != CareerGraphS2CPayload.KIND_SKILL
+                    && other.kind() != CareerGraphS2CPayload.KIND_COMBO) continue;
+            if (other.tier() == node.tier() && layout.columnIndexOf(other) == column) peers++;
+        }
+        return peers <= 1;
+    }
+
+    private String ellipsize(String text, int room) {
+        if (font.width(text) <= room) return text;
+        String suffix = "…";
+        String cut = text;
+        while (cut.length() > 1 && font.width(cut + suffix) > room) {
+            cut = cut.substring(0, cut.length() - 1);
+        }
+        return cut + suffix;
     }
 
     private void drawNode(GuiGraphics g, CareerGraphS2CPayload.Node node, int x, int y,
@@ -428,24 +454,21 @@ final class BoardChrome {
                 g.fill(x - half + 2, y - half + 2, x + half - 2, y + half - 2, 0x99241A0E);
             }
         }
-        // What it costs. One rule, no exceptions: a cost appears exactly when the mark is one you
-        // could buy. Adding hover and selection to that made the numerals come and go as the cursor
-        // moved, so the board looked as though it were labelling things at random.
-        if (node.kind() == CareerGraphS2CPayload.KIND_SKILL && !acquired && node.points() > 0
-                && ready) {
-            String cost = String.valueOf(node.points());
-            g.drawString(font, cost, x + NodeArt.markEdge(node, zoom()) - font.width(cost) + 3,
-                    y - NodeArt.markEdge(node, zoom()) - 2,
-                    ready ? Palette.BRASS_HOT : Palette.COLD, true);
-        }
+        // Cost belongs in the selected record's Requirements section. Putting “[1]” inside a
+        // 22-pixel item frame obscures the icon and repeats information already visible at right.
         if (node.equipped()) {
-            NodeArt.drawWaxSeal(g, x + half - 1, y + half - 1);
+            int edge = Math.max(5, NodeArt.markEdge(node, zoom()) - 2);
+            Palette.drawOutline(g, x - edge, y - edge, x + edge, y + edge,
+                    Palette.BRASS_HOT);
         }
         if (selected || hovered) {
-            int pad = Math.max(2, Math.round((selected ? 3 : 2) * zoom()));
-            int edge = NodeArt.markEdge(node, zoom()) + pad;
+            // Selection is painted INSIDE the authored footprint. Growing the outline outside the
+            // mark made one icon in a row look physically larger even though every sprite was the
+            // same 16-square item.
+            int edge = Math.max(4, NodeArt.markEdge(node, zoom()) - (selected ? 2 : 1));
             Palette.drawOutline(g, x - edge, y - edge, x + edge, y + edge,
                     selected ? Palette.BRASS_HOT : Palette.fade(Palette.BRASS, 0.7f));
         }
     }
+
 }

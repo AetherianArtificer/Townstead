@@ -8,7 +8,6 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -16,7 +15,7 @@ import java.util.Map;
  * Today's sheet: the registry record for whatever mark is selected on the board.
  *
  * <p>Two zones. The <b>head is pinned</b> and carries identity, state, the locator that ties this
- * record to its column on the board, the cost, and the stamp well; the <b>body scrolls</b> and
+ * record to its column on the board and the cost; the <b>body scrolls</b> and
  * carries blocks. The split is not cosmetic: with the well in the scrolling flow, a long chronicle
  * could push it off screen, or scroll the page out from under a drag already in progress.</p>
  *
@@ -30,13 +29,11 @@ final class RecordPage {
     /** A registerable skill listed in the head block, and the box that jumps to it. */
     record Jump(int x, int y, int w, int h, String nodeId) {}
 
-    /** What the caller needs back: where the stamp well landed, and which rows are jumps. */
-    record Result(int wellX, int wellY, boolean wellShown, List<Jump> jumps) {}
+    /** The endorsement field, in absolute screen coordinates, and the body's jump boxes. */
+    record Result(int stampX, int stampY, int stampW, int stampH, boolean canStamp,
+                  List<Jump> jumps) {}
 
-    private static final Result EMPTY = new Result(0, 0, false, List.of());
-
-    /** How many registerable skills the shortcut lists before deferring to the board. */
-    private static final int MAX_READY_ROWS = 4;
+    private static final Result EMPTY = new Result(0, 0, 0, 0, false, List.of());
 
     /**
      * THE RECORD'S GRID. Three numbers, and nothing on this page is spaced by anything else.
@@ -58,7 +55,24 @@ final class RecordPage {
     private static final int FOOT = 3;
     /** The record sheet's own left and right margin, inside the page. */
     private static final int MARGIN_X = 7;
-
+    /** How far scrolled content dissolves back into the page at each end of the body. */
+    private static final int FADE = 7;
+    /**
+     * The endorsement field: where a mark lands, reserved on every record whether or not one can
+     * be pressed. Sized so a cartouche fits at the tilt the tool allows.
+     */
+    private static final int FIELD_W = 72;
+    private static final int FIELD_H = 32;
+    /**
+     * The head's height, and it does not vary. It used to return 42 when there was something to
+     * stamp and 36 otherwise, so the whole body jumped six pixels as you clicked between a
+     * learnable and a learned skill.
+     *
+     * <p>Three text rows need 38, but 38 lands the state chip's bottom edge flush on the seam with
+     * nothing under it, so the chip read as falling out of the head. The extra four pixels are the
+     * gutter beneath it.</p>
+     */
+    private static final int HEAD_H = Math.max(42, FIELD_H + 6);
     private final Font font;
     private final int unit;
 
@@ -79,6 +93,12 @@ final class RecordPage {
         scroll = Mth.clamp(scroll - delta * 12, 0, maxScroll);
     }
 
+    /** The real body viewport below the pinned head. */
+    int scrollViewHeight(CareerGraphS2CPayload.Node selected, boolean inspect,
+                         int top, int bottom) {
+        return Math.max(0, bottom - (top + headHeight()));
+    }
+
     Result draw(GuiGraphics g, int pageLeft, int pageWidth, int top, int bottom,
                 CareerGraphS2CPayload.Node selected, List<CareerGraphS2CPayload.Node> allNodes,
                 Map<String, CareerGraphS2CPayload.Node> byId, String activeRoot,
@@ -91,9 +111,10 @@ final class RecordPage {
 
         Result head = drawHead(g, pageLeft, pageWidth, top, selected, career, layout, points,
                 inspect, stamp);
-        int bodyTop = top + headHeight(selected, inspect);
+        int bodyTop = top + headHeight();
+        int bodyBottom = bottom;
 
-        g.enableScissor(pageLeft + 2, bodyTop, pageLeft + pageWidth - 2, bottom);
+        g.enableScissor(pageLeft + 2, bodyTop, pageLeft + pageWidth - 2, bodyBottom);
         int y = bodyTop + GAP - (int) scroll;
         int startY = y;
         List<Jump> jumps = new ArrayList<>();
@@ -103,17 +124,30 @@ final class RecordPage {
                 || selected.kind() == CareerGraphS2CPayload.KIND_COMBO) {
             y = drawSkill(g, x, y, inner, selected, byId, layout, points);
         } else {
-            y = drawCareer(g, x, y, inner, selected, allNodes, activeRoot, layout, points,
-                    inspect, jumps, bodyTop, bottom);
+            y = drawCareer(g, x, y, inner, selected, layout);
         }
         contentHeight = y - startY;
         g.disableScissor();
 
-        scroll = Mth.clamp(scroll, 0, Math.max(0, contentHeight - (bottom - bodyTop)));
-        int viewHeight = bottom - bodyTop;
+        scroll = Mth.clamp(scroll, 0, Math.max(0, contentHeight - (bodyBottom - bodyTop)));
+        int viewHeight = bodyBottom - bodyTop;
+
+        // The scissor cuts whatever line happens to straddle it, so a scrolled record ended in
+        // half a row of glyphs against the rail. Fading the last few pixels back into the page
+        // reads as text running under the edge rather than as text sliced off at it.
+        int maxScrollNow = Math.max(0, contentHeight - viewHeight);
+        if (scroll > 0.5) {
+            g.fillGradient(pageLeft + 2, bodyTop, pageLeft + pageWidth - 2, bodyTop + FADE,
+                    RecordArt.PAGE, RecordArt.PAGE & 0x00FFFFFF);
+        }
+        if (scroll < maxScrollNow - 0.5) {
+            g.fillGradient(pageLeft + 2, bodyBottom - FADE, pageLeft + pageWidth - 2, bodyBottom,
+                    RecordArt.PAGE & 0x00FFFFFF, RecordArt.PAGE);
+        }
+
         if (contentHeight > viewHeight) {
             int trackX = pageLeft + pageWidth - 5;
-            g.fill(trackX, bodyTop, trackX + 2, bottom, 0x1A000000);
+            g.fill(trackX, bodyTop, trackX + 2, bodyBottom, 0x1A000000);
             int thumbH = Math.max(14, viewHeight * viewHeight / contentHeight);
             int maxScroll = contentHeight - viewHeight;
             int thumbY = bodyTop + (int) ((viewHeight - thumbH) * (scroll / maxScroll));
@@ -126,28 +160,29 @@ final class RecordPage {
             g.drawString(font, font.split(Component.literal(signature), pageWidth - 24).get(0),
                     x, bottom + 4, RecordArt.INK_DIM, false);
         }
-        return new Result(head.wellX(), head.wellY(), head.wellShown(), jumps);
+        return new Result(head.stampX(), head.stampY(), head.stampW(), head.stampH(),
+                head.canStamp(), jumps);
     }
 
     // ── The pinned head ────────────────────────────────────────────────────
 
     /**
-     * Two rows of identity, plus a third only when there is a stamp to press.
+     * Three rows of identity beside the endorsement field, at a constant height.
      *
      * <p>It used to be a fixed four rows deep whatever the record held, and the extra room went to a
-     * coloured locator bar with a rank numeral under it and an "Unspent" tally. The masthead already
+     * coloured locator bar with a rank numeral under it and an Insight tally. The masthead already
      * carries the rank and the points, the board already carries the colour, and a head that repeats
      * the masthead is a head that costs the body twenty pixels to say nothing.</p>
      */
-    int headHeight(CareerGraphS2CPayload.Node selected, boolean inspect) {
-        return selected != null && StampTool.available(selected, inspect) ? 56 : 34;
+    int headHeight() {
+        return HEAD_H;
     }
 
     private Result drawHead(GuiGraphics g, int pageLeft, int pageWidth, int top,
                             CareerGraphS2CPayload.Node selected,
                             CareerGraphS2CPayload.Node career, CareerLayout layout, int points,
                             boolean inspect, StampTool stamp) {
-        int h = headHeight(selected, inspect);
+        int h = headHeight();
         int x = pageLeft + MARGIN_X;
         int right = pageLeft + pageWidth - MARGIN_X;
         g.fill(pageLeft, top, pageLeft + pageWidth, top + h, RecordArt.HEAD_WASH);
@@ -157,66 +192,115 @@ final class RecordPage {
         CareerGraphS2CPayload.Node subject = selected == null ? career : selected;
         if (subject == null) return EMPTY;
 
-        NodeArt.drawIcon(g, subject, x + 8 * 0.85f, top + 5 + 8 * 0.85f, 0.85f);
-        int textX = x + 16;
-        g.drawString(font, subject.name(), textX, top + 6, RecordArt.INK, false);
+        boolean canStamp = selected != null && StampTool.available(selected, inspect);
+        // The field is reserved on every record, so the title always ellipsizes against the same
+        // edge and the head always measures the same. Only a record with no selection has none.
+        int targetW = selected == null ? 0 : FIELD_W;
+        int targetX = right - targetW;
+        int targetY = top + (h - FIELD_H) / 2;
+        int targetH = FIELD_H;
+
+        String kicker;
+        if (selected != null && selected.kind() == CareerGraphS2CPayload.KIND_SKILL) {
+            String path = selected.path().present() ? selected.path().name()
+                    : Component.translatable("townstead.career.screen.general").getString();
+            kicker = path + " · " + selected.tier()
+                    + (selected.rankName().isEmpty() ? "" : " · " + selected.rankName());
+        } else {
+            kicker = Component.translatable("townstead.career.screen.career_record").getString();
+        }
+        g.drawString(font, ellipsize(kicker, (targetW > 0 ? targetX : right) - x - 3),
+                x, top + 3, RecordArt.ACCENT, false);
+
+        int titleY = top + 15;
+        NodeArt.drawIcon(g, subject, x + 6, titleY + 5, 0.72f);
+        int textX = x + 14;
+        int titleRight = targetW > 0 ? targetX - 4 : right;
+        g.drawString(font, ellipsize(subject.name(), titleRight - textX),
+                textX, titleY, RecordArt.INK, false);
 
         if (selected == null) {
             g.drawString(font, Component.translatable("townstead.career.screen.pick_a_mark"),
-                    textX, top + 18, RecordArt.INK_DIM, false);
+                    textX, top + 27, RecordArt.INK_DIM, false);
             return EMPTY;
         }
 
+        boolean skill = selected.kind() == CareerGraphS2CPayload.KIND_SKILL;
         String stateKey = selected.equipped() ? "townstead.career.screen.state.equipped"
                 : switch (selected.state()) {
                     case CareerGraphS2CPayload.STATE_LOCKED -> "townstead.career.screen.state.locked";
-                    case CareerGraphS2CPayload.STATE_READY -> "townstead.career.screen.state.ready";
-                    default -> "townstead.career.screen.state.acquired";
+                    case CareerGraphS2CPayload.STATE_READY -> skill
+                            ? "townstead.career.screen.state.available"
+                            : "townstead.career.screen.state.ready";
+                    default -> skill
+                            ? "townstead.career.screen.state.learned"
+                            : "townstead.career.screen.state.registered";
                 };
         int stateColor = selected.equipped()
                 || selected.state() == CareerGraphS2CPayload.STATE_ACQUIRED ? RecordArt.GOOD
                 : selected.state() == CareerGraphS2CPayload.STATE_READY
                         ? RecordArt.ACCENT : RecordArt.INK_DIM;
         String stateText = Component.translatable(stateKey).getString();
-        int chipY = top + 17;
+        String shownState = ellipsize(stateText, Math.max(20, targetX - textX - 4));
+        int chipY = top + 27;
         int chipH = font.lineHeight + 2;
-        int chipW = font.width(stateText) + 8;
+        int chipW = font.width(shownState) + 8;
         g.fill(textX, chipY, textX + chipW, chipY + chipH, 0x80FFFFFF);
         g.fill(textX, chipY, textX + 2, chipY + chipH, stateColor);
-        g.drawString(font, stateText, textX + 5, chipY + 2, stateColor, false);
-        if (selected.path().present()) {
-            g.drawString(font, selected.path().name(), textX + chipW + PAD, chipY + 2,
-                    RecordArt.INK_DIM, false);
-        }
-
-        if (!StampTool.available(selected, inspect)) {
-            // A cost belongs beside the state that explains why you cannot pay it yet, on the row
-            // that state already occupies. It does not need a row of its own.
-            if (selected.kind() == CareerGraphS2CPayload.KIND_SKILL
-                    && selected.state() != CareerGraphS2CPayload.STATE_ACQUIRED
-                    && selected.points() > 0) {
-                RecordArt.tokens(g, right, chipY + 2, selected.points(),
-                        selected.points() <= points);
+        g.drawString(font, shownState, textX + 5, chipY + 2, stateColor, false);
+        if (skill && selected.points() > 0 && !canStamp) {
+            String cost = selected.points() + " "
+                    + Component.translatable("townstead.career.screen.insight").getString();
+            int costX = textX + chipW + PAD;
+            if (costX + font.width(cost) < titleRight) {
+                g.drawString(font, cost, costX, chipY + 2, RecordArt.INK_DIM, false);
             }
-            return EMPTY;
         }
 
-        boolean takeUp = StampTool.takeUp(selected);
-        int rowY = top + 32;
-        g.drawString(font, Component.translatable(takeUp
-                        ? "townstead.career.screen.take_up_verb"
-                        : "townstead.career.screen.stamp_verb"),
-                x, rowY, RecordArt.ACCENT, false);
-        g.drawString(font, Component.translatable("townstead.career.screen.stamp_hint"),
-                x, rowY + 10, RecordArt.INK_DIM, false);
-        // Declaring your work costs no points. A career node's own points() is the pool it has left
-        // to spend, so drawing it here would read as a price and be off by the whole balance.
-        if (!takeUp) {
-            RecordArt.tokens(g, right - StampTool.WELL_W - PAD, chipY + 2, selected.points(),
-                    selected.points() <= points);
+        drawEndorsementField(g, targetX, targetY, targetW, targetH);
+        return new Result(targetX, targetY, targetW, targetH, canStamp, List.of());
+    }
+
+    /**
+     * A lighter patch of the head's own stock, ruled and ticked. An empty one carries no words:
+     * blank ruled paper already says it is waiting, and a label in it read as a control.
+     *
+     * <p>This is the whole difference from the dashed rectangle it replaces. The rectangle was a
+     * drop target, which is a thing the fiction has no word for; a blank endorsement field on a
+     * certificate is a thing that exists, and it reads as reserved without demanding anything.</p>
+     */
+    private void drawEndorsementField(GuiGraphics g, int x, int y, int w, int h) {
+        if (w <= 0) return;
+        g.fill(x + 1, y + 1, x + w + 1, y + h + 1, 0x1F5A452A);
+        g.fill(x, y, x + w, y + h, RecordArt.CARD);
+        g.fill(x, y, x + w, y + 1, 0x80FFFFFF);
+        g.fill(x, y, x + 1, y + h, RecordArt.CARD_EDGE);
+        g.fill(x + w - 1, y, x + w, y + h, RecordArt.CARD_EDGE);
+        g.fill(x, y + h - 1, x + w, y + h, RecordArt.CARD_EDGE);
+        for (int ruleY = y + 10; ruleY < y + h - 5; ruleY += 9) {
+            g.fill(x + 5, ruleY, x + w - 5, ruleY + 1, 0x80D4C09A);
         }
-        return new Result(right - StampTool.WELL_W, top + h - StampTool.WELL_H - 4, true,
-                List.of());
+        // The registrar's alignment ticks, which is what says "a mark belongs inside these".
+        for (int corner = 0; corner < 4; corner++) {
+            int cx = (corner & 1) == 0 ? x + 3 : x + w - 4;
+            int cy = corner < 2 ? y + 3 : y + h - 4;
+            int dx = (corner & 1) == 0 ? 1 : -1;
+            int dy = corner < 2 ? 1 : -1;
+            g.fill(Math.min(cx, cx + dx * 3), cy, Math.max(cx, cx + dx * 3) + 1, cy + 1,
+                    RecordArt.INK_FAINT);
+            g.fill(cx, Math.min(cy, cy + dy * 3), cx + 1, Math.max(cy, cy + dy * 3) + 1,
+                    RecordArt.INK_FAINT);
+        }
+    }
+
+    private String ellipsize(String text, int room) {
+        if (room <= 0) return "";
+        if (font.width(text) <= room) return text;
+        String cut = text;
+        while (cut.length() > 1 && font.width(cut + "…") > room) {
+            cut = cut.substring(0, cut.length() - 1);
+        }
+        return cut + "…";
     }
 
     // ── Bodies ─────────────────────────────────────────────────────────────
@@ -237,14 +321,11 @@ final class RecordPage {
         return y + h + GAP;
     }
 
-    /** The career's own page: what you could register, then how far along you are. */
+    /** The career's own page: what the work is, then how far along you are. */
     private int drawCareer(GuiGraphics g, int x, int y, int inner,
                            CareerGraphS2CPayload.Node career,
-                           List<CareerGraphS2CPayload.Node> allNodes, String activeRoot,
-                           CareerLayout layout, int points, boolean inspect,
-                           List<Jump> jumps, int bodyTop, int bodyBottom) {
-        if (!inspect) y = drawReadyBlock(g, x, y, inner, allNodes, activeRoot, layout, points,
-                jumps, bodyTop, bodyBottom);
+                           CareerLayout layout) {
+        y = drawAbout(g, x, y, inner, career.description());
 
         List<CareerLayout.Band> bands = layout.bands();
         if (!bands.isEmpty()) {
@@ -294,168 +375,105 @@ final class RecordPage {
         return y;
     }
 
-    /**
-     * Everything you could register right now, cheapest first, with what you are saving for below.
-     *
-     * <p>A single nomination quietly made the choice for you, which is the opposite of what a skill
-     * tree is for. Exclusive siblings are tied together so the one irreversible decision on this
-     * screen is visible in the list rather than discovered after the press.</p>
-     */
-    private int drawReadyBlock(GuiGraphics g, int x, int y, int inner,
-                               List<CareerGraphS2CPayload.Node> allNodes, String activeRoot,
-                               CareerLayout layout, int points, List<Jump> jumps,
-                               int bodyTop, int bodyBottom) {
-        List<CareerGraphS2CPayload.Node> ready = new ArrayList<>();
-        for (CareerGraphS2CPayload.Node node : allNodes) {
-            if (!node.rootId().equals(activeRoot)) continue;
-            if (node.kind() != CareerGraphS2CPayload.KIND_SKILL) continue;
-            if (node.state() != CareerGraphS2CPayload.STATE_READY) continue;
-            ready.add(node);
-        }
-        if (ready.isEmpty()) {
-            // Silence here is indistinguishable from a broken screen. If nothing is learnable the
-            // block still draws and says so, because "there is nothing to register yet" is an
-            // answer and an empty column is not.
-            // Wrapped, not written straight across: at this measure the sentence ran off the card's
-            // right edge and the last word arrived cut in half.
-            List<FormattedCharSequence> lines = font.split(
-                    Component.translatable("townstead.career.screen.nothing_ready"),
-                    inner - 2 * PAD);
-            int h = RecordArt.stripHeight() + 2 + lines.size() * line() - unit + FOOT;
-            RecordArt.card(g, font, x, y, inner, h,
-                    Component.translatable("townstead.career.screen.ready_block").getString(),
-                    "0", RecordArt.INK_DIM);
-            int ny = y + RecordArt.stripHeight() + 2;
-            for (FormattedCharSequence text : lines) {
-                g.drawString(font, text, x + PAD, ny, RecordArt.INK_DIM, false);
-                ny += line();
-            }
-            return y + h + GAP;
-        }
-        // Affordable first, then by cost, then by name, so the list is stable between opens and the
-        // things you can actually do are at the top of it.
-        ready.sort(Comparator
-                .comparingInt((CareerGraphS2CPayload.Node n) -> n.points() <= points ? 0 : 1)
-                .thenComparingInt(CareerGraphS2CPayload.Node::points)
-                .thenComparing(CareerGraphS2CPayload.Node::name));
 
-        int shown = Math.min(MAX_READY_ROWS, ready.size());
-        int ties = 0;
-        for (int i = 1; i < shown; i++) {
-            CareerGraphS2CPayload.Node a = ready.get(i - 1);
-            CareerGraphS2CPayload.Node b = ready.get(i);
-            if (!a.group().isEmpty() && a.group().equals(b.group())) ties++;
-        }
-        int overflow = ready.size() - shown;
-        int rowH = font.lineHeight + ROW_GAP;
-        int h = RecordArt.stripHeight() + 2 + shown * rowH - 2 + ties * 6
-                + (overflow > 0 ? font.lineHeight + 2 : 0) + FOOT;
-
-        int affordable = 0;
-        for (CareerGraphS2CPayload.Node node : ready) if (node.points() <= points) affordable++;
-        RecordArt.card(g, font, x, y, inner, h,
-                Component.translatable("townstead.career.screen.ready_block").getString(),
-                String.valueOf(affordable),
-                affordable > 0 ? RecordArt.GOOD : RecordArt.INK_DIM);
-
-        int ry = y + RecordArt.stripHeight() + 2;
-        String lastGroup = "";
-        for (int i = 0; i < shown; i++) {
-            CareerGraphS2CPayload.Node node = ready.get(i);
-            boolean afford = node.points() <= points;
-            if (!node.group().isEmpty() && node.group().equals(lastGroup)) {
-                // The bracket says these two are one decision, not two offers.
-                g.fill(x + 3, ry - 6, x + 4, ry + 1, 0x80A8322A);
-                g.fill(x + 3, ry - 6, x + 7, ry - 5, 0x80A8322A);
-                g.fill(x + 3, ry, x + 7, ry + 1, 0x80A8322A);
-                g.drawString(font, Component.translatable("townstead.career.screen.or"),
-                        x + PAD + 3, ry - 7, RecordArt.BAD, false);
-                ry += 6;
-            }
-            int rowX = x + PAD;
-            int rowW = inner - 2 * PAD;
-            g.fill(rowX, ry, rowX + 3, ry + rowH - 2, afford ? layout.tintOf(node) : 0x738A7654);
-            String name = RecordArt.abbreviate(font, node.name(), rowW - 30 - node.points() * 8);
-            g.drawString(font, name, rowX + INDENT, ry + 1,
-                    afford ? RecordArt.INK : RecordArt.INK_FAINT, false);
-            RecordArt.tokens(g, rowX + rowW - 8, ry + 2, node.points(), afford);
-            if (afford) RecordArt.chevron(g, rowX + rowW - 4, ry + 2, RecordArt.ACCENT);
-            // Only rows actually inside the scrolling viewport can be clicked.
-            if (ry >= bodyTop - rowH && ry <= bodyBottom) {
-                jumps.add(new Jump(rowX, ry, rowW, rowH - 1, node.id()));
-            }
-            lastGroup = node.group();
-            ry += rowH;
-        }
-        if (overflow > 0) {
-            g.drawString(font, Component.translatable(
-                            "townstead.career.screen.more_on_board", overflow).getString(),
-                    x + PAD + INDENT, ry, RecordArt.INK_FAINT, false);
-        }
-        return y + h + GAP;
-    }
-
-    /** A skill's page: what it does, what it closes off, and what is standing in the way. */
+    /** A skill's page: what it is, what it does, and what is standing in the way. */
     private int drawSkill(GuiGraphics g, int x, int y, int inner,
                           CareerGraphS2CPayload.Node skill,
                           Map<String, CareerGraphS2CPayload.Node> byId, CareerLayout layout,
                           int points) {
-        y = drawAbilityBlock(g, x, y, inner, skill);
-
-        if (!skill.effects().isEmpty() || !skill.replaces().isEmpty()) {
-            // Wrapped per ENTRY, not flattened into one list of lines. Flattening lost where each
-            // effect began, so a two-line effect got two markers and read as two effects.
-            List<List<FormattedCharSequence>> entries = new ArrayList<>();
-            int rows = 0;
-            for (String effect : skill.effects()) {
-                List<FormattedCharSequence> wrapped =
-                        font.split(Component.literal(effect), inner - 2 * PAD - INDENT);
-                entries.add(wrapped);
-                rows += wrapped.size();
-            }
-            int extra = skill.replaces().isEmpty() ? 0 : line();
-            int h = RecordArt.stripHeight() + 2 + rows * line() + extra - unit + FOOT;
-            RecordArt.card(g, font, x, y, inner, h,
-                    Component.translatable("townstead.career.screen.effect_block").getString(), "",
-                    RecordArt.ACCENT);
-            int ey = y + RecordArt.stripHeight() + 2;
-            for (List<FormattedCharSequence> entry : entries) {
-                // A neutral dot, not a plus. The line already carries its own sign, so a plus in
-                // the margin produced "+ +1 XP" and, worse, put a plus in front of "Disables".
-                RecordArt.bullet(g, x + PAD + 1, ey + 3, RecordArt.ACCENT);
-                for (FormattedCharSequence text : entry) {
-                    g.drawString(font, text, x + PAD + INDENT, ey, RecordArt.ACCENT, false);
-                    ey += line();
-                }
-            }
-            if (!skill.replaces().isEmpty()) {
-                g.fill(x + PAD, ey + 4, x + PAD + 5, ey + 5, RecordArt.BAD);
-                g.drawString(font, Component.translatable(
-                                "townstead.career.screen.replaces", skill.replaces()).getString(),
-                        x + PAD + INDENT, ey, RecordArt.BAD, false);
-            }
-            y += h + GAP;
-        }
-
-        y = drawChoiceBlock(g, x, y, inner, skill, byId);
+        y = drawAbout(g, x, y, inner, skill.description());
+        y = drawWhatItDoes(g, x, y, inner, skill);
         y = drawNeedsBlock(g, x, y, inner, skill, byId, layout, points);
-
-        if (!skill.description().isEmpty()) {
-            List<FormattedCharSequence> lines = font.split(
-                    Component.literal(skill.description()), inner - 2 * PAD);
-            int h = RecordArt.stripHeight() + 2 + lines.size() * line() - unit + FOOT;
-            RecordArt.card(g, font, x, y, inner, h,
-                    Component.translatable("townstead.career.screen.about").getString(), "",
-                    RecordArt.INK_DIM);
-            int dy = y + RecordArt.stripHeight() + 2;
-            for (FormattedCharSequence text : lines) {
-                g.drawString(font, text, x + PAD, dy, RecordArt.INK_MID, false);
-                dy += line();
-            }
-            y += h + GAP;
-        }
         y = drawEvidence(g, x, y, inner, skill);
         return drawChronicle(g, x, y, inner, skill);
+    }
+
+    private int drawAbout(GuiGraphics g, int x, int y, int inner, String description) {
+        if (description == null || description.isEmpty()) return y;
+        List<FormattedCharSequence> lines = font.split(
+                Component.literal(description), inner);
+        // About in the prototype is editorial copy on the record itself: a small section label,
+        // then the description. It is not a card, has no coloured strip, border, or drop shadow.
+        g.drawString(font, Component.translatable("townstead.career.screen.about"),
+                x, y, RecordArt.ACCENT, false);
+        int dy = y + font.lineHeight + ROW_GAP;
+        for (FormattedCharSequence text : lines) {
+            g.drawString(font, text, x, dy, RecordArt.INK, false);
+            dy += line();
+        }
+        return dy - unit + GAP;
+    }
+
+    /** The prototype's single factual card: effects and operating details belong together. */
+    private int drawWhatItDoes(GuiGraphics g, int x, int y, int inner,
+                               CareerGraphS2CPayload.Node skill) {
+        CareerGraphS2CPayload.Ability ability = skill.ability();
+        if (skill.effects().isEmpty() && skill.replaces().isEmpty() && !ability.present()) return y;
+
+        g.drawString(font, Component.translatable("townstead.career.screen.effect_block"),
+                x, y, RecordArt.ACCENT, false);
+        int cardY = y + font.lineHeight + ROW_GAP;
+
+        List<List<FormattedCharSequence>> entries = new ArrayList<>();
+        for (String effect : skill.effects()) {
+            entries.add(font.split(Component.literal(effect), inner - 2 * PAD));
+        }
+        int abilityEntry = -1;
+
+        if (ability.present()) {
+            List<String> details = new ArrayList<>();
+            details.add(Component.translatable("townstead.career.screen.ability_block").getString());
+            details.add(Component.translatable(
+                    "townstead.career.screen.ability_slot", ability.slot()).getString());
+            net.minecraft.client.KeyMapping key =
+                    com.aetherianartificer.townstead.client.TownsteadKeybinds.abilityKey(ability.slot());
+            if (key != null && !key.isUnbound()) details.add(key.getTranslatedKeyMessage().getString());
+            if (ability.cooldownTicks() > 0) {
+                details.add(Component.translatable("townstead.career.screen.ability_seconds",
+                        RecordArt.trimSeconds(ability.cooldownTicks() / 20f)).getString());
+            }
+            if (ability.costAmount() > 0 && !ability.costLabel().isEmpty()) {
+                details.add(ability.costAmount() + " " + ability.costLabel());
+            }
+            abilityEntry = entries.size();
+            entries.add(font.split(Component.literal(String.join(" · ", details)),
+                    inner - 2 * PAD));
+
+            boolean radial = com.aetherianartificer.townstead.compat.radial.RadialMenuCompat.anyLoaded();
+            if ((key == null || key.isUnbound()) && !radial) {
+                entries.add(font.split(Component.translatable(
+                        "townstead.career.screen.ability_bind_hint"), inner - 2 * PAD));
+            }
+        }
+
+        int rows = 0;
+        for (List<FormattedCharSequence> entry : entries) rows += entry.size();
+        int extra = skill.replaces().isEmpty() ? 0 : line();
+        int separator = abilityEntry > 0 ? 4 : 0;
+        int h = PAD + rows * line() + Math.max(0, entries.size() - 1) * 2 + separator
+                + extra - unit + FOOT;
+        RecordArt.plainCard(g, x, cardY, inner, h, RecordArt.ACCENT);
+        int ey = cardY + PAD;
+        for (int i = 0; i < entries.size(); i++) {
+            if (i == abilityEntry && abilityEntry > 0) {
+                g.fill(x + PAD, ey, x + inner - PAD, ey + 1, RecordArt.CARD_EDGE);
+                ey += 4;
+            }
+            for (FormattedCharSequence text : entries.get(i)) {
+                g.drawString(font, text, x + PAD, ey,
+                        i >= abilityEntry && abilityEntry >= 0
+                                ? RecordArt.INK_MID : RecordArt.INK, false);
+                ey += line();
+            }
+            if (i + 1 < entries.size()) ey += 2;
+        }
+        if (!skill.replaces().isEmpty()) {
+            g.fill(x + PAD, ey + 4, x + PAD + 5, ey + 5, RecordArt.BAD);
+            g.drawString(font, Component.translatable(
+                            "townstead.career.screen.replaces", skill.replaces()).getString(),
+                    x + PAD + INDENT, ey, RecordArt.BAD, false);
+        }
+        return cardY + h + GAP;
     }
 
     /**
@@ -529,60 +547,24 @@ final class RecordPage {
         return y + h + GAP;
     }
 
-    /** The other skills competing for this rank's one pick, shown before it is spent. */
-    private int drawChoiceBlock(GuiGraphics g, int x, int y, int inner,
-                                CareerGraphS2CPayload.Node skill,
-                                Map<String, CareerGraphS2CPayload.Node> byId) {
-        if (skill.kind() != CareerGraphS2CPayload.KIND_SKILL || skill.tier() <= 0) return y;
-        List<CareerGraphS2CPayload.Node> alternatives = new ArrayList<>();
-        for (CareerGraphS2CPayload.Node node : byId.values()) {
-            if (node.id().equals(skill.id())) continue;
-            if (node.kind() != CareerGraphS2CPayload.KIND_SKILL) continue;
-            // One pick is spent within the owning Profession. Advanced Professions may share a
-            // root tree, so rootId would incorrectly mix their same-numbered ranks together.
-            if (!node.parentId().equals(skill.parentId())) continue;
-            if (node.tier() != skill.tier()) continue;
-            alternatives.add(node);
-        }
-        if (alternatives.isEmpty()) return y;
-
-        // byId is populated from the payload's LinkedHashMap, whose order is the Path's authored
-        // order. Do not sort this list by id or by active/passive kind: either would rewrite the
-        // choice the pack actually authored, and every mixture of ability kinds is valid.
-        List<FormattedCharSequence> closes = font.split(
-                Component.translatable("townstead.career.screen.closes_other"), inner - 2 * PAD);
-        int h = RecordArt.stripHeight() + 2 + alternatives.size() * line() + 3
-                + closes.size() * line() - unit + FOOT;
-        RecordArt.card(g, font, x, y, inner, h,
-                Component.translatable("townstead.career.screen.or_choose").getString(), "",
-                RecordArt.BAD);
-        int cy = y + RecordArt.stripHeight() + 2;
-        for (CareerGraphS2CPayload.Node alternative : alternatives) {
-            g.drawString(font, alternative.name(), x + PAD, cy, RecordArt.INK, false);
-            cy += line();
-        }
-        g.fill(x + PAD, cy, x + inner - PAD, cy + 1, 0x59A8322A);
-        cy += 3;
-        for (FormattedCharSequence text : closes) {
-            g.drawString(font, text, x + PAD, cy, RecordArt.BAD, false);
-            cy += line();
-        }
-        return y + h + GAP;
-    }
-
     /** What is standing in the way, as a ticked list rather than one red sentence. */
     private int drawNeedsBlock(GuiGraphics g, int x, int y, int inner,
                                CareerGraphS2CPayload.Node skill,
                                Map<String, CareerGraphS2CPayload.Node> byId, CareerLayout layout,
                                int points) {
-        if (skill.state() != CareerGraphS2CPayload.STATE_LOCKED) return y;
         List<String> labels = new ArrayList<>();
         List<Boolean> met = new ArrayList<>();
-        if (skill.tier() > 0 && layout.careerTier() < skill.tier()) {
+        CareerGraphS2CPayload.Node owner = byId.get(skill.parentId());
+        if (owner != null) {
+            labels.add(Component.translatable("townstead.career.screen.needs_registration",
+                    owner.name()).getString());
+            met.add(owner.state() == CareerGraphS2CPayload.STATE_ACQUIRED);
+        }
+        if (skill.tier() > 0) {
             labels.add(Component.translatable("townstead.career.screen.needs_rank",
-                    skill.rankName().isEmpty() ? CareerLayout.roman(skill.tier())
+                    skill.rankName().isEmpty() ? String.valueOf(skill.tier())
                             : skill.rankName()).getString());
-            met.add(false);
+            met.add(layout.careerTier() >= skill.tier());
         }
         for (String required : skill.requires()) {
             CareerGraphS2CPayload.Node node = byId.get(required);
@@ -590,27 +572,28 @@ final class RecordPage {
             labels.add(node.name());
             met.add(node.state() == CareerGraphS2CPayload.STATE_ACQUIRED);
         }
-        if (skill.points() > points) {
+        if (skill.points() > 0) {
             labels.add(Component.translatable("townstead.career.screen.needs_points",
                     skill.points()).getString());
-            met.add(false);
+            met.add(skill.points() <= points);
         }
         if (labels.isEmpty()) return y;
 
-        int metCount = 0;
-        for (Boolean value : met) if (value) metCount++;
-        int h = RecordArt.stripHeight() + 2 + labels.size() * line() - unit + FOOT;
-        RecordArt.card(g, font, x, y, inner, h,
-                Component.translatable("townstead.career.screen.needs_block").getString(),
-                metCount + " / " + labels.size(), RecordArt.BAD);
-        int ny = y + RecordArt.stripHeight() + 2;
+        g.drawString(font, Component.translatable("townstead.career.screen.requirements"),
+                x, y, RecordArt.ACCENT, false);
+        int cardY = y + font.lineHeight + ROW_GAP;
+        int h = PAD + labels.size() * line() - unit + FOOT;
+        boolean allMet = !met.contains(false);
+        RecordArt.plainCard(g, x, cardY, inner, h, allMet ? RecordArt.GOOD : RecordArt.ACCENT);
+        int ny = cardY + PAD;
         for (int i = 0; i < labels.size(); i++) {
             RecordArt.tick(g, x + PAD, ny + 1, met.get(i));
-            g.drawString(font, labels.get(i), x + PAD + INDENT, ny,
+            g.drawString(font, ellipsize(labels.get(i), inner - 2 * PAD - INDENT),
+                    x + PAD + INDENT, ny,
                     met.get(i) ? RecordArt.INK_DIM : RecordArt.INK, false);
             ny += line();
         }
-        return y + h + GAP;
+        return cardY + h + GAP;
     }
 
     /**

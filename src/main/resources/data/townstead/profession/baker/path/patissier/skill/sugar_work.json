@@ -8,6 +8,7 @@
     "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for baker/sugar_work."
   },
   "cost": 1,
+  "requires": ["piping_hand"],
   "grants": [
     {
       "capability": "townstead:baker_xp_flat",

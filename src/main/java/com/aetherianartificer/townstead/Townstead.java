@@ -3525,7 +3525,8 @@ public class Townstead {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleStamp(
-                        sp, payload.skillId(), payload.x(), payload.y(), payload.rotation());
+                        sp, payload.skillId(), payload.x(), payload.y(), payload.rotation(),
+                        payload.textureId(), payload.sourcePack(), payload.label());
             }
         });
     }

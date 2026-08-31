@@ -957,8 +957,9 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
     }
 
     /**
-     * A def's normalized {@code paths} block: specialization branches entered by learning any
-     * member option. The retained gateway field is the first flattened option, not a separate pick.
+     * A def's normalized {@code paths} block: specialization groupings whose hierarchy is authored
+     * by each member skill's prerequisites. The retained gateway field is the first flattened
+     * member, not a separate pick or an implicit parent.
      * Skill refs resolve path-scoped like title refs; worksites are full block ids because
      * they usually belong to other mods.
      */
@@ -981,7 +982,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                         GsonHelper.getAsString(p, "gateway", ""));
                 if (pathId.isBlank() || gateway == null) {
                     diagnostics.warning(JsonPath.ROOT.field("paths").index(i),
-                            "A path needs an id and at least one first-level skill; ignored.",
+                            "A path needs an id and at least one member skill; ignored.",
                             "Use {\"id\": ..., \"gateway\": ..., \"skills\": [...], \"worksites\": [...]}.");
                     continue;
                 }
