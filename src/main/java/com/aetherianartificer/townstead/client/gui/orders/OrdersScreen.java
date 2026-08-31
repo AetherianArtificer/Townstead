@@ -345,12 +345,10 @@ public class OrdersScreen extends Screen {
     //? if >=1.21 {
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        drawFurniture(g);
     }
     //?} else {
     /*@Override
     public void renderBackground(GuiGraphics g) {
-        drawFurniture(g);
     }
     *///?}
 
@@ -380,6 +378,10 @@ public class OrdersScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
         tooltip = null;
+        // Screen.render() owns background timing in 1.21 but not 1.20. Draw the Order Sheet's
+        // furniture explicitly on every version, while the empty overrides above suppress the
+        // vanilla background in versions that would otherwise add it automatically.
+        drawFurniture(g);
         super.render(g, mouseX, mouseY, partial);
 
         drawCatalogue(g, mouseX, mouseY);
