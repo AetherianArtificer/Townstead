@@ -5,6 +5,12 @@ plugins {
 
 val legacyMcaNamespace = project.name.endsWith("-legacy")
 val mcaNamespace = if (legacyMcaNamespace) "forge.net.mca" else "forge.net.conczin.mca"
+val mcaArtifact = if (legacyMcaNamespace) "mca-forge-legacy" else "mca-forge"
+val mcaVersion = if (legacyMcaNamespace) {
+    "7.7.0-beta.2+1.20.1-universal"
+} else {
+    "7.7.1-alpha.1+1.20.1-universal"
+}
 
 stonecutter {
     const("neoforge", false)
@@ -62,6 +68,7 @@ minecraft {
 }
 
 repositories {
+    flatDir { dirs(rootProject.file("libs")) }
     maven("https://maven.architectury.dev/")
     maven("https://maven.blamejared.com")
     mavenCentral()
@@ -73,13 +80,9 @@ dependencies {
     "minecraft"("net.minecraftforge:forge:1.20.1-47.3.0")
     // Both must be relocated (universal) jars: the sources compile against the
     // forge.* namespace the shipped jars actually carry at runtime.
-    compileOnly(files(
-        if (legacyMcaNamespace) {
-            "${rootProject.projectDir}/libs/mca-forge-legacy-7.7.0-beta.2+1.20.1-universal.jar"
-        } else {
-            "${rootProject.projectDir}/libs/mca-forge-7.7.1-alpha.1+1.20.1-universal.jar"
-        }
-    ))
+    // Resolve through flatDir so ForgeGradle can remap the universal production jar for the
+    // named development/test runtime. A files(...) dependency cannot be deobfuscated.
+    compileOnly(fg.deobf("townstead.libs:$mcaArtifact:$mcaVersion"))
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("mixin_extras_version")}")!!)
     implementation(jarJar("io.github.llamalad7:mixinextras-forge:${property("mixin_extras_version")}")) {
         jarJar.ranged(this, "[0.5.4,0.6)")

@@ -33,15 +33,17 @@ import java.util.List;
  */
 public final class Stations {
 
-    /** Blocks a villager should not stand on to work, even when they are otherwise walkable. */
-    public static final TagKey<Block> AVOID_STANDING = TagKey.create(
-            Registries.BLOCK,
-            //? if >=1.21 {
-            ResourceLocation.fromNamespaceAndPath("townstead", "avoid_standing")
-            //?} else {
-            /*new ResourceLocation("townstead", "avoid_standing")
-            *///?}
-    );
+    private static final class Tags {
+        /** Blocks a villager should not stand on to work, even when they are otherwise walkable. */
+        private static final TagKey<Block> AVOID_STANDING = TagKey.create(
+                Registries.BLOCK,
+                //? if >=1.21 {
+                ResourceLocation.fromNamespaceAndPath("townstead", "avoid_standing")
+                //?} else {
+                /*new ResourceLocation("townstead", "avoid_standing")
+                *///?}
+        );
+    }
 
     private Stations() {}
 
@@ -187,7 +189,7 @@ public final class Stations {
      * from on top of it. Which blocks count is a tag so packs can add their own containers.
      */
     public static boolean avoidStandingSurface(BlockState surface) {
-        return isStation(surface) || surface.is(AVOID_STANDING);
+        return isStation(surface) || surface.is(Tags.AVOID_STANDING);
     }
 
     public static @Nullable BlockPos findStandingPosition(ServerLevel level, VillagerEntityMCA villager,

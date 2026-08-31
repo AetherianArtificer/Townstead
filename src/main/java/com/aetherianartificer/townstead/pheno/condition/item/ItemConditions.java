@@ -8,7 +8,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
-import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -74,13 +73,11 @@ public final class ItemConditions {
                 if (json.has("tag")) {
                     ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "tag", ""));
                     if (id == null) return null;
-                    TagKey<Item> tag = TagKey.create(Registries.ITEM, id);
-                    return (level, stack) -> stack.is(tag);
+                    return (level, stack) -> stack.is(TagKey.create(Registries.ITEM, id));
                 }
                 ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "item", ""));
                 if (id == null) return null;
-                Item item = BuiltInRegistries.ITEM.get(id);
-                return (level, stack) -> stack.is(item);
+                return (level, stack) -> stack.is(BuiltInRegistries.ITEM.get(id));
             }
             case "food":
                 return (level, stack) -> {

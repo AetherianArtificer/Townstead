@@ -10,8 +10,8 @@ class StationsTest {
 
     @Test
     void emptyPlaceSurfaceIdentifiesAsTheBlockItWillPlace() {
-        ResourceLocation air = ResourceLocation.parse("minecraft:air");
-        ResourceLocation rawPizza = ResourceLocation.parse("pizzadelight:raw_pizza");
+        ResourceLocation air = ResourceLocation.tryParse("minecraft:air");
+        ResourceLocation rawPizza = ResourceLocation.tryParse("pizzadelight:raw_pizza");
 
         assertEquals(rawPizza,
                 Stations.slotBlockId(air, StationType.PLACE_SURFACE, rawPizza));
@@ -19,8 +19,8 @@ class StationsTest {
 
     @Test
     void ordinaryStationKeepsItsWorldBlockIdentity() {
-        ResourceLocation campfire = ResourceLocation.parse("minecraft:campfire");
-        ResourceLocation rawPizza = ResourceLocation.parse("pizzadelight:raw_pizza");
+        ResourceLocation campfire = ResourceLocation.tryParse("minecraft:campfire");
+        ResourceLocation rawPizza = ResourceLocation.tryParse("pizzadelight:raw_pizza");
 
         assertEquals(campfire,
                 Stations.slotBlockId(campfire, StationType.FIRE_STATION, rawPizza));

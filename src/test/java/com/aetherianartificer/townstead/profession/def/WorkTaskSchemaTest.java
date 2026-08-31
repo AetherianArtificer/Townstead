@@ -710,6 +710,11 @@ class WorkTaskSchemaTest {
 
     private static JsonObject resourceJson(String resource) {
         InputStream in = WorkTaskSchemaTest.class.getResourceAsStream(resource);
+        if (in == null) {
+            in = WorkTaskSchemaTest.class.getResourceAsStream(resource
+                    .replace("/tags/block/", "/tags/blocks/")
+                    .replace("/tags/item/", "/tags/items/"));
+        }
         assertNotNull(in, "shipped resource missing: " + resource);
         return JsonParser.parseReader(
                 new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();

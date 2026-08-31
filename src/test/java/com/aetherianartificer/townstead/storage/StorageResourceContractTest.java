@@ -103,6 +103,11 @@ class StorageResourceContractTest {
 
     private static JsonObject resource(String path) {
         var stream = StorageResourceContractTest.class.getResourceAsStream(path);
+        if (stream == null) {
+            stream = StorageResourceContractTest.class.getResourceAsStream(
+                    path.replace("/tags/block/", "/tags/blocks/")
+                            .replace("/tags/item/", "/tags/items/"));
+        }
         if (stream == null) throw new AssertionError("Missing test resource " + path);
         try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader).getAsJsonObject();
