@@ -10,6 +10,7 @@ import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.ProfessionProgressions;
 import com.aetherianartificer.townstead.villager.ProfessionXp;
 import com.aetherianartificer.townstead.villager.ProfessionXpStore;
+import com.aetherianartificer.townstead.data.DataPackLang;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -87,7 +88,7 @@ public final class CareerGraphBuilder {
                         Math.max(0, combo.thresholds().getOrDefault(involved, 0)),
                         0, 0, 0, 0, 0, false, false, false,
                         "", "", List.copyOf(evidence), List.of(),
-                        "", 0, "", "", effectLines(combo.grants()),
+                        "", 0, "", "", effectLines(combo.grants(), locale),
                         List.of(), CareerGraphS2CPayload.PathTag.NONE));
             }
         }
@@ -129,7 +130,7 @@ public final class CareerGraphBuilder {
 
         boolean masked = false;
         List<CareerGraphS2CPayload.Evidence> evidence = masked
-                ? List.of() : evidenceFor(server, entity, profile, def, acquired);
+                ? List.of() : evidenceFor(server, entity, profile, def, acquired, locale);
         String parentId = "";
 
         // Today's allowance: xpToday is only meaningful if it was earned today.
@@ -140,7 +141,7 @@ public final class CareerGraphBuilder {
         int maxTier = ProfessionProgressions.spec(careerId).maxTier();
 
         String routesLine = masked || acquired || def.isRoot() || def.acquisitionRoutes().isEmpty()
-                ? "" : routesLine(def.acquisitionRoutes());
+                ? "" : routesLine(def.acquisitionRoutes(), locale);
         List<String> moments = masked ? List.of()
                 : momentsByCareer.getOrDefault(careerId.toString(), List.of());
 
@@ -188,7 +189,7 @@ public final class CareerGraphBuilder {
                     : CareerGraphS2CPayload.STATE_LOCKED;
             String fullDescription = skill.description() == null
                     ? "" : localized(skill.description(), locale);
-            SkillCopy copy = splitSkillCopy(fullDescription, effectLines(skill));
+            SkillCopy copy = splitSkillCopy(fullDescription, effectLines(skill, locale));
             nodes.add(new CareerGraphS2CPayload.Node(
                     choice.toString(), rootId.toString(), careerId.toString(),
                     CareerGraphS2CPayload.KIND_SKILL,
@@ -204,7 +205,7 @@ public final class CareerGraphBuilder {
                     skill.skillGroup() == null ? "" : skill.skillGroup().toString(),
                     "", copy.effects(),
                     prerequisitesWithin(def, skill), pathTag(def, choice, locale),
-                    stampOf(profile, choice), abilityOf(skill)));
+                    stampOf(profile, choice), abilityOf(skill, locale)));
         }
 
     }
@@ -264,8 +265,8 @@ public final class CareerGraphBuilder {
      * sentence is About copy; its remaining sentence is prepended to this list by
      * {@link #splitSkillCopy(String, List)} so Pheno powers do not hide their behavior in About.
      */
-    private static List<String> effectLines(SkillDef skill) {
-        return effectLines(skill.grants());
+    private static List<String> effectLines(SkillDef skill, String locale) {
+        return effectLines(skill.grants(), locale);
     }
 
     /**
@@ -277,22 +278,23 @@ public final class CareerGraphBuilder {
      * them apart to say so, and to say the part only the CLIENT knows — whether the slot's key has
      * been bound at all.</p>
      */
-    private static CareerGraphS2CPayload.Ability abilityOf(SkillDef skill) {
+    private static CareerGraphS2CPayload.Ability abilityOf(SkillDef skill, String locale) {
         if (!(skill.power() instanceof com.aetherianartificer.townstead.root.gene.types
                 .ActiveAbilityGeneType.Instance active)) {
             return CareerGraphS2CPayload.Ability.NONE;
         }
         String cost = active.costResource() == null || active.costAmount() <= 0 ? ""
-                : localizeOr("townstead.resource." + active.costResource().getPath(),
+                : localizeOr("townstead.resource." + active.costResource().getPath(), locale,
                         prettify(active.costResource().getPath()));
         return new CareerGraphS2CPayload.Ability(true, active.slot(),
                 Math.max(0, active.cooldownTicks()), Math.max(0, active.costAmount()), cost);
     }
 
-    private static List<String> effectLines(List<com.aetherianartificer.townstead.profession.def.SkillGrant> grants) {
+    private static List<String> effectLines(
+            List<com.aetherianartificer.townstead.profession.def.SkillGrant> grants, String locale) {
         List<String> lines = new ArrayList<>();
         for (com.aetherianartificer.townstead.profession.def.SkillGrant grant : grants) {
-            String label = capabilityLabel(grant.key().id());
+            String label = capabilityLabel(grant.key().id(), locale);
             String value = trimNumber(grant.value());
             String op = grant.op().name();
             String line;
@@ -301,9 +303,9 @@ public final class CareerGraphBuilder {
             } else if ("MULTIPLY".equals(op)) {
                 line = "x" + value + " " + label;
             } else if ("DENY".equals(op)) {
-                line = localizeOr("townstead.career.screen.effect.deny", "Disables") + " " + label;
+                line = localizeOr("townstead.career.screen.effect.deny", locale, "Disables") + " " + label;
             } else if ("OR".equals(op)) {
-                line = localizeOr("townstead.career.screen.effect.grant", "Grants") + " " + label;
+                line = localizeOr("townstead.career.screen.effect.grant", locale, "Grants") + " " + label;
             } else {
                 line = label + " " + op.toLowerCase(java.util.Locale.ROOT) + " " + value;
             }
@@ -312,8 +314,8 @@ public final class CareerGraphBuilder {
         return lines;
     }
 
-    private static String capabilityLabel(ResourceLocation id) {
-        return localizeOr("townstead.capability." + id.getPath(),
+    private static String capabilityLabel(ResourceLocation id, String locale) {
+        return localizeOr("townstead.capability." + id.getPath(), locale,
                 id.getPath().replace('_', ' '));
     }
 
@@ -337,21 +339,21 @@ public final class CareerGraphBuilder {
         return "";
     }
 
-    private static String routesLine(List<String> routes) {
+    private static String routesLine(List<String> routes, String locale) {
         List<String> parts = new ArrayList<>(routes.size());
         for (String route : routes) {
-            parts.add(localizeOr(("townstead.career.route." + route), prettify(route)));
+            parts.add(localizeOr("townstead.career.route." + route, locale, prettify(route)));
         }
         return String.join(" · ", parts);
     }
 
     private static List<CareerGraphS2CPayload.Evidence> evidenceFor(
             MinecraftServer server, LivingEntity entity, CareerProfile profile,
-            ProfessionDef def, boolean acquired) {
+            ProfessionDef def, boolean acquired, String locale) {
         List<CareerGraphS2CPayload.Evidence> evidence = new ArrayList<>();
         if (acquired) {
             for (String counter : CareerActivities.counters(def)) {
-                evidence.add(new CareerGraphS2CPayload.Evidence(counterLabel(counter),
+                evidence.add(new CareerGraphS2CPayload.Evidence(counterLabel(counter, locale),
                         Chronicles.count(server, entity.getUUID(), counter), 0, true));
             }
             return evidence;
@@ -360,7 +362,7 @@ public final class CareerGraphBuilder {
             switch (hint.kind()) {
                 case RequirementHint.KIND_CHRONICLE_COUNT -> {
                     int current = Chronicles.count(server, entity.getUUID(), hint.key());
-                    evidence.add(new CareerGraphS2CPayload.Evidence(counterLabel(hint.key()),
+                    evidence.add(new CareerGraphS2CPayload.Evidence(counterLabel(hint.key(), locale),
                             current, hint.target(), current >= hint.target()));
                 }
                 case RequirementHint.KIND_CAREER_XP -> {
@@ -380,25 +382,37 @@ public final class CareerGraphBuilder {
     }
 
     /** Engine activities use counter keys; data-driven Jobs use their resource translation key. */
-    private static String counterLabel(String key) {
+    private static String counterLabel(String key, String locale) {
         if (CareerActivities.isJob(key)) {
             ResourceLocation job = ResourceLocation.tryParse(key);
             if (job != null) {
                 String translation = "work_job." + job.getNamespace() + "."
                         + job.getPath().replace('/', '.');
-                return localizeOr(translation, prettify(job.getPath()));
+                return localizeOr(translation, locale, prettify(job.getPath()));
             }
         }
         int colon = key.indexOf(':');
         String path = colon >= 0 ? key.substring(colon + 1) : key;
-        return localizeOr("townstead.counter." + path, prettify(key));
+        return localizeOr("townstead.counter." + path, locale, prettify(key));
     }
 
-    private static String localizeOr(String langKey, String fallback) {
+    /**
+     * Resolves through the data-pack sidecar, NOT through {@link Language}.
+     *
+     * <p>This runs on the server, and the server's resource manager reads {@code data/} rather
+     * than {@code assets/}, which is exactly why {@code DataPackLang} exists. Going through it
+     * also gets the label right for the RECEIVING player's locale: a baked-on-the-server string
+     * would hand every client on a shared world one language.</p>
+     */
+    private static String localizeOr(String langKey, String locale, String fallback) {
+        String resolved = DataPackLang.find(langKey, locale);
+        if (resolved != null) return resolved;
+        // A resource pack can still carry the key on a single-player client.
         return Language.getInstance().has(langKey)
                 ? Component.translatable(langKey).getString()
                 : fallback;
     }
+
 
     private static String prettify(String key) {
         int colon = key.indexOf(':');
